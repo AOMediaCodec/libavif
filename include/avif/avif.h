@@ -4,6 +4,7 @@
 #ifndef AVIF_AVIF_H
 #define AVIF_AVIF_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 // ---------------------------------------------------------------------------
