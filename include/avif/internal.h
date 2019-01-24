@@ -60,6 +60,7 @@ void avifStreamFinishWrite(avifStream * stream);
 void avifStreamWrite(avifStream * stream, const uint8_t * data, size_t size);
 avifBoxMarker avifStreamWriteBox(avifStream * stream, const char * type, int version /* -1 for "not a FullBox" */, size_t contentSize);
 void avifStreamFinishBox(avifStream * stream, avifBoxMarker marker);
+void avifStreamWriteU8(avifStream * stream, uint8_t v);
 void avifStreamWriteU16(avifStream * stream, uint16_t v);
 void avifStreamWriteU32(avifStream * stream, uint32_t v);
 void avifStreamWriteZeros(avifStream * stream, size_t byteCount);

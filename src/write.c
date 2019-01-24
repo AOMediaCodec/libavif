@@ -170,6 +170,12 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     avifStreamWriteU32(&s, image->height); // unsigned int(32) image_height;
     avifStreamFinishBox(&s, ispe);
     avifStreamFinishBox(&s, ipco);
+    avifBoxMarker ipma = avifStreamWriteBox(&s, "ipma", 0, 0);
+    avifStreamWriteU32(&s, 1); // unsigned int(32) entry_count;
+    avifStreamWriteU16(&s, 1); // unsigned int(16) item_ID;
+    avifStreamWriteU8(&s, 1);  // unsigned int(8) association_count;
+    avifStreamWriteU8(&s, 1);  // bit(1) essential; unsigned int(7) property_index;
+    avifStreamFinishBox(&s, ipma);
     avifStreamFinishBox(&s, iprp);
 
     // -----------------------------------------------------------------------

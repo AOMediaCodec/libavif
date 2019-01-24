@@ -191,6 +191,14 @@ void avifStreamFinishBox(avifStream * stream, avifBoxMarker marker)
     memcpy(stream->raw->data + marker, &noSize, sizeof(uint32_t));
 }
 
+void avifStreamWriteU8(avifStream * stream, uint8_t v)
+{
+    size_t size = sizeof(uint8_t);
+    makeRoom(stream, size);
+    memcpy(stream->raw->data + stream->offset, &v, size);
+    stream->offset += size;
+}
+
 void avifStreamWriteU16(avifStream * stream, uint16_t v)
 {
     size_t size = sizeof(uint16_t);
