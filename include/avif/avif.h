@@ -136,7 +136,7 @@ typedef struct avifImage
 #endif
 } avifImage;
 
-avifImage * avifImageCreate();
+avifImage * avifImageCreate(void);
 void avifImageDestroy(avifImage * image);
 void avifImageClear(avifImage * image);
 void avifImageCreatePixels(avifImage * image, avifPixelFormat pixelFormat, int width, int height, int depth);
