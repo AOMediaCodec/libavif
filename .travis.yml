@@ -1,0 +1,57 @@
+language: c
+
+os: linux
+
+matrix:
+  include:
+  - name: "GCC Debug"
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - nasm
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -DCMAKE_BUILD_TYPE=Debug ..
+    script:
+      - make
+
+  - name: "GCC Release"
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - nasm
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -DCMAKE_BUILD_TYPE=Release ..
+    script:
+      - make
+
+  - name: "Clang Debug"
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - nasm
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -DCMAKE_BUILD_TYPE=Debug ..
+    script:
+      - make
+
+  - name: "Clang Release"
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - nasm
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -DCMAKE_BUILD_TYPE=Release ..
+    script:
+      - make
