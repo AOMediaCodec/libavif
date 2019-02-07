@@ -13,6 +13,10 @@ static avifBool avifImageIsOpaque(avifImage * image);
 
 avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
 {
+    if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
+        return AVIF_RESULT_UNSUPPORTED_DEPTH;
+    }
+
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     avifRawData colorOBU = AVIF_RAW_DATA_EMPTY;
     avifRawData alphaOBU = AVIF_RAW_DATA_EMPTY;
@@ -23,45 +27,37 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     // -----------------------------------------------------------------------
     // Reformat pixels, if need be
 
-    avifPixelFormat dstPixelFormat = image->pixelFormat;
-    if (image->pixelFormat == AVIF_PIXEL_FORMAT_RGBA) {
-        // AV1 doesn't support RGB, reformat
-        dstPixelFormat = AVIF_PIXEL_FORMAT_YUV444;
+    if (!image->width || !image->height || !image->depth) {
+        result = AVIF_RESULT_NO_CONTENT;
+        goto writeCleanup;
     }
 
-#if 0 // TODO: implement choice in depth
-    int dstDepth = AVIF_CLAMP(image->depth, 8, 12);
-    if ((dstDepth == 9) || (dstDepth == 11)) {
-        ++dstDepth;
-    }
-#else
-    int dstDepth = 12;
-#endif
-
-    avifImage * pixelImage = image;
-    avifImage * reformattedImage = NULL;
-    if ((image->pixelFormat != dstPixelFormat) || (image->depth != dstDepth)) {
-        reformattedImage = avifImageCreate();
-        avifResult reformatResult = avifImageReformatPixels(image, reformattedImage, dstPixelFormat, dstDepth);
-        if (reformatResult != AVIF_RESULT_OK) {
-            result = reformatResult;
+    if ((image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) || !image->yuvPlanes[AVIF_CHAN_Y] || !image->yuvPlanes[AVIF_CHAN_U] || !image->yuvPlanes[AVIF_CHAN_V]) {
+        if (!image->rgbPlanes[AVIF_CHAN_R] || !image->rgbPlanes[AVIF_CHAN_G] || !image->rgbPlanes[AVIF_CHAN_B]) {
+            result = AVIF_RESULT_NO_CONTENT;
             goto writeCleanup;
         }
-        pixelImage = reformattedImage;
+
+        avifImageFreePlanes(image, AVIF_PLANES_YUV);
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
+            result = AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
+            goto writeCleanup;
+        }
+        avifImageRGBToYUV(image);
     }
 
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
 
-    if (!encodeOBU(pixelImage, AVIF_FALSE, &colorOBU, quality)) {
+    if (!encodeOBU(image, AVIF_FALSE, &colorOBU, quality)) {
         result = AVIF_RESULT_ENCODE_COLOR_FAILED;
         goto writeCleanup;
     }
 
     // Skip alpha creation on opaque images
     avifBool hasAlpha = AVIF_FALSE;
-    if (!avifImageIsOpaque(pixelImage)) {
-        if (!encodeOBU(pixelImage, AVIF_TRUE, &alphaOBU, quality)) {
+    if (!avifImageIsOpaque(image)) {
+        if (!encodeOBU(image, AVIF_TRUE, &alphaOBU, quality)) {
             result = AVIF_RESULT_ENCODE_ALPHA_FAILED;
             goto writeCleanup;
         }
@@ -189,12 +185,46 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     // Cleanup
 
 writeCleanup:
-    if (reformattedImage) {
-        avifImageDestroy(reformattedImage);
-    }
     avifRawDataFree(&colorOBU);
     avifRawDataFree(&alphaOBU);
     return result;
+}
+
+static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alphaOnly, int * yShift)
+{
+    *yShift = 0;
+
+    aom_img_fmt_t fmt;
+    if (alphaOnly) {
+        // We're going monochrome, who cares about chroma quality
+        fmt = AOM_IMG_FMT_I420;
+        *yShift = 1;
+    } else {
+        switch (image->yuvFormat) {
+            case AVIF_PIXEL_FORMAT_YUV444:
+                fmt = AOM_IMG_FMT_I444;
+                break;
+            case AVIF_PIXEL_FORMAT_YUV422:
+                fmt = AOM_IMG_FMT_I422;
+                break;
+            case AVIF_PIXEL_FORMAT_YUV420:
+                fmt = AOM_IMG_FMT_I420;
+                *yShift = 1;
+                break;
+            case AVIF_PIXEL_FORMAT_YV12:
+                fmt = AOM_IMG_FMT_YV12;
+                *yShift = 1;
+                break;
+            default:
+                return AOM_IMG_FMT_NONE;
+        }
+    }
+
+    if (image->depth > 8) {
+        fmt |= AOM_IMG_FMT_HIGHBITDEPTH;
+    }
+
+    return fmt;
 }
 
 static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * outputOBU, int quality)
@@ -203,14 +233,40 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
     aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
     aom_codec_ctx_t encoder;
 
+    int yShift = 0;
+    aom_img_fmt_t aomFormat = avifImageCalcAOMFmt(image, alphaOnly, &yShift);
+    if (aomFormat == AOM_IMG_FMT_NONE) {
+        return AVIF_FALSE;
+    }
+
     struct aom_codec_enc_cfg cfg;
     aom_codec_enc_config_default(encoder_interface, &cfg, 0);
 
+    // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
+    // Profile 1.  8-bit and 10-bit 4:4:4
     // Profile 2.  8-bit and 10-bit 4:2:2
     //            12-bit  4:0:0, 4:2:2 and 4:4:4
-    cfg.g_profile = 2;
-    cfg.g_bit_depth = AOM_BITS_12;
-    cfg.g_input_bit_depth = 12;
+    if (image->depth == 12) {
+        // Only profile 2 can handle 12 bit
+        cfg.g_profile = 2;
+    } else {
+        // 8-bit or 10-bit
+
+        if (alphaOnly) {
+            // Assuming aomImage->monochrome makes it 4:0:0
+            cfg.g_profile = 0;
+        } else {
+            switch (image->yuvFormat) {
+                case AVIF_PIXEL_FORMAT_YUV444: cfg.g_profile = 1; break;
+                case AVIF_PIXEL_FORMAT_YUV422: cfg.g_profile = 2; break;
+                case AVIF_PIXEL_FORMAT_YUV420: cfg.g_profile = 0; break;
+                case AVIF_PIXEL_FORMAT_YV12:   cfg.g_profile = 0; break;
+            }
+        }
+    }
+
+    cfg.g_bit_depth = image->depth;
+    cfg.g_input_bit_depth = image->depth;
     cfg.g_w = image->width;
     cfg.g_h = image->height;
     // cfg.g_threads = ...;
@@ -223,38 +279,46 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
         cfg.rc_max_quantizer = quality;
     }
 
-    aom_codec_enc_init(&encoder, encoder_interface, &cfg, AOM_CODEC_USE_HIGHBITDEPTH);
-    aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+    uint32_t encoderFlags = 0;
+    if (image->depth > 8) {
+        encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
+    }
+    aom_codec_enc_init(&encoder, encoder_interface, &cfg, encoderFlags);
     if (lossless) {
         aom_codec_control(&encoder, AV1E_SET_LOSSLESS, 1);
     }
 
-    aom_image_t * aomImage = aom_img_alloc(NULL, AOM_IMG_FMT_I44416, image->width, image->height, 16);
-    aomImage->range = AOM_CR_FULL_RANGE; // always use full range
-    if (alphaOnly) {
-    }
+    int uvHeight = image->height >> yShift;
+    aom_image_t * aomImage = aom_img_alloc(NULL, aomFormat, image->width, image->height, 16);
 
     if (alphaOnly) {
+        aomImage->range = AOM_CR_FULL_RANGE; // Alpha is always full range
+        aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         aomImage->monochrome = 1;
         for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                for (int plane = 0; plane < 3; ++plane) {
-                    uint16_t * planeChannel = (uint16_t *)&aomImage->planes[plane][(j * aomImage->stride[plane]) + (2 * i)];
-                    if (plane == 0) {
-                        *planeChannel = image->planes[3][i + (j * image->strides[plane])];
-                    } else {
-                        *planeChannel = 0;
-                    }
-                }
-            }
+            uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
+            uint8_t * dstAlphaRow = &aomImage->planes[0][j * aomImage->stride[0]];
+            memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
+        }
+
+        for (int j = 0; j < uvHeight; ++j) {
+            // Zero out U and V
+            memset(&aomImage->planes[1][j * aomImage->stride[1]], 0, aomImage->stride[1]);
+            memset(&aomImage->planes[2][j * aomImage->stride[2]], 0, aomImage->stride[2]);
         }
     } else {
+        aomImage->range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
+        aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                for (int plane = 0; plane < 3; ++plane) {
-                    uint16_t * planeChannel = (uint16_t *)&aomImage->planes[plane][(j * aomImage->stride[plane]) + (2 * i)];
-                    *planeChannel = image->planes[plane][i + (j * image->strides[plane])];
+            for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+                if ((yuvPlane > 0) && (j >= uvHeight)) {
+                    // Bail out if we're on a half-height UV plane
+                    break;
                 }
+
+                uint8_t * srcRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
+                uint8_t * dstRow = &aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
+                memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
             }
         }
     }
@@ -281,11 +345,26 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
 
 static avifBool avifImageIsOpaque(avifImage * image)
 {
+    if (!image->alphaPlane) {
+        return AVIF_TRUE;
+    }
+
     int maxChannel = (1 << image->depth) - 1;
-    for (int j = 0; j < image->height; ++j) {
-        for (int i = 0; i < image->width; ++i) {
-            if (image->planes[3][i + (j * image->strides[3])] != maxChannel) {
-                return AVIF_FALSE;
+    if (avifImageUsesU16(image)) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint16_t * p = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
+                if (*p != maxChannel) {
+                    return AVIF_FALSE;
+                }
+            }
+        }
+    } else {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                if (image->alphaPlane[i + (j * image->alphaRowBytes)] != maxChannel) {
+                    return AVIF_FALSE;
+                }
             }
         }
     }

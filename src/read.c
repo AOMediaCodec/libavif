@@ -278,50 +278,67 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
         return AVIF_RESULT_ISPE_SIZE_MISMATCH;
     }
 
-    avifPixelFormat pixelFormat;
-    int xShift = 0;
-    int yShift = 0;
+    avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
     switch (aomColorImage->fmt) {
+        case AOM_IMG_FMT_I420:
+        case AOM_IMG_FMT_AOMI420:
         case AOM_IMG_FMT_I42016:
-            pixelFormat = AVIF_PIXEL_FORMAT_YUV420;
-            xShift = 1;
-            yShift = 1;
+            yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
             break;
+        case AOM_IMG_FMT_I422:
+        case AOM_IMG_FMT_I42216:
+            yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
+            break;
+        case AOM_IMG_FMT_I444:
         case AOM_IMG_FMT_I44416:
-            pixelFormat = AVIF_PIXEL_FORMAT_YUV444;
+            yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
             break;
+        case AOM_IMG_FMT_YV12:
+        case AOM_IMG_FMT_AOMYV12:
+        case AOM_IMG_FMT_YV1216:
+            yuvFormat = AVIF_PIXEL_FORMAT_YV12;
+            break;
+        case AOM_IMG_FMT_NONE:
         default:
-            aom_codec_destroy(&colorDecoder);
-            if (hasAlpha) {
-                aom_codec_destroy(&alphaDecoder);
-            }
-            return AVIF_UNSUPPORTED_PIXEL_FORMAT;
+            break;
     }
 
-    avifImageCreatePixels(image, pixelFormat, aomColorImage->d_w, aomColorImage->d_h, aomColorImage->bit_depth);
+    avifImageFreePlanes(image, AVIF_PLANES_ALL);
+    image->width = aomColorImage->d_w;
+    image->height = aomColorImage->d_h;
+    image->depth = aomColorImage->bit_depth;
+    image->yuvFormat = yuvFormat;
+    image->yuvRange = (aomColorImage->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
 
-    uint16_t maxChannel = (1 << image->depth) - 1;
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(yuvFormat, &formatInfo);
+
+    int uvHeight = image->height >> formatInfo.chromaShiftY;
+    avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
     for (int j = 0; j < image->height; ++j) {
-        for (int i = 0; i < image->width; ++i) {
-            uint16_t * planeChannel;
-            int x = i >> xShift;
-            int y = j >> yShift;
-
-            planeChannel = (uint16_t *)&aomColorImage->planes[0][(j * aomColorImage->stride[0]) + (2 * i)];
-            image->planes[0][i + (j * image->strides[0])] = *planeChannel;
-            planeChannel = (uint16_t *)&aomColorImage->planes[1][(y * aomColorImage->stride[1]) + (2 * x)];
-            image->planes[1][x + (y * image->strides[1])] = *planeChannel;
-            planeChannel = (uint16_t *)&aomColorImage->planes[2][(y * aomColorImage->stride[2]) + (2 * x)];
-            image->planes[2][x + (y * image->strides[2])] = *planeChannel;
-
-            if (hasAlpha) {
-                uint16_t * planeChannel = (uint16_t *)&aomAlphaImage->planes[0][(j * aomColorImage->stride[0]) + (2 * i)];
-                image->planes[3][i + (j * image->strides[3])] = *planeChannel;
-            } else {
-                image->planes[3][i + (j * image->strides[3])] = maxChannel;
+        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+            if ((yuvPlane > 0) && (j >= uvHeight)) {
+                // Bail out if we're on a half-height UV plane
+                break;
             }
+
+            uint8_t * srcRow = &aomColorImage->planes[yuvPlane][j * aomColorImage->stride[yuvPlane]];
+            uint8_t * dstRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
+            memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
         }
     }
+
+    if (hasAlpha) {
+        avifImageAllocatePlanes(image, AVIF_PLANES_A);
+        for (int j = 0; j < image->height; ++j) {
+            uint8_t * srcAlphaRow = &aomAlphaImage->planes[0][j * aomAlphaImage->stride[0]];
+            uint8_t * dstAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
+            memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
+        }
+    }
+
+    // Make this optional?
+    avifImageYUVToRGB(image);
 
     aom_codec_destroy(&colorDecoder);
     if (hasAlpha) {

@@ -18,7 +18,30 @@ typedef int avifBool;
 #define AVIF_BEST_QUALITY 0
 #define AVIF_WORST_QUALITY 63
 
-#define AVIF_MAX_PLANES 4
+#define AVIF_PLANE_COUNT_RGB 3
+#define AVIF_PLANE_COUNT_YUV 3
+
+enum avifPlanesFlags
+{
+    AVIF_PLANES_RGB = (1 << 0),
+    AVIF_PLANES_YUV = (1 << 1),
+    AVIF_PLANES_A   = (1 << 2),
+
+    AVIF_PLANES_ALL = 0xff
+};
+
+enum avifChannelIndex
+{
+    // rgbPlanes
+    AVIF_CHAN_R = 0,
+    AVIF_CHAN_G = 1,
+    AVIF_CHAN_B = 2,
+
+    // yuvPlanes - These are always correct, even if UV is flipped when encoded (YV12)
+    AVIF_CHAN_Y = 0,
+    AVIF_CHAN_U = 1,
+    AVIF_CHAN_V = 2
+};
 
 // ---------------------------------------------------------------------------
 // Utils
@@ -46,7 +69,10 @@ typedef enum avifResult
 {
     AVIF_RESULT_OK = 0,
     AVIF_RESULT_UNKNOWN_ERROR,
+    AVIF_RESULT_NO_CONTENT,
+    AVIF_RESULT_NO_YUV_FORMAT_SELECTED,
     AVIF_RESULT_REFORMAT_FAILED,
+    AVIF_RESULT_UNSUPPORTED_DEPTH,
     AVIF_RESULT_ENCODE_COLOR_FAILED,
     AVIF_RESULT_ENCODE_ALPHA_FAILED,
     AVIF_RESULT_BMFF_PARSE_FAILED,
@@ -87,15 +113,28 @@ typedef enum avifPixelFormat
     // No pixels are present
     AVIF_PIXEL_FORMAT_NONE = 0,
 
-    // R:0, G:1, B:2, A:3
-    AVIF_PIXEL_FORMAT_RGBA,
-
-    // Y:0, U:1, V:2, A:3, full size chroma
     AVIF_PIXEL_FORMAT_YUV444,
-
-    // Y:0, U:1, V:2, A:3, half size chroma
-    AVIF_PIXEL_FORMAT_YUV420
+    AVIF_PIXEL_FORMAT_YUV422,
+    AVIF_PIXEL_FORMAT_YUV420,
+    AVIF_PIXEL_FORMAT_YV12
 } avifPixelFormat;
+
+typedef struct avifPixelFormatInfo
+{
+    int chromaShiftX;
+    int chromaShiftY;
+} avifPixelFormatInfo;
+
+void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
+
+// ---------------------------------------------------------------------------
+// avifRange
+
+typedef enum avifRange
+{
+    AVIF_RANGE_LIMITED = 0,
+    AVIF_RANGE_FULL,
+} avifRange;
 
 // ---------------------------------------------------------------------------
 // avifProfileFormat
@@ -115,33 +154,40 @@ typedef enum avifProfileFormat
 typedef struct avifImage
 {
     // Image information
-    avifPixelFormat pixelFormat;
     int width;
     int height;
-    int depth; // all planes must share this depth
-    uint16_t * planes[AVIF_MAX_PLANES];
-    uint32_t strides[AVIF_MAX_PLANES];
+    int depth; // all planes (RGB/YUV/A) must share this depth; if depth>8, all planes are uint16_t internally
+
+    uint8_t * rgbPlanes[AVIF_PLANE_COUNT_RGB];
+    uint32_t rgbRowBytes[AVIF_PLANE_COUNT_RGB];
+
+    avifPixelFormat yuvFormat;
+    avifRange yuvRange;
+    uint8_t * yuvPlanes[AVIF_PLANE_COUNT_YUV];
+    uint32_t yuvRowBytes[AVIF_PLANE_COUNT_YUV];
+
+    uint8_t * alphaPlane;
+    uint32_t alphaRowBytes;
 
     // Profile information
     avifProfileFormat profileFormat;
     avifRawData icc;
-
-#if 0
-    // Additional data from an encode/decode (useful for verbose logging)
-    struct Stats
-    {
-        uint32_t colorPayloadSize;
-        uint32_t alphaPayloadSize;
-    } stats;
-#endif
 } avifImage;
 
-avifImage * avifImageCreate(void);
+avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
+avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 void avifImageDestroy(avifImage * image);
-void avifImageClear(avifImage * image);
-void avifImageCreatePixels(avifImage * image, avifPixelFormat pixelFormat, int width, int height, int depth);
+
+void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
+void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
 avifResult avifImageRead(avifImage * image, avifRawData * input);
 avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality); // if OK, output must be freed with avifRawDataFree()
-avifResult avifImageReformatPixels(avifImage * srcImage, avifImage * dstImage, avifPixelFormat dstPixelFormat, int dstDepth);
+
+// Used by avifImageRead/avifImageWrite
+avifResult avifImageRGBToYUV(avifImage * image);
+avifResult avifImageYUVToRGB(avifImage * image);
+
+// Helpers
+avifBool avifImageUsesU16(avifImage * image);
 
 #endif // ifndef AVIF_AVIF_H

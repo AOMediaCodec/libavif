@@ -11,17 +11,17 @@ int main(int argc, char * argv[])
 #if 1
     int width = 32;
     int height = 32;
-    int depth = 12;
+    int depth = 8;
 
     // Encode an orange, 8-bit, full opacity image
-    avifImage * image = avifImageCreate();
-    avifImageCreatePixels(image, AVIF_PIXEL_FORMAT_RGBA, width, height, depth);
+    avifImage * image = avifImageCreate(width, height, depth, AVIF_PIXEL_FORMAT_YUV444);
+    avifImageAllocatePlanes(image, AVIF_PLANES_RGB | AVIF_PLANES_A);
     for (int j = 0; j < height; ++j) {
         for (int i = 0; i < width; ++i) {
-            image->planes[0][i + (j * image->strides[0])] = 4095; // R
-            image->planes[1][i + (j * image->strides[1])] = 2000; // G
-            image->planes[2][i + (j * image->strides[2])] = 0;    // B
-            image->planes[3][i + (j * image->strides[3])] = 4095; // A
+            image->rgbPlanes[0][i + (j * image->rgbRowBytes[0])] = 255; // R
+            image->rgbPlanes[1][i + (j * image->rgbRowBytes[1])] = 128; // G
+            image->rgbPlanes[2][i + (j * image->rgbRowBytes[2])] = 0;   // B
+            image->alphaPlane[i + (j * image->alphaRowBytes)] = 255;    // A
         }
     }
 
@@ -32,6 +32,7 @@ int main(int argc, char * argv[])
     avifRawData raw = AVIF_RAW_DATA_EMPTY;
     avifResult res = avifImageWrite(image, &raw, 50);
 
+#if 0
     // debug
     {
         FILE * f = fopen("out.avif", "wb");
@@ -40,28 +41,24 @@ int main(int argc, char * argv[])
             fclose(f);
         }
     }
+#endif
 
     if (res == AVIF_RESULT_OK) {
         // Decode it
-        avifImage * decoded = avifImageCreate();
+        avifImage * decoded = avifImageCreateEmpty();
         avifResult decodeResult = avifImageRead(decoded, &raw);
         if (decodeResult == AVIF_RESULT_OK) {
-            avifImage * rgbImage = avifImageCreate();
-            avifResult reformatResult = avifImageReformatPixels(decoded, rgbImage, AVIF_PIXEL_FORMAT_RGBA, depth);
-            if (reformatResult == AVIF_RESULT_OK) {
-                for (int j = 0; j < height; ++j) {
-                    for (int i = 0; i < width; ++i) {
-                        for (int plane = 0; plane < 3; ++plane) {
-                            uint32_t src = image->planes[plane][i + (j * image->strides[plane])];
-                            uint32_t dst = rgbImage->planes[plane][i + (j * rgbImage->strides[plane])];
-                            if (src != dst) {
-                                printf("(%d,%d,p%d)   %d != %d\n", i, j, plane, src, dst);
-                            }
+            for (int j = 0; j < height; ++j) {
+                for (int i = 0; i < width; ++i) {
+                    for (int plane = 0; plane < 3; ++plane) {
+                        uint32_t src = image->rgbPlanes[plane][i + (j * image->rgbRowBytes[plane])];
+                        uint32_t dst = decoded->rgbPlanes[plane][i + (j * decoded->rgbRowBytes[plane])];
+                        if (src != dst) {
+                            printf("(%d,%d,p%d)   %d != %d\n", i, j, plane, src, dst);
                         }
                     }
                 }
             }
-            avifImageDestroy(rgbImage);
         }
         avifImageDestroy(decoded);
     }
