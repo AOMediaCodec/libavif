@@ -30,6 +30,9 @@ uint32_t avifNTOHL(uint32_t l);
 uint64_t avifHTON64(uint64_t l);
 uint64_t avifNTOH64(uint64_t l);
 
+int avifFullToLimited(int depth, int v);
+int avifLimitedToFull(int depth, int v);
+
 // ---------------------------------------------------------------------------
 // Memory management
 

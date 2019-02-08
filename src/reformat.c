@@ -51,6 +51,7 @@ avifResult avifImageRGBToYUV(avifImage * image)
 
     float yuvPixel[3];
     float rgbPixel[3];
+    int yuvUNorm[3];
     float maxChannel = (float)((1 << image->depth) - 1);
     for (int j = 0; j < image->height; ++j) {
         for (int i = 0; i < image->width; ++i) {
@@ -71,26 +72,36 @@ avifResult avifImageRGBToYUV(avifImage * image)
             yuvPixel[1] = (rgbPixel[2] - Y) / (2 * (1 - kb));
             yuvPixel[2] = (rgbPixel[0] - Y) / (2 * (1 - kr));
 
-            // Stuff YUV into unorm16 color layer
+            // Stuff YUV into unorm color layer
             yuvPixel[0] = AVIF_CLAMP(yuvPixel[0], 0.0f, 1.0f);
             yuvPixel[1] += 0.5f;
             yuvPixel[1] = AVIF_CLAMP(yuvPixel[1], 0.0f, 1.0f);
             yuvPixel[2] += 0.5f;
             yuvPixel[2] = AVIF_CLAMP(yuvPixel[2], 0.0f, 1.0f);
+            yuvUNorm[0] = (int)avifRoundf(yuvPixel[0] * maxChannel);
+            yuvUNorm[1] = (int)avifRoundf(yuvPixel[1] * maxChannel);
+            yuvUNorm[2] = (int)avifRoundf(yuvPixel[2] * maxChannel);
+
+            // adjust for limited/full color range, if need be
+            if (image->yuvRange == AVIF_RANGE_LIMITED) {
+                yuvUNorm[0] = avifFullToLimited(image->depth, yuvUNorm[0]);
+                yuvUNorm[1] = avifFullToLimited(image->depth, yuvUNorm[1]);
+                yuvUNorm[2] = avifFullToLimited(image->depth, yuvUNorm[2]);
+            }
 
             int uvI = i >> state.formatInfo.chromaShiftX;
             int uvJ = j >> state.formatInfo.chromaShiftY;
             if (state.usesU16) {
                 uint16_t * pY = (uint16_t *)&image->yuvPlanes[AVIF_CHAN_Y][(i * 2) + (j * image->yuvRowBytes[AVIF_CHAN_Y])];
-                *pY = (uint16_t)avifRoundf(yuvPixel[0] * maxChannel);
+                *pY = (uint16_t)yuvUNorm[0];
                 uint16_t * pU = (uint16_t *)&image->yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])];
-                *pU = (uint16_t)avifRoundf(yuvPixel[1] * maxChannel);
+                *pU = (uint16_t)yuvUNorm[1];
                 uint16_t * pV = (uint16_t *)&image->yuvPlanes[AVIF_CHAN_V][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])];
-                *pV = (uint16_t)avifRoundf(yuvPixel[2] * maxChannel);
+                *pV = (uint16_t)yuvUNorm[2];
             } else {
-                image->yuvPlanes[AVIF_CHAN_Y][i + (j * image->yuvRowBytes[AVIF_CHAN_Y])] = (uint8_t)avifRoundf(yuvPixel[0] * maxChannel);
-                image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])] = (uint8_t)avifRoundf(yuvPixel[1] * maxChannel);
-                image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])] = (uint8_t)avifRoundf(yuvPixel[2] * maxChannel);
+                image->yuvPlanes[AVIF_CHAN_Y][i + (j * image->yuvRowBytes[AVIF_CHAN_Y])] = (uint8_t)yuvUNorm[0];
+                image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])] = (uint8_t)yuvUNorm[1];
+                image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])] = (uint8_t)yuvUNorm[2];
             }
         }
     }
@@ -115,23 +126,37 @@ avifResult avifImageYUVToRGB(avifImage * image)
     const float kg = state.kg;
     const float kb = state.kb;
 
+    int yuvUNorm[3];
     float yuvPixel[3];
     float rgbPixel[3];
     float maxChannel = (float)((1 << image->depth) - 1);
     for (int j = 0; j < image->height; ++j) {
         for (int i = 0; i < image->width; ++i) {
-            // Unpack YUV into normalized float
+            // Unpack YUV into unorm
             int uvI = i >> state.formatInfo.chromaShiftX;
             int uvJ = j >> state.formatInfo.chromaShiftY;
             if (state.usesU16) {
-                yuvPixel[0] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_Y][(i * 2) + (j * image->yuvRowBytes[AVIF_CHAN_Y])]) / maxChannel;
-                yuvPixel[1] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])]) / maxChannel;
-                yuvPixel[2] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_V][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])]) / maxChannel;
+                yuvUNorm[0] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_Y][(i * 2) + (j * image->yuvRowBytes[AVIF_CHAN_Y])]);
+                yuvUNorm[1] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])]);
+                yuvUNorm[2] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_V][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])]);
             } else {
-                yuvPixel[0] = image->yuvPlanes[AVIF_CHAN_Y][i + (j * image->yuvRowBytes[AVIF_CHAN_Y])] / maxChannel;
-                yuvPixel[1] = image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])] / maxChannel;
-                yuvPixel[2] = image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])] / maxChannel;
+                yuvUNorm[0] = image->yuvPlanes[AVIF_CHAN_Y][i + (j * image->yuvRowBytes[AVIF_CHAN_Y])];
+                yuvUNorm[1] = image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])];
+                yuvUNorm[2] = image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])];
+
             }
+
+            // adjust for limited/full color range, if need be
+            if (image->yuvRange == AVIF_RANGE_LIMITED) {
+                yuvUNorm[0] = avifLimitedToFull(image->depth, yuvUNorm[0]);
+                yuvUNorm[1] = avifLimitedToFull(image->depth, yuvUNorm[1]);
+                yuvUNorm[2] = avifLimitedToFull(image->depth, yuvUNorm[2]);
+            }
+
+            // Convert unorm to float
+            yuvPixel[0] = yuvUNorm[0] / maxChannel;
+            yuvPixel[1] = yuvUNorm[1] / maxChannel;
+            yuvPixel[2] = yuvUNorm[2] / maxChannel;
             yuvPixel[1] -= 0.5f;
             yuvPixel[2] -= 0.5f;
 
@@ -166,3 +191,58 @@ avifResult avifImageYUVToRGB(avifImage * image)
     }
     return AVIF_RESULT_OK;
 }
+
+int avifLimitedToFull(int depth, int v)
+{
+    switch (depth) {
+        case 8:
+            v = ((v - 16) * 255) / (235 - 16);
+            v = AVIF_CLAMP(v, 0, 255);
+            return v;
+        case 10:
+            v = ((v - 64) * 1023) / (940 - 64);
+            v = AVIF_CLAMP(v, 0, 1023);
+            return v;
+        case 12:
+            v = ((v - 256) * 4095) / (3760 - 256);
+            v = AVIF_CLAMP(v, 0, 4095);
+            return v;
+    }
+    return v;
+}
+
+int avifFullToLimited(int depth, int v)
+{
+    switch (depth) {
+        case 8:
+            v = ((v * (235 - 16)) / 255) + 16;
+            v = AVIF_CLAMP(v, 16, 235);
+            return v;
+        case 10:
+            v = ((v * (940 - 64)) / 1023) + 64;
+            v = AVIF_CLAMP(v, 64, 940);
+            return v;
+        case 12:
+            v = ((v * (3760 - 256)) / 4095) + 256;
+            v = AVIF_CLAMP(v, 256, 3760);
+            return v;
+    }
+    return v;
+}
+
+#if 0
+// debug code for limited/full charting
+for (int v = 0; v < 4096; ++v) {
+    int limited8 = avifFullToLimited(8, v);
+    int full8 = avifLimitedToFull(8, limited8);
+    int limited10 = avifFullToLimited(10, v);
+    int full10 = avifLimitedToFull(10, limited10);
+    int limited12 = avifFullToLimited(12, v);
+    int full12 = avifLimitedToFull(12, limited12);
+    printf("Code %d: [ 8bit Limited %d -> Full %d ] [10bit Limited %d -> Full %d ] [12bit Limited %d -> Full %d ]\n",
+        v,
+        limited8, full8,
+        limited10, full10,
+        limited12, full12);
+}
+#endif

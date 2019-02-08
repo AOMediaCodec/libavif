@@ -8,6 +8,19 @@
 
 #include <string.h>
 
+// from the MIAF spec:
+// ---
+// Section 6.7
+// "α is an alpha plane value, scaled into the range of 0 (fully transparent) to 1 (fully opaque), inclusive"
+// ---
+// Section 7.3.5.2
+// "the sample values of the alpha plane divided by the maximum value (e.g. by 255 for 8-bit sample
+// values) provides the multiplier to be used to obtain the intensity for the associated master image"
+// ---
+// The define AVIF_FIX_STUDIO_ALPHA detects when the alpha OBU is incorrectly using studio range
+// and corrects it before returning the alpha pixels to the caller.
+#define AVIF_FIX_STUDIO_ALPHA
+
 #define AUXTYPE_SIZE 64
 #define MAX_COMPATIBLE_BRANDS 32
 #define MAX_ITEMS 8
@@ -693,6 +706,27 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
             uint8_t * dstAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
             memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
         }
+
+#if defined(AVIF_FIX_STUDIO_ALPHA)
+        if (aomAlphaImage->range == AOM_CR_STUDIO_RANGE) {
+            // Naughty! Alpha planes are supposed to be full range. Correct that here.
+            if (avifImageUsesU16(image)) {
+                for (int j = 0; j < image->height; ++j) {
+                    for (int i = 0; i < image->height; ++i) {
+                        uint16_t * alpha = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
+                        *alpha = (uint16_t)avifLimitedToFull(image->depth, *alpha);
+                    }
+                }
+            } else {
+                for (int j = 0; j < image->height; ++j) {
+                    for (int i = 0; i < image->height; ++i) {
+                        uint8_t * alpha = &image->alphaPlane[i + (j * image->alphaRowBytes)];
+                        *alpha = (uint8_t)avifLimitedToFull(image->depth, *alpha);
+                    }
+                }
+            }
+        }
+#endif
     }
 
     // Make this optional?
