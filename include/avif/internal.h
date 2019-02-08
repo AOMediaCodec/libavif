@@ -13,6 +13,12 @@
 #define CHECK(A) if (!(A)) return AVIF_FALSE;
 
 // ---------------------------------------------------------------------------
+// URNs
+
+#define URN_ALPHA0 "urn:mpeg:mpegB:cicp:systems:auxiliary:alpha"
+#define URN_ALPHA1 "urn:mpeg:hevc:2015:auxid:1"
+
+// ---------------------------------------------------------------------------
 // Utils
 
 float avifRoundf(float v);
@@ -60,6 +66,7 @@ avifBool avifStreamReadU16(avifStream * stream, uint16_t * v);
 avifBool avifStreamReadU32(avifStream * stream, uint32_t * v);
 avifBool avifStreamReadUX8(avifStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
 avifBool avifStreamReadU64(avifStream * stream, uint64_t * v);
+avifBool avifStreamReadString(avifStream * stream, char * output, size_t outputSize);
 avifBool avifStreamReadBoxHeader(avifStream * stream, avifBoxHeader * header);
 avifBool avifStreamReadVersionAndFlags(avifStream * stream, uint8_t * version, uint8_t * flags); // flags is an optional uint8_t[3]
 avifBool avifStreamReadAndEnforceVersion(avifStream * stream, uint8_t enforcedVersion);          // currently discards flags

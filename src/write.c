@@ -20,6 +20,9 @@ static void ipmaPush(struct ipmaArray * ipma, uint8_t assoc)
     ++ipma->count;
 }
 
+static const char alphaURN[] = URN_ALPHA0;
+static const size_t alphaURNSize = sizeof(alphaURN);
+
 static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * outputOBU, int quality);
 static avifBool avifImageIsOpaque(avifImage * image);
 
@@ -216,6 +219,12 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
                 avifStreamWriteU8(&s, 1);            // unsigned int (8) num_channels;
                 avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
                 avifStreamFinishBox(&s, pixiA);
+                ++ipcoIndex;
+                ipmaPush(&ipmaAlpha, ipcoIndex);
+
+                avifBoxMarker auxC = avifStreamWriteBox(&s, "auxC", 0, 0);
+                avifStreamWrite(&s, alphaURN, alphaURNSize); //  string aux_type;
+                avifStreamFinishBox(&s, auxC);
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
             }

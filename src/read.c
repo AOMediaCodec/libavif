@@ -8,6 +8,7 @@
 
 #include <string.h>
 
+#define AUXTYPE_SIZE 64
 #define MAX_COMPATIBLE_BRANDS 32
 #define MAX_ITEMS 8
 #define MAX_PROPERTIES 24
@@ -18,6 +19,11 @@ typedef struct avifImageSpatialExtents
     uint32_t height;
 } avifImageSpatialExtents;
 
+typedef struct avifAuxiliaryType
+{
+    char auxType[AUXTYPE_SIZE];
+} avifAuxiliaryType;
+
 typedef struct avifItem
 {
     int id;
@@ -26,14 +32,17 @@ typedef struct avifItem
     uint32_t size;
     avifBool ispe_seen;
     avifImageSpatialExtents ispe;
+    avifBool auxC_seen;
+    avifAuxiliaryType auxC;
     int thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
-    int alphaForID;     // if non-zero, this item is an alpha plane for Item #{alphaForID}
+    int auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
 } avifItem;
 
 typedef struct avifProperty
 {
     uint8_t type[4];
     avifImageSpatialExtents ispe;
+    avifAuxiliaryType auxC;
 } avifProperty;
 
 typedef struct avifFileType
@@ -74,6 +83,16 @@ int findItemID(avifData * data, int itemID)
     }
 
     return -1;
+}
+
+// ---------------------------------------------------------------------------
+// URN
+
+static avifBool isAlphaURN(char * urn)
+{
+    if (!strcmp(urn, URN_ALPHA0)) return AVIF_TRUE;
+    if (!strcmp(urn, URN_ALPHA1)) return AVIF_TRUE;
+    return AVIF_FALSE;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,11 +154,20 @@ static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t 
 static avifBool avifParseImageSpatialExtentsProperty(avifData * data, uint8_t * raw, size_t rawLen, int propertyIndex)
 {
     BEGIN_STREAM(s, raw, rawLen);
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0, NULL));
+    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
     uint32_t width, height;
     CHECK(avifStreamReadU32(&s, &data->properties[propertyIndex].ispe.width));
     CHECK(avifStreamReadU32(&s, &data->properties[propertyIndex].ispe.height));
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseAuxiliaryTypeProperty(avifData * data, uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+
+    CHECK(avifStreamReadString(&s, data->properties[propertyIndex].auxC.auxType, AUXTYPE_SIZE));
     return AVIF_TRUE;
 }
 
@@ -162,6 +190,9 @@ static avifBool avifParseItemPropertyContainerBox(avifData * data, uint8_t * raw
         memcpy(data->properties[propertyIndex].type, header.type, 4);
         if (!memcmp(header.type, "ispe", 4)) {
             CHECK(avifParseImageSpatialExtentsProperty(data, avifStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "auxC", 4)) {
+            CHECK(avifParseAuxiliaryTypeProperty(data, avifStreamCurrent(&s), header.size, propertyIndex));
         }
 
         CHECK(avifStreamSkip(&s, header.size));
@@ -225,6 +256,9 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, uint8_t * raw,
             if (!memcmp(prop->type, "ispe", 4)) {
                 data->items[itemIndex].ispe_seen = AVIF_TRUE;
                 memcpy(&data->items[itemIndex].ispe, &prop->ispe, sizeof(avifImageSpatialExtents));
+            } else if (!memcmp(prop->type, "auxC", 4)) {
+                data->items[itemIndex].auxC_seen = AVIF_TRUE;
+                memcpy(&data->items[itemIndex].auxC, &prop->auxC, sizeof(avifAuxiliaryType));
             }
         }
     }
@@ -368,7 +402,7 @@ static avifBool avifParseItemReferenceBox(avifData * data, uint8_t * raw, size_t
                     data->items[itemIndex].thumbnailForID = toID;
                 }
                 if (!memcmp(irefHeader.type, "auxl", 4)) {
-                    data->items[itemIndex].alphaForID = toID;
+                    data->items[itemIndex].auxForID = toID;
                 }
             }
         }
@@ -381,7 +415,7 @@ static avifBool avifParseMetaBox(avifData * data, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0, NULL));
+    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
     while (avifStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
@@ -553,7 +587,7 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
                 continue;
             }
 
-            if (item->alphaForID == colorOBUItem->id) {
+            if (isAlphaURN(item->auxC.auxType) && (item->auxForID == colorOBUItem->id)) {
                 alphaOBUItem = item;
                 alphaOBU.data = input->data + item->offset;
                 alphaOBU.size = item->size;

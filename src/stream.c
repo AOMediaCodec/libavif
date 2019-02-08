@@ -98,6 +98,35 @@ avifBool avifStreamReadU64(avifStream * stream, uint64_t * v)
     return AVIF_TRUE;
 }
 
+avifBool avifStreamReadString(avifStream * stream, char * output, size_t outputSize)
+{
+    // Check for the presence of a null terminator in the stream.
+    size_t remainingBytes = avifStreamRemainingBytes(stream);
+    uint8_t * p = avifStreamCurrent(stream);
+    avifBool foundNullTerminator = AVIF_FALSE;
+    for (size_t i = 0; i < remainingBytes; ++i) {
+        if (p[i] == 0) {
+            foundNullTerminator = AVIF_TRUE;
+            break;
+        }
+    }
+    if (!foundNullTerminator) {
+        return AVIF_FALSE;
+    }
+
+    char * streamString = (char *)p;
+    size_t stringLen = strlen(streamString);
+    stream->offset += stringLen + 1; // update the stream to have read the "whole string" in
+
+    // clamp to our output buffer
+    if (stringLen >= outputSize) {
+        stringLen = outputSize - 1;
+    }
+    memcpy(output, streamString, stringLen);
+    output[stringLen] = 0;
+    return AVIF_TRUE;
+}
+
 avifBool avifStreamReadBoxHeader(avifStream * stream, avifBoxHeader * header)
 {
     size_t startOffset = stream->offset;
