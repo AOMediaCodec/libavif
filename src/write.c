@@ -173,18 +173,49 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     // Write iprp->ipco->ispe
 
     avifBoxMarker iprp = avifStreamWriteBox(&s, "iprp", -1, 0);
-    avifBoxMarker ipco = avifStreamWriteBox(&s, "ipco", -1, 0);
-    avifBoxMarker ispe = avifStreamWriteBox(&s, "ispe", 0, 0);
-    avifStreamWriteU32(&s, image->width);  // unsigned int(32) image_width;
-    avifStreamWriteU32(&s, image->height); // unsigned int(32) image_height;
-    avifStreamFinishBox(&s, ispe);
-    avifStreamFinishBox(&s, ipco);
-    avifBoxMarker ipma = avifStreamWriteBox(&s, "ipma", 0, 0);
-    avifStreamWriteU32(&s, 1); // unsigned int(32) entry_count;
-    avifStreamWriteU16(&s, 1); // unsigned int(16) item_ID;
-    avifStreamWriteU8(&s, 1);  // unsigned int(8) association_count;
-    avifStreamWriteU8(&s, 1);  // bit(1) essential; unsigned int(7) property_index;
-    avifStreamFinishBox(&s, ipma);
+    {
+        avifBoxMarker ipco = avifStreamWriteBox(&s, "ipco", -1, 0);
+        {
+            avifBoxMarker ispe = avifStreamWriteBox(&s, "ispe", 0, 0);
+            avifStreamWriteU32(&s, image->width);  // unsigned int(32) image_width;
+            avifStreamWriteU32(&s, image->height); // unsigned int(32) image_height;
+            avifStreamFinishBox(&s, ispe);
+
+            avifBoxMarker pixiC = avifStreamWriteBox(&s, "pixi", 0, 0);
+            avifStreamWriteU8(&s, 3);            // unsigned int (8) num_channels;
+            avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
+            avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
+            avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
+            avifStreamFinishBox(&s, pixiC);
+
+            if (hasAlpha) {
+                avifBoxMarker pixiA = avifStreamWriteBox(&s, "pixi", 0, 0);
+                avifStreamWriteU8(&s, 1);            // unsigned int (8) num_channels;
+                avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
+                avifStreamFinishBox(&s, pixiA);
+            }
+        }
+        avifStreamFinishBox(&s, ipco);
+
+        avifBoxMarker ipma = avifStreamWriteBox(&s, "ipma", 0, 0);
+        {
+            int ipmaCount = hasAlpha ? 2 : 1;
+            avifStreamWriteU32(&s, ipmaCount); // unsigned int(32) entry_count;
+
+            avifStreamWriteU16(&s, 1); // unsigned int(16) item_ID;
+            avifStreamWriteU8(&s, 2);  // unsigned int(8) association_count;
+            avifStreamWriteU8(&s, 1);  // bit(1) essential; unsigned int(7) property_index;
+            avifStreamWriteU8(&s, 2);  // bit(1) essential; unsigned int(7) property_index;
+
+            if (hasAlpha) {
+                avifStreamWriteU16(&s, 2); // unsigned int(16) item_ID;
+                avifStreamWriteU8(&s, 2);  // unsigned int(8) association_count;
+                avifStreamWriteU8(&s, 1);  // bit(1) essential; unsigned int(7) property_index;
+                avifStreamWriteU8(&s, 3);  // bit(1) essential; unsigned int(7) property_index;
+            }
+        }
+        avifStreamFinishBox(&s, ipma);
+    }
     avifStreamFinishBox(&s, iprp);
 
     // -----------------------------------------------------------------------
