@@ -41,19 +41,28 @@ typedef struct avifStream
     size_t offset;
 } avifStream;
 
+typedef struct avifBoxHeader
+{
+    size_t size;
+    uint8_t type[4];
+} avifBoxHeader;
+
+uint8_t * avifStreamCurrent(avifStream * stream);
+
 void avifStreamStart(avifStream * stream, avifRawData * raw);
 
 // Read
 avifBool avifStreamHasBytesLeft(avifStream * stream, size_t byteCount);
+size_t avifStreamRemainingBytes(avifStream * stream);
 avifBool avifStreamSkip(avifStream * stream, size_t byteCount);
 avifBool avifStreamRead(avifStream * stream, uint8_t * data, size_t size);
 avifBool avifStreamReadU16(avifStream * stream, uint16_t * v);
 avifBool avifStreamReadU32(avifStream * stream, uint32_t * v);
 avifBool avifStreamReadUX8(avifStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
 avifBool avifStreamReadU64(avifStream * stream, uint64_t * v);
-avifBool avifStreamReadBoxHeader(avifStream * stream, uint8_t outputType[4], size_t * outputContentSize);
-avifBool avifStreamReadVersionAndFlags(avifStream * stream, uint8_t * version);         // currently discards flags
-avifBool avifStreamReadAndEnforceVersion(avifStream * stream, uint8_t enforcedVersion); // currently discards flags
+avifBool avifStreamReadBoxHeader(avifStream * stream, avifBoxHeader * header);
+avifBool avifStreamReadVersionAndFlags(avifStream * stream, uint8_t * version, uint8_t * flags); // flags is an optional uint8_t[3]
+avifBool avifStreamReadAndEnforceVersion(avifStream * stream, uint8_t enforcedVersion);          // currently discards flags
 
 // Write
 void avifStreamFinishWrite(avifStream * stream);

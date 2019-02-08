@@ -157,6 +157,19 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     avifStreamFinishBox(&s, iinf);
 
     // -----------------------------------------------------------------------
+    // Write iref (auxl) for alpha, if any
+
+    if (hasAlpha) {
+        avifBoxMarker iref = avifStreamWriteBox(&s, "iref", 0, 0);
+        avifBoxMarker auxl = avifStreamWriteBox(&s, "auxl", -1, 0);
+        avifStreamWriteU16(&s, 2); // unsigned int(16) from_item_ID;
+        avifStreamWriteU16(&s, 1); // unsigned int(16) reference_count;
+        avifStreamWriteU16(&s, 1); // unsigned int(16) to_item_ID;
+        avifStreamFinishBox(&s, auxl);
+        avifStreamFinishBox(&s, iref);
+    }
+
+    // -----------------------------------------------------------------------
     // Write iprp->ipco->ispe
 
     avifBoxMarker iprp = avifStreamWriteBox(&s, "iprp", -1, 0);

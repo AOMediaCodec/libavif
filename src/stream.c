@@ -5,6 +5,11 @@
 
 #include <string.h>
 
+uint8_t * avifStreamCurrent(avifStream * stream)
+{
+    return stream->raw->data + stream->offset;
+}
+
 void avifStreamStart(avifStream * stream, avifRawData * raw)
 {
     stream->raw = raw;
@@ -17,6 +22,11 @@ void avifStreamStart(avifStream * stream, avifRawData * raw)
 avifBool avifStreamHasBytesLeft(avifStream * stream, size_t byteCount)
 {
     return (stream->offset + byteCount) <= stream->raw->size;
+}
+
+size_t avifStreamRemainingBytes(avifStream * stream)
+{
+    return stream->raw->size - stream->offset;
 }
 
 avifBool avifStreamSkip(avifStream * stream, size_t byteCount)
@@ -88,33 +98,36 @@ avifBool avifStreamReadU64(avifStream * stream, uint64_t * v)
     return AVIF_TRUE;
 }
 
-avifBool avifStreamReadBoxHeader(avifStream * stream, uint8_t outputType[4], size_t * outputContentSize)
+avifBool avifStreamReadBoxHeader(avifStream * stream, avifBoxHeader * header)
 {
     size_t startOffset = stream->offset;
 
     uint32_t smallSize;
     CHECK(avifStreamReadU32(stream, &smallSize));
-    CHECK(avifStreamRead(stream, outputType, 4));
+    CHECK(avifStreamRead(stream, header->type, 4));
 
     uint64_t size = smallSize;
     if (size == 1) {
         CHECK(avifStreamReadU64(stream, &size));
     }
 
-    if (!memcmp(outputType, "uuid", 4)) {
+    if (!memcmp(header->type, "uuid", 4)) {
         CHECK(avifStreamSkip(stream, 16));
     }
 
-    *outputContentSize = (size_t)(size - (stream->offset - startOffset));
+    header->size = (size_t)(size - (stream->offset - startOffset));
     return AVIF_TRUE;
 }
 
-avifBool avifStreamReadVersionAndFlags(avifStream * stream, uint8_t * version)
+avifBool avifStreamReadVersionAndFlags(avifStream * stream, uint8_t * version, uint8_t * flags)
 {
     uint8_t versionAndFlags[4];
     CHECK(avifStreamRead(stream, versionAndFlags, 4));
     if (version) {
         *version = versionAndFlags[0];
+    }
+    if (flags) {
+        memcpy(flags, &versionAndFlags[1], 3);
     }
     return AVIF_TRUE;
 }
@@ -122,7 +135,7 @@ avifBool avifStreamReadVersionAndFlags(avifStream * stream, uint8_t * version)
 avifBool avifStreamReadAndEnforceVersion(avifStream * stream, uint8_t enforcedVersion)
 {
     uint8_t version;
-    CHECK(avifStreamReadVersionAndFlags(stream, &version));
+    CHECK(avifStreamReadVersionAndFlags(stream, &version, NULL));
     return (version == enforcedVersion) ? AVIF_TRUE : AVIF_FALSE;
 }
 
