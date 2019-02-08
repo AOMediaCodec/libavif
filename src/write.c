@@ -8,6 +8,18 @@
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
 
+#define MAX_ASSOCIATIONS 16
+struct ipmaArray
+{
+    uint8_t associations[MAX_ASSOCIATIONS];
+    uint8_t count;
+};
+static void ipmaPush(struct ipmaArray * ipma, uint8_t assoc)
+{
+    ipma->associations[ipma->count] = assoc;
+    ++ipma->count;
+}
+
 static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * outputOBU, int quality);
 static avifBool avifImageIsOpaque(avifImage * image);
 
@@ -174,12 +186,21 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
 
     avifBoxMarker iprp = avifStreamWriteBox(&s, "iprp", -1, 0);
     {
+        uint8_t ipcoIndex = 0;
+        struct ipmaArray ipmaColor;
+        memset(&ipmaColor, 0, sizeof(ipmaColor));
+        struct ipmaArray ipmaAlpha;
+        memset(&ipmaAlpha, 0, sizeof(ipmaAlpha));
+
         avifBoxMarker ipco = avifStreamWriteBox(&s, "ipco", -1, 0);
         {
             avifBoxMarker ispe = avifStreamWriteBox(&s, "ispe", 0, 0);
             avifStreamWriteU32(&s, image->width);  // unsigned int(32) image_width;
             avifStreamWriteU32(&s, image->height); // unsigned int(32) image_height;
             avifStreamFinishBox(&s, ispe);
+            ++ipcoIndex;
+            ipmaPush(&ipmaColor, ipcoIndex); // ipma is 1-indexed, doing this afterwards is correct
+            ipmaPush(&ipmaAlpha, ipcoIndex); // Alpha shares the ispe prop
 
             avifBoxMarker pixiC = avifStreamWriteBox(&s, "pixi", 0, 0);
             avifStreamWriteU8(&s, 3);            // unsigned int (8) num_channels;
@@ -187,12 +208,16 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
             avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
             avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
             avifStreamFinishBox(&s, pixiC);
+            ++ipcoIndex;
+            ipmaPush(&ipmaColor, ipcoIndex);
 
             if (hasAlpha) {
                 avifBoxMarker pixiA = avifStreamWriteBox(&s, "pixi", 0, 0);
                 avifStreamWriteU8(&s, 1);            // unsigned int (8) num_channels;
                 avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
                 avifStreamFinishBox(&s, pixiA);
+                ++ipcoIndex;
+                ipmaPush(&ipmaAlpha, ipcoIndex);
             }
         }
         avifStreamFinishBox(&s, ipco);
@@ -202,16 +227,18 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
             int ipmaCount = hasAlpha ? 2 : 1;
             avifStreamWriteU32(&s, ipmaCount); // unsigned int(32) entry_count;
 
-            avifStreamWriteU16(&s, 1); // unsigned int(16) item_ID;
-            avifStreamWriteU8(&s, 2);  // unsigned int(8) association_count;
-            avifStreamWriteU8(&s, 1);  // bit(1) essential; unsigned int(7) property_index;
-            avifStreamWriteU8(&s, 2);  // bit(1) essential; unsigned int(7) property_index;
+            avifStreamWriteU16(&s, 1);              // unsigned int(16) item_ID;
+            avifStreamWriteU8(&s, ipmaColor.count); // unsigned int(8) association_count;
+            for (int i = 0; i < ipmaColor.count; ++i) {
+                avifStreamWriteU8(&s, ipmaColor.associations[i]); // bit(1) essential; unsigned int(7) property_index;
+            }
 
             if (hasAlpha) {
-                avifStreamWriteU16(&s, 2); // unsigned int(16) item_ID;
-                avifStreamWriteU8(&s, 2);  // unsigned int(8) association_count;
-                avifStreamWriteU8(&s, 1);  // bit(1) essential; unsigned int(7) property_index;
-                avifStreamWriteU8(&s, 3);  // bit(1) essential; unsigned int(7) property_index;
+                avifStreamWriteU16(&s, 2);              // unsigned int(16) item_ID;
+                avifStreamWriteU8(&s, ipmaAlpha.count); // unsigned int(8) association_count;
+                for (int i = 0; i < ipmaAlpha.count; ++i) {
+                    avifStreamWriteU8(&s, ipmaAlpha.associations[i]); // bit(1) essential; unsigned int(7) property_index;
+                }
             }
         }
         avifStreamFinishBox(&s, ipma);
