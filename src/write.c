@@ -205,6 +205,15 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
             ipmaPush(&ipmaColor, ipcoIndex); // ipma is 1-indexed, doing this afterwards is correct
             ipmaPush(&ipmaAlpha, ipcoIndex); // Alpha shares the ispe prop
 
+            if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && (image->icc.data > 0)) {
+                avifBoxMarker colr = avifStreamWriteBox(&s, "colr", -1, 0);
+                avifStreamWrite(&s, "prof", 4); // unsigned int(32) colour_type;
+                avifStreamWrite(&s, image->icc.data, image->icc.size);
+                avifStreamFinishBox(&s, colr);
+                ++ipcoIndex;
+                ipmaPush(&ipmaColor, ipcoIndex);
+            }
+
             avifBoxMarker pixiC = avifStreamWriteBox(&s, "pixi", 0, 0);
             avifStreamWriteU8(&s, 3);            // unsigned int (8) num_channels;
             avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;

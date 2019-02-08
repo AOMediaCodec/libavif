@@ -58,6 +58,17 @@ void avifImageDestroy(avifImage * image)
     avifFree(image);
 }
 
+void avifImageSetProfileICC(avifImage * image, uint8_t * icc, size_t iccSize)
+{
+    if (iccSize) {
+        image->profileFormat = AVIF_PROFILE_FORMAT_ICC;
+        avifRawDataSet(&image->icc, icc, iccSize);
+    } else {
+        image->profileFormat = AVIF_PROFILE_FORMAT_NONE;
+        avifRawDataFree(&image->icc);
+    }
+}
+
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
 {
     int channelSize = avifImageUsesU16(image) ? 2 : 1;

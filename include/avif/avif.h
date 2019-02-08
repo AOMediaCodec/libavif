@@ -179,6 +179,8 @@ avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yu
 avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 void avifImageDestroy(avifImage * image);
 
+void avifImageSetProfileICC(avifImage * image, uint8_t * icc, size_t iccSize);
+
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
 avifResult avifImageRead(avifImage * image, avifRawData * input);

@@ -37,16 +37,25 @@ typedef struct avifAuxiliaryType
     char auxType[AUXTYPE_SIZE];
 } avifAuxiliaryType;
 
+typedef struct avifColourInformationBox
+{
+    avifProfileFormat format;
+    uint8_t * icc;
+    size_t iccSize;
+} avifColourInformationBox;
+
 typedef struct avifItem
 {
     int id;
     uint8_t type[4];
     uint32_t offset;
     uint32_t size;
-    avifBool ispe_seen;
+    avifBool ispePresent;
     avifImageSpatialExtents ispe;
-    avifBool auxC_seen;
+    avifBool auxCPresent;
     avifAuxiliaryType auxC;
+    avifBool colrPresent;
+    avifColourInformationBox colr;
     int thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
     int auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
 } avifItem;
@@ -56,6 +65,7 @@ typedef struct avifProperty
     uint8_t type[4];
     avifImageSpatialExtents ispe;
     avifAuxiliaryType auxC;
+    avifColourInformationBox colr;
 } avifProperty;
 
 typedef struct avifFileType
@@ -184,6 +194,21 @@ static avifBool avifParseAuxiliaryTypeProperty(avifData * data, uint8_t * raw, s
     return AVIF_TRUE;
 }
 
+static avifBool avifParseColourInformationBox(avifData * data, uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+    uint8_t colourType[4]; // unsigned int(32) colour_type;
+    CHECK(avifStreamRead(&s, colourType, 4));
+    if (!memcmp(colourType, "rICC", 4) || !memcmp(colourType, "prof", 4)) {
+        data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_ICC;
+        data->properties[propertyIndex].colr.icc = avifStreamCurrent(&s);
+        data->properties[propertyIndex].colr.iccSize = avifStreamRemainingBytes(&s);
+    } else {
+        data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NONE;
+    }
+    return AVIF_TRUE;
+}
+
 static avifBool avifParseItemPropertyContainerBox(avifData * data, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
@@ -206,6 +231,9 @@ static avifBool avifParseItemPropertyContainerBox(avifData * data, uint8_t * raw
         }
         if (!memcmp(header.type, "auxC", 4)) {
             CHECK(avifParseAuxiliaryTypeProperty(data, avifStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "colr", 4)) {
+            CHECK(avifParseColourInformationBox(data, avifStreamCurrent(&s), header.size, propertyIndex));
         }
 
         CHECK(avifStreamSkip(&s, header.size));
@@ -267,11 +295,14 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, uint8_t * raw,
             // Associate property with item
             avifProperty * prop = &data->properties[propertyIndex];
             if (!memcmp(prop->type, "ispe", 4)) {
-                data->items[itemIndex].ispe_seen = AVIF_TRUE;
+                data->items[itemIndex].ispePresent = AVIF_TRUE;
                 memcpy(&data->items[itemIndex].ispe, &prop->ispe, sizeof(avifImageSpatialExtents));
             } else if (!memcmp(prop->type, "auxC", 4)) {
-                data->items[itemIndex].auxC_seen = AVIF_TRUE;
+                data->items[itemIndex].auxCPresent = AVIF_TRUE;
                 memcpy(&data->items[itemIndex].auxC, &prop->auxC, sizeof(avifAuxiliaryType));
+            } else if (!memcmp(prop->type, "colr", 4)) {
+                data->items[itemIndex].colrPresent = AVIF_TRUE;
+                memcpy(&data->items[itemIndex].colr, &prop->colr, sizeof(avifColourInformationBox));
             }
         }
     }
@@ -638,8 +669,8 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
     }
 
     if (
-        (colorOBUItem && aomColorImage && colorOBUItem->ispe_seen && ((colorOBUItem->ispe.width != aomColorImage->d_w) || (colorOBUItem->ispe.height != aomColorImage->d_h))) ||
-        (alphaOBUItem && aomAlphaImage && alphaOBUItem->ispe_seen && ((alphaOBUItem->ispe.width != aomAlphaImage->d_w) || (alphaOBUItem->ispe.height != aomAlphaImage->d_h)))
+        (colorOBUItem && aomColorImage && colorOBUItem->ispePresent && ((colorOBUItem->ispe.width != aomColorImage->d_w) || (colorOBUItem->ispe.height != aomColorImage->d_h))) ||
+        (alphaOBUItem && aomAlphaImage && alphaOBUItem->ispePresent && ((alphaOBUItem->ispe.width != aomAlphaImage->d_w) || (alphaOBUItem->ispe.height != aomAlphaImage->d_h)))
         )
     {
         aom_codec_destroy(&colorDecoder);
@@ -647,6 +678,10 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
             aom_codec_destroy(&alphaDecoder);
         }
         return AVIF_RESULT_ISPE_SIZE_MISMATCH;
+    }
+
+    if (colorOBUItem->colrPresent && (colorOBUItem->colr.format == AVIF_PROFILE_FORMAT_ICC)) {
+        avifImageSetProfileICC(image, colorOBUItem->colr.icc, colorOBUItem->colr.iccSize);
     }
 
     avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
