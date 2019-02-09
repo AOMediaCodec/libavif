@@ -97,6 +97,9 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
 
         int uvRowBytes = channelSize * (image->width >> info.chromaShiftX);
         int uvSize = uvRowBytes * (image->height >> info.chromaShiftY);
+        uvRowBytes = uvRowBytes ? uvRowBytes : 1;
+        uvSize = uvSize ? uvSize : 1;
+
         if (!image->yuvPlanes[AVIF_CHAN_Y]) {
             image->yuvRowBytes[AVIF_CHAN_Y] = fullRowBytes;
             image->yuvPlanes[AVIF_CHAN_Y] = avifAlloc(fullSize);
