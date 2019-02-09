@@ -26,17 +26,32 @@
 #define MAX_ITEMS 8
 #define MAX_PROPERTIES 24
 
+// ---------------------------------------------------------------------------
+// Box data structures
+
+// ftyp
+typedef struct avifFileType
+{
+    uint8_t majorBrand[4];
+    uint32_t minorVersion;
+    uint8_t compatibleBrands[4 * MAX_COMPATIBLE_BRANDS];
+    int compatibleBrandsCount;
+} avifFileType;
+
+// ispe
 typedef struct avifImageSpatialExtents
 {
     uint32_t width;
     uint32_t height;
 } avifImageSpatialExtents;
 
+// auxC
 typedef struct avifAuxiliaryType
 {
     char auxType[AUXTYPE_SIZE];
 } avifAuxiliaryType;
 
+// colr
 typedef struct avifColourInformationBox
 {
     avifProfileFormat format;
@@ -44,6 +59,10 @@ typedef struct avifColourInformationBox
     size_t iccSize;
 } avifColourInformationBox;
 
+// ---------------------------------------------------------------------------
+// Top-level structures
+
+// one "item" worth (all iref, iloc, iprp, etc refer to one of these)
 typedef struct avifItem
 {
     int id;
@@ -60,6 +79,7 @@ typedef struct avifItem
     int auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
 } avifItem;
 
+// Temporary storage for ipco contents until they can be associated and memcpy'd to an avifItem
 typedef struct avifProperty
 {
     uint8_t type[4];
@@ -67,14 +87,6 @@ typedef struct avifProperty
     avifAuxiliaryType auxC;
     avifColourInformationBox colr;
 } avifProperty;
-
-typedef struct avifFileType
-{
-    uint8_t majorBrand[4];
-    uint32_t minorVersion;
-    uint8_t compatibleBrands[4 * MAX_COMPATIBLE_BRANDS];
-    int compatibleBrandsCount;
-} avifFileType;
 
 typedef struct avifData
 {
