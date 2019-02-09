@@ -95,10 +95,13 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
         avifPixelFormatInfo info;
         avifGetPixelFormatInfo(image->yuvFormat, &info);
 
-        int uvRowBytes = channelSize * (image->width >> info.chromaShiftX);
-        int uvSize = uvRowBytes * (image->height >> info.chromaShiftY);
-        uvRowBytes = uvRowBytes ? uvRowBytes : 1;
-        uvSize = uvSize ? uvSize : 1;
+        int shiftedW = (image->width >> info.chromaShiftX);
+        int shiftedH = (image->height >> info.chromaShiftY);
+        shiftedW = shiftedW ? shiftedW : 1;
+        shiftedH = shiftedH ? shiftedH : 1;
+
+        int uvRowBytes = channelSize * shiftedW;
+        int uvSize = uvRowBytes * shiftedH;
 
         if (!image->yuvPlanes[AVIF_CHAN_Y]) {
             image->yuvRowBytes[AVIF_CHAN_Y] = fullRowBytes;
