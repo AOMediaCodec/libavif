@@ -93,3 +93,7 @@ avif_set_folder_safe(aom_version "ext/avif")
 avif_set_folder_safe(aom_version_check "ext/avif")
 avif_set_folder_safe(avif "ext/avif")
 avif_set_folder_safe(dist "ext/avif")
+
+if(NOT AVIF_EXTERNAL_GB)
+    avif_set_folder_safe(gb "ext/avif")
+endif()
