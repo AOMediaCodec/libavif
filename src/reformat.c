@@ -1,7 +1,7 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "avif/avif.h"
+#include "avif/internal.h"
 
 #include <string.h>
 
@@ -22,12 +22,7 @@ static avifBool avifPrepareReformatState(avifImage * image, avifReformatState * 
         return AVIF_FALSE;
     }
     avifGetPixelFormatInfo(image->yuvFormat, &state->formatInfo);
-
-    // TODO: calculate coefficients
-    state->kr = 0.2126f;
-    state->kb = 0.0722f;
-    state->kg = 1.0f - state->kr - state->kb;
-
+    avifCalcYUVCoefficients(image, &state->kr, &state->kg, &state->kb);
     state->usesU16 = avifImageUsesU16(image);
     return AVIF_TRUE;
 }

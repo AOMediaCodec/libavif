@@ -142,7 +142,6 @@ static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t 
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    avifBoxHeader header;
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
     uint8_t offsetSizeAndLengthSize;
@@ -191,7 +190,6 @@ static avifBool avifParseImageSpatialExtentsProperty(avifData * data, uint8_t * 
     BEGIN_STREAM(s, raw, rawLen);
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
-    uint32_t width, height;
     CHECK(avifStreamReadU32(&s, &data->properties[propertyIndex].ispe.width));
     CHECK(avifStreamReadU32(&s, &data->properties[propertyIndex].ispe.height));
     return AVIF_TRUE;
@@ -392,7 +390,7 @@ static avifBool avifParseItemInfoBox(avifData * data, uint8_t * raw, size_t rawL
         return AVIF_FALSE;
     }
 
-    for (int entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
+    for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         avifBoxHeader infeHeader;
         CHECK(avifStreamReadBoxHeader(&s, &infeHeader));
 
@@ -508,7 +506,7 @@ static avifBool avifParseFileTypeBox(avifData * data, uint8_t * raw, size_t rawL
         compatibleBrandsBytes = (4 * MAX_COMPATIBLE_BRANDS);
     }
     CHECK(avifStreamRead(&s, data->ftyp.compatibleBrands, compatibleBrandsBytes));
-    data->ftyp.compatibleBrandsCount = compatibleBrandsBytes / 4;
+    data->ftyp.compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
 
     return AVIF_TRUE;
 }

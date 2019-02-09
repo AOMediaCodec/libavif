@@ -15,10 +15,16 @@ include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
     "${AOM_BINARY_DIR}"
 )
+
+if(NOT AVIF_EXTERNAL_GB)
+    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ext/gb")
+endif()
+
 add_library(avif STATIC
     include/avif/avif.h
     include/avif/internal.h
     src/avif.c
+    src/colr.c
     src/mem.c
     src/rawdata.c
     src/read.c
@@ -27,7 +33,7 @@ add_library(avif STATIC
     src/utils.c
     src/write.c
 )
-target_link_libraries(avif aom)
+target_link_libraries(avif aom gb)
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 
