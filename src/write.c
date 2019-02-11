@@ -328,6 +328,9 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
         return AVIF_FALSE;
     }
 
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
+
     struct aom_codec_enc_cfg cfg;
     aom_codec_enc_config_default(encoder_interface, &cfg, 0);
 
@@ -398,15 +401,20 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
     } else {
         aomImage->range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
         aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
-        for (int j = 0; j < image->height; ++j) {
-            for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-                if ((yuvPlane > 0) && (j >= uvHeight)) {
-                    // Bail out if we're on a half-height UV plane
-                    break;
-                }
+        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+            int aomPlaneIndex = yuvPlane;
+            int planeHeight = image->height;
+            if (yuvPlane == AVIF_CHAN_U) {
+                aomPlaneIndex = formatInfo.aomIndexU;
+                planeHeight = uvHeight;
+            } else if (yuvPlane == AVIF_CHAN_V) {
+                aomPlaneIndex = formatInfo.aomIndexV;
+                planeHeight = uvHeight;
+            }
 
+            for (int j = 0; j < planeHeight; ++j) {
                 uint8_t * srcRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
-                uint8_t * dstRow = &aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
+                uint8_t * dstRow = &aomImage->planes[aomPlaneIndex][j * aomImage->stride[aomPlaneIndex]];
                 memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
             }
         }

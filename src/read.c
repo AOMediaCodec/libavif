@@ -731,14 +731,19 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
 
     int uvHeight = image->height >> formatInfo.chromaShiftY;
     avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
-    for (int j = 0; j < image->height; ++j) {
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-            if ((yuvPlane > 0) && (j >= uvHeight)) {
-                // Bail out if we're on a half-height UV plane
-                break;
-            }
+    for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        int aomPlaneIndex = yuvPlane;
+        int planeHeight = image->height;
+        if (yuvPlane == AVIF_CHAN_U) {
+            aomPlaneIndex = formatInfo.aomIndexU;
+            planeHeight = uvHeight;
+        } else if (yuvPlane == AVIF_CHAN_V) {
+            aomPlaneIndex = formatInfo.aomIndexV;
+            planeHeight = uvHeight;
+        }
 
-            uint8_t * srcRow = &aomColorImage->planes[yuvPlane][j * aomColorImage->stride[yuvPlane]];
+        for (int j = 0; j < planeHeight; ++j) {
+            uint8_t * srcRow = &aomColorImage->planes[aomPlaneIndex][j * aomColorImage->stride[aomPlaneIndex]];
             uint8_t * dstRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
             memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
         }

@@ -8,6 +8,8 @@
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 {
     memset(info, 0, sizeof(avifPixelFormatInfo));
+    info->aomIndexU = 1;
+    info->aomIndexV = 2;
 
     switch (format) {
         case AVIF_PIXEL_FORMAT_YUV444:
@@ -21,9 +23,15 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
             break;
 
         case AVIF_PIXEL_FORMAT_YUV420:
+            info->chromaShiftX = 1;
+            info->chromaShiftY = 1;
+            break;
+
         case AVIF_PIXEL_FORMAT_YV12:
             info->chromaShiftX = 1;
             info->chromaShiftY = 1;
+            info->aomIndexU = 2;
+            info->aomIndexV = 1;
             break;
     }
 }

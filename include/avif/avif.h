@@ -124,6 +124,8 @@ typedef struct avifPixelFormatInfo
 {
     int chromaShiftX;
     int chromaShiftY;
+    int aomIndexU; // maps U plane to AOM-side plane index
+    int aomIndexV; // maps V plane to AOM-side plane index
 } avifPixelFormatInfo;
 
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
