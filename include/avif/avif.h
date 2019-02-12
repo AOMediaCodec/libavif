@@ -131,6 +131,102 @@ typedef struct avifPixelFormatInfo
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
 
 // ---------------------------------------------------------------------------
+// avifNclxColorProfile
+
+typedef enum avifNclxColourPrimaries
+{
+    // This is actually reserved, but libavif uses it as a sentinel value.
+    AVIF_NCLX_COLOUR_PRIMARIES_UNKNOWN = 0,
+
+    AVIF_NCLX_COLOUR_PRIMARIES_BT709 = 1,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT1361_0 = 1,
+    AVIF_NCLX_COLOUR_PRIMARIES_IEC61966_2_1 = 1,
+    AVIF_NCLX_COLOUR_PRIMARIES_SRGB = 1,
+    AVIF_NCLX_COLOUR_PRIMARIES_SYCC = 1,
+    AVIF_NCLX_COLOUR_PRIMARIES_IEC61966_2_4 = 1,
+    AVIF_NCLX_COLOUR_PRIMARIES_UNSPECIFIED = 2,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT470_6M = 4,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_625 = 5,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT470_6G = 5,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_525 = 6,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT1358 = 6,
+    AVIF_NCLX_COLOUR_PRIMARIES_ST240 = 7,
+    AVIF_NCLX_COLOUR_PRIMARIES_GENERIC_FILM = 8,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT2020 = 9,
+    AVIF_NCLX_COLOUR_PRIMARIES_BT2100 = 9,
+    AVIF_NCLX_COLOUR_PRIMARIES_ST428 = 10,
+    AVIF_NCLX_COLOUR_PRIMARIES_RP431_2 = 11,
+    AVIF_NCLX_COLOUR_PRIMARIES_RP432_1 = 12,
+    AVIF_NCLX_COLOUR_PRIMARIES_EBU3213E = 22
+} avifNclxColourPrimaries;
+
+typedef enum avifNclxTransferCharacteristics
+{
+    // This is actually reserved, but libavif uses it as a sentinel value.
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_UNKNOWN = 0,
+
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT709 = 1,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT1361 = 1,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_UNSPECIFIED = 2,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA22 = 4,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA28 = 5,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT601 = 6,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_ST240 = 7,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_LINEAR = 8,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_LOG_100_1 = 9,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_LOG_100_SQRT = 10,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_IEC61966 = 11,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT1361_EXTENDED = 12,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_61966_2_1 = 13,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_SRGB = 13,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_SYCC = 13,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2020_10BIT = 14,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2020_12BIT = 15,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_ST2084 = 16,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ = 16,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_ST428 = 17,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_STD_B67 = 18,
+    AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG = 18
+} avifNclxTransferCharacteristics;
+
+typedef enum avifNclxMatrixCoefficients
+{
+    AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY = 0,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT709 = 1,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT1361_0 = 1,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_SRGB = 1,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_SYCC = 1,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_UNSPECIFIED = 2,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_USFC_73682 = 4,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT470_6B = 5,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_625 = 5,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_525 = 6,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT1700_NTSC = 6,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_ST170 = 6,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_ST240 = 7,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL = 9,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT2100 = 9,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL = 10,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_ST2085 = 11,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_ICTCP = 14
+} avifNclxMatrixCoefficients;
+
+// for fullRangeFlag
+typedef enum avifNclxRangeFlag
+{
+    AVIF_NCLX_LIMITED_RANGE = 0,
+    AVIF_NCLX_FULL_RANGE = 0x80
+} avifNclxRangeFlag;
+
+typedef struct avifNclxColorProfile
+{
+    uint16_t colourPrimaries;
+    uint16_t transferCharacteristics;
+    uint16_t matrixCoefficients;
+    uint8_t fullRangeFlag;
+} avifNclxColorProfile;
+
+// ---------------------------------------------------------------------------
 // avifRange
 
 typedef enum avifRange
@@ -147,8 +243,11 @@ typedef enum avifProfileFormat
     // No color profile present
     AVIF_PROFILE_FORMAT_NONE = 0,
 
-    // icc represents an ICC profile chunk
-    AVIF_PROFILE_FORMAT_ICC
+    // icc represents an ICC profile chunk (inside a colr box)
+    AVIF_PROFILE_FORMAT_ICC,
+
+    // nclx represents a valid nclx colr box
+    AVIF_PROFILE_FORMAT_NCLX
 } avifProfileFormat;
 
 // ---------------------------------------------------------------------------
@@ -175,13 +274,16 @@ typedef struct avifImage
     // Profile information
     avifProfileFormat profileFormat;
     avifRawData icc;
+    avifNclxColorProfile nclx;
 } avifImage;
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
 avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 void avifImageDestroy(avifImage * image);
 
+void avifImageSetProfileNone(avifImage * image);
 void avifImageSetProfileICC(avifImage * image, uint8_t * icc, size_t iccSize);
+void avifImageSetProfileNCLX(avifImage * image, uint16_t colourPrimaries, uint16_t transferCharacteristics, uint16_t matrixCoefficients, uint8_t fullRangeFlag);
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes

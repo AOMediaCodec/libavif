@@ -66,15 +66,29 @@ void avifImageDestroy(avifImage * image)
     avifFree(image);
 }
 
+void avifImageSetProfileNone(avifImage * image)
+{
+    image->profileFormat = AVIF_PROFILE_FORMAT_NONE;
+    avifRawDataFree(&image->icc);
+}
+
 void avifImageSetProfileICC(avifImage * image, uint8_t * icc, size_t iccSize)
 {
+    avifImageSetProfileNone(image);
     if (iccSize) {
         image->profileFormat = AVIF_PROFILE_FORMAT_ICC;
         avifRawDataSet(&image->icc, icc, iccSize);
-    } else {
-        image->profileFormat = AVIF_PROFILE_FORMAT_NONE;
-        avifRawDataFree(&image->icc);
     }
+}
+
+void avifImageSetProfileNCLX(avifImage * image, uint16_t colourPrimaries, uint16_t transferCharacteristics, uint16_t matrixCoefficients, uint8_t fullRangeFlag)
+{
+    avifImageSetProfileNone(image);
+    image->profileFormat = AVIF_PROFILE_FORMAT_NCLX;
+    image->nclx.colourPrimaries = colourPrimaries;
+    image->nclx.transferCharacteristics = transferCharacteristics;
+    image->nclx.matrixCoefficients = matrixCoefficients;
+    image->nclx.fullRangeFlag = fullRangeFlag;
 }
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes)

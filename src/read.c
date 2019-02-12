@@ -57,6 +57,7 @@ typedef struct avifColourInformationBox
     avifProfileFormat format;
     uint8_t * icc;
     size_t iccSize;
+    avifNclxColorProfile nclx;
 } avifColourInformationBox;
 
 // ---------------------------------------------------------------------------
@@ -207,14 +208,22 @@ static avifBool avifParseAuxiliaryTypeProperty(avifData * data, uint8_t * raw, s
 static avifBool avifParseColourInformationBox(avifData * data, uint8_t * raw, size_t rawLen, int propertyIndex)
 {
     BEGIN_STREAM(s, raw, rawLen);
+
+    data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NONE;
+
     uint8_t colourType[4]; // unsigned int(32) colour_type;
     CHECK(avifStreamRead(&s, colourType, 4));
     if (!memcmp(colourType, "rICC", 4) || !memcmp(colourType, "prof", 4)) {
         data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_ICC;
         data->properties[propertyIndex].colr.icc = avifStreamCurrent(&s);
         data->properties[propertyIndex].colr.iccSize = avifStreamRemainingBytes(&s);
-    } else {
-        data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NONE;
+    } else if (!memcmp(colourType, "nclx", 4)) {
+        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.colourPrimaries));         // unsigned int(16) colour_primaries;
+        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.transferCharacteristics)); // unsigned int(16) transfer_characteristics;
+        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.matrixCoefficients));      // unsigned int(16) matrix_coefficients;
+        CHECK(avifStreamRead(&s, &data->properties[propertyIndex].colr.nclx.fullRangeFlag, 1));           // unsigned int(16) matrix_coefficients;
+        data->properties[propertyIndex].colr.nclx.fullRangeFlag |= 0x80;
+        data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NCLX;
     }
     return AVIF_TRUE;
 }
@@ -690,8 +699,16 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
         return AVIF_RESULT_ISPE_SIZE_MISMATCH;
     }
 
-    if (colorOBUItem->colrPresent && (colorOBUItem->colr.format == AVIF_PROFILE_FORMAT_ICC)) {
-        avifImageSetProfileICC(image, colorOBUItem->colr.icc, colorOBUItem->colr.iccSize);
+    if (colorOBUItem->colrPresent) {
+        if (colorOBUItem->colr.format == AVIF_PROFILE_FORMAT_ICC) {
+            avifImageSetProfileICC(image, colorOBUItem->colr.icc, colorOBUItem->colr.iccSize);
+        } else if (colorOBUItem->colr.format == AVIF_PROFILE_FORMAT_NCLX) {
+            avifImageSetProfileNCLX(image,
+                colorOBUItem->colr.nclx.colourPrimaries,
+                colorOBUItem->colr.nclx.transferCharacteristics,
+                colorOBUItem->colr.nclx.matrixCoefficients,
+                colorOBUItem->colr.nclx.fullRangeFlag);
+        }
     }
 
     avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;

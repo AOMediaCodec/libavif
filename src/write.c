@@ -205,7 +205,17 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
             ipmaPush(&ipmaColor, ipcoIndex); // ipma is 1-indexed, doing this afterwards is correct
             ipmaPush(&ipmaAlpha, ipcoIndex); // Alpha shares the ispe prop
 
-            if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && (image->icc.data > 0)) {
+            if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+                avifBoxMarker colr = avifStreamWriteBox(&s, "colr", -1, 0);
+                avifStreamWrite(&s, "nclx", 4);                              // unsigned int(32) colour_type;
+                avifStreamWriteU16(&s, image->nclx.colourPrimaries);         // unsigned int(16) colour_primaries;
+                avifStreamWriteU16(&s, image->nclx.transferCharacteristics); // unsigned int(16) transfer_characteristics;
+                avifStreamWriteU16(&s, image->nclx.matrixCoefficients);      // unsigned int(16) matrix_coefficients;
+                avifStreamWriteU8(&s, image->nclx.fullRangeFlag & 0x80);     // unsigned int(1) full_range_flag; unsigned int(7) reserved = 0;
+                avifStreamFinishBox(&s, colr);
+                ++ipcoIndex;
+                ipmaPush(&ipmaColor, ipcoIndex);
+            } else if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && (image->icc.data > 0)) {
                 avifBoxMarker colr = avifStreamWriteBox(&s, "colr", -1, 0);
                 avifStreamWrite(&s, "prof", 4); // unsigned int(32) colour_type;
                 avifStreamWrite(&s, image->icc.data, image->icc.size);
