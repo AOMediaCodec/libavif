@@ -703,11 +703,7 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
         if (colorOBUItem->colr.format == AVIF_PROFILE_FORMAT_ICC) {
             avifImageSetProfileICC(image, colorOBUItem->colr.icc, colorOBUItem->colr.iccSize);
         } else if (colorOBUItem->colr.format == AVIF_PROFILE_FORMAT_NCLX) {
-            avifImageSetProfileNCLX(image,
-                colorOBUItem->colr.nclx.colourPrimaries,
-                colorOBUItem->colr.nclx.transferCharacteristics,
-                colorOBUItem->colr.nclx.matrixCoefficients,
-                colorOBUItem->colr.nclx.fullRangeFlag);
+            avifImageSetProfileNCLX(image, &colorOBUItem->colr.nclx);
         }
     }
 

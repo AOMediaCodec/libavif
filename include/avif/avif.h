@@ -283,7 +283,7 @@ void avifImageDestroy(avifImage * image);
 
 void avifImageSetProfileNone(avifImage * image);
 void avifImageSetProfileICC(avifImage * image, uint8_t * icc, size_t iccSize);
-void avifImageSetProfileNCLX(avifImage * image, uint16_t colourPrimaries, uint16_t transferCharacteristics, uint16_t matrixCoefficients, uint8_t fullRangeFlag);
+void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx);
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
