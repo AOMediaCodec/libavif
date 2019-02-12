@@ -36,6 +36,31 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
     }
 }
 
+const char * avifResultToString(avifResult result)
+{
+    switch (result) {
+        case AVIF_RESULT_OK:                        return "OK";
+        case AVIF_RESULT_INVALID_FTYP:              return "Invalid ftyp";
+        case AVIF_RESULT_NO_CONTENT:                return "No content";
+        case AVIF_RESULT_NO_YUV_FORMAT_SELECTED:    return "No YUV format selected";
+        case AVIF_RESULT_REFORMAT_FAILED:           return "Reformat failed";
+        case AVIF_RESULT_UNSUPPORTED_DEPTH:         return "Unsupported depth";
+        case AVIF_RESULT_ENCODE_COLOR_FAILED:       return "Encoding of color planes failed";
+        case AVIF_RESULT_ENCODE_ALPHA_FAILED:       return "Encoding of alpha plane failed";
+        case AVIF_RESULT_BMFF_PARSE_FAILED:         return "BMFF parsing failed";
+        case AVIF_RESULT_NO_AV1_ITEMS_FOUND:        return "No AV1 items found";
+        case AVIF_RESULT_DECODE_COLOR_FAILED:       return "Decoding of color planes failed";
+        case AVIF_RESULT_DECODE_ALPHA_FAILED:       return "Decoding of alpha plane failed";
+        case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH: return "Color and alpha planes size mismatch";
+        case AVIF_RESULT_ISPE_SIZE_MISMATCH:        return "Plane sizes don't match ispe values";
+        case AVIF_UNSUPPORTED_PIXEL_FORMAT:         return "Unsupported pixel format";
+        case AVIF_RESULT_UNKNOWN_ERROR:
+        default:
+            break;
+    }
+    return "Unknown Error";
+}
+
 // This function assumes nothing in this struct needs to be freed; use avifImageClear() externally
 static void avifImageSetDefaults(avifImage * image)
 {

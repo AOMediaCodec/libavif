@@ -85,6 +85,8 @@ typedef enum avifResult
     AVIF_UNSUPPORTED_PIXEL_FORMAT
 } avifResult;
 
+const char * avifResultToString(avifResult result);
+
 // ---------------------------------------------------------------------------
 // avifRawData: Generic raw memory storage
 
