@@ -7,6 +7,39 @@
 
 #include <string.h>
 
+void avifNclxColourPrimariesGetValues(avifNclxColourPrimaries ancp, float outPrimaries[8])
+{
+    struct avifColourPrimariesTable
+    {
+        int colourPrimariesEnum;
+        float primaries[8]; // rX, rY, gX, gY, bX, bY, wX, wY
+    };
+    static const struct avifColourPrimariesTable table[] = {
+        { AVIF_NCLX_COLOUR_PRIMARIES_BT709, { 0.64f, 0.33f, 0.3f, 0.6f, 0.15f, 0.06f, 0.3127f, 0.329f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_BT470_6M, { 0.67f, 0.33f, 0.21f, 0.71f, 0.14f, 0.08f, 0.310f, 0.316f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_625, { 0.64f, 0.33f, 0.29f, 0.60f, 0.15f, 0.06f, 0.3127f, 0.3290f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_525, { 0.630f, 0.340f, 0.310f, 0.595f, 0.155f, 0.070f, 0.3127f, 0.3290f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_ST240, { 0.630f, 0.340f, 0.310f, 0.595f, 0.155f, 0.070f, 0.3127f, 0.3290f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_GENERIC_FILM, { 0.681f, 0.319f, 0.243f, 0.692f, 0.145f, 0.049f, 0.310f, 0.316f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_BT2020, { 0.708f, 0.292f, 0.170f, 0.797f, 0.131f, 0.046f, 0.3127f, 0.3290f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_XYZ, { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.3333f, 0.3333f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_RP431_2, { 0.680f, 0.320f, 0.265f, 0.690f, 0.150f, 0.060f, 0.314f, 0.351f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_RP432_1, { 0.680f, 0.320f, 0.265f, 0.690f, 0.150f, 0.060f, 0.3127f, 0.3290f } },
+        { AVIF_NCLX_COLOUR_PRIMARIES_EBU3213E, { 0.630f, 0.340f, 0.295f, 0.605f, 0.155f, 0.077f, 0.3127f, 0.3290f } }
+    };
+    static const int tableSize = sizeof(table) / sizeof(table[0]);
+
+    for (int i = 0; i < tableSize; ++i) {
+        if (table[i].colourPrimariesEnum == ancp) {
+            memcpy(outPrimaries, table[i].primaries, sizeof(table[i].primaries));
+            return;
+        }
+    }
+
+    // if we get here, the color primaries are unknown. Just return a reasonable default.
+    memcpy(outPrimaries, table[0].primaries, sizeof(table[0].primaries));
+}
+
 static float fixedToFloat(int32_t fixed)
 {
     float sign =  1.0f;
@@ -216,6 +249,54 @@ static avifBool calcYUVInfoFromICC(avifRawData * icc, float coeffs[3])
     return AVIF_TRUE;
 }
 
+// From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
+static void deriveXYZMatrix(gbMat3 * colorants, float primaries[8])
+{
+    gbVec3 U, W;
+    gbMat3 P, PInv, D;
+
+    P.col[0].x = primaries[0];
+    P.col[0].y = primaries[1];
+    P.col[0].z = 1 - primaries[0] - primaries[1];
+    P.col[1].x = primaries[2];
+    P.col[1].y = primaries[3];
+    P.col[1].z = 1 - primaries[2] - primaries[3];
+    P.col[2].x = primaries[4];
+    P.col[2].y = primaries[5];
+    P.col[2].z = 1 - primaries[4] - primaries[5];
+
+    gb_mat3_inverse(&PInv, &P);
+
+    W.x = primaries[6];
+    W.y = primaries[7];
+    W.z = 1 - primaries[6] - primaries[7];
+
+    gb_mat3_mul_vec3(&U, &PInv, W);
+
+    memset(&D, 0, sizeof(D));
+    D.col[0].x = U.x / W.y;
+    D.col[1].y = U.y / W.y;
+    D.col[2].z = U.z / W.y;
+
+    gb_mat3_mul(colorants, &P, &D);
+    gb_mat3_transpose(colorants);
+}
+
+static avifBool calcYUVInfoFromNCLX(avifNclxColorProfile * nclx, float coeffs[3])
+{
+    float primaries[8];
+    avifNclxColourPrimariesGetValues(nclx->colourPrimaries, primaries);
+
+    gbMat3 colorants;
+    deriveXYZMatrix(&colorants, primaries);
+
+    // YUV coefficients are simply the brightest Y that a primary can be (where the white point's Y is 1.0)
+    coeffs[0] = calcMaxY(1.0f, 0.0f, 0.0f, &colorants);
+    coeffs[2] = calcMaxY(0.0f, 0.0f, 1.0f, &colorants);
+    coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
+    return AVIF_TRUE;
+}
+
 void avifCalcYUVCoefficients(avifImage * image, float * outR, float * outG, float * outB)
 {
     // sRGB (BT.709) defaults
@@ -223,9 +304,15 @@ void avifCalcYUVCoefficients(avifImage * image, float * outR, float * outG, floa
     float kb = 0.0722f;
     float kg = 1.0f - kr - kb;
 
+    float coeffs[3];
     if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && image->icc.size) {
-        float coeffs[3];
         if (calcYUVInfoFromICC(&image->icc, coeffs)) {
+            kr = coeffs[0];
+            kg = coeffs[1];
+            kb = coeffs[2];
+        }
+    } else if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+        if (calcYUVInfoFromNCLX(&image->nclx, coeffs)) {
             kr = coeffs[0];
             kg = coeffs[1];
             kb = coeffs[2];
