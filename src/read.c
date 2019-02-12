@@ -156,7 +156,7 @@ static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t 
 
     uint16_t itemCount;
     CHECK(avifStreamReadU16(&s, &itemCount)); // unsigned int(16) item_count;
-    for (int itemIndex = 0; itemIndex < itemCount; ++itemIndex) {
+    for (int i = 0; i < itemCount; ++i) {
         uint16_t itemID;                                           // unsigned int(16) item_ID;
         CHECK(avifStreamReadU16(&s, &itemID));                     //
         uint16_t dataReferenceIndex;                               // unsigned int(16) data_reference_index;

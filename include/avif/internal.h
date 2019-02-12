@@ -79,6 +79,7 @@ avifBool avifStreamReadAndEnforceVersion(avifStream * stream, uint8_t enforcedVe
 // Write
 void avifStreamFinishWrite(avifStream * stream);
 void avifStreamWrite(avifStream * stream, const uint8_t * data, size_t size);
+void avifStreamWriteChars(avifStream * stream, const char * chars, size_t size);
 avifBoxMarker avifStreamWriteBox(avifStream * stream, const char * type, int version /* -1 for "not a FullBox" */, size_t contentSize);
 void avifStreamFinishBox(avifStream * stream, avifBoxMarker marker);
 void avifStreamWriteU8(avifStream * stream, uint8_t v);

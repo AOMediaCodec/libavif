@@ -64,6 +64,7 @@ static void convertXYZToXYY(float XYZ[3], float xyY[3], float whitePointX, float
     xyY[2] = XYZ[1];
 }
 
+#if 0
 static void convertXYYToXYZ(float * xyY, float * XYZ)
 {
     if (xyY[2] <= 0.0f) {
@@ -93,6 +94,7 @@ static void convertXYZToXY(float XYZ[3], float xy[2], float whitePointX, float w
     xy[0] = xyY[0];
     xy[1] = xyY[1];
 }
+#endif
 
 static float calcMaxY(float r, float g, float b, gbMat3 * colorants)
 {

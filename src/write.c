@@ -83,11 +83,11 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     // Write ftyp
 
     avifBoxMarker ftyp = avifStreamWriteBox(&s, "ftyp", -1, 0);
-    avifStreamWrite(&s, "mif1", 4); // unsigned int(32) major_brand;
-    avifStreamWriteU32(&s, 0);      // unsigned int(32) minor_version;
-    avifStreamWrite(&s, "mif1", 4); // unsigned int(32) compatible_brands[];
-    avifStreamWrite(&s, "avif", 4); // ... compatible_brands[]
-    avifStreamWrite(&s, "miaf", 4); // ... compatible_brands[]
+    avifStreamWriteChars(&s, "mif1", 4); // unsigned int(32) major_brand;
+    avifStreamWriteU32(&s, 0);           // unsigned int(32) minor_version;
+    avifStreamWriteChars(&s, "mif1", 4); // unsigned int(32) compatible_brands[];
+    avifStreamWriteChars(&s, "avif", 4); // ... compatible_brands[]
+    avifStreamWriteChars(&s, "miaf", 4); // ... compatible_brands[]
     avifStreamFinishBox(&s, ftyp);
 
     // -----------------------------------------------------------------------
@@ -109,10 +109,10 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     // Write hdlr
 
     avifBoxMarker hdlr = avifStreamWriteBox(&s, "hdlr", 0, 0);
-    avifStreamWriteU32(&s, 0);         // unsigned int(32) pre_defined = 0;
-    avifStreamWrite(&s, "pict", 4);    // unsigned int(32) handler_type;
-    avifStreamWriteZeros(&s, 12);      // const unsigned int(32)[3] reserved = 0;
-    avifStreamWrite(&s, "libavif", 8); // string name; (writing null terminator)
+    avifStreamWriteU32(&s, 0);              // unsigned int(32) pre_defined = 0;
+    avifStreamWriteChars(&s, "pict", 4);    // unsigned int(32) handler_type;
+    avifStreamWriteZeros(&s, 12);           // const unsigned int(32)[3] reserved = 0;
+    avifStreamWriteChars(&s, "libavif", 8); // string name; (writing null terminator)
     avifStreamFinishBox(&s, hdlr);
 
     // -----------------------------------------------------------------------
@@ -156,17 +156,17 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     avifStreamWriteU16(&s, hasAlpha ? 2 : 1); //  unsigned int(16) entry_count;
 
     avifBoxMarker infe0 = avifStreamWriteBox(&s, "infe", 2, 0);
-    avifStreamWriteU16(&s, 1);       // unsigned int(16) item_ID;
-    avifStreamWriteU16(&s, 0);       // unsigned int(16) item_protection_index;
-    avifStreamWrite(&s, "av01", 4);  // unsigned int(32) item_type;
-    avifStreamWrite(&s, "Color", 6); // string item_name; (writing null terminator)
+    avifStreamWriteU16(&s, 1);            // unsigned int(16) item_ID;
+    avifStreamWriteU16(&s, 0);            // unsigned int(16) item_protection_index;
+    avifStreamWriteChars(&s, "av01", 4);  // unsigned int(32) item_type;
+    avifStreamWriteChars(&s, "Color", 6); // string item_name; (writing null terminator)
     avifStreamFinishBox(&s, infe0);
     if (hasAlpha) {
         avifBoxMarker infe1 = avifStreamWriteBox(&s, "infe", 2, 0);
-        avifStreamWriteU16(&s, 2);       // unsigned int(16) item_ID;
-        avifStreamWriteU16(&s, 0);       // unsigned int(16) item_protection_index;
-        avifStreamWrite(&s, "av01", 4);  // unsigned int(32) item_type;
-        avifStreamWrite(&s, "Alpha", 6); // string item_name; (writing null terminator)
+        avifStreamWriteU16(&s, 2);            // unsigned int(16) item_ID;
+        avifStreamWriteU16(&s, 0);            // unsigned int(16) item_protection_index;
+        avifStreamWriteChars(&s, "av01", 4);  // unsigned int(32) item_type;
+        avifStreamWriteChars(&s, "Alpha", 6); // string item_name; (writing null terminator)
         avifStreamFinishBox(&s, infe1);
     }
     avifStreamFinishBox(&s, iinf);
@@ -207,7 +207,7 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
 
             if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
                 avifBoxMarker colr = avifStreamWriteBox(&s, "colr", -1, 0);
-                avifStreamWrite(&s, "nclx", 4);                              // unsigned int(32) colour_type;
+                avifStreamWriteChars(&s, "nclx", 4);                         // unsigned int(32) colour_type;
                 avifStreamWriteU16(&s, image->nclx.colourPrimaries);         // unsigned int(16) colour_primaries;
                 avifStreamWriteU16(&s, image->nclx.transferCharacteristics); // unsigned int(16) transfer_characteristics;
                 avifStreamWriteU16(&s, image->nclx.matrixCoefficients);      // unsigned int(16) matrix_coefficients;
@@ -217,7 +217,7 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
                 ipmaPush(&ipmaColor, ipcoIndex);
             } else if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && (image->icc.data > 0)) {
                 avifBoxMarker colr = avifStreamWriteBox(&s, "colr", -1, 0);
-                avifStreamWrite(&s, "prof", 4); // unsigned int(32) colour_type;
+                avifStreamWriteChars(&s, "prof", 4); // unsigned int(32) colour_type;
                 avifStreamWrite(&s, image->icc.data, image->icc.size);
                 avifStreamFinishBox(&s, colr);
                 ++ipcoIndex;
@@ -242,7 +242,7 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
                 ipmaPush(&ipmaAlpha, ipcoIndex);
 
                 avifBoxMarker auxC = avifStreamWriteBox(&s, "auxC", 0, 0);
-                avifStreamWrite(&s, alphaURN, alphaURNSize); //  string aux_type;
+                avifStreamWriteChars(&s, alphaURN, alphaURNSize); //  string aux_type;
                 avifStreamFinishBox(&s, auxC);
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
@@ -363,6 +363,9 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
                 case AVIF_PIXEL_FORMAT_YUV422: cfg.g_profile = 2; break;
                 case AVIF_PIXEL_FORMAT_YUV420: cfg.g_profile = 0; break;
                 case AVIF_PIXEL_FORMAT_YV12:   cfg.g_profile = 0; break;
+                case AVIF_PIXEL_FORMAT_NONE:
+                default:
+                    break;
             }
         }
     }

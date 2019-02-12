@@ -33,6 +33,10 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
             info->aomIndexU = 2;
             info->aomIndexV = 1;
             break;
+
+        case AVIF_PIXEL_FORMAT_NONE:
+        default:
+            break;
     }
 }
 
