@@ -5,9 +5,6 @@
 
 #include <string.h>
 
-#include "aom/aom_encoder.h"
-#include "aom/aomcx.h"
-
 #define MAX_ASSOCIATIONS 16
 struct ipmaArray
 {
@@ -23,7 +20,6 @@ static void ipmaPush(struct ipmaArray * ipma, uint8_t assoc)
 static const char alphaURN[] = URN_ALPHA0;
 static const size_t alphaURNSize = sizeof(alphaURN);
 
-static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * outputOBU, int quality);
 static avifBool avifImageIsOpaque(avifImage * image);
 
 avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
@@ -35,6 +31,7 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     avifRawData colorOBU = AVIF_RAW_DATA_EMPTY;
     avifRawData alphaOBU = AVIF_RAW_DATA_EMPTY;
+    avifCodec * codec = avifCodecCreate();
 
     avifStream s;
     avifStreamStart(&s, output);
@@ -64,20 +61,17 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
 
-    if (!encodeOBU(image, AVIF_FALSE, &colorOBU, quality)) {
-        result = AVIF_RESULT_ENCODE_COLOR_FAILED;
-        goto writeCleanup;
+    avifRawData * alphaOBUPtr = &alphaOBU;
+    if (avifImageIsOpaque(image)) {
+        alphaOBUPtr = NULL;
     }
 
-    // Skip alpha creation on opaque images
-    avifBool hasAlpha = AVIF_FALSE;
-    if (!avifImageIsOpaque(image)) {
-        if (!encodeOBU(image, AVIF_TRUE, &alphaOBU, quality)) {
-            result = AVIF_RESULT_ENCODE_ALPHA_FAILED;
-            goto writeCleanup;
-        }
-        hasAlpha = AVIF_TRUE;
+    avifResult encodeResult = avifCodecEncodeImage(codec, image, quality, &colorOBU, alphaOBUPtr);
+    if (encodeResult != AVIF_RESULT_OK) {
+        result = encodeResult;
+        goto writeCleanup;
     }
+    avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
 
     // -----------------------------------------------------------------------
     // Write ftyp
@@ -284,173 +278,12 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
     // Cleanup
 
 writeCleanup:
+    if (codec) {
+        avifCodecDestroy(codec);
+    }
     avifRawDataFree(&colorOBU);
     avifRawDataFree(&alphaOBU);
     return result;
-}
-
-static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alphaOnly, int * yShift)
-{
-    *yShift = 0;
-
-    aom_img_fmt_t fmt;
-    if (alphaOnly) {
-        // We're going monochrome, who cares about chroma quality
-        fmt = AOM_IMG_FMT_I420;
-        *yShift = 1;
-    } else {
-        switch (image->yuvFormat) {
-            case AVIF_PIXEL_FORMAT_YUV444:
-                fmt = AOM_IMG_FMT_I444;
-                break;
-            case AVIF_PIXEL_FORMAT_YUV422:
-                fmt = AOM_IMG_FMT_I422;
-                break;
-            case AVIF_PIXEL_FORMAT_YUV420:
-                fmt = AOM_IMG_FMT_I420;
-                *yShift = 1;
-                break;
-            case AVIF_PIXEL_FORMAT_YV12:
-                fmt = AOM_IMG_FMT_YV12;
-                *yShift = 1;
-                break;
-            default:
-                return AOM_IMG_FMT_NONE;
-        }
-    }
-
-    if (image->depth > 8) {
-        fmt |= AOM_IMG_FMT_HIGHBITDEPTH;
-    }
-
-    return fmt;
-}
-
-static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * outputOBU, int quality)
-{
-    avifBool success = AVIF_FALSE;
-    aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
-    aom_codec_ctx_t encoder;
-
-    int yShift = 0;
-    aom_img_fmt_t aomFormat = avifImageCalcAOMFmt(image, alphaOnly, &yShift);
-    if (aomFormat == AOM_IMG_FMT_NONE) {
-        return AVIF_FALSE;
-    }
-
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
-
-    struct aom_codec_enc_cfg cfg;
-    aom_codec_enc_config_default(encoder_interface, &cfg, 0);
-
-    // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
-    // Profile 1.  8-bit and 10-bit 4:4:4
-    // Profile 2.  8-bit and 10-bit 4:2:2
-    //            12-bit  4:0:0, 4:2:2 and 4:4:4
-    if (image->depth == 12) {
-        // Only profile 2 can handle 12 bit
-        cfg.g_profile = 2;
-    } else {
-        // 8-bit or 10-bit
-
-        if (alphaOnly) {
-            // Assuming aomImage->monochrome makes it 4:0:0
-            cfg.g_profile = 0;
-        } else {
-            switch (image->yuvFormat) {
-                case AVIF_PIXEL_FORMAT_YUV444: cfg.g_profile = 1; break;
-                case AVIF_PIXEL_FORMAT_YUV422: cfg.g_profile = 2; break;
-                case AVIF_PIXEL_FORMAT_YUV420: cfg.g_profile = 0; break;
-                case AVIF_PIXEL_FORMAT_YV12:   cfg.g_profile = 0; break;
-                case AVIF_PIXEL_FORMAT_NONE:
-                default:
-                    break;
-            }
-        }
-    }
-
-    cfg.g_bit_depth = image->depth;
-    cfg.g_input_bit_depth = image->depth;
-    cfg.g_w = image->width;
-    cfg.g_h = image->height;
-    // cfg.g_threads = ...;
-
-    avifBool lossless = (quality == 0) || (quality == 100) || alphaOnly; // alpha is always lossless
-    cfg.rc_min_quantizer = 0;
-    if (lossless) {
-        cfg.rc_max_quantizer = 0;
-    } else {
-        cfg.rc_max_quantizer = quality;
-    }
-
-    uint32_t encoderFlags = 0;
-    if (image->depth > 8) {
-        encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
-    }
-    aom_codec_enc_init(&encoder, encoder_interface, &cfg, encoderFlags);
-    if (lossless) {
-        aom_codec_control(&encoder, AV1E_SET_LOSSLESS, 1);
-    }
-
-    int uvHeight = image->height >> yShift;
-    aom_image_t * aomImage = aom_img_alloc(NULL, aomFormat, image->width, image->height, 16);
-
-    if (alphaOnly) {
-        aomImage->range = AOM_CR_FULL_RANGE; // Alpha is always full range
-        aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
-        aomImage->monochrome = 1;
-        for (int j = 0; j < image->height; ++j) {
-            uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
-            uint8_t * dstAlphaRow = &aomImage->planes[0][j * aomImage->stride[0]];
-            memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
-        }
-
-        for (int j = 0; j < uvHeight; ++j) {
-            // Zero out U and V
-            memset(&aomImage->planes[1][j * aomImage->stride[1]], 0, aomImage->stride[1]);
-            memset(&aomImage->planes[2][j * aomImage->stride[2]], 0, aomImage->stride[2]);
-        }
-    } else {
-        aomImage->range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
-        aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-            int aomPlaneIndex = yuvPlane;
-            int planeHeight = image->height;
-            if (yuvPlane == AVIF_CHAN_U) {
-                aomPlaneIndex = formatInfo.aomIndexU;
-                planeHeight = uvHeight;
-            } else if (yuvPlane == AVIF_CHAN_V) {
-                aomPlaneIndex = formatInfo.aomIndexV;
-                planeHeight = uvHeight;
-            }
-
-            for (int j = 0; j < planeHeight; ++j) {
-                uint8_t * srcRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
-                uint8_t * dstRow = &aomImage->planes[aomPlaneIndex][j * aomImage->stride[aomPlaneIndex]];
-                memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
-            }
-        }
-    }
-
-    aom_codec_encode(&encoder, aomImage, 0, 1, 0);
-    aom_codec_encode(&encoder, NULL, 0, 1, 0); // flush
-
-    aom_codec_iter_t iter = NULL;
-    for (;;) {
-        const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&encoder, &iter);
-        if (pkt == NULL)
-            break;
-        if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
-            avifRawDataSet(outputOBU, pkt->data.frame.buf, pkt->data.frame.sz);
-            success = AVIF_TRUE;
-            break;
-        }
-    }
-
-    aom_img_free(aomImage);
-    aom_codec_destroy(&encoder);
-    return success;
 }
 
 static avifBool avifImageIsOpaque(avifImage * image)

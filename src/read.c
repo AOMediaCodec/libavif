@@ -3,9 +3,6 @@
 
 #include "avif/internal.h"
 
-#include "aom/aom_decoder.h"
-#include "aom/aomdx.h"
-
 #include <string.h>
 
 // from the MIAF spec:
@@ -540,37 +537,11 @@ static avifBool avifParse(avifData * data, uint8_t * raw, size_t rawLen)
 }
 
 // ---------------------------------------------------------------------------
-// OBU Decode
-
-static aom_image_t * decodeOBU(aom_codec_ctx_t * decoder, avifRawData * inputOBU)
-{
-    aom_codec_stream_info_t si;
-    aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
-    if (aom_codec_dec_init(decoder, decoder_interface, NULL, 0)) {
-        return NULL;
-    }
-
-    if (aom_codec_control(decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 1)) {
-        return NULL;
-    }
-
-    si.is_annexb = 0;
-    if (aom_codec_peek_stream_info(decoder_interface, inputOBU->data, inputOBU->size, &si)) {
-        return NULL;
-    }
-
-    if (aom_codec_decode(decoder, inputOBU->data, inputOBU->size, NULL)) {
-        return NULL;
-    }
-
-    aom_codec_iter_t iter = NULL;
-    return aom_codec_get_frame(decoder, &iter); // It doesn't appear that I own this / need to free this
-}
-
-// ---------------------------------------------------------------------------
 
 avifResult avifImageRead(avifImage * image, avifRawData * input)
 {
+    avifCodec * codec = NULL;
+
     // -----------------------------------------------------------------------
     // Parse BMFF boxes
 
@@ -664,38 +635,32 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
     }
     avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
 
-    aom_codec_ctx_t colorDecoder;
-    aom_image_t * aomColorImage = decodeOBU(&colorDecoder, &colorOBU);
-    if (!aomColorImage) {
-        aom_codec_destroy(&colorDecoder);
+    codec = avifCodecCreate();
+    if (!avifCodecDecode(codec, AVIF_CODEC_PLANES_COLOR, &colorOBU)) {
+        avifCodecDestroy(codec);
         return AVIF_RESULT_DECODE_COLOR_FAILED;
     }
+    avifCodecImageSize colorPlanesSize = avifCodecGetImageSize(codec, AVIF_CODEC_PLANES_COLOR);
 
-    aom_codec_ctx_t alphaDecoder;
-    aom_image_t * aomAlphaImage = NULL;
+    avifCodecImageSize alphaPlanesSize;
+    memset(&alphaPlanesSize, 0, sizeof(alphaPlanesSize));
     if (hasAlpha) {
-        aomAlphaImage = decodeOBU(&alphaDecoder, &alphaOBU);
-        if (!aomAlphaImage) {
-            aom_codec_destroy(&colorDecoder);
-            aom_codec_destroy(&alphaDecoder);
+        if (!avifCodecDecode(codec, AVIF_CODEC_PLANES_ALPHA, &alphaOBU)) {
+            avifCodecDestroy(codec);
             return AVIF_RESULT_DECODE_ALPHA_FAILED;
         }
-        if ((aomColorImage->d_w != aomAlphaImage->d_w) || (aomColorImage->d_h != aomAlphaImage->d_h)) {
-            aom_codec_destroy(&colorDecoder);
-            aom_codec_destroy(&alphaDecoder);
+        alphaPlanesSize = avifCodecGetImageSize(codec, AVIF_CODEC_PLANES_ALPHA);
+
+        if ((colorPlanesSize.width != alphaPlanesSize.width) || (colorPlanesSize.height != alphaPlanesSize.height)) {
+            avifCodecDestroy(codec);
             return AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH;
         }
     }
 
-    if (
-        (colorOBUItem && aomColorImage && colorOBUItem->ispePresent && ((colorOBUItem->ispe.width != aomColorImage->d_w) || (colorOBUItem->ispe.height != aomColorImage->d_h))) ||
-        (alphaOBUItem && aomAlphaImage && alphaOBUItem->ispePresent && ((alphaOBUItem->ispe.width != aomAlphaImage->d_w) || (alphaOBUItem->ispe.height != aomAlphaImage->d_h)))
-        )
+    if ((colorOBUItem && colorOBUItem->ispePresent && ((colorOBUItem->ispe.width != colorPlanesSize.width) || (colorOBUItem->ispe.height != colorPlanesSize.height))) ||
+        (alphaOBUItem && alphaOBUItem->ispePresent && ((alphaOBUItem->ispe.width != alphaPlanesSize.width) || (alphaOBUItem->ispe.height != alphaPlanesSize.height))))
     {
-        aom_codec_destroy(&colorDecoder);
-        if (hasAlpha) {
-            aom_codec_destroy(&alphaDecoder);
-        }
+        avifCodecDestroy(codec);
         return AVIF_RESULT_ISPE_SIZE_MISMATCH;
     }
 
@@ -707,97 +672,40 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
         }
     }
 
-    avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
-    switch (aomColorImage->fmt) {
-        case AOM_IMG_FMT_I420:
-        case AOM_IMG_FMT_AOMI420:
-        case AOM_IMG_FMT_I42016:
-            yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
-            break;
-        case AOM_IMG_FMT_I422:
-        case AOM_IMG_FMT_I42216:
-            yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
-            break;
-        case AOM_IMG_FMT_I444:
-        case AOM_IMG_FMT_I44416:
-            yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-            break;
-        case AOM_IMG_FMT_YV12:
-        case AOM_IMG_FMT_AOMYV12:
-        case AOM_IMG_FMT_YV1216:
-            yuvFormat = AVIF_PIXEL_FORMAT_YV12;
-            break;
-        case AOM_IMG_FMT_NONE:
-        default:
-            break;
-    }
-
     avifImageFreePlanes(image, AVIF_PLANES_ALL);
-    image->width = aomColorImage->d_w;
-    image->height = aomColorImage->d_h;
-    image->depth = aomColorImage->bit_depth;
-    image->yuvFormat = yuvFormat;
-    image->yuvRange = (aomColorImage->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
 
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(yuvFormat, &formatInfo);
-
-    int uvHeight = image->height >> formatInfo.chromaShiftY;
-    avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
-    for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-        int aomPlaneIndex = yuvPlane;
-        int planeHeight = image->height;
-        if (yuvPlane == AVIF_CHAN_U) {
-            aomPlaneIndex = formatInfo.aomIndexU;
-            planeHeight = uvHeight;
-        } else if (yuvPlane == AVIF_CHAN_V) {
-            aomPlaneIndex = formatInfo.aomIndexV;
-            planeHeight = uvHeight;
-        }
-
-        for (int j = 0; j < planeHeight; ++j) {
-            uint8_t * srcRow = &aomColorImage->planes[aomPlaneIndex][j * aomColorImage->stride[aomPlaneIndex]];
-            uint8_t * dstRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
-            memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
-        }
+    avifResult imageResult = avifCodecGetDecodedImage(codec, image);
+    if (imageResult != AVIF_RESULT_OK) {
+        avifCodecDestroy(codec);
+        return imageResult;
     }
-
-    if (hasAlpha) {
-        avifImageAllocatePlanes(image, AVIF_PLANES_A);
-        for (int j = 0; j < image->height; ++j) {
-            uint8_t * srcAlphaRow = &aomAlphaImage->planes[0][j * aomAlphaImage->stride[0]];
-            uint8_t * dstAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
-            memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
-        }
 
 #if defined(AVIF_FIX_STUDIO_ALPHA)
-        if (aomAlphaImage->range == AOM_CR_STUDIO_RANGE) {
-            // Naughty! Alpha planes are supposed to be full range. Correct that here.
-            if (avifImageUsesU16(image)) {
-                for (int j = 0; j < image->height; ++j) {
-                    for (int i = 0; i < image->height; ++i) {
-                        uint16_t * alpha = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
-                        *alpha = (uint16_t)avifLimitedToFull(image->depth, *alpha);
-                    }
+    if (hasAlpha && avifCodecAlphaLimitedRange(codec)) {
+        // Naughty! Alpha planes are supposed to be full range. Correct that here.
+        if (avifImageUsesU16(image)) {
+            for (int j = 0; j < image->height; ++j) {
+                for (int i = 0; i < image->height; ++i) {
+                    uint16_t * alpha = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
+                    *alpha = (uint16_t)avifLimitedToFull(image->depth, *alpha);
                 }
-            } else {
-                for (int j = 0; j < image->height; ++j) {
-                    for (int i = 0; i < image->height; ++i) {
-                        uint8_t * alpha = &image->alphaPlane[i + (j * image->alphaRowBytes)];
-                        *alpha = (uint8_t)avifLimitedToFull(image->depth, *alpha);
-                    }
+            }
+        } else {
+            for (int j = 0; j < image->height; ++j) {
+                for (int i = 0; i < image->height; ++i) {
+                    uint8_t * alpha = &image->alphaPlane[i + (j * image->alphaRowBytes)];
+                    *alpha = (uint8_t)avifLimitedToFull(image->depth, *alpha);
                 }
             }
         }
-#endif
     }
+#endif
 
     // Make this optional?
     avifImageYUVToRGB(image);
 
-    aom_codec_destroy(&colorDecoder);
-    if (hasAlpha) {
-        aom_codec_destroy(&alphaDecoder);
+    if (codec) {
+        avifCodecDestroy(codec);
     }
     return AVIF_RESULT_OK;
 }

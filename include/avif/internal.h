@@ -42,6 +42,39 @@ void * avifAlloc(size_t size);
 void avifFree(void * p);
 
 // ---------------------------------------------------------------------------
+// avifCodec (abstraction layer to use different AV1 implementations)
+
+typedef enum avifCodecPlanes
+{
+    AVIF_CODEC_PLANES_COLOR = 0, // YUV
+    AVIF_CODEC_PLANES_ALPHA,
+
+    AVIF_CODEC_PLANES_COUNT
+} avifCodecPlanes;
+
+typedef struct avifCodecImageSize
+{
+    uint32_t width;
+    uint32_t height;
+} avifCodecImageSize;
+
+struct avifCodecInternal;
+
+typedef struct avifCodec
+{
+    struct avifCodecInternal * internal; // up to each codec to use how it wants
+} avifCodec;
+
+avifCodec * avifCodecCreate();
+void avifCodecDestroy(avifCodec * codec);
+
+avifBool avifCodecDecode(avifCodec * codec, avifCodecPlanes planes, avifRawData * obu);
+avifCodecImageSize avifCodecGetImageSize(avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
+avifBool avifCodecAlphaLimitedRange(avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
+avifResult avifCodecGetDecodedImage(avifCodec * codec, avifImage * image);
+avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, int colorQuality, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
+
+// ---------------------------------------------------------------------------
 // avifStream
 
 typedef size_t avifBoxMarker;

@@ -20,7 +20,7 @@ if(NOT AVIF_EXTERNAL_GB)
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ext/gb")
 endif()
 
-add_library(avif STATIC
+set(AVIF_SRCS
     include/avif/avif.h
     include/avif/internal.h
     src/avif.c
@@ -33,6 +33,13 @@ add_library(avif STATIC
     src/utils.c
     src/write.c
 )
+
+# TODO: Support other codec implementations here
+set(AVIF_SRCS ${AVIF_SRCS}
+    src/codec_aom.c
+)
+
+add_library(avif STATIC ${AVIF_SRCS})
 target_link_libraries(avif aom gb)
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
