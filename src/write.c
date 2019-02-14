@@ -21,6 +21,7 @@ static const char alphaURN[] = URN_ALPHA0;
 static const size_t alphaURNSize = sizeof(alphaURN);
 
 static avifBool avifImageIsOpaque(avifImage * image);
+static void writeConfigBox(avifStream * s, avifCodecConfigurationBox * cfg);
 
 avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
 {
@@ -227,11 +228,23 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
             ++ipcoIndex;
             ipmaPush(&ipmaColor, ipcoIndex);
 
+            avifCodecConfigurationBox colorConfig;
+            avifCodecGetConfigurationBox(codec, AVIF_CODEC_PLANES_COLOR, &colorConfig);
+            writeConfigBox(&s, &colorConfig);
+            ++ipcoIndex;
+            ipmaPush(&ipmaColor, ipcoIndex);
+
             if (hasAlpha) {
                 avifBoxMarker pixiA = avifStreamWriteBox(&s, "pixi", 0, 0);
                 avifStreamWriteU8(&s, 1);            // unsigned int (8) num_channels;
                 avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
                 avifStreamFinishBox(&s, pixiA);
+                ++ipcoIndex;
+                ipmaPush(&ipmaAlpha, ipcoIndex);
+
+                avifCodecConfigurationBox alphaConfig;
+                avifCodecGetConfigurationBox(codec, AVIF_CODEC_PLANES_ALPHA, &alphaConfig);
+                writeConfigBox(&s, &alphaConfig);
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
 
@@ -312,4 +325,38 @@ static avifBool avifImageIsOpaque(avifImage * image)
         }
     }
     return AVIF_TRUE;
+}
+
+static void writeConfigBox(avifStream * s, avifCodecConfigurationBox * cfg)
+{
+    avifBoxMarker av1C = avifStreamWriteBox(s, "av1C", 0, 0);
+
+    // unsigned int (1) marker = 1;
+    // unsigned int (7) version = 1;
+    avifStreamWriteU8(s, 0x80 | 0x1);
+
+    // unsigned int (3) seq_profile;
+    // unsigned int (5) seq_level_idx_0;
+    avifStreamWriteU8(s, ((cfg->seqProfile & 0x7) << 5) | (cfg->seqLevelIdx0 & 0x1f));
+
+    uint8_t bits = 0;
+    bits |= (cfg->seqTier0 & 0x1) << 7;           // unsigned int (1) seq_tier_0;
+    bits |= (cfg->highBitdepth & 0x1) << 6;       // unsigned int (1) high_bitdepth;
+    bits |= (cfg->twelveBit & 0x1) << 5;          // unsigned int (1) twelve_bit;
+    bits |= (cfg->monochrome & 0x1) << 4;         // unsigned int (1) monochrome;
+    bits |= (cfg->chromaSubsamplingX & 0x1) << 3; // unsigned int (1) chroma_subsampling_x;
+    bits |= (cfg->chromaSubsamplingY & 0x1) << 2; // unsigned int (1) chroma_subsampling_y;
+    bits |= (cfg->chromaSamplePosition & 0x3);    // unsigned int (2) chroma_sample_position;
+    avifStreamWriteU8(s, bits);
+
+    // unsigned int (3) reserved = 0;
+    // unsigned int (1) initial_presentation_delay_present;
+    // if (initial_presentation_delay_present) {
+    //   unsigned int (4) initial_presentation_delay_minus_one;
+    // } else {
+    //   unsigned int (4) reserved = 0;
+    // }
+    avifStreamWriteU8(s, 0);
+
+    avifStreamFinishBox(s, av1C);
 }

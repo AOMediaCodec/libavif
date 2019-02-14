@@ -17,6 +17,7 @@ struct avifCodecInternal
 
     aom_image_t * images[AVIF_CODEC_PLANES_COUNT];
     avifRawData encodedOBUs[AVIF_CODEC_PLANES_COUNT];
+    avifCodecConfigurationBox configs[AVIF_CODEC_PLANES_COUNT];
 };
 
 avifCodec * avifCodecCreate()
@@ -196,11 +197,13 @@ static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alphaOnly, 
     return fmt;
 }
 
-static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * outputOBU, int quality)
+static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, int quality, avifRawData * outputOBU, avifCodecConfigurationBox * outputConfig)
 {
     avifBool success = AVIF_FALSE;
     aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
     aom_codec_ctx_t encoder;
+
+    memset(outputConfig, 0, sizeof(avifCodecConfigurationBox));
 
     int yShift = 0;
     aom_img_fmt_t aomFormat = avifImageCalcAOMFmt(image, alphaOnly, &yShift);
@@ -245,6 +248,22 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
     cfg.g_w = image->width;
     cfg.g_h = image->height;
     // cfg.g_threads = ...;
+
+    outputConfig->seqProfile = cfg.g_profile;
+    outputConfig->seqLevelIdx0 = 31; // TODO: Choose correct value from Annex A.3 table: https://aomediacodec.github.io/av1-spec/av1-spec.pdf
+    outputConfig->seqTier0 = 0;
+    outputConfig->highBitdepth = (image->depth > 8) ? 1 : 0;
+    outputConfig->twelveBit = (image->depth == 12) ? 1 : 0;
+    outputConfig->monochrome = alphaOnly ? 1 : 0;
+    outputConfig->chromaSubsamplingX = formatInfo.chromaShiftX;
+    outputConfig->chromaSubsamplingY = formatInfo.chromaShiftY;
+
+    // TODO: choose the correct one from below:
+    //   * 0 - CSP_UNKNOWN   Unknown (in this case the source video transfer function must be signaled outside the AV1 bitstream)
+    //   * 1 - CSP_VERTICAL  Horizontally co-located with (0, 0) luma sample, vertical position in the middle between two luma samples
+    //   * 2 - CSP_COLOCATED co-located with (0, 0) luma sample
+    //   * 3 - CSP_RESERVED
+    outputConfig->chromaSamplePosition = 0;
 
     avifBool lossless = (quality == AVIF_BEST_QUALITY) ? AVIF_TRUE : AVIF_FALSE;
     cfg.rc_min_quantizer = 0;
@@ -326,14 +345,19 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifRawData * o
 avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, int colorQuality, avifRawData * colorOBU, avifRawData * alphaOBU)
 {
     if (colorOBU) {
-        if (!encodeOBU(image, AVIF_FALSE, colorOBU, colorQuality)) {
+        if (!encodeOBU(image, AVIF_FALSE, colorQuality, colorOBU, &codec->internal->configs[AVIF_CODEC_PLANES_COLOR])) {
             return AVIF_RESULT_ENCODE_COLOR_FAILED;
         }
     }
     if (alphaOBU) {
-        if (!encodeOBU(image, AVIF_TRUE, alphaOBU, AVIF_BEST_QUALITY)) {
+        if (!encodeOBU(image, AVIF_TRUE, AVIF_BEST_QUALITY, alphaOBU, &codec->internal->configs[AVIF_CODEC_PLANES_ALPHA])) {
             return AVIF_RESULT_ENCODE_COLOR_FAILED;
         }
     }
     return AVIF_RESULT_OK;
+}
+
+void avifCodecGetConfigurationBox(avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig)
+{
+    memcpy(outConfig, &codec->internal->configs[planes], sizeof(avifCodecConfigurationBox));
 }

@@ -44,6 +44,30 @@ void avifFree(void * p);
 // ---------------------------------------------------------------------------
 // avifCodec (abstraction layer to use different AV1 implementations)
 
+typedef struct avifCodecConfigurationBox
+{
+    // [skipped; is constant] unsigned int (1)marker = 1;
+    // [skipped; is constant] unsigned int (7)version = 1;
+
+    uint8_t seqProfile;           // unsigned int (3) seq_profile;
+    uint8_t seqLevelIdx0;         // unsigned int (5) seq_level_idx_0;
+    uint8_t seqTier0;             // unsigned int (1) seq_tier_0;
+    uint8_t highBitdepth;         // unsigned int (1) high_bitdepth;
+    uint8_t twelveBit;            // unsigned int (1) twelve_bit;
+    uint8_t monochrome;           // unsigned int (1) monochrome;
+    uint8_t chromaSubsamplingX;   // unsigned int (1) chroma_subsampling_x;
+    uint8_t chromaSubsamplingY;   // unsigned int (1) chroma_subsampling_y;
+    uint8_t chromaSamplePosition; // unsigned int (2) chroma_sample_position;
+
+    // unsigned int (3)reserved = 0;
+    // unsigned int (1)initial_presentation_delay_present;
+    // if (initial_presentation_delay_present) {
+    //     unsigned int (4)initial_presentation_delay_minus_one;
+    // } else {
+    //     unsigned int (4)reserved = 0;
+    // }
+} avifCodecConfigurationBox;
+
 typedef enum avifCodecPlanes
 {
     AVIF_CODEC_PLANES_COLOR = 0, // YUV
@@ -73,6 +97,7 @@ avifCodecImageSize avifCodecGetImageSize(avifCodec * codec, avifCodecPlanes plan
 avifBool avifCodecAlphaLimitedRange(avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
 avifResult avifCodecGetDecodedImage(avifCodec * codec, avifImage * image);
 avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, int colorQuality, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
+void avifCodecGetConfigurationBox(avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
 
 // ---------------------------------------------------------------------------
 // avifStream
