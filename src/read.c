@@ -218,7 +218,7 @@ static avifBool avifParseColourInformationBox(avifData * data, uint8_t * raw, si
         CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.colourPrimaries));         // unsigned int(16) colour_primaries;
         CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.transferCharacteristics)); // unsigned int(16) transfer_characteristics;
         CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.matrixCoefficients));      // unsigned int(16) matrix_coefficients;
-        CHECK(avifStreamRead(&s, &data->properties[propertyIndex].colr.nclx.fullRangeFlag, 1));           // unsigned int(16) matrix_coefficients;
+        CHECK(avifStreamRead(&s, &data->properties[propertyIndex].colr.nclx.fullRangeFlag, 1));           // unsigned int(1) full_range_flag; unsigned int(7) reserved = 0;
         data->properties[propertyIndex].colr.nclx.fullRangeFlag |= 0x80;
         data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NCLX;
     }
