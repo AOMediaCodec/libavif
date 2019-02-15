@@ -33,7 +33,7 @@ int main(int argc, char * argv[])
     // apgImageSetICC(image, fakeICC, fakeICCSize);
 
     avifRawData raw = AVIF_RAW_DATA_EMPTY;
-    avifResult res = avifImageWrite(image, &raw, 50);
+    avifResult res = avifImageWrite(image, &raw, 1, 50);
 
 #if 0
     // debug

@@ -294,7 +294,12 @@ void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx);
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
 avifResult avifImageRead(avifImage * image, avifRawData * input);
-avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality); // if OK, output must be freed with avifRawDataFree()
+
+// avifImageWrite notes:
+// * if returns AVIF_RESULT_OK, output must be freed with avifRawDataFree()
+// * if (numThreads < 2), multithreading is disabled
+// * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
+avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThreads, int quality);
 
 // Used by avifImageRead/avifImageWrite
 avifResult avifImageRGBToYUV(avifImage * image);

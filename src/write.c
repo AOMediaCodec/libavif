@@ -23,7 +23,7 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static avifBool avifImageIsOpaque(avifImage * image);
 static void writeConfigBox(avifStream * s, avifCodecConfigurationBox * cfg);
 
-avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
+avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThreads, int quality)
 {
     if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
         return AVIF_RESULT_UNSUPPORTED_DEPTH;
@@ -67,7 +67,7 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int quality)
         alphaOBUPtr = NULL;
     }
 
-    avifResult encodeResult = avifCodecEncodeImage(codec, image, quality, &colorOBU, alphaOBUPtr);
+    avifResult encodeResult = avifCodecEncodeImage(codec, image, numThreads, quality, &colorOBU, alphaOBUPtr);
     if (encodeResult != AVIF_RESULT_OK) {
         result = encodeResult;
         goto writeCleanup;

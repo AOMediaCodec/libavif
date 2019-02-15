@@ -197,7 +197,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alphaOnly, 
     return fmt;
 }
 
-static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, int quality, avifRawData * outputOBU, avifCodecConfigurationBox * outputConfig)
+static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, int numThreads, int quality, avifRawData * outputOBU, avifCodecConfigurationBox * outputConfig)
 {
     avifBool success = AVIF_FALSE;
     aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
@@ -247,7 +247,9 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, int quality, av
     cfg.g_input_bit_depth = image->depth;
     cfg.g_w = image->width;
     cfg.g_h = image->height;
-    // cfg.g_threads = ...;
+    if (numThreads > 1) {
+        cfg.g_threads = numThreads;
+    }
 
     outputConfig->seqProfile = cfg.g_profile;
     outputConfig->seqLevelIdx0 = 31; // TODO: Choose correct value from Annex A.3 table: https://aomediacodec.github.io/av1-spec/av1-spec.pdf
@@ -278,8 +280,12 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, int quality, av
         encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
     }
     aom_codec_enc_init(&encoder, encoder_interface, &cfg, encoderFlags);
+
     if (lossless) {
         aom_codec_control(&encoder, AV1E_SET_LOSSLESS, 1);
+    }
+    if (numThreads > 1) {
+        aom_codec_control(&encoder, AV1E_SET_ROW_MT, 1);
     }
 
     int uvHeight = image->height >> yShift;
@@ -342,15 +348,15 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, int quality, av
     return success;
 }
 
-avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, int colorQuality, avifRawData * colorOBU, avifRawData * alphaOBU)
+avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, int numThreads, int colorQuality, avifRawData * colorOBU, avifRawData * alphaOBU)
 {
     if (colorOBU) {
-        if (!encodeOBU(image, AVIF_FALSE, colorQuality, colorOBU, &codec->internal->configs[AVIF_CODEC_PLANES_COLOR])) {
+        if (!encodeOBU(image, AVIF_FALSE, numThreads, colorQuality, colorOBU, &codec->internal->configs[AVIF_CODEC_PLANES_COLOR])) {
             return AVIF_RESULT_ENCODE_COLOR_FAILED;
         }
     }
     if (alphaOBU) {
-        if (!encodeOBU(image, AVIF_TRUE, AVIF_BEST_QUALITY, alphaOBU, &codec->internal->configs[AVIF_CODEC_PLANES_ALPHA])) {
+        if (!encodeOBU(image, AVIF_TRUE, numThreads, AVIF_BEST_QUALITY, alphaOBU, &codec->internal->configs[AVIF_CODEC_PLANES_ALPHA])) {
             return AVIF_RESULT_ENCODE_COLOR_FAILED;
         }
     }
