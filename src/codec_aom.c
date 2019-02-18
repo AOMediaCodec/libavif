@@ -251,8 +251,15 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, int numThreads,
         cfg.g_threads = numThreads;
     }
 
+    // TODO: Choose correct value from Annex A.3 table: https://aomediacodec.github.io/av1-spec/av1-spec.pdf
+    uint8_t seqLevelIdx0 = 31;
+    if ((image->width <= 8192) && (image->height <= 4352) && ((image->width * image->height) <= 8912896)) {
+        // Image is 5.1 compatible
+        seqLevelIdx0 = 13; // 5.1
+    }
+
     outputConfig->seqProfile = cfg.g_profile;
-    outputConfig->seqLevelIdx0 = 31; // TODO: Choose correct value from Annex A.3 table: https://aomediacodec.github.io/av1-spec/av1-spec.pdf
+    outputConfig->seqLevelIdx0 = seqLevelIdx0;
     outputConfig->seqTier0 = 0;
     outputConfig->highBitdepth = (image->depth > 8) ? 1 : 0;
     outputConfig->twelveBit = (image->depth == 12) ? 1 : 0;
