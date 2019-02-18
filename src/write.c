@@ -329,7 +329,7 @@ static avifBool avifImageIsOpaque(avifImage * image)
 
 static void writeConfigBox(avifStream * s, avifCodecConfigurationBox * cfg)
 {
-    avifBoxMarker av1C = avifStreamWriteBox(s, "av1C", 0, 0);
+    avifBoxMarker av1C = avifStreamWriteBox(s, "av1C", -1, 0);
 
     // unsigned int (1) marker = 1;
     // unsigned int (7) version = 1;
