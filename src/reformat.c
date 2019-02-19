@@ -101,8 +101,6 @@ avifResult avifImageRGBToYUV(avifImage * image)
                     yuvBlock[bI][bJ].u = (rgbPixel[2] - Y) / (2 * (1 - kb));
                     yuvBlock[bI][bJ].v = (rgbPixel[0] - Y) / (2 * (1 - kr));
 
-                    int uvI = i >> state.formatInfo.chromaShiftX;
-                    int uvJ = j >> state.formatInfo.chromaShiftY;
                     if (state.usesU16) {
                         uint16_t * pY = (uint16_t *)&image->yuvPlanes[AVIF_CHAN_Y][(i * 2) + (j * image->yuvRowBytes[AVIF_CHAN_Y])];
                         *pY = (uint16_t)yuvToUNorm(AVIF_CHAN_Y, image->yuvRange, image->depth, maxChannel, yuvBlock[bI][bJ].y);
