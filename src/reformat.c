@@ -161,7 +161,7 @@ avifResult avifImageRGBToYUV(avifImage * image)
                         sumU += yuvBlock[bI][bJ].u;
                         sumV += yuvBlock[bI][bJ].v;
                     }
-                    float totalSamples = (float)blockH;
+                    float totalSamples = (float)blockW;
                     float avgU = sumU / totalSamples;
                     float avgV = sumV / totalSamples;
 
