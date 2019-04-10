@@ -149,7 +149,7 @@ avifResult avifImageRGBToYUV(avifImage * image)
                     image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])] = (uint8_t)yuvToUNorm(AVIF_CHAN_U, image->yuvRange, image->depth, maxChannel, avgU);
                     image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])] = (uint8_t)yuvToUNorm(AVIF_CHAN_V, image->yuvRange, image->depth, maxChannel, avgV);
                 }
-            } else if (state.formatInfo.chromaShiftX || !state.formatInfo.chromaShiftY) {
+            } else if (state.formatInfo.chromaShiftX && !state.formatInfo.chromaShiftY) {
                 // YUV422, average 2 samples (1x2), twice
 
                 for (int bJ = 0; bJ < blockH; ++bJ) {
