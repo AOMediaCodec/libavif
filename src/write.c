@@ -285,6 +285,13 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThread
 
     avifStreamFinishBox(&s, meta);
     avifStreamFinishWrite(&s);
+
+    // -----------------------------------------------------------------------
+    // IO stats
+
+    image->ioStats.colorOBUSize = colorOBU.size;
+    image->ioStats.alphaOBUSize = alphaOBU.size;
+
     result = AVIF_RESULT_OK;
 
     // -----------------------------------------------------------------------

@@ -707,5 +707,8 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
     if (codec) {
         avifCodecDestroy(codec);
     }
+
+    image->ioStats.colorOBUSize = colorOBU.size;
+    image->ioStats.alphaOBUSize = alphaOBU.size;
     return AVIF_RESULT_OK;
 }

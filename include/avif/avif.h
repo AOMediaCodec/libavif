@@ -281,6 +281,13 @@ typedef struct avifImage
     avifProfileFormat profileFormat;
     avifRawData icc;
     avifNclxColorProfile nclx;
+
+    // Useful stats from the most recent read/write
+    struct IOStats
+    {
+        size_t colorOBUSize;
+        size_t alphaOBUSize;
+    } ioStats;
 } avifImage;
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
