@@ -35,7 +35,6 @@ before_build:
 
     nasm -v
 
-
     mkdir build
 
     cd build
@@ -45,19 +44,19 @@ before_build:
     cmake .. -G %generator% -DAVIF_BUILD_STATIC=1
 after_build:
 - cmd: >-
-    7z a build\avif_x64_static.zip include examples
-
-    cd build
-
     mkdir lib
 
     copy %CONFIGURATION%\avif_static_x64.lib lib
 
-    7z a avif_x64_static.zip lib
+    7z a avif_vs2017_x64_static.zip lib
+
+    cd ..
+
+    7z a build\avif_vs2017_x64_static.zip include examples
 build:
   project: C:/projects/avif/build/avif.sln
   parallel: true
   verbosity: minimal
 artifacts:
-- path: build\avif_x64_static.zip
+- path: build\avif_vs2017_x64_static.zip
   name: Includes and Static Library
