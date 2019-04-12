@@ -1,10 +1,20 @@
 # libavif [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/joedrago/avif?branch=master&svg=true)](https://ci.appveyor.com/project/joedrago/avif) [![Travis Build Status](https://travis-ci.com/joedrago/avif.svg?branch=master)](https://travis-ci.com/joedrago/avif)
 
-TBW
+This library aims to be a friendly, portable C implementation of the AV1 Image File Format, as described here:
+
+https://aomediacodec.github.io/av1-avif/
+
+It is a work-in-progress, but can already encode and decode all AOM supported YUV formats and bit depths (with alpha).
 
 # Build Notes
 
-You need CMake and nasm.
+Building libavif requires [NASM](https://nasm.us/) and [CMake](https://cmake.org/).
+
+Make sure nasm is available and in your PATH on your machine, then use CMake to do a basic build (Debug or Release).
+
+# Prebuilt Library (Windows)
+
+If you're building on Windows with VS2017 and want to try out libavif without going through the build process, static library builds for both Debug and Release are available on [Appveyor](https://ci.appveyor.com/project/joedrago/avif).
 
 ---
 
