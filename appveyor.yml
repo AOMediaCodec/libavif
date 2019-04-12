@@ -46,17 +46,17 @@ after_build:
 - cmd: >-
     mkdir lib
 
-    copy %CONFIGURATION%\avif_static_x64.lib lib
+    copy %CONFIGURATION%\avif_static_x64.lib lib\avif_x64_%CONFIGURATION%.lib
 
-    7z a avif_vs2017_x64_static.zip lib
+    7z a avif_vs2017_x64_%CONFIGURATION%.zip lib
 
     cd ..
 
-    7z a build\avif_vs2017_x64_static.zip include examples
+    7z a build\avif_vs2017_x64_%CONFIGURATION%.zip include examples
 build:
   project: C:/projects/avif/build/avif.sln
   parallel: true
   verbosity: minimal
 artifacts:
-- path: build\avif_vs2017_x64_static.zip
-  name: Includes and Static Library
+- path: 'build\avif_vs2017_x64_*.zip'
+  name: Static Lib and Includes
