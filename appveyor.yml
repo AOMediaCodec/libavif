@@ -1,0 +1,52 @@
+version: '{build}'
+branches:
+  only:
+  - master
+image: Visual Studio 2017
+configuration:
+- Debug
+- Release
+init:
+- cmd: >-
+    set arch=Win64
+
+    if "%arch%"=="Win64" ( set arch= Win64)
+
+    echo %arch%
+
+    echo %APPVEYOR_BUILD_WORKER_IMAGE%
+
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" ( set generator="Visual Studio 15 2017%arch%" )
+
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" ( set generator="Visual Studio 14 2015%arch%" )
+
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2013" ( set generator="Visual Studio 12 2013%arch%" )
+
+    echo %generator%
+before_build:
+- cmd: >-
+    appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.14.02-win64.zip" -FileName "nasm.zip"
+
+    7z x "nasm.zip" > nul
+
+    move nasm-* NASM
+
+    set PATH=%PATH%;%CD%\NASM;
+
+    nasm -v
+
+
+    mkdir build
+
+    cd build
+
+    cmake --version
+
+    cmake .. -G %generator%
+build:
+  project: C:/projects/avif/build/avif.sln
+  parallel: true
+  verbosity: minimal
+artifacts:
+- path: build\**\Release\**\*.lib
+  name: libs
