@@ -6,6 +6,10 @@
 
 #include "avif/avif.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Yes, clamp macros are nasty. Do not use them.
 #define AVIF_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
@@ -144,5 +148,9 @@ void avifStreamWriteU8(avifStream * stream, uint8_t v);
 void avifStreamWriteU16(avifStream * stream, uint16_t v);
 void avifStreamWriteU32(avifStream * stream, uint32_t v);
 void avifStreamWriteZeros(avifStream * stream, size_t byteCount);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif // ifndef AVIF_INTERNAL_H

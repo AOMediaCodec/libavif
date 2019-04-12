@@ -11,6 +11,8 @@ int main(int argc, char * argv[])
     (void)argc;
     (void)argv;
 
+    printf("avif version: %s\n", avifVersion());
+
 #if 1
     int width = 32;
     int height = 32;

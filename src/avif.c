@@ -5,6 +5,15 @@
 
 #include <string.h>
 
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+#define AVIF_VERSION_STRING (STR(AVIF_VERSION_MAJOR) "." STR(AVIF_VERSION_MINOR) "." STR(AVIF_VERSION_PATCH))
+
+const char * avifVersion()
+{
+    return AVIF_VERSION_STRING;
+}
+
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 {
     memset(info, 0, sizeof(avifPixelFormatInfo));
