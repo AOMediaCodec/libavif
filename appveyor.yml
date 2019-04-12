@@ -48,11 +48,11 @@ after_build:
 
     copy %CONFIGURATION%\avif_static_x64.lib lib\avif_x64_%CONFIGURATION%.lib
 
-    7z a avif_vs2017_x64_%CONFIGURATION%.zip lib
+    7z a build\avif_vs2017_x64_%APPVEYOR_REPO_COMMIT%_%CONFIGURATION%.zip lib
 
     cd ..
 
-    7z a build\avif_vs2017_x64_%CONFIGURATION%.zip include examples
+    7z a build\avif_vs2017_x64_%APPVEYOR_REPO_COMMIT%_%CONFIGURATION%.zip include examples
 build:
   project: C:/projects/avif/build/avif.sln
   parallel: true
