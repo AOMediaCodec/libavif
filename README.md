@@ -6,6 +6,8 @@ https://aomediacodec.github.io/av1-avif/
 
 It is a work-in-progress, but can already encode and decode all AOM supported YUV formats and bit depths (with alpha).
 
+For now, it is recommended that you checkout/use [tagged releases](https://github.com/joedrago/avif/tags) instead of just using the master branch. I will regularly create new versions as bugfixes and features are added.
+
 # Build Notes
 
 Building libavif requires [NASM](https://nasm.us/) and [CMake](https://cmake.org/).
