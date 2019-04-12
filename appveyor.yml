@@ -46,13 +46,15 @@ after_build:
 - cmd: >-
     mkdir lib
 
+    set ARTIFACT_ZIP=avif_vs2017_x64_%APPVEYOR_REPO_COMMIT:~0,8%_%CONFIGURATION%.zip
+
     copy %CONFIGURATION%\avif_static_x64.lib lib\avif_x64_%CONFIGURATION%.lib
 
-    7z a build\avif_vs2017_x64_%APPVEYOR_REPO_COMMIT%_%CONFIGURATION%.zip lib
+    7z a %ARTIFACT_ZIP% lib
 
     cd ..
 
-    7z a build\avif_vs2017_x64_%APPVEYOR_REPO_COMMIT%_%CONFIGURATION%.zip include examples
+    7z a build\%ARTIFACT_ZIP% include examples
 build:
   project: C:/projects/avif/build/avif.sln
   parallel: true
