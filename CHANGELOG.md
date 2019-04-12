@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `appveyor.yml` (exported from Appveyor)
 
+### Changed
+- Added static library artifact zip to Windows x64 builds (Appveyor)
+
 ## [0.1.0] - 2019-04-12
 ### Added
 - First version. Plenty of bugfixes and features await!

@@ -42,11 +42,18 @@ before_build:
 
     cmake --version
 
-    cmake .. -G %generator%
+    cmake .. -G %generator% -DAVIF_BUILD_STATIC=1
+after_build:
+- cmd: >-
+    7z a build\avif_x64_static.zip include examples
+    cd build
+    mkdir lib
+    copy %CONFIGURATION%\avif_static_x64.lib lib
+    7z a avif_x64_static.zip lib
 build:
   project: C:/projects/avif/build/avif.sln
   parallel: true
   verbosity: minimal
 artifacts:
-- path: build\**\Release\**\*.lib
-  name: libs
+- path: build\avif_x64_static.zip
+  name: Includes and Static Library
