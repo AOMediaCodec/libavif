@@ -23,6 +23,11 @@ init:
     if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2013" ( set generator="Visual Studio 12 2013%arch%" )
 
     echo %generator%
+install:
+- cmd: >-
+    cd %APPVEYOR_BUILD_FOLDER%
+
+    git submodule update --init --recursive
 before_build:
 - cmd: >-
     appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.14.02-win64.zip" -FileName "nasm.zip"
