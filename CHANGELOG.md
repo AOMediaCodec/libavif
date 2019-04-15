@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `appveyor.yml` (exported from Appveyor)
 - Move `ext/aom` to a proper submodule
 - Update AOM to commit [3e3b9342a](https://aomedia.googlesource.com/aom/+/3e3b9342a20147ec6e4f89aa290e20277c1260ce) with minor CMake changes
+- Fix clang warning in `avifVersion()` signature
 
 ### Changed
 - Added static library artifact zip to Windows x64 builds (Appveyor)

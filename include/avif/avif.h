@@ -55,7 +55,7 @@ enum avifChannelIndex
 // ---------------------------------------------------------------------------
 // Utils
 
-const char * avifVersion();
+const char * avifVersion(void);
 
 // Yes, clamp macros are nasty. Do not use them.
 #define AVIF_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
