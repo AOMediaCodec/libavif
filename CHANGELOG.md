@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added `appveyor.yml` (exported from Appveyor)
+- Move `ext/aom` to a proper submodule
 
 ### Changed
 - Added static library artifact zip to Windows x64 builds (Appveyor)

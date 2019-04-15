@@ -1,0 +1,3 @@
+[submodule "ext/aom"]
+	path = ext/aom
+	url = https://github.com/joedrago/aom.git
