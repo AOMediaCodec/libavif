@@ -170,12 +170,14 @@ typedef enum avifNclxColourPrimaries
     AVIF_NCLX_COLOUR_PRIMARIES_XYZ = 10,
     AVIF_NCLX_COLOUR_PRIMARIES_ST428 = 10,
     AVIF_NCLX_COLOUR_PRIMARIES_RP431_2 = 11,
-    AVIF_NCLX_COLOUR_PRIMARIES_RP432_1 = 12,
+    AVIF_NCLX_COLOUR_PRIMARIES_EG432_1 = 12,
+    AVIF_NCLX_COLOUR_PRIMARIES_P3 = 12,
     AVIF_NCLX_COLOUR_PRIMARIES_EBU3213E = 22
 } avifNclxColourPrimaries;
 
 // outPrimaries: rX, rY, gX, gY, bX, bY, wX, wY
 void avifNclxColourPrimariesGetValues(avifNclxColourPrimaries ancp, float outPrimaries[8]);
+avifNclxColourPrimaries avifNclxColourPrimariesFind(float inPrimaries[8], const char ** outName);
 
 typedef enum avifNclxTransferCharacteristics
 {
@@ -225,6 +227,8 @@ typedef enum avifNclxMatrixCoefficients
     AVIF_NCLX_MATRIX_COEFFICIENTS_BT2100 = 9,
     AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL = 10,
     AVIF_NCLX_MATRIX_COEFFICIENTS_ST2085 = 11,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL = 12,
+    AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL = 13,
     AVIF_NCLX_MATRIX_COEFFICIENTS_ICTCP = 14
 } avifNclxMatrixCoefficients;
 

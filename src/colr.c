@@ -7,28 +7,29 @@
 
 #include <string.h>
 
+struct avifColourPrimariesTable
+{
+    int colourPrimariesEnum;
+    const char * name;
+    float primaries[8]; // rX, rY, gX, gY, bX, bY, wX, wY
+};
+static const struct avifColourPrimariesTable table[] = {
+    { AVIF_NCLX_COLOUR_PRIMARIES_BT709, "BT.709", { 0.64f, 0.33f, 0.3f, 0.6f, 0.15f, 0.06f, 0.3127f, 0.329f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_BT470_6M, "BT470-6 System M", { 0.67f, 0.33f, 0.21f, 0.71f, 0.14f, 0.08f, 0.310f, 0.316f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_625, "BT.601-7 625", { 0.64f, 0.33f, 0.29f, 0.60f, 0.15f, 0.06f, 0.3127f, 0.3290f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_525, "BT.601-7 525", { 0.630f, 0.340f, 0.310f, 0.595f, 0.155f, 0.070f, 0.3127f, 0.3290f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_ST240, "ST 240", { 0.630f, 0.340f, 0.310f, 0.595f, 0.155f, 0.070f, 0.3127f, 0.3290f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_GENERIC_FILM, "Generic film", { 0.681f, 0.319f, 0.243f, 0.692f, 0.145f, 0.049f, 0.310f, 0.316f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_BT2020, "BT.2020", { 0.708f, 0.292f, 0.170f, 0.797f, 0.131f, 0.046f, 0.3127f, 0.3290f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_XYZ, "XYZ", { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.3333f, 0.3333f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_RP431_2, "RP 431-2", { 0.680f, 0.320f, 0.265f, 0.690f, 0.150f, 0.060f, 0.314f, 0.351f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_EG432_1, "EG 432-1 (P3)", { 0.680f, 0.320f, 0.265f, 0.690f, 0.150f, 0.060f, 0.3127f, 0.3290f } },
+    { AVIF_NCLX_COLOUR_PRIMARIES_EBU3213E, "EBU 3213-E", { 0.630f, 0.340f, 0.295f, 0.605f, 0.155f, 0.077f, 0.3127f, 0.3290f } }
+};
+static const int tableSize = sizeof(table) / sizeof(table[0]);
+
 void avifNclxColourPrimariesGetValues(avifNclxColourPrimaries ancp, float outPrimaries[8])
 {
-    struct avifColourPrimariesTable
-    {
-        int colourPrimariesEnum;
-        float primaries[8]; // rX, rY, gX, gY, bX, bY, wX, wY
-    };
-    static const struct avifColourPrimariesTable table[] = {
-        { AVIF_NCLX_COLOUR_PRIMARIES_BT709, { 0.64f, 0.33f, 0.3f, 0.6f, 0.15f, 0.06f, 0.3127f, 0.329f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_BT470_6M, { 0.67f, 0.33f, 0.21f, 0.71f, 0.14f, 0.08f, 0.310f, 0.316f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_625, { 0.64f, 0.33f, 0.29f, 0.60f, 0.15f, 0.06f, 0.3127f, 0.3290f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_525, { 0.630f, 0.340f, 0.310f, 0.595f, 0.155f, 0.070f, 0.3127f, 0.3290f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_ST240, { 0.630f, 0.340f, 0.310f, 0.595f, 0.155f, 0.070f, 0.3127f, 0.3290f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_GENERIC_FILM, { 0.681f, 0.319f, 0.243f, 0.692f, 0.145f, 0.049f, 0.310f, 0.316f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_BT2020, { 0.708f, 0.292f, 0.170f, 0.797f, 0.131f, 0.046f, 0.3127f, 0.3290f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_XYZ, { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.3333f, 0.3333f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_RP431_2, { 0.680f, 0.320f, 0.265f, 0.690f, 0.150f, 0.060f, 0.314f, 0.351f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_RP432_1, { 0.680f, 0.320f, 0.265f, 0.690f, 0.150f, 0.060f, 0.3127f, 0.3290f } },
-        { AVIF_NCLX_COLOUR_PRIMARIES_EBU3213E, { 0.630f, 0.340f, 0.295f, 0.605f, 0.155f, 0.077f, 0.3127f, 0.3290f } }
-    };
-    static const int tableSize = sizeof(table) / sizeof(table[0]);
-
     for (int i = 0; i < tableSize; ++i) {
         if (table[i].colourPrimariesEnum == ancp) {
             memcpy(outPrimaries, table[i].primaries, sizeof(table[i].primaries));
@@ -38,6 +39,40 @@ void avifNclxColourPrimariesGetValues(avifNclxColourPrimaries ancp, float outPri
 
     // if we get here, the color primaries are unknown. Just return a reasonable default.
     memcpy(outPrimaries, table[0].primaries, sizeof(table[0].primaries));
+}
+
+static avifBool matchesTo3RoundedPlaces(float a, float b)
+{
+    return (fabsf(a - b) < 0.001f) ? AVIF_TRUE : AVIF_FALSE;
+}
+
+static avifBool primariesMatch(const float p1[8], const float p2[8])
+{
+    return matchesTo3RoundedPlaces(p1[0], p2[0]) &&
+           matchesTo3RoundedPlaces(p1[1], p2[1]) &&
+           matchesTo3RoundedPlaces(p1[2], p2[2]) &&
+           matchesTo3RoundedPlaces(p1[3], p2[3]) &&
+           matchesTo3RoundedPlaces(p1[4], p2[4]) &&
+           matchesTo3RoundedPlaces(p1[5], p2[5]) &&
+           matchesTo3RoundedPlaces(p1[6], p2[6]) &&
+           matchesTo3RoundedPlaces(p1[7], p2[7]);
+}
+
+avifNclxColourPrimaries avifNclxColourPrimariesFind(float inPrimaries[8], const char ** outName)
+{
+    if (outName) {
+        *outName = NULL;
+    }
+
+    for (int i = 0; i < tableSize; ++i) {
+        if (primariesMatch(inPrimaries, table[i].primaries)) {
+            if (outName) {
+                *outName = table[i].name;
+            }
+            return table[i].colourPrimariesEnum;
+        }
+    }
+    return AVIF_NCLX_COLOUR_PRIMARIES_UNKNOWN;
 }
 
 static float fixedToFloat(int32_t fixed)
