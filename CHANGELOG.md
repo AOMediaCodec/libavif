@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Fixed enum name copypasta for `AVIF_NCLX_COLOUR_PRIMARIES_EG432_1`
+- Fix UV limited ranges when doing full<->limited range conversion
 
 ## [0.1.1] - 2019-04-15
 ### Added

@@ -42,7 +42,11 @@ static int yuvToUNorm(int chan, avifRange range, int depth, float maxChannel, fl
     v = AVIF_CLAMP(v, 0.0f, 1.0f);
     int unorm = (int)avifRoundf(v * maxChannel);
     if (range == AVIF_RANGE_LIMITED) {
-        unorm = avifFullToLimited(depth, unorm);
+        if (chan == AVIF_CHAN_Y) {
+            unorm = avifFullToLimitedY(depth, unorm);
+        } else {
+            unorm = avifFullToLimitedUV(depth, unorm);
+        }
     }
     return unorm;
 }
@@ -221,9 +225,9 @@ avifResult avifImageYUVToRGB(avifImage * image)
 
             // adjust for limited/full color range, if need be
             if (image->yuvRange == AVIF_RANGE_LIMITED) {
-                yuvUNorm[0] = avifLimitedToFull(image->depth, yuvUNorm[0]);
-                yuvUNorm[1] = avifLimitedToFull(image->depth, yuvUNorm[1]);
-                yuvUNorm[2] = avifLimitedToFull(image->depth, yuvUNorm[2]);
+                yuvUNorm[0] = avifLimitedToFullY(image->depth, yuvUNorm[0]);
+                yuvUNorm[1] = avifLimitedToFullUV(image->depth, yuvUNorm[1]);
+                yuvUNorm[2] = avifLimitedToFullUV(image->depth, yuvUNorm[2]);
             }
 
             // Convert unorm to float
@@ -265,7 +269,7 @@ avifResult avifImageYUVToRGB(avifImage * image)
     return AVIF_RESULT_OK;
 }
 
-int avifLimitedToFull(int depth, int v)
+int avifLimitedToFullY(int depth, int v)
 {
     switch (depth) {
         case 8:
@@ -284,7 +288,26 @@ int avifLimitedToFull(int depth, int v)
     return v;
 }
 
-int avifFullToLimited(int depth, int v)
+int avifLimitedToFullUV(int depth, int v)
+{
+    switch (depth) {
+        case 8:
+            v = ((v - 16) * 255) / (240 - 16);
+            v = AVIF_CLAMP(v, 0, 255);
+            return v;
+        case 10:
+            v = ((v - 64) * 1023) / (960 - 64);
+            v = AVIF_CLAMP(v, 0, 1023);
+            return v;
+        case 12:
+            v = ((v - 256) * 4095) / (3840 - 256);
+            v = AVIF_CLAMP(v, 0, 4095);
+            return v;
+    }
+    return v;
+}
+
+int avifFullToLimitedY(int depth, int v)
 {
     switch (depth) {
         case 8:
@@ -303,19 +326,21 @@ int avifFullToLimited(int depth, int v)
     return v;
 }
 
-#if 0
-// debug code for limited/full charting
-for (int v = 0; v < 4096; ++v) {
-    int limited8 = avifFullToLimited(8, v);
-    int full8 = avifLimitedToFull(8, limited8);
-    int limited10 = avifFullToLimited(10, v);
-    int full10 = avifLimitedToFull(10, limited10);
-    int limited12 = avifFullToLimited(12, v);
-    int full12 = avifLimitedToFull(12, limited12);
-    printf("Code %d: [ 8bit Limited %d -> Full %d ] [10bit Limited %d -> Full %d ] [12bit Limited %d -> Full %d ]\n",
-        v,
-        limited8, full8,
-        limited10, full10,
-        limited12, full12);
+int avifFullToLimitedUV(int depth, int v)
+{
+    switch (depth) {
+        case 8:
+            v = ((v * (240 - 16)) / 255) + 16;
+            v = AVIF_CLAMP(v, 16, 240);
+            return v;
+        case 10:
+            v = ((v * (960 - 64)) / 1023) + 64;
+            v = AVIF_CLAMP(v, 64, 960);
+            return v;
+        case 12:
+            v = ((v * (3840 - 256)) / 4095) + 256;
+            v = AVIF_CLAMP(v, 256, 3840);
+            return v;
+    }
+    return v;
 }
-#endif

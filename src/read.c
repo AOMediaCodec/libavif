@@ -687,14 +687,14 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
             for (int j = 0; j < image->height; ++j) {
                 for (int i = 0; i < image->height; ++i) {
                     uint16_t * alpha = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
-                    *alpha = (uint16_t)avifLimitedToFull(image->depth, *alpha);
+                    *alpha = (uint16_t)avifLimitedToFullY(image->depth, *alpha);
                 }
             }
         } else {
             for (int j = 0; j < image->height; ++j) {
                 for (int i = 0; i < image->height; ++i) {
                     uint8_t * alpha = &image->alphaPlane[i + (j * image->alphaRowBytes)];
-                    *alpha = (uint8_t)avifLimitedToFull(image->depth, *alpha);
+                    *alpha = (uint8_t)avifLimitedToFullY(image->depth, *alpha);
                 }
             }
         }
