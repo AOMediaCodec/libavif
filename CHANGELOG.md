@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.2] - 2019-04-15
+## [0.1.2] - 2019-04-18
 ### Added
 - `AVIF_NCLX_COLOUR_PRIMARIES_P3` (convenient mirrored value)
 - `avifNclxColourPrimariesFind()` - Finds a builtin avifNclxColourPrimaries and name by a set of primaries
