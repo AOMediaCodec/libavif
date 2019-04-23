@@ -78,22 +78,19 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThread
     // Write ftyp
 
     avifBoxMarker ftyp = avifStreamWriteBox(&s, "ftyp", -1, 0);
-    avifStreamWriteChars(&s, "mif1", 4); // unsigned int(32) major_brand;
+    avifStreamWriteChars(&s, "avif", 4); // unsigned int(32) major_brand;
     avifStreamWriteU32(&s, 0);           // unsigned int(32) minor_version;
-    avifStreamWriteChars(&s, "mif1", 4); // unsigned int(32) compatible_brands[];
-    avifStreamWriteChars(&s, "avif", 4); // ... compatible_brands[]
+    avifStreamWriteChars(&s, "avif", 4); // unsigned int(32) compatible_brands[];
+    avifStreamWriteChars(&s, "mif1", 4); // ... compatible_brands[]
     avifStreamWriteChars(&s, "miaf", 4); // ... compatible_brands[]
+    if ((image->depth == 8) || (image->depth == 10)) {
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+            avifStreamWriteChars(&s, "MA1B", 4); // ... compatible_brands[]
+        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+            avifStreamWriteChars(&s, "MA1A", 4); // ... compatible_brands[]
+        }
+    }
     avifStreamFinishBox(&s, ftyp);
-
-    // -----------------------------------------------------------------------
-    // Write mdat
-
-    avifBoxMarker mdat = avifStreamWriteBox(&s, "mdat", -1, 0);
-    uint32_t colorOBUOffset = (uint32_t)s.offset;
-    avifStreamWrite(&s, colorOBU.data, colorOBU.size);
-    uint32_t alphaOBUOffset = (uint32_t)s.offset;
-    avifStreamWrite(&s, alphaOBU.data, alphaOBU.size);
-    avifStreamFinishBox(&s, mdat);
 
     // -----------------------------------------------------------------------
     // Start meta
@@ -119,6 +116,10 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThread
     // -----------------------------------------------------------------------
     // Write iloc
 
+    // Remember where we want to store the offsets to the mdat OBU offsets to adjust them later.
+    size_t colorOBUOffsetOffset = 0;
+    size_t alphaOBUOffsetOffset = 0;
+
     avifBoxMarker iloc = avifStreamWriteBox(&s, "iloc", 0, 0);
 
     // iloc header
@@ -131,14 +132,16 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThread
     avifStreamWriteU16(&s, 1);                       // unsigned int(16) item_ID;
     avifStreamWriteU16(&s, 0);                       // unsigned int(16) data_reference_index;
     avifStreamWriteU16(&s, 1);                       // unsigned int(16) extent_count;
-    avifStreamWriteU32(&s, colorOBUOffset);          // unsigned int(offset_size*8) extent_offset;
+    colorOBUOffsetOffset = avifStreamOffset(&s);     //
+    avifStreamWriteU32(&s, 0 /* set later */);       // unsigned int(offset_size*8) extent_offset;
     avifStreamWriteU32(&s, (uint32_t)colorOBU.size); // unsigned int(length_size*8) extent_length;
 
     if (hasAlpha) {
         avifStreamWriteU16(&s, 2);                       // unsigned int(16) item_ID;
         avifStreamWriteU16(&s, 0);                       // unsigned int(16) data_reference_index;
         avifStreamWriteU16(&s, 1);                       // unsigned int(16) extent_count;
-        avifStreamWriteU32(&s, alphaOBUOffset);          // unsigned int(offset_size*8) extent_offset;
+        alphaOBUOffsetOffset = avifStreamOffset(&s);     //
+        avifStreamWriteU32(&s, 0 /* set later */);       // unsigned int(offset_size*8) extent_offset;
         avifStreamWriteU32(&s, (uint32_t)alphaOBU.size); // unsigned int(length_size*8) extent_length;
     }
 
@@ -281,9 +284,36 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThread
     avifStreamFinishBox(&s, iprp);
 
     // -----------------------------------------------------------------------
-    // Finish up stream
+    // Finish meta box
 
     avifStreamFinishBox(&s, meta);
+
+    // -----------------------------------------------------------------------
+    // Write mdat
+
+    avifBoxMarker mdat = avifStreamWriteBox(&s, "mdat", -1, 0);
+    uint32_t colorOBUOffset = (uint32_t)s.offset;
+    avifStreamWrite(&s, colorOBU.data, colorOBU.size);
+    uint32_t alphaOBUOffset = (uint32_t)s.offset;
+    avifStreamWrite(&s, alphaOBU.data, alphaOBU.size);
+    avifStreamFinishBox(&s, mdat);
+
+    // -----------------------------------------------------------------------
+    // Finish up stream
+
+    // Set offsets needed in meta box based on where we eventually wrote mdat
+    size_t prevOffset = avifStreamOffset(&s);
+    if (colorOBUOffsetOffset != 0) {
+        avifStreamSetOffset(&s, colorOBUOffsetOffset);
+        avifStreamWriteU32(&s, colorOBUOffset);
+    }
+    if (alphaOBUOffsetOffset != 0) {
+        avifStreamSetOffset(&s, alphaOBUOffsetOffset);
+        avifStreamWriteU32(&s, alphaOBUOffset);
+    }
+    avifStreamSetOffset(&s, prevOffset);
+
+    // Close write stream
     avifStreamFinishWrite(&s);
 
     // -----------------------------------------------------------------------

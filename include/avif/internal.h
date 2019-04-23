@@ -129,6 +129,8 @@ void avifStreamStart(avifStream * stream, avifRawData * raw);
 // Read
 avifBool avifStreamHasBytesLeft(avifStream * stream, size_t byteCount);
 size_t avifStreamRemainingBytes(avifStream * stream);
+size_t avifStreamOffset(avifStream * stream);
+void avifStreamSetOffset(avifStream * stream, size_t offset);
 avifBool avifStreamSkip(avifStream * stream, size_t byteCount);
 avifBool avifStreamRead(avifStream * stream, uint8_t * data, size_t size);
 avifBool avifStreamReadU16(avifStream * stream, uint16_t * v);

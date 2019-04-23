@@ -29,6 +29,19 @@ size_t avifStreamRemainingBytes(avifStream * stream)
     return stream->raw->size - stream->offset;
 }
 
+size_t avifStreamOffset(avifStream * stream)
+{
+    return stream->offset;
+}
+
+void avifStreamSetOffset(avifStream * stream, size_t offset)
+{
+    stream->offset = offset;
+    if (stream->offset > stream->raw->size) {
+        stream->offset = stream->raw->size;
+    }
+}
+
 avifBool avifStreamSkip(avifStream * stream, size_t byteCount)
 {
     if (!avifStreamHasBytesLeft(stream, byteCount)) {
