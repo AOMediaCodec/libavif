@@ -132,6 +132,7 @@ typedef enum avifPixelFormat
     AVIF_PIXEL_FORMAT_YUV420,
     AVIF_PIXEL_FORMAT_YV12
 } avifPixelFormat;
+const char * avifPixelFormatToString(avifPixelFormat format);
 
 typedef struct avifPixelFormatInfo
 {

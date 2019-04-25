@@ -14,6 +14,20 @@ const char * avifVersion(void)
     return AVIF_VERSION_STRING;
 }
 
+const char * avifPixelFormatToString(avifPixelFormat format)
+{
+    switch (format) {
+        case AVIF_PIXEL_FORMAT_YUV444: return "YUV444";
+        case AVIF_PIXEL_FORMAT_YUV420: return "YUV420";
+        case AVIF_PIXEL_FORMAT_YUV422: return "YUV422";
+        case AVIF_PIXEL_FORMAT_YV12:   return "YV12";
+        case AVIF_PIXEL_FORMAT_NONE:
+        default:
+            break;
+    }
+    return "Unknown";
+}
+
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 {
     memset(info, 0, sizeof(avifPixelFormatInfo));

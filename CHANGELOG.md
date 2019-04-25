@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `avifPixelFormatToString()` convenience function for debugging/printing
+- `avifenc` and `avifdec` "apps" which show basic bidirectional conversion to y4m
 
 ## [0.1.3] - 2019-04-23
 ### Changed

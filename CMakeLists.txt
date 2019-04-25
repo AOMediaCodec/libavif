@@ -48,6 +48,23 @@ if(AVIF_BUILD_EXAMPLES)
     target_link_libraries(avif_example1 avif)
 endif()
 
+option(AVIF_BUILD_APPS "Build avif apps." OFF)
+if(AVIF_BUILD_APPS)
+    include_directories(apps/shared)
+    add_executable(avifenc
+        apps/avifenc.c
+        apps/shared/y4m.c
+        apps/shared/avifutil.c
+    )
+    target_link_libraries(avifenc avif)
+    add_executable(avifdec
+        apps/avifdec.c
+        apps/shared/y4m.c
+        apps/shared/avifutil.c
+    )
+    target_link_libraries(avifdec avif)
+endif()
+
 macro(avif_set_folder_safe target folder)
     if(TARGET ${target})
         set_target_properties(${target} PROPERTIES FOLDER ${folder})
