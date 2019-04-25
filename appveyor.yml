@@ -49,6 +49,10 @@ before_build:
     cmake .. -G %generator% -DAVIF_BUILD_STATIC=1
 after_build:
 - cmd: >-
+    copy %CONFIGURATION%\avifenc.exe .
+
+    copy %CONFIGURATION%\avifdec.exe .
+
     mkdir lib
 
     set ARTIFACT_ZIP=avif_vs2017_x64_%APPVEYOR_REPO_COMMIT:~0,8%_%CONFIGURATION%.zip
@@ -67,3 +71,5 @@ build:
 artifacts:
 - path: 'build\avif_vs2017_x64_*.zip'
   name: Static Lib and Includes
+- path: 'build\*.exe'
+  name: Basic apps
