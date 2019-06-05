@@ -85,6 +85,7 @@ static float fixedToFloat(int32_t fixed)
     return sign * ((float)((fixed >> 16) & 0xffff) + ((float)(fixed & 0xffff) / 65536.0f));
 }
 
+#if 0
 static void convertXYZToXYY(float XYZ[3], float xyY[3], float whitePointX, float whitePointY)
 {
     float sum = XYZ[0] + XYZ[1] + XYZ[2];
@@ -99,7 +100,6 @@ static void convertXYZToXYY(float XYZ[3], float xyY[3], float whitePointX, float
     xyY[2] = XYZ[1];
 }
 
-#if 0
 static void convertXYYToXYZ(float * xyY, float * XYZ)
 {
     if (xyY[2] <= 0.0f) {
@@ -129,7 +129,7 @@ static void convertXYZToXY(float XYZ[3], float xy[2], float whitePointX, float w
     xy[0] = xyY[0];
     xy[1] = xyY[1];
 }
-#endif
+#endif /* if 0 */
 
 static float calcMaxY(float r, float g, float b, gbMat3 * colorants)
 {
@@ -138,9 +138,7 @@ static float calcMaxY(float r, float g, float b, gbMat3 * colorants)
     rgb.e[1] = g;
     rgb.e[2] = b;
     gb_mat3_mul_vec3(&XYZ, colorants, rgb);
-    float xyY[3];
-    convertXYZToXYY(&XYZ.e[0], xyY, 0.0f, 0.0f);
-    return xyY[2];
+    return XYZ.y;
 }
 
 static avifBool readXYZ(uint8_t * data, size_t size, float xyz[3])
@@ -160,9 +158,6 @@ static avifBool readXYZ(uint8_t * data, size_t size, float xyz[3])
     xyz[0] = fixedToFloat(fixedXYZ[0]);
     xyz[1] = fixedToFloat(fixedXYZ[1]);
     xyz[2] = fixedToFloat(fixedXYZ[2]);
-
-    float xyY[3];
-    convertXYZToXYY(xyz, xyY, 0.0f, 0.0f);
     return AVIF_TRUE;
 }
 
