@@ -701,9 +701,6 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
     }
 #endif
 
-    // Make this optional?
-    avifImageYUVToRGB(image);
-
     if (codec) {
         avifCodecDestroy(codec);
     }

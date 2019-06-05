@@ -53,6 +53,7 @@ int main(int argc, char * argv[])
         avifImage * decoded = avifImageCreateEmpty();
         avifResult decodeResult = avifImageRead(decoded, &raw);
         if (decodeResult == AVIF_RESULT_OK) {
+            avifImageYUVToRGB(decoded);
             for (int j = 0; j < height; ++j) {
                 for (int i = 0; i < width; ++i) {
                     for (int plane = 0; plane < 3; ++plane) {
