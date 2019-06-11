@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `avifenc` and `avifdec` "apps" which show basic bidirectional conversion to y4m
 - Remove all calls to `convertXYZToXYY()` as they were all unnecessary
 - Make calling `avifImageYUVToRGB()` upon reading an avif optional
+- Moved `ext/aom` submodule to use official remote
 
 ## [0.1.3] - 2019-04-23
 ### Changed
