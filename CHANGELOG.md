@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove all calls to `convertXYZToXYY()` as they were all unnecessary
 - Make calling `avifImageYUVToRGB()` upon reading an avif optional
 - Moved `ext/aom` submodule to use official remote
+- Update `ext/aom` submodule to commit [38711e7fe](https://aomedia.googlesource.com/aom/+/38711e7fe1eff68296b0324a9809804aec359fa5)
 
 ## [0.1.3] - 2019-04-23
 ### Changed
