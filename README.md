@@ -16,7 +16,7 @@ Make sure nasm is available and in your PATH on your machine, then use CMake to 
 
 # Prebuilt Library (Windows)
 
-If you're building on Windows with VS2017 and want to try out libavif without going through the build process, static library builds for both Debug and Release are available on [Appveyor](https://ci.appveyor.com/project/joedrago/avif).
+If you're building on Windows with VS2017 and want to try out libavif without going through the build process, static library builds for both Debug and Release are available on [Appveyor](https://ci.appveyor.com/project/louquillio/libavif).
 
 ---
 
