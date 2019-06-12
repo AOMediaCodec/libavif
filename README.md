@@ -1,4 +1,4 @@
-# libavif [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/joedrago/avif?branch=master&svg=true)](https://ci.appveyor.com/project/joedrago/avif) [![Travis Build Status](https://travis-ci.com/joedrago/avif.svg?branch=master)](https://travis-ci.com/joedrago/avif)
+# libavif [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/louquillio/libavif?branch=master&svg=true)](https://ci.appveyor.com/project/louquillio/libavif) [![Travis Build Status](https://travis-ci.com/AOMediaCodec/libavif.svg?branch=master)](https://travis-ci.com/AOMediaCodec/libavif)
 
 This library aims to be a friendly, portable C implementation of the AV1 Image File Format, as described here:
 
