@@ -23,7 +23,21 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static avifBool avifImageIsOpaque(avifImage * image);
 static void writeConfigBox(avifStream * s, avifCodecConfigurationBox * cfg);
 
-avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThreads, int quality)
+avifEncoder * avifEncoderCreate(void)
+{
+    avifEncoder * encoder = (avifEncoder *)avifAlloc(sizeof(avifEncoder));
+    memset(encoder, 0, sizeof(avifEncoder));
+    encoder->maxThreads = 1;
+    encoder->quality = AVIF_BEST_QUALITY;
+    return encoder;
+}
+
+void avifEncoderDestroy(avifEncoder * encoder)
+{
+    avifFree(encoder);
+}
+
+avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawData * output)
 {
     if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
         return AVIF_RESULT_UNSUPPORTED_DEPTH;
@@ -67,7 +81,7 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThread
         alphaOBUPtr = NULL;
     }
 
-    avifResult encodeResult = avifCodecEncodeImage(codec, image, numThreads, quality, &colorOBU, alphaOBUPtr);
+    avifResult encodeResult = avifCodecEncodeImage(codec, image, encoder, &colorOBU, alphaOBUPtr);
     if (encodeResult != AVIF_RESULT_OK) {
         result = encodeResult;
         goto writeCleanup;
@@ -319,13 +333,13 @@ avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThread
     // -----------------------------------------------------------------------
     // IO stats
 
-    image->ioStats.colorOBUSize = colorOBU.size;
-    image->ioStats.alphaOBUSize = alphaOBU.size;
-
-    result = AVIF_RESULT_OK;
+    encoder->ioStats.colorOBUSize = colorOBU.size;
+    encoder->ioStats.alphaOBUSize = alphaOBU.size;
 
     // -----------------------------------------------------------------------
-    // Cleanup
+    // Set result and cleanup
+
+    result = AVIF_RESULT_OK;
 
 writeCleanup:
     if (codec) {

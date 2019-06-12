@@ -297,14 +297,14 @@ typedef struct avifImage
     avifProfileFormat profileFormat;
     avifRawData icc;
     avifNclxColorProfile nclx;
-
-    // Useful stats from the most recent read/write
-    struct IOStats
-    {
-        size_t colorOBUSize;
-        size_t alphaOBUSize;
-    } ioStats;
 } avifImage;
+
+// Useful stats related to a read/write
+typedef struct avifIOStats
+{
+    size_t colorOBUSize;
+    size_t alphaOBUSize;
+} avifIOStats;
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
 avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
@@ -316,13 +316,34 @@ void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx);
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
-avifResult avifImageRead(avifImage * image, avifRawData * input);
 
-// avifImageWrite notes:
-// * if returns AVIF_RESULT_OK, output must be freed with avifRawDataFree()
-// * if (numThreads < 2), multithreading is disabled
+typedef struct avifDecoder
+{
+    // stats from the most recent read
+    avifIOStats ioStats;
+} avifDecoder;
+
+avifDecoder * avifDecoderCreate(void);
+avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData * input);
+void avifDecoderDestroy(avifDecoder * decoder);
+
+// avifEncoder notes:
+// * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRawDataFree()
+// * if (maxThreads < 2), multithreading is disabled
 // * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
-avifResult avifImageWrite(avifImage * image, avifRawData * output, int numThreads, int quality);
+typedef struct avifEncoder
+{
+    // settings
+    int maxThreads;
+    int quality;
+
+    // stats from the most recent write
+    avifIOStats ioStats;
+} avifEncoder;
+
+avifEncoder * avifEncoderCreate(void);
+avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawData * output);
+void avifEncoderDestroy(avifEncoder * encoder);
 
 // Used by avifImageRead/avifImageWrite
 avifResult avifImageRGBToYUV(avifImage * image);

@@ -83,7 +83,8 @@ int main(int argc, char * argv[])
     inputFile = NULL;
 
     avifImage * avif = avifImageCreateEmpty();
-    avifResult decodeResult = avifImageRead(avif, &raw);
+    avifDecoder * decoder = avifDecoderCreate();
+    avifResult decodeResult = avifDecoderRead(decoder, avif, &raw);
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
         printf("Image details:\n");
@@ -93,6 +94,7 @@ int main(int argc, char * argv[])
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
     }
     avifRawDataFree(&raw);
+    avifDecoderDestroy(decoder);
     avifImageDestroy(avif);
     return 0;
 }

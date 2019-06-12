@@ -35,7 +35,11 @@ int main(int argc, char * argv[])
     // apgImageSetICC(image, fakeICC, fakeICCSize);
 
     avifRawData raw = AVIF_RAW_DATA_EMPTY;
-    avifResult res = avifImageWrite(image, &raw, 1, 50);
+    avifEncoder * encoder = avifEncoderCreate();
+    encoder->maxThreads = 1;
+    encoder->quality = AVIF_BEST_QUALITY;
+    avifResult res = avifEncoderWrite(encoder, image, &raw);
+    avifEncoderDestroy(encoder);
 
 #if 0
     // debug
@@ -51,7 +55,10 @@ int main(int argc, char * argv[])
     if (res == AVIF_RESULT_OK) {
         // Decode it
         avifImage * decoded = avifImageCreateEmpty();
-        avifResult decodeResult = avifImageRead(decoded, &raw);
+        avifDecoder * decoder = avifDecoderCreate();
+        avifResult decodeResult = avifDecoderRead(decoder, decoded, &raw);
+        avifDecoderDestroy(decoder);
+
         if (decodeResult == AVIF_RESULT_OK) {
             avifImageYUVToRGB(decoded);
             for (int j = 0; j < height; ++j) {
@@ -66,6 +73,7 @@ int main(int argc, char * argv[])
                 }
             }
         }
+
         avifImageDestroy(decoded);
     }
 

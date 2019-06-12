@@ -94,6 +94,7 @@ int main(int argc, char * argv[])
     int quality = AVIF_BEST_QUALITY;
     avifBool nclxSet = AVIF_FALSE;
     avifNclxColorProfile nclx;
+    avifEncoder * encoder = NULL;
 
     int argIndex = 1;
     const char * filenames[2] = { NULL, NULL };
@@ -162,14 +163,17 @@ int main(int argc, char * argv[])
     avifImageDump(avif);
 
     printf("Encoding with quality %d (%s), %d worker thread(s), please wait...\n", quality, qualityString(quality), jobs);
-    avifResult encodeResult = avifImageWrite(avif, &raw, jobs, quality);
+    encoder = avifEncoderCreate();
+    encoder->maxThreads = jobs;
+    encoder->quality = quality;
+    avifResult encodeResult = avifEncoderWrite(encoder, avif, &raw);
     if (encodeResult != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(encodeResult));
         goto cleanup;
     }
 
     printf("Encoded successfully.\n");
-    printf(" * ColorOBU size: %zu bytes\n", avif->ioStats.colorOBUSize);
+    printf(" * ColorOBU size: %zu bytes\n", encoder->ioStats.colorOBUSize);
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
@@ -180,6 +184,9 @@ int main(int argc, char * argv[])
     printf("Wrote: %s\n", outputFilename);
 
 cleanup:
+    if (encoder) {
+        avifEncoderDestroy(encoder);
+    }
     avifImageDestroy(avif);
     avifRawDataFree(&raw);
     return returnCode;

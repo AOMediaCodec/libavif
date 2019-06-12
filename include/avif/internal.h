@@ -102,7 +102,7 @@ avifBool avifCodecDecode(avifCodec * codec, avifCodecPlanes planes, avifRawData 
 avifCodecImageSize avifCodecGetImageSize(avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
 avifBool avifCodecAlphaLimitedRange(avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
 avifResult avifCodecGetDecodedImage(avifCodec * codec, avifImage * image);
-avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, int numThreads, int colorQuality, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
+avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
 void avifCodecGetConfigurationBox(avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
 
 // ---------------------------------------------------------------------------

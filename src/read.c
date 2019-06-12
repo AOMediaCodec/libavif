@@ -538,7 +538,19 @@ static avifBool avifParse(avifData * data, uint8_t * raw, size_t rawLen)
 
 // ---------------------------------------------------------------------------
 
-avifResult avifImageRead(avifImage * image, avifRawData * input)
+avifDecoder * avifDecoderCreate(void)
+{
+    avifDecoder * decoder = (avifDecoder *)avifAlloc(sizeof(avifDecoder));
+    memset(decoder, 0, sizeof(avifDecoder));
+    return decoder;
+}
+
+void avifDecoderDestroy(avifDecoder * decoder)
+{
+    avifFree(decoder);
+}
+
+avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData * input)
 {
     avifCodec * codec = NULL;
 
@@ -705,7 +717,7 @@ avifResult avifImageRead(avifImage * image, avifRawData * input)
         avifCodecDestroy(codec);
     }
 
-    image->ioStats.colorOBUSize = colorOBU.size;
-    image->ioStats.alphaOBUSize = alphaOBU.size;
+    decoder->ioStats.colorOBUSize = colorOBU.size;
+    decoder->ioStats.alphaOBUSize = alphaOBU.size;
     return AVIF_RESULT_OK;
 }

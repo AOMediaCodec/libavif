@@ -5,9 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added `avifEncoder` and `avifDecoder` to match `avifImage`'s pattern and allow for easier future parameterization
+
 ### Changed
 - Renamed project in cmake to `libavif` to match new official repo naming
 - Updated appveyor script to use `libavif`
+- Updated examples and apps to use new encoder/decoder pattern
 
 ## [0.1.4] - 2019-06-11
 ### Added
