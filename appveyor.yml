@@ -55,7 +55,7 @@ after_build:
 
     mkdir lib
 
-    set ARTIFACT_ZIP=avif_vs2017_x64_%APPVEYOR_REPO_COMMIT:~0,8%_%CONFIGURATION%.zip
+    set ARTIFACT_ZIP=libavif_vs2017_x64_%APPVEYOR_REPO_COMMIT:~0,8%_%CONFIGURATION%.zip
 
     copy %CONFIGURATION%\avif_static_x64.lib lib\avif_x64_%CONFIGURATION%.lib
 
@@ -65,11 +65,11 @@ after_build:
 
     7z a build\%ARTIFACT_ZIP% include examples
 build:
-  project: C:/projects/avif/build/avif.sln
+  project: C:/projects/libavif/build/libavif.sln
   parallel: true
   verbosity: minimal
 artifacts:
-- path: 'build\avif_vs2017_x64_*.zip'
+- path: 'build\libavif_vs2017_x64_*.zip'
   name: Static Lib and Includes
 - path: 'build\*.exe'
   name: Basic apps
