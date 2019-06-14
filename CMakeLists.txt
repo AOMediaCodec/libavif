@@ -65,13 +65,26 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(avifdec avif)
 endif()
 
-macro(avif_set_folder_safe target folder)
-    if(TARGET ${target})
-        set_target_properties(${target} PROPERTIES FOLDER ${folder})
+# Install rules
+if(NOT CMAKE_SKIP_INSTALL_RULES)
+    install(
+        FILES "include/avif/avif.h" "include/avif/internal.h"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/avif"
+    )
+    install(
+        TARGETS avif
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
+    )
+    if(AVIF_BUILD_APPS)
+        install(
+            TARGETS avifenc avifdec
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}"
+        )
     endif()
-endmacro()
+endif()
 
 if(WIN32)
+    # Allow for continuous builders to make a static avif library package
     option(AVIF_BUILD_STATIC "Build static avif library (with codec/gb included)" OFF)
     if(AVIF_BUILD_STATIC)
         add_custom_command(
@@ -86,8 +99,13 @@ if(WIN32)
         )
     endif()
 
+    # Visual Studio organizing
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
+    macro(avif_set_folder_safe target folder)
+        if(TARGET ${target})
+            set_target_properties(${target} PROPERTIES FOLDER ${folder})
+        endif()
+    endmacro()
     avif_set_folder_safe(aom "ext/avif")
     avif_set_folder_safe(aom_av1 "ext/avif")
     avif_set_folder_safe(aom_av1_common "ext/avif")
@@ -131,7 +149,6 @@ if(WIN32)
     avif_set_folder_safe(aom_version_check "ext/avif")
     avif_set_folder_safe(avif "ext/avif")
     avif_set_folder_safe(dist "ext/avif")
-
     if(NOT AVIF_EXTERNAL_GB)
         avif_set_folder_safe(gb "ext/avif")
     endif()
