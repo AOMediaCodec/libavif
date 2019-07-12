@@ -234,7 +234,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
                 avifStreamFinishBox(&s, colr);
                 ++ipcoIndex;
                 ipmaPush(&ipmaColor, ipcoIndex);
-            } else if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && (image->icc.data > 0)) {
+            } else if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && (image->icc.size > 0)) {
                 avifBoxMarker colr = avifStreamWriteBox(&s, "colr", -1, 0);
                 avifStreamWriteChars(&s, "prof", 4); // unsigned int(32) colour_type;
                 avifStreamWrite(&s, image->icc.data, image->icc.size);
