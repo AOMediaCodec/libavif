@@ -280,16 +280,16 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, uint8_t * raw,
         uint8_t associationCount;
         CHECK(avifStreamRead(&s, &associationCount, 1));
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
-            avifBool essential = AVIF_FALSE;
+            // avifBool essential = AVIF_FALSE; // currently unused
             uint16_t propertyIndex = 0;
             if (propertyIndexIsU16) {
                 CHECK(avifStreamReadU16(&s, &propertyIndex));
-                essential = (propertyIndex & 0x8000) ? AVIF_TRUE : AVIF_FALSE;
+                // essential = (propertyIndex & 0x8000) ? AVIF_TRUE : AVIF_FALSE;
                 propertyIndex &= 0x7fff;
             } else {
                 uint8_t tmp;
                 CHECK(avifStreamRead(&s, &tmp, 1));
-                essential = (tmp & 0x80) ? AVIF_TRUE : AVIF_FALSE;
+                // essential = (tmp & 0x80) ? AVIF_TRUE : AVIF_FALSE;
                 propertyIndex = tmp & 0x7f;
             }
 

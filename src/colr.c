@@ -9,7 +9,7 @@
 
 struct avifColourPrimariesTable
 {
-    int colourPrimariesEnum;
+    avifNclxColourPrimaries colourPrimariesEnum;
     const char * name;
     float primaries[8]; // rX, rY, gX, gY, bX, bY, wX, wY
 };

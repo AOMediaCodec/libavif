@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
+- Fix some compiler warnings
 
 ## [0.2.0] - 2019-06-12
 ### Added
