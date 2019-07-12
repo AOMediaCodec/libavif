@@ -93,7 +93,8 @@ typedef enum avifResult
     AVIF_RESULT_DECODE_ALPHA_FAILED,
     AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH,
     AVIF_RESULT_ISPE_SIZE_MISMATCH,
-    AVIF_UNSUPPORTED_PIXEL_FORMAT
+    AVIF_RESULT_NO_CODEC_AVAILABLE,
+    AVIF_RESULT_
 } avifResult;
 
 const char * avifResultToString(avifResult result);

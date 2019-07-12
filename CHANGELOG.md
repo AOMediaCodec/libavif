@@ -6,13 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added install rules in CMake
+- Added new CMake option `AVIF_CODEC_AOM` to enable/disable the usage of AOM's codec (default: on)
 
 ### Changed
-- Minor CMake cleanup
-
-### Changed
-- Various README url updates to point at official repo
+- Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
 
 ## [0.2.0] - 2019-06-12
 ### Added

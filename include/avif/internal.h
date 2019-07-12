@@ -88,22 +88,32 @@ typedef struct avifCodecImageSize
     uint32_t height;
 } avifCodecImageSize;
 
+struct avifCodec;
 struct avifCodecInternal;
+
+typedef avifBool (* avifCodecDecodeFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifRawData * obu);
+typedef avifCodecImageSize (* avifCodecGetImageSizeFunc)(struct avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
+typedef avifBool (* avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
+typedef avifResult (* avifCodecGetDecodedImageFunc)(struct avifCodec * codec, avifImage * image);
+typedef avifResult (* avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
+typedef void (* avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
+typedef void (* avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
 {
     struct avifCodecInternal * internal; // up to each codec to use how it wants
+
+    avifCodecDecodeFunc decode;
+    avifCodecGetImageSizeFunc getImageSize;
+    avifCodecAlphaLimitedRangeFunc alphaLimitedRange;
+    avifCodecGetDecodedImageFunc getDecodedImage;
+    avifCodecEncodeImageFunc encodeImage;
+    avifCodecGetConfigurationBoxFunc getConfigurationBox;
+    avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-avifCodec * avifCodecCreate();
+avifCodec * avifCodecCreateAOM();
 void avifCodecDestroy(avifCodec * codec);
-
-avifBool avifCodecDecode(avifCodec * codec, avifCodecPlanes planes, avifRawData * obu);
-avifCodecImageSize avifCodecGetImageSize(avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
-avifBool avifCodecAlphaLimitedRange(avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
-avifResult avifCodecGetDecodedImage(avifCodec * codec, avifImage * image);
-avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
-void avifCodecGetConfigurationBox(avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
 
 // ---------------------------------------------------------------------------
 // avifStream

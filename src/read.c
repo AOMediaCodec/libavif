@@ -554,6 +554,11 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
 {
     avifCodec * codec = NULL;
 
+#ifndef AVIF_CODEC_AOM
+    // Just bail out early, we're not surviving this function without a decoder compiled in
+    return AVIF_RESULT_NO_CODEC_AVAILABLE;
+#endif
+
     // -----------------------------------------------------------------------
     // Parse BMFF boxes
 
@@ -647,21 +652,26 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
     }
     avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
 
-    codec = avifCodecCreate();
-    if (!avifCodecDecode(codec, AVIF_CODEC_PLANES_COLOR, &colorOBU)) {
+#ifdef AVIF_CODEC_AOM
+    codec = avifCodecCreateAOM();
+#else
+// #error No decoder available!
+    return AVIF_RESULT_NO_CODEC_AVAILABLE;
+#endif
+    if (!codec->decode(codec, AVIF_CODEC_PLANES_COLOR, &colorOBU)) {
         avifCodecDestroy(codec);
         return AVIF_RESULT_DECODE_COLOR_FAILED;
     }
-    avifCodecImageSize colorPlanesSize = avifCodecGetImageSize(codec, AVIF_CODEC_PLANES_COLOR);
+    avifCodecImageSize colorPlanesSize = codec->getImageSize(codec, AVIF_CODEC_PLANES_COLOR);
 
     avifCodecImageSize alphaPlanesSize;
     memset(&alphaPlanesSize, 0, sizeof(alphaPlanesSize));
     if (hasAlpha) {
-        if (!avifCodecDecode(codec, AVIF_CODEC_PLANES_ALPHA, &alphaOBU)) {
+        if (!codec->decode(codec, AVIF_CODEC_PLANES_ALPHA, &alphaOBU)) {
             avifCodecDestroy(codec);
             return AVIF_RESULT_DECODE_ALPHA_FAILED;
         }
-        alphaPlanesSize = avifCodecGetImageSize(codec, AVIF_CODEC_PLANES_ALPHA);
+        alphaPlanesSize = codec->getImageSize(codec, AVIF_CODEC_PLANES_ALPHA);
 
         if ((colorPlanesSize.width != alphaPlanesSize.width) || (colorPlanesSize.height != alphaPlanesSize.height)) {
             avifCodecDestroy(codec);
@@ -686,14 +696,14 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
 
     avifImageFreePlanes(image, AVIF_PLANES_ALL);
 
-    avifResult imageResult = avifCodecGetDecodedImage(codec, image);
+    avifResult imageResult = codec->getDecodedImage(codec, image);
     if (imageResult != AVIF_RESULT_OK) {
         avifCodecDestroy(codec);
         return imageResult;
     }
 
 #if defined(AVIF_FIX_STUDIO_ALPHA)
-    if (hasAlpha && avifCodecAlphaLimitedRange(codec)) {
+    if (hasAlpha && codec->alphaLimitedRange(codec)) {
         // Naughty! Alpha planes are supposed to be full range. Correct that here.
         if (avifImageUsesU16(image)) {
             for (int j = 0; j < image->height; ++j) {

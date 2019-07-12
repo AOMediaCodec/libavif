@@ -46,7 +46,14 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     avifRawData colorOBU = AVIF_RAW_DATA_EMPTY;
     avifRawData alphaOBU = AVIF_RAW_DATA_EMPTY;
-    avifCodec * codec = avifCodecCreate();
+    avifCodec * codec = NULL;
+
+#ifdef AVIF_CODEC_AOM
+    codec = avifCodecCreateAOM();
+#else
+    // Just bail out early, we're not surviving this function without an encoder compiled in
+    return AVIF_RESULT_NO_CODEC_AVAILABLE;
+#endif
 
     avifStream s;
     avifStreamStart(&s, output);
@@ -81,7 +88,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
         alphaOBUPtr = NULL;
     }
 
-    avifResult encodeResult = avifCodecEncodeImage(codec, image, encoder, &colorOBU, alphaOBUPtr);
+    avifResult encodeResult = codec->encodeImage(codec, image, encoder, &colorOBU, alphaOBUPtr);
     if (encodeResult != AVIF_RESULT_OK) {
         result = encodeResult;
         goto writeCleanup;
@@ -246,7 +253,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
             ipmaPush(&ipmaColor, ipcoIndex);
 
             avifCodecConfigurationBox colorConfig;
-            avifCodecGetConfigurationBox(codec, AVIF_CODEC_PLANES_COLOR, &colorConfig);
+            codec->getConfigurationBox(codec, AVIF_CODEC_PLANES_COLOR, &colorConfig);
             writeConfigBox(&s, &colorConfig);
             ++ipcoIndex;
             ipmaPush(&ipmaColor, ipcoIndex);
@@ -260,7 +267,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
                 ipmaPush(&ipmaAlpha, ipcoIndex);
 
                 avifCodecConfigurationBox alphaConfig;
-                avifCodecGetConfigurationBox(codec, AVIF_CODEC_PLANES_ALPHA, &alphaConfig);
+                codec->getConfigurationBox(codec, AVIF_CODEC_PLANES_ALPHA, &alphaConfig);
                 writeConfigBox(&s, &alphaConfig);
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
