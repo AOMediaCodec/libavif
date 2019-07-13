@@ -554,7 +554,7 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
 {
     avifCodec * codec = NULL;
 
-#ifndef AVIF_CODEC_AOM
+#if !defined(AVIF_CODEC_AOM) && !defined(AVIF_CODEC_DAV1D)
     // Just bail out early, we're not surviving this function without a decoder compiled in
     return AVIF_RESULT_NO_CODEC_AVAILABLE;
 #endif
@@ -652,7 +652,9 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
     }
     avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
 
-#ifdef AVIF_CODEC_AOM
+#if defined(AVIF_CODEC_DAV1D)
+    codec = avifCodecCreateDav1d();
+#elif defined(AVIF_CODEC_AOM)
     codec = avifCodecCreateAOM();
 #else
 // #error No decoder available!

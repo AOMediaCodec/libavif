@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added new CMake option `AVIF_CODEC_AOM` to enable/disable the usage of AOM's codec (default: on)
+- Added new CMake option `AVIF_CODEC_DAV1D` to enable/disable the usage of dav1d's codec (default: off)
+- Added `codec_dav1d.c`, which provides decoding via `libdav1d`
 
 ### Changed
 - Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)

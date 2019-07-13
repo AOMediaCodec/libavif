@@ -9,6 +9,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 endif()
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" ON)
+option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
 
 add_subdirectory(ext)
 
@@ -33,6 +34,10 @@ set(AVIF_SRCS
 
 set(AVIF_CODEC_LIBARIES)
 if(AVIF_CODEC_AOM)
+    message(STATUS "libavif: Encoding library: aom")
+    if(NOT AVIF_CODEC_DAV1D)
+        message(STATUS "libavif: Decoding library: aom")
+    endif()
     add_definitions(-DAVIF_CODEC_AOM=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_aom.c
@@ -42,10 +47,27 @@ if(AVIF_CODEC_AOM)
         "${AOM_BINARY_DIR}"
     )
     set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} aom)
+else()
+    message(STATUS "libavif: Encoding library: (none)")
+endif()
+if(AVIF_CODEC_DAV1D)
+    message(STATUS "libavif: Decoding library: dav1d")
+    add_definitions(-DAVIF_CODEC_DAV1D=1)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/codec_dav1d.c
+    )
+    FIND_LIBRARY(dav1d NAMES dav1d)
+    set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
+endif()
+if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
+    message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
 endif()
 
 add_library(avif STATIC ${AVIF_SRCS})
 target_link_libraries(avif gb ${AVIF_CODEC_LIBARIES})
+if(NOT WIN32)
+    target_link_libraries(avif m)
+endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
