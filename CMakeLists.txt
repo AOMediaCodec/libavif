@@ -92,6 +92,14 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(avifdec avif)
 endif()
 
+option(AVIF_BUILD_TESTS "Build avif tests (fuzzing)." OFF)
+if(AVIF_BUILD_TESTS)
+    add_executable(aviffuzz
+        tests/aviffuzz.c
+    )
+    target_link_libraries(aviffuzz avif)
+endif()
+
 macro(avif_set_folder_safe target folder)
     if(TARGET ${target})
         set_target_properties(${target} PROPERTIES FOLDER ${folder})

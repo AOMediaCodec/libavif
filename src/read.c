@@ -589,16 +589,22 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
     avifItem * colorOBUItem = NULL;
     avifItem * alphaOBUItem = NULL;
 
+    // Sanity check items
+    for (int itemIndex = 0; itemIndex < MAX_ITEMS; ++itemIndex) {
+        avifItem * item = &data.items[itemIndex];
+        if (item->offset > input->size) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        uint64_t offsetSize = (uint64_t)item->offset + (uint64_t)item->size;
+        if (offsetSize > (uint64_t)input->size) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+    }
+
     // Find the colorOBU item
     for (int itemIndex = 0; itemIndex < MAX_ITEMS; ++itemIndex) {
         avifItem * item = &data.items[itemIndex];
         if (!item->id || !item->size) {
-            break;
-        }
-        if (item->offset > input->size) {
-            break;
-        }
-        if ((item->offset + item->size) > input->size) {
             break;
         }
         if (memcmp(item->type, "av01", 4)) {
@@ -621,12 +627,6 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
         for (int itemIndex = 0; itemIndex < MAX_ITEMS; ++itemIndex) {
             avifItem * item = &data.items[itemIndex];
             if (!item->id || !item->size) {
-                break;
-            }
-            if (item->offset > input->size) {
-                break;
-            }
-            if ((item->offset + item->size) > input->size) {
                 break;
             }
             if (memcmp(item->type, "av01", 4)) {
