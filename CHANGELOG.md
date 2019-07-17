@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sanity check offsets and sizes in items table before using
 - Bail out of box header advertises an impossible size
 - Ran clang-format on all of src and include
+- Fix copypasta leading to a memory leak in RGB planes
 
 ## [0.2.0] - 2019-06-12
 ### Added

@@ -218,9 +218,9 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes)
         avifFree(image->rgbPlanes[AVIF_CHAN_G]);
         image->rgbPlanes[AVIF_CHAN_G] = NULL;
         image->rgbRowBytes[AVIF_CHAN_G] = 0;
-        avifFree(image->rgbPlanes[AVIF_CHAN_G]);
-        image->rgbPlanes[AVIF_CHAN_G] = NULL;
-        image->rgbRowBytes[AVIF_CHAN_G] = 0;
+        avifFree(image->rgbPlanes[AVIF_CHAN_B]);
+        image->rgbPlanes[AVIF_CHAN_B] = NULL;
+        image->rgbRowBytes[AVIF_CHAN_B] = 0;
     }
     if ((planes & AVIF_PLANES_YUV) && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
         avifFree(image->yuvPlanes[AVIF_CHAN_Y]);
