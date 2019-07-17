@@ -11,10 +11,11 @@ extern "C" {
 #endif
 
 // Yes, clamp macros are nasty. Do not use them.
-#define AVIF_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#define AVIF_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 // Used by stream related things.
-#define CHECK(A) if (!(A)) return AVIF_FALSE;
+#define CHECK(A) \
+    if (!(A)) return AVIF_FALSE;
 
 // ---------------------------------------------------------------------------
 // URNs
@@ -91,13 +92,13 @@ typedef struct avifCodecImageSize
 struct avifCodec;
 struct avifCodecInternal;
 
-typedef avifBool (* avifCodecDecodeFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifRawData * obu);
-typedef avifCodecImageSize (* avifCodecGetImageSizeFunc)(struct avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
-typedef avifBool (* avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
-typedef avifResult (* avifCodecGetDecodedImageFunc)(struct avifCodec * codec, avifImage * image);
-typedef avifResult (* avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
-typedef void (* avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
-typedef void (* avifCodecDestroyInternalFunc)(struct avifCodec * codec);
+typedef avifBool (*avifCodecDecodeFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifRawData * obu);
+typedef avifCodecImageSize (*avifCodecGetImageSizeFunc)(struct avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
+typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
+typedef avifResult (*avifCodecGetDecodedImageFunc)(struct avifCodec * codec, avifImage * image);
+typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
+typedef void (*avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
+typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
 {

@@ -34,7 +34,7 @@ enum avifPlanesFlags
 {
     AVIF_PLANES_RGB = (1 << 0),
     AVIF_PLANES_YUV = (1 << 1),
-    AVIF_PLANES_A   = (1 << 2),
+    AVIF_PLANES_A = (1 << 2),
 
     AVIF_PLANES_ALL = 0xff
 };
@@ -53,19 +53,9 @@ enum avifChannelIndex
 };
 
 // ---------------------------------------------------------------------------
-// Utils
+// Version
 
 const char * avifVersion(void);
-
-// Yes, clamp macros are nasty. Do not use them.
-#define AVIF_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-
-float avifRoundf(float v);
-
-uint16_t avifHTONS(uint16_t s);
-uint16_t avifNTOHS(uint16_t s);
-uint32_t avifHTONL(uint32_t l);
-uint32_t avifNTOHL(uint32_t l);
 
 // ---------------------------------------------------------------------------
 // Memory management
@@ -112,8 +102,10 @@ typedef struct avifRawData
     size_t size;
 } avifRawData;
 
+// clang-format off
 // Initialize avifRawData on the stack with this
 #define AVIF_RAW_DATA_EMPTY { NULL, 0 }
+// clang-format on
 
 void avifRawDataRealloc(avifRawData * raw, size_t newSize);
 void avifRawDataSet(avifRawData * raw, const uint8_t * data, size_t len);

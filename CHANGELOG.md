@@ -6,18 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added new CMake option `AVIF_CODEC_AOM` to enable/disable the usage of AOM's codec (default: on)
-- Added new CMake option `AVIF_CODEC_DAV1D` to enable/disable the usage of dav1d's codec (default: off)
-- Added `codec_dav1d.c`, which provides decoding via `libdav1d`
-- Added fuzz.sh which builds with afl-clang and runs afl-fuzz
-- Added aviffuzz tool, used in fuzzing script
-- Added fuzz inputs made with colorist
+- new CMake option `AVIF_CODEC_AOM` to enable/disable the usage of AOM's codec (default: on)
+- new CMake option `AVIF_CODEC_DAV1D` to enable/disable the usage of dav1d's codec (default: off)
+- `codec_dav1d.c`, which provides decoding via `libdav1d`
+- fuzz.sh which builds with afl-clang and runs afl-fuzz
+- aviffuzz tool, used in fuzzing script
+- fuzz inputs made with colorist
+- `.clang-format` file
 
 ### Changed
 - Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
 - Fix some compiler warnings
 - Sanity check offsets and sizes in items table before using
 - Bail out of box header advertises an impossible size
+- Ran clang-format on all of src and include
 
 ## [0.2.0] - 2019-06-12
 ### Added

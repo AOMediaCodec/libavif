@@ -28,8 +28,7 @@ uint16_t avifNTOHS(uint16_t s)
     uint8_t data[2];
     memcpy(&data, &s, sizeof(data));
 
-    return (uint16_t)((data[1] << 0)
-                      | (data[0] << 8));
+    return (uint16_t)((data[1] << 0) | (data[0] << 8));
 }
 
 uint32_t avifHTONL(uint32_t l)
@@ -49,10 +48,7 @@ uint32_t avifNTOHL(uint32_t l)
     uint8_t data[4];
     memcpy(&data, &l, sizeof(data));
 
-    return ((uint32_t)data[3] << 0)
-           | ((uint32_t)data[2] << 8)
-           | ((uint32_t)data[1] << 16)
-           | ((uint32_t)data[0] << 24);
+    return ((uint32_t)data[3] << 0) | ((uint32_t)data[2] << 8) | ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
 }
 
 uint64_t avifHTON64(uint64_t l)
@@ -76,12 +72,5 @@ uint64_t avifNTOH64(uint64_t l)
     uint8_t data[8];
     memcpy(&data, &l, sizeof(data));
 
-    return ((uint64_t)data[7] << 0)
-           | ((uint64_t)data[6] << 8)
-           | ((uint64_t)data[5] << 16)
-           | ((uint64_t)data[4] << 24)
-           | ((uint64_t)data[3] << 32)
-           | ((uint64_t)data[2] << 40)
-           | ((uint64_t)data[1] << 48)
-           | ((uint64_t)data[0] << 56);
+    return ((uint64_t)data[7] << 0) | ((uint64_t)data[6] << 8) | ((uint64_t)data[5] << 16) | ((uint64_t)data[4] << 24) | ((uint64_t)data[3] << 32) | ((uint64_t)data[2] << 40) | ((uint64_t)data[1] << 48) | ((uint64_t)data[0] << 56);
 }

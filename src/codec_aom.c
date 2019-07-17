@@ -4,9 +4,9 @@
 #include "avif/internal.h"
 
 #include "aom/aom_decoder.h"
-#include "aom/aomdx.h"
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
+#include "aom/aomdx.h"
 
 #include <string.h>
 
@@ -231,7 +231,7 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
                 case AVIF_PIXEL_FORMAT_YUV444: cfg.g_profile = 1; break;
                 case AVIF_PIXEL_FORMAT_YUV422: cfg.g_profile = 2; break;
                 case AVIF_PIXEL_FORMAT_YUV420: cfg.g_profile = 0; break;
-                case AVIF_PIXEL_FORMAT_YV12:   cfg.g_profile = 0; break;
+                case AVIF_PIXEL_FORMAT_YV12: cfg.g_profile = 0; break;
                 case AVIF_PIXEL_FORMAT_NONE:
                 default:
                     break;

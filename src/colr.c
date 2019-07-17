@@ -77,7 +77,7 @@ avifNclxColourPrimaries avifNclxColourPrimariesFind(float inPrimaries[8], const 
 
 static float fixedToFloat(int32_t fixed)
 {
-    float sign =  1.0f;
+    float sign = 1.0f;
     if (fixed < 0) {
         sign = -1.0f;
         fixed *= -1;

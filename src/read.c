@@ -131,10 +131,10 @@ static avifBool isAlphaURN(char * urn)
 // ---------------------------------------------------------------------------
 // BMFF Parsing
 
-#define BEGIN_STREAM(VARNAME, PTR, SIZE)             \
-    avifStream VARNAME;                              \
-    avifRawData VARNAME ## _rawData = { PTR, SIZE }; \
-    avifStreamStart(&VARNAME, &VARNAME ## _rawData)
+#define BEGIN_STREAM(VARNAME, PTR, SIZE)           \
+    avifStream VARNAME;                            \
+    avifRawData VARNAME##_rawData = { PTR, SIZE }; \
+    avifStreamStart(&VARNAME, &VARNAME##_rawData)
 
 static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t rawLen)
 {
@@ -657,7 +657,7 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
 #elif defined(AVIF_CODEC_AOM)
     codec = avifCodecCreateAOM();
 #else
-// #error No decoder available!
+    // #error No decoder available!
     return AVIF_RESULT_NO_CODEC_AVAILABLE;
 #endif
     if (!codec->decode(codec, AVIF_CODEC_PLANES_COLOR, &colorOBU)) {
@@ -682,8 +682,7 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
     }
 
     if ((colorOBUItem && colorOBUItem->ispePresent && ((colorOBUItem->ispe.width != colorPlanesSize.width) || (colorOBUItem->ispe.height != colorPlanesSize.height))) ||
-        (alphaOBUItem && alphaOBUItem->ispePresent && ((alphaOBUItem->ispe.width != alphaPlanesSize.width) || (alphaOBUItem->ispe.height != alphaPlanesSize.height))))
-    {
+        (alphaOBUItem && alphaOBUItem->ispePresent && ((alphaOBUItem->ispe.width != alphaPlanesSize.width) || (alphaOBUItem->ispe.height != alphaPlanesSize.height)))) {
         avifCodecDestroy(codec);
         return AVIF_RESULT_ISPE_SIZE_MISMATCH;
     }

@@ -73,7 +73,6 @@ avifResult avifImageRGBToYUV(avifImage * image)
     float maxChannel = (float)((1 << image->depth) - 1);
     for (int outerJ = 0; outerJ < image->height; outerJ += 2) {
         for (int outerI = 0; outerI < image->width; outerI += 2) {
-
             int blockW = 2, blockH = 2;
             if ((outerI + 1) >= image->width) {
                 blockW = 1;
@@ -220,7 +219,6 @@ avifResult avifImageYUVToRGB(avifImage * image)
                 yuvUNorm[0] = image->yuvPlanes[AVIF_CHAN_Y][i + (j * image->yuvRowBytes[AVIF_CHAN_Y])];
                 yuvUNorm[1] = image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])];
                 yuvUNorm[2] = image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])];
-
             }
 
             // adjust for limited/full color range, if need be
@@ -237,16 +235,13 @@ avifResult avifImageYUVToRGB(avifImage * image)
             yuvPixel[1] -= 0.5f;
             yuvPixel[2] -= 0.5f;
 
-            float Y  = yuvPixel[0];
+            float Y = yuvPixel[0];
             float Cb = yuvPixel[1];
             float Cr = yuvPixel[2];
 
             float R = Y + (2 * (1 - kr)) * Cr;
             float B = Y + (2 * (1 - kb)) * Cb;
-            float G = Y - (
-                (2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb)))
-                /
-                kg);
+            float G = Y - ((2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb))) / kg);
 
             rgbPixel[0] = AVIF_CLAMP(R, 0.0f, 1.0f);
             rgbPixel[1] = AVIF_CLAMP(G, 0.0f, 1.0f);

@@ -20,7 +20,7 @@ const char * avifPixelFormatToString(avifPixelFormat format)
         case AVIF_PIXEL_FORMAT_YUV444: return "YUV444";
         case AVIF_PIXEL_FORMAT_YUV420: return "YUV420";
         case AVIF_PIXEL_FORMAT_YUV422: return "YUV422";
-        case AVIF_PIXEL_FORMAT_YV12:   return "YV12";
+        case AVIF_PIXEL_FORMAT_YV12: return "YV12";
         case AVIF_PIXEL_FORMAT_NONE:
         default:
             break;
@@ -65,6 +65,7 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 
 const char * avifResultToString(avifResult result)
 {
+    // clang-format off
     switch (result) {
         case AVIF_RESULT_OK:                        return "OK";
         case AVIF_RESULT_INVALID_FTYP:              return "Invalid ftyp";
@@ -85,6 +86,7 @@ const char * avifResultToString(avifResult result)
         default:
             break;
     }
+    // clang-format on
     return "Unknown Error";
 }
 
