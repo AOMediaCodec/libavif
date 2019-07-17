@@ -88,8 +88,6 @@ AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
 
 typedef struct avifData
 {
-    // TODO: Everything in here using a MAX_* constant is a bit lazy; it should all be dynamic
-
     avifFileType ftyp;
     avifItemArray items;
     avifPropertyArray properties;
