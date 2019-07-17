@@ -75,3 +75,55 @@ uint64_t avifNTOH64(uint64_t l)
     return ((uint64_t)data[7] << 0) | ((uint64_t)data[6] << 8) | ((uint64_t)data[5] << 16) | ((uint64_t)data[4] << 24) |
            ((uint64_t)data[3] << 32) | ((uint64_t)data[2] << 40) | ((uint64_t)data[1] << 48) | ((uint64_t)data[0] << 56);
 }
+
+AVIF_ARRAY_DECLARE(avifArrayInternal, uint8_t, ptr);
+
+void avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity)
+{
+    avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
+    arr->elementSize = elementSize ? elementSize : 1;
+    arr->count = 0;
+    arr->capacity = initialCapacity;
+    arr->ptr = (uint8_t *)avifAlloc(arr->elementSize * arr->capacity);
+    memset(arr->ptr, 0, arr->elementSize * arr->capacity);
+}
+
+uint32_t avifArrayPushIndex(void * arrayStruct)
+{
+    avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
+    if (arr->count == arr->capacity) {
+        uint8_t * oldPtr = arr->ptr;
+        uint32_t oldByteCount = arr->elementSize * arr->capacity;
+        arr->ptr = (uint8_t *)avifAlloc(oldByteCount * 2);
+        memset(arr->ptr + oldByteCount, 0, oldByteCount);
+        memcpy(arr->ptr, oldPtr, oldByteCount);
+        arr->capacity *= 2;
+        avifFree(oldPtr);
+    }
+    ++arr->count;
+    return arr->count - 1;
+}
+
+void * avifArrayPushPtr(void * arrayStruct)
+{
+    uint32_t index = avifArrayPushIndex(arrayStruct);
+    avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
+    return &arr->ptr[index * arr->elementSize];
+}
+
+void avifArrayPush(void * arrayStruct, void * element)
+{
+    avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
+    void * newElement = avifArrayPushPtr(arr);
+    memcpy(newElement, element, arr->elementSize);
+}
+
+void avifArrayDestroy(void * arrayStruct)
+{
+    avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
+    if (arr->ptr) {
+        avifFree(arr->ptr);
+        arr->ptr = NULL;
+    }
+    memset(arr, 0, sizeof(avifArrayInternal));
+}

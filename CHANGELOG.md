@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - aviffuzz tool, used in fuzzing script
 - fuzz inputs made with colorist
 - `.clang-format` file
+- `avifArray*()` functions for basic dynamic arrays when parsing
 
 ### Changed
 - Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bail out of box header advertises an impossible size
 - Ran clang-format on all of src and include
 - Fix copypasta leading to a memory leak in RGB planes
+- Switched items and properties during parse to use dynamic arrays
 
 ## [0.2.0] - 2019-06-12
 ### Added
