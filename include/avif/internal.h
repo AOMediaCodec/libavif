@@ -15,7 +15,8 @@ extern "C" {
 
 // Used by stream related things.
 #define CHECK(A) \
-    if (!(A)) return AVIF_FALSE;
+    if (!(A))    \
+        return AVIF_FALSE;
 
 // ---------------------------------------------------------------------------
 // URNs
@@ -94,9 +95,15 @@ struct avifCodecInternal;
 
 typedef avifBool (*avifCodecDecodeFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifRawData * obu);
 typedef avifCodecImageSize (*avifCodecGetImageSizeFunc)(struct avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
-typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);                              // returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
+// avifCodecAlphaLimitedRangeFunc: returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
+typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);
 typedef avifResult (*avifCodecGetDecodedImageFunc)(struct avifCodec * codec, avifImage * image);
-typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU); // if either OBU* is null, skip its encode. alpha should always be lossless
+// avifCodecEncodeImageFunc: if either OBU* is null, skip its encode. alpha should always be lossless
+typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
+                                               avifImage * image,
+                                               avifEncoder * encoder,
+                                               avifRawData * colorOBU,
+                                               avifRawData * alphaOBU);
 typedef void (*avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 

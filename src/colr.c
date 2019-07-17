@@ -48,14 +48,9 @@ static avifBool matchesTo3RoundedPlaces(float a, float b)
 
 static avifBool primariesMatch(const float p1[8], const float p2[8])
 {
-    return matchesTo3RoundedPlaces(p1[0], p2[0]) &&
-           matchesTo3RoundedPlaces(p1[1], p2[1]) &&
-           matchesTo3RoundedPlaces(p1[2], p2[2]) &&
-           matchesTo3RoundedPlaces(p1[3], p2[3]) &&
-           matchesTo3RoundedPlaces(p1[4], p2[4]) &&
-           matchesTo3RoundedPlaces(p1[5], p2[5]) &&
-           matchesTo3RoundedPlaces(p1[6], p2[6]) &&
-           matchesTo3RoundedPlaces(p1[7], p2[7]);
+    return matchesTo3RoundedPlaces(p1[0], p2[0]) && matchesTo3RoundedPlaces(p1[1], p2[1]) &&
+           matchesTo3RoundedPlaces(p1[2], p2[2]) && matchesTo3RoundedPlaces(p1[3], p2[3]) && matchesTo3RoundedPlaces(p1[4], p2[4]) &&
+           matchesTo3RoundedPlaces(p1[5], p2[5]) && matchesTo3RoundedPlaces(p1[6], p2[6]) && matchesTo3RoundedPlaces(p1[7], p2[7]);
 }
 
 avifNclxColourPrimaries avifNclxColourPrimariesFind(float inPrimaries[8], const char ** outName)

@@ -54,7 +54,7 @@ static avifBool aomCodecDecode(avifCodec * codec, avifCodecPlanes planes, avifRa
     }
 
     aom_codec_iter_t iter = NULL;
-    codec->internal->images[planes] = aom_codec_get_frame(&codec->internal->decoders[planes], &iter); // It doesn't appear that I own this / need to free this
+    codec->internal->images[planes] = aom_codec_get_frame(&codec->internal->decoders[planes], &iter);
     return (codec->internal->images[planes]) ? AVIF_TRUE : AVIF_FALSE;
 }
 
@@ -228,10 +228,18 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
             cfg.g_profile = 0;
         } else {
             switch (image->yuvFormat) {
-                case AVIF_PIXEL_FORMAT_YUV444: cfg.g_profile = 1; break;
-                case AVIF_PIXEL_FORMAT_YUV422: cfg.g_profile = 2; break;
-                case AVIF_PIXEL_FORMAT_YUV420: cfg.g_profile = 0; break;
-                case AVIF_PIXEL_FORMAT_YV12: cfg.g_profile = 0; break;
+                case AVIF_PIXEL_FORMAT_YUV444:
+                    cfg.g_profile = 1;
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV422:
+                    cfg.g_profile = 2;
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV420:
+                    cfg.g_profile = 0;
+                    break;
+                case AVIF_PIXEL_FORMAT_YV12:
+                    cfg.g_profile = 0;
+                    break;
                 case AVIF_PIXEL_FORMAT_NONE:
                 default:
                     break;

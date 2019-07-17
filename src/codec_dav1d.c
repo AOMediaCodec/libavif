@@ -40,7 +40,9 @@ static avifBool dav1dCodecDecode(avifCodec * codec, avifCodecPlanes planes, avif
     Dav1dData dav1dData;
     uint8_t * dav1dDataPtr = dav1d_data_create(&dav1dData, obu->size);
     memcpy(dav1dDataPtr, obu->data, obu->size);
-    if (dav1d_send_data(codec->internal->dav1dContext[planes], &dav1dData) != 0) { // This could return DAV1D_ERR(EAGAIN) and not be a failure if we weren't sending the entire payload
+
+    if (dav1d_send_data(codec->internal->dav1dContext[planes], &dav1dData) != 0) {
+        // This could return DAV1D_ERR(EAGAIN) and not be a failure if we weren't sending the entire payload
         goto cleanup;
     }
 
@@ -66,7 +68,8 @@ static avifCodecImageSize dav1dCodecGetImageSize(avifCodec * codec, avifCodecPla
 
 static avifBool dav1dCodecAlphaLimitedRange(avifCodec * codec)
 {
-    if (codec->internal->hasPicture[AVIF_CODEC_PLANES_ALPHA] && (codec->internal->colorRange[AVIF_CODEC_PLANES_ALPHA] == AVIF_RANGE_LIMITED)) {
+    if (codec->internal->hasPicture[AVIF_CODEC_PLANES_ALPHA] &&
+        (codec->internal->colorRange[AVIF_CODEC_PLANES_ALPHA] == AVIF_RANGE_LIMITED)) {
         return AVIF_TRUE;
     }
     return AVIF_FALSE;

@@ -66,7 +66,8 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
         goto writeCleanup;
     }
 
-    if ((image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) || !image->yuvPlanes[AVIF_CHAN_Y] || !image->yuvPlanes[AVIF_CHAN_U] || !image->yuvPlanes[AVIF_CHAN_V]) {
+    if ((image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) || !image->yuvPlanes[AVIF_CHAN_Y] || !image->yuvPlanes[AVIF_CHAN_U] ||
+        !image->yuvPlanes[AVIF_CHAN_V]) {
         if (!image->rgbPlanes[AVIF_CHAN_R] || !image->rgbPlanes[AVIF_CHAN_G] || !image->rgbPlanes[AVIF_CHAN_B]) {
             result = AVIF_RESULT_NO_CONTENT;
             goto writeCleanup;
@@ -99,16 +100,16 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
     // Write ftyp
 
     avifBoxMarker ftyp = avifStreamWriteBox(&s, "ftyp", -1, 0);
-    avifStreamWriteChars(&s, "avif", 4); // unsigned int(32) major_brand;
-    avifStreamWriteU32(&s, 0);           // unsigned int(32) minor_version;
-    avifStreamWriteChars(&s, "avif", 4); // unsigned int(32) compatible_brands[];
-    avifStreamWriteChars(&s, "mif1", 4); // ... compatible_brands[]
-    avifStreamWriteChars(&s, "miaf", 4); // ... compatible_brands[]
-    if ((image->depth == 8) || (image->depth == 10)) {
-        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-            avifStreamWriteChars(&s, "MA1B", 4); // ... compatible_brands[]
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
-            avifStreamWriteChars(&s, "MA1A", 4); // ... compatible_brands[]
+    avifStreamWriteChars(&s, "avif", 4);                           // unsigned int(32) major_brand;
+    avifStreamWriteU32(&s, 0);                                     // unsigned int(32) minor_version;
+    avifStreamWriteChars(&s, "avif", 4);                           // unsigned int(32) compatible_brands[];
+    avifStreamWriteChars(&s, "mif1", 4);                           // ... compatible_brands[]
+    avifStreamWriteChars(&s, "miaf", 4);                           // ... compatible_brands[]
+    if ((image->depth == 8) || (image->depth == 10)) {             //
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {        //
+            avifStreamWriteChars(&s, "MA1B", 4);                   // ... compatible_brands[]
+        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) { //
+            avifStreamWriteChars(&s, "MA1A", 4);                   // ... compatible_brands[]
         }
     }
     avifStreamFinishBox(&s, ftyp);
@@ -144,9 +145,11 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
     avifBoxMarker iloc = avifStreamWriteBox(&s, "iloc", 0, 0);
 
     // iloc header
-    uint8_t offsetSizeAndLengthSize = (4 << 4) + (4 << 0); // unsigned int(4) offset_size; unsigned int(4) length_size;
+    uint8_t offsetSizeAndLengthSize = (4 << 4) + (4 << 0); // unsigned int(4) offset_size;
+                                                           // unsigned int(4) length_size;
     avifStreamWrite(&s, &offsetSizeAndLengthSize, 1);      //
-    avifStreamWriteZeros(&s, 1);                           // unsigned int(4) base_offset_size; unsigned int(4) reserved;
+    avifStreamWriteZeros(&s, 1);                           // unsigned int(4) base_offset_size;
+                                                           // unsigned int(4) reserved;
     avifStreamWriteU16(&s, hasAlpha ? 2 : 1);              // unsigned int(16) item_count;
 
     // Item ID #1 (Color OBU)
@@ -230,7 +233,8 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
                 avifStreamWriteU16(&s, image->nclx.colourPrimaries);         // unsigned int(16) colour_primaries;
                 avifStreamWriteU16(&s, image->nclx.transferCharacteristics); // unsigned int(16) transfer_characteristics;
                 avifStreamWriteU16(&s, image->nclx.matrixCoefficients);      // unsigned int(16) matrix_coefficients;
-                avifStreamWriteU8(&s, image->nclx.fullRangeFlag & 0x80);     // unsigned int(1) full_range_flag; unsigned int(7) reserved = 0;
+                avifStreamWriteU8(&s, image->nclx.fullRangeFlag & 0x80);     // unsigned int(1) full_range_flag;
+                                                                             // unsigned int(7) reserved = 0;
                 avifStreamFinishBox(&s, colr);
                 ++ipcoIndex;
                 ipmaPush(&ipmaColor, ipcoIndex);
@@ -286,16 +290,16 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
             int ipmaCount = hasAlpha ? 2 : 1;
             avifStreamWriteU32(&s, ipmaCount); // unsigned int(32) entry_count;
 
-            avifStreamWriteU16(&s, 1);              // unsigned int(16) item_ID;
-            avifStreamWriteU8(&s, ipmaColor.count); // unsigned int(8) association_count;
-            for (int i = 0; i < ipmaColor.count; ++i) {
+            avifStreamWriteU16(&s, 1);                            // unsigned int(16) item_ID;
+            avifStreamWriteU8(&s, ipmaColor.count);               // unsigned int(8) association_count;
+            for (int i = 0; i < ipmaColor.count; ++i) {           //
                 avifStreamWriteU8(&s, ipmaColor.associations[i]); // bit(1) essential; unsigned int(7) property_index;
             }
 
             if (hasAlpha) {
-                avifStreamWriteU16(&s, 2);              // unsigned int(16) item_ID;
-                avifStreamWriteU8(&s, ipmaAlpha.count); // unsigned int(8) association_count;
-                for (int i = 0; i < ipmaAlpha.count; ++i) {
+                avifStreamWriteU16(&s, 2);                            // unsigned int(16) item_ID;
+                avifStreamWriteU8(&s, ipmaAlpha.count);               // unsigned int(8) association_count;
+                for (int i = 0; i < ipmaAlpha.count; ++i) {           //
                     avifStreamWriteU8(&s, ipmaAlpha.associations[i]); // bit(1) essential; unsigned int(7) property_index;
                 }
             }
