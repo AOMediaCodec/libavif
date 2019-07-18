@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fuzz inputs made with colorist
 - `.clang-format` file
 - `avifArray*()` functions for basic dynamic arrays when parsing
+- `moov` box parsing
 
 ### Changed
 - Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
