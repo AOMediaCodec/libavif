@@ -42,9 +42,22 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
         ... image->rgbRowBytes;
 
         // Use alpha plane, if present
-        if(image->alphaPlane) {
+        if (image->alphaPlane) {
             ... image->alphaPlane;
             ... image->alphaRowBytes;
+        }
+
+        // Optional: query color profile
+        if (image->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+            // ICC profile present
+            ... image->icc.data;
+            ... image->icc.size;
+        } else if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+            // NCLX profile present
+            ... image->nclx.colourPrimaries;
+            ... image->nclx.transferCharacteristics;
+            ... image->nclx.matrixCoefficients;
+            ... image->nclx.fullRangeFlag;
         }
     } else {
         printf("ERROR: Failed to decode: %s\n", avifResultToString(result));
@@ -65,12 +78,11 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
 
     avifDecoder * decoder = avifDecoderCreate();
     avifResult decodeResult = avifDecoderParse(decoder, &raw);
-
-    // Timing and frame information
-    ... decoder->imageCount; // Total images expected to decode
-    ... decoder->duration;   // Duration of entire sequence (seconds)
-
     if (decodeResult == AVIF_RESULT_OK) {
+        // Timing and frame information
+        ... decoder->imageCount; // Total images expected to decode
+        ... decoder->duration;   // Duration of entire sequence (seconds)
+
         for (;;) {
             avifResult nextImageResult = avifDecoderNextImage(decoder);
             if (nextImageResult == AVIF_RESULT_NO_IMAGES_REMAINING) {
@@ -85,11 +97,13 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
             // is also owned and dependent on decoder. decoder->image's data/pointers are
             // likely to be completely different after each call to avifDecoderNextImage().
 
-            ... image->width;
-            ... image->height;
-            ... image->depth;     // If >8, all plane ptrs below are uint16_t*
-            ... image->yuvFormat; // U and V planes might be smaller than Y based on format,
-                                  // use avifGetPixelFormatInfo() to find out in a generic way
+            ... decoder->image->width;
+            ... decoder->image->height;
+            ... decoder->image->depth;     // If >8, all plane ptrs below are uint16_t*
+            ... decoder->image->yuvFormat; // U and V planes might be smaller than Y based on format,
+                                           // use avifGetPixelFormatInfo() to find out in a generic way
+
+            // See Basic Decoding example for color profile querying
 
             // Option 1: Use YUV planes directly
             ... decoder->image->yuvPlanes;
@@ -101,7 +115,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
             ... decoder->image->rgbRowBytes;
 
             // Use alpha plane, if present
-            if(decoder->image->alphaPlane) {
+            if (decoder->image->alphaPlane) {
                 ... decoder->image->alphaPlane;
                 ... decoder->image->alphaRowBytes;
             }
