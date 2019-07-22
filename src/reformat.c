@@ -228,12 +228,28 @@ avifResult avifImageYUVToRGB(avifImage * image)
             int uvJ = j >> state.formatInfo.chromaShiftY;
             if (state.usesU16) {
                 yuvUNorm[0] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_Y][(i * 2) + (j * image->yuvRowBytes[AVIF_CHAN_Y])]);
-                yuvUNorm[1] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])]);
-                yuvUNorm[2] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_V][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])]);
+                if (image->yuvRowBytes[AVIF_CHAN_U]) {
+                    yuvUNorm[1] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])]);
+                } else {
+                    yuvUNorm[1] = 0;
+                }
+                if (image->yuvRowBytes[AVIF_CHAN_V]) {
+                    yuvUNorm[2] = *((uint16_t *)&image->yuvPlanes[AVIF_CHAN_V][(uvI * 2) + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])]);
+                } else {
+                    yuvUNorm[2] = 0;
+                }
             } else {
                 yuvUNorm[0] = image->yuvPlanes[AVIF_CHAN_Y][i + (j * image->yuvRowBytes[AVIF_CHAN_Y])];
-                yuvUNorm[1] = image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])];
-                yuvUNorm[2] = image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])];
+                if (image->yuvRowBytes[AVIF_CHAN_U]) {
+                    yuvUNorm[1] = image->yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_U])];
+                } else {
+                    yuvUNorm[1] = 0;
+                }
+                if (image->yuvRowBytes[AVIF_CHAN_V]) {
+                    yuvUNorm[2] = image->yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * image->yuvRowBytes[AVIF_CHAN_V])];
+                } else {
+                    yuvUNorm[2] = 0;
+                }
             }
 
             // adjust for limited/full color range, if need be

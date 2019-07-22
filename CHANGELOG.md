@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.clang-format` file
 - `avifArray*()` functions for basic dynamic arrays when parsing
 - `moov` box parsing
+- now reads 'avis' brands
+- Split avifDecoderRead() into components for image sequences:
+  - avifDecoderSetSource()
+  - avifDecoderParse()
+  - avifDecoderNextImage()
+  - avifImageCopy()
+  - avifDecoderReset()
+- Added decoder and image timings for image sequences
 
 ### Changed
 - Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
@@ -24,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ran clang-format on all of src and include
 - Fix copypasta leading to a memory leak in RGB planes
 - Switched items and properties during parse to use dynamic arrays
+- Refactored codec API to not require each codec to maintain per-plane decoder instances
+- avifImage can now "not own" its planes and directly point at decoder planes to avoid copies
+- aviffuzz attempts to decode all images in source material twice (using avifDecoderReset())
+- Switch decoder->quality to explicit [minQuantizer, maxQuantizer], update assoc. constants
+- Add examples to README
 
 ## [0.2.0] - 2019-06-12
 ### Added

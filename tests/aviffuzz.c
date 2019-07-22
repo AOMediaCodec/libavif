@@ -3,8 +3,8 @@
 
 #include "avif/avif.h"
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 int syntax(void)
 {
@@ -47,16 +47,39 @@ int main(int argc, char * argv[])
     fclose(inputFile);
     inputFile = NULL;
 
-    avifImage * avif = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
-    avifResult decodeResult = avifDecoderRead(decoder, avif, &raw);
-    if (decodeResult == AVIF_RESULT_OK) {
-        printf("Image decoded: %s\n", inputFilename);
+    // avifDecoderSetSource(decoder, AVIF_DECODER_SOURCE_PRIMARY_ITEM);
+    avifResult result = avifDecoderParse(decoder, &raw);
+    if (result == AVIF_RESULT_OK) {
+        for (int loop = 0; loop < 2; ++loop) {
+            printf("Image decoded: %s\n", inputFilename);
+            printf(" * %2.2f seconds, %d images\n", decoder->duration, decoder->imageCount);
+            int frameIndex = 0;
+            while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
+                printf("  * Decoded frame [%d] [pts %2.2f] [duration %2.2f]: %dx%d\n",
+                       frameIndex,
+                       decoder->imageTiming.pts,
+                       decoder->imageTiming.duration,
+                       decoder->image->width,
+                       decoder->image->height);
+                ++frameIndex;
+            }
+
+            if (loop != 1) {
+                result = avifDecoderReset(decoder);
+                if (result == AVIF_RESULT_OK) {
+                    printf("Decoder reset! Decoding one more time.\n");
+                } else {
+                    printf("ERROR: Failed to reset decode: %s\n", avifResultToString(result));
+                    break;
+                }
+            }
+        }
     } else {
-        printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
+        printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
     }
+
     avifRawDataFree(&raw);
     avifDecoderDestroy(decoder);
-    avifImageDestroy(avif);
     return 0;
 }

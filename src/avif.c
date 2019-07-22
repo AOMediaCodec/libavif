@@ -86,6 +86,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH: return "Color and alpha planes size mismatch";
         case AVIF_RESULT_ISPE_SIZE_MISMATCH:        return "Plane sizes don't match ispe values";
         case AVIF_RESULT_NO_CODEC_AVAILABLE:        return "No codec available";
+        case AVIF_RESULT_NO_IMAGES_REMAINING:       return "No images remaining";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
@@ -115,6 +116,73 @@ avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yu
 avifImage * avifImageCreateEmpty(void)
 {
     return avifImageCreate(0, 0, 0, AVIF_PIXEL_FORMAT_NONE);
+}
+
+void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
+{
+    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+
+    dstImage->width = srcImage->width;
+    dstImage->height = srcImage->height;
+    dstImage->depth = srcImage->depth;
+    dstImage->yuvFormat = srcImage->yuvFormat;
+    dstImage->yuvRange = srcImage->yuvRange;
+
+    if (srcImage->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+        avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
+    } else if (srcImage->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+        avifImageSetProfileNCLX(dstImage, &srcImage->nclx);
+    } else {
+        avifImageSetProfileNone(dstImage);
+    }
+
+    if (srcImage->rgbPlanes[AVIF_CHAN_R] && srcImage->rgbPlanes[AVIF_CHAN_G] && srcImage->rgbPlanes[AVIF_CHAN_B]) {
+        avifImageAllocatePlanes(dstImage, AVIF_PLANES_RGB);
+
+        for (int plane = 0; plane < 3; ++plane) {
+            uint32_t planeBytes = srcImage->rgbRowBytes[plane] * srcImage->height;
+            memcpy(dstImage->rgbPlanes[plane], srcImage->rgbPlanes[plane], planeBytes);
+        }
+    }
+
+    if (srcImage->yuvPlanes[AVIF_CHAN_Y] && srcImage->yuvPlanes[AVIF_CHAN_U] && srcImage->yuvPlanes[AVIF_CHAN_V]) {
+        avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
+
+        avifPixelFormatInfo formatInfo;
+        avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
+        int uvHeight = dstImage->height >> formatInfo.chromaShiftY;
+        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+            int aomPlaneIndex = yuvPlane;
+            int planeHeight = dstImage->height;
+            if (yuvPlane == AVIF_CHAN_U) {
+                aomPlaneIndex = formatInfo.aomIndexU;
+                planeHeight = uvHeight;
+            } else if (yuvPlane == AVIF_CHAN_V) {
+                aomPlaneIndex = formatInfo.aomIndexV;
+                planeHeight = uvHeight;
+            }
+
+            if (!srcImage->yuvRowBytes[aomPlaneIndex]) {
+                // plane is absent, move on
+                continue;
+            }
+
+            for (int j = 0; j < planeHeight; ++j) {
+                uint8_t * srcRow = &srcImage->yuvPlanes[aomPlaneIndex][j * srcImage->yuvRowBytes[aomPlaneIndex]];
+                uint8_t * dstRow = &dstImage->yuvPlanes[yuvPlane][j * dstImage->yuvRowBytes[yuvPlane]];
+                memcpy(dstRow, srcRow, dstImage->yuvRowBytes[yuvPlane]);
+            }
+        }
+    }
+
+    if (srcImage->alphaPlane) {
+        avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
+        for (int j = 0; j < dstImage->height; ++j) {
+            uint8_t * srcAlphaRow = &srcImage->alphaPlane[j * srcImage->alphaRowBytes];
+            uint8_t * dstAlphaRow = &dstImage->alphaPlane[j * dstImage->alphaRowBytes];
+            memcpy(dstAlphaRow, srcAlphaRow, dstImage->alphaRowBytes);
+        }
+    }
 }
 
 void avifImageDestroy(avifImage * image)
@@ -209,6 +277,17 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
     }
 }
 
+void avifImageCopyDecoderAlpha(avifImage * image)
+{
+    if (image->alphaPlane && image->alphaRowBytes && image->height && image->decoderOwnsAlphaPlane) {
+        int fullSize = image->alphaRowBytes * image->height;
+        uint8_t * oldAlphaPlane = image->alphaPlane;
+        image->alphaPlane = avifAlloc(fullSize);
+        memcpy(image->alphaPlane, oldAlphaPlane, fullSize);
+        image->decoderOwnsAlphaPlane = AVIF_FALSE;
+    }
+}
+
 void avifImageFreePlanes(avifImage * image, uint32_t planes)
 {
     if (planes & AVIF_PLANES_RGB) {
@@ -223,20 +302,26 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes)
         image->rgbRowBytes[AVIF_CHAN_B] = 0;
     }
     if ((planes & AVIF_PLANES_YUV) && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
-        avifFree(image->yuvPlanes[AVIF_CHAN_Y]);
+        if (!image->decoderOwnsYUVPlanes) {
+            avifFree(image->yuvPlanes[AVIF_CHAN_Y]);
+            avifFree(image->yuvPlanes[AVIF_CHAN_U]);
+            avifFree(image->yuvPlanes[AVIF_CHAN_V]);
+        }
         image->yuvPlanes[AVIF_CHAN_Y] = NULL;
         image->yuvRowBytes[AVIF_CHAN_Y] = 0;
-        avifFree(image->yuvPlanes[AVIF_CHAN_U]);
         image->yuvPlanes[AVIF_CHAN_U] = NULL;
         image->yuvRowBytes[AVIF_CHAN_U] = 0;
-        avifFree(image->yuvPlanes[AVIF_CHAN_V]);
         image->yuvPlanes[AVIF_CHAN_V] = NULL;
         image->yuvRowBytes[AVIF_CHAN_V] = 0;
+        image->decoderOwnsYUVPlanes = AVIF_FALSE;
     }
     if (planes & AVIF_PLANES_A) {
-        avifFree(image->alphaPlane);
+        if (!image->decoderOwnsAlphaPlane) {
+            avifFree(image->alphaPlane);
+        }
         image->alphaPlane = NULL;
         image->alphaRowBytes = 0;
+        image->decoderOwnsAlphaPlane = AVIF_FALSE;
     }
 }
 

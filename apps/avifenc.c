@@ -28,24 +28,31 @@ static int syntax(void)
     printf("                        T = enum avifNclxTransferCharacteristics\n");
     printf("                        M = enum avifNclxMatrixCoefficients\n");
     printf("                        R = avifNclxRangeFlag (any nonzero value becomes AVIF_NCLX_FULL_RANGE)\n");
-    printf("    -q,--quality Q    : Set quality (%d-%d, where %d is lossless)\n", AVIF_BEST_QUALITY, AVIF_WORST_QUALITY, AVIF_BEST_QUALITY);
+    printf("    --min Q           : Set min quantizer (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
+    printf("    --max Q           : Set max quantizer (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
     printf("\n");
     return 0;
 }
 
 // This is *very* arbitrary, I just want to set people's expectations a bit
-static const char * qualityString(int quality)
+static const char * quantizerString(int quantizer)
 {
-    if (quality == 0) {
+    if (quantizer == 0) {
         return "Lossless";
     }
-    if (quality <= 12) {
+    if (quantizer <= 12) {
         return "High";
     }
-    if (quality <= 32) {
+    if (quantizer <= 32) {
         return "Medium";
     }
-    if (quality == AVIF_WORST_QUALITY) {
+    if (quantizer == AVIF_QUANTIZER_WORST_QUALITY) {
         return "Worst";
     }
     return "Low";
@@ -91,7 +98,8 @@ int main(int argc, char * argv[])
 
     avifBool showHelp = AVIF_FALSE;
     int jobs = 1;
-    int quality = AVIF_BEST_QUALITY;
+    int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+    int maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     avifBool nclxSet = AVIF_FALSE;
     avifNclxColorProfile nclx;
     avifEncoder * encoder = NULL;
@@ -109,14 +117,23 @@ int main(int argc, char * argv[])
             if (jobs < 1) {
                 jobs = 1;
             }
-        } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
+        } else if (!strcmp(arg, "--min")) {
             NEXTARG();
-            quality = atoi(arg);
-            if (quality < AVIF_BEST_QUALITY) {
-                quality = AVIF_BEST_QUALITY;
+            minQuantizer = atoi(arg);
+            if (minQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
+                minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
             }
-            if (quality > AVIF_WORST_QUALITY) {
-                quality = AVIF_WORST_QUALITY;
+            if (minQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
+                minQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
+            }
+        } else if (!strcmp(arg, "--max")) {
+            NEXTARG();
+            maxQuantizer = atoi(arg);
+            if (maxQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
+                maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+            }
+            if (maxQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
+                maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
             }
         } else if (!strcmp(arg, "-n") || !strcmp(arg, "--nclx")) {
             NEXTARG();
@@ -162,10 +179,16 @@ int main(int argc, char * argv[])
     printf("AVIF to be written:\n");
     avifImageDump(avif);
 
-    printf("Encoding with quality %d (%s), %d worker thread(s), please wait...\n", quality, qualityString(quality), jobs);
+    printf("Encoding with quantizer range [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
+           minQuantizer,
+           quantizerString(minQuantizer),
+           maxQuantizer,
+           quantizerString(maxQuantizer),
+           jobs);
     encoder = avifEncoderCreate();
     encoder->maxThreads = jobs;
-    encoder->quality = quality;
+    encoder->minQuantizer = minQuantizer;
+    encoder->maxQuantizer = maxQuantizer;
     avifResult encodeResult = avifEncoderWrite(encoder, avif, &raw);
     if (encodeResult != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(encodeResult));

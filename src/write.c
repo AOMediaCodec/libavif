@@ -28,13 +28,23 @@ avifEncoder * avifEncoderCreate(void)
     avifEncoder * encoder = (avifEncoder *)avifAlloc(sizeof(avifEncoder));
     memset(encoder, 0, sizeof(avifEncoder));
     encoder->maxThreads = 1;
-    encoder->quality = AVIF_BEST_QUALITY;
+    encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
+    encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
     return encoder;
 }
 
 void avifEncoderDestroy(avifEncoder * encoder)
 {
     avifFree(encoder);
+}
+
+static avifCodec * avifCodecCreateForEncode()
+{
+#ifdef AVIF_CODEC_AOM
+    return avifCodecCreateAOM();
+#else
+    return NULL;
+#endif
 }
 
 avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawData * output)
@@ -46,14 +56,20 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     avifRawData colorOBU = AVIF_RAW_DATA_EMPTY;
     avifRawData alphaOBU = AVIF_RAW_DATA_EMPTY;
-    avifCodec * codec = NULL;
+    avifCodec * codec[AVIF_CODEC_PLANES_COUNT];
 
-#ifdef AVIF_CODEC_AOM
-    codec = avifCodecCreateAOM();
-#else
-    // Just bail out early, we're not surviving this function without an encoder compiled in
-    return AVIF_RESULT_NO_CODEC_AVAILABLE;
-#endif
+    codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateForEncode();
+    if (!codec[AVIF_CODEC_PLANES_COLOR]) {
+        // Just bail out early, we're not surviving this function without an encoder compiled in
+        return AVIF_RESULT_NO_CODEC_AVAILABLE;
+    }
+
+    avifBool imageIsOpaque = avifImageIsOpaque(image);
+    if (imageIsOpaque) {
+        codec[AVIF_CODEC_PLANES_ALPHA] = NULL;
+    } else {
+        codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateForEncode();
+    }
 
     avifStream s;
     avifStreamStart(&s, output);
@@ -84,16 +100,23 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
 
-    avifRawData * alphaOBUPtr = &alphaOBU;
-    if (avifImageIsOpaque(image)) {
-        alphaOBUPtr = NULL;
-    }
+    // avifRawData * alphaOBUPtr = &alphaOBU;
+    // if (avifImageIsOpaque(image)) {
+    //     alphaOBUPtr = NULL;
+    // }
 
-    avifResult encodeResult = codec->encodeImage(codec, image, encoder, &colorOBU, alphaOBUPtr);
-    if (encodeResult != AVIF_RESULT_OK) {
-        result = encodeResult;
+    if (!codec[AVIF_CODEC_PLANES_COLOR]->encodeImage(codec[AVIF_CODEC_PLANES_COLOR], image, encoder, &colorOBU, AVIF_FALSE)) {
+        result = AVIF_RESULT_ENCODE_COLOR_FAILED;
         goto writeCleanup;
     }
+
+    if (!imageIsOpaque) {
+        if (!codec[AVIF_CODEC_PLANES_ALPHA]->encodeImage(codec[AVIF_CODEC_PLANES_ALPHA], image, encoder, &alphaOBU, AVIF_TRUE)) {
+            result = AVIF_RESULT_ENCODE_ALPHA_FAILED;
+            goto writeCleanup;
+        }
+    }
+
     avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
 
     // -----------------------------------------------------------------------
@@ -257,7 +280,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
             ipmaPush(&ipmaColor, ipcoIndex);
 
             avifCodecConfigurationBox colorConfig;
-            codec->getConfigurationBox(codec, AVIF_CODEC_PLANES_COLOR, &colorConfig);
+            codec[AVIF_CODEC_PLANES_COLOR]->getConfigurationBox(codec[AVIF_CODEC_PLANES_COLOR], &colorConfig);
             writeConfigBox(&s, &colorConfig);
             ++ipcoIndex;
             ipmaPush(&ipmaColor, ipcoIndex);
@@ -271,7 +294,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
                 ipmaPush(&ipmaAlpha, ipcoIndex);
 
                 avifCodecConfigurationBox alphaConfig;
-                codec->getConfigurationBox(codec, AVIF_CODEC_PLANES_ALPHA, &alphaConfig);
+                codec[AVIF_CODEC_PLANES_ALPHA]->getConfigurationBox(codec[AVIF_CODEC_PLANES_ALPHA], &alphaConfig);
                 writeConfigBox(&s, &alphaConfig);
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
@@ -353,8 +376,11 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
     result = AVIF_RESULT_OK;
 
 writeCleanup:
-    if (codec) {
-        avifCodecDestroy(codec);
+    if (codec[AVIF_CODEC_PLANES_COLOR]) {
+        avifCodecDestroy(codec[AVIF_CODEC_PLANES_COLOR]);
+    }
+    if (codec[AVIF_CODEC_PLANES_ALPHA]) {
+        avifCodecDestroy(codec[AVIF_CODEC_PLANES_ALPHA]);
     }
     avifRawDataFree(&colorOBU);
     avifRawDataFree(&alphaOBU);

@@ -57,11 +57,28 @@ void * avifArrayPushPtr(void * arrayStruct);
 void avifArrayPush(void * arrayStruct, void * element);
 void avifArrayDestroy(void * arrayStruct);
 
+AVIF_ARRAY_DECLARE(avifRawDataArray, avifRawData, raw);
+
+// Used internally by avifDecoderNextImage() when there is limited range alpha
+void avifImageCopyDecoderAlpha(avifImage * image);
+
 // ---------------------------------------------------------------------------
 // Memory management
 
 void * avifAlloc(size_t size);
 void avifFree(void * p);
+
+// ---------------------------------------------------------------------------
+// avifCodecDecodeInput
+
+typedef struct avifCodecDecodeInput
+{
+    avifRawDataArray samples;
+    avifBool alpha; // if true, this is decoding an alpha plane
+} avifCodecDecodeInput;
+
+avifCodecDecodeInput * avifCodecDecodeInputCreate();
+void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput);
 
 // ---------------------------------------------------------------------------
 // avifCodec (abstraction layer to use different AV1 implementations)
@@ -98,37 +115,26 @@ typedef enum avifCodecPlanes
     AVIF_CODEC_PLANES_COUNT
 } avifCodecPlanes;
 
-typedef struct avifCodecImageSize
-{
-    uint32_t width;
-    uint32_t height;
-} avifCodecImageSize;
-
 struct avifCodec;
 struct avifCodecInternal;
 
-typedef avifBool (*avifCodecDecodeFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifRawData * obu);
-typedef avifCodecImageSize (*avifCodecGetImageSizeFunc)(struct avifCodec * codec, avifCodecPlanes planes); // should return 0s if absent
+typedef avifBool (*avifCodecDecodeFunc)(struct avifCodec * codec);
 // avifCodecAlphaLimitedRangeFunc: returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
 typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);
-typedef avifResult (*avifCodecGetDecodedImageFunc)(struct avifCodec * codec, avifImage * image);
+typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
 // avifCodecEncodeImageFunc: if either OBU* is null, skip its encode. alpha should always be lossless
-typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
-                                               avifImage * image,
-                                               avifEncoder * encoder,
-                                               avifRawData * colorOBU,
-                                               avifRawData * alphaOBU);
-typedef void (*avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig);
+typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * obu, avifBool alpha);
+typedef void (*avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecConfigurationBox * outConfig);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
 {
+    avifCodecDecodeInput * decodeInput;
     struct avifCodecInternal * internal; // up to each codec to use how it wants
 
     avifCodecDecodeFunc decode;
-    avifCodecGetImageSizeFunc getImageSize;
     avifCodecAlphaLimitedRangeFunc alphaLimitedRange;
-    avifCodecGetDecodedImageFunc getDecodedImage;
+    avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;
     avifCodecGetConfigurationBoxFunc getConfigurationBox;
     avifCodecDestroyInternalFunc destroyInternal;
