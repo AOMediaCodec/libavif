@@ -320,10 +320,10 @@ static avifBool isAlphaURN(char * urn)
 // ---------------------------------------------------------------------------
 // BMFF Parsing
 
-#define BEGIN_STREAM(VARNAME, PTR, SIZE)             \
-    avifStream VARNAME;                              \
-    avifRawData VARNAME ## _rawData = { PTR, SIZE }; \
-    avifStreamStart(&VARNAME, &VARNAME ## _rawData)
+#define BEGIN_STREAM(VARNAME, PTR, SIZE)           \
+    avifStream VARNAME;                            \
+    avifRawData VARNAME##_rawData = { PTR, SIZE }; \
+    avifStreamStart(&VARNAME, &VARNAME##_rawData)
 
 static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t rawLen)
 {
