@@ -173,7 +173,7 @@ AVIF_ARRAY_DECLARE(avifTrackArray, avifTrack, track);
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
-static avifCodecDecodeInput * avifCodecDecodeInputCreate()
+avifCodecDecodeInput * avifCodecDecodeInputCreate()
 {
     avifCodecDecodeInput * decodeInput = (avifCodecDecodeInput *)avifAlloc(sizeof(avifCodecDecodeInput));
     memset(decodeInput, 0, sizeof(avifCodecDecodeInput));
@@ -181,7 +181,7 @@ static avifCodecDecodeInput * avifCodecDecodeInputCreate()
     return decodeInput;
 }
 
-static void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
+void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
 {
     avifArrayDestroy(&decodeInput->samples);
     avifFree(decodeInput);
@@ -320,10 +320,10 @@ static avifBool isAlphaURN(char * urn)
 // ---------------------------------------------------------------------------
 // BMFF Parsing
 
-#define BEGIN_STREAM(VARNAME, PTR, SIZE)           \
-    avifStream VARNAME;                            \
-    avifRawData VARNAME##_rawData = { PTR, SIZE }; \
-    avifStreamStart(&VARNAME, &VARNAME##_rawData)
+#define BEGIN_STREAM(VARNAME, PTR, SIZE)             \
+    avifStream VARNAME;                              \
+    avifRawData VARNAME ## _rawData = { PTR, SIZE }; \
+    avifStreamStart(&VARNAME, &VARNAME ## _rawData)
 
 static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t rawLen)
 {
@@ -345,7 +345,7 @@ static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t 
     for (int i = 0; i < itemCount; ++i) {
         uint16_t itemID;                                           // unsigned int(16) item_ID;
         CHECK(avifStreamReadU16(&s, &itemID));                     //
-        uint16_t dataReferenceIndex;                               // unsigned int(16) data_ref	rence_index;
+        uint16_t dataReferenceIndex;                               // unsigned int(16) data_ref rence_index;
         CHECK(avifStreamReadU16(&s, &dataReferenceIndex));         //
         uint64_t baseOffset;                                       // unsigned int(base_offset_size*8) base_offset;
         CHECK(avifStreamReadUX8(&s, &baseOffset, baseOffsetSize)); //
