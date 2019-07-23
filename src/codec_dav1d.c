@@ -80,7 +80,8 @@ static avifBool dav1dCodecAlphaLimitedRange(avifCodec * codec)
 static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
 {
     avifBool gotPicture = AVIF_FALSE;
-    Dav1dPicture nextFrame = { 0 };
+    Dav1dPicture nextFrame;
+    memset(&nextFrame, 0, sizeof(Dav1dPicture));
 
     for (;;) {
         avifBool sentData = dav1dFeedData(codec);
@@ -128,8 +129,8 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         }
 
         if (image->width && image->height) {
-            if ((image->width != dav1dImage->p.w) || (image->height != dav1dImage->p.h) || (image->depth != dav1dImage->p.bpc) ||
-                (image->yuvFormat != yuvFormat)) {
+            if ((image->width != (uint32_t)dav1dImage->p.w) || (image->height != (uint32_t)dav1dImage->p.h) ||
+                (image->depth != (uint32_t)dav1dImage->p.bpc) || (image->yuvFormat != yuvFormat)) {
                 // Throw it all out
                 avifImageFreePlanes(image, AVIF_PLANES_ALL);
             }

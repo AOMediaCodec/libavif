@@ -75,8 +75,8 @@ avifResult avifImageRGBToYUV(avifImage * image)
     uint32_t * rgbRowBytes = image->rgbRowBytes;
     uint8_t ** yuvPlanes = image->yuvPlanes;
     uint32_t * yuvRowBytes = image->yuvRowBytes;
-    for (int outerJ = 0; outerJ < image->height; outerJ += 2) {
-        for (int outerI = 0; outerI < image->width; outerI += 2) {
+    for (uint32_t outerJ = 0; outerJ < image->height; outerJ += 2) {
+        for (uint32_t outerI = 0; outerI < image->width; outerI += 2) {
             int blockW = 2, blockH = 2;
             if ((outerI + 1) >= image->width) {
                 blockW = 1;
@@ -219,8 +219,8 @@ avifResult avifImageYUVToRGB(avifImage * image)
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
     uint32_t * rgbRowBytes = image->rgbRowBytes;
-    for (int j = 0; j < image->height; ++j) {
-        for (int i = 0; i < image->width; ++i) {
+    for (uint32_t j = 0; j < image->height; ++j) {
+        for (uint32_t i = 0; i < image->width; ++i) {
             // Unpack YUV into unorm
             int uvI = i >> state.formatInfo.chromaShiftX;
             int uvJ = j >> state.formatInfo.chromaShiftY;

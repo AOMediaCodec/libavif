@@ -17,6 +17,52 @@ add_subdirectory(ext)
 
 include_directories(include)
 
+# Enable all warnings
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  MESSAGE(STATUS "libavif: Enabling warnings for Clang")
+  add_definitions(
+    -Weverything
+    -Werror
+    -Wno-bad-function-cast
+    -Wno-c11-extensions
+    -Wno-cast-align
+    -Wno-cast-qual
+    -Wno-covered-switch-default
+    -Wno-deprecated-declarations
+    -Wno-disabled-macro-expansion
+    -Wno-double-promotion
+    -Wno-format-nonliteral
+    -Wno-language-extension-token
+    -Wno-missing-noreturn
+    -Wno-padded
+    -Wno-reserved-id-macro
+    -Wno-sign-conversion
+    -Wno-switch-enum
+    -Wno-undef
+  )
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  add_definitions(-std=c99) # Enforce C99 for gcc
+  MESSAGE(STATUS "libavif: Enabling warnings for GCC")
+  add_definitions(-Werror -Wall -Wextra)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  MESSAGE(STATUS "libavif: Enabling warnings for MS CL")
+  add_definitions(
+    /Wall   # All warnings
+    /WX     # Warnings as errors
+    /wd4255 # Disable: no function prototype given
+    /wd4324 # Disable: structure was padded due to alignment specifier
+    /wd4668 # Disable: is not defined as a preprocessor macro, replacing with '0'
+    /wd4710 # Disable: function not inlined
+    /wd4711 # Disable: function selected for inline expansion
+    /wd4738 # Disable: storing 32-bit float result in memory, possible loss of performance
+    /wd4820 # Disable: bytes padding added after data member
+    /wd4996 # Disable: potentially unsafe stdlib methods
+    /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+  )
+else()
+  MESSAGE(FATAL_ERROR "libavif: Unknown compiler, bailing out")
+endif()
+
 set(AVIF_SRCS
     include/avif/avif.h
     include/avif/internal.h

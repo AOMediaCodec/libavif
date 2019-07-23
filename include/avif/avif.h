@@ -271,9 +271,9 @@ typedef enum avifProfileFormat
 typedef struct avifImage
 {
     // Image information
-    int width;
-    int height;
-    int depth; // all planes (RGB/YUV/A) must share this depth; if depth>8, all planes are uint16_t internally
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth; // all planes (RGB/YUV/A) must share this depth; if depth>8, all planes are uint16_t internally
 
     uint8_t * rgbPlanes[AVIF_PLANE_COUNT_RGB];
     uint32_t rgbRowBytes[AVIF_PLANE_COUNT_RGB];

@@ -271,10 +271,10 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
             }
 
             avifBoxMarker pixiC = avifStreamWriteBox(&s, "pixi", 0, 0);
-            avifStreamWriteU8(&s, 3);            // unsigned int (8) num_channels;
-            avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
-            avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
-            avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
+            avifStreamWriteU8(&s, 3);                     // unsigned int (8) num_channels;
+            avifStreamWriteU8(&s, (uint8_t)image->depth); // unsigned int (8) bits_per_channel;
+            avifStreamWriteU8(&s, (uint8_t)image->depth); // unsigned int (8) bits_per_channel;
+            avifStreamWriteU8(&s, (uint8_t)image->depth); // unsigned int (8) bits_per_channel;
             avifStreamFinishBox(&s, pixiC);
             ++ipcoIndex;
             ipmaPush(&ipmaColor, ipcoIndex);
@@ -287,8 +287,8 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawDat
 
             if (hasAlpha) {
                 avifBoxMarker pixiA = avifStreamWriteBox(&s, "pixi", 0, 0);
-                avifStreamWriteU8(&s, 1);            // unsigned int (8) num_channels;
-                avifStreamWriteU8(&s, image->depth); // unsigned int (8) bits_per_channel;
+                avifStreamWriteU8(&s, 1);                     // unsigned int (8) num_channels;
+                avifStreamWriteU8(&s, (uint8_t)image->depth); // unsigned int (8) bits_per_channel;
                 avifStreamFinishBox(&s, pixiA);
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
@@ -395,8 +395,8 @@ static avifBool avifImageIsOpaque(avifImage * image)
 
     int maxChannel = (1 << image->depth) - 1;
     if (avifImageUsesU16(image)) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
+        for (uint32_t j = 0; j < image->height; ++j) {
+            for (uint32_t i = 0; i < image->width; ++i) {
                 uint16_t * p = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
                 if (*p != maxChannel) {
                     return AVIF_FALSE;
@@ -404,8 +404,8 @@ static avifBool avifImageIsOpaque(avifImage * image)
             }
         }
     } else {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
+        for (uint32_t j = 0; j < image->height; ++j) {
+            for (uint32_t i = 0; i < image->width; ++i) {
                 if (image->alphaPlane[i + (j * image->alphaRowBytes)] != maxChannel) {
                     return AVIF_FALSE;
                 }

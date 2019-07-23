@@ -177,7 +177,7 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
 
     if (srcImage->alphaPlane) {
         avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
-        for (int j = 0; j < dstImage->height; ++j) {
+        for (uint32_t j = 0; j < dstImage->height; ++j) {
             uint8_t * srcAlphaRow = &srcImage->alphaPlane[j * srcImage->alphaRowBytes];
             uint8_t * dstAlphaRow = &dstImage->alphaPlane[j * dstImage->alphaRowBytes];
             memcpy(dstAlphaRow, srcAlphaRow, dstImage->alphaRowBytes);

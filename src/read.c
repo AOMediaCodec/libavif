@@ -320,9 +320,11 @@ static avifBool isAlphaURN(char * urn)
 // ---------------------------------------------------------------------------
 // BMFF Parsing
 
-#define BEGIN_STREAM(VARNAME, PTR, SIZE)           \
-    avifStream VARNAME;                            \
-    avifRawData VARNAME##_rawData = { PTR, SIZE }; \
+#define BEGIN_STREAM(VARNAME, PTR, SIZE) \
+    avifStream VARNAME;                  \
+    avifRawData VARNAME##_rawData;       \
+    VARNAME##_rawData.data = PTR;        \
+    VARNAME##_rawData.size = SIZE;       \
     avifStreamStart(&VARNAME, &VARNAME##_rawData)
 
 static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t rawLen)
@@ -1350,15 +1352,15 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         // Naughty! Alpha planes are supposed to be full range. Correct that here.
         avifImageCopyDecoderAlpha(decoder->image);
         if (avifImageUsesU16(decoder->image)) {
-            for (int j = 0; j < decoder->image->height; ++j) {
-                for (int i = 0; i < decoder->image->height; ++i) {
+            for (uint32_t j = 0; j < decoder->image->height; ++j) {
+                for (uint32_t i = 0; i < decoder->image->height; ++i) {
                     uint16_t * alpha = (uint16_t *)&decoder->image->alphaPlane[(i * 2) + (j * decoder->image->alphaRowBytes)];
                     *alpha = (uint16_t)avifLimitedToFullY(decoder->image->depth, *alpha);
                 }
             }
         } else {
-            for (int j = 0; j < decoder->image->height; ++j) {
-                for (int i = 0; i < decoder->image->height; ++i) {
+            for (uint32_t j = 0; j < decoder->image->height; ++j) {
+                for (uint32_t i = 0; i < decoder->image->height; ++i) {
                     uint8_t * alpha = &decoder->image->alphaPlane[i + (j * decoder->image->alphaRowBytes)];
                     *alpha = (uint8_t)avifLimitedToFullY(decoder->image->depth, *alpha);
                 }

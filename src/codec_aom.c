@@ -274,14 +274,14 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
         seqLevelIdx0 = 13; // 5.1
     }
 
-    outputConfig->seqProfile = cfg.g_profile;
+    outputConfig->seqProfile = (uint8_t)cfg.g_profile;
     outputConfig->seqLevelIdx0 = seqLevelIdx0;
     outputConfig->seqTier0 = 0;
     outputConfig->highBitdepth = (image->depth > 8) ? 1 : 0;
     outputConfig->twelveBit = (image->depth == 12) ? 1 : 0;
     outputConfig->monochrome = alphaOnly ? 1 : 0;
-    outputConfig->chromaSubsamplingX = formatInfo.chromaShiftX;
-    outputConfig->chromaSubsamplingY = formatInfo.chromaShiftY;
+    outputConfig->chromaSubsamplingX = (uint8_t)formatInfo.chromaShiftX;
+    outputConfig->chromaSubsamplingY = (uint8_t)formatInfo.chromaShiftY;
 
     // TODO: choose the correct one from below:
     //   * 0 - CSP_UNKNOWN   Unknown (in this case the source video transfer function must be signaled outside the AV1 bitstream)
@@ -315,20 +315,20 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
         aom_codec_control(&aomEncoder, AV1E_SET_ROW_MT, 1);
     }
 
-    int uvHeight = image->height >> yShift;
+    uint32_t uvHeight = image->height >> yShift;
     aom_image_t * aomImage = aom_img_alloc(NULL, aomFormat, image->width, image->height, 16);
 
     if (alphaOnly) {
         aomImage->range = AOM_CR_FULL_RANGE; // Alpha is always full range
         aom_codec_control(&aomEncoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         aomImage->monochrome = 1;
-        for (int j = 0; j < image->height; ++j) {
+        for (uint32_t j = 0; j < image->height; ++j) {
             uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
             uint8_t * dstAlphaRow = &aomImage->planes[0][j * aomImage->stride[0]];
             memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
         }
 
-        for (int j = 0; j < uvHeight; ++j) {
+        for (uint32_t j = 0; j < uvHeight; ++j) {
             // Zero out U and V
             memset(&aomImage->planes[1][j * aomImage->stride[1]], 0, aomImage->stride[1]);
             memset(&aomImage->planes[2][j * aomImage->stride[2]], 0, aomImage->stride[2]);

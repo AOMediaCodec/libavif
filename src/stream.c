@@ -240,7 +240,7 @@ avifBoxMarker avifStreamWriteBox(avifStream * stream, const char * type, int ver
     makeRoom(stream, headerSize);
     memset(stream->raw->data + stream->offset, 0, headerSize);
     if (version != -1) {
-        stream->raw->data[stream->offset + 8] = version;
+        stream->raw->data[stream->offset + 8] = (uint8_t)version;
     }
     uint32_t noSize = avifNTOHL((uint32_t)(headerSize + contentSize));
     memcpy(stream->raw->data + stream->offset, &noSize, sizeof(uint32_t));

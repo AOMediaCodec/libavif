@@ -18,7 +18,7 @@ typedef union gbVec2
     struct
     {
         float x, y;
-    };
+    } xy;
     float e[2];
 } gbVec2;
 
@@ -27,11 +27,11 @@ typedef union gbVec3
     struct
     {
         float x, y, z;
-    };
+    } xyz;
     struct
     {
         float r, g, b;
-    };
+    } rgb;
 
     gbVec2 xy;
     float e[3];
@@ -42,7 +42,7 @@ typedef union gbMat3
     struct
     {
         gbVec3 x, y, z;
-    };
+    } xyz;
     gbVec3 col[3];
     float e[9];
 } gbMat3;
@@ -54,9 +54,9 @@ static gbFloat3 * gb_float33_m(gbMat3 * m)
 
 static void gb_float33_mul_vec3(gbVec3 * out, float m[3][3], gbVec3 v)
 {
-    out->x = m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z;
-    out->y = m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z;
-    out->z = m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z;
+    out->xyz.x = m[0][0] * v.xyz.x + m[0][1] * v.xyz.y + m[0][2] * v.xyz.z;
+    out->xyz.y = m[1][0] * v.xyz.x + m[1][1] * v.xyz.y + m[1][2] * v.xyz.z;
+    out->xyz.z = m[2][0] * v.xyz.x + m[2][1] * v.xyz.y + m[2][2] * v.xyz.z;
 }
 
 static void gb_mat3_mul_vec3(gbVec3 * out, gbMat3 * m, gbVec3 in)
@@ -259,7 +259,7 @@ static float calcMaxY(float r, float g, float b, gbMat3 * colorants)
     rgb.e[1] = g;
     rgb.e[2] = b;
     gb_mat3_mul_vec3(&XYZ, colorants, rgb);
-    return XYZ.y;
+    return XYZ.xyz.y;
 }
 
 static avifBool readXYZ(uint8_t * data, size_t size, float xyz[3])
@@ -408,28 +408,28 @@ static void deriveXYZMatrix(gbMat3 * colorants, float primaries[8])
     gbVec3 U, W;
     gbMat3 P, PInv, D;
 
-    P.col[0].x = primaries[0];
-    P.col[0].y = primaries[1];
-    P.col[0].z = 1 - primaries[0] - primaries[1];
-    P.col[1].x = primaries[2];
-    P.col[1].y = primaries[3];
-    P.col[1].z = 1 - primaries[2] - primaries[3];
-    P.col[2].x = primaries[4];
-    P.col[2].y = primaries[5];
-    P.col[2].z = 1 - primaries[4] - primaries[5];
+    P.col[0].xyz.x = primaries[0];
+    P.col[0].xyz.y = primaries[1];
+    P.col[0].xyz.z = 1 - primaries[0] - primaries[1];
+    P.col[1].xyz.x = primaries[2];
+    P.col[1].xyz.y = primaries[3];
+    P.col[1].xyz.z = 1 - primaries[2] - primaries[3];
+    P.col[2].xyz.x = primaries[4];
+    P.col[2].xyz.y = primaries[5];
+    P.col[2].xyz.z = 1 - primaries[4] - primaries[5];
 
     gb_mat3_inverse(&PInv, &P);
 
-    W.x = primaries[6];
-    W.y = primaries[7];
-    W.z = 1 - primaries[6] - primaries[7];
+    W.xyz.x = primaries[6];
+    W.xyz.y = primaries[7];
+    W.xyz.z = 1 - primaries[6] - primaries[7];
 
     gb_mat3_mul_vec3(&U, &PInv, W);
 
     memset(&D, 0, sizeof(D));
-    D.col[0].x = U.x / W.y;
-    D.col[1].y = U.y / W.y;
-    D.col[2].z = U.z / W.y;
+    D.col[0].xyz.x = U.xyz.x / W.xyz.y;
+    D.col[1].xyz.y = U.xyz.y / W.xyz.y;
+    D.col[2].xyz.z = U.xyz.z / W.xyz.y;
 
     gb_mat3_mul(colorants, &P, &D);
     gb_mat3_transpose(colorants);

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Fixed some warnings (removed unused variables and a bad cast)
 - Add a define in dav1d layer for supporting older dav1d codecs
+- Enabled tons of warnings, and warnings-as-errors; Fixed associated fallout
 
 ## [0.3.2] - 2019-07-23
 ### Added
