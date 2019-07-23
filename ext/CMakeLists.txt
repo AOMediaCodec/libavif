@@ -1,7 +1,7 @@
 # Copyright 2019 Joe Drago. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-if(AVIF_CODEC_AOM)
+if(AVIF_CODEC_AOM AND AVIF_BUILD_AOM)
     set(ENABLE_DOCS 0)
     set(ENABLE_EXAMPLES 0)
     set(ENABLE_TESTDATA 0)

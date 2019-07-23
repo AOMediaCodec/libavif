@@ -8,6 +8,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
+option(AVIF_BUILD_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom" OFF)
+
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" ON)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
 
