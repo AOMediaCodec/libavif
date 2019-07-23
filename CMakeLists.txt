@@ -65,14 +65,16 @@ endif()
 
 add_library(avif STATIC ${AVIF_SRCS})
 target_link_libraries(avif gb ${AVIF_CODEC_LIBARIES})
+
+set(AVIF_MATH_LIBRARY)
 if(NOT WIN32)
-    target_link_libraries(avif m)
+    set(AVIF_MATH_LIBRARY m)
 endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     add_executable(avif_example1 examples/avif_example1.c)
-    target_link_libraries(avif_example1 avif)
+    target_link_libraries(avif_example1 avif ${AVIF_MATH_LIBRARY})
 endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
@@ -83,13 +85,13 @@ if(AVIF_BUILD_APPS)
         apps/shared/y4m.c
         apps/shared/avifutil.c
     )
-    target_link_libraries(avifenc avif)
+    target_link_libraries(avifenc avif ${AVIF_MATH_LIBRARY})
     add_executable(avifdec
         apps/avifdec.c
         apps/shared/y4m.c
         apps/shared/avifutil.c
     )
-    target_link_libraries(avifdec avif)
+    target_link_libraries(avifdec avif ${AVIF_MATH_LIBRARY})
 endif()
 
 option(AVIF_BUILD_TESTS "Build avif tests (fuzzing)." OFF)
@@ -97,7 +99,7 @@ if(AVIF_BUILD_TESTS)
     add_executable(aviffuzz
         tests/aviffuzz.c
     )
-    target_link_libraries(aviffuzz avif)
+    target_link_libraries(aviffuzz avif ${AVIF_MATH_LIBRARY})
 endif()
 
 macro(avif_set_folder_safe target folder)

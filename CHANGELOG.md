@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2019-07-22
+### Changed
+- Moved dependency on libm to avif executables, instead of directly on the library
+- Minor changes to README examples
+
 ## [0.3.0] - 2019-07-22
 ### Added
 - new CMake option `AVIF_CODEC_AOM` to enable/disable the usage of AOM's codec (default: on)
@@ -96,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/AOMediaCodec/libavif/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/AOMediaCodec/libavif/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/AOMediaCodec/libavif/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/AOMediaCodec/libavif/compare/v0.1.3...v0.1.4
