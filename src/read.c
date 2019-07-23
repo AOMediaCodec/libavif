@@ -71,8 +71,8 @@ typedef struct avifItem
     avifAuxiliaryType auxC;
     avifBool colrPresent;
     avifColourInformationBox colr;
-    int thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
-    int auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
+    uint32_t thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
+    uint32_t auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
 } avifItem;
 AVIF_ARRAY_DECLARE(avifItemArray, avifItem, item);
 
@@ -687,6 +687,7 @@ static avifBool avifParseMetaBox(avifData * data, uint8_t * raw, size_t rawLen)
 static avifBool avifParseTrackHeaderBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
 
     uint8_t version;
     uint8_t flags[3];
@@ -716,6 +717,7 @@ static avifBool avifParseTrackHeaderBox(avifData * data, avifTrack * track, uint
 static avifBool avifParseMediaHeaderBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
 
     uint8_t version;
     uint8_t flags[3];
@@ -747,6 +749,7 @@ static avifBool avifParseMediaHeaderBox(avifData * data, avifTrack * track, uint
 static avifBool avifParseChunkOffsetBox(avifData * data, avifSampleTable * sampleTable, avifBool largeOffsets, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
 
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
@@ -771,6 +774,7 @@ static avifBool avifParseChunkOffsetBox(avifData * data, avifSampleTable * sampl
 static avifBool avifParseSampleToChunkBox(avifData * data, avifSampleTable * sampleTable, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
 
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
@@ -788,6 +792,7 @@ static avifBool avifParseSampleToChunkBox(avifData * data, avifSampleTable * sam
 static avifBool avifParseSampleSizeBox(avifData * data, avifSampleTable * sampleTable, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
 
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
@@ -810,6 +815,7 @@ static avifBool avifParseSampleSizeBox(avifData * data, avifSampleTable * sample
 static avifBool avifParseTimeToSampleBox(avifData * data, avifSampleTable * sampleTable, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
 
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
@@ -894,6 +900,7 @@ static avifBool avifParseMediaBox(avifData * data, avifTrack * track, uint8_t * 
 static avifBool avifTrackReferenceBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
 
     while (avifStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
