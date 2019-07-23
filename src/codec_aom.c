@@ -3,10 +3,27 @@
 
 #include "avif/internal.h"
 
+// These are for libaom to deal with
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wduplicate-enum"
+#pragma clang diagnostic ignored "-Wextra-semi"
+#pragma clang diagnostic ignored "-Wused-but-marked-unused"
+#endif
+
 #include "aom/aom_decoder.h"
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
 #include "aom/aomdx.h"
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+
+// This fixes complaints with aom_codec_control() and aom_img_fmt that are from libaom
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wused-but-marked-unused"
+#pragma clang diagnostic ignored "-Wassign-enum"
+#endif
 
 #include <string.h>
 
@@ -31,7 +48,7 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-avifBool aomCodecDecode(struct avifCodec * codec)
+static avifBool aomCodecDecode(struct avifCodec * codec)
 {
     aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
     if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, NULL, 0)) {
@@ -388,7 +405,7 @@ static void aomCodecGetConfigurationBox(avifCodec * codec, avifCodecConfiguratio
     memcpy(outConfig, &codec->internal->config, sizeof(avifCodecConfigurationBox));
 }
 
-avifCodec * avifCodecCreateAOM()
+avifCodec * avifCodecCreateAOM(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
@@ -403,3 +420,7 @@ avifCodec * avifCodecCreateAOM()
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     return codec;
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

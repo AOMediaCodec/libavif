@@ -173,7 +173,7 @@ AVIF_ARRAY_DECLARE(avifTrackArray, avifTrack, track);
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
-avifCodecDecodeInput * avifCodecDecodeInputCreate()
+avifCodecDecodeInput * avifCodecDecodeInputCreate(void)
 {
     avifCodecDecodeInput * decodeInput = (avifCodecDecodeInput *)avifAlloc(sizeof(avifCodecDecodeInput));
     memset(decodeInput, 0, sizeof(avifCodecDecodeInput));

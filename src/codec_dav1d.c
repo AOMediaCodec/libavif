@@ -148,7 +148,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = dav1dImage->data[yuvPlane];
-            image->yuvRowBytes[yuvPlane] = dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
+            image->yuvRowBytes[yuvPlane] = (uint32_t)dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
         }
         image->decoderOwnsYUVPlanes = AVIF_TRUE;
     } else {
@@ -156,13 +156,13 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
-        image->alphaRowBytes = dav1dImage->stride[0];
+        image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
         image->decoderOwnsAlphaPlane = AVIF_TRUE;
     }
     return AVIF_TRUE;
 }
 
-avifCodec * avifCodecCreateDav1d()
+avifCodec * avifCodecCreateDav1d(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));

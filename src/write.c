@@ -425,7 +425,7 @@ static void writeConfigBox(avifStream * s, avifCodecConfigurationBox * cfg)
 
     // unsigned int (3) seq_profile;
     // unsigned int (5) seq_level_idx_0;
-    avifStreamWriteU8(s, ((cfg->seqProfile & 0x7) << 5) | (cfg->seqLevelIdx0 & 0x1f));
+    avifStreamWriteU8(s, (uint8_t)((cfg->seqProfile & 0x7) << 5) | (uint8_t)(cfg->seqLevelIdx0 & 0x1f));
 
     uint8_t bits = 0;
     bits |= (cfg->seqTier0 & 0x1) << 7;           // unsigned int (1) seq_tier_0;

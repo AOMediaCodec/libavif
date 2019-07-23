@@ -50,7 +50,7 @@ void avifCalcYUVCoefficients(avifImage * image, float * outR, float * outG, floa
         uint32_t elementSize;                              \
         uint32_t count;                                    \
         uint32_t capacity;                                 \
-    } TYPENAME;
+    } TYPENAME
 void avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
 uint32_t avifArrayPushIndex(void * arrayStruct);
 void * avifArrayPushPtr(void * arrayStruct);
@@ -77,7 +77,7 @@ typedef struct avifCodecDecodeInput
     avifBool alpha; // if true, this is decoding an alpha plane
 } avifCodecDecodeInput;
 
-avifCodecDecodeInput * avifCodecDecodeInputCreate();
+avifCodecDecodeInput * avifCodecDecodeInputCreate(void);
 void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput);
 
 // ---------------------------------------------------------------------------
@@ -140,8 +140,8 @@ typedef struct avifCodec
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-avifCodec * avifCodecCreateAOM();   // requires AVIF_CODEC_AOM
-avifCodec * avifCodecCreateDav1d(); // requires AVIF_CODEC_DAV1D
+avifCodec * avifCodecCreateAOM(void);   // requires AVIF_CODEC_AOM
+avifCodec * avifCodecCreateDav1d(void); // requires AVIF_CODEC_DAV1D
 void avifCodecDestroy(avifCodec * codec);
 
 // ---------------------------------------------------------------------------
