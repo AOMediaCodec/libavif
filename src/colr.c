@@ -3,9 +3,135 @@
 
 #include "avif/internal.h"
 
-#include "gb_math.h"
-
+#include <math.h>
 #include <string.h>
+
+// ------------------------------------------------------------------------------------------------
+// Adapted from gb_math:
+//
+// gb_math.h - v0.07c - public domain C math library - no warranty implied; use at your own risk
+
+typedef float gbFloat3[3];
+
+typedef union gbVec2
+{
+    struct
+    {
+        float x, y;
+    };
+    float e[2];
+} gbVec2;
+
+typedef union gbVec3
+{
+    struct
+    {
+        float x, y, z;
+    };
+    struct
+    {
+        float r, g, b;
+    };
+
+    gbVec2 xy;
+    float e[3];
+} gbVec3;
+
+typedef union gbMat3
+{
+    struct
+    {
+        gbVec3 x, y, z;
+    };
+    gbVec3 col[3];
+    float e[9];
+} gbMat3;
+
+static gbFloat3 * gb_float33_m(gbMat3 * m)
+{
+    return (gbFloat3 *)m;
+}
+
+static void gb_float33_mul_vec3(gbVec3 * out, float m[3][3], gbVec3 v)
+{
+    out->x = m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z;
+    out->y = m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z;
+    out->z = m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z;
+}
+
+static void gb_mat3_mul_vec3(gbVec3 * out, gbMat3 * m, gbVec3 in)
+{
+    gb_float33_mul_vec3(out, gb_float33_m(m), in);
+}
+
+static void gb_float33_transpose(float (*vec)[3])
+{
+    int i, j;
+    for (j = 0; j < 3; j++) {
+        for (i = j + 1; i < 3; i++) {
+            float t = vec[i][j];
+            vec[i][j] = vec[j][i];
+            vec[j][i] = t;
+        }
+    }
+}
+
+static void gb_mat3_transpose(gbMat3 * m)
+{
+    gb_float33_transpose(gb_float33_m(m));
+}
+
+static float gb_mat3_determinate(gbMat3 * m)
+{
+    gbFloat3 * e = gb_float33_m(m);
+    float d = +e[0][0] * (e[1][1] * e[2][2] - e[1][2] * e[2][1]) - e[0][1] * (e[1][0] * e[2][2] - e[1][2] * e[2][0]) +
+              e[0][2] * (e[1][0] * e[2][1] - e[1][1] * e[2][0]);
+    return d;
+}
+
+static void gb_float33_mul(float (*out)[3], float (*mat1)[3], float (*mat2)[3])
+{
+    int i, j;
+    float temp1[3][3], temp2[3][3];
+    if (mat1 == out) {
+        memcpy(temp1, mat1, sizeof(temp1));
+        mat1 = temp1;
+    }
+    if (mat2 == out) {
+        memcpy(temp2, mat2, sizeof(temp2));
+        mat2 = temp2;
+    }
+    for (j = 0; j < 3; j++) {
+        for (i = 0; i < 3; i++) {
+            out[j][i] = mat1[0][i] * mat2[j][0] + mat1[1][i] * mat2[j][1] + mat1[2][i] * mat2[j][2];
+        }
+    }
+}
+
+static void gb_mat3_mul(gbMat3 * out, gbMat3 * m1, gbMat3 * m2)
+{
+    gb_float33_mul(gb_float33_m(out), gb_float33_m(m1), gb_float33_m(m2));
+}
+
+static void gb_mat3_inverse(gbMat3 * out, gbMat3 * in)
+{
+    gbFloat3 * o = gb_float33_m(out);
+    gbFloat3 * i = gb_float33_m(in);
+
+    float ood = 1.0f / gb_mat3_determinate(in);
+
+    o[0][0] = +(i[1][1] * i[2][2] - i[2][1] * i[1][2]) * ood;
+    o[0][1] = -(i[1][0] * i[2][2] - i[2][0] * i[1][2]) * ood;
+    o[0][2] = +(i[1][0] * i[2][1] - i[2][0] * i[1][1]) * ood;
+    o[1][0] = -(i[0][1] * i[2][2] - i[2][1] * i[0][2]) * ood;
+    o[1][1] = +(i[0][0] * i[2][2] - i[2][0] * i[0][2]) * ood;
+    o[1][2] = -(i[0][0] * i[2][1] - i[2][0] * i[0][1]) * ood;
+    o[2][0] = +(i[0][1] * i[1][2] - i[1][1] * i[0][2]) * ood;
+    o[2][1] = -(i[0][0] * i[1][2] - i[1][0] * i[0][2]) * ood;
+    o[2][2] = +(i[0][0] * i[1][1] - i[1][0] * i[0][1]) * ood;
+}
+
+// ------------------------------------------------------------------------------------------------
 
 struct avifColourPrimariesTable
 {

@@ -13,11 +13,3 @@ if(AVIF_CODEC_AOM AND AVIF_BUILD_AOM)
     set(ENABLE_TOOLS 0)
     add_subdirectory(aom EXCLUDE_FROM_ALL)
 endif()
-
-if(NOT AVIF_EXTERNAL_GB)
-include_directories(gb)
-add_library(gb
-    gb/gb_math.c
-    gb/gb_math.h
-)
-endif()
