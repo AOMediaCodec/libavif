@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Remove `ext/aom` as a submodule. If libavif users want to build aom from ext/, they must enable `AVIF_BUILD_AOM` and supply their own local copy.
 - Move the handful of public domain gb_math functions used by colr.c and eliminate the dependence on the gb library
+- Detect when libaom or libdav1d is being included by a parent CMake project and allow it
+- Offer libavif's include dir alongside the library in CMake (target_include_directories)
 
 ## [0.3.1] - 2019-07-22
 ### Changed
