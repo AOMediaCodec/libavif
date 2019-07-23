@@ -226,7 +226,7 @@ void avifStreamWrite(avifStream * stream, const uint8_t * data, size_t size)
 
 void avifStreamWriteChars(avifStream * stream, const char * chars, size_t size)
 {
-    avifStreamWrite(stream, (uint8_t *)chars, size);
+    avifStreamWrite(stream, (const uint8_t *)chars, size);
 }
 
 avifBoxMarker avifStreamWriteBox(avifStream * stream, const char * type, int version, size_t contentSize)

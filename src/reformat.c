@@ -219,8 +219,6 @@ avifResult avifImageYUVToRGB(avifImage * image)
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
     uint32_t * rgbRowBytes = image->rgbRowBytes;
-    uint8_t ** yuvPlanes = image->yuvPlanes;
-    uint32_t * yuvRowBytes = image->yuvRowBytes;
     for (int j = 0; j < image->height; ++j) {
         for (int i = 0; i < image->width; ++i) {
             // Unpack YUV into unorm

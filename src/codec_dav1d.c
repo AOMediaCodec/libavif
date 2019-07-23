@@ -7,6 +7,11 @@
 
 #include <string.h>
 
+// For those building with an older version of dav1d (not recommended).
+#ifndef DAV1D_ERR
+#define DAV1D_ERR(e) (-(e))
+#endif
+
 struct avifCodecInternal
 {
     Dav1dSettings dav1dSettings;
@@ -138,8 +143,6 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
 
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
-
-        int uvHeight = image->height >> formatInfo.chromaShiftY;
 
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
