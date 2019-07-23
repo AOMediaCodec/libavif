@@ -44,21 +44,45 @@ if(AVIF_CODEC_AOM)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_aom.c
     )
-    include_directories(
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
-        "${AOM_BINARY_DIR}"
-    )
+    if(AVIF_BUILD_AOM)
+        include_directories(
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
+            "${AOM_BINARY_DIR}"
+        )
+        message(STATUS "LIBAOM_INCLUDE_PATH: ${CMAKE_CURRENT_SOURCE_DIR}/ext/aom")
+    else()
+        find_library(LIBAOM_LIBRARY_PATH NAMES aom)
+        if(NOT LIBAOM_LIBRARY_PATH)
+          message(FATAL_ERROR "libavif: aom library not found")
+        endif()
+        find_path (LIBAOM_INCLUDE_PATH aom/aom.h)
+        if(NOT LIBAOM_INCLUDE_PATH)
+          message(FATAL_ERROR "libavif: aom library includes not found")
+        endif()
+        message(STATUS "LIBAOM_INCLUDE_PATH: ${LIBAOM_INCLUDE_PATH}")
+        include_directories(${LIBAOM_INCLUDE_PATH})
+    endif()
     set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} aom)
 else()
     message(STATUS "libavif: Encoding library: (none)")
 endif()
+
 if(AVIF_CODEC_DAV1D)
     message(STATUS "libavif: Decoding library: dav1d")
     add_definitions(-DAVIF_CODEC_DAV1D=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_dav1d.c
     )
-    FIND_LIBRARY(dav1d NAMES dav1d)
+    find_library(LIBDAV1D_LIBRARY_PATH NAMES dav1d)
+    if(NOT LIBDAV1D_LIBRARY_PATH)
+      message(FATAL_ERROR "libavif: dav1d library not found")
+    endif()
+    find_path (LIBDAV1D_INCLUDE_PATH dav1d/dav1d.h)
+    if(NOT LIBDAV1D_INCLUDE_PATH)
+      message(FATAL_ERROR "libavif: dav1d library includes not found")
+    endif()
+    message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
+    include_directories(${LIBDAV1D_INCLUDE_PATH})
     set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
 endif()
 if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)

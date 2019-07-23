@@ -11,9 +11,12 @@ matrix:
         packages:
           - nasm
     before_script:
+      - cd ext
+      - bash aom.cmd
+      - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Debug ..
+      - cmake -DCMAKE_BUILD_TYPE=Debug -DAVIF_BUILD_AOM=1 ..
     script:
       - make
 
@@ -24,9 +27,12 @@ matrix:
         packages:
           - nasm
     before_script:
+      - cd ext
+      - bash aom.cmd
+      - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Release ..
+      - cmake -DCMAKE_BUILD_TYPE=Release -DAVIF_BUILD_AOM=1 ..
     script:
       - make
 
@@ -37,9 +43,12 @@ matrix:
         packages:
           - nasm
     before_script:
+      - cd ext
+      - bash aom.cmd
+      - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Debug ..
+      - cmake -DCMAKE_BUILD_TYPE=Debug -DAVIF_BUILD_AOM=1 ..
     script:
       - make
 
@@ -50,8 +59,11 @@ matrix:
         packages:
           - nasm
     before_script:
+      - cd ext
+      - bash aom.cmd
+      - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Release ..
+      - cmake -DCMAKE_BUILD_TYPE=Release -DAVIF_BUILD_AOM=1 ..
     script:
       - make
