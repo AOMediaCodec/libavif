@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.2] - 2019-07-23
 ### Added
 - Added `ext/aom.cmd` to perform a local checkout of the aom codebase, as an alternative to a real submodule. This allows downstream projects to use libavif without recursive submodule issues.
 - AppVeyor and Travis scripts now explicitly clone libaom into ext/ as an alternative to a submodule.
@@ -110,7 +112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/AOMediaCodec/libavif/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/AOMediaCodec/libavif/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/AOMediaCodec/libavif/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/AOMediaCodec/libavif/compare/v0.1.4...v0.2.0
