@@ -100,8 +100,10 @@ int main(int argc, char * argv[])
     int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     int maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     avifBool nclxSet = AVIF_FALSE;
-    avifNclxColorProfile nclx;
     avifEncoder * encoder = NULL;
+
+    avifNclxColorProfile nclx;
+    memset(&nclx, 0, sizeof(avifNclxColorProfile));
 
     int argIndex = 1;
     while (argIndex < argc) {
