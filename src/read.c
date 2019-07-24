@@ -960,12 +960,12 @@ static avifBool avifParseMoovBox(avifData * data, uint8_t * raw, size_t rawLen)
     return AVIF_TRUE;
 }
 
-static avifBool avifParseFileTypeBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseFileTypeBox(avifFileType * ftyp, uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    CHECK(avifStreamRead(&s, data->ftyp.majorBrand, 4));
-    CHECK(avifStreamReadU32(&s, &data->ftyp.minorVersion));
+    CHECK(avifStreamRead(&s, ftyp->majorBrand, 4));
+    CHECK(avifStreamReadU32(&s, &ftyp->minorVersion));
 
     size_t compatibleBrandsBytes = avifStreamRemainingBytes(&s);
     if ((compatibleBrandsBytes % 4) != 0) {
@@ -975,8 +975,8 @@ static avifBool avifParseFileTypeBox(avifData * data, uint8_t * raw, size_t rawL
         // TODO: stop clamping and resize this
         compatibleBrandsBytes = (4 * MAX_COMPATIBLE_BRANDS);
     }
-    CHECK(avifStreamRead(&s, data->ftyp.compatibleBrands, compatibleBrandsBytes));
-    data->ftyp.compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
+    CHECK(avifStreamRead(&s, ftyp->compatibleBrands, compatibleBrandsBytes));
+    ftyp->compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
 
     return AVIF_TRUE;
 }
@@ -990,7 +990,7 @@ static avifBool avifParse(avifData * data, uint8_t * raw, size_t rawLen)
         CHECK(avifStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "ftyp", 4)) {
-            CHECK(avifParseFileTypeBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseFileTypeBox(&data->ftyp, avifStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "meta", 4)) {
             CHECK(avifParseMetaBox(data, avifStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "moov", 4)) {
@@ -1000,6 +1000,49 @@ static avifBool avifParse(avifData * data, uint8_t * raw, size_t rawLen)
         CHECK(avifStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
+}
+
+// ---------------------------------------------------------------------------
+
+static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
+{
+    avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+    if (!avifCompatible) {
+        avifCompatible = (memcmp(ftyp->majorBrand, "avis", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+        if (!avifCompatible) {
+            for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
+                uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
+                if (!memcmp(compatibleBrand, "avif", 4)) {
+                    avifCompatible = AVIF_TRUE;
+                    break;
+                }
+                if (!memcmp(compatibleBrand, "avis", 4)) {
+                    avifCompatible = AVIF_TRUE;
+                    break;
+                }
+            }
+        }
+    }
+    return avifCompatible;
+}
+
+avifBool avifPeekCompatibleFileType(avifRawData * input)
+{
+    BEGIN_STREAM(s, input->data, input->size);
+
+    avifBoxHeader header;
+    CHECK(avifStreamReadBoxHeader(&s, &header));
+    if (memcmp(header.type, "ftyp", 4) != 0) {
+        return AVIF_FALSE;
+    }
+
+    avifFileType ftyp;
+    memset(&ftyp, 0, sizeof(avifFileType));
+    avifBool parsed = avifParseFileTypeBox(&ftyp, avifStreamCurrent(&s), header.size);
+    if (!parsed) {
+        return AVIF_FALSE;
+    }
+    return avifFileTypeIsCompatible(&ftyp);
 }
 
 // ---------------------------------------------------------------------------
@@ -1058,23 +1101,7 @@ avifResult avifDecoderParse(avifDecoder * decoder, avifRawData * rawInput)
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
-    avifBool avifCompatible = (memcmp(decoder->data->ftyp.majorBrand, "avif", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
-    if (!avifCompatible) {
-        avifCompatible = (memcmp(decoder->data->ftyp.majorBrand, "avis", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
-        if (!avifCompatible) {
-            for (int compatibleBrandIndex = 0; compatibleBrandIndex < decoder->data->ftyp.compatibleBrandsCount; ++compatibleBrandIndex) {
-                uint8_t * compatibleBrand = &decoder->data->ftyp.compatibleBrands[4 * compatibleBrandIndex];
-                if (!memcmp(compatibleBrand, "avif", 4)) {
-                    avifCompatible = AVIF_TRUE;
-                    break;
-                }
-                if (!memcmp(compatibleBrand, "avis", 4)) {
-                    avifCompatible = AVIF_TRUE;
-                    break;
-                }
-            }
-        }
-    }
+    avifBool avifCompatible = avifFileTypeIsCompatible(&decoder->data->ftyp);
     if (!avifCompatible) {
         return AVIF_RESULT_INVALID_FTYP;
     }

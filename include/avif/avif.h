@@ -417,6 +417,10 @@ void avifEncoderDestroy(avifEncoder * encoder);
 // Helpers
 avifBool avifImageUsesU16(avifImage * image);
 
+// Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
+// either the brand 'avif' or 'avis' (or both), without performing any allocations.
+avifBool avifPeekCompatibleFileType(avifRawData * input);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
