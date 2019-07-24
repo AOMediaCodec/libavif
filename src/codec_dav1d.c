@@ -86,7 +86,10 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
     for (;;) {
         avifBool sentData = dav1dFeedData(codec);
         int res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
-        if ((res < 0) && (res != DAV1D_ERR(EAGAIN)) && !sentData) {
+        if ((res == DAV1D_ERR(EAGAIN)) && sentData) {
+            // send more data
+            continue;
+        } else if (res < 0) {
             // No more frames
             return AVIF_FALSE;
         } else {

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed some warnings (removed unused variables and a bad cast)
 - Add a define in dav1d layer for supporting older dav1d codecs
 - Enabled tons of warnings, and warnings-as-errors; Fixed associated fallout
+- codec_dav1d: disambiguate "needs more data" and "no more frames" in feed data pump
 
 ## [0.3.2] - 2019-07-23
 ### Added
