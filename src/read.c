@@ -1164,6 +1164,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image = avifImageCreateEmpty();
     }
 
+    memset(&decoder->ioStats, 0, sizeof(decoder->ioStats));
+
     // -----------------------------------------------------------------------
     // Build decode input
 
@@ -1336,6 +1338,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->timescale = 1;
         decoder->duration = 1;
         decoder->durationInTimescales = 1;
+
+        decoder->ioStats.colorOBUSize = colorOBU.size;
+        decoder->ioStats.alphaOBUSize = alphaOBU.size;
     }
 
     data->codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateForDecode(data->colorInput);

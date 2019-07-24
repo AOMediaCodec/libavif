@@ -367,6 +367,9 @@ typedef struct avifDecoder
     double duration;               // in seconds (durationInTimescales / timescale)
     uint64_t durationInTimescales; // duration in "timescales"
 
+    // stats from the most recent read, possibly 0s if reading an image sequence
+    avifIOStats ioStats;
+
     // Internals used by the decoder
     struct avifData * data;
 } avifDecoder;

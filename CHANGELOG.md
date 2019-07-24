@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - new helper function `avifPeekCompatibleFileType()`
+- expose ioStats on avifDecoder again (currently only interesting when reading items)
 
 ### Changed
 - Fixed some warnings (removed unused variables and a bad cast)
