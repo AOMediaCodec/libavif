@@ -1230,7 +1230,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         avifRawData colorOBU = AVIF_RAW_DATA_EMPTY;
         avifRawData alphaOBU = AVIF_RAW_DATA_EMPTY;
         avifItem * colorOBUItem = NULL;
-        avifItem * alphaOBUItem = NULL;
 
         // Find the colorOBU item
         for (uint32_t itemIndex = 0; itemIndex < data->items.count; ++itemIndex) {
@@ -1270,7 +1269,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 }
 
                 if (isAlphaURN(item->auxC.auxType) && (item->auxForID == colorOBUItem->id)) {
-                    alphaOBUItem = item;
                     alphaOBU.data = data->rawInput.data + item->offset;
                     alphaOBU.size = item->size;
                     break;

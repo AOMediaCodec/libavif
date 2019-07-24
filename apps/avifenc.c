@@ -78,9 +78,9 @@ static avifBool parseNCLX(avifNclxColorProfile * nclx, const char * arg)
     }
 
     if (index == 4) {
-        nclx->colourPrimaries = values[0];
-        nclx->transferCharacteristics = values[1];
-        nclx->matrixCoefficients = values[2];
+        nclx->colourPrimaries = (uint16_t)values[0];
+        nclx->transferCharacteristics = (uint16_t)values[1];
+        nclx->matrixCoefficients = (uint16_t)values[2];
         nclx->fullRangeFlag = values[3] ? AVIF_NCLX_FULL_RANGE : AVIF_NCLX_LIMITED_RANGE;
         return AVIF_TRUE;
     }
@@ -96,7 +96,6 @@ int main(int argc, char * argv[])
         return syntax();
     }
 
-    avifBool showHelp = AVIF_FALSE;
     int jobs = 1;
     int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     int maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
@@ -105,7 +104,6 @@ int main(int argc, char * argv[])
     avifEncoder * encoder = NULL;
 
     int argIndex = 1;
-    const char * filenames[2] = { NULL, NULL };
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
 

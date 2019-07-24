@@ -88,12 +88,17 @@ avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars
         return AVIF_FALSE;
     }
 
-    strncpy(out, p, formatLen);
+    strncpy(out, (const char *)p, formatLen);
     out[formatLen] = 0;
     return AVIF_TRUE;
 }
 
-#define ADVANCE(BYTES) { p += BYTES; if (p >= end) goto cleanup; }
+#define ADVANCE(BYTES)    \
+    {                     \
+        p += BYTES;       \
+        if (p >= end)     \
+            goto cleanup; \
+    }
 
 avifBool y4mRead(avifImage * avif, const char * inputFilename)
 {
@@ -146,10 +151,10 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     while (p != end) {
         switch (*p) {
             case 'W': // width
-                width = atoi(p + 1);
+                width = atoi((const char *)p + 1);
                 break;
             case 'H': // height
-                height = atoi(p + 1);
+                height = atoi((const char *)p + 1);
                 break;
             case 'C': // color space
                 if (!getHeaderString(p, end, tmpBuffer, 31)) {
@@ -212,11 +217,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     }
     ADVANCE(1); // advance past newline
 
-    if ((width < 1) ||
-        (height < 1) ||
-        ((depth != 8) && (depth != 10) && (depth != 12)) ||
-        (format == AVIF_PIXEL_FORMAT_NONE))
-    {
+    if ((width < 1) || (height < 1) || ((depth != 8) && (depth != 10) && (depth != 12)) || (format == AVIF_PIXEL_FORMAT_NONE)) {
         fprintf(stderr, "Failed to parse y4m header (not enough information): %s\n", inputFilename);
         goto cleanup;
     }

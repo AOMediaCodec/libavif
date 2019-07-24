@@ -3,8 +3,8 @@
 
 #include "avif/avif.h"
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 int main(int argc, char * argv[])
 {
@@ -37,7 +37,8 @@ int main(int argc, char * argv[])
     avifRawData raw = AVIF_RAW_DATA_EMPTY;
     avifEncoder * encoder = avifEncoderCreate();
     encoder->maxThreads = 1;
-    encoder->quality = AVIF_BEST_QUALITY;
+    encoder->minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+    encoder->maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     avifResult res = avifEncoderWrite(encoder, image, &raw);
     avifEncoderDestroy(encoder);
 
@@ -78,7 +79,7 @@ int main(int argc, char * argv[])
     }
 
     avifImageDestroy(image);
-#else /* if 1 */
+#else  /* if 1 */
 
     FILE * f = fopen("test.avif", "rb");
     if (!f)

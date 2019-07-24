@@ -322,6 +322,9 @@ static avifBool calcYUVInfoFromICC(avifRawData * icc, float coeffs[3])
     gbMat3 colorants;
     gbMat3 chad, invChad;
     gbVec3 wtpt;
+    wtpt.e[0] = 0.0f;
+    wtpt.e[1] = 0.0f;
+    wtpt.e[2] = 0.0f;
 
     for (uint32_t tagIndex = 0; tagIndex < tagCount; ++tagIndex) {
         uint8_t tagSignature[4];

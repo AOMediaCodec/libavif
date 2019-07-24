@@ -6,8 +6,8 @@
 #include "avifutil.h"
 #include "y4m.h"
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 int syntax(void)
 {
@@ -27,10 +27,7 @@ int main(int argc, char * argv[])
         return syntax();
     }
 
-    avifBool showHelp = AVIF_FALSE;
-
     int argIndex = 1;
-    const char * filenames[2] = { NULL, NULL };
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
 
