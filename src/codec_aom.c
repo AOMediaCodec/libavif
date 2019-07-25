@@ -152,6 +152,16 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->yuvFormat = yuvFormat;
         image->yuvRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
 
+        if (image->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
+            // If the AVIF container doesn't provide a color profile, allow the AV1 OBU to provide one as a fallback
+            avifNclxColorProfile nclx;
+            nclx.colourPrimaries = (uint16_t)codec->internal->image->cp;
+            nclx.transferCharacteristics = (uint16_t)codec->internal->image->tc;
+            nclx.matrixCoefficients = (uint16_t)codec->internal->image->mc;
+            nclx.fullRangeFlag = image->yuvRange;
+            avifImageSetProfileNCLX(image, &nclx);
+        }
+
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
 

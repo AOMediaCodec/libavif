@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - new helper function `avifPeekCompatibleFileType()`
 - expose ioStats on avifDecoder again (currently only interesting when reading items)
+- When the AVIF container does not contain a color profile, fallback to the color OBU's nclx
 
 ### Changed
 - Fixed some warnings (removed unused variables and a bad cast)
