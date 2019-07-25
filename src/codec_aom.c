@@ -327,7 +327,7 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
                             ? AVIF_TRUE
                             : AVIF_FALSE;
     cfg.rc_min_quantizer = minQuantizer;
-    cfg.rc_min_quantizer = maxQuantizer;
+    cfg.rc_max_quantizer = maxQuantizer;
 
     uint32_t encoderFlags = 0;
     if (image->depth > 8) {
