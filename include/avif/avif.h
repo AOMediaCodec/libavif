@@ -402,12 +402,16 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 // * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRawDataFree()
 // * if (maxThreads < 2), multithreading is disabled
 // * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
+// * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
+//   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
 typedef struct avifEncoder
 {
     // settings
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
+    int tileRowsLog2;
+    int tileColsLog2;
 
     // stats from the most recent write
     avifIOStats ioStats;

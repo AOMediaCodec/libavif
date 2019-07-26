@@ -317,8 +317,8 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
     //   * 3 - CSP_RESERVED
     outputConfig->chromaSamplePosition = 0;
 
-    int minQuantizer = encoder->minQuantizer;
-    int maxQuantizer = encoder->maxQuantizer;
+    int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
+    int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
     if (alphaOnly) {
         minQuantizer = AVIF_QUANTIZER_LOSSLESS;
         maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
@@ -340,6 +340,14 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
     }
     if (encoder->maxThreads > 1) {
         aom_codec_control(&aomEncoder, AV1E_SET_ROW_MT, 1);
+    }
+    if (encoder->tileRowsLog2 != 0) {
+        int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+        aom_codec_control(&aomEncoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
+    }
+    if (encoder->tileColsLog2 != 0) {
+        int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+        aom_codec_control(&aomEncoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
     }
 
     uint32_t uvHeight = image->height >> yShift;
