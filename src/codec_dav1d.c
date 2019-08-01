@@ -167,6 +167,11 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
+        if (!image->width || !image->height || (image->width != (uint32_t)dav1dImage->p.w) ||
+            (image->height != (uint32_t)dav1dImage->p.h) || (image->depth != (uint32_t)dav1dImage->p.bpc)) {
+            return AVIF_FALSE;
+        }
+
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
