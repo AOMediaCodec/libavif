@@ -6,11 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.7] - 2019-09-04
+## [0.3.8] - 2019-09-04
 ### Changed
 - Reverted codec_aom and libaom to use previous SHA (v1.0.0-errata1 is ancient)
 
-## [0.3.7] - 2019-09-04
+## [0.3.7] - 2019-09-04 - *DO NOT USE THIS VERSION*
 ### Added
 - Check for proper width/height/depth when decoding alpha with dav1d, matching libaom's impl
 
