@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Check for proper width/height/depth when decoding alpha with dav1d, matching libaom's impl
 
+### Changed
+- Updated codec_aom and libaom to use v1.0.0-errata1
+
 ## [0.3.6] - 2019-07-25
 ### Added
 - Exposed tile encoding to avifEncoder

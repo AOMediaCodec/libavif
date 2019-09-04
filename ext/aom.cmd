@@ -3,4 +3,4 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
-git clone -n https://aomedia.googlesource.com/aom && cd aom && git checkout 38711e7fe1eff68296b0324a9809804aec359fa5 && cd ..
+git clone -n https://aomedia.googlesource.com/aom && cd aom && git checkout v1.0.0-errata1 && cd ..
