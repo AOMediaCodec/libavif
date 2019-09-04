@@ -276,6 +276,9 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                     y4mHeaderFormat = "C420jpeg XYSCSS=420JPEG";
                     swapUV = AVIF_TRUE;
                     break;
+                case AVIF_PIXEL_FORMAT_NONE:
+                    // will error later; this case is here for warning's sake
+                    break;
             }
             break;
         case 10:
@@ -293,6 +296,9 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                     y4mHeaderFormat = "C422p10 XYSCSS=422P10";
                     swapUV = AVIF_TRUE;
                     break;
+                case AVIF_PIXEL_FORMAT_NONE:
+                    // will error later; this case is here for warning's sake
+                    break;
             }
             break;
         case 12:
@@ -309,6 +315,9 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                 case AVIF_PIXEL_FORMAT_YV12:
                     y4mHeaderFormat = "C422p12 XYSCSS=422P12";
                     swapUV = AVIF_TRUE;
+                    break;
+                case AVIF_PIXEL_FORMAT_NONE:
+                    // will error later; this case is here for warning's sake
                     break;
             }
             break;
