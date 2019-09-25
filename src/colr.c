@@ -262,19 +262,19 @@ static float calcMaxY(float r, float g, float b, gbMat3 * colorants)
     return XYZ.xyz.y;
 }
 
-static avifBool readXYZ(uint8_t * data, size_t size, float xyz[3])
+static avifBool readXYZ(const uint8_t * data, size_t size, float xyz[3])
 {
-    avifRawData xyzData;
+    avifROData xyzData;
     xyzData.data = data;
     xyzData.size = size;
-    avifStream s;
-    avifStreamStart(&s, &xyzData);
-    CHECK(avifStreamSkip(&s, 8));
+    avifROStream s;
+    avifROStreamStart(&s, &xyzData);
+    CHECK(avifROStreamSkip(&s, 8));
 
     int32_t fixedXYZ[3];
-    CHECK(avifStreamReadU32(&s, (uint32_t *)&fixedXYZ[0]));
-    CHECK(avifStreamReadU32(&s, (uint32_t *)&fixedXYZ[1]));
-    CHECK(avifStreamReadU32(&s, (uint32_t *)&fixedXYZ[2]));
+    CHECK(avifROStreamReadU32(&s, (uint32_t *)&fixedXYZ[0]));
+    CHECK(avifROStreamReadU32(&s, (uint32_t *)&fixedXYZ[1]));
+    CHECK(avifROStreamReadU32(&s, (uint32_t *)&fixedXYZ[2]));
 
     xyz[0] = fixedToFloat(fixedXYZ[0]);
     xyz[1] = fixedToFloat(fixedXYZ[1]);
@@ -282,37 +282,41 @@ static avifBool readXYZ(uint8_t * data, size_t size, float xyz[3])
     return AVIF_TRUE;
 }
 
-static avifBool readMat3(uint8_t * data, size_t size, gbMat3 * m)
+static avifBool readMat3(const uint8_t * data, size_t size, gbMat3 * m)
 {
-    avifRawData xyzData;
+    avifROData xyzData;
     xyzData.data = data;
     xyzData.size = size;
-    avifStream s;
-    avifStreamStart(&s, &xyzData);
-    CHECK(avifStreamSkip(&s, 8));
+    avifROStream s;
+    avifROStreamStart(&s, &xyzData);
+    CHECK(avifROStreamSkip(&s, 8));
 
     for (int i = 0; i < 9; ++i) {
         int32_t fixedXYZ;
-        CHECK(avifStreamReadU32(&s, (uint32_t *)&fixedXYZ));
+        CHECK(avifROStreamReadU32(&s, (uint32_t *)&fixedXYZ));
         m->e[i] = fixedToFloat(fixedXYZ);
     }
     return AVIF_TRUE;
 }
 
-static avifBool calcYUVInfoFromICC(avifRawData * icc, float coeffs[3])
+static avifBool calcYUVInfoFromICC(const uint8_t * iccData, size_t iccSize, float coeffs[3])
 {
-    avifStream s;
+    avifROData icc;
+    icc.data = iccData;
+    icc.size = iccSize;
+
+    avifROStream s;
+    avifROStreamStart(&s, &icc);
 
     uint8_t iccMajorVersion;
-    avifStreamStart(&s, icc);
-    CHECK(avifStreamSkip(&s, 8)); // skip to version
-    CHECK(avifStreamRead(&s, &iccMajorVersion, 1));
+    CHECK(avifROStreamSkip(&s, 8)); // skip to version
+    CHECK(avifROStreamRead(&s, &iccMajorVersion, 1));
 
-    avifStreamStart(&s, icc);       // start stream over
-    CHECK(avifStreamSkip(&s, 128)); // skip past the ICC header
+    avifROStreamStart(&s, &icc);      // start stream over
+    CHECK(avifROStreamSkip(&s, 128)); // skip past the ICC header
 
     uint32_t tagCount;
-    CHECK(avifStreamReadU32(&s, &tagCount));
+    CHECK(avifROStreamReadU32(&s, &tagCount));
 
     avifBool rXYZPresent = AVIF_FALSE;
     avifBool gXYZPresent = AVIF_FALSE;
@@ -330,26 +334,26 @@ static avifBool calcYUVInfoFromICC(avifRawData * icc, float coeffs[3])
         uint8_t tagSignature[4];
         uint32_t tagOffset;
         uint32_t tagSize;
-        CHECK(avifStreamRead(&s, tagSignature, 4));
-        CHECK(avifStreamReadU32(&s, &tagOffset));
-        CHECK(avifStreamReadU32(&s, &tagSize));
-        if ((tagOffset + tagSize) > icc->size) {
+        CHECK(avifROStreamRead(&s, tagSignature, 4));
+        CHECK(avifROStreamReadU32(&s, &tagOffset));
+        CHECK(avifROStreamReadU32(&s, &tagSize));
+        if ((tagOffset + tagSize) > icc.size) {
             return AVIF_FALSE;
         }
         if (!memcmp(tagSignature, "rXYZ", 4)) {
-            CHECK(readXYZ(icc->data + tagOffset, tagSize, &colorants.e[0]));
+            CHECK(readXYZ(icc.data + tagOffset, tagSize, &colorants.e[0]));
             rXYZPresent = AVIF_TRUE;
         } else if (!memcmp(tagSignature, "gXYZ", 4)) {
-            CHECK(readXYZ(icc->data + tagOffset, tagSize, &colorants.e[3]));
+            CHECK(readXYZ(icc.data + tagOffset, tagSize, &colorants.e[3]));
             gXYZPresent = AVIF_TRUE;
         } else if (!memcmp(tagSignature, "bXYZ", 4)) {
-            CHECK(readXYZ(icc->data + tagOffset, tagSize, &colorants.e[6]));
+            CHECK(readXYZ(icc.data + tagOffset, tagSize, &colorants.e[6]));
             bXYZPresent = AVIF_TRUE;
         } else if (!memcmp(tagSignature, "wtpt", 4)) {
-            CHECK(readXYZ(icc->data + tagOffset, tagSize, &wtpt.e[0]));
+            CHECK(readXYZ(icc.data + tagOffset, tagSize, &wtpt.e[0]));
             wtptPresent = AVIF_TRUE;
         } else if (!memcmp(tagSignature, "chad", 4)) {
-            CHECK(readMat3(icc->data + tagOffset, tagSize, &chad));
+            CHECK(readMat3(icc.data + tagOffset, tagSize, &chad));
             chadPresent = AVIF_TRUE;
         }
     }
@@ -462,7 +466,7 @@ void avifCalcYUVCoefficients(avifImage * image, float * outR, float * outG, floa
 
     float coeffs[3];
     if ((image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && image->icc.data && image->icc.size) {
-        if (calcYUVInfoFromICC(&image->icc, coeffs)) {
+        if (calcYUVInfoFromICC(image->icc.data, image->icc.size, coeffs)) {
             kr = coeffs[0];
             kg = coeffs[1];
             kb = coeffs[2];

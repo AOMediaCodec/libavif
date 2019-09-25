@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Split avifRawData and avifStream into read-only (const) and read/write versions, updated code accordingly
 
 ## [0.3.8] - 2019-09-04
 ### Changed

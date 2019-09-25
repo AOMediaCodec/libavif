@@ -117,12 +117,12 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
         return AVIF_FALSE;
     }
 
-    avifRawData raw = AVIF_RAW_DATA_EMPTY;
-    avifRawDataRealloc(&raw, inputFileSize);
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWDataRealloc(&raw, inputFileSize);
     if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
         fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
         fclose(inputFile);
-        avifRawDataFree(&raw);
+        avifRWDataFree(&raw);
         return AVIF_FALSE;
     }
 
@@ -136,7 +136,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
 
     if (memcmp(p, "YUV4MPEG2 ", 10) != 0) {
         fprintf(stderr, "Not a y4m file: %s\n", inputFilename);
-        avifRawDataFree(&raw);
+        avifRWDataFree(&raw);
         return AVIF_FALSE;
     }
     ADVANCE(10); // skip past header
@@ -252,7 +252,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
 
     result = AVIF_TRUE;
 cleanup:
-    avifRawDataFree(&raw);
+    avifRWDataFree(&raw);
     return result;
 }
 

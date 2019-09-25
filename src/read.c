@@ -50,7 +50,7 @@ typedef struct avifAuxiliaryType
 typedef struct avifColourInformationBox
 {
     avifProfileFormat format;
-    uint8_t * icc;
+    const uint8_t * icc;
     size_t iccSize;
     avifNclxColorProfile nclx;
 } avifColourInformationBox;
@@ -177,7 +177,7 @@ avifCodecDecodeInput * avifCodecDecodeInputCreate(void)
 {
     avifCodecDecodeInput * decodeInput = (avifCodecDecodeInput *)avifAlloc(sizeof(avifCodecDecodeInput));
     memset(decodeInput, 0, sizeof(avifCodecDecodeInput));
-    avifArrayCreate(&decodeInput->samples, sizeof(avifRawData), 1);
+    avifArrayCreate(&decodeInput->samples, sizeof(avifROData), 1);
     return decodeInput;
 }
 
@@ -187,7 +187,7 @@ void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
     avifFree(decodeInput);
 }
 
-static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput, avifSampleTable * sampleTable, avifRawData * rawInput)
+static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput, avifSampleTable * sampleTable, avifROData * rawInput)
 {
     uint32_t sampleSizeIndex = 0;
     for (uint32_t chunkIndex = 0; chunkIndex < sampleTable->chunks.count; ++chunkIndex) {
@@ -216,7 +216,7 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
 
             avifSampleTableSampleSize * sampleSize = &sampleTable->sampleSizes.sampleSize[sampleSizeIndex];
 
-            avifRawData * rawSample = (avifRawData *)avifArrayPushPtr(&decodeInput->samples);
+            avifROData * rawSample = (avifROData *)avifArrayPushPtr(&decodeInput->samples);
             rawSample->data = rawInput->data + sampleOffset;
             rawSample->size = sampleSize->size;
 
@@ -240,7 +240,7 @@ typedef struct avifData
     avifItemArray items;
     avifPropertyArray properties;
     avifTrackArray tracks;
-    avifRawData rawInput;
+    avifROData rawInput;
     avifCodecDecodeInput * colorInput;
     avifCodecDecodeInput * alphaInput;
     avifDecoderSource source;
@@ -321,43 +321,43 @@ static avifBool isAlphaURN(char * urn)
 // BMFF Parsing
 
 #define BEGIN_STREAM(VARNAME, PTR, SIZE) \
-    avifStream VARNAME;                  \
-    avifRawData VARNAME##_rawData;       \
-    VARNAME##_rawData.data = PTR;        \
-    VARNAME##_rawData.size = SIZE;       \
-    avifStreamStart(&VARNAME, &VARNAME##_rawData)
+    avifROStream VARNAME;                \
+    avifROData VARNAME##_roData;         \
+    VARNAME##_roData.data = PTR;         \
+    VARNAME##_roData.size = SIZE;        \
+    avifROStreamStart(&VARNAME, &VARNAME##_roData)
 
-static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemLocationBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
     uint8_t offsetSizeAndLengthSize;
-    CHECK(avifStreamRead(&s, &offsetSizeAndLengthSize, 1));
+    CHECK(avifROStreamRead(&s, &offsetSizeAndLengthSize, 1));
     uint8_t offsetSize = (offsetSizeAndLengthSize >> 4) & 0xf; // unsigned int(4) offset_size;
     uint8_t lengthSize = (offsetSizeAndLengthSize >> 0) & 0xf; // unsigned int(4) length_size;
 
     uint8_t baseOffsetSizeAndReserved;
-    CHECK(avifStreamRead(&s, &baseOffsetSizeAndReserved, 1));
+    CHECK(avifROStreamRead(&s, &baseOffsetSizeAndReserved, 1));
     uint8_t baseOffsetSize = (baseOffsetSizeAndReserved >> 4) & 0xf; // unsigned int(4) base_offset_size;
 
     uint16_t itemCount;
-    CHECK(avifStreamReadU16(&s, &itemCount)); // unsigned int(16) item_count;
+    CHECK(avifROStreamReadU16(&s, &itemCount)); // unsigned int(16) item_count;
     for (int i = 0; i < itemCount; ++i) {
-        uint16_t itemID;                                           // unsigned int(16) item_ID;
-        CHECK(avifStreamReadU16(&s, &itemID));                     //
-        uint16_t dataReferenceIndex;                               // unsigned int(16) data_ref rence_index;
-        CHECK(avifStreamReadU16(&s, &dataReferenceIndex));         //
-        uint64_t baseOffset;                                       // unsigned int(base_offset_size*8) base_offset;
-        CHECK(avifStreamReadUX8(&s, &baseOffset, baseOffsetSize)); //
-        uint16_t extentCount;                                      // unsigned int(16) extent_count;
-        CHECK(avifStreamReadU16(&s, &extentCount));                //
+        uint16_t itemID;                                             // unsigned int(16) item_ID;
+        CHECK(avifROStreamReadU16(&s, &itemID));                     //
+        uint16_t dataReferenceIndex;                                 // unsigned int(16) data_ref rence_index;
+        CHECK(avifROStreamReadU16(&s, &dataReferenceIndex));         //
+        uint64_t baseOffset;                                         // unsigned int(base_offset_size*8) base_offset;
+        CHECK(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize)); //
+        uint16_t extentCount;                                        // unsigned int(16) extent_count;
+        CHECK(avifROStreamReadU16(&s, &extentCount));                //
         if (extentCount == 1) {
             uint64_t extentOffset; // unsigned int(offset_size*8) extent_offset;
-            CHECK(avifStreamReadUX8(&s, &extentOffset, offsetSize));
+            CHECK(avifROStreamReadUX8(&s, &extentOffset, offsetSize));
             uint64_t extentLength; // unsigned int(offset_size*8) extent_length;
-            CHECK(avifStreamReadUX8(&s, &extentLength, lengthSize));
+            CHECK(avifROStreamReadUX8(&s, &extentLength, lengthSize));
 
             avifItem * item = avifDataFindItem(data, itemID);
             if (!item) {
@@ -374,110 +374,110 @@ static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t 
     return AVIF_TRUE;
 }
 
-static avifBool avifParseImageSpatialExtentsProperty(avifData * data, uint8_t * raw, size_t rawLen, int propertyIndex)
+static avifBool avifParseImageSpatialExtentsProperty(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
 {
     BEGIN_STREAM(s, raw, rawLen);
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
-    CHECK(avifStreamReadU32(&s, &data->properties.prop[propertyIndex].ispe.width));
-    CHECK(avifStreamReadU32(&s, &data->properties.prop[propertyIndex].ispe.height));
+    CHECK(avifROStreamReadU32(&s, &data->properties.prop[propertyIndex].ispe.width));
+    CHECK(avifROStreamReadU32(&s, &data->properties.prop[propertyIndex].ispe.height));
     return AVIF_TRUE;
 }
 
-static avifBool avifParseAuxiliaryTypeProperty(avifData * data, uint8_t * raw, size_t rawLen, int propertyIndex)
+static avifBool avifParseAuxiliaryTypeProperty(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
 {
     BEGIN_STREAM(s, raw, rawLen);
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
-    CHECK(avifStreamReadString(&s, data->properties.prop[propertyIndex].auxC.auxType, AUXTYPE_SIZE));
+    CHECK(avifROStreamReadString(&s, data->properties.prop[propertyIndex].auxC.auxType, AUXTYPE_SIZE));
     return AVIF_TRUE;
 }
 
-static avifBool avifParseColourInformationBox(avifData * data, uint8_t * raw, size_t rawLen, int propertyIndex)
+static avifBool avifParseColourInformationBox(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
     data->properties.prop[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NONE;
 
     uint8_t colourType[4]; // unsigned int(32) colour_type;
-    CHECK(avifStreamRead(&s, colourType, 4));
+    CHECK(avifROStreamRead(&s, colourType, 4));
     if (!memcmp(colourType, "rICC", 4) || !memcmp(colourType, "prof", 4)) {
         data->properties.prop[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_ICC;
-        data->properties.prop[propertyIndex].colr.icc = avifStreamCurrent(&s);
-        data->properties.prop[propertyIndex].colr.iccSize = avifStreamRemainingBytes(&s);
+        data->properties.prop[propertyIndex].colr.icc = avifROStreamCurrent(&s);
+        data->properties.prop[propertyIndex].colr.iccSize = avifROStreamRemainingBytes(&s);
     } else if (!memcmp(colourType, "nclx", 4)) {
         // unsigned int(16) colour_primaries;
-        CHECK(avifStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.colourPrimaries));
+        CHECK(avifROStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.colourPrimaries));
         // unsigned int(16) transfer_characteristics;
-        CHECK(avifStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.transferCharacteristics));
+        CHECK(avifROStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.transferCharacteristics));
         // unsigned int(16) matrix_coefficients;
-        CHECK(avifStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.matrixCoefficients));
+        CHECK(avifROStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.matrixCoefficients));
         // unsigned int(1) full_range_flag;
         // unsigned int(7) reserved = 0;
-        CHECK(avifStreamRead(&s, &data->properties.prop[propertyIndex].colr.nclx.fullRangeFlag, 1));
+        CHECK(avifROStreamRead(&s, &data->properties.prop[propertyIndex].colr.nclx.fullRangeFlag, 1));
         data->properties.prop[propertyIndex].colr.nclx.fullRangeFlag |= 0x80;
         data->properties.prop[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NCLX;
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemPropertyContainerBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemPropertyContainerBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         int propertyIndex = avifArrayPushIndex(&data->properties);
         memcpy(data->properties.prop[propertyIndex].type, header.type, 4);
         if (!memcmp(header.type, "ispe", 4)) {
-            CHECK(avifParseImageSpatialExtentsProperty(data, avifStreamCurrent(&s), header.size, propertyIndex));
+            CHECK(avifParseImageSpatialExtentsProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
         }
         if (!memcmp(header.type, "auxC", 4)) {
-            CHECK(avifParseAuxiliaryTypeProperty(data, avifStreamCurrent(&s), header.size, propertyIndex));
+            CHECK(avifParseAuxiliaryTypeProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
         }
         if (!memcmp(header.type, "colr", 4)) {
-            CHECK(avifParseColourInformationBox(data, avifStreamCurrent(&s), header.size, propertyIndex));
+            CHECK(avifParseColourInformationBox(data, avifROStreamCurrent(&s), header.size, propertyIndex));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemPropertyAssociation(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemPropertyAssociation(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version;
     uint8_t flags[3];
-    CHECK(avifStreamReadVersionAndFlags(&s, &version, flags));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
     avifBool propertyIndexIsU16 = (flags[2] & 0x1) ? AVIF_TRUE : AVIF_FALSE; // is flags[2] correct?
 
     uint32_t entryCount;
-    CHECK(avifStreamReadU32(&s, &entryCount));
+    CHECK(avifROStreamReadU32(&s, &entryCount));
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         unsigned int itemID;
         if (version < 1) {
             uint16_t tmp;
-            CHECK(avifStreamReadU16(&s, &tmp));
+            CHECK(avifROStreamReadU16(&s, &tmp));
             itemID = tmp;
         } else {
-            CHECK(avifStreamReadU32(&s, &itemID));
+            CHECK(avifROStreamReadU32(&s, &itemID));
         }
         uint8_t associationCount;
-        CHECK(avifStreamRead(&s, &associationCount, 1));
+        CHECK(avifROStreamRead(&s, &associationCount, 1));
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
             // avifBool essential = AVIF_FALSE; // currently unused
             uint16_t propertyIndex = 0;
             if (propertyIndexIsU16) {
-                CHECK(avifStreamReadU16(&s, &propertyIndex));
+                CHECK(avifROStreamReadU16(&s, &propertyIndex));
                 // essential = (propertyIndex & 0x8000) ? AVIF_TRUE : AVIF_FALSE;
                 propertyIndex &= 0x7fff;
             } else {
                 uint8_t tmp;
-                CHECK(avifStreamRead(&s, &tmp, 1));
+                CHECK(avifROStreamRead(&s, &tmp, 1));
                 // essential = (tmp & 0x80) ? AVIF_TRUE : AVIF_FALSE;
                 propertyIndex = tmp & 0x7f;
             }
@@ -515,49 +515,49 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, uint8_t * raw,
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemPropertiesBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemPropertiesBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
     avifBoxHeader ipcoHeader;
-    CHECK(avifStreamReadBoxHeader(&s, &ipcoHeader));
+    CHECK(avifROStreamReadBoxHeader(&s, &ipcoHeader));
     if (memcmp(ipcoHeader.type, "ipco", 4) != 0) {
         return AVIF_FALSE;
     }
 
     // Read all item properties inside of ItemPropertyContainerBox
-    CHECK(avifParseItemPropertyContainerBox(data, avifStreamCurrent(&s), ipcoHeader.size));
-    CHECK(avifStreamSkip(&s, ipcoHeader.size));
+    CHECK(avifParseItemPropertyContainerBox(data, avifROStreamCurrent(&s), ipcoHeader.size));
+    CHECK(avifROStreamSkip(&s, ipcoHeader.size));
 
     // Now read all ItemPropertyAssociation until the end of the box, and make associations
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader ipmaHeader;
-        CHECK(avifStreamReadBoxHeader(&s, &ipmaHeader));
+        CHECK(avifROStreamReadBoxHeader(&s, &ipmaHeader));
 
         if (!memcmp(ipmaHeader.type, "ipma", 4)) {
-            CHECK(avifParseItemPropertyAssociation(data, avifStreamCurrent(&s), ipmaHeader.size));
+            CHECK(avifParseItemPropertyAssociation(data, avifROStreamCurrent(&s), ipmaHeader.size));
         } else {
             // These must all be type ipma
             return AVIF_FALSE;
         }
 
-        CHECK(avifStreamSkip(&s, ipmaHeader.size));
+        CHECK(avifROStreamSkip(&s, ipmaHeader.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemInfoEntry(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemInfoEntry(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 2)); // TODO: support version > 2? 2+ is required for item_type
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 2)); // TODO: support version > 2? 2+ is required for item_type
 
-    uint16_t itemID;                                    // unsigned int(16) item_ID;
-    CHECK(avifStreamReadU16(&s, &itemID));              //
-    uint16_t itemProtectionIndex;                       // unsigned int(16) item_protection_index;
-    CHECK(avifStreamReadU16(&s, &itemProtectionIndex)); //
-    uint8_t itemType[4];                                // unsigned int(32) item_type;
-    CHECK(avifStreamRead(&s, itemType, 4));             //
+    uint16_t itemID;                                      // unsigned int(16) item_ID;
+    CHECK(avifROStreamReadU16(&s, &itemID));              //
+    uint16_t itemProtectionIndex;                         // unsigned int(16) item_protection_index;
+    CHECK(avifROStreamReadU16(&s, &itemProtectionIndex)); //
+    uint8_t itemType[4];                                  // unsigned int(32) item_type;
+    CHECK(avifROStreamRead(&s, itemType, 4));             //
 
     avifItem * item = avifDataFindItem(data, itemID);
     if (!item) {
@@ -568,74 +568,74 @@ static avifBool avifParseItemInfoEntry(avifData * data, uint8_t * raw, size_t ra
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemInfoBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemInfoBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version;
-    CHECK(avifStreamReadVersionAndFlags(&s, &version, NULL));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, NULL));
     uint32_t entryCount;
     if (version == 0) {
         uint16_t tmp;
-        CHECK(avifStreamReadU16(&s, &tmp)); // unsigned int(16) entry_count;
+        CHECK(avifROStreamReadU16(&s, &tmp)); // unsigned int(16) entry_count;
         entryCount = tmp;
     } else if (version == 1) {
-        CHECK(avifStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+        CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
     } else {
         return AVIF_FALSE;
     }
 
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         avifBoxHeader infeHeader;
-        CHECK(avifStreamReadBoxHeader(&s, &infeHeader));
+        CHECK(avifROStreamReadBoxHeader(&s, &infeHeader));
 
         if (!memcmp(infeHeader.type, "infe", 4)) {
-            CHECK(avifParseItemInfoEntry(data, avifStreamCurrent(&s), infeHeader.size));
+            CHECK(avifParseItemInfoEntry(data, avifROStreamCurrent(&s), infeHeader.size));
         } else {
             // These must all be type ipma
             return AVIF_FALSE;
         }
 
-        CHECK(avifStreamSkip(&s, infeHeader.size));
+        CHECK(avifROStreamSkip(&s, infeHeader.size));
     }
 
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemReferenceBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemReferenceBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version;
-    CHECK(avifStreamReadVersionAndFlags(&s, &version, NULL));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, NULL));
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader irefHeader;
-        CHECK(avifStreamReadBoxHeader(&s, &irefHeader));
+        CHECK(avifROStreamReadBoxHeader(&s, &irefHeader));
 
         uint32_t fromID = 0;
         if (version == 0) {
             uint16_t tmp;
-            CHECK(avifStreamReadU16(&s, &tmp)); // unsigned int(16) from_item_ID;
+            CHECK(avifROStreamReadU16(&s, &tmp)); // unsigned int(16) from_item_ID;
             fromID = tmp;
         } else if (version == 1) {
-            CHECK(avifStreamReadU32(&s, &fromID)); // unsigned int(32) from_item_ID;
+            CHECK(avifROStreamReadU32(&s, &fromID)); // unsigned int(32) from_item_ID;
         } else {
             // unsupported iref version, skip it
             break;
         }
 
         uint16_t referenceCount = 0;
-        CHECK(avifStreamReadU16(&s, &referenceCount)); // unsigned int(16) reference_count;
+        CHECK(avifROStreamReadU16(&s, &referenceCount)); // unsigned int(16) reference_count;
 
         for (uint16_t refIndex = 0; refIndex < referenceCount; ++refIndex) {
             uint32_t toID = 0;
             if (version == 0) {
                 uint16_t tmp;
-                CHECK(avifStreamReadU16(&s, &tmp)); // unsigned int(16) to_item_ID;
+                CHECK(avifROStreamReadU16(&s, &tmp)); // unsigned int(16) to_item_ID;
                 toID = tmp;
             } else if (version == 1) {
-                CHECK(avifStreamReadU32(&s, &toID)); // unsigned int(32) to_item_ID;
+                CHECK(avifROStreamReadU32(&s, &toID)); // unsigned int(32) to_item_ID;
             } else {
                 // unsupported iref version, skip it
                 break;
@@ -661,50 +661,50 @@ static avifBool avifParseItemReferenceBox(avifData * data, uint8_t * raw, size_t
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMetaBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseMetaBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "iloc", 4)) {
-            CHECK(avifParseItemLocationBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseItemLocationBox(data, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "iprp", 4)) {
-            CHECK(avifParseItemPropertiesBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseItemPropertiesBox(data, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "iinf", 4)) {
-            CHECK(avifParseItemInfoBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseItemInfoBox(data, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "iref", 4)) {
-            CHECK(avifParseItemReferenceBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseItemReferenceBox(data, avifROStreamCurrent(&s), header.size));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseTrackHeaderBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
+static avifBool avifParseTrackHeaderBox(avifData * data, avifTrack * track, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
     (void)data;
 
     uint8_t version;
     uint8_t flags[3];
-    CHECK(avifStreamReadVersionAndFlags(&s, &version, flags));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
 
     uint32_t ignored32, trackID;
     uint64_t ignored64;
     if (version == 1) {
-        CHECK(avifStreamReadU64(&s, &ignored64)); // unsigned int(64) creation_time;
-        CHECK(avifStreamReadU64(&s, &ignored64)); // unsigned int(64) modification_time;
-        CHECK(avifStreamReadU32(&s, &trackID));   // unsigned int(32) track_ID;
+        CHECK(avifROStreamReadU64(&s, &ignored64)); // unsigned int(64) creation_time;
+        CHECK(avifROStreamReadU64(&s, &ignored64)); // unsigned int(64) modification_time;
+        CHECK(avifROStreamReadU32(&s, &trackID));   // unsigned int(32) track_ID;
     } else if (version == 0) {
-        CHECK(avifStreamReadU32(&s, &ignored32)); // unsigned int(32) creation_time;
-        CHECK(avifStreamReadU32(&s, &ignored32)); // unsigned int(32) modification_time;
-        CHECK(avifStreamReadU32(&s, &trackID));   // unsigned int(32) track_ID;
+        CHECK(avifROStreamReadU32(&s, &ignored32)); // unsigned int(32) creation_time;
+        CHECK(avifROStreamReadU32(&s, &ignored32)); // unsigned int(32) modification_time;
+        CHECK(avifROStreamReadU32(&s, &trackID));   // unsigned int(32) track_ID;
     } else {
         // Unsupported version
         return AVIF_FALSE;
@@ -716,28 +716,28 @@ static avifBool avifParseTrackHeaderBox(avifData * data, avifTrack * track, uint
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMediaHeaderBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
+static avifBool avifParseMediaHeaderBox(avifData * data, avifTrack * track, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
     (void)data;
 
     uint8_t version;
     uint8_t flags[3];
-    CHECK(avifStreamReadVersionAndFlags(&s, &version, flags));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
 
     uint32_t ignored32, mediaTimescale, mediaDuration32;
     uint64_t ignored64, mediaDuration64;
     if (version == 1) {
-        CHECK(avifStreamReadU64(&s, &ignored64));       // unsigned int(64) creation_time;
-        CHECK(avifStreamReadU64(&s, &ignored64));       // unsigned int(64) modification_time;
-        CHECK(avifStreamReadU32(&s, &mediaTimescale));  // unsigned int(32) timescale;
-        CHECK(avifStreamReadU64(&s, &mediaDuration64)); // unsigned int(64) duration;
+        CHECK(avifROStreamReadU64(&s, &ignored64));       // unsigned int(64) creation_time;
+        CHECK(avifROStreamReadU64(&s, &ignored64));       // unsigned int(64) modification_time;
+        CHECK(avifROStreamReadU32(&s, &mediaTimescale));  // unsigned int(32) timescale;
+        CHECK(avifROStreamReadU64(&s, &mediaDuration64)); // unsigned int(64) duration;
         track->mediaDuration = mediaDuration64;
     } else if (version == 0) {
-        CHECK(avifStreamReadU32(&s, &ignored32));       // unsigned int(32) creation_time;
-        CHECK(avifStreamReadU32(&s, &ignored32));       // unsigned int(32) modification_time;
-        CHECK(avifStreamReadU32(&s, &mediaTimescale));  // unsigned int(32) timescale;
-        CHECK(avifStreamReadU32(&s, &mediaDuration32)); // unsigned int(32) duration;
+        CHECK(avifROStreamReadU32(&s, &ignored32));       // unsigned int(32) creation_time;
+        CHECK(avifROStreamReadU32(&s, &ignored32));       // unsigned int(32) modification_time;
+        CHECK(avifROStreamReadU32(&s, &mediaTimescale));  // unsigned int(32) timescale;
+        CHECK(avifROStreamReadU32(&s, &mediaDuration32)); // unsigned int(32) duration;
         track->mediaDuration = (uint64_t)mediaDuration32;
     } else {
         // Unsupported version
@@ -748,22 +748,22 @@ static avifBool avifParseMediaHeaderBox(avifData * data, avifTrack * track, uint
     return AVIF_TRUE;
 }
 
-static avifBool avifParseChunkOffsetBox(avifData * data, avifSampleTable * sampleTable, avifBool largeOffsets, uint8_t * raw, size_t rawLen)
+static avifBool avifParseChunkOffsetBox(avifData * data, avifSampleTable * sampleTable, avifBool largeOffsets, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
     (void)data;
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
     uint32_t entryCount;
-    CHECK(avifStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+    CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
     for (uint32_t i = 0; i < entryCount; ++i) {
         uint64_t offset;
         if (largeOffsets) {
-            CHECK(avifStreamReadU64(&s, &offset)); // unsigned int(32) chunk_offset;
+            CHECK(avifROStreamReadU64(&s, &offset)); // unsigned int(32) chunk_offset;
         } else {
             uint32_t offset32;
-            CHECK(avifStreamReadU32(&s, &offset32)); // unsigned int(32) chunk_offset;
+            CHECK(avifROStreamReadU32(&s, &offset32)); // unsigned int(32) chunk_offset;
             offset = (uint64_t)offset32;
         }
 
@@ -773,39 +773,39 @@ static avifBool avifParseChunkOffsetBox(avifData * data, avifSampleTable * sampl
     return AVIF_TRUE;
 }
 
-static avifBool avifParseSampleToChunkBox(avifData * data, avifSampleTable * sampleTable, uint8_t * raw, size_t rawLen)
+static avifBool avifParseSampleToChunkBox(avifData * data, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
     (void)data;
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
     uint32_t entryCount;
-    CHECK(avifStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+    CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
     for (uint32_t i = 0; i < entryCount; ++i) {
         avifSampleTableSampleToChunk * sampleToChunk = (avifSampleTableSampleToChunk *)avifArrayPushPtr(&sampleTable->sampleToChunks);
-        CHECK(avifStreamReadU32(&s, &sampleToChunk->firstChunk));             // unsigned int(32) first_chunk;
-        CHECK(avifStreamReadU32(&s, &sampleToChunk->samplesPerChunk));        // unsigned int(32) samples_per_chunk;
-        CHECK(avifStreamReadU32(&s, &sampleToChunk->sampleDescriptionIndex)); // unsigned int(32) sample_description_index;
+        CHECK(avifROStreamReadU32(&s, &sampleToChunk->firstChunk));             // unsigned int(32) first_chunk;
+        CHECK(avifROStreamReadU32(&s, &sampleToChunk->samplesPerChunk));        // unsigned int(32) samples_per_chunk;
+        CHECK(avifROStreamReadU32(&s, &sampleToChunk->sampleDescriptionIndex)); // unsigned int(32) sample_description_index;
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseSampleSizeBox(avifData * data, avifSampleTable * sampleTable, uint8_t * raw, size_t rawLen)
+static avifBool avifParseSampleSizeBox(avifData * data, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
     (void)data;
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
     uint32_t allSamplesSize, entryCount;
-    CHECK(avifStreamReadU32(&s, &allSamplesSize)); // unsigned int(32) sample_size;
-    CHECK(avifStreamReadU32(&s, &entryCount));     // unsigned int(32) entry_count;
+    CHECK(avifROStreamReadU32(&s, &allSamplesSize)); // unsigned int(32) sample_size;
+    CHECK(avifROStreamReadU32(&s, &entryCount));     // unsigned int(32) entry_count;
 
     for (uint32_t i = 0; i < entryCount; ++i) {
         avifSampleTableSampleSize * sampleSize = (avifSampleTableSampleSize *)avifArrayPushPtr(&sampleTable->sampleSizes);
         if (allSamplesSize == 0) {
-            CHECK(avifStreamReadU32(&s, &sampleSize->size)); // unsigned int(32) entry_size;
+            CHECK(avifROStreamReadU32(&s, &sampleSize->size)); // unsigned int(32) entry_size;
         } else {
             // This could be done more efficiently, memory-wise.
             sampleSize->size = allSamplesSize;
@@ -814,25 +814,25 @@ static avifBool avifParseSampleSizeBox(avifData * data, avifSampleTable * sample
     return AVIF_TRUE;
 }
 
-static avifBool avifParseTimeToSampleBox(avifData * data, avifSampleTable * sampleTable, uint8_t * raw, size_t rawLen)
+static avifBool avifParseTimeToSampleBox(avifData * data, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
     (void)data;
 
-    CHECK(avifStreamReadAndEnforceVersion(&s, 0));
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
     uint32_t entryCount;
-    CHECK(avifStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+    CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
 
     for (uint32_t i = 0; i < entryCount; ++i) {
         avifSampleTableTimeToSample * timeToSample = (avifSampleTableTimeToSample *)avifArrayPushPtr(&sampleTable->timeToSamples);
-        CHECK(avifStreamReadU32(&s, &timeToSample->sampleCount)); // unsigned int(32) sample_count;
-        CHECK(avifStreamReadU32(&s, &timeToSample->sampleDelta)); // unsigned int(32) sample_delta;
+        CHECK(avifROStreamReadU32(&s, &timeToSample->sampleCount)); // unsigned int(32) sample_count;
+        CHECK(avifROStreamReadU32(&s, &timeToSample->sampleDelta)); // unsigned int(32) sample_delta;
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseSampleTableBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
+static avifBool avifParseSampleTableBox(avifData * data, avifTrack * track, const uint8_t * raw, size_t rawLen)
 {
     if (track->sampleTable) {
         // A TrackBox may only have one SampleTable
@@ -842,132 +842,132 @@ static avifBool avifParseSampleTableBox(avifData * data, avifTrack * track, uint
 
     BEGIN_STREAM(s, raw, rawLen);
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "stco", 4)) {
-            CHECK(avifParseChunkOffsetBox(data, track->sampleTable, AVIF_FALSE, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseChunkOffsetBox(data, track->sampleTable, AVIF_FALSE, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "co64", 4)) {
-            CHECK(avifParseChunkOffsetBox(data, track->sampleTable, AVIF_TRUE, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseChunkOffsetBox(data, track->sampleTable, AVIF_TRUE, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "stsc", 4)) {
-            CHECK(avifParseSampleToChunkBox(data, track->sampleTable, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseSampleToChunkBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "stsz", 4)) {
-            CHECK(avifParseSampleSizeBox(data, track->sampleTable, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseSampleSizeBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "stts", 4)) {
-            CHECK(avifParseTimeToSampleBox(data, track->sampleTable, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseTimeToSampleBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMediaInformationBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
+static avifBool avifParseMediaInformationBox(avifData * data, avifTrack * track, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "stbl", 4)) {
-            CHECK(avifParseSampleTableBox(data, track, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseSampleTableBox(data, track, avifROStreamCurrent(&s), header.size));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMediaBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
+static avifBool avifParseMediaBox(avifData * data, avifTrack * track, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "mdhd", 4)) {
-            CHECK(avifParseMediaHeaderBox(data, track, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseMediaHeaderBox(data, track, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "minf", 4)) {
-            CHECK(avifParseMediaInformationBox(data, track, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseMediaInformationBox(data, track, avifROStreamCurrent(&s), header.size));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifTrackReferenceBox(avifData * data, avifTrack * track, uint8_t * raw, size_t rawLen)
+static avifBool avifTrackReferenceBox(avifData * data, avifTrack * track, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
     (void)data;
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "auxl", 4)) {
             uint32_t toID;
-            CHECK(avifStreamReadU32(&s, &toID));                       // unsigned int(32) track_IDs[]
-            CHECK(avifStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
+            CHECK(avifROStreamReadU32(&s, &toID));                       // unsigned int(32) track_IDs[]
+            CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
             track->auxForID = toID;
         } else {
-            CHECK(avifStreamSkip(&s, header.size));
+            CHECK(avifROStreamSkip(&s, header.size));
         }
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseTrackBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseTrackBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
     avifTrack * track = (avifTrack *)avifArrayPushPtr(&data->tracks);
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "tkhd", 4)) {
-            CHECK(avifParseTrackHeaderBox(data, track, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseTrackHeaderBox(data, track, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "mdia", 4)) {
-            CHECK(avifParseMediaBox(data, track, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseMediaBox(data, track, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "tref", 4)) {
-            CHECK(avifTrackReferenceBox(data, track, avifStreamCurrent(&s), header.size));
+            CHECK(avifTrackReferenceBox(data, track, avifROStreamCurrent(&s), header.size));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMoovBox(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParseMoovBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "trak", 4)) {
-            CHECK(avifParseTrackBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseTrackBox(data, avifROStreamCurrent(&s), header.size));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
 
-static avifBool avifParseFileTypeBox(avifFileType * ftyp, uint8_t * raw, size_t rawLen)
+static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    CHECK(avifStreamRead(&s, ftyp->majorBrand, 4));
-    CHECK(avifStreamReadU32(&s, &ftyp->minorVersion));
+    CHECK(avifROStreamRead(&s, ftyp->majorBrand, 4));
+    CHECK(avifROStreamReadU32(&s, &ftyp->minorVersion));
 
-    size_t compatibleBrandsBytes = avifStreamRemainingBytes(&s);
+    size_t compatibleBrandsBytes = avifROStreamRemainingBytes(&s);
     if ((compatibleBrandsBytes % 4) != 0) {
         return AVIF_FALSE;
     }
@@ -975,29 +975,29 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, uint8_t * raw, size_t 
         // TODO: stop clamping and resize this
         compatibleBrandsBytes = (4 * MAX_COMPATIBLE_BRANDS);
     }
-    CHECK(avifStreamRead(&s, ftyp->compatibleBrands, compatibleBrandsBytes));
+    CHECK(avifROStreamRead(&s, ftyp->compatibleBrands, compatibleBrandsBytes));
     ftyp->compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
 
     return AVIF_TRUE;
 }
 
-static avifBool avifParse(avifData * data, uint8_t * raw, size_t rawLen)
+static avifBool avifParse(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    while (avifStreamHasBytesLeft(&s, 1)) {
+    while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        CHECK(avifStreamReadBoxHeader(&s, &header));
+        CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "ftyp", 4)) {
-            CHECK(avifParseFileTypeBox(&data->ftyp, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseFileTypeBox(&data->ftyp, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "meta", 4)) {
-            CHECK(avifParseMetaBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseMetaBox(data, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "moov", 4)) {
-            CHECK(avifParseMoovBox(data, avifStreamCurrent(&s), header.size));
+            CHECK(avifParseMoovBox(data, avifROStreamCurrent(&s), header.size));
         }
 
-        CHECK(avifStreamSkip(&s, header.size));
+        CHECK(avifROStreamSkip(&s, header.size));
     }
     return AVIF_TRUE;
 }
@@ -1026,19 +1026,19 @@ static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
     return avifCompatible;
 }
 
-avifBool avifPeekCompatibleFileType(avifRawData * input)
+avifBool avifPeekCompatibleFileType(avifROData * input)
 {
     BEGIN_STREAM(s, input->data, input->size);
 
     avifBoxHeader header;
-    CHECK(avifStreamReadBoxHeader(&s, &header));
+    CHECK(avifROStreamReadBoxHeader(&s, &header));
     if (memcmp(header.type, "ftyp", 4) != 0) {
         return AVIF_FALSE;
     }
 
     avifFileType ftyp;
     memset(&ftyp, 0, sizeof(avifFileType));
-    avifBool parsed = avifParseFileTypeBox(&ftyp, avifStreamCurrent(&s), header.size);
+    avifBool parsed = avifParseFileTypeBox(&ftyp, avifROStreamCurrent(&s), header.size);
     if (!parsed) {
         return AVIF_FALSE;
     }
@@ -1079,7 +1079,7 @@ avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source)
     return avifDecoderReset(decoder);
 }
 
-avifResult avifDecoderParse(avifDecoder * decoder, avifRawData * rawInput)
+avifResult avifDecoderParse(avifDecoder * decoder, avifROData * rawInput)
 {
 #if !defined(AVIF_CODEC_AOM) && !defined(AVIF_CODEC_DAV1D)
     // Just bail out early, we're not surviving this function without a decoder compiled in
@@ -1095,7 +1095,7 @@ avifResult avifDecoderParse(avifDecoder * decoder, avifRawData * rawInput)
     decoder->data = avifDataCreate();
 
     // Shallow copy, on purpose
-    memcpy(&decoder->data->rawInput, rawInput, sizeof(avifRawData));
+    memcpy(&decoder->data->rawInput, rawInput, sizeof(avifROData));
 
     if (!avifParse(decoder->data, decoder->data->rawInput.data, decoder->data->rawInput.size)) {
         return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -1256,8 +1256,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     } else {
         // Create from items
 
-        avifRawData colorOBU = AVIF_RAW_DATA_EMPTY;
-        avifRawData alphaOBU = AVIF_RAW_DATA_EMPTY;
+        avifROData colorOBU = AVIF_DATA_EMPTY;
+        avifROData alphaOBU = AVIF_DATA_EMPTY;
         avifItem * colorOBUItem = NULL;
 
         // Find the colorOBU item
@@ -1318,12 +1318,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         data->colorInput = avifCodecDecodeInputCreate();
-        avifRawData * rawColorInput = (avifRawData *)avifArrayPushPtr(&data->colorInput->samples);
-        memcpy(rawColorInput, &colorOBU, sizeof(avifRawData));
+        avifROData * rawColorInput = (avifROData *)avifArrayPushPtr(&data->colorInput->samples);
+        memcpy(rawColorInput, &colorOBU, sizeof(avifROData));
         if (alphaOBU.size > 0) {
             data->alphaInput = avifCodecDecodeInputCreate();
-            avifRawData * rawAlphaInput = (avifRawData *)avifArrayPushPtr(&data->alphaInput->samples);
-            memcpy(rawAlphaInput, &alphaOBU, sizeof(avifRawData));
+            avifROData * rawAlphaInput = (avifROData *)avifArrayPushPtr(&data->alphaInput->samples);
+            memcpy(rawAlphaInput, &alphaOBU, sizeof(avifROData));
             data->alphaInput->alpha = AVIF_TRUE;
         }
 
@@ -1418,7 +1418,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     return AVIF_RESULT_OK;
 }
 
-avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData * input)
+avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData * input)
 {
     avifResult result = avifDecoderParse(decoder, input);
     if (result != AVIF_RESULT_OK) {

@@ -16,7 +16,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
     #include "avif/avif.h"
 
     // point raw.data and raw.size to the contents of an .avif(s)
-    avifRawData raw;
+    avifROData raw;
     raw.data = ...;
     raw.size = ...;
 
@@ -72,7 +72,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
     #include "avif/avif.h"
 
     // point raw.data and raw.size to the contents of an .avif(s)
-    avifRawData raw;
+    avifROData raw;
     raw.data = ...;
     raw.size = ...;
 
@@ -176,7 +176,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
     size_t iccSize = ...; // Length of raw ICC profile data
     avifImageSetProfileICC(image, icc, iccSize);
 
-    avifRawData output = AVIF_RAW_DATA_EMPTY;
+    avifRWData output = AVIF_DATA_EMPTY;
     avifEncoder * encoder = avifEncoderCreate();
     encoder->maxThreads = ...; // Choose max encoder threads, 1 to disable multithreading
     encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
@@ -189,7 +189,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
     } else {
         printf("ERROR: Failed to encode: %s\n", avifResultToString(encodeResult));
     }
-    avifRawDataFree(&output);
+    avifRWDataFree(&output);
     avifEncoderDestroy(encoder);
 ```
 

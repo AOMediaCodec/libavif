@@ -162,7 +162,7 @@ int main(int argc, char * argv[])
 
     int returnCode = 0;
     avifImage * avif = avifImageCreateEmpty();
-    avifRawData raw = AVIF_RAW_DATA_EMPTY;
+    avifRWData raw = AVIF_DATA_EMPTY;
 
     if (!y4mRead(avif, inputFilename)) {
         avifImageDestroy(avif);
@@ -211,6 +211,6 @@ cleanup:
         avifEncoderDestroy(encoder);
     }
     avifImageDestroy(avif);
-    avifRawDataFree(&raw);
+    avifRWDataFree(&raw);
     return returnCode;
 }

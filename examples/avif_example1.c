@@ -34,7 +34,7 @@ int main(int argc, char * argv[])
     // uint32_t fakeICCSize = (uint32_t)strlen(fakeICC);
     // apgImageSetICC(image, fakeICC, fakeICCSize);
 
-    avifRawData raw = AVIF_RAW_DATA_EMPTY;
+    avifRWData raw = AVIF_DATA_EMPTY;
     avifEncoder * encoder = avifEncoderCreate();
     encoder->maxThreads = 1;
     encoder->minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
@@ -57,7 +57,7 @@ int main(int argc, char * argv[])
         // Decode it
         avifImage * decoded = avifImageCreateEmpty();
         avifDecoder * decoder = avifDecoderCreate();
-        avifResult decodeResult = avifDecoderRead(decoder, decoded, &raw);
+        avifResult decodeResult = avifDecoderRead(decoder, decoded, (avifROData *)&raw);
         avifDecoderDestroy(decoder);
 
         if (decodeResult == AVIF_RESULT_OK) {
@@ -88,14 +88,14 @@ int main(int argc, char * argv[])
     fseek(f, 0, SEEK_END);
     uint32_t size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    avifRawData raw = AVIF_RAW_DATA_EMPTY;
-    avifRawDataRealloc(&raw, size);
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWDataRealloc(&raw, size);
     fread(raw.data, 1, size, f);
     fclose(f);
 
     avifImage * decoded = avifImageCreate();
     avifResult decodeResult = avifImageRead(decoded, &raw);
-    avifRawDataFree(&raw);
+    avifRWDataFree(&raw);
 #endif /* if 1 */
     return 0;
 }

@@ -188,22 +188,22 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
 void avifImageDestroy(avifImage * image)
 {
     avifImageFreePlanes(image, AVIF_PLANES_ALL);
-    avifRawDataFree(&image->icc);
+    avifRWDataFree(&image->icc);
     avifFree(image);
 }
 
 void avifImageSetProfileNone(avifImage * image)
 {
     image->profileFormat = AVIF_PROFILE_FORMAT_NONE;
-    avifRawDataFree(&image->icc);
+    avifRWDataFree(&image->icc);
 }
 
-void avifImageSetProfileICC(avifImage * image, uint8_t * icc, size_t iccSize)
+void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize)
 {
     avifImageSetProfileNone(image);
     if (iccSize) {
         image->profileFormat = AVIF_PROFILE_FORMAT_ICC;
-        avifRawDataSet(&image->icc, icc, iccSize);
+        avifRWDataSet(&image->icc, icc, iccSize);
     }
 }
 

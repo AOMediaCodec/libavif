@@ -90,27 +90,30 @@ typedef enum avifResult
 const char * avifResultToString(avifResult result);
 
 // ---------------------------------------------------------------------------
-// avifRawData: Generic raw memory storage
+// avifROData/avifRWData: Generic raw memory storage
 
-// Note: you can use this struct directly (without the functions) if you're
-// passing data into avif*() functions, but you should use avifRawDataFree()
-// if any avif*() function populates one of these.
+typedef struct avifROData
+{
+    const uint8_t * data;
+    size_t size;
+} avifROData;
 
-typedef struct avifRawData
+// Note: Use avifRWDataFree() if any avif*() function populates one of these.
+
+typedef struct avifRWData
 {
     uint8_t * data;
     size_t size;
-} avifRawData;
+} avifRWData;
 
 // clang-format off
-// Initialize avifRawData on the stack with this
-#define AVIF_RAW_DATA_EMPTY { NULL, 0 }
+// Initialize avifROData/avifRWData on the stack with this
+#define AVIF_DATA_EMPTY { NULL, 0 }
 // clang-format on
 
-void avifRawDataRealloc(avifRawData * raw, size_t newSize);
-void avifRawDataSet(avifRawData * raw, const uint8_t * data, size_t len);
-void avifRawDataConcat(avifRawData * dst, avifRawData ** srcs, int srcsCount);
-void avifRawDataFree(avifRawData * raw);
+void avifRWDataRealloc(avifRWData * raw, size_t newSize);
+void avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len);
+void avifRWDataFree(avifRWData * raw);
 
 // ---------------------------------------------------------------------------
 // avifPixelFormat
@@ -290,7 +293,7 @@ typedef struct avifImage
 
     // Profile information
     avifProfileFormat profileFormat;
-    avifRawData icc;
+    avifRWData icc;
     avifNclxColorProfile nclx;
 } avifImage;
 
@@ -300,7 +303,7 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage); // deep copy
 void avifImageDestroy(avifImage * image);
 
 void avifImageSetProfileNone(avifImage * image);
-void avifImageSetProfileICC(avifImage * image, uint8_t * icc, size_t iccSize);
+void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx);
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
@@ -378,7 +381,7 @@ avifDecoder * avifDecoderCreate(void);
 void avifDecoderDestroy(avifDecoder * decoder);
 
 // Simple interface to decode a single image, independent of the decoder afterwards (decoder may be deestroyed).
-avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData * input);
+avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData * input);
 
 // Multi-function alternative to avifDecoderRead() for image sequences and gaining direct access
 // to the decoder's YUV buffers (for performance's sake). Data passed into avifDecoderParse() is NOT
@@ -394,12 +397,12 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
 // You can use avifDecoderReset() any time after a successful call to avifDecoderParse()
 // to reset the internal decoder back to before the first frame.
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
-avifResult avifDecoderParse(avifDecoder * decoder, avifRawData * input);
+avifResult avifDecoderParse(avifDecoder * decoder, avifROData * input);
 avifResult avifDecoderNextImage(avifDecoder * decoder);
 avifResult avifDecoderReset(avifDecoder * decoder);
 
 // avifEncoder notes:
-// * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRawDataFree()
+// * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * if (maxThreads < 2), multithreading is disabled
 // * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
 // * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
@@ -418,7 +421,7 @@ typedef struct avifEncoder
 } avifEncoder;
 
 avifEncoder * avifEncoderCreate(void);
-avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRawData * output);
+avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData * output);
 void avifEncoderDestroy(avifEncoder * encoder);
 
 // Helpers
@@ -426,7 +429,7 @@ avifBool avifImageUsesU16(avifImage * image);
 
 // Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
-avifBool avifPeekCompatibleFileType(avifRawData * input);
+avifBool avifPeekCompatibleFileType(avifROData * input);
 
 #ifdef __cplusplus
 } // extern "C"

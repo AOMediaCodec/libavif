@@ -35,7 +35,7 @@ struct avifCodecInternal
     uint32_t inputSampleIndex;
     aom_image_t * image;
 
-    avifRawData encodedOBU;
+    avifRWData encodedOBU;
     avifCodecConfigurationBox config;
 };
 
@@ -44,7 +44,7 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     if (codec->internal->decoderInitialized) {
         aom_codec_destroy(&codec->internal->decoder);
     }
-    avifRawDataFree(&codec->internal->encodedOBU);
+    avifRWDataFree(&codec->internal->encodedOBU);
     avifFree(codec->internal);
 }
 
@@ -83,7 +83,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
             break;
         } else if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
             // Feed another sample
-            avifRawData * sample = &codec->decodeInput->samples.raw[codec->internal->inputSampleIndex];
+            avifROData * sample = &codec->decodeInput->samples.raw[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data, sample->size, NULL)) {
@@ -232,7 +232,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alphaOnly, 
     return fmt;
 }
 
-static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * encoder, avifRawData * outputOBU, avifCodecConfigurationBox * outputConfig)
+static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * encoder, avifRWData * outputOBU, avifCodecConfigurationBox * outputConfig)
 {
     avifBool success = AVIF_FALSE;
     aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
@@ -399,7 +399,7 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
         if (pkt == NULL)
             break;
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
-            avifRawDataSet(outputOBU, pkt->data.frame.buf, pkt->data.frame.sz);
+            avifRWDataSet(outputOBU, pkt->data.frame.buf, pkt->data.frame.sz);
             success = AVIF_TRUE;
             break;
         }
@@ -410,7 +410,7 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
     return success;
 }
 
-static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * obu, avifBool alpha)
+static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha)
 {
     if (!encodeOBU(image, alpha, encoder, obu, &codec->internal->config)) {
         return AVIF_FALSE;

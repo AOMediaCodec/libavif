@@ -35,12 +35,12 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    avifRawData raw = AVIF_RAW_DATA_EMPTY;
-    avifRawDataRealloc(&raw, inputFileSize);
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWDataRealloc(&raw, inputFileSize);
     if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
         fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
         fclose(inputFile);
-        avifRawDataFree(&raw);
+        avifRWDataFree(&raw);
         return 1;
     }
 
@@ -49,7 +49,7 @@ int main(int argc, char * argv[])
 
     avifDecoder * decoder = avifDecoderCreate();
     // avifDecoderSetSource(decoder, AVIF_DECODER_SOURCE_PRIMARY_ITEM);
-    avifResult result = avifDecoderParse(decoder, &raw);
+    avifResult result = avifDecoderParse(decoder, (avifROData *)&raw);
     if (result == AVIF_RESULT_OK) {
         for (int loop = 0; loop < 2; ++loop) {
             printf("Image decoded: %s\n", inputFilename);
@@ -79,7 +79,7 @@ int main(int argc, char * argv[])
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
     }
 
-    avifRawDataFree(&raw);
+    avifRWDataFree(&raw);
     avifDecoderDestroy(decoder);
     return 0;
 }

@@ -38,7 +38,7 @@ static avifBool dav1dFeedData(avifCodec * codec)
         dav1d_data_unref(&codec->internal->dav1dData);
 
         if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
-            avifRawData * sample = &codec->decodeInput->samples.raw[codec->internal->inputSampleIndex];
+            avifROData * sample = &codec->decodeInput->samples.raw[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
 
             // OPTIMIZE: Carefully switch this to use dav1d_data_wrap or dav1d_data_wrap_user_data

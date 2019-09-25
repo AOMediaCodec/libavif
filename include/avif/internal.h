@@ -57,7 +57,8 @@ void * avifArrayPushPtr(void * arrayStruct);
 void avifArrayPush(void * arrayStruct, void * element);
 void avifArrayDestroy(void * arrayStruct);
 
-AVIF_ARRAY_DECLARE(avifRawDataArray, avifRawData, raw);
+AVIF_ARRAY_DECLARE(avifRODataArray, avifROData, raw);
+AVIF_ARRAY_DECLARE(avifRWDataArray, avifRWData, raw);
 
 // Used internally by avifDecoderNextImage() when there is limited range alpha
 void avifImageCopyDecoderAlpha(avifImage * image);
@@ -73,7 +74,7 @@ void avifFree(void * p);
 
 typedef struct avifCodecDecodeInput
 {
-    avifRawDataArray samples;
+    avifRODataArray samples;
     avifBool alpha; // if true, this is decoding an alpha plane
 } avifCodecDecodeInput;
 
@@ -123,7 +124,7 @@ typedef avifBool (*avifCodecDecodeFunc)(struct avifCodec * codec);
 typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
 // avifCodecEncodeImageFunc: if either OBU* is null, skip its encode. alpha should always be lossless
-typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * obu, avifBool alpha);
+typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha);
 typedef void (*avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecConfigurationBox * outConfig);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
@@ -149,48 +150,56 @@ void avifCodecDestroy(avifCodec * codec);
 
 typedef size_t avifBoxMarker;
 
-typedef struct avifStream
-{
-    avifRawData * raw;
-    size_t offset;
-} avifStream;
-
 typedef struct avifBoxHeader
 {
     size_t size;
     uint8_t type[4];
 } avifBoxHeader;
 
-uint8_t * avifStreamCurrent(avifStream * stream);
+typedef struct avifROStream
+{
+    avifROData * raw;
+    size_t offset;
+} avifROStream;
 
-void avifStreamStart(avifStream * stream, avifRawData * raw);
+const uint8_t * avifROStreamCurrent(avifROStream * stream);
+void avifROStreamStart(avifROStream * stream, avifROData * raw);
+size_t avifROStreamOffset(avifROStream * stream);
+void avifROStreamSetOffset(avifROStream * stream, size_t offset);
 
-// Read
-avifBool avifStreamHasBytesLeft(avifStream * stream, size_t byteCount);
-size_t avifStreamRemainingBytes(avifStream * stream);
-size_t avifStreamOffset(avifStream * stream);
-void avifStreamSetOffset(avifStream * stream, size_t offset);
-avifBool avifStreamSkip(avifStream * stream, size_t byteCount);
-avifBool avifStreamRead(avifStream * stream, uint8_t * data, size_t size);
-avifBool avifStreamReadU16(avifStream * stream, uint16_t * v);
-avifBool avifStreamReadU32(avifStream * stream, uint32_t * v);
-avifBool avifStreamReadUX8(avifStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
-avifBool avifStreamReadU64(avifStream * stream, uint64_t * v);
-avifBool avifStreamReadString(avifStream * stream, char * output, size_t outputSize);
-avifBool avifStreamReadBoxHeader(avifStream * stream, avifBoxHeader * header);
-avifBool avifStreamReadVersionAndFlags(avifStream * stream, uint8_t * version, uint8_t * flags); // flags is an optional uint8_t[3]
-avifBool avifStreamReadAndEnforceVersion(avifStream * stream, uint8_t enforcedVersion);          // currently discards flags
+avifBool avifROStreamHasBytesLeft(avifROStream * stream, size_t byteCount);
+size_t avifROStreamRemainingBytes(avifROStream * stream);
+avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount);
+avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size);
+avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v);
+avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v);
+avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
+avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v);
+avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize);
+avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header);
+avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint8_t * flags); // flags is an optional uint8_t[3]
+avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion);          // currently discards flags
 
-// Write
-void avifStreamFinishWrite(avifStream * stream);
-void avifStreamWrite(avifStream * stream, const uint8_t * data, size_t size);
-void avifStreamWriteChars(avifStream * stream, const char * chars, size_t size);
-avifBoxMarker avifStreamWriteBox(avifStream * stream, const char * type, int version /* -1 for "not a FullBox" */, size_t contentSize);
-void avifStreamFinishBox(avifStream * stream, avifBoxMarker marker);
-void avifStreamWriteU8(avifStream * stream, uint8_t v);
-void avifStreamWriteU16(avifStream * stream, uint16_t v);
-void avifStreamWriteU32(avifStream * stream, uint32_t v);
-void avifStreamWriteZeros(avifStream * stream, size_t byteCount);
+typedef struct avifRWStream
+{
+    avifRWData * raw;
+    size_t offset;
+} avifRWStream;
+
+uint8_t * avifRWStreamCurrent(avifRWStream * stream);
+void avifRWStreamStart(avifRWStream * stream, avifRWData * raw);
+size_t avifRWStreamOffset(avifRWStream * stream);
+void avifRWStreamSetOffset(avifRWStream * stream, size_t offset);
+
+void avifRWStreamFinishWrite(avifRWStream * stream);
+void avifRWStreamWrite(avifRWStream * stream, const uint8_t * data, size_t size);
+void avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size);
+avifBoxMarker avifRWStreamWriteBox(avifRWStream * stream, const char * type, int version /* -1 for "not a FullBox" */, size_t contentSize);
+void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
+void avifRWStreamWriteU8(avifRWStream * stream, uint8_t v);
+void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
+void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
+void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
 
 #ifdef __cplusplus
 } // extern "C"
