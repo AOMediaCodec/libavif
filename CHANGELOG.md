@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.9] - 2019-09-25
 ### Changed
 - Split avifRawData and avifStream into read-only (const) and read/write versions, updated code accordingly
 - Fix a few clang/macOS warnings
@@ -149,7 +151,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.8...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.9...HEAD
+[0.3.9]: https://github.com/AOMediaCodec/libavif/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/AOMediaCodec/libavif/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/AOMediaCodec/libavif/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/AOMediaCodec/libavif/compare/v0.3.5...v0.3.6
