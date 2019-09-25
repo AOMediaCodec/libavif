@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPixelFormat * format, int * depth)
+static avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPixelFormat * format, int * depth)
 {
     if (!strcmp(formatString, "C420jpeg")) {
         *format = AVIF_PIXEL_FORMAT_YUV420;
@@ -74,7 +74,7 @@ avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPixelForma
     return AVIF_FALSE;
 }
 
-avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars)
+static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars)
 {
     uint8_t * headerEnd = p;
     while ((*headerEnd != ' ') && (*headerEnd != '\n')) {
@@ -227,7 +227,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     avif->height = height;
     avif->depth = depth;
     avif->yuvFormat = format;
-    avif->yuvRange = rangeFlag;
+    avif->yuvRange = (uint8_t)rangeFlag;
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     avifPixelFormatInfo info;

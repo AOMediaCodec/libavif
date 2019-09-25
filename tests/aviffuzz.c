@@ -6,12 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-int syntax(void)
-{
-    printf("Syntax: aviffuzz input.avif\n");
-    return 0;
-}
-
 int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Split avifRawData and avifStream into read-only (const) and read/write versions, updated code accordingly
+- Fix a few clang/macOS warnings
 
 ## [0.3.8] - 2019-09-04
 ### Changed

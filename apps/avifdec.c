@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-int syntax(void)
+static int syntax(void)
 {
     printf("Syntax: avifdec [options] input.avif output.y4m\n");
     printf("Options:\n");
