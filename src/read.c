@@ -116,12 +116,19 @@ typedef struct avifSampleTableTimeToSample
 } avifSampleTableTimeToSample;
 AVIF_ARRAY_DECLARE(avifSampleTableTimeToSampleArray, avifSampleTableTimeToSample, timeToSample);
 
+typedef struct avifSyncSample
+{
+    uint32_t sampleNumber;
+} avifSyncSample;
+AVIF_ARRAY_DECLARE(avifSyncSampleArray, avifSyncSample, syncSample);
+
 typedef struct avifSampleTable
 {
     avifSampleTableChunkArray chunks;
     avifSampleTableSampleToChunkArray sampleToChunks;
     avifSampleTableSampleSizeArray sampleSizes;
     avifSampleTableTimeToSampleArray timeToSamples;
+    avifSyncSampleArray syncSamples;
 } avifSampleTable;
 
 static avifSampleTable * avifSampleTableCreate()
@@ -132,6 +139,7 @@ static avifSampleTable * avifSampleTableCreate()
     avifArrayCreate(&sampleTable->sampleToChunks, sizeof(avifSampleTableSampleToChunk), 16);
     avifArrayCreate(&sampleTable->sampleSizes, sizeof(avifSampleTableSampleSize), 16);
     avifArrayCreate(&sampleTable->timeToSamples, sizeof(avifSampleTableTimeToSample), 16);
+    avifArrayCreate(&sampleTable->syncSamples, sizeof(avifSampleTable), 16);
     return sampleTable;
 }
 
@@ -141,6 +149,7 @@ static void avifSampleTableDestroy(avifSampleTable * sampleTable)
     avifArrayDestroy(&sampleTable->sampleToChunks);
     avifArrayDestroy(&sampleTable->sampleSizes);
     avifArrayDestroy(&sampleTable->timeToSamples);
+    avifArrayDestroy(&sampleTable->syncSamples);
     avifFree(sampleTable);
 }
 
@@ -177,7 +186,7 @@ avifCodecDecodeInput * avifCodecDecodeInputCreate(void)
 {
     avifCodecDecodeInput * decodeInput = (avifCodecDecodeInput *)avifAlloc(sizeof(avifCodecDecodeInput));
     memset(decodeInput, 0, sizeof(avifCodecDecodeInput));
-    avifArrayCreate(&decodeInput->samples, sizeof(avifROData), 1);
+    avifArrayCreate(&decodeInput->samples, sizeof(avifSample), 1);
     return decodeInput;
 }
 
@@ -216,9 +225,10 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
 
             avifSampleTableSampleSize * sampleSize = &sampleTable->sampleSizes.sampleSize[sampleSizeIndex];
 
-            avifROData * rawSample = (avifROData *)avifArrayPushPtr(&decodeInput->samples);
-            rawSample->data = rawInput->data + sampleOffset;
-            rawSample->size = sampleSize->size;
+            avifSample * sample = (avifSample *)avifArrayPushPtr(&decodeInput->samples);
+            sample->data.data = rawInput->data + sampleOffset;
+            sample->data.size = sampleSize->size;
+            sample->sync = AVIF_FALSE; // to potentially be set to true following the outer loop
 
             if (sampleOffset > (uint64_t)rawInput->size) {
                 return AVIF_FALSE;
@@ -227,6 +237,19 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
             sampleOffset += sampleSize->size;
             ++sampleSizeIndex;
         }
+    }
+
+    // Mark appropriate samples as sync
+    for (uint32_t syncSampleIndex = 0; syncSampleIndex < sampleTable->syncSamples.count; ++syncSampleIndex) {
+        uint32_t frameIndex = sampleTable->syncSamples.syncSample[syncSampleIndex].sampleNumber - 1; // sampleNumber is 1-based
+        if (frameIndex < decodeInput->samples.count) {
+            decodeInput->samples.sample[frameIndex].sync = AVIF_TRUE;
+        }
+    }
+
+    // Assume frame 0 is sync, just in case the stss box is absent in the BMFF. (Unnecessary?)
+    if (decodeInput->samples.count > 0) {
+        decodeInput->samples.sample[0].sync = AVIF_TRUE;
     }
     return AVIF_TRUE;
 }
@@ -814,6 +837,25 @@ static avifBool avifParseSampleSizeBox(avifData * data, avifSampleTable * sample
     return AVIF_TRUE;
 }
 
+static avifBool avifParseSyncSampleBox(avifData * data, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
+
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
+
+    uint32_t entryCount;
+    CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+
+    for (uint32_t i = 0; i < entryCount; ++i) {
+        uint32_t sampleNumber = 0;
+        CHECK(avifROStreamReadU32(&s, &sampleNumber)); // unsigned int(32) sample_number;
+        avifSyncSample * syncSample = (avifSyncSample *)avifArrayPushPtr(&sampleTable->syncSamples);
+        syncSample->sampleNumber = sampleNumber;
+    }
+    return AVIF_TRUE;
+}
+
 static avifBool avifParseTimeToSampleBox(avifData * data, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
@@ -854,6 +896,8 @@ static avifBool avifParseSampleTableBox(avifData * data, avifTrack * track, cons
             CHECK(avifParseSampleToChunkBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "stsz", 4)) {
             CHECK(avifParseSampleSizeBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
+        } else if (!memcmp(header.type, "stss", 4)) {
+            CHECK(avifParseSyncSampleBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "stts", 4)) {
             CHECK(avifParseTimeToSampleBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         }
@@ -1151,6 +1195,24 @@ static avifCodec * avifCodecCreateForDecode(avifCodecDecodeInput * decodeInput)
     return codec;
 }
 
+static avifResult avifDecoderFlush(avifDecoder * decoder)
+{
+    avifDataResetCodec(decoder->data);
+
+    decoder->data->codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateForDecode(decoder->data->colorInput);
+    if (!decoder->data->codec[AVIF_CODEC_PLANES_COLOR]->open(decoder->data->codec[AVIF_CODEC_PLANES_COLOR])) {
+        return AVIF_RESULT_DECODE_COLOR_FAILED;
+    }
+
+    if (decoder->data->alphaInput) {
+        decoder->data->codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateForDecode(decoder->data->alphaInput);
+        if (!decoder->data->codec[AVIF_CODEC_PLANES_ALPHA]->open(decoder->data->codec[AVIF_CODEC_PLANES_ALPHA])) {
+            return AVIF_RESULT_DECODE_ALPHA_FAILED;
+        }
+    }
+    return AVIF_RESULT_OK;
+}
+
 avifResult avifDecoderReset(avifDecoder * decoder)
 {
     avifData * data = decoder->data;
@@ -1318,12 +1380,14 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         data->colorInput = avifCodecDecodeInputCreate();
-        avifROData * rawColorInput = (avifROData *)avifArrayPushPtr(&data->colorInput->samples);
-        memcpy(rawColorInput, &colorOBU, sizeof(avifROData));
+        avifSample * colorSample = (avifSample *)avifArrayPushPtr(&data->colorInput->samples);
+        memcpy(&colorSample->data, &colorOBU, sizeof(avifROData));
+        colorSample->sync = AVIF_TRUE;
         if (alphaOBU.size > 0) {
             data->alphaInput = avifCodecDecodeInputCreate();
-            avifROData * rawAlphaInput = (avifROData *)avifArrayPushPtr(&data->alphaInput->samples);
-            memcpy(rawAlphaInput, &alphaOBU, sizeof(avifROData));
+            avifSample * alphaSample = (avifSample *)avifArrayPushPtr(&data->alphaInput->samples);
+            memcpy(&alphaSample->data, &alphaOBU, sizeof(avifROData));
+            alphaSample->sync = AVIF_TRUE;
             data->alphaInput->alpha = AVIF_TRUE;
         }
 
@@ -1343,18 +1407,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->ioStats.alphaOBUSize = alphaOBU.size;
     }
 
-    data->codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateForDecode(data->colorInput);
-    if (!data->codec[AVIF_CODEC_PLANES_COLOR]->decode(data->codec[AVIF_CODEC_PLANES_COLOR])) {
-        return AVIF_RESULT_DECODE_COLOR_FAILED;
-    }
-
-    if (data->alphaInput) {
-        decoder->data->codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateForDecode(data->alphaInput);
-        if (!data->codec[AVIF_CODEC_PLANES_ALPHA]->decode(data->codec[AVIF_CODEC_PLANES_ALPHA])) {
-            return AVIF_RESULT_DECODE_ALPHA_FAILED;
-        }
-    }
-    return AVIF_RESULT_OK;
+    return avifDecoderFlush(decoder);
 }
 
 avifResult avifDecoderNextImage(avifDecoder * decoder)
@@ -1404,7 +1457,10 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         // Decoding from a track! Provide timing information.
 
         decoder->imageTiming.timescale = decoder->timescale;
-        decoder->imageTiming.ptsInTimescales += decoder->imageTiming.durationInTimescales;
+        decoder->imageTiming.ptsInTimescales = 0;
+        for (int imageIndex = 0; imageIndex < decoder->imageIndex; ++imageIndex) {
+            decoder->imageTiming.ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
+        }
         decoder->imageTiming.durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, decoder->imageIndex);
 
         if (decoder->imageTiming.timescale > 0) {
@@ -1416,6 +1472,60 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         }
     }
     return AVIF_RESULT_OK;
+}
+
+avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
+{
+    int requestedIndex = (int)frameIndex;
+    if (requestedIndex == decoder->imageIndex) {
+        // We're here already, nothing to do
+        return AVIF_RESULT_OK;
+    }
+
+    if (requestedIndex == (decoder->imageIndex + 1)) {
+        // it's just the next image, nothing special here
+        return avifDecoderNextImage(decoder);
+    }
+
+    if (requestedIndex >= decoder->imageCount) {
+        // Impossible index
+        return AVIF_RESULT_NO_IMAGES_REMAINING;
+    }
+
+    // If we get here, a decoder flush is necessary
+    avifDecoderFlush(decoder);
+    decoder->imageIndex = ((int)avifDecoderNearestKeyframe(decoder, frameIndex)) - 1; // prepare to read nearest keyframe
+    for (;;) {
+        avifResult result = avifDecoderNextImage(decoder);
+        if (result != AVIF_RESULT_OK) {
+            return result;
+        }
+
+        if (requestedIndex == decoder->imageIndex) {
+            break;
+        }
+    };
+    return AVIF_RESULT_OK;
+}
+
+avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex)
+{
+    if (decoder->data->colorInput) {
+        if (frameIndex < decoder->data->colorInput->samples.count) {
+            return decoder->data->colorInput->samples.sample[frameIndex].sync;
+        }
+    }
+    return AVIF_FALSE;
+}
+
+uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex)
+{
+    for (; frameIndex != 0; --frameIndex) {
+        if (avifDecoderIsKeyframe(decoder, frameIndex)) {
+            break;
+        }
+    }
+    return frameIndex;
 }
 
 avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData * input)

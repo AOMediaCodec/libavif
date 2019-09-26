@@ -72,9 +72,16 @@ void avifFree(void * p);
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
+typedef struct avifSample
+{
+    avifROData data;
+    avifBool sync; // is sync sample (keyframe)
+} avifSample;
+AVIF_ARRAY_DECLARE(avifSampleArray, avifSample, sample);
+
 typedef struct avifCodecDecodeInput
 {
-    avifRODataArray samples;
+    avifSampleArray samples;
     avifBool alpha; // if true, this is decoding an alpha plane
 } avifCodecDecodeInput;
 
@@ -119,7 +126,7 @@ typedef enum avifCodecPlanes
 struct avifCodec;
 struct avifCodecInternal;
 
-typedef avifBool (*avifCodecDecodeFunc)(struct avifCodec * codec);
+typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec);
 // avifCodecAlphaLimitedRangeFunc: returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
 typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
@@ -133,7 +140,7 @@ typedef struct avifCodec
     avifCodecDecodeInput * decodeInput;
     struct avifCodecInternal * internal; // up to each codec to use how it wants
 
-    avifCodecDecodeFunc decode;
+    avifCodecOpenFunc open;
     avifCodecAlphaLimitedRangeFunc alphaLimitedRange;
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;

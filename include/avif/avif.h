@@ -399,7 +399,14 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData 
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
 avifResult avifDecoderParse(avifDecoder * decoder, avifROData * input);
 avifResult avifDecoderNextImage(avifDecoder * decoder);
+avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex);
 avifResult avifDecoderReset(avifDecoder * decoder);
+
+// Keyframe information
+// frameIndex - 0-based, matching avifDecoder->imageIndex, bound by avifDecoder->imageCount
+// "nearest" keyframe means the keyframe prior to this frame index (returns frameIndex if it is a keyframe)
+avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
+uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 
 // avifEncoder notes:
 // * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()

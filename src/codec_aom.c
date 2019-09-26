@@ -48,7 +48,7 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool aomCodecDecode(struct avifCodec * codec)
+static avifBool aomCodecOpen(struct avifCodec * codec)
 {
     aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
     if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, NULL, 0)) {
@@ -83,10 +83,10 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
             break;
         } else if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
             // Feed another sample
-            avifROData * sample = &codec->decodeInput->samples.raw[codec->internal->inputSampleIndex];
+            avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
             codec->internal->iter = NULL;
-            if (aom_codec_decode(&codec->internal->decoder, sample->data, sample->size, NULL)) {
+            if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
                 return AVIF_FALSE;
             }
         } else {
@@ -427,7 +427,7 @@ avifCodec * avifCodecCreateAOM(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
-    codec->decode = aomCodecDecode;
+    codec->open = aomCodecOpen;
     codec->alphaLimitedRange = aomCodecAlphaLimitedRange;
     codec->getNextImage = aomCodecGetNextImage;
     codec->encodeImage = aomCodecEncodeImage;

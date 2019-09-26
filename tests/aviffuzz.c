@@ -50,10 +50,12 @@ int main(int argc, char * argv[])
             printf(" * %2.2f seconds, %d images\n", decoder->duration, decoder->imageCount);
             int frameIndex = 0;
             while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-                printf("  * Decoded frame [%d] [pts %2.2f] [duration %2.2f]: %dx%d\n",
+                printf("  * Decoded frame [%d] [pts %2.2f] [duration %2.2f] [keyframe:%s nearest:%u]: %dx%d\n",
                        frameIndex,
                        decoder->imageTiming.pts,
                        decoder->imageTiming.duration,
+                       avifDecoderIsKeyframe(decoder, frameIndex) ? "true" : "false",
+                       avifDecoderNearestKeyframe(decoder, frameIndex),
                        decoder->image->width,
                        decoder->image->height);
                 ++frameIndex;
@@ -72,6 +74,20 @@ int main(int argc, char * argv[])
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
     }
+
+#if 0
+    int frameIndex = 25;
+    if (avifDecoderNthImage(decoder, frameIndex) == AVIF_RESULT_OK) {
+        printf("  * Decoded frame [%d] [pts %2.2f] [duration %2.2f] [keyframe:%s nearest:%u]: %dx%d\n",
+               frameIndex,
+               decoder->imageTiming.pts,
+               decoder->imageTiming.duration,
+               avifDecoderIsKeyframe(decoder, frameIndex) ? "true" : "false",
+               avifDecoderNearestKeyframe(decoder, frameIndex),
+               decoder->image->width,
+               decoder->image->height);
+    }
+#endif
 
     avifRWDataFree(&raw);
     avifDecoderDestroy(decoder);

@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- stss box parsing for keyframe information
+- avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
+- uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
+- avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex);
+- aviffuzz prints keyframe information as it repeatedly decodes
+
+### Changed
+- internally renamed codec function "decode" to "open", as that's all it does
+- dav1d codec's open function no longer does an initial unnecessary feed
+- avifCodecDecodeInput now stores an array of avifSample which know if they're keyframes
+- moved codec flushing code into avifDecoderFlush() so it is available to avifDecoderNthImage
+- ptsInTimescales is now calculated independently of frame decode order
 
 ## [0.3.9] - 2019-09-25
 ### Changed
