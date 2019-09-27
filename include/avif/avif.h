@@ -370,6 +370,11 @@ typedef struct avifDecoder
     double duration;               // in seconds (durationInTimescales / timescale)
     uint64_t durationInTimescales; // duration in "timescales"
 
+    // If decoding an "item" (instead of tracks) and the item is associated with an ImageSpatialExtentsBox,
+    // its values will be reflected here after a call to avifDecoderParse(), otherwise they will be set to 0.
+    uint32_t ispeWidth;
+    uint32_t ispeHeight;
+
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
 

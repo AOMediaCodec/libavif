@@ -1315,6 +1315,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->duration = 0;
         }
         memset(&decoder->imageTiming, 0, sizeof(decoder->imageTiming)); // to be set in avifDecoderNextImage()
+
+        // No ispe inside of a track
+        decoder->ispeWidth = 0;
+        decoder->ispeHeight = 0;
     } else {
         // Create from items
 
@@ -1405,6 +1409,14 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         decoder->ioStats.colorOBUSize = colorOBU.size;
         decoder->ioStats.alphaOBUSize = alphaOBU.size;
+
+        if (colorOBUItem->ispePresent) {
+            decoder->ispeWidth = colorOBUItem->ispe.width;
+            decoder->ispeHeight = colorOBUItem->ispe.height;
+        } else {
+            decoder->ispeWidth = 0;
+            decoder->ispeHeight = 0;
+        }
     }
 
     return avifDecoderFlush(decoder);
