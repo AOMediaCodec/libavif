@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Now parsing/tracking sample description formats to filter non-av01 type tracks
 - Allow brand 'av01' to be decoded
 
+### Changed
+- Fixed bug in sync sample table element sizing
+
 ## [0.3.10] - 2019-09-26
 ### Added
 - stss box parsing for keyframe information

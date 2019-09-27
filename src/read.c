@@ -147,7 +147,7 @@ static avifSampleTable * avifSampleTableCreate()
     avifArrayCreate(&sampleTable->sampleToChunks, sizeof(avifSampleTableSampleToChunk), 16);
     avifArrayCreate(&sampleTable->sampleSizes, sizeof(avifSampleTableSampleSize), 16);
     avifArrayCreate(&sampleTable->timeToSamples, sizeof(avifSampleTableTimeToSample), 16);
-    avifArrayCreate(&sampleTable->syncSamples, sizeof(avifSampleTable), 16);
+    avifArrayCreate(&sampleTable->syncSamples, sizeof(avifSyncSample), 16);
     return sampleTable;
 }
 
