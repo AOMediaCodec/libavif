@@ -1250,13 +1250,13 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
     avifDataResetCodec(decoder->data);
 
     decoder->data->codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateForDecode(decoder->data->colorInput);
-    if (!decoder->data->codec[AVIF_CODEC_PLANES_COLOR]->open(decoder->data->codec[AVIF_CODEC_PLANES_COLOR])) {
+    if (!decoder->data->codec[AVIF_CODEC_PLANES_COLOR]->open(decoder->data->codec[AVIF_CODEC_PLANES_COLOR], decoder->imageIndex + 1)) {
         return AVIF_RESULT_DECODE_COLOR_FAILED;
     }
 
     if (decoder->data->alphaInput) {
         decoder->data->codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateForDecode(decoder->data->alphaInput);
-        if (!decoder->data->codec[AVIF_CODEC_PLANES_ALPHA]->open(decoder->data->codec[AVIF_CODEC_PLANES_ALPHA])) {
+        if (!decoder->data->codec[AVIF_CODEC_PLANES_ALPHA]->open(decoder->data->codec[AVIF_CODEC_PLANES_ALPHA], decoder->imageIndex + 1)) {
             return AVIF_RESULT_DECODE_ALPHA_FAILED;
         }
     }

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Fixed bug in sync sample table element sizing
+- Pass through starting sample index to codec when flushing with NthImage
 
 ## [0.3.10] - 2019-09-26
 ### Added

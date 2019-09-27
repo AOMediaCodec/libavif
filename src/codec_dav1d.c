@@ -57,7 +57,7 @@ static avifBool dav1dFeedData(avifCodec * codec)
     return AVIF_TRUE;
 }
 
-static avifBool dav1dCodecOpen(avifCodec * codec)
+static avifBool dav1dCodecOpen(avifCodec * codec, uint32_t firstSampleIndex)
 {
     if (codec->internal->dav1dContext == NULL) {
         if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
@@ -65,7 +65,7 @@ static avifBool dav1dCodecOpen(avifCodec * codec)
         }
     }
 
-    codec->internal->inputSampleIndex = 0;
+    codec->internal->inputSampleIndex = firstSampleIndex;
     return AVIF_TRUE;
 }
 

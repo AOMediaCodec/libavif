@@ -126,7 +126,7 @@ typedef enum avifCodecPlanes
 struct avifCodec;
 struct avifCodecInternal;
 
-typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec);
+typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, uint32_t firstSampleIndex);
 // avifCodecAlphaLimitedRangeFunc: returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
 typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);

@@ -48,7 +48,7 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool aomCodecOpen(struct avifCodec * codec)
+static avifBool aomCodecOpen(struct avifCodec * codec, uint32_t firstSampleIndex)
 {
     aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
     if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, NULL, 0)) {
@@ -60,7 +60,7 @@ static avifBool aomCodecOpen(struct avifCodec * codec)
         return AVIF_FALSE;
     }
 
-    codec->internal->inputSampleIndex = 0;
+    codec->internal->inputSampleIndex = firstSampleIndex;
     codec->internal->iter = NULL;
     return AVIF_TRUE;
 }
