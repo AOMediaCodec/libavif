@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Exposed ispeWidth/ispeHeight to decoder if decoding items with an associated ispe box
+- Now parsing/tracking sample description formats to filter non-av01 type tracks
+- Allow brand 'av01' to be decoded
 
 ## [0.3.10] - 2019-09-26
 ### Added

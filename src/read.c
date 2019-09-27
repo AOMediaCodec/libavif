@@ -122,9 +122,16 @@ typedef struct avifSyncSample
 } avifSyncSample;
 AVIF_ARRAY_DECLARE(avifSyncSampleArray, avifSyncSample, syncSample);
 
+typedef struct avifSampleDescription
+{
+    uint8_t format[4];
+} avifSampleDescription;
+AVIF_ARRAY_DECLARE(avifSampleDescriptionArray, avifSampleDescription, description);
+
 typedef struct avifSampleTable
 {
     avifSampleTableChunkArray chunks;
+    avifSampleDescriptionArray sampleDescriptions;
     avifSampleTableSampleToChunkArray sampleToChunks;
     avifSampleTableSampleSizeArray sampleSizes;
     avifSampleTableTimeToSampleArray timeToSamples;
@@ -136,6 +143,7 @@ static avifSampleTable * avifSampleTableCreate()
     avifSampleTable * sampleTable = (avifSampleTable *)avifAlloc(sizeof(avifSampleTable));
     memset(sampleTable, 0, sizeof(avifSampleTable));
     avifArrayCreate(&sampleTable->chunks, sizeof(avifSampleTableChunk), 16);
+    avifArrayCreate(&sampleTable->sampleDescriptions, sizeof(avifSampleDescription), 2);
     avifArrayCreate(&sampleTable->sampleToChunks, sizeof(avifSampleTableSampleToChunk), 16);
     avifArrayCreate(&sampleTable->sampleSizes, sizeof(avifSampleTableSampleSize), 16);
     avifArrayCreate(&sampleTable->timeToSamples, sizeof(avifSampleTableTimeToSample), 16);
@@ -146,6 +154,7 @@ static avifSampleTable * avifSampleTableCreate()
 static void avifSampleTableDestroy(avifSampleTable * sampleTable)
 {
     avifArrayDestroy(&sampleTable->chunks);
+    avifArrayDestroy(&sampleTable->sampleDescriptions);
     avifArrayDestroy(&sampleTable->sampleToChunks);
     avifArrayDestroy(&sampleTable->sampleSizes);
     avifArrayDestroy(&sampleTable->timeToSamples);
@@ -166,6 +175,16 @@ static uint32_t avifSampleTableGetImageDelta(avifSampleTable * sampleTable, int 
 
     // TODO: fail here?
     return 1;
+}
+
+static avifBool avifSampleTableHasFormat(avifSampleTable * sampleTable, const char * format)
+{
+    for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
+        if (!memcmp(sampleTable->sampleDescriptions.description[i].format, format, 4)) {
+            return AVIF_TRUE;
+        }
+    }
+    return AVIF_FALSE;
 }
 
 // one video track ("trak" contents)
@@ -874,6 +893,28 @@ static avifBool avifParseTimeToSampleBox(avifData * data, avifSampleTable * samp
     return AVIF_TRUE;
 }
 
+static avifBool avifParseSampleDescriptionBox(avifData * data, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+    (void)data;
+
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
+
+    uint32_t entryCount;
+    CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+
+    for (uint32_t i = 0; i < entryCount; ++i) {
+        avifBoxHeader sampleEntryHeader;
+        CHECK(avifROStreamReadBoxHeader(&s, &sampleEntryHeader));
+
+        avifSampleDescription * description = (avifSampleDescription *)avifArrayPushPtr(&sampleTable->sampleDescriptions);
+        memcpy(description->format, sampleEntryHeader.type, sizeof(description->format));
+
+        CHECK(avifROStreamSkip(&s, sampleEntryHeader.size));
+    }
+    return AVIF_TRUE;
+}
+
 static avifBool avifParseSampleTableBox(avifData * data, avifTrack * track, const uint8_t * raw, size_t rawLen)
 {
     if (track->sampleTable) {
@@ -900,6 +941,8 @@ static avifBool avifParseSampleTableBox(avifData * data, avifTrack * track, cons
             CHECK(avifParseSyncSampleBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "stts", 4)) {
             CHECK(avifParseTimeToSampleBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
+        } else if (!memcmp(header.type, "stsd", 4)) {
+            CHECK(avifParseSampleDescriptionBox(data, track->sampleTable, avifROStreamCurrent(&s), header.size));
         }
 
         CHECK(avifROStreamSkip(&s, header.size));
@@ -1053,17 +1096,24 @@ static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
     avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
     if (!avifCompatible) {
         avifCompatible = (memcmp(ftyp->majorBrand, "avis", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
-        if (!avifCompatible) {
-            for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
-                uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
-                if (!memcmp(compatibleBrand, "avif", 4)) {
-                    avifCompatible = AVIF_TRUE;
-                    break;
-                }
-                if (!memcmp(compatibleBrand, "avis", 4)) {
-                    avifCompatible = AVIF_TRUE;
-                    break;
-                }
+    }
+    if (!avifCompatible) {
+        avifCompatible = (memcmp(ftyp->majorBrand, "av01", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+    }
+    if (!avifCompatible) {
+        for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
+            uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
+            if (!memcmp(compatibleBrand, "avif", 4)) {
+                avifCompatible = AVIF_TRUE;
+                break;
+            }
+            if (!memcmp(compatibleBrand, "avis", 4)) {
+                avifCompatible = AVIF_TRUE;
+                break;
+            }
+            if (!memcmp(compatibleBrand, "av01", 4)) {
+                avifCompatible = AVIF_TRUE;
+                break;
             }
         }
     }
@@ -1256,6 +1306,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!track->sampleTable->chunks.count) {
                 continue;
             }
+            if (!avifSampleTableHasFormat(track->sampleTable, "av01")) {
+                continue;
+            }
             if (track->auxForID != 0) {
                 continue;
             }
@@ -1275,6 +1328,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 continue;
             }
             if (!track->sampleTable->chunks.count) {
+                continue;
+            }
+            if (!avifSampleTableHasFormat(track->sampleTable, "av01")) {
                 continue;
             }
             if (track->auxForID == colorTrack->id) {
