@@ -194,6 +194,8 @@ typedef struct avifTrack
     uint32_t auxForID; // if non-zero, this item is an auxC plane for Track #{auxForID}
     uint32_t mediaTimescale;
     uint64_t mediaDuration;
+    uint32_t width;
+    uint32_t height;
     avifSampleTable * sampleTable;
 } avifTrack;
 AVIF_ARRAY_DECLARE(avifTrackArray, avifTrack, track);
@@ -743,14 +745,34 @@ static avifBool avifParseTrackHeaderBox(avifData * data, avifTrack * track, cons
         CHECK(avifROStreamReadU64(&s, &ignored64)); // unsigned int(64) creation_time;
         CHECK(avifROStreamReadU64(&s, &ignored64)); // unsigned int(64) modification_time;
         CHECK(avifROStreamReadU32(&s, &trackID));   // unsigned int(32) track_ID;
+        CHECK(avifROStreamReadU32(&s, &ignored32)); // const unsigned int(32) reserved = 0;
+        CHECK(avifROStreamReadU64(&s, &ignored64)); // unsigned int(64) duration;
     } else if (version == 0) {
         CHECK(avifROStreamReadU32(&s, &ignored32)); // unsigned int(32) creation_time;
         CHECK(avifROStreamReadU32(&s, &ignored32)); // unsigned int(32) modification_time;
         CHECK(avifROStreamReadU32(&s, &trackID));   // unsigned int(32) track_ID;
+        CHECK(avifROStreamReadU32(&s, &ignored32)); // const unsigned int(32) reserved = 0;
+        CHECK(avifROStreamReadU32(&s, &ignored32)); // unsigned int(32) duration;
     } else {
         // Unsupported version
         return AVIF_FALSE;
     }
+
+    // Skipping the following 52 bytes here:
+    // ------------------------------------
+    // const unsigned int(32)[2] reserved = 0;
+    // template int(16) layer = 0;
+    // template int(16) alternate_group = 0;
+    // template int(16) volume = {if track_is_audio 0x0100 else 0};
+    // const unsigned int(16) reserved = 0;
+    // template int(32)[9] matrix= { 0x00010000,0,0,0,0x00010000,0,0,0,0x40000000 }; // unity matrix
+    CHECK(avifROStreamSkip(&s, 52));
+
+    uint32_t width, height;
+    CHECK(avifROStreamReadU32(&s, &width));  // unsigned int(32) width;
+    CHECK(avifROStreamReadU32(&s, &height)); // unsigned int(32) height;
+    track->width = width >> 16;
+    track->height = height >> 16;
 
     // TODO: support scaling based on width/height track header info?
 
@@ -1372,9 +1394,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
         memset(&decoder->imageTiming, 0, sizeof(decoder->imageTiming)); // to be set in avifDecoderNextImage()
 
-        // No ispe inside of a track
-        decoder->ispeWidth = 0;
-        decoder->ispeHeight = 0;
+        decoder->containerWidth = colorTrack->width;
+        decoder->containerHeight = colorTrack->height;
     } else {
         // Create from items
 
@@ -1467,11 +1488,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->ioStats.alphaOBUSize = alphaOBU.size;
 
         if (colorOBUItem->ispePresent) {
-            decoder->ispeWidth = colorOBUItem->ispe.width;
-            decoder->ispeHeight = colorOBUItem->ispe.height;
+            decoder->containerWidth = colorOBUItem->ispe.width;
+            decoder->containerHeight = colorOBUItem->ispe.height;
         } else {
-            decoder->ispeWidth = 0;
-            decoder->ispeHeight = 0;
+            decoder->containerWidth = 0;
+            decoder->containerHeight = 0;
         }
     }
 
@@ -1572,7 +1593,7 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
         if (requestedIndex == decoder->imageIndex) {
             break;
         }
-    };
+    }
     return AVIF_RESULT_OK;
 }
 

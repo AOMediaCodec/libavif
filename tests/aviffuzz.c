@@ -45,6 +45,7 @@ int main(int argc, char * argv[])
     // avifDecoderSetSource(decoder, AVIF_DECODER_SOURCE_PRIMARY_ITEM);
     avifResult result = avifDecoderParse(decoder, (avifROData *)&raw);
     if (result == AVIF_RESULT_OK) {
+        printf("AVIF container reports dimensions: %ux%u\n", decoder->containerWidth, decoder->containerHeight);
         for (int loop = 0; loop < 2; ++loop) {
             printf("Image decoded: %s\n", inputFilename);
             printf(" * %2.2f seconds, %d images\n", decoder->duration, decoder->imageCount);
