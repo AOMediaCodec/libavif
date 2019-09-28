@@ -370,7 +370,7 @@ typedef struct avifDecoder
     double duration;               // in seconds (durationInTimescales / timescale)
     uint64_t durationInTimescales; // duration in "timescales"
 
-    // The width and height as reported by the AVIf container, if any. There is no guarantee
+    // The width and height as reported by the AVIF container, if any. There is no guarantee
     // these match the decoded images; they are merely reporting what is independently offered
     // from the container's boxes.
     // * If decoding an "item" and the item is associated with an ImageSpatialExtentsBox,
