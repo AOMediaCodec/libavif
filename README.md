@@ -189,6 +189,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
     } else {
         printf("ERROR: Failed to encode: %s\n", avifResultToString(encodeResult));
     }
+    avifImageDestroy(image);
     avifRWDataFree(&output);
     avifEncoderDestroy(encoder);
 ```
