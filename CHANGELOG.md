@@ -5,12 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.0] - 2019-10-02
 ### Added
 - exposed util functions: `avifFullToLimitedY`, `avifFullToLimitedUV`, `avifLimitedToFullY`, `avifLimitedToFullUV`, `avifPrepareReformatState`
 
 ### Changed
 - Renamed ispeWidth/ispeHeight to containerWidth/containerHeight; they now can hold tkhd's width/height
 - Split avifImageYUVToRGB into faster internal functions (estimated gain: 3.5x)
+- Fixed a few memory leaks, one in the README, one in codec_dav1d (AurelC2G)
 
 ## [0.3.11] - 2019-09-26
 ### Added
@@ -182,7 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.11...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/AOMediaCodec/libavif/compare/v0.3.11...v0.4.0
 [0.3.11]: https://github.com/AOMediaCodec/libavif/compare/v0.3.10...v0.3.11
 [0.3.10]: https://github.com/AOMediaCodec/libavif/compare/v0.3.9...v0.3.10
 [0.3.9]: https://github.com/AOMediaCodec/libavif/compare/v0.3.8...v0.3.9
