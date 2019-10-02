@@ -313,6 +313,29 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores alr
 avifResult avifImageRGBToYUV(avifImage * image);
 avifResult avifImageYUVToRGB(avifImage * image);
 
+// ---------------------------------------------------------------------------
+// YUV Utils
+
+int avifFullToLimitedY(int depth, int v);
+int avifFullToLimitedUV(int depth, int v);
+int avifLimitedToFullY(int depth, int v);
+int avifLimitedToFullUV(int depth, int v);
+
+typedef struct avifReformatState
+{
+    // YUV coefficients
+    float kr;
+    float kg;
+    float kb;
+
+    avifPixelFormatInfo formatInfo;
+    avifBool usesU16;
+} avifReformatState;
+avifBool avifPrepareReformatState(avifImage * image, avifReformatState * state);
+
+// ---------------------------------------------------------------------------
+// avifDecoder
+
 // Useful stats related to a read/write
 typedef struct avifIOStats
 {
@@ -418,7 +441,10 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 
-// avifEncoder notes:
+// ---------------------------------------------------------------------------
+// avifEncoder
+
+// Notes:
 // * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * if (maxThreads < 2), multithreading is disabled
 // * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
