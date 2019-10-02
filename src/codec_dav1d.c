@@ -26,7 +26,7 @@ struct avifCodecInternal
 static void dav1dCodecDestroyInternal(avifCodec * codec)
 {
     if (codec->internal->hasPicture) {
-      dav1d_picture_unref(&codec->internal->dav1dPicture);
+        dav1d_picture_unref(&codec->internal->dav1dPicture);
     }
     if (codec->internal->dav1dContext) {
         dav1d_close(&codec->internal->dav1dContext);
