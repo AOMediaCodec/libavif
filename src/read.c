@@ -21,6 +21,25 @@
 #define AUXTYPE_SIZE 64
 #define MAX_COMPATIBLE_BRANDS 32
 
+// class VisualSampleEntry(codingname) extends SampleEntry(codingname) {
+//     unsigned int(16) pre_defined = 0;
+//     const unsigned int(16) reserved = 0;
+//     unsigned int(32)[3] pre_defined = 0;
+//     unsigned int(16) width;
+//     unsigned int(16) height;
+//     template unsigned int(32) horizresolution = 0x00480000; // 72 dpi
+//     template unsigned int(32) vertresolution = 0x00480000;  // 72 dpi
+//     const unsigned int(32) reserved = 0;
+//     template unsigned int(16) frame_count = 1;
+//     string[32] compressorname;
+//     template unsigned int(16) depth = 0x0018;
+//     int(16) pre_defined = -1;
+//     // other boxes from derived specifications
+//     CleanApertureBox clap;    // optional
+//     PixelAspectRatioBox pasp; // optional
+// }
+static const size_t VISUALSAMPLEENTRY_SIZE = 78;
+
 // ---------------------------------------------------------------------------
 // Box data structures
 
@@ -71,6 +90,8 @@ typedef struct avifItem
     avifAuxiliaryType auxC;
     avifBool colrPresent;
     avifColourInformationBox colr;
+    avifBool av1CPresent;
+    avifCodecConfigurationBox av1C;
     uint32_t thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
     uint32_t auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
 } avifItem;
@@ -83,6 +104,7 @@ typedef struct avifProperty
     avifImageSpatialExtents ispe;
     avifAuxiliaryType auxC;
     avifColourInformationBox colr;
+    avifCodecConfigurationBox av1C;
 } avifProperty;
 AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
 
@@ -125,6 +147,8 @@ AVIF_ARRAY_DECLARE(avifSyncSampleArray, avifSyncSample, syncSample);
 typedef struct avifSampleDescription
 {
     uint8_t format[4];
+    avifBool av1CPresent;
+    avifCodecConfigurationBox av1C;
 } avifSampleDescription;
 AVIF_ARRAY_DECLARE(avifSampleDescriptionArray, avifSampleDescription, description);
 
@@ -185,6 +209,27 @@ static avifBool avifSampleTableHasFormat(avifSampleTable * sampleTable, const ch
         }
     }
     return AVIF_FALSE;
+}
+
+static uint32_t avifCodecConfigurationBoxGetDepth(avifCodecConfigurationBox * av1C)
+{
+    if (av1C->twelveBit) {
+        return 12;
+    } else if (av1C->highBitdepth) {
+        return 10;
+    }
+    return 8;
+}
+
+static uint32_t avifSampleTableGetDepth(avifSampleTable * sampleTable)
+{
+    for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
+        avifSampleDescription * description = &sampleTable->sampleDescriptions.description[i];
+        if (!memcmp(description->format, "av01", 4) && description->av1CPresent) {
+            return avifCodecConfigurationBoxGetDepth(&description->av1C);
+        }
+    }
+    return 0;
 }
 
 // one video track ("trak" contents)
@@ -465,6 +510,39 @@ static avifBool avifParseColourInformationBox(avifData * data, const uint8_t * r
     return AVIF_TRUE;
 }
 
+static avifBool avifParseAV1CodecConfigurationBox(const uint8_t * raw, size_t rawLen, avifCodecConfigurationBox * av1C)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+
+    uint8_t markerAndVersion = 0;
+    CHECK(avifROStreamRead(&s, &markerAndVersion, 1));
+    uint8_t seqProfileAndIndex = 0;
+    CHECK(avifROStreamRead(&s, &seqProfileAndIndex, 1));
+    uint8_t rawFlags = 0;
+    CHECK(avifROStreamRead(&s, &rawFlags, 1));
+
+    if (markerAndVersion != 0x81) {
+        // Marker and version must both == 1
+        return AVIF_FALSE;
+    }
+
+    av1C->seqProfile = (seqProfileAndIndex >> 5) & 0x7;    // unsigned int (3) seq_profile;
+    av1C->seqLevelIdx0 = (seqProfileAndIndex >> 0) & 0x1f; // unsigned int (5) seq_level_idx_0;
+    av1C->seqTier0 = (rawFlags >> 7) & 0x1;                // unsigned int (1) seq_tier_0;
+    av1C->highBitdepth = (rawFlags >> 6) & 0x1;            // unsigned int (1) high_bitdepth;
+    av1C->twelveBit = (rawFlags >> 5) & 0x1;               // unsigned int (1) twelve_bit;
+    av1C->monochrome = (rawFlags >> 4) & 0x1;              // unsigned int (1) monochrome;
+    av1C->chromaSubsamplingX = (rawFlags >> 3) & 0x1;      // unsigned int (1) chroma_subsampling_x;
+    av1C->chromaSubsamplingY = (rawFlags >> 2) & 0x1;      // unsigned int (1) chroma_subsampling_y;
+    av1C->chromaSamplePosition = (rawFlags >> 0) & 0x3;    // unsigned int (2) chroma_sample_position;
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseAV1CodecConfigurationBoxProperty(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    return avifParseAV1CodecConfigurationBox(raw, rawLen, &data->properties.prop[propertyIndex].av1C);
+}
+
 static avifBool avifParseItemPropertyContainerBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
@@ -483,6 +561,9 @@ static avifBool avifParseItemPropertyContainerBox(avifData * data, const uint8_t
         }
         if (!memcmp(header.type, "colr", 4)) {
             CHECK(avifParseColourInformationBox(data, avifROStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "av1C", 4)) {
+            CHECK(avifParseAV1CodecConfigurationBoxProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
         }
 
         CHECK(avifROStreamSkip(&s, header.size));
@@ -552,6 +633,9 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, const uint8_t 
             } else if (!memcmp(prop->type, "colr", 4)) {
                 item->colrPresent = AVIF_TRUE;
                 memcpy(&item->colr, &prop->colr, sizeof(avifColourInformationBox));
+            } else if (!memcmp(prop->type, "av1C", 4)) {
+                item->av1CPresent = AVIF_TRUE;
+                memcpy(&item->av1C, &prop->av1C, sizeof(avifCodecConfigurationBox));
             }
         }
     }
@@ -931,6 +1015,21 @@ static avifBool avifParseSampleDescriptionBox(avifData * data, avifSampleTable *
 
         avifSampleDescription * description = (avifSampleDescription *)avifArrayPushPtr(&sampleTable->sampleDescriptions);
         memcpy(description->format, sampleEntryHeader.type, sizeof(description->format));
+        size_t remainingBytes = avifROStreamRemainingBytes(&s);
+        if (!memcmp(description->format, "av01", 4) && (remainingBytes > VISUALSAMPLEENTRY_SIZE)) {
+            BEGIN_STREAM(av01Stream, avifROStreamCurrent(&s) + VISUALSAMPLEENTRY_SIZE, remainingBytes - VISUALSAMPLEENTRY_SIZE);
+            while (avifROStreamHasBytesLeft(&av01Stream, 1)) {
+                avifBoxHeader av01ChildHeader;
+                CHECK(avifROStreamReadBoxHeader(&av01Stream, &av01ChildHeader));
+
+                if (!memcmp(av01ChildHeader.type, "av1C", 4)) {
+                    CHECK(avifParseAV1CodecConfigurationBox(avifROStreamCurrent(&av01Stream), av01ChildHeader.size, &description->av1C));
+                    description->av1CPresent = AVIF_TRUE;
+                }
+
+                CHECK(avifROStreamSkip(&av01Stream, av01ChildHeader.size));
+            }
+        }
 
         CHECK(avifROStreamSkip(&s, sampleEntryHeader.size));
     }
@@ -1396,6 +1495,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         decoder->containerWidth = colorTrack->width;
         decoder->containerHeight = colorTrack->height;
+        decoder->containerDepth = avifSampleTableGetDepth(colorTrack->sampleTable);
     } else {
         // Create from items
 
@@ -1493,6 +1593,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         } else {
             decoder->containerWidth = 0;
             decoder->containerHeight = 0;
+        }
+        if (colorOBUItem->av1CPresent) {
+            decoder->containerDepth = avifCodecConfigurationBoxGetDepth(&colorOBUItem->av1C);
+        } else {
+            decoder->containerDepth = 0;
         }
     }
 
