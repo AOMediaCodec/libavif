@@ -14,9 +14,11 @@ extern "C" {
 #define AVIF_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 // Used by stream related things.
-#define CHECK(A) \
-    if (!(A))    \
-        return AVIF_FALSE;
+#define CHECK(A)               \
+    do {                       \
+        if (!(A))              \
+            return AVIF_FALSE; \
+    } while (0)
 
 // ---------------------------------------------------------------------------
 // URNs

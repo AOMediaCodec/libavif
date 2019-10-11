@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `containerDepth` to avifDecoder for surfacing 10bpc/12bpc flags from av1C boxes, if present
 
+### Changed
+- Fixed warning with CHECK macro (additional semicolon)
+
 ## [0.4.0] - 2019-10-02
 ### Added
 - exposed util functions: `avifFullToLimitedY`, `avifFullToLimitedUV`, `avifLimitedToFullY`, `avifLimitedToFullUV`, `avifPrepareReformatState`
