@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added `containerDepth` to avifDecoder for surfacing 10bpc/12bpc flags from av1C boxes, if present
+- Added `avifCodecVersions()` for getting version strings of internal AV1 codecs
 
 ### Changed
 - Fixed warning with CHECK macro (additional semicolon)

@@ -56,6 +56,7 @@ enum avifChannelIndex
 // Version
 
 const char * avifVersion(void);
+void avifCodecVersions(char outBuffer[256]);
 
 // ---------------------------------------------------------------------------
 // Memory management

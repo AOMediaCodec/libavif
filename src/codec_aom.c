@@ -27,6 +27,11 @@
 
 #include <string.h>
 
+const char * avifCodecVersionAOM(void)
+{
+    return aom_codec_version_str();
+}
+
 struct avifCodecInternal
 {
     avifBool decoderInitialized;

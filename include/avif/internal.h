@@ -145,8 +145,10 @@ typedef struct avifCodec
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-avifCodec * avifCodecCreateAOM(void);   // requires AVIF_CODEC_AOM
-avifCodec * avifCodecCreateDav1d(void); // requires AVIF_CODEC_DAV1D
+const char * avifCodecVersionAOM(void);   // requires AVIF_CODEC_AOM
+avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM
+const char * avifCodecVersionDav1d(void); // requires AVIF_CODEC_DAV1D
+avifCodec * avifCodecCreateDav1d(void);   // requires AVIF_CODEC_DAV1D
 void avifCodecDestroy(avifCodec * codec);
 
 // ---------------------------------------------------------------------------

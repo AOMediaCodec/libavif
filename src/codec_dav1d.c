@@ -12,6 +12,11 @@
 #define DAV1D_ERR(e) (-(e))
 #endif
 
+const char * avifCodecVersionDav1d(void)
+{
+    return dav1d_version();
+}
+
 struct avifCodecInternal
 {
     Dav1dSettings dav1dSettings;

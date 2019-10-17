@@ -14,6 +14,53 @@ const char * avifVersion(void)
     return AVIF_VERSION_STRING;
 }
 
+void avifCodecVersions(char outBuffer[256])
+{
+    const char * encodeCodec = NULL;
+    const char * encodeVersion = NULL;
+    const char * decodeCodec = NULL;
+    const char * decodeVersion = NULL;
+
+#if defined(AVIF_CODEC_AOM)
+    encodeCodec = "aom";
+    encodeVersion = avifCodecVersionAOM();
+    decodeCodec = encodeCodec;
+    decodeVersion = encodeVersion;
+#endif
+#if defined(AVIF_CODEC_DAV1D)
+    decodeCodec = "dav1d";
+    decodeVersion = avifCodecVersionDav1d();
+#endif
+
+    if (decodeCodec == NULL) {
+        strcpy(outBuffer, "encode/decode: none");
+    } else if (encodeCodec == decodeCodec) {
+        strcpy(outBuffer, "encode/decode: ");
+        strcat(outBuffer, decodeCodec);
+        strcat(outBuffer, " ");
+        strcat(outBuffer, decodeVersion);
+    } else {
+        outBuffer[0] = 0;
+        if (encodeCodec) {
+            strcat(outBuffer, "encode: ");
+            strcat(outBuffer, encodeCodec);
+            strcat(outBuffer, " ");
+            strcat(outBuffer, encodeVersion);
+        } else {
+            strcat(outBuffer, "encode: none");
+        }
+        strcat(outBuffer, ", ");
+        if (decodeCodec) {
+            strcat(outBuffer, "decode: ");
+            strcat(outBuffer, decodeCodec);
+            strcat(outBuffer, " ");
+            strcat(outBuffer, decodeVersion);
+        } else {
+            strcat(outBuffer, "decode: none");
+        }
+    }
+}
+
 const char * avifPixelFormatToString(avifPixelFormat format)
 {
     switch (format) {
