@@ -391,6 +391,15 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
                 memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
             }
         }
+
+        if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+            aomImage->cp = image->nclx.colourPrimaries;
+            aomImage->tc = image->nclx.transferCharacteristics;
+            aomImage->mc = image->nclx.matrixCoefficients;
+            aom_codec_control(&aomEncoder, AV1E_SET_COLOR_PRIMARIES, aomImage->cp);
+            aom_codec_control(&aomEncoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage->tc);
+            aom_codec_control(&aomEncoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage->mc);
+        }
     }
 
     aom_codec_encode(&aomEncoder, aomImage, 0, 1, 0);
