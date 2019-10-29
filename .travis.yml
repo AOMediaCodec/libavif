@@ -9,11 +9,14 @@ matrix:
     addons:
       apt:
         packages:
-          - nasm
           - ninja-build
           - python3
           - python3-pip
     before_script:
+      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
+      - cd nasm-2.14
+      - ./configure && make -j2 && sudo make install
+      - nasm --version
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
@@ -34,11 +37,14 @@ matrix:
     addons:
       apt:
         packages:
-          - nasm
           - ninja-build
           - python3
           - python3-pip
     before_script:
+      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
+      - cd nasm-2.14
+      - ./configure && make -j2 && sudo make install
+      - nasm --version
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
@@ -59,11 +65,14 @@ matrix:
     addons:
       apt:
         packages:
-          - nasm
           - ninja-build
           - python3
           - python3-pip
     before_script:
+      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
+      - cd nasm-2.14
+      - ./configure && make -j2 && sudo make install
+      - nasm --version
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
@@ -84,11 +93,14 @@ matrix:
     addons:
       apt:
         packages:
-          - nasm
           - ninja-build
           - python3
           - python3-pip
     before_script:
+      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
+      - cd nasm-2.14
+      - ./configure && make -j2 && sudo make install
+      - nasm --version
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
