@@ -21,7 +21,7 @@ matrix:
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
-      - cd ext
+      - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
       - bash rav1e.cmd
@@ -49,7 +49,7 @@ matrix:
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
-      - cd ext
+      - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
       - bash rav1e.cmd
@@ -77,7 +77,7 @@ matrix:
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
-      - cd ext
+      - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
       - bash rav1e.cmd
@@ -105,7 +105,7 @@ matrix:
       - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
-      - cd ext
+      - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
       - bash rav1e.cmd
