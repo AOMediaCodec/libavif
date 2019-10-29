@@ -6,11 +6,13 @@ matrix:
   include:
   - name: "GCC Debug"
     compiler: gcc
-    rust: stable
     addons:
       apt:
         packages:
           - nasm
+          - meson
+          - ninja
+          - rust
     before_script:
       - cd ext
       - bash aom.cmd
@@ -25,11 +27,13 @@ matrix:
 
   - name: "GCC Release"
     compiler: gcc
-    rust: stable
     addons:
       apt:
         packages:
           - nasm
+          - meson
+          - ninja
+          - rust
     before_script:
       - cd ext
       - bash aom.cmd
@@ -44,11 +48,13 @@ matrix:
 
   - name: "Clang Debug"
     compiler: clang
-    rust: stable
     addons:
       apt:
         packages:
           - nasm
+          - meson
+          - ninja
+          - rust
     before_script:
       - cd ext
       - bash aom.cmd
@@ -63,11 +69,13 @@ matrix:
 
   - name: "Clang Release"
     compiler: clang
-    rust: stable
     addons:
       apt:
         packages:
           - nasm
+          - meson
+          - ninja
+          - rust
     before_script:
       - cd ext
       - bash aom.cmd
