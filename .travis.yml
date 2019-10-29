@@ -15,7 +15,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      - pip3 install meson
+      - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
       - bash aom.cmd
@@ -39,7 +39,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      - pip3 install meson
+      - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
       - bash aom.cmd
@@ -63,7 +63,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      - pip3 install meson
+      - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
       - bash aom.cmd
@@ -87,7 +87,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      - pip3 install meson
+      - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
       - bash aom.cmd
