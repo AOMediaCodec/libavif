@@ -15,6 +15,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
@@ -39,6 +40,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
@@ -63,6 +65,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
@@ -87,6 +90,7 @@ matrix:
           - python3-pip
     before_script:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - pip3 --disable-pip-version-check install setuptools
       - pip3 --disable-pip-version-check install meson
       - source $HOME/.cargo/env
       - cd ext
