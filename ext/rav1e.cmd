@@ -11,7 +11,7 @@
 : # Also, the error that "The target windows-msvc is not supported yet" can safely be ignored provided that rav1e/target/release
 : # contains rav1e.h and rav1e.lib.
 
-git clone -n https://github.com/xiph/rav1e.git && cd rav1e && git checkout e4683b1846c08412fe26d4487af358383b54c81a && cd ..
+: # git clone -n https://github.com/xiph/rav1e.git && cd rav1e && git checkout e4683b1846c08412fe26d4487af358383b54c81a && cd ..
 
 cd rav1e
 cargo install cbindgen
@@ -19,3 +19,4 @@ cbindgen -c cbindgen.toml -l C -o target/release/rav1e.h --crate rav1e .
 
 cargo install cargo-c
 cargo cbuild --release
+cd ..

@@ -8,7 +8,7 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2017 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -n https://code.videolan.org/videolan/dav1d.git && cd dav1d && git checkout 0.5.1 && cd ..
+: # git clone -n https://code.videolan.org/videolan/dav1d.git && cd dav1d && git checkout 0.5.1 && cd ..
 
 cd dav1d
 mkdir build
@@ -17,3 +17,4 @@ cd build
 : # macOS might required: -Dc_args=-fno-stack-check
 meson --default-library=static --buildtype release ..
 ninja
+cd ../..
