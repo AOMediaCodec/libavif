@@ -13,7 +13,7 @@ matrix:
           - meson
           - ninja-build
     before_script:
-      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -34,7 +34,7 @@ matrix:
           - meson
           - ninja-build
     before_script:
-      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -55,7 +55,7 @@ matrix:
           - meson
           - ninja-build
     before_script:
-      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -76,7 +76,7 @@ matrix:
           - meson
           - ninja-build
     before_script:
-      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
