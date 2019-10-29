@@ -12,8 +12,8 @@ matrix:
           - nasm
           - meson
           - ninja
-          - rust
     before_script:
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -33,8 +33,8 @@ matrix:
           - nasm
           - meson
           - ninja
-          - rust
     before_script:
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -54,8 +54,8 @@ matrix:
           - nasm
           - meson
           - ninja
-          - rust
     before_script:
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -75,8 +75,8 @@ matrix:
           - nasm
           - meson
           - ninja
-          - rust
     before_script:
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
       - cd ext
       - bash aom.cmd
       - bash dav1d.cmd
