@@ -145,11 +145,15 @@ typedef struct avifCodec
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-const char * avifCodecVersionAOM(void);   // requires AVIF_CODEC_AOM
-avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM
-const char * avifCodecVersionDav1d(void); // requires AVIF_CODEC_DAV1D
-avifCodec * avifCodecCreateDav1d(void);   // requires AVIF_CODEC_DAV1D
+avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags);
 void avifCodecDestroy(avifCodec * codec);
+
+avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM (codec_aom.c)
+const char * avifCodecVersionAOM(void);   // requires AVIF_CODEC_AOM (codec_aom.c)
+avifCodec * avifCodecCreateDav1d(void);   // requires AVIF_CODEC_DAV1D (codec_dav1d.c)
+const char * avifCodecVersionDav1d(void); // requires AVIF_CODEC_DAV1D (codec_dav1d.c)
+avifCodec * avifCodecCreateRav1e(void);   // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
+const char * avifCodecVersionRav1e(void); // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
 
 // ---------------------------------------------------------------------------
 // avifStream

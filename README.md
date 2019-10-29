@@ -202,14 +202,16 @@ libaom alongside it, [NASM](https://nasm.us/) as well.
 Make sure nasm is available and in your PATH on your machine (if building
 libaom), then use CMake to do a basic build (Debug or Release).
 
-You can choose between using `libaom` or `libdav1d` by using CMake options
-`AVIF_CODEC_AOM` and `AVIF_CODEC_DAV1D`. `libaom` must be enabled in order for
-encoding to work, and `libdav1d` overrides `libaom` for decoding if both are
-enabled. Currently `libdav1d` must be externally available (discoverable via
-CMake's `FIND_LIBRARY`) to use it.
+No AV1 codecs are enabled by default. Enable them by enabling any of the
+following CMake options:
+* AVIF_CODEC_AOM
+* AVIF_CODEC_DAV1D
+* AVIF_CODEC_RAV1E
 
-You can build libaom alongside libavif if you enable `AVIF_BUILD_AOM`, and you
-have a copy of the aom repo in the ext/ subdir. See ext/aom.cmd for details.
+These libraries (in their C API form) must be externally available
+(discoverable via CMake's `FIND_LIBRARY`) to use them, unless you
+build them locally from the `ext/` subdirectory, and then enabling the
+equivalent `AVIF_LOCAL_*` CMake option. See `ext/*.cmd` files for details.
 
 # Prebuilt Library (Windows)
 

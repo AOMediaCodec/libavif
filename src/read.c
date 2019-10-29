@@ -1296,11 +1296,6 @@ avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source)
 
 avifResult avifDecoderParse(avifDecoder * decoder, avifROData * rawInput)
 {
-#if !defined(AVIF_CODEC_AOM) && !defined(AVIF_CODEC_DAV1D)
-    // Just bail out early, we're not surviving this function without a decoder compiled in
-    return AVIF_RESULT_NO_CODEC_AVAILABLE;
-#endif
-
     // Cleanup anything lingering in the decoder
     avifDecoderCleanup(decoder);
 
@@ -1350,16 +1345,9 @@ avifResult avifDecoderParse(avifDecoder * decoder, avifROData * rawInput)
     return avifDecoderReset(decoder);
 }
 
-static avifCodec * avifCodecCreateForDecode(avifCodecDecodeInput * decodeInput)
+static avifCodec * avifCodecCreateInternal(avifCodecChoice choice, avifCodecDecodeInput * decodeInput)
 {
-    avifCodec * codec = NULL;
-#if defined(AVIF_CODEC_DAV1D)
-    codec = avifCodecCreateDav1d();
-#elif defined(AVIF_CODEC_AOM)
-    codec = avifCodecCreateAOM();
-#else
-#error No decoder available!
-#endif
+    avifCodec * codec = avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE);
     if (codec) {
         codec->decodeInput = decodeInput;
     }
@@ -1370,13 +1358,19 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
 {
     avifDataResetCodec(decoder->data);
 
-    decoder->data->codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateForDecode(decoder->data->colorInput);
+    decoder->data->codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateInternal(decoder->codecChoice, decoder->data->colorInput);
+    if (!decoder->data->codec[AVIF_CODEC_PLANES_COLOR]) {
+        return AVIF_RESULT_NO_CODEC_AVAILABLE;
+    }
     if (!decoder->data->codec[AVIF_CODEC_PLANES_COLOR]->open(decoder->data->codec[AVIF_CODEC_PLANES_COLOR], decoder->imageIndex + 1)) {
         return AVIF_RESULT_DECODE_COLOR_FAILED;
     }
 
     if (decoder->data->alphaInput) {
-        decoder->data->codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateForDecode(decoder->data->alphaInput);
+        decoder->data->codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateInternal(decoder->codecChoice, decoder->data->alphaInput);
+        if (!decoder->data->codec[AVIF_CODEC_PLANES_ALPHA]) {
+            return AVIF_RESULT_NO_CODEC_AVAILABLE;
+        }
         if (!decoder->data->codec[AVIF_CODEC_PLANES_ALPHA]->open(decoder->data->codec[AVIF_CODEC_PLANES_ALPHA], decoder->imageIndex + 1)) {
             return AVIF_RESULT_DECODE_ALPHA_FAILED;
         }

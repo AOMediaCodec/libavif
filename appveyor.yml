@@ -52,7 +52,7 @@ before_build:
 
     cmake --version
 
-    cmake .. -G %generator% -DAVIF_BUILD_AOM=1 -DAVIF_BUILD_STATIC=1 -DAVIF_BUILD_APPS=1
+    cmake .. -G %generator% -DAVIF_CODEC_AOM=1 -DAVIF_LOCAL_AOM=1 -DAVIF_LOCAL_STATIC=1 -DAVIF_LOCAL_APPS=1
 after_build:
 - cmd: >-
     copy %CONFIGURATION%\avifenc.exe .

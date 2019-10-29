@@ -38,15 +38,6 @@ void avifEncoderDestroy(avifEncoder * encoder)
     avifFree(encoder);
 }
 
-static avifCodec * avifCodecCreateForEncode()
-{
-#ifdef AVIF_CODEC_AOM
-    return avifCodecCreateAOM();
-#else
-    return NULL;
-#endif
-}
-
 avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData * output)
 {
     if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
@@ -58,7 +49,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWData alphaOBU = AVIF_DATA_EMPTY;
     avifCodec * codec[AVIF_CODEC_PLANES_COUNT];
 
-    codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateForEncode();
+    codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     if (!codec[AVIF_CODEC_PLANES_COLOR]) {
         // Just bail out early, we're not surviving this function without an encoder compiled in
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
@@ -68,7 +59,10 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     if (imageIsOpaque) {
         codec[AVIF_CODEC_PLANES_ALPHA] = NULL;
     } else {
-        codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateForEncode();
+        codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+        if (!codec[AVIF_CODEC_PLANES_ALPHA]) {
+            return AVIF_RESULT_NO_CODEC_AVAILABLE;
+        }
     }
 
     avifRWStream s;

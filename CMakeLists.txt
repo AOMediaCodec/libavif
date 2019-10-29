@@ -8,10 +8,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
-option(AVIF_BUILD_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom" OFF)
-
-option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" ON)
+option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
+option(AVIF_CODEC_RAV1E "Use the rav1e codec for encoding (overrides AOM encoding if also enabled)" OFF)
+
+option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom" OFF)
+option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d" OFF)
+option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo in ext/rav1e" OFF)
 
 add_subdirectory(ext)
 
@@ -80,16 +83,98 @@ set(AVIF_SRCS
 )
 
 set(AVIF_CODEC_LIBARIES)
-if(AVIF_CODEC_AOM)
-    message(STATUS "libavif: Encoding library: aom")
-    if(NOT AVIF_CODEC_DAV1D)
-        message(STATUS "libavif: Decoding library: aom")
+
+if(AVIF_CODEC_DAV1D)
+    message(STATUS "libavif: Codec enabled: dav1d (decode)")
+    add_definitions(-DAVIF_CODEC_DAV1D=1)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/codec_dav1d.c
+    )
+
+    if(AVIF_LOCAL_DAV1D)
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
+        if(NOT EXISTS "${LIB_FILENAME}")
+            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+        endif()
+
+        include_directories(
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include/dav1d"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
+        )
+        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} ${LIB_FILENAME})
+    else()
+        # Check to see if dav1d is independently being built by the outer CMake project
+        if(TARGET dav1d)
+            set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
+        else()
+            find_library(LIBDAV1D_LIBRARY_PATH NAMES dav1d)
+            if(NOT LIBDAV1D_LIBRARY_PATH)
+              message(FATAL_ERROR "libavif: dav1d library not found")
+            endif()
+            find_path (LIBDAV1D_INCLUDE_PATH dav1d/dav1d.h)
+            if(NOT LIBDAV1D_INCLUDE_PATH)
+              message(FATAL_ERROR "libavif: dav1d library includes not found")
+            endif()
+            message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
+            include_directories(${LIBDAV1D_INCLUDE_PATH})
+        endif()
     endif()
+endif()
+
+
+if(AVIF_CODEC_RAV1E)
+    message(STATUS "libavif: Codec enabled: rav1e (encode)")
+    add_definitions(-DAVIF_CODEC_RAV1E=1)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/codec_rav1e.c
+    )
+
+    if(AVIF_LOCAL_RAV1E)
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/rav1e.lib")
+        if(NOT EXISTS "${LIB_FILENAME}")
+            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/librav1e.a")
+            if(NOT EXISTS "${LIB_FILENAME}")
+                message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/target/release), bailing out")
+            endif()
+        endif()
+
+        include_directories(
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release"
+        )
+        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} ${LIB_FILENAME})
+    else()
+        # Check to see if dav1d is independently being built by the outer CMake project
+        if(TARGET dav1d)
+            set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
+        else()
+            find_library(LIBDAV1D_LIBRARY_PATH NAMES dav1d)
+            if(NOT LIBDAV1D_LIBRARY_PATH)
+              message(FATAL_ERROR "libavif: dav1d library not found")
+            endif()
+            find_path (LIBDAV1D_INCLUDE_PATH dav1d/dav1d.h)
+            if(NOT LIBDAV1D_INCLUDE_PATH)
+              message(FATAL_ERROR "libavif: dav1d library includes not found")
+            endif()
+            message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
+            include_directories(${LIBDAV1D_INCLUDE_PATH})
+        endif()
+    endif()
+
+    if(WIN32)
+        # Unfortunately, rav1e requires a few more libraries
+        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} ws2_32.lib userenv.lib)
+    endif()
+endif()
+
+if(AVIF_CODEC_AOM)
+    message(STATUS "libavif: Codec enabled: aom (encode/decode)")
     add_definitions(-DAVIF_CODEC_AOM=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_aom.c
     )
-    if(AVIF_BUILD_AOM)
+    if(AVIF_LOCAL_AOM)
         include_directories(
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
             "${AOM_BINARY_DIR}"
@@ -111,32 +196,8 @@ if(AVIF_CODEC_AOM)
         endif()
     endif()
     set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} aom)
-else()
-    message(STATUS "libavif: Encoding library: (none)")
 endif()
 
-if(AVIF_CODEC_DAV1D)
-    message(STATUS "libavif: Decoding library: dav1d")
-    add_definitions(-DAVIF_CODEC_DAV1D=1)
-    set(AVIF_SRCS ${AVIF_SRCS}
-        src/codec_dav1d.c
-    )
-
-    # Check to see if dav1d is independently being built by the outer CMake project
-    if(NOT TARGET dav1d)
-        find_library(LIBDAV1D_LIBRARY_PATH NAMES dav1d)
-        if(NOT LIBDAV1D_LIBRARY_PATH)
-          message(FATAL_ERROR "libavif: dav1d library not found")
-        endif()
-        find_path (LIBDAV1D_INCLUDE_PATH dav1d/dav1d.h)
-        if(NOT LIBDAV1D_INCLUDE_PATH)
-          message(FATAL_ERROR "libavif: dav1d library includes not found")
-        endif()
-        message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
-        include_directories(${LIBDAV1D_INCLUDE_PATH})
-    endif()
-    set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
-endif()
 if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
     message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
 endif()

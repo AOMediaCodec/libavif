@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- rav1e codec support (encode-only)
+- `rav1e.cmd` and `dav1d.cmd` to ext
+
+### Changed
+- All codecs can coexist peacefully now, and can be queried for availability or specifically chosen at encode/decode time
+- Updated README to indicate changes to CMake which facilitate codec reorg
 
 ## [0.4.2] - 2019-10-17
 ### Changed

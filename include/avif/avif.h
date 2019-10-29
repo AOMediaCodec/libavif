@@ -335,6 +335,27 @@ typedef struct avifReformatState
 avifBool avifPrepareReformatState(avifImage * image, avifReformatState * state);
 
 // ---------------------------------------------------------------------------
+// Codec selection
+
+typedef enum avifCodecChoice
+{
+    AVIF_CODEC_CHOICE_AUTO = 0,
+    AVIF_CODEC_CHOICE_AOM,
+    AVIF_CODEC_CHOICE_DAV1D, // Decode only
+    AVIF_CODEC_CHOICE_RAV1E  // Encode only
+} avifCodecChoice;
+
+typedef enum avifCodecFlags
+{
+    AVIF_CODEC_FLAG_CAN_DECODE = (1 << 0),
+    AVIF_CODEC_FLAG_CAN_ENCODE = (1 << 1)
+} avifCodecFlags;
+
+// If this returns NULL, the codec choice/flag combination is unavailable
+const char * avifCodecName(avifCodecChoice choice, uint32_t requiredFlags);
+avifCodecChoice avifCodecChoiceFromName(const char * name);
+
+// ---------------------------------------------------------------------------
 // avifDecoder
 
 // Useful stats related to a read/write
@@ -375,6 +396,9 @@ typedef struct avifImageTiming
 
 typedef struct avifDecoder
 {
+    // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
+    avifCodecChoice codecChoice;
+
     // avifs can have multiple sets of images in them. This specifies which to decode.
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;
@@ -463,6 +487,9 @@ uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 //   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
 typedef struct avifEncoder
 {
+    // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
+    avifCodecChoice codecChoice;
+
     // settings
     int maxThreads;
     int minQuantizer;

@@ -27,11 +27,6 @@
 
 #include <string.h>
 
-const char * avifCodecVersionAOM(void)
-{
-    return aom_codec_version_str();
-}
-
 struct avifCodecInternal
 {
     avifBool decoderInitialized;
@@ -433,6 +428,11 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
 static void aomCodecGetConfigurationBox(avifCodec * codec, avifCodecConfigurationBox * outConfig)
 {
     memcpy(outConfig, &codec->internal->config, sizeof(avifCodecConfigurationBox));
+}
+
+const char * avifCodecVersionAOM(void)
+{
+    return aom_codec_version_str();
 }
 
 avifCodec * avifCodecCreateAOM(void)

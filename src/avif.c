@@ -14,53 +14,6 @@ const char * avifVersion(void)
     return AVIF_VERSION_STRING;
 }
 
-void avifCodecVersions(char outBuffer[256])
-{
-    const char * encodeCodec = NULL;
-    const char * encodeVersion = NULL;
-    const char * decodeCodec = NULL;
-    const char * decodeVersion = NULL;
-
-#if defined(AVIF_CODEC_AOM)
-    encodeCodec = "aom";
-    encodeVersion = avifCodecVersionAOM();
-    decodeCodec = encodeCodec;
-    decodeVersion = encodeVersion;
-#endif
-#if defined(AVIF_CODEC_DAV1D)
-    decodeCodec = "dav1d";
-    decodeVersion = avifCodecVersionDav1d();
-#endif
-
-    if (decodeCodec == NULL) {
-        strcpy(outBuffer, "encode/decode: none");
-    } else if (encodeCodec == decodeCodec) {
-        strcpy(outBuffer, "encode/decode: ");
-        strcat(outBuffer, decodeCodec);
-        strcat(outBuffer, " ");
-        strcat(outBuffer, decodeVersion);
-    } else {
-        outBuffer[0] = 0;
-        if (encodeCodec) {
-            strcat(outBuffer, "encode: ");
-            strcat(outBuffer, encodeCodec);
-            strcat(outBuffer, " ");
-            strcat(outBuffer, encodeVersion);
-        } else {
-            strcat(outBuffer, "encode: none");
-        }
-        strcat(outBuffer, ", ");
-        if (decodeCodec) {
-            strcat(outBuffer, "decode: ");
-            strcat(outBuffer, decodeCodec);
-            strcat(outBuffer, " ");
-            strcat(outBuffer, decodeVersion);
-        } else {
-            strcat(outBuffer, "decode: none");
-        }
-    }
-}
-
 const char * avifPixelFormatToString(avifPixelFormat format)
 {
     switch (format) {
@@ -385,4 +338,93 @@ void avifCodecDestroy(avifCodec * codec)
         codec->destroyInternal(codec);
     }
     avifFree(codec);
+}
+
+// ---------------------------------------------------------------------------
+// Codec availability and versions
+
+typedef const char * (*versionFunc)(void);
+typedef avifCodec * (*avifCodecCreateFunc)(void);
+
+struct AvailableCodec
+{
+    avifCodecChoice choice;
+    const char * name;
+    versionFunc version;
+    avifCodecCreateFunc create;
+    uint32_t flags;
+};
+
+// This is the main codec table; it determines all usage/availability in libavif.
+
+static struct AvailableCodec availableCodecs[] = {
+// Ordered by preference (for AUTO)
+
+#if defined(AVIF_CODEC_DAV1D)
+    { AVIF_CODEC_CHOICE_DAV1D, "dav1d", avifCodecVersionDav1d, avifCodecCreateDav1d, AVIF_CODEC_FLAG_CAN_DECODE },
+#endif
+#if defined(AVIF_CODEC_RAV1E)
+    { AVIF_CODEC_CHOICE_RAV1E, "rav1e", avifCodecVersionRav1e, avifCodecCreateRav1e, AVIF_CODEC_FLAG_CAN_ENCODE },
+#endif
+#if defined(AVIF_CODEC_AOM)
+    { AVIF_CODEC_CHOICE_AOM, "aom", avifCodecVersionAOM, avifCodecCreateAOM, AVIF_CODEC_FLAG_CAN_DECODE | AVIF_CODEC_FLAG_CAN_ENCODE },
+#endif
+    { AVIF_CODEC_CHOICE_AUTO, NULL, NULL, NULL, 0 }
+};
+
+static const int availableCodecsCount = (sizeof(availableCodecs) / sizeof(availableCodecs[0])) - 1;
+
+static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, uint32_t requiredFlags)
+{
+    for (int i = 0; i < availableCodecsCount; ++i) {
+        if ((choice != AVIF_CODEC_CHOICE_AUTO) && (availableCodecs[i].choice != choice)) {
+            continue;
+        }
+        if (requiredFlags && ((availableCodecs[i].flags & requiredFlags) != requiredFlags)) {
+            continue;
+        }
+        return &availableCodecs[i];
+    }
+    return NULL;
+}
+
+const char * avifCodecName(avifCodecChoice choice, uint32_t requiredFlags)
+{
+    struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
+    if (availableCodec) {
+        return availableCodec->name;
+    }
+    return NULL;
+}
+
+avifCodecChoice avifCodecChoiceFromName(const char * name)
+{
+    for (int i = 0; i < availableCodecsCount; ++i) {
+        if (!strcmp(availableCodecs[i].name, name)) {
+            return availableCodecs[i].choice;
+        }
+    }
+    return AVIF_CODEC_CHOICE_AUTO;
+}
+
+avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags)
+{
+    struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
+    if (availableCodec) {
+        return availableCodec->create();
+    }
+    return NULL;
+}
+
+void avifCodecVersions(char outBuffer[256])
+{
+    outBuffer[0] = 0;
+    for (int i = 0; i < availableCodecsCount; ++i) {
+        if (i > 0) {
+            strcat(outBuffer, ", ");
+        }
+        strcat(outBuffer, availableCodecs[i].name);
+        strcat(outBuffer, ":");
+        strcat(outBuffer, availableCodecs[i].version());
+    }
 }

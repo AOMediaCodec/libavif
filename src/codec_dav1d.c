@@ -3,6 +3,9 @@
 
 #include "avif/internal.h"
 
+#if defined(_MSC_VER)
+#pragma warning(disable : 4201) // nonstandard extension used: nameless struct/union
+#endif
 #include "dav1d/dav1d.h"
 
 #include <string.h>
@@ -11,11 +14,6 @@
 #ifndef DAV1D_ERR
 #define DAV1D_ERR(e) (-(e))
 #endif
-
-const char * avifCodecVersionDav1d(void)
-{
-    return dav1d_version();
-}
 
 struct avifCodecInternal
 {
@@ -186,6 +184,11 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->decoderOwnsAlphaPlane = AVIF_TRUE;
     }
     return AVIF_TRUE;
+}
+
+const char * avifCodecVersionDav1d(void)
+{
+    return dav1d_version();
 }
 
 avifCodec * avifCodecCreateDav1d(void)

@@ -16,7 +16,7 @@ matrix:
       - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Debug -DAVIF_BUILD_AOM=1 ..
+      - cmake -DCMAKE_BUILD_TYPE=Debug -DAVIF_CODEC_AOM=1 -DAVIF_LOCAL_AOM=1 ..
     script:
       - make
 
@@ -32,7 +32,7 @@ matrix:
       - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Release -DAVIF_BUILD_AOM=1 ..
+      - cmake -DCMAKE_BUILD_TYPE=Release -DAVIF_CODEC_AOM=1 -DAVIF_LOCAL_AOM=1 ..
     script:
       - make
 
@@ -48,7 +48,7 @@ matrix:
       - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Debug -DAVIF_BUILD_AOM=1 ..
+      - cmake -DCMAKE_BUILD_TYPE=Debug -DAVIF_CODEC_AOM=1 -DAVIF_LOCAL_AOM=1 ..
     script:
       - make
 
@@ -64,6 +64,6 @@ matrix:
       - cd ..
       - mkdir build
       - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Release -DAVIF_BUILD_AOM=1 ..
+      - cmake -DCMAKE_BUILD_TYPE=Release -DAVIF_CODEC_AOM=1 -DAVIF_LOCAL_AOM=1 ..
     script:
       - make
