@@ -39,7 +39,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
     RaPixelRange rav1eRange;
     if (alpha) {
         rav1eRange = RA_PIXEL_RANGE_FULL;
-        chromaSampling = RA_CHROMA_SAMPLING_CS400;
+        chromaSampling = RA_CHROMA_SAMPLING_CS422; // I can't seem to get RA_CHROMA_SAMPLING_CS400 to work right now, unfortunately
     } else {
         rav1eRange = (image->yuvRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
         switch (image->yuvFormat) {

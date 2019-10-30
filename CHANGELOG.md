@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Fix rav1e codec's alpha encoding (monochrome asserts, might be unsupported still)
 
 ## [0.4.4] - 2019-10-30
 ### Changed
