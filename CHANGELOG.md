@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.4] - 2019-10-30
 ### Changed
 - Fix QP range for rav1e encodes (rav1e uses [0-255], not [0-63])
 - Distribute out and share code populating av01 config box across codecs
@@ -209,7 +211,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/AOMediaCodec/libavif/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/AOMediaCodec/libavif/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/AOMediaCodec/libavif/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/AOMediaCodec/libavif/compare/v0.4.0...v0.4.1
