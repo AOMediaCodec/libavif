@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Fix QP range for rav1e encodes (rav1e uses [0-255], not [0-63])
+- Distribute out and share code populating av01 config box across codecs
 
 ## [0.4.3] - 2019-10-28
 ### Added

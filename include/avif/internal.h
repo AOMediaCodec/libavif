@@ -129,19 +129,18 @@ typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
 // avifCodecEncodeImageFunc: if either OBU* is null, skip its encode. alpha should always be lossless
 typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha);
-typedef void (*avifCodecGetConfigurationBoxFunc)(struct avifCodec * codec, avifCodecConfigurationBox * outConfig);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
 {
     avifCodecDecodeInput * decodeInput;
+    avifCodecConfigurationBox configBox; // Pre-populated by avifEncoderWrite(), available and overridable by codec impls
     struct avifCodecInternal * internal; // up to each codec to use how it wants
 
     avifCodecOpenFunc open;
     avifCodecAlphaLimitedRangeFunc alphaLimitedRange;
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;
-    avifCodecGetConfigurationBoxFunc getConfigurationBox;
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 

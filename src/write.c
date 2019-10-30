@@ -21,6 +21,7 @@ static const char alphaURN[] = URN_ALPHA0;
 static const size_t alphaURNSize = sizeof(alphaURN);
 
 static avifBool avifImageIsOpaque(avifImage * image);
+static void fillConfigBox(avifCodec * codec, avifImage * image, avifBool alpha);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
 avifEncoder * avifEncoderCreate(void)
@@ -64,6 +65,17 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Pre-fill config boxes based on image (codec can query/update later)
+
+    fillConfigBox(codec[AVIF_CODEC_PLANES_COLOR], image, AVIF_FALSE);
+    if (codec[AVIF_CODEC_PLANES_ALPHA]) {
+        fillConfigBox(codec[AVIF_CODEC_PLANES_ALPHA], image, AVIF_TRUE);
+    }
+
+    // -----------------------------------------------------------------------
+    // Begin write stream
 
     avifRWStream s;
     avifRWStreamStart(&s, output);
@@ -273,9 +285,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
             ++ipcoIndex;
             ipmaPush(&ipmaColor, ipcoIndex);
 
-            avifCodecConfigurationBox colorConfig;
-            codec[AVIF_CODEC_PLANES_COLOR]->getConfigurationBox(codec[AVIF_CODEC_PLANES_COLOR], &colorConfig);
-            writeConfigBox(&s, &colorConfig);
+            writeConfigBox(&s, &codec[AVIF_CODEC_PLANES_COLOR]->configBox);
             ++ipcoIndex;
             ipmaPush(&ipmaColor, ipcoIndex);
 
@@ -287,9 +297,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
 
-                avifCodecConfigurationBox alphaConfig;
-                codec[AVIF_CODEC_PLANES_ALPHA]->getConfigurationBox(codec[AVIF_CODEC_PLANES_ALPHA], &alphaConfig);
-                writeConfigBox(&s, &alphaConfig);
+                writeConfigBox(&s, &codec[AVIF_CODEC_PLANES_ALPHA]->configBox);
                 ++ipcoIndex;
                 ipmaPush(&ipmaAlpha, ipcoIndex);
 
@@ -407,6 +415,70 @@ static avifBool avifImageIsOpaque(avifImage * image)
         }
     }
     return AVIF_TRUE;
+}
+
+static void fillConfigBox(avifCodec * codec, avifImage * image, avifBool alpha)
+{
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
+
+    // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
+    // Profile 1.  8-bit and 10-bit 4:4:4
+    // Profile 2.  8-bit and 10-bit 4:2:2
+    //            12-bit  4:0:0, 4:2:2 and 4:4:4
+    uint8_t seqProfile = 0;
+    if (image->depth == 12) {
+        // Only seqProfile 2 can handle 12 bit
+        seqProfile = 2;
+    } else {
+        // 8-bit or 10-bit
+
+        if (alpha) {
+            seqProfile = 0;
+        } else {
+            switch (image->yuvFormat) {
+                case AVIF_PIXEL_FORMAT_YUV444:
+                    seqProfile = 1;
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV422:
+                    seqProfile = 2;
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV420:
+                    seqProfile = 0;
+                    break;
+                case AVIF_PIXEL_FORMAT_YV12:
+                    seqProfile = 0;
+                    break;
+                case AVIF_PIXEL_FORMAT_NONE:
+                default:
+                    break;
+            }
+        }
+    }
+
+    // TODO: Choose correct value from Annex A.3 table: https://aomediacodec.github.io/av1-spec/av1-spec.pdf
+    uint8_t seqLevelIdx0 = 31;
+    if ((image->width <= 8192) && (image->height <= 4352) && ((image->width * image->height) <= 8912896)) {
+        // Image is 5.1 compatible
+        seqLevelIdx0 = 13; // 5.1
+    }
+
+    memset(&codec->configBox, 0, sizeof(avifCodecConfigurationBox));
+    codec->configBox.seqProfile = seqProfile;
+    codec->configBox.seqLevelIdx0 = seqLevelIdx0;
+    codec->configBox.seqTier0 = 0;
+    codec->configBox.highBitdepth = (image->depth > 8) ? 1 : 0;
+    codec->configBox.twelveBit = (image->depth == 12) ? 1 : 0;
+    codec->configBox.monochrome = alpha ? 1 : 0;
+    codec->configBox.chromaSubsamplingX = (uint8_t)formatInfo.chromaShiftX;
+    codec->configBox.chromaSubsamplingY = (uint8_t)formatInfo.chromaShiftY;
+
+    // TODO: choose the correct one from below:
+    //   * 0 - CSP_UNKNOWN   Unknown (in this case the source video transfer function must be signaled outside the AV1 bitstream)
+    //   * 1 - CSP_VERTICAL  Horizontally co-located with (0, 0) luma sample, vertical position in the middle between two luma samples
+    //   * 2 - CSP_COLOCATED co-located with (0, 0) luma sample
+    //   * 3 - CSP_RESERVED
+    codec->configBox.chromaSamplePosition = 0;
 }
 
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)

@@ -9,7 +9,7 @@
 
 struct avifCodecInternal
 {
-    avifCodecConfigurationBox config;
+    uint32_t unused; // rav1e codec has no state
 };
 
 static void rav1eCodecDestroyInternal(avifCodec * codec)
@@ -26,6 +26,8 @@ static avifBool rav1eCodecOpen(struct avifCodec * codec, uint32_t firstSampleInd
 
 static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha)
 {
+    (void)codec; // unused
+
     avifBool success = AVIF_FALSE;
 
     RaConfig * rav1eConfig = NULL;
@@ -58,9 +60,6 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
         }
     }
 
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
-
     rav1eConfig = rav1e_config_default();
     if (rav1e_config_set_pixel_format(
             rav1eConfig, (uint8_t)image->depth, chromaSampling, RA_CHROMA_SAMPLE_POSITION_UNKNOWN, rav1eRange) < 0) {
@@ -91,57 +90,6 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
     if (rav1e_config_parse_int(rav1eConfig, "quantizer", maxQuantizer) == -1) {
         goto cleanup;
     }
-
-    // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
-    // Profile 1.  8-bit and 10-bit 4:4:4
-    // Profile 2.  8-bit and 10-bit 4:2:2
-    //            12-bit  4:0:0, 4:2:2 and 4:4:4
-    uint8_t seqProfile = 0;
-    if (image->depth == 12) {
-        // Only seqProfile 2 can handle 12 bit
-        seqProfile = 2;
-    } else {
-        // 8-bit or 10-bit
-
-        if (alpha) {
-            seqProfile = 0;
-        } else {
-            switch (image->yuvFormat) {
-                case AVIF_PIXEL_FORMAT_YUV444:
-                    seqProfile = 1;
-                    break;
-                case AVIF_PIXEL_FORMAT_YUV422:
-                    seqProfile = 2;
-                    break;
-                case AVIF_PIXEL_FORMAT_YUV420:
-                    seqProfile = 0;
-                    break;
-                case AVIF_PIXEL_FORMAT_YV12:
-                    seqProfile = 0;
-                    break;
-                case AVIF_PIXEL_FORMAT_NONE:
-                default:
-                    break;
-            }
-        }
-    }
-
-    // TODO: Choose correct value from Annex A.3 table: https://aomediacodec.github.io/av1-spec/av1-spec.pdf
-    uint8_t seqLevelIdx0 = 31;
-    if ((image->width <= 8192) && (image->height <= 4352) && ((image->width * image->height) <= 8912896)) {
-        // Image is 5.1 compatible
-        seqLevelIdx0 = 13; // 5.1
-    }
-
-    memset(&codec->internal->config, 0, sizeof(avifCodecConfigurationBox));
-    codec->internal->config.seqProfile = seqProfile;
-    codec->internal->config.seqLevelIdx0 = seqLevelIdx0;
-    codec->internal->config.seqTier0 = 0;
-    codec->internal->config.highBitdepth = (image->depth > 8) ? 1 : 0;
-    codec->internal->config.twelveBit = (image->depth == 12) ? 1 : 0;
-    codec->internal->config.monochrome = alpha ? 1 : 0;
-    codec->internal->config.chromaSubsamplingX = (uint8_t)formatInfo.chromaShiftX;
-    codec->internal->config.chromaSubsamplingY = (uint8_t)formatInfo.chromaShiftY;
 
     if (encoder->tileRowsLog2 != 0) {
         int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
@@ -217,11 +165,6 @@ cleanup:
     return success;
 }
 
-static void rav1eCodecGetConfigurationBox(avifCodec * codec, avifCodecConfigurationBox * outConfig)
-{
-    memcpy(outConfig, &codec->internal->config, sizeof(avifCodecConfigurationBox));
-}
-
 const char * avifCodecVersionRav1e(void)
 {
     return "0"; // https://github.com/xiph/rav1e/issues/1801
@@ -233,7 +176,6 @@ avifCodec * avifCodecCreateRav1e(void)
     memset(codec, 0, sizeof(struct avifCodec));
     codec->open = rav1eCodecOpen;
     codec->encodeImage = rav1eCodecEncodeImage;
-    codec->getConfigurationBox = rav1eCodecGetConfigurationBox;
     codec->destroyInternal = rav1eCodecDestroyInternal;
 
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
