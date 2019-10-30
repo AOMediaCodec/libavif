@@ -83,6 +83,8 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
         minQuantizer = AVIF_QUANTIZER_LOSSLESS;
         maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
     }
+    minQuantizer = (minQuantizer * 255) / 63; // Rescale quantizer values as rav1e's QP range is [0,255]
+    maxQuantizer = (maxQuantizer * 255) / 63;
     if (rav1e_config_parse_int(rav1eConfig, "min_quantizer", minQuantizer) == -1) {
         goto cleanup;
     }
