@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.6] - 2019-10-30
 ### Changed
 - Fix rav1e build on Linux x64, and eliminate pseudo-dependency on cargo-c
 
@@ -217,7 +219,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/AOMediaCodec/libavif/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/AOMediaCodec/libavif/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/AOMediaCodec/libavif/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/AOMediaCodec/libavif/compare/v0.4.2...v0.4.3
