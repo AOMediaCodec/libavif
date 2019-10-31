@@ -162,9 +162,11 @@ if(AVIF_CODEC_RAV1E)
         endif()
     endif()
 
+    # Unfortunately, rav1e requires a few more libraries
     if(WIN32)
-        # Unfortunately, rav1e requires a few more libraries
         set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} ws2_32.lib userenv.lib)
+    elseif(UNIX AND NOT APPLE)
+        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dl) # for backtrace
     endif()
 endif()
 
