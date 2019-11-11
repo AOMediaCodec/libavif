@@ -37,6 +37,7 @@ static int syntax(void)
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
     printf("\n");
+    avifPrintVersions();
     return 0;
 }
 

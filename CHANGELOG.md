@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Fix memory leak in rav1e codec (PR20, AurelC2G)
 - Bump rav1e version in rav1e.cmd, implement `avifCodecVersionRav1e()`
+- Display versions in avifenc and avifdec
 
 ## [0.4.6] - 2019-10-30
 ### Changed

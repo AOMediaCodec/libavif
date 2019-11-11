@@ -4,3 +4,4 @@
 #include "avif/avif.h"
 
 void avifImageDump(avifImage * avif);
+void avifPrintVersions(void);

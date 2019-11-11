@@ -19,9 +19,18 @@ void avifImageDump(avifImage * avif)
             break;
         case AVIF_PROFILE_FORMAT_NCLX:
             printf(" * Color Profile: nclx - P:%d / T:%d / M:%d / R:%s\n",
-            avif->nclx.colourPrimaries, avif->nclx.transferCharacteristics, avif->nclx.matrixCoefficients,
-            avif->nclx.fullRangeFlag ? "full" : "limited");
+                   avif->nclx.colourPrimaries,
+                   avif->nclx.transferCharacteristics,
+                   avif->nclx.matrixCoefficients,
+                   avif->nclx.fullRangeFlag ? "full" : "limited");
             break;
     }
     printf("\n");
+}
+
+void avifPrintVersions(void)
+{
+    char codecVersions[256];
+    avifCodecVersions(codecVersions);
+    printf("Version: %s (%s)\n\n", avifVersion(), codecVersions);
 }

@@ -15,6 +15,7 @@ static int syntax(void)
     printf("Options:\n");
     printf("    -h,--help : Show syntax help\n");
     printf("\n");
+    avifPrintVersions();
     return 0;
 }
 
