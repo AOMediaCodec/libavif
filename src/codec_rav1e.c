@@ -33,6 +33,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
     RaConfig * rav1eConfig = NULL;
     RaContext * rav1eContext = NULL;
     RaFrame * rav1eFrame = NULL;
+    RaPacket * pkt = NULL;
 
     int yShift = 0;
     RaChromaSampling chromaSampling;
@@ -139,7 +140,6 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
         goto cleanup;
     }
 
-    RaPacket * pkt = NULL;
     encoderStatus = rav1e_receive_packet(rav1eContext, &pkt);
     if (encoderStatus != 0) {
         goto cleanup;
@@ -150,6 +150,10 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
         success = AVIF_TRUE;
     }
 cleanup:
+    if (pkt) {
+        rav1e_packet_unref(pkt);
+        pkt = NULL;
+    }
     if (rav1eFrame) {
         rav1e_frame_unref(rav1eFrame);
         rav1eFrame = NULL;
