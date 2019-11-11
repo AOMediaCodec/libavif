@@ -171,7 +171,7 @@ cleanup:
 
 const char * avifCodecVersionRav1e(void)
 {
-    return "0"; // https://github.com/xiph/rav1e/issues/1801
+    return rav1e_version_full();
 }
 
 avifCodec * avifCodecCreateRav1e(void)
