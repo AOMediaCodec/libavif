@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.7] - 2019-11-11
 ### Changed
 - Fix memory leak in rav1e codec (PR20, AurelC2G)
 - Bump rav1e version in rav1e.cmd, implement `avifCodecVersionRav1e()`
@@ -223,7 +225,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/AOMediaCodec/libavif/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/AOMediaCodec/libavif/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/AOMediaCodec/libavif/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/AOMediaCodec/libavif/compare/v0.4.3...v0.4.4
