@@ -459,7 +459,7 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData 
 // * avifDecoderCreate()
 // * avifDecoderSetSource() - optional
 // * avifDecoderParse()
-//   * avifDecoderNextImage() - in a loop, using decoder->image after each successful call
+// * avifDecoderNextImage() - in a loop, using decoder->image after each successful call
 // * avifDecoderDestroy()
 //
 // You can use avifDecoderReset() any time after a successful call to avifDecoderParse()
