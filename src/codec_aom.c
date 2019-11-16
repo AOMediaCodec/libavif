@@ -234,6 +234,30 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
     aom_codec_ctx_t aomEncoder;
 
+    // Map encoder speed to AOM usage + CpuUsed:
+    // Speed  0: GoodQuality CpuUsed 0
+    // Speed  1: GoodQuality CpuUsed 1
+    // Speed  2: GoodQuality CpuUsed 2
+    // Speed  3: GoodQuality CpuUsed 3
+    // Speed  4: GoodQuality CpuUsed 4
+    // Speed  5: GoodQuality CpuUsed 5
+    // Speed  6: RealTime    CpuUsed 4
+    // Speed  7: RealTime    CpuUsed 5
+    // Speed  8: RealTime    CpuUsed 6
+    // Speed  9: RealTime    CpuUsed 7
+    // Speed 10: RealTime    CpuUsed 8
+    unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
+    int aomCpuUsed = -1;
+    if (encoder->speed != AVIF_SPEED_DEFAULT) {
+        if (encoder->speed < 6) {
+            aomUsage = AOM_USAGE_GOOD_QUALITY;
+            aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 5);
+        } else {
+            aomUsage = AOM_USAGE_REALTIME;
+            aomCpuUsed = AVIF_CLAMP(encoder->speed - 2, 4, 8);
+        }
+    }
+
     int yShift = 0;
     aom_img_fmt_t aomFormat = avifImageCalcAOMFmt(image, alpha, &yShift);
     if (aomFormat == AOM_IMG_FMT_NONE) {
@@ -244,7 +268,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
 
     struct aom_codec_enc_cfg cfg;
-    aom_codec_enc_config_default(encoder_interface, &cfg, 0);
+    aom_codec_enc_config_default(encoder_interface, &cfg, aomUsage);
 
     cfg.g_profile = codec->configBox.seqProfile;
     cfg.g_bit_depth = image->depth;
@@ -286,6 +310,9 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     if (encoder->tileColsLog2 != 0) {
         int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
         aom_codec_control(&aomEncoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+    }
+    if (aomCpuUsed != -1) {
+        aom_codec_control(&aomEncoder, AOME_SET_CPUUSED, aomCpuUsed);
     }
 
     uint32_t uvHeight = image->height >> yShift;
@@ -338,13 +365,19 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     }
 
     aom_codec_encode(&aomEncoder, aomImage, 0, 1, 0);
-    aom_codec_encode(&aomEncoder, NULL, 0, 1, 0); // flush
 
+    avifBool flushed = AVIF_FALSE;
     aom_codec_iter_t iter = NULL;
     for (;;) {
         const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&aomEncoder, &iter);
-        if (pkt == NULL)
-            break;
+        if (pkt == NULL) {
+            if (flushed)
+                break;
+
+            aom_codec_encode(&aomEncoder, NULL, 0, 1, 0); // flush
+            flushed = AVIF_TRUE;
+            continue;
+        }
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
             avifRWDataSet(obu, pkt->data.frame.buf, pkt->data.frame.sz);
             success = AVIF_TRUE;

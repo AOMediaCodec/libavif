@@ -91,7 +91,6 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
     if (rav1e_config_parse_int(rav1eConfig, "quantizer", maxQuantizer) == -1) {
         goto cleanup;
     }
-
     if (encoder->tileRowsLog2 != 0) {
         int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
         if (rav1e_config_parse_int(rav1eConfig, "tile_rows", 1 << tileRowsLog2) == -1) {
@@ -101,6 +100,12 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
     if (encoder->tileColsLog2 != 0) {
         int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
         if (rav1e_config_parse_int(rav1eConfig, "tile_cols", 1 << tileColsLog2) == -1) {
+            goto cleanup;
+        }
+    }
+    if (encoder->speed != AVIF_SPEED_DEFAULT) {
+        int speed = AVIF_CLAMP(encoder->speed, 0, 10);
+        if (rav1e_config_parse_int(rav1eConfig, "speed", speed) == -1) {
             goto cleanup;
         }
     }

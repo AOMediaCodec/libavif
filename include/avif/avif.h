@@ -30,6 +30,10 @@ typedef int avifBool;
 #define AVIF_PLANE_COUNT_RGB 3
 #define AVIF_PLANE_COUNT_YUV 3
 
+#define AVIF_SPEED_DEFAULT -1
+#define AVIF_SPEED_SLOWEST 0
+#define AVIF_SPEED_FASTEST 10
+
 enum avifPlanesFlags
 {
     AVIF_PLANES_RGB = (1 << 0),
@@ -480,22 +484,27 @@ uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 // avifEncoder
 
 // Notes:
-// * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
-// * if (maxThreads < 2), multithreading is disabled
-// * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
+// * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
+// * If (maxThreads < 2), multithreading is disabled
+// * Quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
 // * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
 //   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
+// * Speed range: [AVIF_SPEED_SLOWEST - AVIF_SPEED_FASTEST]. Slower should make for a better quality
+//   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
+//   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
+//   a combination of settings are tweaked to simulate this speed range.
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
-    // settings
+    // settings (see Notes above)
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
     int tileRowsLog2;
     int tileColsLog2;
+    int speed;
 
     // stats from the most recent write
     avifIOStats ioStats;

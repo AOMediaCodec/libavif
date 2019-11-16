@@ -31,6 +31,9 @@ avifEncoder * avifEncoderCreate(void)
     encoder->maxThreads = 1;
     encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
     encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
+    encoder->tileRowsLog2 = 0;
+    encoder->tileColsLog2 = 0;
+    encoder->speed = AVIF_SPEED_DEFAULT;
     return encoder;
 }
 
@@ -105,11 +108,6 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
 
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
-
-    // avifRWData * alphaOBUPtr = &alphaOBU;
-    // if (avifImageIsOpaque(image)) {
-    //     alphaOBUPtr = NULL;
-    // }
 
     if (!codec[AVIF_CODEC_PLANES_COLOR]->encodeImage(codec[AVIF_CODEC_PLANES_COLOR], image, encoder, &colorOBU, AVIF_FALSE)) {
         result = AVIF_RESULT_ENCODE_COLOR_FAILED;
