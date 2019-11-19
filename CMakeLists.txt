@@ -20,8 +20,6 @@ option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the
 
 add_subdirectory(ext)
 
-include_directories(include)
-
 # Enable all warnings
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   MESSAGE(STATUS "libavif: Enabling warnings for Clang")
@@ -71,8 +69,6 @@ else()
 endif()
 
 set(AVIF_SRCS
-    include/avif/avif.h
-    include/avif/internal.h
     src/avif.c
     src/colr.c
     src/mem.c
