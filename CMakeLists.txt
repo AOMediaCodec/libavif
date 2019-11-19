@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.5)
-project(libavif LANGUAGES C)
+project(libavif LANGUAGES C VERSION 0.4.7)
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
