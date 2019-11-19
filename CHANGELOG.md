@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - avifEncoder now has a speed setting
 - codec_aom only flushes encoder when necessary (avoids lost frame packets)
+- shared library compilation (stop enforcing STATIC in CMake, leverage BUILD_SHARED_LIBS)
+- make install support
 
 ### Changed
 - Updated libaom to more recent SHA in aom.cmd
