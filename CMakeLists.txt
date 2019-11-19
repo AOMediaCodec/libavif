@@ -210,7 +210,9 @@ endif()
 
 add_library(avif ${AVIF_SRCS})
 target_link_libraries(avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-target_include_directories(avif SYSTEM INTERFACE include)
+target_include_directories(avif
+                           PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
+                                  $<INSTALL_INTERFACE:include>)
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
