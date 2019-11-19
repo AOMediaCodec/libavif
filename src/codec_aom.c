@@ -126,7 +126,9 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
                 break;
             case AOM_IMG_FMT_YV12:
             case AOM_IMG_FMT_AOMYV12:
+#ifdef AOM_IMG_FMT_YV1216
             case AOM_IMG_FMT_YV1216:
+#endif
                 yuvFormat = AVIF_PIXEL_FORMAT_YV12;
                 break;
             case AOM_IMG_FMT_NONE:
@@ -246,8 +248,11 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     // Speed  8: RealTime    CpuUsed 6
     // Speed  9: RealTime    CpuUsed 7
     // Speed 10: RealTime    CpuUsed 8
-    unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
+    unsigned int aomUsage = 0;
     int aomCpuUsed = -1;
+
+#ifdef AOM_USAGE_GOOD_QUALITY
+    aomUsage = AOM_USAGE_GOOD_QUALITY;
     if (encoder->speed != AVIF_SPEED_DEFAULT) {
         if (encoder->speed < 8) {
             aomUsage = AOM_USAGE_GOOD_QUALITY;
@@ -257,6 +262,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
             aomCpuUsed = AVIF_CLAMP(encoder->speed - 2, 6, 8);
         }
     }
+#endif
 
     int yShift = 0;
     aom_img_fmt_t aomFormat = avifImageCalcAOMFmt(image, alpha, &yShift);
@@ -300,9 +306,11 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     if (lossless) {
         aom_codec_control(&aomEncoder, AV1E_SET_LOSSLESS, 1);
     }
+#ifdef AOM_CTRL_AV1E_SET_ROW_MT
     if (encoder->maxThreads > 1) {
         aom_codec_control(&aomEncoder, AV1E_SET_ROW_MT, 1);
     }
+#endif
     if (encoder->tileRowsLog2 != 0) {
         int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
         aom_codec_control(&aomEncoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
