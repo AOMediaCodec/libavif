@@ -8,7 +8,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+option(AVIF_BUILD_STATIC "Build static avif library" OFF)
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
@@ -208,7 +208,11 @@ if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
     message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
 endif()
 
-add_library(avif ${AVIF_SRCS})
+if(AVIF_BUILD_STATIC)
+    add_library(avif STATIC ${AVIF_SRCS})
+else()
+    add_library(avif SHARED ${AVIF_SRCS})
+endif()
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 target_include_directories(avif
@@ -290,20 +294,6 @@ macro(avif_set_folder_safe target folder)
 endmacro()
 
 if(WIN32)
-    option(AVIF_BUILD_STATIC "Build static avif library" OFF)
-    if(AVIF_BUILD_STATIC)
-        add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/avif_static_x64.lib
-            COMMAND link.exe /lib /nologo /MACHINE:x64 /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/avif_static_x64.lib $<TARGET_FILE:avif> $<TARGET_FILE:aom>
-            DEPENDS avif
-            COMMENT "Creating static avif library..."
-        )
-
-        add_custom_target(avif_static ALL
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/avif_static_x64.lib
-        )
-    endif()
-
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
     avif_set_folder_safe(aom "ext/avif")
