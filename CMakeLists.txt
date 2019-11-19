@@ -216,6 +216,10 @@ if(AVIF_BUILD_EXAMPLES)
     target_link_libraries(avif_example1 avif ${AVIF_PLATFORM_LIBRARIES})
 endif()
 
+if(NOT SKIP_INSTALL_ALL)
+    include(GNUInstallDirs)
+endif()
+
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 if(AVIF_BUILD_APPS)
     include_directories(apps/shared)
@@ -231,6 +235,14 @@ if(AVIF_BUILD_APPS)
         apps/shared/avifutil.c
     )
     target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES})
+
+    if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
+        install(TARGETS avifenc avifdec
+            RUNTIME DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+            LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+        )
+    endif()
 endif()
 
 option(AVIF_BUILD_TESTS "Build avif tests (fuzzing)." OFF)
@@ -239,10 +251,6 @@ if(AVIF_BUILD_TESTS)
         tests/aviffuzz.c
     )
     target_link_libraries(aviffuzz avif ${AVIF_PLATFORM_LIBRARIES})
-endif()
-
-if(NOT SKIP_INSTALL_ALL)
-    include(GNUInstallDirs)
 endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
