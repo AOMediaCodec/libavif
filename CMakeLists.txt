@@ -82,7 +82,11 @@ set(AVIF_SRCS
 
 set(AVIF_PLATFORM_LIBRARIES)
 if(NOT WIN32)
-    set(AVIF_PLATFORM_LIBRARIES m pthread)
+    # Find out if we have threading available
+    set(CMAKE_THREAD_PREFER_PTHREADS ON)
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads)
+    set(AVIF_PLATFORM_LIBRARIES m Threads::Threads)
 endif()
 
 set(AVIF_CODEC_LIBRARIES)
