@@ -52,7 +52,7 @@ before_build:
 
     cmake --version
 
-    cmake .. -G %generator% -DAVIF_CODEC_AOM=1 -DAVIF_LOCAL_AOM=1 -DAVIF_LOCAL_STATIC=1 -DAVIF_LOCAL_APPS=1
+    cmake .. -G %generator% -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DBUILD_SHARED_LIBS=OFF -DAVIF_BUILD_APPS=ON
 after_build:
 - cmd: >-
     copy %CONFIGURATION%\avifenc.exe .
@@ -63,7 +63,7 @@ after_build:
 
     set ARTIFACT_ZIP=libavif_vs2017_x64_%APPVEYOR_REPO_COMMIT:~0,8%_%CONFIGURATION%.zip
 
-    copy %CONFIGURATION%\avif_static_x64.lib lib\avif_x64_%CONFIGURATION%.lib
+    copy %CONFIGURATION%\avif.lib lib\avif_x64_%CONFIGURATION%.lib
 
     7z a %ARTIFACT_ZIP% lib
 
@@ -71,7 +71,7 @@ after_build:
 
     7z a build\%ARTIFACT_ZIP% include examples
 build:
-  project: C:/projects/libavif/build/libavif.sln
+  project: build/libavif.sln
   parallel: true
   verbosity: minimal
 artifacts:
