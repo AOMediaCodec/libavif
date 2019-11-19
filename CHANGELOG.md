@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated libaom to more recent SHA in aom.cmd
 - Tweaked AVIF_LOCAL_AOM settings to play nice with libaom's usage of CMake's option()
+- Remove all libaom special cases from libavif's CMakefiles, and have it work the same way dav1d and rav1e do
 - Minor cleanup
 
 ## [0.4.7] - 2019-11-11

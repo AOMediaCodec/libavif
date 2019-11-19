@@ -196,22 +196,30 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
 
 # Build Notes
 
-Building libavif requires [CMake](https://cmake.org/), and if you're building
-libaom alongside it, [NASM](https://nasm.us/) as well.
-
-Make sure nasm is available and in your PATH on your machine (if building
-libaom), then use CMake to do a basic build (Debug or Release).
+Building libavif requires [CMake](https://cmake.org/).
 
 No AV1 codecs are enabled by default. Enable them by enabling any of the
 following CMake options:
-* AVIF_CODEC_AOM
-* AVIF_CODEC_DAV1D
-* AVIF_CODEC_RAV1E
+* AVIF_CODEC_AOM - requires CMake, NASM
+* AVIF_CODEC_DAV1D - requires Meson, Ninja, NASM
+* AVIF_CODEC_RAV1E - requires cargo (Rust), NASM
 
 These libraries (in their C API form) must be externally available
-(discoverable via CMake's `FIND_LIBRARY`) to use them, unless you
-build them locally from the `ext/` subdirectory, and then enabling the
-equivalent `AVIF_LOCAL_*` CMake option. See `ext/*.cmd` files for details.
+(discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif is
+a child CMake project, the appropriate CMake target must already exist
+by the time libavif's CMake scripts are executed.
+
+# Local Builds
+
+The `ext/` subdirectory contains a handful of basic scripts which each pull
+down a known-good copy of an AV1 codec and make a local static library build.
+If you want to statically link any codec into your local build of libavif,
+building using one of these scripts and then enabling the associated
+`AVIF_LOCAL_*` is a convenient method.
+
+If you want to build/install shared libraries for AV1 codecs, you can still
+peek inside of each script to see where the current known-good SHA is for each
+codec.
 
 # Prebuilt Library (Windows)
 

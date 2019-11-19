@@ -3,4 +3,17 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
+: # cmake and ninja must be in your PATH.
+
+: # If you're running this on Windows, be sure you've already run this (from your VC2017 install dir):
+: #     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
+
 git clone -n https://aomedia.googlesource.com/aom && cd aom && git checkout 60d06c8721605ecd40c3b21bdd3685115b82ebf2 && cd ..
+
+cd aom
+mkdir build.libavif
+cd build.libavif
+
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 ..
+ninja
+cd ../..
