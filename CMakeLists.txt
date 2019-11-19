@@ -144,7 +144,7 @@ if(AVIF_CODEC_RAV1E)
         endif()
 
         include_directories(
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/include"
         )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
     else()
@@ -161,7 +161,7 @@ if(AVIF_CODEC_RAV1E)
             message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
             include_directories(${LIBDAV1D_INCLUDE_PATH})
         endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} dav1d)
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} rav1e)
     endif()
 
     # Unfortunately, rav1e requires a few more libraries
