@@ -82,7 +82,12 @@ set(AVIF_SRCS
     src/write.c
 )
 
-set(AVIF_CODEC_LIBARIES)
+set(AVIF_PLATFORM_LIBRARIES)
+if(NOT WIN32)
+    set(AVIF_PLATFORM_LIBRARIES m pthread)
+endif()
+
+set(AVIF_CODEC_LIBRARIES)
 
 if(AVIF_CODEC_DAV1D)
     message(STATUS "libavif: Codec enabled: dav1d (decode)")
@@ -103,12 +108,10 @@ if(AVIF_CODEC_DAV1D)
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include/dav1d"
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
         )
-        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} ${LIB_FILENAME})
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
     else()
         # Check to see if dav1d is independently being built by the outer CMake project
-        if(TARGET dav1d)
-            set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
-        else()
+	if(NOT TARGET dav1d)
             find_library(LIBDAV1D_LIBRARY_PATH NAMES dav1d)
             if(NOT LIBDAV1D_LIBRARY_PATH)
               message(FATAL_ERROR "libavif: dav1d library not found")
@@ -120,9 +123,9 @@ if(AVIF_CODEC_DAV1D)
             message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
             include_directories(${LIBDAV1D_INCLUDE_PATH})
         endif()
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} dav1d)
     endif()
 endif()
-
 
 if(AVIF_CODEC_RAV1E)
     message(STATUS "libavif: Codec enabled: rav1e (encode)")
@@ -143,12 +146,10 @@ if(AVIF_CODEC_RAV1E)
         include_directories(
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release"
         )
-        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} ${LIB_FILENAME})
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
     else()
         # Check to see if dav1d is independently being built by the outer CMake project
-        if(TARGET dav1d)
-            set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
-        else()
+	if(NOT TARGET dav1d)
             find_library(LIBDAV1D_LIBRARY_PATH NAMES dav1d)
             if(NOT LIBDAV1D_LIBRARY_PATH)
               message(FATAL_ERROR "libavif: dav1d library not found")
@@ -160,13 +161,14 @@ if(AVIF_CODEC_RAV1E)
             message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
             include_directories(${LIBDAV1D_INCLUDE_PATH})
         endif()
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} dav1d)
     endif()
 
     # Unfortunately, rav1e requires a few more libraries
     if(WIN32)
-        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} ws2_32.lib userenv.lib)
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ws2_32.lib userenv.lib)
     elseif(UNIX AND NOT APPLE)
-        set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dl) # for backtrace
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} dl) # for backtrace
     endif()
 endif()
 
@@ -197,7 +199,7 @@ if(AVIF_CODEC_AOM)
             include_directories(${LIBAOM_INCLUDE_PATH})
         endif()
     endif()
-    set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} aom)
+    set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} aom)
 endif()
 
 if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
@@ -205,18 +207,13 @@ if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
 endif()
 
 add_library(avif ${AVIF_SRCS})
-target_link_libraries(avif ${AVIF_CODEC_LIBARIES})
+target_link_libraries(avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 target_include_directories(avif SYSTEM INTERFACE include)
-
-set(AVIF_MATH_LIBRARY)
-if(NOT WIN32)
-    set(AVIF_MATH_LIBRARY m)
-endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     add_executable(avif_example1 examples/avif_example1.c)
-    target_link_libraries(avif_example1 avif ${AVIF_MATH_LIBRARY})
+    target_link_libraries(avif_example1 avif ${AVIF_PLATFORM_LIBRARIES})
 endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
@@ -227,13 +224,13 @@ if(AVIF_BUILD_APPS)
         apps/shared/y4m.c
         apps/shared/avifutil.c
     )
-    target_link_libraries(avifenc avif ${AVIF_MATH_LIBRARY})
+    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES})
     add_executable(avifdec
         apps/avifdec.c
         apps/shared/y4m.c
         apps/shared/avifutil.c
     )
-    target_link_libraries(avifdec avif ${AVIF_MATH_LIBRARY})
+    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES})
 endif()
 
 option(AVIF_BUILD_TESTS "Build avif tests (fuzzing)." OFF)
@@ -241,18 +238,22 @@ if(AVIF_BUILD_TESTS)
     add_executable(aviffuzz
         tests/aviffuzz.c
     )
-    target_link_libraries(aviffuzz avif ${AVIF_MATH_LIBRARY})
+    target_link_libraries(aviffuzz avif ${AVIF_PLATFORM_LIBRARIES})
+endif()
+
+if(NOT SKIP_INSTALL_ALL)
+    include(GNUInstallDirs)
 endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(TARGETS avif
-        ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
-        LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
     )
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
     install(FILES include/avif/avif.h include/avif/internal.h
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/avif"
+        DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/avif"
     )
 endif()
 
@@ -268,7 +269,7 @@ if(WIN32)
         add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/avif_static_x64.lib
             COMMAND link.exe /lib /nologo /MACHINE:x64 /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/avif_static_x64.lib $<TARGET_FILE:avif> $<TARGET_FILE:aom>
-            DEPENDS avif ${AVIF_CODEC_LIBARIES}
+            DEPENDS avif
             COMMENT "Creating static avif library..."
         )
 
