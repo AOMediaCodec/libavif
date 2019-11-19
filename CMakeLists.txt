@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.5)
-project(libavif)
+project(libavif LANGUAGES C)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+if(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
@@ -23,7 +23,7 @@ add_subdirectory(ext)
 include_directories(include)
 
 # Enable all warnings
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   MESSAGE(STATUS "libavif: Enabling warnings for Clang")
   add_definitions(
     -Weverything
@@ -47,11 +47,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     -Wno-switch-enum
     -Wno-undef
   )
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
   MESSAGE(STATUS "libavif: Enabling warnings for GCC")
   add_definitions(-Werror -Wall -Wextra)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
   MESSAGE(STATUS "libavif: Enabling warnings for MS CL")
   add_definitions(
     /Wall   # All warnings
