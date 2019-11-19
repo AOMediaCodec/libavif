@@ -209,7 +209,8 @@ if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
 endif()
 
 add_library(avif ${AVIF_SRCS})
-target_link_libraries(avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(avif
+                      PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>)
