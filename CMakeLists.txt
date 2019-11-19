@@ -245,10 +245,15 @@ if(AVIF_BUILD_TESTS)
 endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
-    install(TARGETS avif LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(TARGETS avif
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+    )
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
-    install(FILES include/avif/avif.h include/avif/internal.h DESTINATION "${CMAKE_INSTALL_PREFIX}/include/avif")
+    install(FILES include/avif/avif.h include/avif/internal.h
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/avif"
+    )
 endif()
 
 macro(avif_set_folder_safe target folder)
