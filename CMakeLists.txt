@@ -220,6 +220,7 @@ if(AVIF_BUILD_STATIC)
     add_library(avif STATIC ${AVIF_SRCS})
 else()
     add_library(avif SHARED ${AVIF_SRCS})
+    set_target_properties(avif PROPERTIES SOVERSION ${PROJECT_VERSION})
 endif()
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
