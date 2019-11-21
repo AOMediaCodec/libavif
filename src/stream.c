@@ -131,12 +131,14 @@ avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t out
     size_t stringLen = strlen(streamString);
     stream->offset += stringLen + 1; // update the stream to have read the "whole string" in
 
-    // clamp to our output buffer
-    if (stringLen >= outputSize) {
-        stringLen = outputSize - 1;
+    if (output && outputSize) {
+        // clamp to our output buffer
+        if (stringLen >= outputSize) {
+            stringLen = outputSize - 1;
+        }
+        memcpy(output, streamString, stringLen);
+        output[stringLen] = 0;
     }
-    memcpy(output, streamString, stringLen);
-    output[stringLen] = 0;
     return AVIF_TRUE;
 }
 
