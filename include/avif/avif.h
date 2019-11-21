@@ -300,6 +300,10 @@ typedef struct avifImage
     avifProfileFormat profileFormat;
     avifRWData icc;
     avifNclxColorProfile nclx;
+
+    // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
+    avifRWData exif;
+    avifRWData xmp;
 } avifImage;
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
@@ -310,6 +314,9 @@ void avifImageDestroy(avifImage * image);
 void avifImageSetProfileNone(avifImage * image);
 void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx);
+
+void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
+void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes

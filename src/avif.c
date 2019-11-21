@@ -136,6 +136,9 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
         avifImageSetProfileNone(dstImage);
     }
 
+    avifImageSetMetadataExif(dstImage, srcImage->exif.data, srcImage->exif.size);
+    avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
+
     if (srcImage->rgbPlanes[AVIF_CHAN_R] && srcImage->rgbPlanes[AVIF_CHAN_G] && srcImage->rgbPlanes[AVIF_CHAN_B]) {
         avifImageAllocatePlanes(dstImage, AVIF_PLANES_RGB);
 
@@ -189,6 +192,8 @@ void avifImageDestroy(avifImage * image)
 {
     avifImageFreePlanes(image, AVIF_PLANES_ALL);
     avifRWDataFree(&image->icc);
+    avifRWDataFree(&image->exif);
+    avifRWDataFree(&image->xmp);
     avifFree(image);
 }
 
@@ -212,6 +217,16 @@ void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx)
     avifImageSetProfileNone(image);
     image->profileFormat = AVIF_PROFILE_FORMAT_NCLX;
     memcpy(&image->nclx, nclx, sizeof(avifNclxColorProfile));
+}
+
+void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
+{
+    avifRWDataSet(&image->exif, exif, exifSize);
+}
+
+void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize)
+{
+    avifRWDataSet(&image->xmp, xmp, xmpSize);
 }
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
