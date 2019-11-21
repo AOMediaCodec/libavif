@@ -4,6 +4,16 @@
 cmake_minimum_required(VERSION 3.5)
 project(libavif LANGUAGES C VERSION 0.4.8)
 
+# SOVERSION scheme: CURRENT.AGE.REVISION
+#   If there was an incompatible interface change:
+#     Increment CURRENT. Set AGE and REVISION to 0
+#   If there was a compatible interface change:
+#     Increment AGE. Set REVISION to 0
+#   If the source code was changed, but there were no interface changes:
+#     Increment REVISION.
+set(LIBRARY_VERSION "0.1.0")
+set(LIBRARY_SOVERSION "0")
+
 if(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
@@ -220,7 +230,10 @@ if(AVIF_BUILD_STATIC)
     add_library(avif STATIC ${AVIF_SRCS})
 else()
     add_library(avif SHARED ${AVIF_SRCS})
-    set_target_properties(avif PROPERTIES SOVERSION ${PROJECT_VERSION})
+    set_target_properties(avif
+                          PROPERTIES
+                          VERSION ${LIBRARY_VERSION}
+                          SOVERSION ${LIBRARY_SOVERSION})
 endif()
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})

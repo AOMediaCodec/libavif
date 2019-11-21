@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Pass through PROJECT_VERSION to shared library's SOVERSION in CMake
+- Define version and SO-version for shared library
 
 ## [0.4.8] - 2019-11-19
 ### Added
