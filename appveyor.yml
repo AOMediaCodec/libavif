@@ -30,6 +30,8 @@ install:
     git submodule update --init --recursive
 before_build:
 - cmd: >-
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+
     appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.14.02-win64.zip" -FileName "nasm.zip"
 
     7z x "nasm.zip" > nul
