@@ -59,6 +59,18 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
             ... image->nclx.matrixCoefficients;
             ... image->nclx.fullRangeFlag;
         }
+
+        // Optional: Exif and XMP metadata querying
+        if(image->exif.size > 0) {
+            // Parse Exif payload
+            ... image->exif.data;
+            ... image->exif.size;
+        }
+        if(image->xmp.size > 0) {
+            // Parse XMP document
+            ... image->xmp.data;
+            ... image->xmp.size;
+        }
     } else {
         printf("ERROR: Failed to decode: %s\n", avifResultToString(result));
     }
@@ -103,7 +115,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
             ... decoder->image->yuvFormat; // U and V planes might be smaller than Y based on format,
                                            // use avifGetPixelFormatInfo() to find out in a generic way
 
-            // See Basic Decoding example for color profile querying
+            // See Basic Decoding example for color profile and metadata querying
 
             // Option 1: Use YUV planes directly
             ... decoder->image->yuvPlanes;
@@ -175,6 +187,14 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
     uint8_t * icc = ...;  // raw ICC profile data
     size_t iccSize = ...; // Length of raw ICC profile data
     avifImageSetProfileICC(image, icc, iccSize);
+
+    // Optional: Set Exif and/or XMP metadata
+    uint8_t * exif = ...;  // raw Exif payload (starting with TIFF header)
+    size_t exifSize = ...; // Length of raw Exif payload
+    avifImageSetMetadataExif(image, exif, exifSize);
+    uint8_t * xmp = ...;  // raw XMP document
+    size_t xmpSize = ...; // Length of raw XMP document
+    avifImageSetMetadataXMP(image, xmp, xmpSize);
 
     avifRWData output = AVIF_DATA_EMPTY;
     avifEncoder * encoder = avifEncoderCreate();

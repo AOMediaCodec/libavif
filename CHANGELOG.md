@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Proper handling of the primary item box (pitm) on read
 - avifROStreamReadString() now allows string skipping by passing a NULL output buffer
+- Updated README to show Exif/XMP support
 
 ## [0.4.8] - 2019-11-19
 ### Added
