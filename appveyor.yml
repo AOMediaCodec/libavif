@@ -40,6 +40,14 @@ before_build:
 
     nasm -v
 
+    set NINJA_URL="https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-win.zip"
+
+    appveyor DownloadFile %NINJA_URL% -FileName ninja.zip
+
+    7z x ninja.zip -oC:\projects\deps\ninja > nul
+
+    set PATH=C:\projects\deps\ninja;%PATH%
+
     cd ext
 
     aom.cmd
