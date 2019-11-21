@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Define version and SO-version for shared library
 - Use -DBUILD_SHARED_LIBS=OFF for building a static lib
+- avifImage can now hold Exif and XMP metadata (`avifImageSetMetadataExif`, `avifImageSetMetadataXMP`)
+- Support for reading/writing Exif and XMP items
+- Now tracking idat boxes across meta boxes
+- Support for iloc construction_method 1 (idat)
+
+### Changed
+- Proper handling of the primary item box (pitm) on read
+- avifROStreamReadString() now allows string skipping by passing a NULL output buffer
 
 ## [0.4.8] - 2019-11-19
 ### Added
