@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Define version and SO-version for shared library
+- Use -DBUILD_SHARED_LIBS=OFF for building a static lib
 
 ## [0.4.8] - 2019-11-19
 ### Added

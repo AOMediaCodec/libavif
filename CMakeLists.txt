@@ -18,7 +18,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
-option(AVIF_BUILD_STATIC "Build static avif library" OFF)
+option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
@@ -226,15 +226,11 @@ if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
     message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
 endif()
 
-if(AVIF_BUILD_STATIC)
-    add_library(avif STATIC ${AVIF_SRCS})
-else()
-    add_library(avif SHARED ${AVIF_SRCS})
-    set_target_properties(avif
-                          PROPERTIES
+add_library(avif ${AVIF_SRCS})
+set_target_properties(avif
+                      PROPERTIES
                           VERSION ${LIBRARY_VERSION}
                           SOVERSION ${LIBRARY_SOVERSION})
-endif()
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 target_include_directories(avif
