@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.5.0] - 2019-11-21
 ### Added
 - Define version and SO-version for shared library
 - Use -DBUILD_SHARED_LIBS=OFF for building a static lib
@@ -251,7 +253,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.8...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/AOMediaCodec/libavif/compare/v0.4.7...v0.5.0
 [0.4.8]: https://github.com/AOMediaCodec/libavif/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/AOMediaCodec/libavif/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/AOMediaCodec/libavif/compare/v0.4.5...v0.4.6

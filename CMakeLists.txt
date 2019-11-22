@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.5)
-project(libavif LANGUAGES C VERSION 0.4.8)
+project(libavif LANGUAGES C VERSION 0.5.0)
 
 # SOVERSION scheme: CURRENT.AGE.REVISION
 #   If there was an incompatible interface change:
