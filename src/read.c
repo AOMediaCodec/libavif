@@ -1723,7 +1723,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 }
 
                 if (!memcmp(item->type, "Exif", 4)) {
-                    // Advance past Annex A.2.1's header, and make exifData point at the TIFF header
+                    // Advance past Annex A.2.1's header
                     const uint8_t * boxPtr = avifDataCalcItemPtr(data, item);
                     BEGIN_STREAM(exifBoxStream, boxPtr, item->size);
                     uint32_t exifTiffHeaderOffset;
