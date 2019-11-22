@@ -189,7 +189,7 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
     avifImageSetProfileICC(image, icc, iccSize);
 
     // Optional: Set Exif and/or XMP metadata
-    uint8_t * exif = ...;  // raw Exif payload (starting with TIFF header)
+    uint8_t * exif = ...;  // raw Exif payload
     size_t exifSize = ...; // Length of raw Exif payload
     avifImageSetMetadataExif(image, exif, exifSize);
     uint8_t * xmp = ...;  // raw XMP document
