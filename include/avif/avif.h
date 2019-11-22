@@ -89,7 +89,8 @@ typedef enum avifResult
     AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH,
     AVIF_RESULT_ISPE_SIZE_MISMATCH,
     AVIF_RESULT_NO_CODEC_AVAILABLE,
-    AVIF_RESULT_NO_IMAGES_REMAINING
+    AVIF_RESULT_NO_IMAGES_REMAINING,
+    AVIF_RESULT_INVALID_EXIF_PAYLOAD
 } avifResult;
 
 const char * avifResultToString(avifResult result);
@@ -315,6 +316,7 @@ void avifImageSetProfileNone(avifImage * image);
 void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx);
 
+// Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD
 void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
 void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 

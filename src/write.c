@@ -20,10 +20,6 @@ static void ipmaPush(struct ipmaArray * ipma, uint8_t assoc)
 static const char alphaURN[] = URN_ALPHA0;
 static const size_t alphaURNSize = sizeof(alphaURN);
 
-// Exit block header (see ISO/IEC 23008-12:2017, Annex A.2.1
-static const char exifHeader[] = "Exif";
-static const size_t exifHeaderSize = sizeof(exifHeader);
-
 static const char xmpContentType[] = CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
@@ -73,6 +69,33 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
         codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
         if (!codec[AVIF_CODEC_PLANES_ALPHA]) {
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Validate Exif payload (if any) and find TIFF header offset
+
+    uint32_t exifTiffHeaderOffset = 0;
+    if (image->exif.size > 0) {
+        if (image->exif.size < 4) {
+            // Can't even fit the TIFF header, something is wrong
+            return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+        }
+
+        const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
+        const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
+        for (; exifTiffHeaderOffset < (image->exif.size - 4); ++exifTiffHeaderOffset) {
+            if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
+                break;
+            }
+            if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
+                break;
+            }
+        }
+
+        if (exifTiffHeaderOffset >= image->exif.size - 4) {
+            // Couldn't find the TIFF header
+            return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
         }
     }
 
@@ -240,7 +263,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
         // ::     unsigned int(32) exif_tiff_header_offset;
         // ::     unsigned int(8) exif_payload[];
         // :: }
-        uint32_t exifDataBlockSize = (uint32_t)(sizeof(uint32_t) + exifHeaderSize + image->exif.size);
+        uint32_t exifDataBlockSize = (uint32_t)(sizeof(uint32_t) + image->exif.size);
 
         avifRWStreamWriteU16(&s, exifItemID);        // unsigned int(16) item_ID;
         avifRWStreamWriteU16(&s, 0);                 // unsigned int(16) data_reference_index;
@@ -452,8 +475,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWStreamWrite(&s, alphaOBU.data, alphaOBU.size);
     uint32_t exifOffset = (uint32_t)s.offset;
     if (image->exif.size > 0) {
-        avifRWStreamWriteU32(&s, (uint32_t)exifHeaderSize); // unsigned int(32) exif_tiff_header_offset; (Annex A.2.1)
-        avifRWStreamWrite(&s, (uint8_t *)exifHeader, exifHeaderSize);
+        avifRWStreamWriteU32(&s, (uint32_t)exifTiffHeaderOffset); // unsigned int(32) exif_tiff_header_offset; (Annex A.2.1)
         avifRWStreamWrite(&s, image->exif.data, image->exif.size);
     }
     uint32_t xmpOffset = (uint32_t)s.offset;

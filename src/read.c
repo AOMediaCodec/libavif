@@ -1728,7 +1728,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     BEGIN_STREAM(exifBoxStream, boxPtr, item->size);
                     uint32_t exifTiffHeaderOffset;
                     CHECK(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset)); // unsigned int(32) exif_tiff_header_offset;
-                    CHECK(avifROStreamSkip(&exifBoxStream, exifTiffHeaderOffset));
 
                     exifData.data = avifROStreamCurrent(&exifBoxStream);
                     exifData.size = avifROStreamRemainingBytes(&exifBoxStream);

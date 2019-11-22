@@ -87,6 +87,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_ISPE_SIZE_MISMATCH:        return "Plane sizes don't match ispe values";
         case AVIF_RESULT_NO_CODEC_AVAILABLE:        return "No codec available";
         case AVIF_RESULT_NO_IMAGES_REMAINING:       return "No images remaining";
+        case AVIF_RESULT_INVALID_EXIF_PAYLOAD:      return "Invalid Exif payload";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
