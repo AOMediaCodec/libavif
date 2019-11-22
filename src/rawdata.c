@@ -26,7 +26,7 @@ void avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len)
         avifRWDataRealloc(raw, len);
         memcpy(raw->data, data, len);
     } else {
-        avifFree(raw);
+        avifRWDataFree(raw);
     }
 }
 
