@@ -166,7 +166,6 @@ int main(int argc, char * argv[])
     avifRWData raw = AVIF_DATA_EMPTY;
 
     if (!y4mRead(avif, inputFilename)) {
-        avifImageDestroy(avif);
         returnCode = 1;
         goto cleanup;
     }
