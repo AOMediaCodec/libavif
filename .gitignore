@@ -1,4 +1,8 @@
 /build*
+/obj*
 /ext/aom
 /ext/rav1e
 /ext/dav1d
+.clangd/
+cscope.*
+tags
