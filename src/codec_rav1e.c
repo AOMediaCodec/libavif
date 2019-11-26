@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+#define AVIF_RAV1E_VERSION (RAV1E_MAJOR * 10000) + (RAV1E_MINOR * 100) + RAV1E_PATCH
+
 struct avifCodecInternal
 {
     uint32_t unused; // rav1e codec has no state
@@ -67,6 +69,11 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
         goto cleanup;
     }
 
+#if AVIF_RAV1E_VERSION >= 300
+    if (rav1e_config_parse(rav1eConfig, "still_picture", "true") == -1) {
+        goto cleanup;
+    }
+#endif
     if (rav1e_config_parse_int(rav1eConfig, "width", image->width) == -1) {
         goto cleanup;
     }
