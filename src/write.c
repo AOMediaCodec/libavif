@@ -31,6 +31,7 @@ avifEncoder * avifEncoderCreate(void)
 {
     avifEncoder * encoder = (avifEncoder *)avifAlloc(sizeof(avifEncoder));
     memset(encoder, 0, sizeof(avifEncoder));
+    encoder->numTiles = 8;
     encoder->maxThreads = 1;
     encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
     encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;

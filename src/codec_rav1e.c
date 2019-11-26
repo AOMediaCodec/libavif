@@ -73,8 +73,14 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
     if (rav1e_config_parse_int(rav1eConfig, "height", image->height) == -1) {
         goto cleanup;
     }
+
     if (rav1e_config_parse_int(rav1eConfig, "threads", encoder->maxThreads) == -1) {
         goto cleanup;
+    }
+    if (encoder->maxThreads > 1) {
+        if (rav1e_config_parse_int(rav1eConfig, "tiles", encoder->numTiles) == -1) {
+            goto cleanup;
+        }
     }
 
     int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);

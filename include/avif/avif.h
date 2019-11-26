@@ -502,6 +502,8 @@ uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
+// * numTiles sets the number of tiles processed in paralell. This only works
+//   if maxThreads is > 2. (default: 8)
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
@@ -517,6 +519,8 @@ typedef struct avifEncoder
 
     // stats from the most recent write
     avifIOStats ioStats;
+
+    uint32_t numTiles;
 } avifEncoder;
 
 avifEncoder * avifEncoderCreate(void);
