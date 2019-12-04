@@ -190,12 +190,14 @@ static avifResult avifImageYUVToRGB16Color(avifImage * image, avifReformatState 
     const float kr = state->kr;
     const float kg = state->kg;
     const float kb = state->kb;
+    const uint32_t maxUVI = (image->width > 1) ? (image->width >> state->formatInfo.chromaShiftX) - 1 : 0;
+    const uint32_t maxUVJ = (image->height > 1) ? (image->height >> state->formatInfo.chromaShiftY) - 1 : 0;
 
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
     uint32_t * rgbRowBytes = image->rgbRowBytes;
     for (uint32_t j = 0; j < image->height; ++j) {
-        const int uvJ = j >> state->formatInfo.chromaShiftY;
+        const uint32_t uvJ = AVIF_MIN(j >> state->formatInfo.chromaShiftY, maxUVJ);
         uint16_t * ptrY = (uint16_t *)&image->yuvPlanes[AVIF_CHAN_Y][(j * image->yuvRowBytes[AVIF_CHAN_Y])];
         uint16_t * ptrU = (uint16_t *)&image->yuvPlanes[AVIF_CHAN_U][(uvJ * image->yuvRowBytes[AVIF_CHAN_U])];
         uint16_t * ptrV = (uint16_t *)&image->yuvPlanes[AVIF_CHAN_V][(uvJ * image->yuvRowBytes[AVIF_CHAN_V])];
@@ -205,7 +207,7 @@ static avifResult avifImageYUVToRGB16Color(avifImage * image, avifReformatState 
 
         for (uint32_t i = 0; i < image->width; ++i) {
             // Unpack YUV into unorm
-            const int uvI = i >> state->formatInfo.chromaShiftX;
+            uint32_t uvI = AVIF_MIN(i >> state->formatInfo.chromaShiftX, maxUVI);
             uint32_t unormY = ptrY[i];
             uint32_t unormU = ptrU[uvI];
             uint32_t unormV = ptrV[uvI];
@@ -286,12 +288,14 @@ static avifResult avifImageYUVToRGB8Color(avifImage * image, avifReformatState *
     const float kr = state->kr;
     const float kg = state->kg;
     const float kb = state->kb;
+    const uint32_t maxUVI = (image->width > 1) ? (image->width >> state->formatInfo.chromaShiftX) - 1 : 0;
+    const uint32_t maxUVJ = (image->height > 1) ? (image->height >> state->formatInfo.chromaShiftY) - 1 : 0;
 
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
     uint32_t * rgbRowBytes = image->rgbRowBytes;
     for (uint32_t j = 0; j < image->height; ++j) {
-        int uvJ = j >> state->formatInfo.chromaShiftY;
+        const uint32_t uvJ = AVIF_MIN(j >> state->formatInfo.chromaShiftY, maxUVJ);
         uint8_t * ptrY = &image->yuvPlanes[AVIF_CHAN_Y][(j * image->yuvRowBytes[AVIF_CHAN_Y])];
         uint8_t * ptrU = &image->yuvPlanes[AVIF_CHAN_U][(uvJ * image->yuvRowBytes[AVIF_CHAN_U])];
         uint8_t * ptrV = &image->yuvPlanes[AVIF_CHAN_V][(uvJ * image->yuvRowBytes[AVIF_CHAN_V])];
@@ -301,7 +305,7 @@ static avifResult avifImageYUVToRGB8Color(avifImage * image, avifReformatState *
 
         for (uint32_t i = 0; i < image->width; ++i) {
             // Unpack YUV into unorm
-            const int uvI = i >> state->formatInfo.chromaShiftX;
+            uint32_t uvI = AVIF_MIN(i >> state->formatInfo.chromaShiftX, maxUVI);
             uint32_t unormY = ptrY[i];
             uint32_t unormU = ptrU[uvI];
             uint32_t unormV = ptrV[uvI];

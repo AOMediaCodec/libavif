@@ -12,6 +12,7 @@ extern "C" {
 
 // Yes, clamp macros are nasty. Do not use them.
 #define AVIF_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 // Used by stream related things.
 #define CHECK(A)               \

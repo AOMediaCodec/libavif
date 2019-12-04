@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - avifenc - Removed accidental double-delete of avifImage when failing to read a y4m file input
+- Round dimensions down when decoding subsampled YUV with odd dimensions
 
 ## [0.5.2] - 2019-11-23
 ### Changed
