@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.5)
-project(libavif LANGUAGES C VERSION 0.5.2)
+project(libavif LANGUAGES C VERSION 0.5.3)
 
 # SOVERSION scheme: CURRENT.AGE.REVISION
 #   If there was an incompatible interface change:
@@ -11,7 +11,7 @@ project(libavif LANGUAGES C VERSION 0.5.2)
 #     Increment AGE. Set REVISION to 0
 #   If the source code was changed, but there were no interface changes:
 #     Increment REVISION.
-set(LIBRARY_VERSION "0.1.2")
+set(LIBRARY_VERSION "0.1.3")
 set(LIBRARY_SOVERSION "0")
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU")
