@@ -243,6 +243,10 @@ if(AVIF_BUILD_EXAMPLES)
     target_link_libraries(avif_example1 avif ${AVIF_PLATFORM_LIBRARIES})
 endif()
 
+if(CMAKE_SKIP_INSTALL_RULES)
+    set(SKIP_INSTALL_ALL TRUE)
+endif()
+
 if(NOT SKIP_INSTALL_ALL)
     include(GNUInstallDirs)
 endif()
