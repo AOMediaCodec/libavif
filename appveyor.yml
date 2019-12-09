@@ -32,7 +32,7 @@ install:
     git submodule update --init --recursive
 before_build:
 - cmd: >-
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 
     appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.14.02-win64.zip" -FileName "nasm.zip"
 
@@ -44,7 +44,7 @@ before_build:
 
     nasm -v
 
-    set NINJA_URL="https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-win.zip"
+    set NINJA_URL="https://github.com/ninja-build/ninja/releases/download/v1.9.0/ninja-win.zip"
 
     appveyor DownloadFile %NINJA_URL% -FileName ninja.zip
 
@@ -73,7 +73,7 @@ after_build:
 
     mkdir lib
 
-    set ARTIFACT_ZIP=libavif_vs2017_x64_%APPVEYOR_REPO_COMMIT:~0,8%_%CONFIGURATION%.zip
+    set ARTIFACT_ZIP=libavif_vs2019_x64_%APPVEYOR_REPO_COMMIT:~0,8%_%CONFIGURATION%.zip
 
     copy %CONFIGURATION%\avif.lib lib\avif_x64_%CONFIGURATION%.lib
 
@@ -87,7 +87,7 @@ build:
   parallel: true
   verbosity: minimal
 artifacts:
-- path: 'build\libavif_vs2017_x64_*.zip'
+- path: 'build\libavif_vs2019_x64_*.zip'
   name: Static Lib and Includes
 - path: 'build\*.exe'
   name: Basic apps
