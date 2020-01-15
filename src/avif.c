@@ -149,7 +149,7 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
         }
     }
 
-    if (srcImage->yuvPlanes[AVIF_CHAN_Y] && srcImage->yuvPlanes[AVIF_CHAN_U] && srcImage->yuvPlanes[AVIF_CHAN_V]) {
+    if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
 
         avifPixelFormatInfo formatInfo;
@@ -166,8 +166,10 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
                 planeHeight = uvHeight;
             }
 
-            if (!srcImage->yuvRowBytes[aomPlaneIndex]) {
-                // plane is absent, move on
+            if (!srcImage->yuvRowBytes[aomPlaneIndex] || !srcImage->yuvPlanes[aomPlaneIndex]) {
+                // plane is absent, free dstPlane and move on
+                avifFree(dstImage->yuvPlanes[aomPlaneIndex]);
+                dstImage->yuvRowBytes[aomPlaneIndex] = 0;
                 continue;
             }
 
