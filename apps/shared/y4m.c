@@ -94,11 +94,11 @@ static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t m
 }
 
 #define ADVANCE(BYTES)    \
-    {                     \
+    do {                  \
         p += BYTES;       \
         if (p >= end)     \
             goto cleanup; \
-    }
+    } while(0)
 
 avifBool y4mRead(avifImage * avif, const char * inputFilename)
 {
