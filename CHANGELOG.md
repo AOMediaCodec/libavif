@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.5.4] - 2020-01-21
 ### Changed
 - Fix monochrome inputs on avifImageCopy. Monochrome still isn't really a first-class citizen in libavif, but this should at least honor the incoming data better.
 - Updated README's Basic Decoding section reminding of avifDecoderRead's tradeoffs
@@ -274,7 +276,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.4...HEAD
+[0.5.4]: https://github.com/AOMediaCodec/libavif/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/AOMediaCodec/libavif/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/AOMediaCodec/libavif/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/AOMediaCodec/libavif/compare/v0.5.0...v0.5.1
