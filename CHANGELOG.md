@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Fix monochrome inputs on avifImageCopy. Monochrome still isn't really a first-class citizen in libavif, but this should at least honor the incoming data better.
 - Updated README's Basic Decoding section reminding of avifDecoderRead's tradeoffs
+- build: avoid -ldl if not required or not supported (jbeich)
+- apps: convert ADVANCE to an expression (jbeich)
 
 ## [0.5.3] - 2019-12-03
 ### Added
