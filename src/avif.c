@@ -149,7 +149,7 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
         }
     }
 
-    if (srcImage->yuvPlanes[AVIF_CHAN_Y] && srcImage->yuvPlanes[AVIF_CHAN_U] && srcImage->yuvPlanes[AVIF_CHAN_V]) {
+    if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
 
         avifPixelFormatInfo formatInfo;
@@ -167,7 +167,11 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
             }
 
             if (!srcImage->yuvRowBytes[aomPlaneIndex]) {
-                // plane is absent, move on
+                // plane is absent. If we're copying from a source without
+                // them, mimic the source image's state by removing our copy.
+                avifFree(dstImage->yuvPlanes[aomPlaneIndex]);
+                dstImage->yuvPlanes[aomPlaneIndex] = NULL;
+                dstImage->yuvRowBytes[aomPlaneIndex] = 0;
                 continue;
             }
 
