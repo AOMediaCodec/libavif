@@ -18,7 +18,7 @@ matrix:
       - ./configure && make -j2 && sudo make install
       - nasm --version
       - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson
+      - pip3 --disable-pip-version-check install meson==0.52.1
       - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -43,7 +43,7 @@ matrix:
       - ./configure && make -j2 && sudo make install
       - nasm --version
       - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson
+      - pip3 --disable-pip-version-check install meson==0.52.1
       - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -68,7 +68,7 @@ matrix:
       - ./configure && make -j2 && sudo make install
       - nasm --version
       - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson
+      - pip3 --disable-pip-version-check install meson==0.52.1
       - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
@@ -93,7 +93,7 @@ matrix:
       - ./configure && make -j2 && sudo make install
       - nasm --version
       - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson
+      - pip3 --disable-pip-version-check install meson==0.52.1
       - cd $TRAVIS_BUILD_DIR/ext
       - bash aom.cmd
       - bash dav1d.cmd
