@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Fix monochrome inputs on avifImageCopy. Monochrome still isn't really a first-class citizen in libavif, but this should at least honor the incoming data better.
+- Updated README's Basic Decoding section reminding of avifDecoderRead's tradeoffs
 
 ## [0.5.3] - 2019-12-03
 ### Added

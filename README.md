@@ -15,6 +15,12 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
 ```c
     #include "avif/avif.h"
 
+    // NOTE: avifDecoderRead() offers the simplest means to get an avifImage that is complete independent of
+    // an avifDecoder, but at the cost of additional allocations and copies, and no support for image sequences.
+    // If you don't mind keeping around the avifDecoder while you read in the image and/or need image sequence
+    // support, skip ahead to the Advanced Decoding example. It is only one additional function call, and the
+    // avifImage is owned by the avifDecoder.
+
     // point raw.data and raw.size to the contents of an .avif(s)
     avifROData raw;
     raw.data = ...;
