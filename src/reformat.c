@@ -220,9 +220,9 @@ static avifResult avifImageYUVToRGB16Color(avifImage * image, avifReformatState 
             }
 
             // Convert unorm to float
-            const float Y = unormY / maxChannel;
-            const float Cb = (unormU / maxChannel) - 0.5f;
-            const float Cr = (unormV / maxChannel) - 0.5f;
+            const float Y = (float)unormY / maxChannel;
+            const float Cb = ((float)unormU / maxChannel) - 0.5f;
+            const float Cr = ((float)unormV / maxChannel) - 0.5f;
 
             float R = Y + (2 * (1 - kr)) * Cr;
             float B = Y + (2 * (1 - kb)) * Cb;
@@ -264,7 +264,7 @@ static avifResult avifImageYUVToRGB16Mono(avifImage * image, avifReformatState *
             }
 
             // Convert unorm to float
-            const float Y = unormY / maxChannel;
+            const float Y = (float)unormY / maxChannel;
             const float Cb = -0.5f;
             const float Cr = -0.5f;
 
@@ -318,9 +318,9 @@ static avifResult avifImageYUVToRGB8Color(avifImage * image, avifReformatState *
             }
 
             // Convert unorm to float
-            const float Y = unormY / maxChannel;
-            const float Cb = (unormU / maxChannel) - 0.5f;
-            const float Cr = (unormV / maxChannel) - 0.5f;
+            const float Y = (float)unormY / maxChannel;
+            const float Cb = ((float)unormU / maxChannel) - 0.5f;
+            const float Cr = ((float)unormV / maxChannel) - 0.5f;
 
             float R = Y + (2 * (1 - kr)) * Cr;
             float B = Y + (2 * (1 - kb)) * Cb;
@@ -362,7 +362,7 @@ static avifResult avifImageYUVToRGB8Mono(avifImage * image, avifReformatState * 
             }
 
             // Convert unorm to float
-            const float Y = unormY / maxChannel;
+            const float Y = (float)unormY / maxChannel;
             const float Cb = -0.5f;
             const float Cr = -0.5f;
 

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Enable still picture mode with rav1e >= 0.3.0 (cryptomilk)
 
+### Changed
+- Explicitly cast unorms to float during YUV conversion, fixing clang warning
+
 ## [0.5.4] - 2020-01-21
 ### Changed
 - Fix monochrome inputs on avifImageCopy. Monochrome still isn't really a first-class citizen in libavif, but this should at least honor the incoming data better.
