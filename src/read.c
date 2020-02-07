@@ -181,6 +181,7 @@ typedef struct avifSampleTable
     avifSampleTableSampleSizeArray sampleSizes;
     avifSampleTableTimeToSampleArray timeToSamples;
     avifSyncSampleArray syncSamples;
+    uint32_t allSamplesSize; // If this is non-zero, sampleSizes will be empty and all samples will be this size
 } avifSampleTable;
 
 static avifSampleTable * avifSampleTableCreate()
@@ -305,23 +306,26 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
 
         uint64_t sampleOffset = chunk->offset;
         for (uint32_t sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex) {
-            if (sampleSizeIndex >= sampleTable->sampleSizes.count) {
-                // We've run out of samples to sum
-                return AVIF_FALSE;
+            uint32_t sampleSize = sampleTable->allSamplesSize;
+            if (sampleSize == 0) {
+                if (sampleSizeIndex >= sampleTable->sampleSizes.count) {
+                    // We've run out of samples to sum
+                    return AVIF_FALSE;
+                }
+                avifSampleTableSampleSize * sampleSizePtr = &sampleTable->sampleSizes.sampleSize[sampleSizeIndex];
+                sampleSize = sampleSizePtr->size;
             }
-
-            avifSampleTableSampleSize * sampleSize = &sampleTable->sampleSizes.sampleSize[sampleSizeIndex];
 
             avifSample * sample = (avifSample *)avifArrayPushPtr(&decodeInput->samples);
             sample->data.data = rawInput->data + sampleOffset;
-            sample->data.size = sampleSize->size;
+            sample->data.size = sampleSize;
             sample->sync = AVIF_FALSE; // to potentially be set to true following the outer loop
 
             if (sampleOffset > (uint64_t)rawInput->size) {
                 return AVIF_FALSE;
             }
 
-            sampleOffset += sampleSize->size;
+            sampleOffset += sampleSize;
             ++sampleSizeIndex;
         }
     }
@@ -1112,17 +1116,16 @@ static avifBool avifParseSampleSizeBox(avifData * data, avifSampleTable * sample
 
     CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
-    uint32_t allSamplesSize, entryCount;
+    uint32_t allSamplesSize, sampleCount;
     CHECK(avifROStreamReadU32(&s, &allSamplesSize)); // unsigned int(32) sample_size;
-    CHECK(avifROStreamReadU32(&s, &entryCount));     // unsigned int(32) entry_count;
+    CHECK(avifROStreamReadU32(&s, &sampleCount));    // unsigned int(32) sample_count;
 
-    for (uint32_t i = 0; i < entryCount; ++i) {
-        avifSampleTableSampleSize * sampleSize = (avifSampleTableSampleSize *)avifArrayPushPtr(&sampleTable->sampleSizes);
-        if (allSamplesSize == 0) {
+    if (allSamplesSize > 0) {
+        sampleTable->allSamplesSize = allSamplesSize;
+    } else {
+        for (uint32_t i = 0; i < sampleCount; ++i) {
+            avifSampleTableSampleSize * sampleSize = (avifSampleTableSampleSize *)avifArrayPushPtr(&sampleTable->sampleSizes);
             CHECK(avifROStreamReadU32(&s, &sampleSize->size)); // unsigned int(32) entry_size;
-        } else {
-            // This could be done more efficiently, memory-wise.
-            sampleSize->size = allSamplesSize;
         }
     }
     return AVIF_TRUE;
