@@ -1557,6 +1557,15 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image = avifImageCreateEmpty();
     }
 
+    if (data->colorInput) {
+        avifCodecDecodeInputDestroy(data->colorInput);
+        data->colorInput = NULL;
+    }
+    if (data->alphaInput) {
+        avifCodecDecodeInputDestroy(data->alphaInput);
+        data->alphaInput = NULL;
+    }
+
     memset(&decoder->ioStats, 0, sizeof(decoder->ioStats));
 
     // -----------------------------------------------------------------------

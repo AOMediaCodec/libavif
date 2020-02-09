@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Explicitly cast unorms to float during YUV conversion, fixing clang warning
 - Optimize SampleSizeBox parsing when sample_size>0, fixes OOM oss-fuzz issue #5192805347753984
+- Fix memory leak when using avifDecoderReset(), fixes oss-fuzz issue #5770230506979328
 
 ## [0.5.4] - 2020-01-21
 ### Changed
