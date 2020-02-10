@@ -101,10 +101,6 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         }
     }
 
-    if (!codec->internal->image) {
-        return AVIF_FALSE;
-    }
-
     avifBool isColor = !codec->decodeInput->alpha;
     if (isColor) {
         // Color (YUV) planes - set image to correct size / format, fill color
