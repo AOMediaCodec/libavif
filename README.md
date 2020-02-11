@@ -235,13 +235,14 @@ These libraries (in their C API form) must be externally available
 a child CMake project, the appropriate CMake target must already exist
 by the time libavif's CMake scripts are executed.
 
-# Local Builds
+# Local / Static Builds
 
 The `ext/` subdirectory contains a handful of basic scripts which each pull
 down a known-good copy of an AV1 codec and make a local static library build.
-If you want to statically link any codec into your local build of libavif,
-building using one of these scripts and then enabling the associated
-`AVIF_LOCAL_*` is a convenient method.
+If you want to statically link any codec into your local (static) build of
+libavif, building using one of these scripts and then enabling the associated
+`AVIF_LOCAL_*` is a convenient method, but you must make sure to disable
+`BUILD_SHARED_LIBS` in CMake to instruct it to make a static libavif library.
 
 If you want to build/install shared libraries for AV1 codecs, you can still
 peek inside of each script to see where the current known-good SHA is for each
