@@ -1,0 +1,36 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    env:
+      CC: gcc-8
+      CXX: g++-8
+    steps:
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -y ninja-build nasm gcc-8 g++-8
+        pip install --upgrade pip
+        pip install setuptools
+        pip install meson
+    - uses: actions/checkout@v2
+    - name: Setup aom
+      working-directory: ./ext
+      run: bash aom.cmd
+    - name: Setup dav1d
+      working-directory: ./ext
+      run: bash dav1d.cmd
+    - name: Setup rav1e
+      working-directory: ./ext
+      run: bash rav1e.cmd
+    - name: Prepare libavif (cmake)
+      run: |
+        mkdir build && cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON
+    - name: Build libavif (make)
+      working-directory: ./build
+      run: make
