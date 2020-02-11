@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimize SampleSizeBox parsing when sample_size>0, fixes OOM oss-fuzz issue #5192805347753984
 - Fix memory leak when using avifDecoderReset(), fixes oss-fuzz issue #5770230506979328
 - Update default rav1e version from 0.2.1 to 0.3.0
+- Remove a null check for codec->internal->image (wantehchang)
 
 ## [0.5.4] - 2020-01-21
 ### Changed
