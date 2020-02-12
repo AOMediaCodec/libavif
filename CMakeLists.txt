@@ -276,12 +276,28 @@ if(AVIF_BUILD_APPS)
     endif()
 endif()
 
-option(AVIF_BUILD_TESTS "Build avif tests (fuzzing)." OFF)
+option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 if(AVIF_BUILD_TESTS)
     add_executable(aviffuzz
         tests/aviffuzz.c
     )
     target_link_libraries(aviffuzz avif ${AVIF_PLATFORM_LIBRARIES})
+
+    find_package(PNG)
+    if(PNG_LIBRARIES)
+        include_directories(${PNG_INCLUDE_DIRS})
+        add_executable(aviftest
+            tests/aviftest.c
+        )
+        target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARIES})
+
+        add_custom_target(avif_test_all
+            COMMAND $<TARGET_FILE:aviftest> -r
+            DEPENDS aviftest
+        )
+    else()
+        message(WARNING "Skipping build of aviftest, libpng not found.")
+    endif()
 endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
