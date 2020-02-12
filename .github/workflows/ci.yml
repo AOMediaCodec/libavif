@@ -37,4 +37,4 @@ jobs:
       run: make -j $(($(nproc) + 1))
     - name: Run AVIF Tests
       working-directory: ./build
-      run: ./aviftest -r ../tests/data
+      run: make avif_test_all
