@@ -17,5 +17,5 @@ cd rav1e
 cargo install cbindgen
 cbindgen -c cbindgen.toml -l C -o target/release/include/rav1e/rav1e.h --crate rav1e .
 
-cargo build --release --features capi
+cargo build --lib --release --features capi
 cd ..
