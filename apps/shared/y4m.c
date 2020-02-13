@@ -98,7 +98,7 @@ static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t m
         p += BYTES;       \
         if (p >= end)     \
             goto cleanup; \
-    } while(0)
+    } while (0)
 
 avifBool y4mRead(avifImage * avif, const char * inputFilename)
 {
@@ -227,7 +227,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     avif->height = height;
     avif->depth = depth;
     avif->yuvFormat = format;
-    avif->yuvRange = (uint8_t)rangeFlag;
+    avif->yuvRange = (rangeFlag == AVIF_NCLX_LIMITED_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     avifPixelFormatInfo info;

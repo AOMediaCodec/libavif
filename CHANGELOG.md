@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Enable still picture mode with rav1e >= 0.3.0 (cryptomilk)
+- Basic test suite (aviftest, rough draft)
 
 ### Changed
 - Explicitly cast unorms to float during YUV conversion, fixing clang warning
