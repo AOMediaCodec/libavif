@@ -4,6 +4,7 @@
 #include "compare.h"
 
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 avifBool compareYUVA(ImageComparison * ic, avifImage * image1, avifImage * image2)

@@ -23,7 +23,7 @@ typedef struct TestCase
     float avgThreshold;
 } TestCase;
 
-TestCase * testCaseCreate();
+TestCase * testCaseCreate(void);
 TestCase * testCaseFromJSON(cJSON * json);
 void testCaseDestroy(TestCase * tc);
 void testCaseSetInputFilename(TestCase * tc, const char * inputFilename);

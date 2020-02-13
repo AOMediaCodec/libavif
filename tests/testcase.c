@@ -37,7 +37,7 @@ static avifCodecChoice stringToChoice(const char * str)
     return AVIF_CODEC_CHOICE_AUTO;
 }
 
-TestCase * testCaseCreate()
+TestCase * testCaseCreate(void)
 {
     TestCase * tc = malloc(sizeof(TestCase));
     memset(tc, 0, sizeof(TestCase));

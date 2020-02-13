@@ -44,6 +44,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-documentation
     -Wno-documentation-unknown-command
     -Wno-double-promotion
+    -Wno-float-equal
     -Wno-format-nonliteral
     -Wno-language-extension-token
     -Wno-missing-noreturn
