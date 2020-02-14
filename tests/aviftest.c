@@ -266,7 +266,10 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    printf("Test Data Dir: %s\n", dataDir);
+    char codecVersions[256];
+    avifCodecVersions(codecVersions);
+    printf("Codec Versions: %s\n", codecVersions);
+    printf("Test Data Dir : %s\n", dataDir);
 
     int retCode = 1;
     if (generate) {
