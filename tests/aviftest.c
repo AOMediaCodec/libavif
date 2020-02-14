@@ -266,6 +266,8 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    setbuf(stdout, NULL);
+
     char codecVersions[256];
     avifCodecVersions(codecVersions);
     printf("Codec Versions: %s\n", codecVersions);
