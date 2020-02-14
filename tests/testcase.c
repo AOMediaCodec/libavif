@@ -77,14 +77,16 @@ void testCaseGenerateName(TestCase * tc)
     }
 
     char nameBuffer[1024];
-    sprintf(nameBuffer,
-            "%s_%s_to_%s_qp%d_%d_speed%d",
-            basenameBuffer,
-            choiceToString(tc->encodeChoice),
-            choiceToString(tc->decodeChoice),
-            tc->minQuantizer,
-            tc->maxQuantizer,
-            tc->speed);
+    snprintf(nameBuffer,
+             sizeof(nameBuffer),
+             "%s_%s_to_%s_qp%d_%d_speed%d",
+             basenameBuffer,
+             choiceToString(tc->encodeChoice),
+             choiceToString(tc->decodeChoice),
+             tc->minQuantizer,
+             tc->maxQuantizer,
+             tc->speed);
+    nameBuffer[sizeof(nameBuffer) - 1] = 0;
     if (tc->name) {
         free(tc->name);
     }
@@ -191,7 +193,8 @@ int testCaseRun(TestCase * tc, const char * dataDir, avifBool generating)
     }
 
     char y4mFilename[2048];
-    sprintf(y4mFilename, "%s/%s", dataDir, tc->inputFilename);
+    snprintf(y4mFilename, sizeof(y4mFilename), "%s/%s", dataDir, tc->inputFilename);
+    y4mFilename[sizeof(y4mFilename) - 1] = 0;
 
     avifImage * image = avifImageCreateEmpty();
     if (!y4mRead(image, y4mFilename)) {

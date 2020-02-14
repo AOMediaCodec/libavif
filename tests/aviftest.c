@@ -30,7 +30,8 @@ static const char * nextFilename(const char * parentDir, const char * extension,
             }
         } else {
             char filenameBuffer[2048];
-            sprintf(filenameBuffer, "%s\\*", parentDir);
+            snprintf(filenameBuffer, sizeof(filenameBuffer), "%s\\*", parentDir);
+            filenameBuffer[sizeof(filenameBuffer) - 1] = 0;
             nfd->handle = FindFirstFile(filenameBuffer, &nfd->wfd);
             if (nfd->handle == INVALID_HANDLE_VALUE) {
                 return NULL;
@@ -146,7 +147,8 @@ static int generateTests(const char * dataDir)
     char * jsonString = cJSON_PrintUnformatted(tests);
 
     char testJSONFilename[2048];
-    sprintf(testJSONFilename, "%s/tests.json", dataDir);
+    snprintf(testJSONFilename, sizeof(testJSONFilename), "%s/tests.json", dataDir);
+    testJSONFilename[sizeof(testJSONFilename) - 1] = 0;
     FILE * f = fopen(testJSONFilename, "wb");
     if (f) {
         fprintf(f, "%s", jsonString);
@@ -170,7 +172,8 @@ static int runTests(const char * dataDir, const char * testFilter)
     printf("AVIF Test Suite: Running Tests...\n");
 
     char testJSONFilename[2048];
-    sprintf(testJSONFilename, "%s/tests.json", dataDir);
+    snprintf(testJSONFilename, sizeof(testJSONFilename), "%s/tests.json", dataDir);
+    testJSONFilename[sizeof(testJSONFilename) - 1] = 0;
     FILE * f = fopen(testJSONFilename, "rb");
     if (!f) {
         printf("ERROR: Failed to read: %s\n", testJSONFilename);
