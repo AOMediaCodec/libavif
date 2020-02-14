@@ -77,15 +77,17 @@ void testCaseGenerateName(TestCase * tc)
     }
 
     char nameBuffer[1024];
-    snprintf(nameBuffer,
-             sizeof(nameBuffer),
-             "%s_%s_to_%s_qp%d_%d_speed%d",
-             basenameBuffer,
-             choiceToString(tc->encodeChoice),
-             choiceToString(tc->decodeChoice),
-             tc->minQuantizer,
-             tc->maxQuantizer,
-             tc->speed);
+    if (snprintf(nameBuffer,
+                 sizeof(nameBuffer),
+                 "%s_%s_to_%s_qp%d_%d_speed%d",
+                 basenameBuffer,
+                 choiceToString(tc->encodeChoice),
+                 choiceToString(tc->decodeChoice),
+                 tc->minQuantizer,
+                 tc->maxQuantizer,
+                 tc->speed) < 0) {
+        nameBuffer[0] = 0;
+    }
     nameBuffer[sizeof(nameBuffer) - 1] = 0;
     if (tc->name) {
         free(tc->name);
