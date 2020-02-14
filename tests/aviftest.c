@@ -182,7 +182,12 @@ static int runTests(const char * dataDir, const char * testFilter)
     fseek(f, 0, SEEK_SET);
 
     char * rawJSON = malloc(fileSize + 1);
-    fread(rawJSON, 1, fileSize, f);
+    if (fread(rawJSON, 1, fileSize, f) != fileSize) {
+        printf("ERROR: Failed to read: %s\n", testJSONFilename);
+        free(rawJSON);
+        fclose(f);
+        return 1;
+    }
     rawJSON[fileSize] = 0;
     fclose(f);
 

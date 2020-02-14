@@ -53,10 +53,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-sign-conversion
     -Wno-switch-enum
     -Wno-undef
-    -Wno-unused-result
   )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
-  add_definitions(-std=c99) # Enforce C99 for gcc
+  add_definitions(-std=gnu99) # Enforce C99 for gcc
   MESSAGE(STATUS "libavif: Enabling warnings for GCC")
   add_definitions(-Werror -Wall -Wextra)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
