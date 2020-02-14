@@ -101,7 +101,6 @@ static int generateTests(const char * dataDir)
         int maxQP;
     } quantizerPairs[] = {
         { 0, 0 },  // lossless
-        { 0, 10 }, // Q90
         { 4, 40 }, // Q60
         { 24, 60 } // Q40
     };
@@ -118,7 +117,7 @@ static int generateTests(const char * dataDir)
             const int decodeChoiceCount = sizeof(decodeChoices) / sizeof(decodeChoices[0]);
             for (int decodeChoiceIndex = 0; decodeChoiceIndex < decodeChoiceCount; ++decodeChoiceIndex) {
                 for (int qpIndex = 0; qpIndex < quantizerPairsCount; ++qpIndex) {
-                    int speeds[] = { 0, 6, 8 };
+                    int speeds[] = { AVIF_SPEED_DEFAULT, 10 };
                     int speedCount = sizeof(speeds) / sizeof(speeds[0]);
                     for (int speedIndex = 0; speedIndex < speedCount; ++speedIndex) {
                         TestCase * tc = testCaseCreate();
