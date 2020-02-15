@@ -190,8 +190,8 @@ static avifResult avifImageYUVToRGB16Color(avifImage * image, avifReformatState 
     const float kr = state->kr;
     const float kg = state->kg;
     const float kb = state->kb;
-    const uint32_t maxUVI = (image->width > 1) ? (image->width >> state->formatInfo.chromaShiftX) - 1 : 0;
-    const uint32_t maxUVJ = (image->height > 1) ? (image->height >> state->formatInfo.chromaShiftY) - 1 : 0;
+    const uint32_t maxUVI = (image->width > 1) ? ((image->width+state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1 : 0;
+    const uint32_t maxUVJ = (image->height > 1) ? ((image->height+state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1 : 0;
 
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
@@ -288,8 +288,8 @@ static avifResult avifImageYUVToRGB8Color(avifImage * image, avifReformatState *
     const float kr = state->kr;
     const float kg = state->kg;
     const float kb = state->kb;
-    const uint32_t maxUVI = (image->width > 1) ? (image->width >> state->formatInfo.chromaShiftX) - 1 : 0;
-    const uint32_t maxUVJ = (image->height > 1) ? (image->height >> state->formatInfo.chromaShiftY) - 1 : 0;
+    const uint32_t maxUVI = (image->width > 1) ? ((image->width+state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1 : 0;
+    const uint32_t maxUVJ = (image->height > 1) ? ((image->height+state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1 : 0;
 
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
