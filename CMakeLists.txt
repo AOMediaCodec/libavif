@@ -2,6 +2,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.5)
+
+# Specify search path for CMake modules to be loaded by include() 
+# and find_package()
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+
 project(libavif LANGUAGES C VERSION 0.5.5)
 
 # SOVERSION scheme: CURRENT.AGE.REVISION
@@ -123,18 +128,10 @@ if(AVIF_CODEC_DAV1D)
     else()
         # Check to see if dav1d is independently being built by the outer CMake project
         if(NOT TARGET dav1d)
-            find_library(LIBDAV1D_LIBRARY_PATH NAMES dav1d)
-            if(NOT LIBDAV1D_LIBRARY_PATH)
-              message(FATAL_ERROR "libavif: dav1d library not found")
-            endif()
-            find_path (LIBDAV1D_INCLUDE_PATH dav1d/dav1d.h)
-            if(NOT LIBDAV1D_INCLUDE_PATH)
-              message(FATAL_ERROR "libavif: dav1d library includes not found")
-            endif()
-            message(STATUS "LIBDAV1D_INCLUDE_PATH: ${LIBDAV1D_INCLUDE_PATH}")
-            include_directories(${LIBDAV1D_INCLUDE_PATH})
+            find_package(dav1d REQUIRED)
+            include_directories(${DAV1D_INCLUDEDIR})
         endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} dav1d)
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
     endif()
 endif()
 
