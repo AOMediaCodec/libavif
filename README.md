@@ -36,7 +36,7 @@ if (decodeResult == AVIF_RESULT_OK) {
     ... image->height;
     ... image->depth;     // If >8, all plane ptrs below are uint16_t*
     ... image->yuvFormat; // U and V planes might be smaller than Y based on format,
-                            // use avifGetPixelFormatInfo() to find out in a generic way
+                          // use avifGetPixelFormatInfo() to find out in a generic way
 
     // Option 1: Use YUV planes directly
     ... image->yuvPlanes;
@@ -120,7 +120,7 @@ if (decodeResult == AVIF_RESULT_OK) {
         ... decoder->image->height;
         ... decoder->image->depth;     // If >8, all plane ptrs below are uint16_t*
         ... decoder->image->yuvFormat; // U and V planes might be smaller than Y based on format,
-                                        // use avifGetPixelFormatInfo() to find out in a generic way
+                                       // use avifGetPixelFormatInfo() to find out in a generic way
 
         // See Basic Decoding example for color profile and metadata querying
 
