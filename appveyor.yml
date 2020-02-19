@@ -1,7 +1,8 @@
 image: Visual Studio 2019
 configuration: Release
 branches:
-  only: master
+  only:
+  - master
 
 install: git submodule update --init --recursive
 before_build:
