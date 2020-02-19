@@ -13,15 +13,16 @@ install:
  - move nasm-* NASM
  - set PATH=%PATH%;%CD%\NASM;
  - nasm -v
- # Build libaom
+ # Build libaom and dav1d
  - cd ext
  - aom.cmd
+ - dav1d.cmd
  - cd ..
  # Configure with CMake
  - mkdir build
  - cd build
  - cmake --version
- - cmake .. -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DBUILD_SHARED_LIBS=OFF -DAVIF_BUILD_APPS=ON
+ - cmake .. -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1d=ON -DAVIF_LOCAL_DAV1d=ON -DBUILD_SHARED_LIBS=OFF -DAVIF_BUILD_APPS=ON
 
 build:
   project: build/libavif.sln
