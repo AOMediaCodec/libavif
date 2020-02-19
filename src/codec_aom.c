@@ -254,6 +254,26 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
         }
     }
 
+    if (image->depth > 8) {
+        // Due to a known issue with libavif v1.0.0-errata1-avif, 10bpc and
+        // 12bpc image encodes will call the wrong variant of
+        // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
+        // a new tagged release from libaom with the fix and can verify we're
+        // running with that version of libaom, we must avoid using
+        // cpu-used=7/8 on any >8bpc image encodes.
+        //
+        // Context:
+        //   * https://github.com/AOMediaCodec/libavif/issues/49
+        //   * https://bugs.chromium.org/p/aomedia/issues/detail?id=2587
+        //
+        // Continued bug tracking here:
+        //   * https://github.com/AOMediaCodec/libavif/issues/56
+
+        if (aomCpuUsed > 6) {
+            aomCpuUsed = 6;
+        }
+    }
+
     int yShift = 0;
     aom_img_fmt_t aomFormat = avifImageCalcAOMFmt(image, alpha, &yShift);
     if (aomFormat == AOM_IMG_FMT_NONE) {
