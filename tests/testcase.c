@@ -19,6 +19,8 @@ static const char * choiceToString(avifCodecChoice choice)
             return "aom";
         case AVIF_CODEC_CHOICE_DAV1D:
             return "dav1d";
+        case AVIF_CODEC_CHOICE_LIBGAV1:
+            return "libgav1";
         case AVIF_CODEC_CHOICE_RAV1E:
             return "rav1e";
     }
@@ -31,6 +33,8 @@ static avifCodecChoice stringToChoice(const char * str)
         return AVIF_CODEC_CHOICE_AOM;
     } else if (!strcmp(str, "dav1d")) {
         return AVIF_CODEC_CHOICE_DAV1D;
+    } else if (!strcmp(str, "libgav1")) {
+        return AVIF_CODEC_CHOICE_LIBGAV1;
     } else if (!strcmp(str, "rav1e")) {
         return AVIF_CODEC_CHOICE_RAV1E;
     }
