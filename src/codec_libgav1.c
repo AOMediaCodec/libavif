@@ -164,5 +164,8 @@ avifCodec * avifCodecCreateGav1(void)
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     Libgav1DecoderSettingsInitDefault(&codec->internal->gav1Settings);
+    // The number of threads (default to 1) should depend on the number of
+    // processor cores. For now use a hardcoded value of 2.
+    codec->internal->gav1Settings.threads = 2;
     return codec;
 }
