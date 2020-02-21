@@ -6,7 +6,7 @@
 #  LIBGAV1_LIBRARIES - Link these to use libgav1
 #
 #=============================================================================
-#  Copyright (c) 2020 Andreas Schneider <asn@cryptomilk.org>
+#  Copyright (c) 2020 Google LLC
 #
 #  Distributed under the OSI-approved BSD License (the "License");
 #  see accompanying file Copyright.txt for details.
