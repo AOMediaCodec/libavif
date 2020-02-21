@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - libgav1 decode codec support. (wantehchang @Google)
 
+### Changed
+- AppVeyor builds now compile with dav1d (EwoutH)
+
 ## [0.5.6] - 2020-02-19
 ### Added
 - Added CMake Find modules for aom, dav1d, rav1e (cryptomilk)
