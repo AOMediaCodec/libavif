@@ -231,7 +231,7 @@ following CMake options:
 
 * `AVIF_CODEC_AOM` - requires CMake, NASM
 * `AVIF_CODEC_DAV1D` - requires Meson, Ninja, NASM
-* `AVIF_CODEC_LIBGAV1` - requires CMake
+* `AVIF_CODEC_LIBGAV1` - requires CMake, Ninja
 * `AVIF_CODEC_RAV1E` - requires cargo (Rust), NASM
 
 These libraries (in their C API form) must be externally available
