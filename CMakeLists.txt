@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.5)
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C VERSION 0.5.6)
+project(libavif LANGUAGES C CXX VERSION 0.5.6)
 
 # SOVERSION scheme: CURRENT.AGE.REVISION
 #   If there was an incompatible interface change:
@@ -27,10 +27,12 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
+option(AVIF_CODEC_LIBGAV1 "Use the libgav1 codec for decoding (overrides AOM decoding if also enabled)" OFF)
 option(AVIF_CODEC_RAV1E "Use the rav1e codec for encoding (overrides AOM encoding if also enabled)" OFF)
 
 option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d (see Local Builds in README)" OFF)
+option(AVIF_LOCAL_LIBGAV1 "Build the libgav1 codec by providing your own copy of the repo in ext/libgav1 (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo in ext/rav1e (see Local Builds in README)" OFF)
 
 # Enable all warnings
@@ -135,6 +137,33 @@ if(AVIF_CODEC_DAV1D)
     endif()
 endif()
 
+if(AVIF_CODEC_LIBGAV1)
+    message(STATUS "libavif: Codec enabled: libgav1 (decode)")
+    add_definitions(-DAVIF_CODEC_LIBGAV1=1)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/codec_libgav1.c
+    )
+
+    if(AVIF_LOCAL_LIBGAV1)
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/build/libgav1${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        if(NOT EXISTS "${LIB_FILENAME}")
+            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+        endif()
+
+        include_directories(
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/src"
+        )
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
+    else()
+        # Check to see if libgav1 is independently being built by the outer CMake project
+        if(NOT TARGET libgav1)
+            find_package(libgav1 REQUIRED)
+            include_directories(${LIBGAV1_INCLUDEDIR})
+        endif()
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
+    endif()
+endif()
+
 if(AVIF_CODEC_RAV1E)
     message(STATUS "libavif: Codec enabled: rav1e (encode)")
     add_definitions(-DAVIF_CODEC_RAV1E=1)
@@ -204,7 +233,7 @@ if(AVIF_CODEC_AOM)
     endif()
 endif()
 
-if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
+if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)
     message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
 endif()
 
@@ -222,6 +251,9 @@ target_include_directories(avif
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     add_executable(avif_example1 examples/avif_example1.c)
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avif_example1 PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
     target_link_libraries(avif_example1 avif ${AVIF_PLATFORM_LIBRARIES})
 endif()
 
@@ -241,12 +273,18 @@ if(AVIF_BUILD_APPS)
         apps/shared/y4m.c
         apps/shared/avifutil.c
     )
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
     target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES})
     add_executable(avifdec
         apps/avifdec.c
         apps/shared/y4m.c
         apps/shared/avifutil.c
     )
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
     target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES})
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
@@ -268,6 +306,9 @@ if(AVIF_BUILD_TESTS)
         tests/compare.c
         tests/testcase.c
     )
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
     target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
 
     add_custom_target(avif_test_all
