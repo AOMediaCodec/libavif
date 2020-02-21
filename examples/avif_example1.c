@@ -10,6 +10,7 @@ int main(int argc, char * argv[])
 {
     (void)argc;
     (void)argv;
+    int exitStatus = 0;
 
     printf("avif version: %s\n", avifVersion());
 
@@ -53,37 +54,48 @@ int main(int argc, char * argv[])
     }
 #endif
 
-    if (res == AVIF_RESULT_OK) {
-        // Decode it
-        avifImage * decoded = avifImageCreateEmpty();
-        avifDecoder * decoder = avifDecoderCreate();
-        avifResult decodeResult = avifDecoderRead(decoder, decoded, (avifROData *)&raw);
-        avifDecoderDestroy(decoder);
+    if (res != AVIF_RESULT_OK) {
+        exitStatus = 1;
+        goto encode_failed;
+    }
 
-        if (decodeResult == AVIF_RESULT_OK) {
-            avifImageYUVToRGB(decoded);
-            for (int j = 0; j < height; ++j) {
-                for (int i = 0; i < width; ++i) {
-                    for (int plane = 0; plane < 3; ++plane) {
-                        uint32_t src = image->rgbPlanes[plane][i + (j * image->rgbRowBytes[plane])];
-                        uint32_t dst = decoded->rgbPlanes[plane][i + (j * decoded->rgbRowBytes[plane])];
-                        if (src != dst) {
-                            printf("(%d,%d,p%d)   %d != %d\n", i, j, plane, src, dst);
-                        }
-                    }
+    // Decode it
+    avifImage * decoded = avifImageCreateEmpty();
+    avifDecoder * decoder = avifDecoderCreate();
+    avifResult decodeResult = avifDecoderRead(decoder, decoded, (avifROData *)&raw);
+    avifDecoderDestroy(decoder);
+
+    if (decodeResult != AVIF_RESULT_OK) {
+        exitStatus = 1;
+        goto decode_failed;
+    }
+    if (avifImageYUVToRGB(decoded) != AVIF_RESULT_OK) {
+        exitStatus = 1;
+        goto decode_failed;
+    }
+    for (int j = 0; j < height; ++j) {
+        for (int i = 0; i < width; ++i) {
+            for (int plane = 0; plane < 3; ++plane) {
+                uint32_t src = image->rgbPlanes[plane][i + (j * image->rgbRowBytes[plane])];
+                uint32_t dst = decoded->rgbPlanes[plane][i + (j * decoded->rgbRowBytes[plane])];
+                if (src != dst) {
+                    printf("(%d,%d,p%d)   %d != %d\n", i, j, plane, src, dst);
+                    exitStatus = 1;
                 }
             }
         }
-
-        avifImageDestroy(decoded);
     }
 
+decode_failed:
+    avifImageDestroy(decoded);
+
+encode_failed:
     avifImageDestroy(image);
 #else  /* if 1 */
 
     FILE * f = fopen("test.avif", "rb");
     if (!f)
-        return 0;
+        return 1;
 
     fseek(f, 0, SEEK_END);
     uint32_t size = ftell(f);
@@ -97,5 +109,5 @@ int main(int argc, char * argv[])
     avifResult decodeResult = avifImageRead(decoded, &raw);
     avifRWDataFree(&raw);
 #endif /* if 1 */
-    return 0;
+    return exitStatus;
 }
