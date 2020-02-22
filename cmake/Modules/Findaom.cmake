@@ -19,7 +19,7 @@
 
 find_package(PkgConfig QUIET)
 if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_DAV1D dav1d)
+    pkg_check_modules(_AOM aom)
 endif (PKG_CONFIG_FOUND)
 
 find_path(AOM_INCLUDE_DIR

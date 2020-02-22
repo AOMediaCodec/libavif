@@ -19,7 +19,7 @@
 
 find_package(PkgConfig QUIET)
 if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_DAV1D dav1d)
+    pkg_check_modules(_RAV1e rav1e)
 endif (PKG_CONFIG_FOUND)
 
 find_path(RAV1E_INCLUDE_DIR
