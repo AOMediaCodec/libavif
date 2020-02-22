@@ -131,7 +131,7 @@ if(AVIF_CODEC_DAV1D)
         # Check to see if dav1d is independently being built by the outer CMake project
         if(NOT TARGET dav1d)
             find_package(dav1d REQUIRED)
-            include_directories(${DAV1D_INCLUDEDIR})
+            include_directories(${DAV1D_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
     endif()
