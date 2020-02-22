@@ -64,12 +64,6 @@ AVIF_ARRAY_DECLARE(avifRWDataArray, avifRWData, raw);
 void avifImageCopyDecoderAlpha(avifImage * image);
 
 // ---------------------------------------------------------------------------
-// Memory management
-
-void * avifAlloc(size_t size);
-void avifFree(void * p);
-
-// ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
 typedef struct avifSample
