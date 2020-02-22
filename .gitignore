@@ -3,6 +3,7 @@
 /ext/aom
 /ext/rav1e
 /ext/dav1d
+/ext/libgav1
 .clangd/
 cscope.*
 tags
