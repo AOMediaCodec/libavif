@@ -113,7 +113,7 @@ static int generateTests(const char * dataDir)
         avifCodecChoice encodeChoices[] = { AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_RAV1E };
         const int encodeChoiceCount = sizeof(encodeChoices) / sizeof(encodeChoices[0]);
         for (int encodeChoiceIndex = 0; encodeChoiceIndex < encodeChoiceCount; ++encodeChoiceIndex) {
-            avifCodecChoice decodeChoices[] = { AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D };
+            avifCodecChoice decodeChoices[] = { AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D, AVIF_CODEC_CHOICE_LIBGAV1 };
             const int decodeChoiceCount = sizeof(decodeChoices) / sizeof(decodeChoices[0]);
             for (int decodeChoiceIndex = 0; decodeChoiceIndex < decodeChoiceCount; ++decodeChoiceIndex) {
                 for (int qpIndex = 0; qpIndex < quantizerPairsCount; ++qpIndex) {
