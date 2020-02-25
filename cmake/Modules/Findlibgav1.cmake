@@ -28,7 +28,7 @@ find_path(LIBGAV1_INCLUDE_DIR
 )
 
 find_library(LIBGAV1_LIBRARY
-             NAMES libgav1
+             NAMES gav1
              PATHS ${_LIBGAV1_LIBDIR})
 
 if (LIBGAV1_LIBRARY)
