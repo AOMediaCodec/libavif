@@ -13,36 +13,17 @@
 
 typedef float gbFloat3[3];
 
-typedef union gbVec2
-{
-    struct
-    {
-        float x, y;
-    } xy;
-    float e[2];
-} gbVec2;
-
 typedef union gbVec3
 {
     struct
     {
         float x, y, z;
     } xyz;
-    struct
-    {
-        float r, g, b;
-    } rgb;
-
-    gbVec2 xy;
     float e[3];
 } gbVec3;
 
 typedef union gbMat3
 {
-    struct
-    {
-        gbVec3 x, y, z;
-    } xyz;
     gbVec3 col[3];
     float e[9];
 } gbMat3;
@@ -81,7 +62,7 @@ static void gb_mat3_transpose(gbMat3 * m)
     gb_float33_transpose(gb_float33_m(m));
 }
 
-static float gb_mat3_determinate(gbMat3 * m)
+static float gb_mat3_determinant(gbMat3 * m)
 {
     gbFloat3 * e = gb_float33_m(m);
     float d = +e[0][0] * (e[1][1] * e[2][2] - e[1][2] * e[2][1]) - e[0][1] * (e[1][0] * e[2][2] - e[1][2] * e[2][0]) +
@@ -118,7 +99,7 @@ static void gb_mat3_inverse(gbMat3 * out, gbMat3 * in)
     gbFloat3 * o = gb_float33_m(out);
     gbFloat3 * i = gb_float33_m(in);
 
-    float ood = 1.0f / gb_mat3_determinate(in);
+    float ood = 1.0f / gb_mat3_determinant(in);
 
     o[0][0] = +(i[1][1] * i[2][2] - i[2][1] * i[1][2]) * ood;
     o[0][1] = -(i[1][0] * i[2][2] - i[2][0] * i[1][2]) * ood;
