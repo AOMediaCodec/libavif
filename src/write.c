@@ -116,7 +116,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     // -----------------------------------------------------------------------
     // Reformat pixels, if need be
 
-    if (!image->width || !image->height || !image->depth) {
+    if (!image->width || !image->height) {
         result = AVIF_RESULT_NO_CONTENT;
         goto writeCleanup;
     }
@@ -165,7 +165,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWStreamWriteChars(&s, "avif", 4);                         // unsigned int(32) compatible_brands[];
     avifRWStreamWriteChars(&s, "mif1", 4);                         // ... compatible_brands[]
     avifRWStreamWriteChars(&s, "miaf", 4);                         // ... compatible_brands[]
-    if ((image->depth == 8) || (image->depth == 10)) {             //
+    if (image->depth <= 10) {                                      //
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {        //
             avifRWStreamWriteChars(&s, "MA1B", 4);                 // ... compatible_brands[]
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) { //
