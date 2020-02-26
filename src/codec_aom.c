@@ -157,7 +157,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
 
-        // Steal the pointers from the image directly
+        // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
             int aomPlaneIndex = yuvPlane;
