@@ -19,7 +19,7 @@
 
 find_package(PkgConfig QUIET)
 if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_DAV1D dav1d)
+    pkg_check_modules(_LIBGAV1 libgav1)
 endif (PKG_CONFIG_FOUND)
 
 find_path(LIBGAV1_INCLUDE_DIR
@@ -28,7 +28,7 @@ find_path(LIBGAV1_INCLUDE_DIR
 )
 
 find_library(LIBGAV1_LIBRARY
-             NAMES libgav1
+             NAMES gav1
              PATHS ${_LIBGAV1_LIBDIR})
 
 if (LIBGAV1_LIBRARY)
