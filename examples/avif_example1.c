@@ -88,6 +88,7 @@ int main(int argc, char * argv[])
 
 decode_failed:
     avifImageDestroy(decoded);
+    avifRWDataFree(&raw);
 
 encode_failed:
     avifImageDestroy(image);
