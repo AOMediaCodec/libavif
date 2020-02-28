@@ -266,26 +266,27 @@ if(NOT SKIP_INSTALL_ALL)
 endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
-if(AVIF_BUILD_APPS)
-    include_directories(apps/shared)
-    add_executable(avifenc
-        apps/avifenc.c
+option(AVIF_BUILD_TESTS "Build avif tests." OFF)
+if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
+    add_library(avif_apps STATIC
         apps/shared/y4m.c
         apps/shared/avifutil.c
     )
+    target_link_libraries(avif_apps PRIVATE avif)
+    target_include_directories(avif_apps PUBLIC apps/shared)
+endif()
+
+if(AVIF_BUILD_APPS)
+    add_executable(avifenc apps/avifenc.c)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES})
-    add_executable(avifdec
-        apps/avifdec.c
-        apps/shared/y4m.c
-        apps/shared/avifutil.c
-    )
+    target_link_libraries(avifenc avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
+    add_executable(avifdec apps/avifdec.c)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(avifdec avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
@@ -298,9 +299,7 @@ endif()
 
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 if(AVIF_BUILD_TESTS)
-    include_directories(apps/shared)
     add_executable(aviftest
-        apps/shared/y4m.c
         tests/aviftest.c
         tests/cJSON.c
         tests/compare.c
@@ -309,7 +308,7 @@ if(AVIF_BUILD_TESTS)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(aviftest avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
 
     add_custom_target(avif_test_all
         COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
