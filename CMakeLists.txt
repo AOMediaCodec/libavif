@@ -19,10 +19,6 @@ project(libavif LANGUAGES C CXX VERSION 0.5.6)
 set(LIBRARY_VERSION "0.1.6")
 set(LIBRARY_SOVERSION "0")
 
-if(CMAKE_C_COMPILER_ID MATCHES "GNU")
-  add_definitions(-std=c99) # Enforce C99 for gcc
-endif()
-
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
