@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - libgav1 decode codec support. (wantehchang @Google)
+- Expose codec selection to avifdec/avifenc, speed to avifenc
 
 ### Changed
 - AppVeyor builds now compile with dav1d (EwoutH)

@@ -36,6 +36,8 @@ static int syntax(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
+    printf("    -s,--speed S      : Encoder speed (%d-%d, slowest to fastest)\n", AVIF_SPEED_SLOWEST, AVIF_SPEED_FASTEST);
+    printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("\n");
     avifPrintVersions();
     return 0;
@@ -100,6 +102,8 @@ int main(int argc, char * argv[])
     int jobs = 1;
     int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     int maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+    int speed = AVIF_SPEED_DEFAULT;
+    avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool nclxSet = AVIF_FALSE;
     avifEncoder * encoder = NULL;
 
@@ -142,6 +146,28 @@ int main(int argc, char * argv[])
                 return 1;
             }
             nclxSet = AVIF_TRUE;
+        } else if (!strcmp(arg, "-s") || !strcmp(arg, "--speed")) {
+            NEXTARG();
+            speed = atoi(arg);
+            if (speed > AVIF_SPEED_FASTEST) {
+                speed = AVIF_SPEED_FASTEST;
+            }
+            if (speed < AVIF_SPEED_SLOWEST) {
+                speed = AVIF_SPEED_SLOWEST;
+            }
+        } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
+            NEXTARG();
+            codecChoice = avifCodecChoiceFromName(arg);
+            if (codecChoice == AVIF_CODEC_CHOICE_AUTO) {
+                fprintf(stderr, "ERROR: Unrecognized codec: %s\n", arg);
+                return 1;
+            } else {
+                const char * codecName = avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+                if (codecName == NULL) {
+                    fprintf(stderr, "ERROR: AV1 Codec cannot encode: %s\n", arg);
+                    return 1;
+                }
+            }
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -179,7 +205,8 @@ int main(int argc, char * argv[])
     printf("AVIF to be written:\n");
     avifImageDump(avif);
 
-    printf("Encoding with quantizer range [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
+    printf("Encoding with AV1 codec '%s', quantizer range [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
+           avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
            minQuantizer,
            quantizerString(minQuantizer),
            maxQuantizer,
@@ -189,6 +216,8 @@ int main(int argc, char * argv[])
     encoder->maxThreads = jobs;
     encoder->minQuantizer = minQuantizer;
     encoder->maxQuantizer = maxQuantizer;
+    encoder->codecChoice = codecChoice;
+    encoder->speed = speed;
     avifResult encodeResult = avifEncoderWrite(encoder, avif, &raw);
     if (encodeResult != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(encodeResult));

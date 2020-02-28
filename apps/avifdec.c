@@ -9,11 +9,19 @@
 #include <stdio.h>
 #include <string.h>
 
+#define NEXTARG()                                                     \
+    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
+        fprintf(stderr, "%s requires an argument.", arg);             \
+        return 1;                                                     \
+    }                                                                 \
+    arg = argv[++argIndex]
+
 static int syntax(void)
 {
     printf("Syntax: avifdec [options] input.avif output.y4m\n");
     printf("Options:\n");
-    printf("    -h,--help : Show syntax help\n");
+    printf("    -h,--help         : Show syntax help\n");
+    printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("\n");
     avifPrintVersions();
     return 0;
@@ -23,6 +31,7 @@ int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;
     const char * outputFilename = NULL;
+    avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
 
     if (argc < 2) {
         return syntax();
@@ -34,6 +43,19 @@ int main(int argc, char * argv[])
 
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             return syntax();
+        } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
+            NEXTARG();
+            codecChoice = avifCodecChoiceFromName(arg);
+            if (codecChoice == AVIF_CODEC_CHOICE_AUTO) {
+                fprintf(stderr, "ERROR: Unrecognized codec: %s\n", arg);
+                return 1;
+            } else {
+                const char * codecName = avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE);
+                if (codecName == NULL) {
+                    fprintf(stderr, "ERROR: AV1 Codec cannot decode: %s\n", arg);
+                    return 1;
+                }
+            }
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -79,6 +101,8 @@ int main(int argc, char * argv[])
 
     fclose(inputFile);
     inputFile = NULL;
+
+    printf("Decoding with AV1 codec '%s', please wait...\n", avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE));
 
     avifImage * avif = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
