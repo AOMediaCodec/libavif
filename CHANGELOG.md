@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - libgav1 decode codec support. (wantehchang @Google)
 - Expose codec selection to avifdec/avifenc, speed to avifenc
 - Image grid support (Summer_in_Tomsk_720p_5x4_grid)
+- `minQuantizerAlpha`/`maxQuantizerAlpha` support in avifEncoder, avifenc
+- 444alpha support in y4m layer (avifenc, avifdec)
 
 ### Changed
 - AppVeyor builds now compile with dav1d (EwoutH)

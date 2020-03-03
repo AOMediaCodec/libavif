@@ -514,6 +514,8 @@ typedef struct avifEncoder
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
+    int minQuantizerAlpha;
+    int maxQuantizerAlpha;
     int tileRowsLog2;
     int tileColsLog2;
     int speed;

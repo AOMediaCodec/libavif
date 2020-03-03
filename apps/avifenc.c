@@ -28,11 +28,19 @@ static int syntax(void)
     printf("                        T = enum avifNclxTransferCharacteristics\n");
     printf("                        M = enum avifNclxMatrixCoefficients\n");
     printf("                        R = avifNclxRangeFlag (any nonzero value becomes AVIF_NCLX_FULL_RANGE)\n");
-    printf("    --min Q           : Set min quantizer (%d-%d, where %d is lossless)\n",
+    printf("    --min Q           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    --max Q           : Set max quantizer (%d-%d, where %d is lossless)\n",
+    printf("    --max Q           : Set max quantizer for color (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
+    printf("    --minalpha Q      : Set min quantizer for alpha (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
+    printf("    --maxalpha Q      : Set max quantizer for alpha (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
@@ -102,6 +110,8 @@ int main(int argc, char * argv[])
     int jobs = 1;
     int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     int maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+    int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int speed = AVIF_SPEED_DEFAULT;
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool nclxSet = AVIF_FALSE;
@@ -139,6 +149,24 @@ int main(int argc, char * argv[])
             }
             if (maxQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
                 maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
+            }
+        } else if (!strcmp(arg, "--minalpha")) {
+            NEXTARG();
+            minQuantizerAlpha = atoi(arg);
+            if (minQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
+                minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
+            }
+            if (minQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
+                minQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+            }
+        } else if (!strcmp(arg, "--maxalpha")) {
+            NEXTARG();
+            maxQuantizerAlpha = atoi(arg);
+            if (maxQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
+                maxQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
+            }
+            if (maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
+                maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
             }
         } else if (!strcmp(arg, "-n") || !strcmp(arg, "--nclx")) {
             NEXTARG();
@@ -205,17 +233,23 @@ int main(int argc, char * argv[])
     printf("AVIF to be written:\n");
     avifImageDump(avif);
 
-    printf("Encoding with AV1 codec '%s', quantizer range [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
+    printf("Encoding with AV1 codec '%s', color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
            minQuantizer,
            quantizerString(minQuantizer),
            maxQuantizer,
            quantizerString(maxQuantizer),
+           minQuantizerAlpha,
+           quantizerString(minQuantizerAlpha),
+           maxQuantizerAlpha,
+           quantizerString(maxQuantizerAlpha),
            jobs);
     encoder = avifEncoderCreate();
     encoder->maxThreads = jobs;
     encoder->minQuantizer = minQuantizer;
     encoder->maxQuantizer = maxQuantizer;
+    encoder->minQuantizerAlpha = minQuantizerAlpha;
+    encoder->maxQuantizerAlpha = maxQuantizerAlpha;
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
     avifResult encodeResult = avifEncoderWrite(encoder, avif, &raw);
@@ -226,6 +260,7 @@ int main(int argc, char * argv[])
 
     printf("Encoded successfully.\n");
     printf(" * ColorOBU size: %zu bytes\n", encoder->ioStats.colorOBUSize);
+    printf(" * AlphaOBU size: %zu bytes\n", encoder->ioStats.alphaOBUSize);
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);

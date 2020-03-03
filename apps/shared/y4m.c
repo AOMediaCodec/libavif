@@ -9,8 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPixelFormat * format, int * depth)
+static avifBool y4mColorSpaceParse(const char * formatString, avifPixelFormat * format, int * depth, avifBool * hasAlpha)
 {
+    *hasAlpha = AVIF_FALSE;
+
     if (!strcmp(formatString, "C420jpeg")) {
         *format = AVIF_PIXEL_FORMAT_YUV420;
         *depth = 8;
@@ -59,6 +61,12 @@ static avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPix
     if (!strcmp(formatString, "C444")) {
         *format = AVIF_PIXEL_FORMAT_YUV444;
         *depth = 8;
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "C444alpha")) {
+        *format = AVIF_PIXEL_FORMAT_YUV444;
+        *depth = 8;
+        *hasAlpha = AVIF_TRUE;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422")) {
@@ -146,6 +154,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     int width = -1;
     int height = -1;
     int depth = -1;
+    avifBool hasAlpha = AVIF_FALSE;
     avifPixelFormat format = AVIF_PIXEL_FORMAT_NONE;
     avifNclxRangeFlag rangeFlag = AVIF_NCLX_LIMITED_RANGE;
     while (p != end) {
@@ -161,7 +170,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
                     fprintf(stderr, "Bad y4m header: %s\n", inputFilename);
                     goto cleanup;
                 }
-                if (!y4mColorSpaceToFormatAndDepth(tmpBuffer, &format, &depth)) {
+                if (!y4mColorSpaceParse(tmpBuffer, &format, &depth, &hasAlpha)) {
                     fprintf(stderr, "Unsupported y4m pixel format: %s\n", inputFilename);
                     goto cleanup;
                 }
@@ -233,12 +242,17 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     avifPixelFormatInfo info;
     avifGetPixelFormatInfo(avif->yuvFormat, &info);
 
-    uint32_t planeBytes[3];
+    uint32_t planeBytes[4];
     planeBytes[0] = avif->yuvRowBytes[0] * avif->height;
     planeBytes[1] = avif->yuvRowBytes[1] * (avif->height >> info.chromaShiftY);
     planeBytes[2] = avif->yuvRowBytes[2] * (avif->height >> info.chromaShiftY);
+    if (hasAlpha) {
+        planeBytes[3] = avif->yuvRowBytes[0] * avif->height;
+    } else {
+        planeBytes[3] = 0;
+    }
 
-    uint32_t bytesNeeded = planeBytes[0] + planeBytes[1] + planeBytes[2];
+    uint32_t bytesNeeded = planeBytes[0] + planeBytes[1] + planeBytes[2] + planeBytes[3];
     remainingBytes = end - p;
     if (bytesNeeded > remainingBytes) {
         fprintf(stderr, "Not enough bytes in y4m for first frame: %s\n", inputFilename);
@@ -248,6 +262,10 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     for (int i = 0; i < 3; ++i) {
         memcpy(avif->yuvPlanes[i], p, planeBytes[i]);
         p += planeBytes[i];
+    }
+    if (hasAlpha) {
+        avifImageAllocatePlanes(avif, AVIF_PLANES_A);
+        memcpy(avif->alphaPlane, p, planeBytes[3]);
     }
 
     result = AVIF_TRUE;
@@ -259,12 +277,24 @@ cleanup:
 avifBool y4mWrite(avifImage * avif, const char * outputFilename)
 {
     avifBool swapUV = AVIF_FALSE;
+    avifBool hasAlpha = (avif->alphaPlane && (avif->alphaRowBytes > 0)) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool writeAlpha = AVIF_FALSE;
     char * y4mHeaderFormat = NULL;
+
+    if (hasAlpha && ((avif->depth != 8) || (avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV444))) {
+        fprintf(stderr, "WARNING: writing alpha is currently only supported in 8bpc YUV444, ignoring alpha channel: %s\n", outputFilename);
+    }
+
     switch (avif->depth) {
         case 8:
             switch (avif->yuvFormat) {
                 case AVIF_PIXEL_FORMAT_YUV444:
-                    y4mHeaderFormat = "C444 XYSCSS=444";
+                    if (hasAlpha) {
+                        y4mHeaderFormat = "C444alpha XYSCSS=444";
+                        writeAlpha = AVIF_TRUE;
+                    } else {
+                        y4mHeaderFormat = "C444 XYSCSS=444";
+                    }
                     break;
                 case AVIF_PIXEL_FORMAT_YUV422:
                     y4mHeaderFormat = "C422 XYSCSS=422";
@@ -369,6 +399,9 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
 
     for (int i = 0; i < 3; ++i) {
         fwrite(planes[i], 1, planeBytes[i], f);
+    }
+    if (writeAlpha) {
+        fwrite(avif->alphaPlane, 1, avif->alphaRowBytes * avif->height, f);
     }
 
     fclose(f);

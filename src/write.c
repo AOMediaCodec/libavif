@@ -34,6 +34,8 @@ avifEncoder * avifEncoderCreate(void)
     encoder->maxThreads = 1;
     encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
     encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
+    encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    encoder->maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
     encoder->speed = AVIF_SPEED_DEFAULT;
