@@ -268,7 +268,6 @@ endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 if(AVIF_BUILD_APPS)
-    include_directories(apps/shared)
     add_executable(avifenc
         apps/avifenc.c
         apps/shared/y4m.c
@@ -278,6 +277,7 @@ if(AVIF_BUILD_APPS)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES})
+    target_include_directories(avifenc PRIVATE apps/shared)
     add_executable(avifdec
         apps/avifdec.c
         apps/shared/y4m.c
@@ -287,6 +287,7 @@ if(AVIF_BUILD_APPS)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES})
+    target_include_directories(avifdec PRIVATE apps/shared)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
@@ -299,7 +300,6 @@ endif()
 
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 if(AVIF_BUILD_TESTS)
-    include_directories(apps/shared)
     add_executable(aviftest
         apps/shared/y4m.c
         tests/aviftest.c
@@ -311,6 +311,7 @@ if(AVIF_BUILD_TESTS)
         set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+    target_include_directories(aviftest PRIVATE apps/shared)
 
     add_custom_target(avif_test_all
         COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
