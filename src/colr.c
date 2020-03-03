@@ -408,7 +408,7 @@ static const struct avifMatrixCoefficientsTable matrixCoefficientsTables[] = {
 { AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL, "BT.2020-2 (non-constant luminance)", 0.2627f, 0.0593f },
 //{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL, "BT.2020 (constant luminance)", 0.2627f, 0.0593f }, // FIXME: It is not an linear transformation.
 //{ AVIF_NCLX_MATRIX_COEFFICIENTS_ST2085, "ST 2085", 0.0f, 0.0f }, // FIXME: ST2085 can't represent using Kr and Kb.
-//{ AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL, "Chromaticity-derived constant luminance system", 0.0f, 0.0f } // FIXME: This can't represent using Kr and Kb.
+//{ AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL, "Chromaticity-derived constant luminance system", 0.0f, 0.0f } // FIXME: It is not an linear transformation.
 //{ AVIF_NCLX_MATRIX_COEFFICIENTS_ICTCP, "BT.2100-0 ICtCp", 0.0f, 0.0f }, // FIXME: This can't represent using Kr and Kb.
 };
 
