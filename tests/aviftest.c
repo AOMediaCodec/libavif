@@ -1,6 +1,12 @@
 // Copyright 2020 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+// #define WIN32_MEMORY_LEAK_DETECTION
+#ifdef WIN32_MEMORY_LEAK_DETECTION
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#endif
+
 #include "avif/avif.h"
 
 #include "testcase.h"
@@ -201,6 +207,7 @@ static int runTests(const char * dataDir, const char * testFilter)
         printf("ERROR: Invalid JSON: %s\n", testJSONFilename);
         return 1;
     }
+    free(rawJSON);
 
     int totalCount = 0;
     int skippedCount = 0;
@@ -214,20 +221,22 @@ static int runTests(const char * dataDir, const char * testFilter)
         TestCase * tc = testCaseFromJSON(t);
         if (!tc || !tc->active) {
             ++skippedCount;
+            testCaseDestroy(tc);
             continue;
         }
 
         if (testFilter) {
             if (strstr(tc->name, testFilter) == NULL) {
                 ++skippedCount;
+                testCaseDestroy(tc);
                 continue;
             }
         }
 
         // Skip the test if the requested encoder or decoder is not available.
-        if (!avifCodecName(tc->encodeChoice, AVIF_CODEC_FLAG_CAN_ENCODE) ||
-            !avifCodecName(tc->decodeChoice, AVIF_CODEC_FLAG_CAN_DECODE)) {
+        if (!avifCodecName(tc->encodeChoice, AVIF_CODEC_FLAG_CAN_ENCODE) || !avifCodecName(tc->decodeChoice, AVIF_CODEC_FLAG_CAN_DECODE)) {
             ++skippedCount;
+            testCaseDestroy(tc);
             continue;
         }
 
@@ -245,10 +254,12 @@ static int runTests(const char * dataDir, const char * testFilter)
     return (failedCount == 0) ? 0 : 1;
 }
 
-static void showSyntaxHelp(void) {
-  fprintf(stderr, "Syntax: aviftest [options] dataDir [testFilter]\n"
-                  "Options:\n"
-                  "    -g : Generate tests\n");
+static void showSyntaxHelp(void)
+{
+    fprintf(stderr,
+            "Syntax: aviftest [options] dataDir [testFilter]\n"
+            "Options:\n"
+            "    -g : Generate tests\n");
 }
 
 int main(int argc, char * argv[])
@@ -256,6 +267,11 @@ int main(int argc, char * argv[])
     const char * dataDir = NULL;
     const char * testFilter = NULL;
     avifBool generate = AVIF_FALSE;
+
+#ifdef WIN32_MEMORY_LEAK_DETECTION
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    // _CrtSetBreakAlloc(2906);
+#endif
 
     // Parse cmdline
     for (int i = 1; i < argc; ++i) {
