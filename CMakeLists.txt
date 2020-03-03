@@ -268,25 +268,33 @@ endif()
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
-    add_library(avif_apps STATIC
-        apps/shared/y4m.c
-        apps/shared/avifutil.c
-    )
-    target_link_libraries(avif_apps PRIVATE avif)
-    target_include_directories(avif_apps PUBLIC apps/shared)
+    add_library(y4m OBJECT apps/shared/y4m.c)
+endif()
+if(AVIF_BUILD_APPS)
+    add_library(avifutil OBJECT apps/shared/avifutil.c)
 endif()
 
 if(AVIF_BUILD_APPS)
-    add_executable(avifenc apps/avifenc.c)
+    add_executable(avifenc
+        apps/avifenc.c
+        $<TARGET_OBJECTS:y4m>
+        $<TARGET_OBJECTS:avifutil>
+    )
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
-    add_executable(avifdec apps/avifdec.c)
+    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES})
+    target_include_directories(avifenc PRIVATE apps/shared)
+    add_executable(avifdec
+        apps/avifdec.c
+        $<TARGET_OBJECTS:y4m>
+        $<TARGET_OBJECTS:avifutil>
+    )
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES})
+    target_include_directories(avifdec PRIVATE apps/shared)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
@@ -304,11 +312,13 @@ if(AVIF_BUILD_TESTS)
         tests/cJSON.c
         tests/compare.c
         tests/testcase.c
+        $<TARGET_OBJECTS:y4m>
     )
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(aviftest avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+    target_include_directories(aviftest PRIVATE apps/shared)
 
     add_custom_target(avif_test_all
         COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
