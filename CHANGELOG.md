@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Image grid support (Summer_in_Tomsk_720p_5x4_grid)
 - `minQuantizerAlpha`/`maxQuantizerAlpha` support in avifEncoder, avifenc
 - 444alpha support in y4m layer (avifenc, avifdec)
+- pkg-config support (cryptomilk)
+- Proper support of NCLX matrix coefficients enum (link-u)
 
 ### Changed
 - AppVeyor builds now compile with dav1d (EwoutH)
+- Lots of minor CMake/code cleanup (wantehchang @Google)
+- cJSON license note for aviftest (wantehchang @Google)
 
 ## [0.5.6] - 2020-02-19
 ### Added
