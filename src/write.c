@@ -116,7 +116,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     // -----------------------------------------------------------------------
     // Reformat pixels, if need be
 
-    if (!image->width || !image->height || !image->depth) {
+    if (!image->width || !image->height) {
         result = AVIF_RESULT_NO_CONTENT;
         goto writeCleanup;
     }
