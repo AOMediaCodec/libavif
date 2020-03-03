@@ -338,7 +338,7 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     endif()
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
-    install(FILES include/avif/avif.h include/avif/internal.h
+    install(FILES include/avif/avif.h
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif"
     )
 endif()
