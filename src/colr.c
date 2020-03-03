@@ -120,7 +120,7 @@ struct avifColourPrimariesTable
     const char * name;
     float primaries[8]; // rX, rY, gX, gY, bX, bY, wX, wY
 };
-static const struct avifColourPrimariesTable table[] = {
+static const struct avifColourPrimariesTable avifColourPrimariesTables[] = {
     { AVIF_NCLX_COLOUR_PRIMARIES_BT709, "BT.709", { 0.64f, 0.33f, 0.3f, 0.6f, 0.15f, 0.06f, 0.3127f, 0.329f } },
     { AVIF_NCLX_COLOUR_PRIMARIES_BT470_6M, "BT470-6 System M", { 0.67f, 0.33f, 0.21f, 0.71f, 0.14f, 0.08f, 0.310f, 0.316f } },
     { AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_625, "BT.601-7 625", { 0.64f, 0.33f, 0.29f, 0.60f, 0.15f, 0.06f, 0.3127f, 0.3290f } },
@@ -133,19 +133,19 @@ static const struct avifColourPrimariesTable table[] = {
     { AVIF_NCLX_COLOUR_PRIMARIES_EG432_1, "EG 432-1 (P3)", { 0.680f, 0.320f, 0.265f, 0.690f, 0.150f, 0.060f, 0.3127f, 0.3290f } },
     { AVIF_NCLX_COLOUR_PRIMARIES_EBU3213E, "EBU 3213-E", { 0.630f, 0.340f, 0.295f, 0.605f, 0.155f, 0.077f, 0.3127f, 0.3290f } }
 };
-static const int tableSize = sizeof(table) / sizeof(table[0]);
+static const int avifColourPrimariesTableSize = sizeof(avifColourPrimariesTables) / sizeof(avifColourPrimariesTables[0]);
 
 void avifNclxColourPrimariesGetValues(avifNclxColourPrimaries ancp, float outPrimaries[8])
 {
-    for (int i = 0; i < tableSize; ++i) {
-        if (table[i].colourPrimariesEnum == ancp) {
-            memcpy(outPrimaries, table[i].primaries, sizeof(table[i].primaries));
+    for (int i = 0; i < avifColourPrimariesTableSize; ++i) {
+        if (avifColourPrimariesTables[i].colourPrimariesEnum == ancp) {
+            memcpy(outPrimaries, avifColourPrimariesTables[i].primaries, sizeof(avifColourPrimariesTables[i].primaries));
             return;
         }
     }
 
     // if we get here, the color primaries are unknown. Just return a reasonable default.
-    memcpy(outPrimaries, table[0].primaries, sizeof(table[0].primaries));
+    memcpy(outPrimaries, avifColourPrimariesTables[0].primaries, sizeof(avifColourPrimariesTables[0].primaries));
 }
 
 static avifBool matchesTo3RoundedPlaces(float a, float b)
@@ -166,12 +166,12 @@ avifNclxColourPrimaries avifNclxColourPrimariesFind(float inPrimaries[8], const 
         *outName = NULL;
     }
 
-    for (int i = 0; i < tableSize; ++i) {
-        if (primariesMatch(inPrimaries, table[i].primaries)) {
+    for (int i = 0; i < avifColourPrimariesTableSize; ++i) {
+        if (primariesMatch(inPrimaries, avifColourPrimariesTables[i].primaries)) {
             if (outName) {
-                *outName = table[i].name;
+                *outName = avifColourPrimariesTables[i].name;
             }
-            return table[i].colourPrimariesEnum;
+            return avifColourPrimariesTables[i].colourPrimariesEnum;
         }
     }
     return AVIF_NCLX_COLOUR_PRIMARIES_UNKNOWN;
@@ -390,52 +390,67 @@ static avifBool calcYUVInfoFromICC(const uint8_t * iccData, size_t iccSize, floa
     return AVIF_TRUE;
 }
 
-// From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
-static void deriveXYZMatrix(gbMat3 * colorants, float primaries[8])
-{
-    gbVec3 U, W;
-    gbMat3 P, PInv, D;
+struct avifMatrixCoefficientsTable {
+  avifNclxMatrixCoefficients matrixCoefficientsEnum;
+  const char * name;
+  const float kr;
+  const float kb;
+};
 
-    P.col[0].xyz.x = primaries[0];
-    P.col[0].xyz.y = primaries[1];
-    P.col[0].xyz.z = 1 - primaries[0] - primaries[1];
-    P.col[1].xyz.x = primaries[2];
-    P.col[1].xyz.y = primaries[3];
-    P.col[1].xyz.z = 1 - primaries[2] - primaries[3];
-    P.col[2].xyz.x = primaries[4];
-    P.col[2].xyz.y = primaries[5];
-    P.col[2].xyz.z = 1 - primaries[4] - primaries[5];
+// https://www.itu.int/rec/T-REC-H.273-201612-I/en
+static const struct avifMatrixCoefficientsTable matrixCoefficientsTables[] = {
+//{ AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY, "Identity", 0.0f, 0.0f, }, // FIXME: Identity matrix can't represent using Kr and Kb.
+{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT709, "BT.709", 0.2126f, 0.0722f },
+{ AVIF_NCLX_MATRIX_COEFFICIENTS_USFC_73682, "USFC 73.682", 0.30f, 0.11f },
+{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_625, "BT.601-7 625", 0.299f, 0.114f },
+{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_525, "BT.601-7 525", 0.299f, 0.144f },
+{ AVIF_NCLX_MATRIX_COEFFICIENTS_ST240, "ST 240", 0.212f, 0.087f },
+{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL, "BT.2020-2 (non-constant luminance)", 0.2627f, 0.0593f },
+//{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL, "BT.2020 (constant luminance)", 0.2627f, 0.0593f }, // FIXME: It is not an linear transformation.
+//{ AVIF_NCLX_MATRIX_COEFFICIENTS_ST2085, "ST 2085", 0.0f, 0.0f }, // FIXME: ST2085 can't represent using Kr and Kb.
+//{ AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL, "Chromaticity-derived constant luminance system", 0.0f, 0.0f } // FIXME: It is not an linear transformation.
+//{ AVIF_NCLX_MATRIX_COEFFICIENTS_ICTCP, "BT.2100-0 ICtCp", 0.0f, 0.0f }, // FIXME: This can't represent using Kr and Kb.
+};
 
-    gb_mat3_inverse(&PInv, &P);
-
-    W.xyz.x = primaries[6];
-    W.xyz.y = primaries[7];
-    W.xyz.z = 1 - primaries[6] - primaries[7];
-
-    gb_mat3_mul_vec3(&U, &PInv, W);
-
-    memset(&D, 0, sizeof(D));
-    D.col[0].xyz.x = U.xyz.x / W.xyz.y;
-    D.col[1].xyz.y = U.xyz.y / W.xyz.y;
-    D.col[2].xyz.z = U.xyz.z / W.xyz.y;
-
-    gb_mat3_mul(colorants, &P, &D);
-    gb_mat3_transpose(colorants);
-}
+static const int avifMatrixCoefficientsTableSize = sizeof(matrixCoefficientsTables) / sizeof(matrixCoefficientsTables[0]);
 
 static avifBool calcYUVInfoFromNCLX(avifNclxColorProfile * nclx, float coeffs[3])
 {
-    float primaries[8];
-    avifNclxColourPrimariesGetValues(nclx->colourPrimaries, primaries);
-
-    gbMat3 colorants;
-    deriveXYZMatrix(&colorants, primaries);
-
-    // YUV coefficients are simply the brightest Y that a primary can be (where the white point's Y is 1.0)
-    coeffs[0] = calcMaxY(1.0f, 0.0f, 0.0f, &colorants);
-    coeffs[2] = calcMaxY(0.0f, 0.0f, 1.0f, &colorants);
-    coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
-    return AVIF_TRUE;
+    for(int i = 0; i < avifMatrixCoefficientsTableSize; ++i) {
+      const struct avifMatrixCoefficientsTable* const table = &matrixCoefficientsTables[i];
+      if (table->matrixCoefficientsEnum == nclx->matrixCoefficients) {
+        coeffs[0] = table->kr;
+        coeffs[2] = table->kb;
+        coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
+        return AVIF_TRUE;
+      }else if(AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL == nclx->matrixCoefficients) {
+        float primaries[8];
+        avifNclxColourPrimariesGetValues(nclx->colourPrimaries, primaries);
+        float const rX = primaries[0];
+        float const rY = primaries[1];
+        float const gX = primaries[2];
+        float const gY = primaries[3];
+        float const bX = primaries[4];
+        float const bY = primaries[5];
+        float const wX = primaries[6];
+        float const wY = primaries[7];
+        float const rZ = 1.0f - (rX + rY); // (Eq. 34)
+        float const gZ = 1.0f - (gX + gY); // (Eq. 35)
+        float const bZ = 1.0f - (bX + bY); // (Eq. 36)
+        float const wZ = 1.0f - (wX + wY); // (Eq. 37)
+        float const kr = (rY*(wX*(gY*bZ - bY*gZ) + wY*(bX*gZ - gX*bZ) + wZ*(gX*bY - bX*gY)))
+                       / (wY*(rX*(gY*bZ - bY*gZ) + gX*(bY*rZ - rY*bZ) + bX*(rY*gZ - gY*rZ)));
+        // (Eq. 32)
+        float const kb = (bY*(wX*(rY*gZ - gY * rZ) + wY*(gX*rZ - rX*gZ) + wZ*(rX*gY - gX*rY)))
+                       / (wY*(rX*(gY*bZ - bY * gZ) + gX*(bY*rZ - rY*bZ) + bX*(rY*gZ - gY*rZ)));
+        // (Eq. 33)
+        coeffs[0] = kr;
+        coeffs[2] = kb;
+        coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
+        return AVIF_TRUE;
+      }
+    }
+    return AVIF_FALSE;
 }
 
 void avifCalcYUVCoefficients(avifImage * image, float * outR, float * outG, float * outB)
