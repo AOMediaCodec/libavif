@@ -505,7 +505,7 @@ static const uint8_t * avifDataCalcItemPtr(avifData * data, avifItem * item)
     return offsetBuffer->data + item->offset;
 }
 
-avifBool avifDataGenerateImageGridTiles(avifData * data, avifImageGrid * grid, avifItem * gridItem, avifBool alpha)
+static avifBool avifDataGenerateImageGridTiles(avifData * data, avifImageGrid * grid, avifItem * gridItem, avifBool alpha)
 {
     unsigned int tilesRequested = (unsigned int)grid->rows * (unsigned int)grid->columns;
 
@@ -544,12 +544,12 @@ avifBool avifDataGenerateImageGridTiles(avifData * data, avifImageGrid * grid, a
     return AVIF_TRUE;
 }
 
-avifBool avifDataFillImageGrid(avifData * data,
-                               avifImageGrid * grid,
-                               avifImage * dstImage,
-                               unsigned int firstTileIndex,
-                               unsigned int tileCount,
-                               avifBool alpha)
+static avifBool avifDataFillImageGrid(avifData * data,
+                                      avifImageGrid * grid,
+                                      avifImage * dstImage,
+                                      unsigned int firstTileIndex,
+                                      unsigned int tileCount,
+                                      avifBool alpha)
 {
     if (tileCount == 0) {
         return AVIF_FALSE;
