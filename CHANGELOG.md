@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.5.7] - 2020-03-03
 ### Added
 - libgav1 decode codec support. (wantehchang @Google)
 - Expose codec selection to avifdec/avifenc, speed to avifenc
@@ -309,7 +311,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.6...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.7...HEAD
+[0.5.7]: https://github.com/AOMediaCodec/libavif/compare/v0.5.6...v0.5.7
 [0.5.6]: https://github.com/AOMediaCodec/libavif/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/AOMediaCodec/libavif/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/AOMediaCodec/libavif/compare/v0.5.3...v0.5.4
