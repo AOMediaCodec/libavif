@@ -318,6 +318,8 @@ if(AVIF_BUILD_TESTS)
     )
 endif()
 
+configure_file(libavif.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc @ONLY)
+
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(TARGETS avif
         EXPORT ${PROJECT_NAME}-config
@@ -336,6 +338,9 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
                 DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
     endif()
+
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
     install(FILES include/avif/avif.h
