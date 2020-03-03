@@ -390,40 +390,34 @@ static avifBool calcYUVInfoFromICC(const uint8_t * iccData, size_t iccSize, floa
     return AVIF_TRUE;
 }
 
-struct avifMatrixCoefficientsTable {
-  avifNclxMatrixCoefficients matrixCoefficientsEnum;
-  const char * name;
-  const float kr;
-  const float kb;
+struct avifMatrixCoefficientsTable
+{
+    avifNclxMatrixCoefficients matrixCoefficientsEnum;
+    const char * name;
+    const float kr;
+    const float kb;
 };
 
 // https://www.itu.int/rec/T-REC-H.273-201612-I/en
 static const struct avifMatrixCoefficientsTable matrixCoefficientsTables[] = {
-//{ AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY, "Identity", 0.0f, 0.0f, }, // FIXME: Identity matrix can't represent using Kr and Kb.
-{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT709, "BT.709", 0.2126f, 0.0722f },
-{ AVIF_NCLX_MATRIX_COEFFICIENTS_USFC_73682, "USFC 73.682", 0.30f, 0.11f },
-{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_625, "BT.601-7 625", 0.299f, 0.114f },
-{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_525, "BT.601-7 525", 0.299f, 0.144f },
-{ AVIF_NCLX_MATRIX_COEFFICIENTS_ST240, "ST 240", 0.212f, 0.087f },
-{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL, "BT.2020-2 (non-constant luminance)", 0.2627f, 0.0593f },
-//{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL, "BT.2020 (constant luminance)", 0.2627f, 0.0593f }, // FIXME: It is not an linear transformation.
-//{ AVIF_NCLX_MATRIX_COEFFICIENTS_ST2085, "ST 2085", 0.0f, 0.0f }, // FIXME: ST2085 can't represent using Kr and Kb.
-//{ AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL, "Chromaticity-derived constant luminance system", 0.0f, 0.0f } // FIXME: It is not an linear transformation.
-//{ AVIF_NCLX_MATRIX_COEFFICIENTS_ICTCP, "BT.2100-0 ICtCp", 0.0f, 0.0f }, // FIXME: This can't represent using Kr and Kb.
+    //{ AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY, "Identity", 0.0f, 0.0f, }, // FIXME: Identity matrix can't represent using Kr and Kb.
+    { AVIF_NCLX_MATRIX_COEFFICIENTS_BT709, "BT.709", 0.2126f, 0.0722f },
+    { AVIF_NCLX_MATRIX_COEFFICIENTS_USFC_73682, "USFC 73.682", 0.30f, 0.11f },
+    { AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_625, "BT.601-7 625", 0.299f, 0.114f },
+    { AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_525, "BT.601-7 525", 0.299f, 0.144f },
+    { AVIF_NCLX_MATRIX_COEFFICIENTS_ST240, "ST 240", 0.212f, 0.087f },
+    { AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL, "BT.2020-2 (non-constant luminance)", 0.2627f, 0.0593f },
+    //{ AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL, "BT.2020 (constant luminance)", 0.2627f, 0.0593f }, // FIXME: It is not an linear transformation.
+    //{ AVIF_NCLX_MATRIX_COEFFICIENTS_ST2085, "ST 2085", 0.0f, 0.0f }, // FIXME: ST2085 can't represent using Kr and Kb.
+    //{ AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL, "Chromaticity-derived constant luminance system", 0.0f, 0.0f } // FIXME: It is not an linear transformation.
+    //{ AVIF_NCLX_MATRIX_COEFFICIENTS_ICTCP, "BT.2100-0 ICtCp", 0.0f, 0.0f }, // FIXME: This can't represent using Kr and Kb.
 };
 
 static const int avifMatrixCoefficientsTableSize = sizeof(matrixCoefficientsTables) / sizeof(matrixCoefficientsTables[0]);
 
 static avifBool calcYUVInfoFromNCLX(avifNclxColorProfile * nclx, float coeffs[3])
 {
-    for(int i = 0; i < avifMatrixCoefficientsTableSize; ++i) {
-      const struct avifMatrixCoefficientsTable* const table = &matrixCoefficientsTables[i];
-      if (table->matrixCoefficientsEnum == nclx->matrixCoefficients) {
-        coeffs[0] = table->kr;
-        coeffs[2] = table->kb;
-        coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
-        return AVIF_TRUE;
-      }else if(AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL == nclx->matrixCoefficients) {
+    if (nclx->matrixCoefficients == AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL) {
         float primaries[8];
         avifNclxColourPrimariesGetValues(nclx->colourPrimaries, primaries);
         float const rX = primaries[0];
@@ -438,17 +432,26 @@ static avifBool calcYUVInfoFromNCLX(avifNclxColorProfile * nclx, float coeffs[3]
         float const gZ = 1.0f - (gX + gY); // (Eq. 35)
         float const bZ = 1.0f - (bX + bY); // (Eq. 36)
         float const wZ = 1.0f - (wX + wY); // (Eq. 37)
-        float const kr = (rY*(wX*(gY*bZ - bY*gZ) + wY*(bX*gZ - gX*bZ) + wZ*(gX*bY - bX*gY)))
-                       / (wY*(rX*(gY*bZ - bY*gZ) + gX*(bY*rZ - rY*bZ) + bX*(rY*gZ - gY*rZ)));
+        float const kr = (rY * (wX * (gY * bZ - bY * gZ) + wY * (bX * gZ - gX * bZ) + wZ * (gX * bY - bX * gY))) /
+                         (wY * (rX * (gY * bZ - bY * gZ) + gX * (bY * rZ - rY * bZ) + bX * (rY * gZ - gY * rZ)));
         // (Eq. 32)
-        float const kb = (bY*(wX*(rY*gZ - gY * rZ) + wY*(gX*rZ - rX*gZ) + wZ*(rX*gY - gX*rY)))
-                       / (wY*(rX*(gY*bZ - bY * gZ) + gX*(bY*rZ - rY*bZ) + bX*(rY*gZ - gY*rZ)));
+        float const kb = (bY * (wX * (rY * gZ - gY * rZ) + wY * (gX * rZ - rX * gZ) + wZ * (rX * gY - gX * rY))) /
+                         (wY * (rX * (gY * bZ - bY * gZ) + gX * (bY * rZ - rY * bZ) + bX * (rY * gZ - gY * rZ)));
         // (Eq. 33)
         coeffs[0] = kr;
         coeffs[2] = kb;
         coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
         return AVIF_TRUE;
-      }
+    } else {
+        for (int i = 0; i < avifMatrixCoefficientsTableSize; ++i) {
+            const struct avifMatrixCoefficientsTable * const table = &matrixCoefficientsTables[i];
+            if (table->matrixCoefficientsEnum == nclx->matrixCoefficients) {
+                coeffs[0] = table->kr;
+                coeffs[2] = table->kb;
+                coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
+                return AVIF_TRUE;
+            }
+        }
     }
     return AVIF_FALSE;
 }
