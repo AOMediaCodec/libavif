@@ -224,6 +224,13 @@ static int runTests(const char * dataDir, const char * testFilter)
             }
         }
 
+        // Skip the test if the requested encoder or decoder is not available.
+        if (!avifCodecName(tc->encodeChoice, AVIF_CODEC_FLAG_CAN_ENCODE) ||
+            !avifCodecName(tc->decodeChoice, AVIF_CODEC_FLAG_CAN_DECODE)) {
+            ++skippedCount;
+            continue;
+        }
+
         if (!testCaseRun(tc, dataDir, AVIF_FALSE)) {
             ++failedCount;
         }
