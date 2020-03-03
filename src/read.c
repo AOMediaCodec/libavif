@@ -107,6 +107,7 @@ typedef struct avifItem
     uint32_t thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
     uint32_t auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;      // if non-zero, this item is a content description for Item #{descForID}
+    uint32_t dimgForID;      // if non-zero, this item is a derived image for Item #{dimgForID}
 } avifItem;
 AVIF_ARRAY_DECLARE(avifItemArray, avifItem, item);
 
@@ -128,6 +129,15 @@ typedef struct avifItemData
     avifROData data;
 } avifItemData;
 AVIF_ARRAY_DECLARE(avifItemDataArray, avifItemData, idat);
+
+// grid storage
+typedef struct avifImageGrid
+{
+    uint8_t rows;
+    uint8_t columns;
+    uint32_t outputWidth;
+    uint32_t outputHeight;
+} avifImageGrid;
 
 // ---------------------------------------------------------------------------
 // avifTrack
@@ -348,6 +358,14 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
 // ---------------------------------------------------------------------------
 // avifData
 
+typedef struct avifTile
+{
+    avifCodecDecodeInput * input;
+    struct avifCodec * codec;
+    avifImage * image;
+} avifTile;
+AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
+
 typedef struct avifData
 {
     avifFileType ftyp;
@@ -356,13 +374,15 @@ typedef struct avifData
     avifItemDataArray idats;
     avifTrackArray tracks;
     avifROData rawInput;
-    avifCodecDecodeInput * colorInput;
-    avifCodecDecodeInput * alphaInput;
+    avifTileArray tiles;
+    unsigned int colorTileCount;
+    unsigned int alphaTileCount;
+    avifImageGrid colorGrid;
+    avifImageGrid alphaGrid;
     avifDecoderSource source;
     avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
     uint32_t primaryItemID;
     uint32_t metaBoxID; // Ever-incrementing ID for tracking which 'meta' box contains an idat, and which idat an iloc might refer to
-    struct avifCodec * codec[AVIF_CODEC_PLANES_COUNT];
 } avifData;
 
 static avifData * avifDataCreate()
@@ -373,22 +393,53 @@ static avifData * avifDataCreate()
     avifArrayCreate(&data->properties, sizeof(avifProperty), 16);
     avifArrayCreate(&data->idats, sizeof(avifItemData), 1);
     avifArrayCreate(&data->tracks, sizeof(avifTrack), 2);
+    avifArrayCreate(&data->tiles, sizeof(avifTile), 8);
     return data;
 }
 
 static void avifDataResetCodec(avifData * data)
 {
-    for (int i = 0; i < AVIF_CODEC_PLANES_COUNT; ++i) {
-        if (data->codec[i]) {
-            avifCodecDestroy(data->codec[i]);
-            data->codec[i] = NULL;
+    for (unsigned int i = 0; i < data->tiles.count; ++i) {
+        avifTile * tile = &data->tiles.tile[i];
+        if (tile->codec) {
+            avifCodecDestroy(tile->codec);
+            tile->codec = NULL;
         }
     }
 }
 
+static avifTile * avifDataNewTile(avifData * data)
+{
+    avifTile * tile = (avifTile *)avifArrayPushPtr(&data->tiles);
+    tile->image = avifImageCreateEmpty();
+    tile->input = avifCodecDecodeInputCreate();
+    return tile;
+}
+
+static void avifDataClearTiles(avifData * data)
+{
+    for (unsigned int i = 0; i < data->tiles.count; ++i) {
+        avifTile * tile = &data->tiles.tile[i];
+        if (tile->input) {
+            avifCodecDecodeInputDestroy(tile->input);
+            tile->input = NULL;
+        }
+        if (tile->codec) {
+            avifCodecDestroy(tile->codec);
+            tile->codec = NULL;
+        }
+        if (tile->image) {
+            avifImageDestroy(tile->image);
+            tile->image = NULL;
+        }
+    }
+    data->tiles.count = 0;
+    data->colorTileCount = 0;
+    data->alphaTileCount = 0;
+}
+
 static void avifDataDestroy(avifData * data)
 {
-    avifDataResetCodec(data);
     avifArrayDestroy(&data->items);
     avifArrayDestroy(&data->properties);
     avifArrayDestroy(&data->idats);
@@ -398,12 +449,8 @@ static void avifDataDestroy(avifData * data)
         }
     }
     avifArrayDestroy(&data->tracks);
-    if (data->colorInput) {
-        avifCodecDecodeInputDestroy(data->colorInput);
-    }
-    if (data->alphaInput) {
-        avifCodecDecodeInputDestroy(data->alphaInput);
-    }
+    avifDataClearTiles(data);
+    avifArrayDestroy(&data->tiles);
     avifFree(data);
 }
 
@@ -456,6 +503,161 @@ static const uint8_t * avifDataCalcItemPtr(avifData * data, avifItem * item)
         return NULL;
     }
     return offsetBuffer->data + item->offset;
+}
+
+avifBool avifDataGenerateImageGridTiles(avifData * data, avifImageGrid * grid, avifItem * gridItem, avifBool alpha)
+{
+    unsigned int tilesRequested = (unsigned int)grid->rows * (unsigned int)grid->columns;
+
+    // Count number of dimg for this item, bail out if it doesn't match perfectly
+    unsigned int tilesAvailable = 0;
+    for (uint32_t i = 0; i < data->items.count; ++i) {
+        avifItem * item = &data->items.item[i];
+        if (item->dimgForID == gridItem->id) {
+            if (memcmp(item->type, "av01", 4)) {
+                continue;
+            }
+
+            ++tilesAvailable;
+        }
+    }
+
+    if (tilesRequested != tilesAvailable) {
+        return AVIF_FALSE;
+    }
+
+    for (uint32_t i = 0; i < data->items.count; ++i) {
+        avifItem * item = &data->items.item[i];
+        if (item->dimgForID == gridItem->id) {
+            if (memcmp(item->type, "av01", 4)) {
+                continue;
+            }
+
+            avifTile * tile = avifDataNewTile(data);
+            avifSample * sample = (avifSample *)avifArrayPushPtr(&tile->input->samples);
+            sample->data.data = avifDataCalcItemPtr(data, item);
+            sample->data.size = item->size;
+            sample->sync = AVIF_TRUE;
+            tile->input->alpha = alpha;
+        }
+    }
+    return AVIF_TRUE;
+}
+
+avifBool avifDataFillImageGrid(avifData * data,
+                               avifImageGrid * grid,
+                               avifImage * dstImage,
+                               unsigned int firstTileIndex,
+                               unsigned int tileCount,
+                               avifBool alpha)
+{
+    if (tileCount == 0) {
+        return AVIF_FALSE;
+    }
+
+    avifTile * firstTile = &data->tiles.tile[firstTileIndex];
+    unsigned int tileWidth = firstTile->image->width;
+    unsigned int tileHeight = firstTile->image->height;
+    unsigned int tileDepth = firstTile->image->depth;
+    avifPixelFormat tileFormat = firstTile->image->yuvFormat;
+    avifRange tileRange = firstTile->image->yuvRange;
+    avifBool tileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]) ? AVIF_TRUE
+                                                                                                                    : AVIF_FALSE;
+
+    for (unsigned int i = 1; i < tileCount; ++i) {
+        avifTile * tile = &data->tiles.tile[firstTileIndex + i];
+        avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]) ? AVIF_TRUE : AVIF_FALSE;
+        if ((tile->image->width != tileWidth) || (tile->image->height != tileHeight) || (tile->image->depth != tileDepth) ||
+            (tile->image->yuvFormat != tileFormat) || (tile->image->yuvRange != tileRange) || (uvPresent != tileUVPresent)) {
+            return AVIF_FALSE;
+        }
+    }
+
+    if ((dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) || (dstImage->depth != tileDepth) ||
+        (dstImage->yuvFormat != tileFormat)) {
+        if (alpha) {
+            // Alpha doesn't match size, just bail out
+            return AVIF_FALSE;
+        }
+
+        avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+        dstImage->width = grid->outputWidth;
+        dstImage->height = grid->outputHeight;
+        dstImage->depth = tileDepth;
+        dstImage->yuvFormat = tileFormat;
+        dstImage->yuvRange = tileRange;
+    }
+
+    avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(tileFormat, &formatInfo);
+
+    unsigned int tileIndex = firstTileIndex;
+    size_t pixelBytes = avifImageUsesU16(dstImage) ? 2 : 1;
+    for (unsigned int rowIndex = 0; rowIndex < grid->rows; ++rowIndex) {
+        for (unsigned int colIndex = 0; colIndex < grid->columns; ++colIndex, ++tileIndex) {
+            avifTile * tile = &data->tiles.tile[tileIndex];
+
+            unsigned int widthToCopy = tileWidth;
+            unsigned int maxX = tileWidth * (colIndex + 1);
+            if (maxX > grid->outputWidth) {
+                widthToCopy -= maxX - grid->outputWidth;
+            }
+
+            unsigned int heightToCopy = tileHeight;
+            unsigned int maxY = tileHeight * (rowIndex + 1);
+            if (maxY > grid->outputHeight) {
+                heightToCopy -= maxY - grid->outputHeight;
+            }
+
+            // Y and A channels
+            size_t yaColOffset = colIndex * tileWidth;
+            size_t yaRowOffset = rowIndex * tileHeight;
+            size_t yaRowBytes = widthToCopy * pixelBytes;
+
+            if (alpha) {
+                // A
+                for (unsigned int j = 0; j < heightToCopy; ++j) {
+                    uint8_t * src = &tile->image->alphaPlane[j * tile->image->alphaRowBytes];
+                    uint8_t * dst = &dstImage->alphaPlane[(yaColOffset * pixelBytes) + ((yaRowOffset + j) * dstImage->alphaRowBytes)];
+                    memcpy(dst, src, yaRowBytes);
+                }
+            } else {
+                // Y
+                for (unsigned int j = 0; j < heightToCopy; ++j) {
+                    uint8_t * src = &tile->image->yuvPlanes[AVIF_CHAN_Y][j * tile->image->yuvRowBytes[AVIF_CHAN_Y]];
+                    uint8_t * dst =
+                        &dstImage->yuvPlanes[AVIF_CHAN_Y][(yaColOffset * pixelBytes) + ((yaRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_Y])];
+                    memcpy(dst, src, yaRowBytes);
+                }
+
+                if (!tileUVPresent) {
+                    continue;
+                }
+
+                // UV
+                widthToCopy >>= formatInfo.chromaShiftX;
+                heightToCopy >>= formatInfo.chromaShiftY;
+                size_t uvColOffset = yaColOffset >> formatInfo.chromaShiftX;
+                size_t uvRowOffset = yaRowOffset >> formatInfo.chromaShiftY;
+                size_t uvRowBytes = yaRowBytes >> formatInfo.chromaShiftX;
+                for (unsigned int j = 0; j < heightToCopy; ++j) {
+                    uint8_t * srcU = &tile->image->yuvPlanes[AVIF_CHAN_U][j * tile->image->yuvRowBytes[AVIF_CHAN_U]];
+                    uint8_t * dstU =
+                        &dstImage->yuvPlanes[AVIF_CHAN_U][(uvColOffset * pixelBytes) + ((uvRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_U])];
+                    memcpy(dstU, srcU, uvRowBytes);
+
+                    uint8_t * srcV = &tile->image->yuvPlanes[AVIF_CHAN_V][j * tile->image->yuvRowBytes[AVIF_CHAN_V]];
+                    uint8_t * dstV =
+                        &dstImage->yuvPlanes[AVIF_CHAN_V][(uvColOffset * pixelBytes) + ((uvRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_V])];
+                    memcpy(dstV, srcV, uvRowBytes);
+                }
+            }
+        }
+    }
+
+    return AVIF_TRUE;
 }
 
 // ---------------------------------------------------------------------------
@@ -570,6 +772,39 @@ static avifBool avifParseItemLocationBox(avifData * data, const uint8_t * raw, s
             // TODO: support more than one extent
             return AVIF_FALSE;
         }
+    }
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw, size_t rawLen)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+
+    uint8_t version, flags;
+    CHECK(avifROStreamRead(&s, &version, 1)); // unsigned int(8) version = 0;
+    if (version != 0) {
+        return AVIF_FALSE;
+    }
+    CHECK(avifROStreamRead(&s, &flags, 1));         // unsigned int(8) flags;
+    CHECK(avifROStreamRead(&s, &grid->rows, 1));    // unsigned int(8) rows_minus_one;
+    CHECK(avifROStreamRead(&s, &grid->columns, 1)); // unsigned int(8) columns_minus_one;
+    ++grid->rows;
+    ++grid->columns;
+
+    uint32_t fieldLength = ((flags & 1) + 1) * 16;
+    if (fieldLength == 16) {
+        uint16_t outputWidth16, outputHeight16;
+        CHECK(avifROStreamReadU16(&s, &outputWidth16));  // unsigned int(FieldLength) output_width;
+        CHECK(avifROStreamReadU16(&s, &outputHeight16)); // unsigned int(FieldLength) output_height;
+        grid->outputWidth = outputWidth16;
+        grid->outputHeight = outputHeight16;
+    } else {
+        if (fieldLength != 32) {
+            // This should be impossible
+            return AVIF_FALSE;
+        }
+        CHECK(avifROStreamReadU32(&s, &grid->outputWidth));  // unsigned int(FieldLength) output_width;
+        CHECK(avifROStreamReadU32(&s, &grid->outputHeight)); // unsigned int(FieldLength) output_height;
     }
     return AVIF_TRUE;
 }
@@ -945,6 +1180,15 @@ static avifBool avifParseItemReferenceBox(avifData * data, const uint8_t * raw, 
                 }
                 if (!memcmp(irefHeader.type, "cdsc", 4)) {
                     item->descForID = toID;
+                }
+                if (!memcmp(irefHeader.type, "dimg", 4)) {
+                    // derived images refer in the opposite direction
+                    avifItem * dimg = avifDataFindItem(data, toID);
+                    if (!dimg) {
+                        return AVIF_FALSE;
+                    }
+
+                    dimg->dimgForID = fromID;
                 }
             }
         }
@@ -1524,21 +1768,14 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
 {
     avifDataResetCodec(decoder->data);
 
-    decoder->data->codec[AVIF_CODEC_PLANES_COLOR] = avifCodecCreateInternal(decoder->codecChoice, decoder->data->colorInput);
-    if (!decoder->data->codec[AVIF_CODEC_PLANES_COLOR]) {
-        return AVIF_RESULT_NO_CODEC_AVAILABLE;
-    }
-    if (!decoder->data->codec[AVIF_CODEC_PLANES_COLOR]->open(decoder->data->codec[AVIF_CODEC_PLANES_COLOR], decoder->imageIndex + 1)) {
-        return AVIF_RESULT_DECODE_COLOR_FAILED;
-    }
-
-    if (decoder->data->alphaInput) {
-        decoder->data->codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreateInternal(decoder->codecChoice, decoder->data->alphaInput);
-        if (!decoder->data->codec[AVIF_CODEC_PLANES_ALPHA]) {
+    for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
+        avifTile * tile = &decoder->data->tiles.tile[i];
+        tile->codec = avifCodecCreateInternal(decoder->codecChoice, tile->input);
+        if (!tile->codec) {
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
         }
-        if (!decoder->data->codec[AVIF_CODEC_PLANES_ALPHA]->open(decoder->data->codec[AVIF_CODEC_PLANES_ALPHA], decoder->imageIndex + 1)) {
-            return AVIF_RESULT_DECODE_ALPHA_FAILED;
+        if (!tile->codec->open(tile->codec, decoder->imageIndex + 1)) {
+            return AVIF_RESULT_DECODE_COLOR_FAILED;
         }
     }
     return AVIF_RESULT_OK;
@@ -1552,18 +1789,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         return AVIF_RESULT_OK;
     }
 
-    avifDataResetCodec(data);
+    memset(&data->colorGrid, 0, sizeof(data->colorGrid));
+    memset(&data->alphaGrid, 0, sizeof(data->alphaGrid));
+    avifDataClearTiles(data);
     if (!decoder->image) {
         decoder->image = avifImageCreateEmpty();
-    }
-
-    if (data->colorInput) {
-        avifCodecDecodeInputDestroy(data->colorInput);
-        data->colorInput = NULL;
-    }
-    if (data->alphaInput) {
-        avifCodecDecodeInputDestroy(data->alphaInput);
-        data->alphaInput = NULL;
     }
 
     memset(&decoder->ioStats, 0, sizeof(decoder->ioStats));
@@ -1632,19 +1862,20 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             alphaTrack = &decoder->data->tracks.track[alphaTrackIndex];
         }
 
-        // TODO: We must get color profile information from somewhere; likely the color OBU as a fallback
-
-        data->colorInput = avifCodecDecodeInputCreate();
-        if (!avifCodecDecodeInputGetSamples(data->colorInput, colorTrack->sampleTable, &decoder->data->rawInput)) {
+        avifTile * colorTile = avifDataNewTile(decoder->data);
+        if (!avifCodecDecodeInputGetSamples(colorTile->input, colorTrack->sampleTable, &decoder->data->rawInput)) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
+        decoder->data->colorTileCount = 1;
 
+        avifTile * alphaTile = NULL;
         if (alphaTrack) {
-            data->alphaInput = avifCodecDecodeInputCreate();
-            if (!avifCodecDecodeInputGetSamples(data->alphaInput, alphaTrack->sampleTable, &decoder->data->rawInput)) {
+            alphaTile = avifDataNewTile(decoder->data);
+            if (!avifCodecDecodeInputGetSamples(alphaTile->input, alphaTrack->sampleTable, &decoder->data->rawInput)) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            data->alphaInput->alpha = AVIF_TRUE;
+            alphaTile->input->alpha = AVIF_TRUE;
+            decoder->data->alphaTileCount = 1;
         }
 
         // Stash off sample table for future timing information
@@ -1652,7 +1883,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         // Image sequence timing
         decoder->imageIndex = -1;
-        decoder->imageCount = data->colorInput->samples.count;
+        decoder->imageCount = colorTile->input->samples.count;
         decoder->timescale = colorTrack->mediaTimescale;
         decoder->durationInTimescales = colorTrack->mediaDuration;
         if (colorTrack->mediaTimescale) {
@@ -1673,6 +1904,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         avifROData exifData = AVIF_DATA_EMPTY;
         avifROData xmpData = AVIF_DATA_EMPTY;
         avifItem * colorOBUItem = NULL;
+        avifItem * alphaOBUItem = NULL;
 
         // Find the colorOBU (primary) item
         for (uint32_t itemIndex = 0; itemIndex < data->items.count; ++itemIndex) {
@@ -1680,7 +1912,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!item->id || !item->size) {
                 break;
             }
-            if (memcmp(item->type, "av01", 4)) {
+            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+            if (memcmp(item->type, "av01", 4) && !isGrid) {
                 // probably exif or some other data
                 continue;
             }
@@ -1693,67 +1926,124 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 continue;
             }
 
+            if (isGrid) {
+                const uint8_t * itemPtr = avifDataCalcItemPtr(data, item);
+                if (itemPtr == NULL) {
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                if (!avifParseImageGridBox(&data->colorGrid, itemPtr, item->size)) {
+                    return AVIF_RESULT_INVALID_IMAGE_GRID;
+                }
+            } else {
+                colorOBU.data = avifDataCalcItemPtr(data, item);
+                colorOBU.size = item->size;
+            }
+
             colorOBUItem = item;
-            colorOBU.data = avifDataCalcItemPtr(data, item);
-            colorOBU.size = item->size;
             break;
         }
 
-        if (colorOBUItem) {
-            // Find the alphaOBU item, if any
-            for (uint32_t itemIndex = 0; itemIndex < data->items.count; ++itemIndex) {
-                avifItem * item = &data->items.item[itemIndex];
-                if (!item->id || !item->size) {
-                    break;
-                }
-                if (memcmp(item->type, "av01", 4)) {
-                    // probably exif or some other data
-                    continue;
-                }
-                if (item->thumbnailForID != 0) {
-                    // It's a thumbnail, skip it
-                    continue;
-                }
+        if (!colorOBUItem) {
+            return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
+        }
 
-                if (isAlphaURN(item->auxC.auxType) && (item->auxForID == colorOBUItem->id)) {
-                    alphaOBU.data = avifDataCalcItemPtr(data, item);
-                    alphaOBU.size = item->size;
-                    break;
-                }
+        // Find the alphaOBU item, if any
+        for (uint32_t itemIndex = 0; itemIndex < data->items.count; ++itemIndex) {
+            avifItem * item = &data->items.item[itemIndex];
+            if (!item->id || !item->size) {
+                break;
+            }
+            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+            if (memcmp(item->type, "av01", 4) && !isGrid) {
+                // probably exif or some other data
+                continue;
+            }
+            if (item->thumbnailForID != 0) {
+                // It's a thumbnail, skip it
+                continue;
             }
 
-            // Find Exif and/or XMP metadata, if any
-            for (uint32_t itemIndex = 0; itemIndex < data->items.count; ++itemIndex) {
-                avifItem * item = &data->items.item[itemIndex];
-                if (!item->id || !item->size) {
-                    break;
+            if (isAlphaURN(item->auxC.auxType) && (item->auxForID == colorOBUItem->id)) {
+                if (isGrid) {
+                    const uint8_t * itemPtr = avifDataCalcItemPtr(data, item);
+                    if (itemPtr == NULL) {
+                        return AVIF_RESULT_BMFF_PARSE_FAILED;
+                    }
+                    if (!avifParseImageGridBox(&data->alphaGrid, itemPtr, item->size)) {
+                        return AVIF_RESULT_INVALID_IMAGE_GRID;
+                    }
+                } else {
+                    alphaOBU.data = avifDataCalcItemPtr(data, item);
+                    alphaOBU.size = item->size;
                 }
 
-                if (item->descForID != colorOBUItem->id) {
-                    // Not a content description (metadata) for the colorOBU, skip it
-                    continue;
-                }
-
-                if (!memcmp(item->type, "Exif", 4)) {
-                    // Advance past Annex A.2.1's header
-                    const uint8_t * boxPtr = avifDataCalcItemPtr(data, item);
-                    BEGIN_STREAM(exifBoxStream, boxPtr, item->size);
-                    uint32_t exifTiffHeaderOffset;
-                    CHECK(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset)); // unsigned int(32) exif_tiff_header_offset;
-
-                    exifData.data = avifROStreamCurrent(&exifBoxStream);
-                    exifData.size = avifROStreamRemainingBytes(&exifBoxStream);
-                }
-
-                if (!memcmp(item->type, "mime", 4) && !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
-                    xmpData.data = avifDataCalcItemPtr(data, item);
-                    xmpData.size = item->size;
-                }
+                alphaOBUItem = item;
+                break;
             }
         }
 
-        if (colorOBU.size == 0) {
-            return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
+        // Find Exif and/or XMP metadata, if any
+        for (uint32_t itemIndex = 0; itemIndex < data->items.count; ++itemIndex) {
+            avifItem * item = &data->items.item[itemIndex];
+            if (!item->id || !item->size) {
+                break;
+            }
+
+            if (item->descForID != colorOBUItem->id) {
+                // Not a content description (metadata) for the colorOBU, skip it
+                continue;
+            }
+
+            if (!memcmp(item->type, "Exif", 4)) {
+                // Advance past Annex A.2.1's header
+                const uint8_t * boxPtr = avifDataCalcItemPtr(data, item);
+                BEGIN_STREAM(exifBoxStream, boxPtr, item->size);
+                uint32_t exifTiffHeaderOffset;
+                CHECK(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset)); // unsigned int(32) exif_tiff_header_offset;
+
+                exifData.data = avifROStreamCurrent(&exifBoxStream);
+                exifData.size = avifROStreamRemainingBytes(&exifBoxStream);
+            }
+
+            if (!memcmp(item->type, "mime", 4) && !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
+                xmpData.data = avifDataCalcItemPtr(data, item);
+                xmpData.size = item->size;
+            }
+        }
+
+        if ((data->colorGrid.rows > 0) && (data->colorGrid.columns > 0)) {
+            if (!avifDataGenerateImageGridTiles(data, &data->colorGrid, colorOBUItem, AVIF_FALSE)) {
+                return AVIF_RESULT_INVALID_IMAGE_GRID;
+            }
+            data->colorTileCount = data->tiles.count;
+        } else {
+            if (colorOBU.size == 0) {
+                return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
+            }
+
+            avifTile * colorTile = avifDataNewTile(decoder->data);
+            avifSample * colorSample = (avifSample *)avifArrayPushPtr(&colorTile->input->samples);
+            memcpy(&colorSample->data, &colorOBU, sizeof(avifROData));
+            colorSample->sync = AVIF_TRUE;
+            decoder->data->colorTileCount = 1;
+        }
+
+        if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0)) {
+            if (!avifDataGenerateImageGridTiles(data, &data->alphaGrid, alphaOBUItem, AVIF_FALSE)) {
+                return AVIF_RESULT_INVALID_IMAGE_GRID;
+            }
+            data->alphaTileCount = data->tiles.count - data->colorTileCount;
+        } else {
+            avifTile * alphaTile = NULL;
+            if (alphaOBU.size > 0) {
+                alphaTile = avifDataNewTile(decoder->data);
+
+                avifSample * alphaSample = (avifSample *)avifArrayPushPtr(&alphaTile->input->samples);
+                memcpy(&alphaSample->data, &alphaOBU, sizeof(avifROData));
+                alphaSample->sync = AVIF_TRUE;
+                alphaTile->input->alpha = AVIF_TRUE;
+                decoder->data->alphaTileCount = 1;
+            }
         }
 
         if (colorOBUItem->colrPresent) {
@@ -1769,18 +2059,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
         if (xmpData.data && xmpData.size) {
             avifImageSetMetadataXMP(decoder->image, xmpData.data, xmpData.size);
-        }
-
-        data->colorInput = avifCodecDecodeInputCreate();
-        avifSample * colorSample = (avifSample *)avifArrayPushPtr(&data->colorInput->samples);
-        memcpy(&colorSample->data, &colorOBU, sizeof(avifROData));
-        colorSample->sync = AVIF_TRUE;
-        if (alphaOBU.size > 0) {
-            data->alphaInput = avifCodecDecodeInputCreate();
-            avifSample * alphaSample = (avifSample *)avifArrayPushPtr(&data->alphaInput->samples);
-            memcpy(&alphaSample->data, &alphaOBU, sizeof(avifROData));
-            alphaSample->sync = AVIF_TRUE;
-            data->alphaInput->alpha = AVIF_TRUE;
         }
 
         // Set all counts and timing to safe-but-uninteresting values
@@ -1817,45 +2095,98 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
 avifResult avifDecoderNextImage(avifDecoder * decoder)
 {
-    avifCodec * colorCodec = decoder->data->codec[AVIF_CODEC_PLANES_COLOR];
-    if (!colorCodec->getNextImage(colorCodec, decoder->image)) {
-        if (decoder->image->width) {
-            // We've sent at least one image, but we've run out now.
-            return AVIF_RESULT_NO_IMAGES_REMAINING;
-        }
-        return AVIF_RESULT_DECODE_COLOR_FAILED;
-    }
+    for (unsigned int tileIndex = 0; tileIndex < decoder->data->tiles.count; ++tileIndex) {
+        avifTile * tile = &decoder->data->tiles.tile[tileIndex];
 
-    avifCodec * alphaCodec = decoder->data->codec[AVIF_CODEC_PLANES_ALPHA];
-    if (alphaCodec) {
-        if (!alphaCodec->getNextImage(alphaCodec, decoder->image)) {
-            return AVIF_RESULT_DECODE_ALPHA_FAILED;
+        if (!tile->codec->getNextImage(tile->codec, tile->image)) {
+            if (tile->input->alpha) {
+                return AVIF_RESULT_DECODE_ALPHA_FAILED;
+            } else {
+                if (tile->image->width) {
+                    // We've sent at least one image, but we've run out now.
+                    return AVIF_RESULT_NO_IMAGES_REMAINING;
+                }
+                return AVIF_RESULT_DECODE_COLOR_FAILED;
+            }
         }
-    } else {
-        avifImageFreePlanes(decoder->image, AVIF_PLANES_A);
-    }
 
 #if defined(AVIF_FIX_STUDIO_ALPHA)
-    if (alphaCodec && alphaCodec->alphaLimitedRange(alphaCodec)) {
-        // Naughty! Alpha planes are supposed to be full range. Correct that here.
-        avifImageCopyDecoderAlpha(decoder->image);
-        if (avifImageUsesU16(decoder->image)) {
-            for (uint32_t j = 0; j < decoder->image->height; ++j) {
-                for (uint32_t i = 0; i < decoder->image->height; ++i) {
-                    uint16_t * alpha = (uint16_t *)&decoder->image->alphaPlane[(i * 2) + (j * decoder->image->alphaRowBytes)];
-                    *alpha = (uint16_t)avifLimitedToFullY(decoder->image->depth, *alpha);
+        if (tile->input->alpha && tile->codec->alphaLimitedRange(tile->codec)) {
+            // Naughty! Alpha planes are supposed to be full range. Correct that here.
+            avifImageCopyDecoderAlpha(tile->image);
+            if (avifImageUsesU16(tile->image)) {
+                for (uint32_t j = 0; j < tile->image->height; ++j) {
+                    for (uint32_t i = 0; i < tile->image->height; ++i) {
+                        uint16_t * alpha = (uint16_t *)&tile->image->alphaPlane[(i * 2) + (j * tile->image->alphaRowBytes)];
+                        *alpha = (uint16_t)avifLimitedToFullY(tile->image->depth, *alpha);
+                    }
                 }
-            }
-        } else {
-            for (uint32_t j = 0; j < decoder->image->height; ++j) {
-                for (uint32_t i = 0; i < decoder->image->height; ++i) {
-                    uint8_t * alpha = &decoder->image->alphaPlane[i + (j * decoder->image->alphaRowBytes)];
-                    *alpha = (uint8_t)avifLimitedToFullY(decoder->image->depth, *alpha);
+            } else {
+                for (uint32_t j = 0; j < tile->image->height; ++j) {
+                    for (uint32_t i = 0; i < tile->image->height; ++i) {
+                        uint8_t * alpha = &tile->image->alphaPlane[i + (j * tile->image->alphaRowBytes)];
+                        *alpha = (uint8_t)avifLimitedToFullY(tile->image->depth, *alpha);
+                    }
                 }
             }
         }
-    }
 #endif
+    }
+
+    if (decoder->data->tiles.count != (decoder->data->colorTileCount + decoder->data->alphaTileCount)) {
+        // TODO: assert here? This should be impossible.
+        return AVIF_RESULT_UNKNOWN_ERROR;
+    }
+
+    if ((decoder->data->colorGrid.rows > 0) || (decoder->data->colorGrid.columns > 0)) {
+        if (!avifDataFillImageGrid(decoder->data, &decoder->data->colorGrid, decoder->image, 0, decoder->data->colorTileCount, AVIF_FALSE)) {
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+    } else {
+        // Normal (most common) non-grid path. Just steal the planes from the only "tile".
+
+        if (decoder->data->colorTileCount != 1) {
+            return AVIF_RESULT_DECODE_COLOR_FAILED;
+        }
+
+        avifImage * srcColor = decoder->data->tiles.tile[0].image;
+
+        if ((decoder->image->width != srcColor->width) || (decoder->image->height != srcColor->height) ||
+            (decoder->image->depth != srcColor->depth)) {
+            avifImageFreePlanes(decoder->image, AVIF_PLANES_ALL);
+
+            decoder->image->width = srcColor->width;
+            decoder->image->height = srcColor->height;
+            decoder->image->depth = srcColor->depth;
+        }
+
+        avifImageStealPlanes(decoder->image, srcColor, AVIF_PLANES_YUV);
+    }
+
+    if ((decoder->data->alphaGrid.rows > 0) || (decoder->data->alphaGrid.columns > 0)) {
+        if (!avifDataFillImageGrid(
+                decoder->data, &decoder->data->alphaGrid, decoder->image, decoder->data->colorTileCount, decoder->data->alphaTileCount, AVIF_TRUE)) {
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+    } else {
+        // Normal (most common) non-grid path. Just steal the planes from the only "tile".
+
+        if (decoder->data->alphaTileCount == 0) {
+            avifImageFreePlanes(decoder->image, AVIF_PLANES_A); // no alpha
+        } else {
+            if (decoder->data->alphaTileCount != 1) {
+                return AVIF_RESULT_DECODE_ALPHA_FAILED;
+            }
+
+            avifImage * srcAlpha = decoder->data->tiles.tile[decoder->data->colorTileCount].image;
+            if ((decoder->image->width != srcAlpha->width) || (decoder->image->height != srcAlpha->height) ||
+                (decoder->image->depth != srcAlpha->depth)) {
+                return AVIF_RESULT_DECODE_ALPHA_FAILED;
+            }
+
+            avifImageStealPlanes(decoder->image, srcAlpha, AVIF_PLANES_A);
+        }
+    }
 
     ++decoder->imageIndex;
     if (decoder->data->sourceSampleTable) {
@@ -1915,9 +2246,9 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 
 avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex)
 {
-    if (decoder->data->colorInput) {
-        if (frameIndex < decoder->data->colorInput->samples.count) {
-            return decoder->data->colorInput->samples.sample[frameIndex].sync;
+    if ((decoder->data->tiles.count > 0) && decoder->data->tiles.tile[0].input) {
+        if (frameIndex < decoder->data->tiles.tile[0].input->samples.count) {
+            return decoder->data->tiles.tile[0].input->samples.sample[frameIndex].sync;
         }
     }
     return AVIF_FALSE;

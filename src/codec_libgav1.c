@@ -49,7 +49,8 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         // Feed another sample
         avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
         ++codec->internal->inputSampleIndex;
-        if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder, sample->data.data, sample->data.size, /*user_private_data=*/0) != kLibgav1StatusOk) {
+        if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder, sample->data.data, sample->data.size, /*user_private_data=*/0) !=
+            kLibgav1StatusOk) {
             return AVIF_FALSE;
         }
         // Each Libgav1DecoderDequeueFrame() call invalidates the output frame
@@ -94,17 +95,16 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
 
         if (image->width && image->height) {
             if ((image->width != (uint32_t)gav1Image->displayed_width[0]) ||
-                (image->height != (uint32_t)gav1Image->displayed_height[0]) ||
-                (image->depth != (uint32_t)gav1Image->bitdepth) ||
+                (image->height != (uint32_t)gav1Image->displayed_height[0]) || (image->depth != (uint32_t)gav1Image->bitdepth) ||
                 (image->yuvFormat != yuvFormat)) {
                 // Throw it all out
                 avifImageFreePlanes(image, AVIF_PLANES_ALL);
             }
         }
-
         image->width = gav1Image->displayed_width[0];
         image->height = gav1Image->displayed_height[0];
         image->depth = gav1Image->bitdepth;
+
         image->yuvFormat = yuvFormat;
         image->yuvRange = codec->internal->colorRange;
 
@@ -131,12 +131,16 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
-        if (!image->width || !image->height ||
-            (image->width != (uint32_t)gav1Image->displayed_width[0]) ||
-            (image->height != (uint32_t)gav1Image->displayed_height[0]) ||
-            (image->depth != (uint32_t)gav1Image->bitdepth)) {
-            return AVIF_FALSE;
+        if (image->width && image->height) {
+            if ((image->width != (uint32_t)gav1Image->displayed_width[0]) ||
+                (image->height != (uint32_t)gav1Image->displayed_height[0]) || (image->depth != (uint32_t)gav1Image->bitdepth)) {
+                // Alpha plane doesn't match previous alpha plane decode, bail out
+                return AVIF_FALSE;
+            }
         }
+        image->width = gav1Image->displayed_width[0];
+        image->height = gav1Image->displayed_height[0];
+        image->depth = gav1Image->bitdepth;
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = gav1Image->plane[0];

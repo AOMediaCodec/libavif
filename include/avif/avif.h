@@ -90,7 +90,8 @@ typedef enum avifResult
     AVIF_RESULT_ISPE_SIZE_MISMATCH,
     AVIF_RESULT_NO_CODEC_AVAILABLE,
     AVIF_RESULT_NO_IMAGES_REMAINING,
-    AVIF_RESULT_INVALID_EXIF_PAYLOAD
+    AVIF_RESULT_INVALID_EXIF_PAYLOAD,
+    AVIF_RESULT_INVALID_IMAGE_GRID
 } avifResult;
 
 const char * avifResultToString(avifResult result);
@@ -322,6 +323,7 @@ void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpS
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
+void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t planes);
 
 // Optional YUV<->RGB support
 avifResult avifImageRGBToYUV(avifImage * image);

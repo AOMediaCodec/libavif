@@ -88,6 +88,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_NO_CODEC_AVAILABLE:        return "No codec available";
         case AVIF_RESULT_NO_IMAGES_REMAINING:       return "No images remaining";
         case AVIF_RESULT_INVALID_EXIF_PAYLOAD:      return "Invalid Exif payload";
+        case AVIF_RESULT_INVALID_IMAGE_GRID:        return "Invalid image grid";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
@@ -342,6 +343,57 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes)
         image->alphaPlane = NULL;
         image->alphaRowBytes = 0;
         image->decoderOwnsAlphaPlane = AVIF_FALSE;
+    }
+}
+
+void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t planes)
+{
+    avifImageFreePlanes(dstImage, planes);
+
+    if (planes & AVIF_PLANES_RGB) {
+        dstImage->rgbPlanes[AVIF_CHAN_R] = srcImage->rgbPlanes[AVIF_CHAN_R];
+        dstImage->rgbRowBytes[AVIF_CHAN_R] = srcImage->rgbRowBytes[AVIF_CHAN_R];
+        dstImage->rgbPlanes[AVIF_CHAN_G] = srcImage->rgbPlanes[AVIF_CHAN_G];
+        dstImage->rgbRowBytes[AVIF_CHAN_G] = srcImage->rgbRowBytes[AVIF_CHAN_G];
+        dstImage->rgbPlanes[AVIF_CHAN_B] = srcImage->rgbPlanes[AVIF_CHAN_B];
+        dstImage->rgbRowBytes[AVIF_CHAN_B] = srcImage->rgbRowBytes[AVIF_CHAN_B];
+
+        srcImage->rgbPlanes[AVIF_CHAN_R] = NULL;
+        srcImage->rgbRowBytes[AVIF_CHAN_R] = 0;
+        srcImage->rgbPlanes[AVIF_CHAN_G] = NULL;
+        srcImage->rgbRowBytes[AVIF_CHAN_G] = 0;
+        srcImage->rgbPlanes[AVIF_CHAN_B] = NULL;
+        srcImage->rgbRowBytes[AVIF_CHAN_B] = 0;
+    }
+    if (planes & AVIF_PLANES_YUV) {
+        dstImage->yuvPlanes[AVIF_CHAN_Y] = srcImage->yuvPlanes[AVIF_CHAN_Y];
+        dstImage->yuvRowBytes[AVIF_CHAN_Y] = srcImage->yuvRowBytes[AVIF_CHAN_Y];
+        dstImage->yuvPlanes[AVIF_CHAN_U] = srcImage->yuvPlanes[AVIF_CHAN_U];
+        dstImage->yuvRowBytes[AVIF_CHAN_U] = srcImage->yuvRowBytes[AVIF_CHAN_U];
+        dstImage->yuvPlanes[AVIF_CHAN_V] = srcImage->yuvPlanes[AVIF_CHAN_V];
+        dstImage->yuvRowBytes[AVIF_CHAN_V] = srcImage->yuvRowBytes[AVIF_CHAN_V];
+
+        srcImage->yuvPlanes[AVIF_CHAN_Y] = NULL;
+        srcImage->yuvRowBytes[AVIF_CHAN_Y] = 0;
+        srcImage->yuvPlanes[AVIF_CHAN_U] = NULL;
+        srcImage->yuvRowBytes[AVIF_CHAN_U] = 0;
+        srcImage->yuvPlanes[AVIF_CHAN_V] = NULL;
+        srcImage->yuvRowBytes[AVIF_CHAN_V] = 0;
+
+        dstImage->yuvFormat = srcImage->yuvFormat;
+        dstImage->yuvRange = srcImage->yuvRange;
+        dstImage->decoderOwnsYUVPlanes = srcImage->decoderOwnsYUVPlanes;
+        srcImage->decoderOwnsYUVPlanes = AVIF_FALSE;
+    }
+    if (planes & AVIF_PLANES_A) {
+        dstImage->alphaPlane = srcImage->alphaPlane;
+        dstImage->alphaRowBytes = srcImage->alphaRowBytes;
+
+        srcImage->alphaPlane = NULL;
+        srcImage->alphaRowBytes = 0;
+
+        dstImage->decoderOwnsAlphaPlane = srcImage->decoderOwnsAlphaPlane;
+        srcImage->decoderOwnsAlphaPlane = AVIF_FALSE;
     }
 }
 

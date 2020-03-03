@@ -144,10 +144,10 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
                 avifImageFreePlanes(image, AVIF_PLANES_ALL);
             }
         }
-
         image->width = dav1dImage->p.w;
         image->height = dav1dImage->p.h;
         image->depth = dav1dImage->p.bpc;
+
         image->yuvFormat = yuvFormat;
         image->yuvRange = codec->internal->colorRange;
 
@@ -173,10 +173,16 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
-        if (!image->width || !image->height || (image->width != (uint32_t)dav1dImage->p.w) ||
-            (image->height != (uint32_t)dav1dImage->p.h) || (image->depth != (uint32_t)dav1dImage->p.bpc)) {
-            return AVIF_FALSE;
+        if (image->width && image->height) {
+            if ((image->width != (uint32_t)dav1dImage->p.w) || (image->height != (uint32_t)dav1dImage->p.h) ||
+                (image->depth != (uint32_t)dav1dImage->p.bpc)) {
+                // Alpha plane doesn't match previous alpha plane decode, bail out
+                return AVIF_FALSE;
+            }
         }
+        image->width = dav1dImage->p.w;
+        image->height = dav1dImage->p.h;
+        image->depth = dav1dImage->p.bpc;
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
