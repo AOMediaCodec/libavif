@@ -498,7 +498,7 @@ uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 // Notes:
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
-// * Quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
+// * Quality range: [AVIF_QUANTIZER_BEST_QUALITY - AVIF_QUANTIZER_WORST_QUALITY]
 // * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
 //   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
 // * Speed range: [AVIF_SPEED_SLOWEST - AVIF_SPEED_FASTEST]. Slower should make for a better quality
