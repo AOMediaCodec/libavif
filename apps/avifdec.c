@@ -104,6 +104,7 @@ int main(int argc, char * argv[])
 
     printf("Decoding with AV1 codec '%s', please wait...\n", avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE));
 
+    int returnCode = 0;
     avifImage * avif = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
     avifResult decodeResult = avifDecoderRead(decoder, avif, (avifROData *)&raw);
@@ -111,12 +112,15 @@ int main(int argc, char * argv[])
         printf("Image decoded: %s\n", inputFilename);
         printf("Image details:\n");
         avifImageDump(avif);
-        y4mWrite(avif, outputFilename);
+        if (!y4mWrite(avif, outputFilename)) {
+            returnCode = 1;
+        }
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
+        returnCode = 1;
     }
     avifRWDataFree(&raw);
     avifDecoderDestroy(decoder);
     avifImageDestroy(avif);
-    return 0;
+    return returnCode;
 }
