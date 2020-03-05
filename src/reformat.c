@@ -445,7 +445,7 @@ static avifResult avifImageYUVToInterleaved(avifImage * image, uint8_t * rgbPlan
         } else {
             // Fill opaque
             if (avifImageUsesU16(image)) {
-                const uint16_t maxChannel = (1 << image->depth) - 1;
+                const uint16_t maxChannel = (uint16_t)((1 << image->depth) - 1);
                 for (uint32_t y = 0; y < image->height; ++y) {
                     uint16_t * dstAlphaRow = (uint16_t *)&alphaPlane[y * rowBytes];
                     for (uint32_t x = 0; x < image->width; ++x) {
