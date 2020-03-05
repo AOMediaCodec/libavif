@@ -329,6 +329,17 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
 avifResult avifImageRGBToYUV(avifImage * image);
 avifResult avifImageYUVToRGB(avifImage * image);
 
+// Convert YUV -> RGB(A) without using intermediate RGB planes owned by avifImage. Pixel ptr passed
+// in here must be at least (rowBytes * image->height) in size, and will be filled with either U8s
+// or U16s depending on the depth of the image. Use avifImageUsesU16() as a helper function to make
+// this determination.
+avifResult avifImageYUVToInterleavedRGB(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
+avifResult avifImageYUVToInterleavedRGBA(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
+avifResult avifImageYUVToInterleavedARGB(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
+avifResult avifImageYUVToInterleavedBGR(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
+avifResult avifImageYUVToInterleavedBGRA(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
+avifResult avifImageYUVToInterleavedABGR(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
+
 // ---------------------------------------------------------------------------
 // YUV Utils
 

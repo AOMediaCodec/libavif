@@ -47,6 +47,11 @@ if (decodeResult == AVIF_RESULT_OK) {
     ... image->rgbPlanes;
     ... image->rgbRowBytes;
 
+    // Option 3: Convert to pre-existing interleaved RGB(A)/BGR(A) buffer
+    uint8_t * pixels = ...;
+    uint32_t rowBytes = ...;
+    avifImageYUVToInterleavedRGBA(image, pixels, rowBytes);
+
     // Use alpha plane, if present
     if (image->alphaPlane) {
         ... image->alphaPlane;
@@ -132,6 +137,11 @@ if (decodeResult == AVIF_RESULT_OK) {
         avifImageYUVToRGB(decoder->image); // (this is legal to call on decoder->image)
         ... decoder->image->rgbPlanes;
         ... decoder->image->rgbRowBytes;
+
+        // Option 3: Convert to pre-existing interleaved RGB(A)/BGR(A) buffer
+        uint8_t * pixels = ...;
+        uint32_t rowBytes = ...;
+        avifImageYUVToInterleavedRGBA(image, pixels, rowBytes);
 
         // Use alpha plane, if present
         if (decoder->image->alphaPlane) {
