@@ -183,6 +183,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
                 if (!strcmp(tmpBuffer, "XCOLORRANGE=FULL")) {
                     rangeFlag = AVIF_NCLX_FULL_RANGE;
                 }
+                break;
             default:
                 break;
         }
