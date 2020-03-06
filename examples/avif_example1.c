@@ -56,7 +56,7 @@ int main(int argc, char * argv[])
 
     if (res != AVIF_RESULT_OK) {
         exitStatus = 1;
-        goto encode_failed;
+        goto encodeCleanup;
     }
 
     // Decode it
@@ -67,11 +67,11 @@ int main(int argc, char * argv[])
 
     if (decodeResult != AVIF_RESULT_OK) {
         exitStatus = 1;
-        goto decode_failed;
+        goto decodeCleanup;
     }
     if (avifImageYUVToRGB(decoded) != AVIF_RESULT_OK) {
         exitStatus = 1;
-        goto decode_failed;
+        goto decodeCleanup;
     }
     for (int j = 0; j < height; ++j) {
         for (int i = 0; i < width; ++i) {
@@ -86,11 +86,11 @@ int main(int argc, char * argv[])
         }
     }
 
-decode_failed:
+decodeCleanup:
     avifImageDestroy(decoded);
     avifRWDataFree(&raw);
 
-encode_failed:
+encodeCleanup:
     avifImageDestroy(image);
 #else  /* if 1 */
 
