@@ -266,9 +266,13 @@ int main(int argc, char * argv[])
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
         goto cleanup;
     }
-    fwrite(raw.data, 1, raw.size, f);
+    if (fwrite(raw.data, 1, raw.size, f) != raw.size) {
+        fprintf(stderr, "Failed to write %zu bytes: %s\n", raw.size, outputFilename);
+        returnCode = 1;
+    } else {
+        printf("Wrote: %s\n", outputFilename);
+    }
     fclose(f);
-    printf("Wrote: %s\n", outputFilename);
 
 cleanup:
     if (encoder) {
