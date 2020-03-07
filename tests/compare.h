@@ -22,6 +22,6 @@ typedef struct ImageComparison
 } ImageComparison;
 
 // Returns AVIF_FALSE if they're not even worth comparing (mismatched sizes / pixel formats / etc)
-avifBool compareYUVA(ImageComparison * ic, avifImage * image1, avifImage * image2);
+avifBool compareYUVA(ImageComparison * ic, const avifImage * image1, const avifImage * image2);
 
 #endif

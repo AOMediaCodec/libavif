@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-avifBool compareYUVA(ImageComparison * ic, avifImage * image1, avifImage * image2)
+avifBool compareYUVA(ImageComparison * ic, const avifImage * image1, const avifImage * image2)
 {
     memset(ic, 0, sizeof(ImageComparison));
     if (!image1 || !image2) {
