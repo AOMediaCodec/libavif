@@ -565,7 +565,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
     avifPixelFormat tileFormat = firstTile->image->yuvFormat;
 
     avifProfileFormat tileProfile = firstTile->image->profileFormat;
-    avifNclxColorProfile tileNCLX = firstTile->image->nclx;
+    avifNclxColorProfile * tileNCLX = &firstTile->image->nclx;
     avifRange tileRange = firstTile->image->yuvRange;
     avifBool tileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]) ? AVIF_TRUE
                                                                                                                     : AVIF_FALSE;
@@ -577,8 +577,8 @@ static avifBool avifDataFillImageGrid(avifData * data,
             (tile->image->yuvFormat != tileFormat) || (tile->image->yuvRange != tileRange) || (uvPresent != tileUVPresent) ||
             ((tileProfile == AVIF_PROFILE_FORMAT_NCLX) &&
              ((tile->image->profileFormat != tileProfile) ||
-              (tile->image->nclx.colourPrimaries != tileNCLX.colourPrimaries) || (tile->image->nclx.transferCharacteristics != tileNCLX.transferCharacteristics) ||
-              (tile->image->nclx.matrixCoefficients != tileNCLX.matrixCoefficients) || (tile->image->nclx.fullRangeFlag != tileNCLX.fullRangeFlag)))) {
+              (tile->image->nclx.colourPrimaries != tileNCLX->colourPrimaries) || (tile->image->nclx.transferCharacteristics != tileNCLX->transferCharacteristics) ||
+              (tile->image->nclx.matrixCoefficients != tileNCLX->matrixCoefficients) || (tile->image->nclx.fullRangeFlag != tileNCLX->fullRangeFlag)))) {
             return AVIF_FALSE;
         }
     }
@@ -597,7 +597,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
         dstImage->yuvFormat = tileFormat;
         dstImage->yuvRange = tileRange;
         if(tileProfile == AVIF_PROFILE_FORMAT_NCLX) {
-          avifImageSetProfileNCLX(dstImage, &tileNCLX);
+          avifImageSetProfileNCLX(dstImage, tileNCLX);
         }
     }
 
