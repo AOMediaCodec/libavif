@@ -563,6 +563,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
     unsigned int tileHeight = firstTile->image->height;
     unsigned int tileDepth = firstTile->image->depth;
     avifPixelFormat tileFormat = firstTile->image->yuvFormat;
+    avifNclxColorProfile tileNCLX = firstTile->image->nclx;
     avifRange tileRange = firstTile->image->yuvRange;
     avifBool tileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]) ? AVIF_TRUE
                                                                                                                     : AVIF_FALSE;
@@ -571,7 +572,9 @@ static avifBool avifDataFillImageGrid(avifData * data,
         avifTile * tile = &data->tiles.tile[firstTileIndex + i];
         avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]) ? AVIF_TRUE : AVIF_FALSE;
         if ((tile->image->width != tileWidth) || (tile->image->height != tileHeight) || (tile->image->depth != tileDepth) ||
-            (tile->image->yuvFormat != tileFormat) || (tile->image->yuvRange != tileRange) || (uvPresent != tileUVPresent)) {
+            (tile->image->yuvFormat != tileFormat) || (tile->image->yuvRange != tileRange) || (uvPresent != tileUVPresent) ||
+            (tile->image->nclx.colourPrimaries != tileNCLX.colourPrimaries) || (tile->image->nclx.transferCharacteristics != tileNCLX.transferCharacteristics) ||
+            (tile->image->nclx.matrixCoefficients != tileNCLX.matrixCoefficients) || (tile->image->nclx.fullRangeFlag != tileNCLX.fullRangeFlag)) {
             return AVIF_FALSE;
         }
     }
@@ -589,6 +592,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
         dstImage->depth = tileDepth;
         dstImage->yuvFormat = tileFormat;
         dstImage->yuvRange = tileRange;
+        dstImage->nclx = tileNCLX;
     }
 
     avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
@@ -2161,6 +2165,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             decoder->image->width = srcColor->width;
             decoder->image->height = srcColor->height;
             decoder->image->depth = srcColor->depth;
+
+            decoder->image->nclx = srcColor->nclx;
         }
 
         avifImageStealPlanes(decoder->image, srcColor, AVIF_PLANES_YUV);
