@@ -254,7 +254,7 @@ static int runTests(const char * dataDir, const char * testFilter)
     return (failedCount == 0) ? 0 : 1;
 }
 
-static void showSyntaxHelp(void)
+static void syntax(void)
 {
     fprintf(stderr,
             "Syntax: aviftest [options] dataDir [testFilter]\n"
@@ -284,7 +284,7 @@ int main(int argc, char * argv[])
             testFilter = arg;
         } else {
             fprintf(stderr, "Too many positional arguments: %s\n", arg);
-            showSyntaxHelp();
+            syntax();
             return 1;
         }
     }
@@ -292,7 +292,7 @@ int main(int argc, char * argv[])
     // Verify all required args were set
     if (dataDir == NULL) {
         fprintf(stderr, "dataDir is required, bailing out.\n");
-        showSyntaxHelp();
+        syntax();
         return 1;
     }
 
