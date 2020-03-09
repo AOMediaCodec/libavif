@@ -15,7 +15,7 @@ before_script:
   - ./configure && make -j2 && sudo make install
   - nasm --version
   - pip3 --disable-pip-version-check install setuptools
-  - pip3 --disable-pip-version-check install meson==0.52.1
+  - pip3 --disable-pip-version-check install meson
   - cd $TRAVIS_BUILD_DIR/ext
   - bash aom.cmd
   - bash dav1d.cmd
