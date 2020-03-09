@@ -403,6 +403,46 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
             ++ipcoIndex;
             ipmaPush(&ipmaColor, ipcoIndex);
 
+            // Write (Optional) Transformations
+            if (image->transformFlags & AVIF_TRANSFORM_PASP) {
+                avifBoxMarker pasp = avifRWStreamWriteBox(&s, "pasp", -1, 0);
+                avifRWStreamWriteU32(&s, image->pasp.hSpacing); // unsigned int(32) hSpacing;
+                avifRWStreamWriteU32(&s, image->pasp.vSpacing); // unsigned int(32) vSpacing;
+                avifRWStreamFinishBox(&s, pasp);
+                ++ipcoIndex;
+                ipmaPush(&ipmaColor, ipcoIndex);
+            }
+            if (image->transformFlags & AVIF_TRANSFORM_CLAP) {
+                avifBoxMarker clap = avifRWStreamWriteBox(&s, "clap", -1, 0);
+                avifRWStreamWriteU32(&s, image->clap.widthN);    // unsigned int(32) cleanApertureWidthN;
+                avifRWStreamWriteU32(&s, image->clap.widthD);    // unsigned int(32) cleanApertureWidthD;
+                avifRWStreamWriteU32(&s, image->clap.heightN);   // unsigned int(32) cleanApertureHeightN;
+                avifRWStreamWriteU32(&s, image->clap.heightD);   // unsigned int(32) cleanApertureHeightD;
+                avifRWStreamWriteU32(&s, image->clap.horizOffN); // unsigned int(32) horizOffN;
+                avifRWStreamWriteU32(&s, image->clap.horizOffD); // unsigned int(32) horizOffD;
+                avifRWStreamWriteU32(&s, image->clap.vertOffN);  // unsigned int(32) vertOffN;
+                avifRWStreamWriteU32(&s, image->clap.vertOffD);  // unsigned int(32) vertOffD;
+                avifRWStreamFinishBox(&s, clap);
+                ++ipcoIndex;
+                ipmaPush(&ipmaColor, ipcoIndex);
+            }
+            if (image->transformFlags & AVIF_TRANSFORM_IROT) {
+                avifBoxMarker irot = avifRWStreamWriteBox(&s, "irot", -1, 0);
+                uint8_t angle = image->irot.angle & 0x3;
+                avifRWStreamWrite(&s, &angle, 1); // unsigned int (6) reserved = 0; unsigned int (2) angle;
+                avifRWStreamFinishBox(&s, irot);
+                ++ipcoIndex;
+                ipmaPush(&ipmaColor, ipcoIndex);
+            }
+            if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
+                avifBoxMarker imir = avifRWStreamWriteBox(&s, "imir", -1, 0);
+                uint8_t axis = image->imir.axis & 0x1;
+                avifRWStreamWrite(&s, &axis, 1); // unsigned int (7) reserved = 0; unsigned int (1) axis;
+                avifRWStreamFinishBox(&s, imir);
+                ++ipcoIndex;
+                ipmaPush(&ipmaColor, ipcoIndex);
+            }
+
             if (hasAlpha) {
                 avifBoxMarker pixiA = avifRWStreamWriteBox(&s, "pixi", 0, 0);
                 avifRWStreamWriteU8(&s, 1);                     // unsigned int (8) num_channels;

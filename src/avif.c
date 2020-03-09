@@ -132,6 +132,12 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
     dstImage->yuvRange = srcImage->yuvRange;
     dstImage->alphaRange = srcImage->alphaRange;
 
+    dstImage->transformFlags = srcImage->transformFlags;
+    memcpy(&dstImage->pasp, &srcImage->pasp, sizeof(dstImage->pasp));
+    memcpy(&dstImage->clap, &srcImage->clap, sizeof(dstImage->clap));
+    memcpy(&dstImage->irot, &srcImage->irot, sizeof(dstImage->irot));
+    memcpy(&dstImage->imir, &srcImage->imir, sizeof(dstImage->pasp));
+
     if (srcImage->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
         avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
     } else if (srcImage->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {

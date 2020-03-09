@@ -91,6 +91,14 @@ typedef struct avifItem
     avifColourInformationBox colr;
     avifBool av1CPresent;
     avifCodecConfigurationBox av1C;
+    avifBool paspPresent;
+    avifPixelAspectRatioBox pasp;
+    avifBool clapPresent;
+    avifCleanApertureBox clap;
+    avifBool irotPresent;
+    avifImageRotation irot;
+    avifBool imirPresent;
+    avifImageMirror imir;
     uint32_t thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
     uint32_t auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;      // if non-zero, this item is a content description for Item #{descForID}
@@ -106,6 +114,10 @@ typedef struct avifProperty
     avifAuxiliaryType auxC;
     avifColourInformationBox colr;
     avifCodecConfigurationBox av1C;
+    avifPixelAspectRatioBox pasp;
+    avifCleanApertureBox clap;
+    avifImageRotation irot;
+    avifImageMirror imir;
 } avifProperty;
 AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
 
@@ -890,6 +902,58 @@ static avifBool avifParseAV1CodecConfigurationBoxProperty(avifData * data, const
     return avifParseAV1CodecConfigurationBox(raw, rawLen, &data->properties.prop[propertyIndex].av1C);
 }
 
+static avifBool avifParsePixelAspectRatioBoxProperty(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+
+    avifPixelAspectRatioBox * pasp = &data->properties.prop[propertyIndex].pasp;
+    CHECK(avifROStreamReadU32(&s, &pasp->hSpacing)); // unsigned int(32) hSpacing;
+    CHECK(avifROStreamReadU32(&s, &pasp->vSpacing)); // unsigned int(32) vSpacing;
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseCleanApertureBoxProperty(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+
+    avifCleanApertureBox * clap = &data->properties.prop[propertyIndex].clap;
+    CHECK(avifROStreamReadU32(&s, &clap->widthN));    // unsigned int(32) cleanApertureWidthN;
+    CHECK(avifROStreamReadU32(&s, &clap->widthD));    // unsigned int(32) cleanApertureWidthD;
+    CHECK(avifROStreamReadU32(&s, &clap->heightN));   // unsigned int(32) cleanApertureHeightN;
+    CHECK(avifROStreamReadU32(&s, &clap->heightD));   // unsigned int(32) cleanApertureHeightD;
+    CHECK(avifROStreamReadU32(&s, &clap->horizOffN)); // unsigned int(32) horizOffN;
+    CHECK(avifROStreamReadU32(&s, &clap->horizOffD)); // unsigned int(32) horizOffD;
+    CHECK(avifROStreamReadU32(&s, &clap->vertOffN));  // unsigned int(32) vertOffN;
+    CHECK(avifROStreamReadU32(&s, &clap->vertOffD));  // unsigned int(32) vertOffD;
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseImageRotationProperty(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+
+    avifImageRotation * irot = &data->properties.prop[propertyIndex].irot;
+    CHECK(avifROStreamRead(&s, &irot->angle, 1)); // unsigned int (6) reserved = 0; unsigned int (2) angle;
+    if ((irot->angle & 0xfc) != 0) {
+        // reserved bits must be 0
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseImageMirrorProperty(avifData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+
+    avifImageMirror * imir = &data->properties.prop[propertyIndex].imir;
+    CHECK(avifROStreamRead(&s, &imir->axis, 1)); // unsigned int (7) reserved = 0; unsigned int (1) axis;
+    if ((imir->axis & 0xfe) != 0) {
+        // reserved bits must be 0
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
 static avifBool avifParseItemPropertyContainerBox(avifData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
@@ -911,6 +975,18 @@ static avifBool avifParseItemPropertyContainerBox(avifData * data, const uint8_t
         }
         if (!memcmp(header.type, "av1C", 4)) {
             CHECK(avifParseAV1CodecConfigurationBoxProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "pasp", 4)) {
+            CHECK(avifParsePixelAspectRatioBoxProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "clap", 4)) {
+            CHECK(avifParseCleanApertureBoxProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "irot", 4)) {
+            CHECK(avifParseImageRotationProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "imir", 4)) {
+            CHECK(avifParseImageMirrorProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
         }
 
         CHECK(avifROStreamSkip(&s, header.size));
@@ -983,6 +1059,18 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, const uint8_t 
             } else if (!memcmp(prop->type, "av1C", 4)) {
                 item->av1CPresent = AVIF_TRUE;
                 memcpy(&item->av1C, &prop->av1C, sizeof(avifCodecConfigurationBox));
+            } else if (!memcmp(prop->type, "pasp", 4)) {
+                item->paspPresent = AVIF_TRUE;
+                memcpy(&item->pasp, &prop->pasp, sizeof(avifPixelAspectRatioBox));
+            } else if (!memcmp(prop->type, "clap", 4)) {
+                item->clapPresent = AVIF_TRUE;
+                memcpy(&item->clap, &prop->clap, sizeof(avifCleanApertureBox));
+            } else if (!memcmp(prop->type, "irot", 4)) {
+                item->irotPresent = AVIF_TRUE;
+                memcpy(&item->irot, &prop->irot, sizeof(avifImageRotation));
+            } else if (!memcmp(prop->type, "imir", 4)) {
+                item->imirPresent = AVIF_TRUE;
+                memcpy(&item->imir, &prop->imir, sizeof(avifImageMirror));
             }
         }
     }
@@ -1793,9 +1881,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     memset(&data->colorGrid, 0, sizeof(data->colorGrid));
     memset(&data->alphaGrid, 0, sizeof(data->alphaGrid));
     avifDataClearTiles(data);
+
+    // Prepare / cleanup decoded image state
     if (!decoder->image) {
         decoder->image = avifImageCreateEmpty();
     }
+    decoder->image->transformFlags = AVIF_TRANSFORM_NONE;
 
     memset(&decoder->ioStats, 0, sizeof(decoder->ioStats));
 
@@ -2053,6 +2144,24 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             } else if (colorOBUItem->colr.format == AVIF_PROFILE_FORMAT_NCLX) {
                 avifImageSetProfileNCLX(decoder->image, &colorOBUItem->colr.nclx);
             }
+        }
+
+        // Transformations
+        if (colorOBUItem->paspPresent) {
+            decoder->image->transformFlags |= AVIF_TRANSFORM_PASP;
+            memcpy(&decoder->image->pasp, &colorOBUItem->pasp, sizeof(avifPixelAspectRatioBox));
+        }
+        if (colorOBUItem->clapPresent) {
+            decoder->image->transformFlags |= AVIF_TRANSFORM_CLAP;
+            memcpy(&decoder->image->clap, &colorOBUItem->clap, sizeof(avifCleanApertureBox));
+        }
+        if (colorOBUItem->irotPresent) {
+            decoder->image->transformFlags |= AVIF_TRANSFORM_IROT;
+            memcpy(&decoder->image->irot, &colorOBUItem->irot, sizeof(avifImageRotation));
+        }
+        if (colorOBUItem->imirPresent) {
+            decoder->image->transformFlags |= AVIF_TRANSFORM_IMIR;
+            memcpy(&decoder->image->imir, &colorOBUItem->imir, sizeof(avifImageMirror));
         }
 
         if (exifData.data && exifData.size) {

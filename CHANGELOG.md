@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update default rav1e version to v0.3.1
 - `avifRGBImage` structure and associated routines (BREAKING CHANGE)
 - avifImage alphaRange support
+- Support pasp, clap, irot, imir metadata for encode/decode
 
 ### Changed
 - Large RGB conversion refactor (BREAKING CHANGE), see README for new examples

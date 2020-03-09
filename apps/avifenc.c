@@ -21,31 +21,35 @@ static int syntax(void)
 {
     printf("Syntax: avifenc [options] input.y4m output.avif\n");
     printf("Options:\n");
-    printf("    -h,--help         : Show syntax help\n");
-    printf("    -j,--jobs J       : Number of jobs (worker threads, default: 1)\n");
-    printf("    -n,--nclx P/T/M/R : Set nclx colr box values (4 raw numbers)\n");
-    printf("                        P = enum avifNclxColourPrimaries\n");
-    printf("                        T = enum avifNclxTransferCharacteristics\n");
-    printf("                        M = enum avifNclxMatrixCoefficients\n");
-    printf("                        R = avifNclxRangeFlag (any nonzero value becomes AVIF_NCLX_FULL_RANGE)\n");
-    printf("    --min Q           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
+    printf("    -h,--help                         : Show syntax help\n");
+    printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
+    printf("    -n,--nclx P/T/M/R                 : Set nclx colr box values (4 raw numbers)\n");
+    printf("                                        P = enum avifNclxColourPrimaries\n");
+    printf("                                        T = enum avifNclxTransferCharacteristics\n");
+    printf("                                        M = enum avifNclxMatrixCoefficients\n");
+    printf("                                        R = avifNclxRangeFlag (any nonzero value becomes AVIF_NCLX_FULL_RANGE)\n");
+    printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    --max Q           : Set max quantizer for color (%d-%d, where %d is lossless)\n",
+    printf("    --max Q                           : Set max quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    --minalpha Q      : Set min quantizer for alpha (%d-%d, where %d is lossless)\n",
+    printf("    --minalpha Q                      : Set min quantizer for alpha (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    --maxalpha Q      : Set max quantizer for alpha (%d-%d, where %d is lossless)\n",
+    printf("    --maxalpha Q                      : Set max quantizer for alpha (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    -s,--speed S      : Encoder speed (%d-%d, slowest to fastest)\n", AVIF_SPEED_SLOWEST, AVIF_SPEED_FASTEST);
-    printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
+    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest to fastest)\n", AVIF_SPEED_SLOWEST, AVIF_SPEED_FASTEST);
+    printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
+    printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
+    printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
+    printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
+    printf("    --imir AXIS                       : Add imir property (mirroring). 0=vertical, 1=horizontal\n");
     printf("\n");
     avifPrintVersions();
     return 0;
@@ -98,6 +102,27 @@ static avifBool parseNCLX(avifNclxColorProfile * nclx, const char * arg)
     return AVIF_FALSE;
 }
 
+// Returns the count of uint32_t (up to 8)
+static int parseU32List(uint32_t output[8], const char * arg)
+{
+    char buffer[128];
+    strncpy(buffer, arg, 127);
+    buffer[127] = 0;
+
+    int index = 0;
+    char * token = strtok(buffer, ",");
+    while (token != NULL) {
+        output[index] = (uint32_t)atoi(token);
+        ++index;
+        if (index >= 8) {
+            break;
+        }
+
+        token = strtok(NULL, ",");
+    }
+    return index;
+}
+
 int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;
@@ -113,6 +138,12 @@ int main(int argc, char * argv[])
     int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int speed = AVIF_SPEED_DEFAULT;
+    int paspCount = 0;
+    uint32_t paspValues[8]; // only the first two are used
+    int clapCount = 0;
+    uint32_t clapValues[8];
+    uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
+    uint8_t imirAxis = 0xff;  // sentinel value indicating "unused"
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool nclxSet = AVIF_FALSE;
     avifEncoder * encoder = NULL;
@@ -196,6 +227,34 @@ int main(int argc, char * argv[])
                     return 1;
                 }
             }
+        } else if (!strcmp(arg, "--pasp")) {
+            NEXTARG();
+            paspCount = parseU32List(paspValues, arg);
+            if (paspCount != 2) {
+                fprintf(stderr, "ERROR: Invalid pasp values: %s\n", arg);
+                return 1;
+            }
+        } else if (!strcmp(arg, "--clap")) {
+            NEXTARG();
+            clapCount = parseU32List(clapValues, arg);
+            if (clapCount != 8) {
+                fprintf(stderr, "ERROR: Invalid clap values: %s\n", arg);
+                return 1;
+            }
+        } else if (!strcmp(arg, "--irot")) {
+            NEXTARG();
+            irotAngle = (uint8_t)atoi(arg);
+            if (irotAngle > 3) {
+                fprintf(stderr, "ERROR: Invalid irot angle: %s\n", arg);
+                return 1;
+            }
+        } else if (!strcmp(arg, "--imir")) {
+            NEXTARG();
+            imirAxis = (uint8_t)atoi(arg);
+            if (imirAxis > 1) {
+                fprintf(stderr, "ERROR: Invalid imir axis: %s\n", arg);
+                return 1;
+            }
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -228,6 +287,31 @@ int main(int argc, char * argv[])
     if (nclxSet) {
         avif->profileFormat = AVIF_PROFILE_FORMAT_NCLX;
         memcpy(&avif->nclx, &nclx, sizeof(nclx));
+    }
+
+    if (paspCount == 2) {
+        avif->transformFlags |= AVIF_TRANSFORM_PASP;
+        avif->pasp.hSpacing = paspValues[0];
+        avif->pasp.vSpacing = paspValues[1];
+    }
+    if (clapCount == 8) {
+        avif->transformFlags |= AVIF_TRANSFORM_CLAP;
+        avif->clap.widthN = clapValues[0];
+        avif->clap.widthD = clapValues[1];
+        avif->clap.heightN = clapValues[2];
+        avif->clap.heightD = clapValues[3];
+        avif->clap.horizOffN = clapValues[4];
+        avif->clap.horizOffD = clapValues[5];
+        avif->clap.vertOffN = clapValues[6];
+        avif->clap.vertOffD = clapValues[7];
+    }
+    if (irotAngle != 0xff) {
+        avif->transformFlags |= AVIF_TRANSFORM_IROT;
+        avif->irot.angle = irotAngle;
+    }
+    if (imirAxis != 0xff) {
+        avif->transformFlags |= AVIF_TRANSFORM_IMIR;
+        avif->imir.axis = imirAxis;
     }
 
     printf("AVIF to be written:\n");

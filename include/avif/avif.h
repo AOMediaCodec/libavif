@@ -274,6 +274,65 @@ typedef enum avifProfileFormat
 } avifProfileFormat;
 
 // ---------------------------------------------------------------------------
+// Optional transformation structs
+
+typedef enum avifTransformationFlags
+{
+    AVIF_TRANSFORM_NONE = 0,
+
+    AVIF_TRANSFORM_PASP = (1 << 0),
+    AVIF_TRANSFORM_CLAP = (1 << 1),
+    AVIF_TRANSFORM_IROT = (1 << 2),
+    AVIF_TRANSFORM_IMIR = (1 << 3)
+} avifTransformationFlags;
+
+typedef struct avifPixelAspectRatioBox
+{
+    // 'pasp' from ISO/IEC 14496-12:2015 12.1.4.3
+
+    // define the relative width and height of a pixel
+    uint32_t hSpacing;
+    uint32_t vSpacing;
+} avifPixelAspectRatioBox;
+
+typedef struct avifCleanApertureBox
+{
+    // 'clap' from ISO/IEC 14496-12:2015 12.1.4.3
+
+    // a fractional number which defines the exact clean aperture width, in counted pixels, of the video image
+    uint32_t widthN;
+    uint32_t widthD;
+
+    // a fractional number which defines the exact clean aperture height, in counted pixels, of the video image
+    uint32_t heightN;
+    uint32_t heightD;
+
+    // a fractional number which defines the horizontal offset of clean aperture centre minus (width‐1)/2. Typically 0.
+    uint32_t horizOffN;
+    uint32_t horizOffD;
+
+    // a fractional number which defines the vertical offset of clean aperture centre minus (height‐1)/2. Typically 0.
+    uint32_t vertOffN;
+    uint32_t vertOffD;
+} avifCleanApertureBox;
+
+typedef struct avifImageRotation
+{
+    // 'irot' from ISO/IEC 23008-12:2017 6.5.10
+
+    // angle * 90 specifies the angle (in anti-clockwise direction) in units of degrees.
+    uint8_t angle; // legal values: [0-3]
+} avifImageRotation;
+
+typedef struct avifImageMirror
+{
+    // 'imir' from ISO/IEC 23008-12:2017 6.5.12
+
+    // axis specifies a vertical (axis = 0) or horizontal (axis = 1) axis for the mirroring operation.
+    uint8_t axis; // legal values: [0, 1]
+} avifImageMirror;
+
+// ---------------------------------------------------------------------------
 // avifImage
 
 typedef struct avifImage
@@ -298,6 +357,20 @@ typedef struct avifImage
     avifProfileFormat profileFormat;
     avifRWData icc;
     avifNclxColorProfile nclx;
+
+    // Transformations - These metadata values are encoded/decoded when transformFlags are set
+    // appropriately, but do not impact/adjust the actual pixel buffers used (images won't be
+    // pre-cropped or mirrored upon decode). Basic explanations from the standards are offered in
+    // comments above, but for detailed explanations, please refer to the HEIF standard (ISO/IEC
+    // 23008-12:2017) and the BMFF standard (ISO/IEC 14496-12:2015).
+    //
+    // To encode any of these boxes, set the values in the associated box, then enable the flag in
+    // transformFlags. On decode, only honor the values in boxes with the associated transform flag set.
+    uint32_t transformFlags;
+    avifPixelAspectRatioBox pasp;
+    avifCleanApertureBox clap;
+    avifImageRotation irot;
+    avifImageMirror imir;
 
     // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
     avifRWData exif;
