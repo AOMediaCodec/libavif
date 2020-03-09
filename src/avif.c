@@ -154,7 +154,7 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
 
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
-        int uvHeight = dstImage->height >> formatInfo.chromaShiftY;
+        int uvHeight = (dstImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
         for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
             int aomPlaneIndex = yuvPlane;
             int planeHeight = dstImage->height;
@@ -243,14 +243,8 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
         avifPixelFormatInfo info;
         avifGetPixelFormatInfo(image->yuvFormat, &info);
 
-        int shiftedW = image->width;
-        if (info.chromaShiftX) {
-            shiftedW = (image->width + 1) >> info.chromaShiftX;
-        }
-        int shiftedH = image->height;
-        if (info.chromaShiftY) {
-            shiftedH = (image->height + 1) >> info.chromaShiftY;
-        }
+        int shiftedW = (image->width + info.chromaShiftX) >> info.chromaShiftX;
+        int shiftedH = (image->height + info.chromaShiftY) >> info.chromaShiftY;
 
         int uvRowBytes = channelSize * shiftedW;
         int uvSize = uvRowBytes * shiftedH;

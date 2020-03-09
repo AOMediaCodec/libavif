@@ -130,10 +130,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avif
     if (alpha) {
         rav1e_frame_fill_plane(rav1eFrame, 0, image->alphaPlane, image->alphaRowBytes * image->height, image->alphaRowBytes, byteWidth);
     } else {
-        uint32_t uvHeight = image->height >> yShift;
-        if (uvHeight < 1) {
-            uvHeight = 1;
-        }
+        uint32_t uvHeight = (image->height + yShift) >> yShift;
         rav1e_frame_fill_plane(rav1eFrame, 0, image->yuvPlanes[0], image->yuvRowBytes[0] * image->height, image->yuvRowBytes[0], byteWidth);
         rav1e_frame_fill_plane(rav1eFrame, 1, image->yuvPlanes[1], image->yuvRowBytes[1] * uvHeight, image->yuvRowBytes[1], byteWidth);
         rav1e_frame_fill_plane(rav1eFrame, 2, image->yuvPlanes[2], image->yuvRowBytes[2] * uvHeight, image->yuvRowBytes[2], byteWidth);
