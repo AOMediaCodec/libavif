@@ -5,19 +5,6 @@
 
 #include <string.h>
 
-// from the MIAF spec:
-// ---
-// Section 6.7
-// "α is an alpha plane value, scaled into the range of 0 (fully transparent) to 1 (fully opaque), inclusive"
-// ---
-// Section 7.3.5.2
-// "the sample values of the alpha plane divided by the maximum value (e.g. by 255 for 8-bit sample
-// values) provides the multiplier to be used to obtain the intensity for the associated master image"
-// ---
-// The define AVIF_FIX_STUDIO_ALPHA detects when the alpha OBU is incorrectly using studio range
-// and corrects it before returning the alpha pixels to the caller.
-#define AVIF_FIX_STUDIO_ALPHA
-
 #define AUXTYPE_SIZE 64
 #define CONTENTTYPE_SIZE 64
 #define MAX_COMPATIBLE_BRANDS 32
@@ -2112,28 +2099,6 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
                 return AVIF_RESULT_DECODE_COLOR_FAILED;
             }
         }
-
-#if defined(AVIF_FIX_STUDIO_ALPHA)
-        if (tile->input->alpha && tile->codec->alphaLimitedRange(tile->codec)) {
-            // Naughty! Alpha planes are supposed to be full range. Correct that here.
-            avifImageCopyDecoderAlpha(tile->image);
-            if (avifImageUsesU16(tile->image)) {
-                for (uint32_t j = 0; j < tile->image->height; ++j) {
-                    for (uint32_t i = 0; i < tile->image->height; ++i) {
-                        uint16_t * alpha = (uint16_t *)&tile->image->alphaPlane[(i * 2) + (j * tile->image->alphaRowBytes)];
-                        *alpha = (uint16_t)avifLimitedToFullY(tile->image->depth, *alpha);
-                    }
-                }
-            } else {
-                for (uint32_t j = 0; j < tile->image->height; ++j) {
-                    for (uint32_t i = 0; i < tile->image->height; ++i) {
-                        uint8_t * alpha = &tile->image->alphaPlane[i + (j * tile->image->alphaRowBytes)];
-                        *alpha = (uint8_t)avifLimitedToFullY(tile->image->depth, *alpha);
-                    }
-                }
-            }
-        }
-#endif
     }
 
     if (decoder->data->tiles.count != (decoder->data->colorTileCount + decoder->data->alphaTileCount)) {

@@ -61,14 +61,6 @@ static avifBool aomCodecOpen(struct avifCodec * codec, uint32_t firstSampleIndex
     return AVIF_TRUE;
 }
 
-static avifBool aomCodecAlphaLimitedRange(avifCodec * codec)
-{
-    if (codec->decodeInput->alpha && codec->internal->image && (codec->internal->image->range == AOM_CR_STUDIO_RANGE)) {
-        return AVIF_TRUE;
-    }
-    return AVIF_FALSE;
-}
-
 static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
 {
     aom_image_t * nextFrame = NULL;
@@ -187,6 +179,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = codec->internal->image->planes[0];
         image->alphaRowBytes = codec->internal->image->stride[0];
+        image->alphaRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
         image->decoderOwnsAlphaPlane = AVIF_TRUE;
     }
 
@@ -339,7 +332,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     aom_image_t * aomImage = aom_img_alloc(NULL, aomFormat, image->width, image->height, 16);
 
     if (alpha) {
-        aomImage->range = AOM_CR_FULL_RANGE; // Alpha is always full range
+        aomImage->range = (image->alphaRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
         aom_codec_control(&aomEncoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         aomImage->monochrome = 1;
         for (uint32_t j = 0; j < image->height; ++j) {
@@ -420,7 +413,6 @@ avifCodec * avifCodecCreateAOM(void)
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
     codec->open = aomCodecOpen;
-    codec->alphaLimitedRange = aomCodecAlphaLimitedRange;
     codec->getNextImage = aomCodecGetNextImage;
     codec->encodeImage = aomCodecEncodeImage;
     codec->destroyInternal = aomCodecDestroyInternal;

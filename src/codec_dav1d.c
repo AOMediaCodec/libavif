@@ -75,14 +75,6 @@ static avifBool dav1dCodecOpen(avifCodec * codec, uint32_t firstSampleIndex)
     return AVIF_TRUE;
 }
 
-static avifBool dav1dCodecAlphaLimitedRange(avifCodec * codec)
-{
-    if (codec->decodeInput->alpha && codec->internal->hasPicture && (codec->internal->colorRange == AVIF_RANGE_LIMITED)) {
-        return AVIF_TRUE;
-    }
-    return AVIF_FALSE;
-}
-
 static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
 {
     avifBool gotPicture = AVIF_FALSE;
@@ -187,6 +179,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
+        image->alphaRange = codec->internal->colorRange;
         image->decoderOwnsAlphaPlane = AVIF_TRUE;
     }
     return AVIF_TRUE;
@@ -202,7 +195,6 @@ avifCodec * avifCodecCreateDav1d(void)
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
     codec->open = dav1dCodecOpen;
-    codec->alphaLimitedRange = dav1dCodecAlphaLimitedRange;
     codec->getNextImage = dav1dCodecGetNextImage;
     codec->destroyInternal = dav1dCodecDestroyInternal;
 

@@ -60,8 +60,29 @@ void avifArrayDestroy(void * arrayStruct);
 AVIF_ARRAY_DECLARE(avifRODataArray, avifROData, raw);
 AVIF_ARRAY_DECLARE(avifRWDataArray, avifRWData, raw);
 
-// Used internally by avifDecoderNextImage() when there is limited range alpha
-void avifImageCopyDecoderAlpha(avifImage * image);
+typedef struct avifAlphaParams
+{
+    uint32_t width;
+    uint32_t height;
+
+    uint32_t srcDepth;
+    avifRange srcRange;
+    uint8_t * srcPlane;
+    uint32_t srcRowBytes;
+    uint32_t srcOffsetBytes;
+    uint32_t srcPixelBytes;
+
+    uint32_t dstDepth;
+    avifRange dstRange;
+    uint8_t * dstPlane;
+    uint32_t dstRowBytes;
+    uint32_t dstOffsetBytes;
+    uint32_t dstPixelBytes;
+
+} avifAlphaParams;
+
+avifBool avifFillAlpha(avifAlphaParams * params);
+avifBool avifReformatAlpha(avifAlphaParams * params);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
@@ -121,8 +142,6 @@ struct avifCodec;
 struct avifCodecInternal;
 
 typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, uint32_t firstSampleIndex);
-// avifCodecAlphaLimitedRangeFunc: returns AVIF_TRUE if an alpha plane exists and was encoded with limited range
-typedef avifBool (*avifCodecAlphaLimitedRangeFunc)(struct avifCodec * codec);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
 // avifCodecEncodeImageFunc: if either OBU* is null, skip its encode. alpha should always be lossless
 typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha);
@@ -135,7 +154,6 @@ typedef struct avifCodec
     struct avifCodecInternal * internal; // up to each codec to use how it wants
 
     avifCodecOpenFunc open;
-    avifCodecAlphaLimitedRangeFunc alphaLimitedRange;
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;
     avifCodecDestroyInternalFunc destroyInternal;

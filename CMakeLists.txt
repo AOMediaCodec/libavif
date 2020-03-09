@@ -81,6 +81,7 @@ else()
 endif()
 
 set(AVIF_SRCS
+    src/alpha.c
     src/avif.c
     src/colr.c
     src/mem.c
@@ -311,6 +312,14 @@ if(AVIF_BUILD_TESTS)
         set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+
+    add_executable(avifyuv
+        tests/avifyuv.c
+    )
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
+    target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
 
     add_custom_target(avif_test_all
         COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data

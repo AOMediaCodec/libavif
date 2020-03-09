@@ -21,15 +21,25 @@ int main(int argc, char * argv[])
 
     // Encode an orange, 8-bit, full opacity image
     avifImage * image = avifImageCreate(width, height, depth, AVIF_PIXEL_FORMAT_YUV444);
-    avifImageAllocatePlanes(image, AVIF_PLANES_RGB | AVIF_PLANES_A);
+
+    avifRGBImage srcRGB;
+    avifRGBImageSetDefaults(&srcRGB, image);
+    avifRGBImageAllocatePixels(&srcRGB);
+
+    avifRGBImage dstRGB;
+    avifRGBImageSetDefaults(&dstRGB, image);
+    avifRGBImageAllocatePixels(&dstRGB);
+
     for (int j = 0; j < height; ++j) {
         for (int i = 0; i < width; ++i) {
-            image->rgbPlanes[0][i + (j * image->rgbRowBytes[0])] = 255; // R
-            image->rgbPlanes[1][i + (j * image->rgbRowBytes[1])] = 128; // G
-            image->rgbPlanes[2][i + (j * image->rgbRowBytes[2])] = 0;   // B
-            image->alphaPlane[i + (j * image->alphaRowBytes)] = 255;    // A
+            uint8_t * pixel = &srcRGB.pixels[(4 * i) + (srcRGB.rowBytes * j)];
+            pixel[0] = 255; // R
+            pixel[1] = 128; // G
+            pixel[2] = 0;   // B
+            pixel[3] = 255; // A
         }
     }
+    avifImageRGBToYUV(image, &srcRGB);
 
     // uint8_t * fakeICC = "abcdefg";
     // uint32_t fakeICCSize = (uint32_t)strlen(fakeICC);
@@ -69,17 +79,27 @@ int main(int argc, char * argv[])
         exitStatus = 1;
         goto decodeCleanup;
     }
-    if (avifImageYUVToRGB(decoded) != AVIF_RESULT_OK) {
+    if (avifImageYUVToRGB(decoded, &dstRGB) != AVIF_RESULT_OK) {
         exitStatus = 1;
         goto decodeCleanup;
     }
     for (int j = 0; j < height; ++j) {
         for (int i = 0; i < width; ++i) {
             for (int plane = 0; plane < 3; ++plane) {
-                uint32_t src = image->rgbPlanes[plane][i + (j * image->rgbRowBytes[plane])];
-                uint32_t dst = decoded->rgbPlanes[plane][i + (j * decoded->rgbRowBytes[plane])];
-                if (src != dst) {
-                    printf("(%d,%d,p%d)   %d != %d\n", i, j, plane, src, dst);
+                uint8_t * srcPixel = &srcRGB.pixels[(4 * i) + (srcRGB.rowBytes * j)];
+                uint8_t * dstPixel = &dstRGB.pixels[(4 * i) + (dstRGB.rowBytes * j)];
+                if (memcmp(srcPixel, dstPixel, 4) != 0) {
+                    printf("(%d,%d)   (%d, %d, %d, %d) != (%d, %d, %d, %d)\n",
+                           i,
+                           j,
+                           srcPixel[0],
+                           srcPixel[1],
+                           srcPixel[2],
+                           srcPixel[3],
+                           dstPixel[0],
+                           dstPixel[1],
+                           dstPixel[2],
+                           dstPixel[3]);
                     exitStatus = 1;
                 }
             }
@@ -92,6 +112,8 @@ decodeCleanup:
 
 encodeCleanup:
     avifImageDestroy(image);
+    avifRGBImageFreePixels(&srcRGB);
+    avifRGBImageFreePixels(&dstRGB);
 #else  /* if 1 */
 
     FILE * f = fopen("test.avif", "rb");

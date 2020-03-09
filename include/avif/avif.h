@@ -27,7 +27,6 @@ typedef int avifBool;
 #define AVIF_QUANTIZER_BEST_QUALITY 0
 #define AVIF_QUANTIZER_WORST_QUALITY 63
 
-#define AVIF_PLANE_COUNT_RGB 3
 #define AVIF_PLANE_COUNT_YUV 3
 
 #define AVIF_SPEED_DEFAULT -1
@@ -36,9 +35,8 @@ typedef int avifBool;
 
 enum avifPlanesFlags
 {
-    AVIF_PLANES_RGB = (1 << 0),
-    AVIF_PLANES_YUV = (1 << 1),
-    AVIF_PLANES_A = (1 << 2),
+    AVIF_PLANES_YUV = (1 << 0),
+    AVIF_PLANES_A = (1 << 1),
 
     AVIF_PLANES_ALL = 0xff
 };
@@ -283,10 +281,7 @@ typedef struct avifImage
     // Image information
     uint32_t width;
     uint32_t height;
-    uint32_t depth; // all planes (RGB/YUV/A) must share this depth; if depth>8, all planes are uint16_t internally
-
-    uint8_t * rgbPlanes[AVIF_PLANE_COUNT_RGB];
-    uint32_t rgbRowBytes[AVIF_PLANE_COUNT_RGB];
+    uint32_t depth; // all planes must share this depth; if depth>8, all planes are uint16_t internally
 
     avifPixelFormat yuvFormat;
     avifRange yuvRange;
@@ -294,6 +289,7 @@ typedef struct avifImage
     uint32_t yuvRowBytes[AVIF_PLANE_COUNT_YUV];
     avifBool decoderOwnsYUVPlanes;
 
+    avifRange alphaRange;
     uint8_t * alphaPlane;
     uint32_t alphaRowBytes;
     avifBool decoderOwnsAlphaPlane;
@@ -325,20 +321,53 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
 void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t planes);
 
+// ---------------------------------------------------------------------------
 // Optional YUV<->RGB support
-avifResult avifImageRGBToYUV(avifImage * image);
-avifResult avifImageYUVToRGB(avifImage * image);
 
-// Convert YUV -> RGB(A) without using intermediate RGB planes owned by avifImage. Pixel ptr passed
-// in here must be at least (rowBytes * image->height) in size, and will be filled with either U8s
-// or U16s depending on the depth of the image. Use avifImageUsesU16() as a helper function to make
-// this determination.
-avifResult avifImageYUVToInterleavedRGB(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
-avifResult avifImageYUVToInterleavedRGBA(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
-avifResult avifImageYUVToInterleavedARGB(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
-avifResult avifImageYUVToInterleavedBGR(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
-avifResult avifImageYUVToInterleavedBGRA(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
-avifResult avifImageYUVToInterleavedABGR(avifImage * image, uint8_t * pixels, uint32_t rowBytes);
+// To convert to/from RGB, create an avifRGBImage on the stack, call avifRGBImageSetDefaults() on
+// it, and then tweak the values inside of it accordingly. At a minimum, you should populate
+// ->pixels and ->rowBytes with an appropriately sized pixel buffer, which should be at least
+// (->rowBytes * ->height) bytes, where ->rowBytes is at least (->width * avifRGBImagePixelSize()).
+// If you don't want to supply your own pixel buffer, you can use the
+// avifRGBImageAllocatePixels()/avifRGBImageFreePixels() convenience functions.
+
+// avifImageRGBToYUV() and avifImageYUVToRGB() will perform depth rescaling and limited<->full range
+// conversion, if necessary. Pixels in an avifRGBImage buffer are always full range, and conversion
+// routines will fail if the width and height don't match the associated avifImage.
+
+typedef enum avifRGBFormat
+{
+    AVIF_RGB_FORMAT_RGB = 0,
+    AVIF_RGB_FORMAT_RGBA,
+    AVIF_RGB_FORMAT_ARGB,
+    AVIF_RGB_FORMAT_BGR,
+    AVIF_RGB_FORMAT_BGRA,
+    AVIF_RGB_FORMAT_ABGR
+} avifRGBFormat;
+uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
+avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
+
+typedef struct avifRGBImage
+{
+    uint32_t width;       // must match associated avifImage
+    uint32_t height;      // must match associated avifImage
+    uint32_t depth;       // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
+    avifRGBFormat format; // all channels are always full range
+
+    uint8_t * pixels;
+    uint32_t rowBytes;
+} avifRGBImage;
+
+void avifRGBImageSetDefaults(avifRGBImage * rgb, avifImage * image);
+uint32_t avifRGBImagePixelSize(avifRGBImage * rgb);
+
+// Convenience functions. If you supply your own pixels/rowBytes, you do not need to use these.
+void avifRGBImageAllocatePixels(avifRGBImage * rgb);
+void avifRGBImageFreePixels(avifRGBImage * rgb);
+
+// The main conversion functions
+avifResult avifImageRGBToYUV(avifImage * image, avifRGBImage * rgb);
+avifResult avifImageYUVToRGB(avifImage * image, avifRGBImage * rgb);
 
 // ---------------------------------------------------------------------------
 // YUV Utils
@@ -355,10 +384,18 @@ typedef struct avifReformatState
     float kg;
     float kb;
 
+    uint32_t yuvChannelBytes;
+    uint32_t rgbChannelBytes;
+    uint32_t rgbChannelCount;
+    uint32_t rgbPixelBytes;
+    uint32_t rgbOffsetBytesR;
+    uint32_t rgbOffsetBytesG;
+    uint32_t rgbOffsetBytesB;
+    uint32_t rgbOffsetBytesA;
+
     avifPixelFormatInfo formatInfo;
-    avifBool usesU16;
 } avifReformatState;
-avifBool avifPrepareReformatState(avifImage * image, avifReformatState * state);
+avifBool avifPrepareReformatState(avifImage * image, avifRGBImage * rgb, avifReformatState * state);
 
 // ---------------------------------------------------------------------------
 // Codec selection

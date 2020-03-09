@@ -118,24 +118,9 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     // -----------------------------------------------------------------------
     // Reformat pixels, if need be
 
-    if (!image->width || !image->height) {
+    if (!image->width || !image->height || (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) || !image->yuvPlanes[AVIF_CHAN_Y]) {
         result = AVIF_RESULT_NO_CONTENT;
         goto writeCleanup;
-    }
-
-    if ((image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) || !image->yuvPlanes[AVIF_CHAN_Y] || !image->yuvPlanes[AVIF_CHAN_U] ||
-        !image->yuvPlanes[AVIF_CHAN_V]) {
-        if (!image->rgbPlanes[AVIF_CHAN_R] || !image->rgbPlanes[AVIF_CHAN_G] || !image->rgbPlanes[AVIF_CHAN_B]) {
-            result = AVIF_RESULT_NO_CONTENT;
-            goto writeCleanup;
-        }
-
-        avifImageFreePlanes(image, AVIF_PLANES_YUV);
-        if (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-            result = AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
-            goto writeCleanup;
-        }
-        avifImageRGBToYUV(image);
     }
 
     // -----------------------------------------------------------------------

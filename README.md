@@ -42,20 +42,37 @@ if (decodeResult == AVIF_RESULT_OK) {
     ... image->yuvPlanes;
     ... image->yuvRowBytes;
 
-    // Option 2: Convert to RGB and use RGB planes
-    avifImageYUVToRGB(image);
-    ... image->rgbPlanes;
-    ... image->rgbRowBytes;
+    // Option 2: Convert to interleaved RGB(A)/BGR(A) using a libavif-allocated buffer.
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, image);
+    rgb.format = ...;                 // See choices in avif.h
+    rgb.depth = ...;                  // [8, 10, 12, 16]; Does not need to match image->depth.
+                                      // If >8, rgb->pixels is uint16_t*
+    avifRGBImageAllocatePixels(&rgb); // You can supply your own pixels/rowBytes, see Option 3
+    avifImageYUVToRGB(image, &rgb);
+    ... rgb.pixels;                   // Pixels in interleaved rgbFormat chosen above;
+    ... rgb.rowBytes;                 // all channels are always full range
+    avifRGBImageFreePixels(&rgb);
 
-    // Option 3: Convert to pre-existing interleaved RGB(A)/BGR(A) buffer
-    uint8_t * pixels = ...;
-    uint32_t rowBytes = ...;
-    avifImageYUVToInterleavedRGBA(image, pixels, rowBytes);
+    // Option 3: Convert directly into your own pre-existing interleaved RGB(A)/BGR(A) buffer
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, image);
+    rgb.format = ...;                 // See choices in avif.h
+    rgb.depth = ...;                  // [8, 10, 12, 16]; Does not need to match image->depth.
+                                      // If >8, rgb->pixels is uint16_t*
+    rgb.pixels = ...;                 // Point at your RGB(A)/BGR(A) pixels here
+    rgb.rowBytes = ...;
+    avifImageYUVToRGB(image, &rgb);
+    ... rgb.pixels;                   // Pixels in interleaved rgbFormat chosen above;
+    ... rgb.rowBytes;                 // all channels are always full range
+    // Use your own buffer; no need to call avifRGBImageFreePixels()
 
-    // Use alpha plane, if present
+    // Use alpha plane, if present.
+    // Note: This might be limited range!
     if (image->alphaPlane) {
         ... image->alphaPlane;
         ... image->alphaRowBytes;
+        ... image->alphaRange;
     }
 
     // Optional: query color profile
@@ -133,20 +150,37 @@ if (decodeResult == AVIF_RESULT_OK) {
         ... decoder->image->yuvPlanes;
         ... decoder->image->yuvRowBytes;
 
-        // Option 2: Convert to RGB and use RGB planes
-        avifImageYUVToRGB(decoder->image); // (this is legal to call on decoder->image)
-        ... decoder->image->rgbPlanes;
-        ... decoder->image->rgbRowBytes;
+        // Option 2: Convert to interleaved RGB(A)/BGR(A) using a libavif-allocated buffer.
+        avifRGBImage rgb;
+        avifRGBImageSetDefaults(&rgb, image);
+        rgb.format = ...;                 // See choices in avif.h
+        rgb.depth = ...;                  // [8, 10, 12, 16]; Does not need to match image->depth.
+                                          // If >8, rgb->pixels is uint16_t*
+        avifRGBImageAllocatePixels(&rgb); // You can supply your own pixels/rowBytes, see Option 3
+        avifImageYUVToRGB(image, &rgb);
+        ... rgb.pixels;                   // Pixels in interleaved rgbFormat chosen above;
+        ... rgb.rowBytes;                 // all channels are always full range
+        avifRGBImageFreePixels(&rgb);
 
-        // Option 3: Convert to pre-existing interleaved RGB(A)/BGR(A) buffer
-        uint8_t * pixels = ...;
-        uint32_t rowBytes = ...;
-        avifImageYUVToInterleavedRGBA(image, pixels, rowBytes);
+        // Option 3: Convert directly into your own pre-existing interleaved RGB(A)/BGR(A) buffer
+        avifRGBImage rgb;
+        avifRGBImageSetDefaults(&rgb, image);
+        rgb.format = ...;                 // See choices in avif.h
+        rgb.depth = ...;                  // [8, 10, 12, 16]; Does not need to match image->depth.
+                                          // If >8, rgb->pixels is uint16_t*
+        rgb.pixels = ...;                 // Point at your RGB(A)/BGR(A) pixels here
+        rgb.rowBytes = ...;
+        avifImageYUVToRGB(image, &rgb);
+        ... rgb.pixels;                   // Pixels in interleaved rgbFormat chosen above;
+        ... rgb.rowBytes;                 // all channels are always full range
+        // Use your own buffer; no need to call avifRGBImageFreePixels()
 
-        // Use alpha plane, if present
+        // Use alpha plane, if present.
+        // Note: This might be limited range!
         if (decoder->image->alphaPlane) {
-            ... decoder->image->alphaPlane;
-            ... decoder->image->alphaRowBytes;
+            ... image->alphaPlane;
+            ... image->alphaRowBytes;
+            ... image->alphaRange;
         }
 
         // Timing and frame information
@@ -188,7 +222,31 @@ avifImageAllocatePlanes(image, AVIF_PLANES_RGB);
 ... image->rgbPlanes;
 ... image->rgbRowBytes;
 
+// Option 2: Convert from interleaved RGB(A)/BGR(A) using a libavif-allocated buffer.
+uint32_t rgbDepth = ...;                        // [8, 10, 12, 16]; Does not need to match image->depth.
+                                                // If >8, rgb->pixels is uint16_t*
+avifRGBFormat rgbFormat = AVIF_RGB_FORMAT_RGBA; // See choices in avif.h
+avifRGBImage * rgb = avifRGBImageCreate(image->width, image->width, rgbDepth, rgbFormat);
+... rgb->pixels;  // fill these pixels; all channel data must be full range
+... rgb->rowBytes;
+avifImageRGBToYUV(image, rgb); // if alpha is present, it will also be copied/converted
+avifRGBImageDestroy(rgb);
+
+// Option 3: Convert directly from your own pre-existing interleaved RGB(A)/BGR(A) buffer
+avifRGBImage rgb;
+rgb.width = image->width;
+rgb.height = image->height;
+rgb.depth = ...;   // [8, 10, 12, 16]; Does not need to match image->depth.
+                   // If >8, rgb->pixels is uint16_t*
+rgb.format = ...;  // See choices in avif.h, match to your buffer's pixel format
+rgb.pixels = ...;  // Point at your RGB(A)/BGR(A) pixels here
+rgb.rowBytes = ...;
+avifImageRGBToYUV(image, rgb); // if alpha is present, it will also be copied/converted
+// no need to cleanup avifRGBImage
+
 // Optional: Populate alpha plane
+// Note: This step is unnecessary if you used avifImageRGBToYUV from an
+//       avifRGBImage containing an alpha channel.
 avifImageAllocatePlanes(image, AVIF_PLANES_A);
 ... image->alphaPlane;
 ... image->alphaRowBytes;
