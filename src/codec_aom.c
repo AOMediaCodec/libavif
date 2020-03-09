@@ -311,7 +311,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     cfg.rc_min_quantizer = minQuantizer;
     cfg.rc_max_quantizer = maxQuantizer;
 
-    uint32_t encoderFlags = 0;
+    aom_codec_flags_t encoderFlags = 0;
     if (image->depth > 8) {
         encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
     }
@@ -335,7 +335,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
         aom_codec_control(&aomEncoder, AOME_SET_CPUUSED, aomCpuUsed);
     }
 
-    uint32_t uvHeight = image->height >> yShift;
+    uint32_t uvHeight = (image->height + yShift) >> yShift;
     aom_image_t * aomImage = aom_img_alloc(NULL, aomFormat, image->width, image->height, 16);
 
     if (alpha) {
@@ -348,11 +348,9 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
             memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
         }
 
-        for (uint32_t j = 0; j < uvHeight; ++j) {
-            // Zero out U and V
-            memset(&aomImage->planes[1][j * aomImage->stride[1]], 0, aomImage->stride[1]);
-            memset(&aomImage->planes[2][j * aomImage->stride[2]], 0, aomImage->stride[2]);
-        }
+        // Zero out U and V
+        memset(aomImage->planes[1], 0, aomImage->stride[1] * uvHeight);
+        memset(aomImage->planes[2], 0, aomImage->stride[2] * uvHeight);
     } else {
         aomImage->range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
         aom_codec_control(&aomEncoder, AV1E_SET_COLOR_RANGE, aomImage->range);
