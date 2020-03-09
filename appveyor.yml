@@ -1,8 +1,11 @@
 image: Visual Studio 2019
 configuration: Release
-#branches:
-#  only:
-#  - master
+skip_commits:
+  files:
+    - '.github/*'
+    - '.travis.yml'
+    - '.gitignore'
+    - '*.md'
 
 install:
  - git submodule update --init --recursive
