@@ -1,105 +1,42 @@
 language: c
-
 os: linux
+dist: bionic
+
+addons:
+  apt:
+    packages:
+      - ninja-build
+      - python3
+      - python3-pip
+
+before_script:
+  - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
+  - cd nasm-2.14
+  - ./configure && make -j2 && sudo make install
+  - nasm --version
+  - pip3 --disable-pip-version-check install setuptools
+  - pip3 --disable-pip-version-check install meson
+  - cd $TRAVIS_BUILD_DIR/ext
+  - bash aom.cmd
+  - bash dav1d.cmd
+  - cd ..
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_BUILD_TYPE=$config -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON ..
+script:
+  - make
 
 matrix:
   include:
   - name: "GCC Debug"
     compiler: gcc
-    addons:
-      apt:
-        packages:
-          - ninja-build
-          - python3
-          - python3-pip
-    before_script:
-      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-      - cd nasm-2.14
-      - ./configure && make -j2 && sudo make install
-      - nasm --version
-      - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson==0.52.1
-      - cd $TRAVIS_BUILD_DIR/ext
-      - bash aom.cmd
-      - bash dav1d.cmd
-      - cd ..
-      - mkdir build
-      - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON ..
-    script:
-      - make
-
+    config: Debug
   - name: "GCC Release"
     compiler: gcc
-    addons:
-      apt:
-        packages:
-          - ninja-build
-          - python3
-          - python3-pip
-    before_script:
-      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-      - cd nasm-2.14
-      - ./configure && make -j2 && sudo make install
-      - nasm --version
-      - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson==0.52.1
-      - cd $TRAVIS_BUILD_DIR/ext
-      - bash aom.cmd
-      - bash dav1d.cmd
-      - cd ..
-      - mkdir build
-      - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON ..
-    script:
-      - make
-
+    config: Release
   - name: "Clang Debug"
     compiler: clang
-    addons:
-      apt:
-        packages:
-          - ninja-build
-          - python3
-          - python3-pip
-    before_script:
-      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-      - cd nasm-2.14
-      - ./configure && make -j2 && sudo make install
-      - nasm --version
-      - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson==0.52.1
-      - cd $TRAVIS_BUILD_DIR/ext
-      - bash aom.cmd
-      - bash dav1d.cmd
-      - cd ..
-      - mkdir build
-      - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON ..
-    script:
-      - make
-
+    config: Debug
   - name: "Clang Release"
     compiler: clang
-    addons:
-      apt:
-        packages:
-          - ninja-build
-          - python3
-          - python3-pip
-    before_script:
-      - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-      - cd nasm-2.14
-      - ./configure && make -j2 && sudo make install
-      - nasm --version
-      - pip3 --disable-pip-version-check install setuptools
-      - pip3 --disable-pip-version-check install meson==0.52.1
-      - cd $TRAVIS_BUILD_DIR/ext
-      - bash aom.cmd
-      - bash dav1d.cmd
-      - cd ..
-      - mkdir build
-      - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON ..
-    script:
-      - make
+    config: Release
