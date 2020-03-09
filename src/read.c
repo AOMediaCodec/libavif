@@ -563,9 +563,10 @@ static avifBool avifDataFillImageGrid(avifData * data,
         if ((tile->image->width != tileWidth) || (tile->image->height != tileHeight) || (tile->image->depth != tileDepth) ||
             (tile->image->yuvFormat != tileFormat) || (tile->image->yuvRange != tileRange) || (uvPresent != tileUVPresent) ||
             ((tileProfile == AVIF_PROFILE_FORMAT_NCLX) &&
-             ((tile->image->profileFormat != tileProfile) ||
-              (tile->image->nclx.colourPrimaries != tileNCLX->colourPrimaries) || (tile->image->nclx.transferCharacteristics != tileNCLX->transferCharacteristics) ||
-              (tile->image->nclx.matrixCoefficients != tileNCLX->matrixCoefficients) || (tile->image->nclx.fullRangeFlag != tileNCLX->fullRangeFlag)))) {
+             ((tile->image->profileFormat != tileProfile) || (tile->image->nclx.colourPrimaries != tileNCLX->colourPrimaries) ||
+              (tile->image->nclx.transferCharacteristics != tileNCLX->transferCharacteristics) ||
+              (tile->image->nclx.matrixCoefficients != tileNCLX->matrixCoefficients) ||
+              (tile->image->nclx.fullRangeFlag != tileNCLX->fullRangeFlag)))) {
             return AVIF_FALSE;
         }
     }
@@ -583,8 +584,8 @@ static avifBool avifDataFillImageGrid(avifData * data,
         dstImage->depth = tileDepth;
         dstImage->yuvFormat = tileFormat;
         dstImage->yuvRange = tileRange;
-        if(dstImage->profileFormat == AVIF_PROFILE_FORMAT_NONE && tileProfile == AVIF_PROFILE_FORMAT_NCLX) {
-          avifImageSetProfileNCLX(dstImage, tileNCLX);
+        if ((dstImage->profileFormat == AVIF_PROFILE_FORMAT_NONE) && (tileProfile == AVIF_PROFILE_FORMAT_NCLX)) {
+            avifImageSetProfileNCLX(dstImage, tileNCLX);
         }
     }
 
@@ -2137,8 +2138,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             decoder->image->height = srcColor->height;
             decoder->image->depth = srcColor->depth;
 
-            if(decoder->image->profileFormat == AVIF_PROFILE_FORMAT_NONE && srcColor->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
-              avifImageSetProfileNCLX(decoder->image, &srcColor->nclx);
+            if (decoder->image->profileFormat == AVIF_PROFILE_FORMAT_NONE && srcColor->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+                avifImageSetProfileNCLX(decoder->image, &srcColor->nclx);
             }
         }
 
