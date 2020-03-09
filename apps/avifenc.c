@@ -17,7 +17,7 @@
     }                                                                 \
     arg = argv[++argIndex]
 
-static int syntax(void)
+static void syntax(void)
 {
     printf("Syntax: avifenc [options] input.y4m output.avif\n");
     printf("Options:\n");
@@ -48,7 +48,6 @@ static int syntax(void)
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("\n");
     avifPrintVersions();
-    return 0;
 }
 
 // This is *very* arbitrary, I just want to set people's expectations a bit
@@ -104,7 +103,8 @@ int main(int argc, char * argv[])
     const char * outputFilename = NULL;
 
     if (argc < 2) {
-        return syntax();
+        syntax();
+        return 1;
     }
 
     int jobs = 1;
@@ -125,7 +125,8 @@ int main(int argc, char * argv[])
         const char * arg = argv[argIndex];
 
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
-            return syntax();
+            syntax();
+            return 0;
         } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
             NEXTARG();
             jobs = atoi(arg);
@@ -204,6 +205,7 @@ int main(int argc, char * argv[])
                 outputFilename = arg;
             } else {
                 fprintf(stderr, "Too many positional arguments: %s\n", arg);
+                syntax();
                 return 1;
             }
         }
@@ -212,7 +214,8 @@ int main(int argc, char * argv[])
     }
 
     if (!inputFilename || !outputFilename) {
-        return syntax();
+        syntax();
+        return 1;
     }
 
     int returnCode = 0;
