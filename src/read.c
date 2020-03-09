@@ -596,7 +596,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
         dstImage->depth = tileDepth;
         dstImage->yuvFormat = tileFormat;
         dstImage->yuvRange = tileRange;
-        if(tileProfile == AVIF_PROFILE_FORMAT_NCLX) {
+        if(dstImage->profileFormat == AVIF_PROFILE_FORMAT_NONE && tileProfile == AVIF_PROFILE_FORMAT_NCLX) {
           avifImageSetProfileNCLX(dstImage, tileNCLX);
         }
     }
@@ -2172,7 +2172,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             decoder->image->height = srcColor->height;
             decoder->image->depth = srcColor->depth;
 
-            if(srcColor->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+            if(decoder->image->profileFormat == AVIF_PROFILE_FORMAT_NONE && srcColor->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
               avifImageSetProfileNCLX(decoder->image, &srcColor->nclx);
             }
         }
