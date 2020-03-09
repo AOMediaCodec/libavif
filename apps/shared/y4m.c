@@ -249,7 +249,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     planeBytes[1] = avif->yuvRowBytes[1] * (avif->height >> info.chromaShiftY);
     planeBytes[2] = avif->yuvRowBytes[2] * (avif->height >> info.chromaShiftY);
     if (hasAlpha) {
-        planeBytes[3] = avif->yuvRowBytes[0] * avif->height;
+        planeBytes[3] = avif->alphaRowBytes * avif->height;
     } else {
         planeBytes[3] = 0;
     }
