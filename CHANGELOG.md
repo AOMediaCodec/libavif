@@ -6,9 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- `avifImageYUVToInterleaved*()` functions for converting directly into a pre-existing buffer, skipping temp rgbPlanes creation
 - Update default dav1d version to 0.6.0
 - Update default rav1e version to v0.3.1
+- `avifRGBImage` structure and associated routines (BREAKING CHANGE)
+- avifImage alphaRange support
+
+### Changed
+- Large RGB conversion refactor (BREAKING CHANGE), see README for new examples
+- Minor fixes to make Clang 10 happy
+- pkg-config fixes
+- Lots of minor cleanup in code/CMake (wantehchang)
+- Fix to NCLX color profile plumbing (ledyba-z)
 
 ## [0.5.7] - 2020-03-03
 ### Added
