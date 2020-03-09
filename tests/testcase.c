@@ -148,7 +148,7 @@ static avifBool jsonGetBool(cJSON * parent, const char * key, avifBool def)
     if (!childItem || !cJSON_IsBool(childItem)) {
         return def;
     }
-    return (childItem->type == cJSON_True) ? AVIF_TRUE : AVIF_FALSE;
+    return (childItem->type == cJSON_True);
 }
 
 TestCase * testCaseFromJSON(cJSON * json)

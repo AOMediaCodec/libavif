@@ -571,7 +571,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
 
     for (unsigned int i = 1; i < tileCount; ++i) {
         avifTile * tile = &data->tiles.tile[firstTileIndex + i];
-        avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]) ? AVIF_TRUE : AVIF_FALSE;
+        avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]);
         if ((tile->image->width != tileWidth) || (tile->image->height != tileHeight) || (tile->image->depth != tileDepth) ||
             (tile->image->yuvFormat != tileFormat) || (tile->image->yuvRange != tileRange) || (uvPresent != tileUVPresent) ||
             ((tileProfile == AVIF_PROFILE_FORMAT_NCLX) &&
@@ -1001,7 +1001,7 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, const uint8_t 
     uint8_t version;
     uint8_t flags[3];
     CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
-    avifBool propertyIndexIsU16 = (flags[2] & 0x1) ? AVIF_TRUE : AVIF_FALSE; // is flags[2] correct?
+    avifBool propertyIndexIsU16 = ((flags[2] & 0x1) != 0);
 
     uint32_t entryCount;
     CHECK(avifROStreamReadU32(&s, &entryCount));
@@ -1021,12 +1021,12 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, const uint8_t 
             uint16_t propertyIndex = 0;
             if (propertyIndexIsU16) {
                 CHECK(avifROStreamReadU16(&s, &propertyIndex));
-                // essential = (propertyIndex & 0x8000) ? AVIF_TRUE : AVIF_FALSE;
+                // essential = ((propertyIndex & 0x8000) != 0);
                 propertyIndex &= 0x7fff;
             } else {
                 uint8_t tmp;
                 CHECK(avifROStreamRead(&s, &tmp, 1));
-                // essential = (tmp & 0x80) ? AVIF_TRUE : AVIF_FALSE;
+                // essential = ((tmp & 0x80) != 0);
                 propertyIndex = tmp & 0x7f;
             }
 
@@ -1716,12 +1716,12 @@ static avifBool avifParse(avifData * data, const uint8_t * raw, size_t rawLen)
 
 static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
 {
-    avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0);
     if (!avifCompatible) {
-        avifCompatible = (memcmp(ftyp->majorBrand, "avis", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+        avifCompatible = (memcmp(ftyp->majorBrand, "avis", 4) == 0);
     }
     if (!avifCompatible) {
-        avifCompatible = (memcmp(ftyp->majorBrand, "av01", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+        avifCompatible = (memcmp(ftyp->majorBrand, "av01", 4) == 0);
     }
     if (!avifCompatible) {
         for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
@@ -2004,7 +2004,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!item->id || !item->size) {
                 break;
             }
-            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
             if (memcmp(item->type, "av01", 4) && !isGrid) {
                 // probably exif or some other data
                 continue;
@@ -2045,7 +2045,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!item->id || !item->size) {
                 break;
             }
-            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0) ? AVIF_TRUE : AVIF_FALSE;
+            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
             if (memcmp(item->type, "av01", 4) && !isGrid) {
                 // probably exif or some other data
                 continue;

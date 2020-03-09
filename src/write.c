@@ -139,9 +139,9 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     }
 
     // TODO: consider collapsing all items into local structs for iteration / code sharing
-    avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
-    avifBool hasExif = (image->exif.size > 0) ? AVIF_TRUE : AVIF_FALSE;
-    avifBool hasXMP = (image->xmp.size > 0) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool hasAlpha = (alphaOBU.size > 0);
+    avifBool hasExif = (image->exif.size > 0);
+    avifBool hasXMP = (image->xmp.size > 0);
 
     // -----------------------------------------------------------------------
     // Write ftyp

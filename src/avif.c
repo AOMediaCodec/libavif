@@ -341,7 +341,7 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
 
 avifBool avifImageUsesU16(avifImage * image)
 {
-    return (image->depth > 8) ? AVIF_TRUE : AVIF_FALSE;
+    return (image->depth > 8);
 }
 
 // avifCodecCreate*() functions are in their respective codec_*.c files

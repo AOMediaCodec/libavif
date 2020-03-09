@@ -150,7 +150,7 @@ void avifNclxColourPrimariesGetValues(avifNclxColourPrimaries ancp, float outPri
 
 static avifBool matchesTo3RoundedPlaces(float a, float b)
 {
-    return (fabsf(a - b) < 0.001f) ? AVIF_TRUE : AVIF_FALSE;
+    return (fabsf(a - b) < 0.001f);
 }
 
 static avifBool primariesMatch(const float p1[8], const float p2[8])

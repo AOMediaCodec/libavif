@@ -300,7 +300,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
         minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
         maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
     }
-    avifBool lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS)) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS));
     cfg.rc_min_quantizer = minQuantizer;
     cfg.rc_max_quantizer = maxQuantizer;
 

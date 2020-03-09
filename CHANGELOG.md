@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pkg-config fixes
 - Lots of minor cleanup in code/CMake (wantehchang)
 - Fix to NCLX color profile plumbing (ledyba-z)
+- Cleanup unnecessary avifBool ternary expressions
 
 ## [0.5.7] - 2020-03-03
 ### Added

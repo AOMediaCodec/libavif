@@ -279,7 +279,7 @@ cleanup:
 avifBool y4mWrite(avifImage * avif, const char * outputFilename)
 {
     avifBool swapUV = AVIF_FALSE;
-    avifBool hasAlpha = (avif->alphaPlane && (avif->alphaRowBytes > 0)) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool hasAlpha = (avif->alphaPlane != NULL) && (avif->alphaRowBytes > 0);
     avifBool writeAlpha = AVIF_FALSE;
     char * y4mHeaderFormat = NULL;
 

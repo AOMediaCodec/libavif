@@ -185,7 +185,7 @@ avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforc
 {
     uint8_t version;
     CHECK(avifROStreamReadVersionAndFlags(stream, &version, NULL));
-    return (version == enforcedVersion) ? AVIF_TRUE : AVIF_FALSE;
+    return (version == enforcedVersion);
 }
 
 // ---------------------------------------------------------------------------
