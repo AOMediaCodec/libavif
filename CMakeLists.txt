@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.5)
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C CXX VERSION 0.5.7)
+project(libavif LANGUAGES C CXX VERSION 0.6.0)
 
 # SOVERSION scheme: CURRENT.AGE.REVISION
 #   If there was an incompatible interface change:
@@ -16,7 +16,7 @@ project(libavif LANGUAGES C CXX VERSION 0.5.7)
 #     Increment AGE. Set REVISION to 0
 #   If the source code was changed, but there were no interface changes:
 #     Increment REVISION.
-set(LIBRARY_VERSION "1.0.0")
+set(LIBRARY_VERSION "2.0.0")
 set(LIBRARY_SOVERSION "0")
 
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
