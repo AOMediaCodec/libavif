@@ -166,7 +166,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             *((uint16_t *)&dstRow[i * params->dstPixelBytes]) = (uint16_t)dstAlpha;
@@ -180,7 +180,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             dstRow[i * params->dstPixelBytes] = (uint8_t)dstAlpha;
@@ -195,7 +195,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                     uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
                     for (uint32_t i = 0; i < params->width; ++i) {
                         int srcAlpha = srcRow[i * params->srcPixelBytes];
-                        float alphaF = srcAlpha / srcMaxChannelF;
+                        float alphaF = (float)srcAlpha / srcMaxChannelF;
                         int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                         dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                         *((uint16_t *)&dstRow[i * params->dstPixelBytes]) = (uint16_t)dstAlpha;
@@ -218,7 +218,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
                             srcAlpha = avifLimitedToFullY(params->srcDepth, srcAlpha);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             *((uint16_t *)&dstRow[i * params->dstPixelBytes]) = (uint16_t)dstAlpha;
@@ -233,7 +233,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
                             srcAlpha = avifLimitedToFullY(params->srcDepth, srcAlpha);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             dstRow[i * params->dstPixelBytes] = (uint8_t)dstAlpha;
@@ -249,7 +249,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                     for (uint32_t i = 0; i < params->width; ++i) {
                         int srcAlpha = srcRow[i * params->srcPixelBytes];
                         srcAlpha = avifLimitedToFullY(params->srcDepth, srcAlpha);
-                        float alphaF = srcAlpha / srcMaxChannelF;
+                        float alphaF = (float)srcAlpha / srcMaxChannelF;
                         int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                         dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                         *((uint16_t *)&dstRow[i * params->dstPixelBytes]) = (uint16_t)dstAlpha;
@@ -271,7 +271,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             dstAlpha = avifFullToLimitedY(params->dstDepth, dstAlpha);
@@ -286,7 +286,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             dstAlpha = avifFullToLimitedY(params->dstDepth, dstAlpha);
@@ -302,7 +302,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                     uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
                     for (uint32_t i = 0; i < params->width; ++i) {
                         int srcAlpha = srcRow[i * params->srcPixelBytes];
-                        float alphaF = srcAlpha / srcMaxChannelF;
+                        float alphaF = (float)srcAlpha / srcMaxChannelF;
                         int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                         dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                         dstAlpha = avifFullToLimitedY(params->dstDepth, dstAlpha);
@@ -326,7 +326,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
                             srcAlpha = avifLimitedToFullY(params->srcDepth, srcAlpha);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             dstAlpha = avifFullToLimitedY(params->dstDepth, dstAlpha);
@@ -342,7 +342,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                         for (uint32_t i = 0; i < params->width; ++i) {
                             int srcAlpha = *((uint16_t *)&srcRow[i * params->srcPixelBytes]);
                             srcAlpha = avifLimitedToFullY(params->srcDepth, srcAlpha);
-                            float alphaF = srcAlpha / srcMaxChannelF;
+                            float alphaF = (float)srcAlpha / srcMaxChannelF;
                             int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                             dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                             dstAlpha = avifFullToLimitedY(params->dstDepth, dstAlpha);
@@ -359,7 +359,7 @@ avifBool avifReformatAlpha(avifAlphaParams * params)
                     for (uint32_t i = 0; i < params->width; ++i) {
                         int srcAlpha = srcRow[i * params->srcPixelBytes];
                         srcAlpha = avifLimitedToFullY(params->srcDepth, srcAlpha);
-                        float alphaF = srcAlpha / srcMaxChannelF;
+                        float alphaF = (float)srcAlpha / srcMaxChannelF;
                         int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                         dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
                         dstAlpha = avifFullToLimitedY(params->dstDepth, dstAlpha);
