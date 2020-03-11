@@ -359,10 +359,7 @@ void avifCodecDestroy(avifCodec * codec)
 
 avifBool avifRGBFormatHasAlpha(avifRGBFormat format)
 {
-    if ((format == AVIF_RGB_FORMAT_RGB) || (format == AVIF_RGB_FORMAT_BGR)) {
-        return AVIF_FALSE;
-    }
-    return AVIF_TRUE;
+    return (format != AVIF_RGB_FORMAT_RGB) && (format != AVIF_RGB_FORMAT_BGR);
 }
 
 uint32_t avifRGBFormatChannelCount(avifRGBFormat format)

@@ -566,8 +566,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
     avifProfileFormat tileProfile = firstTile->image->profileFormat;
     avifNclxColorProfile * tileNCLX = &firstTile->image->nclx;
     avifRange tileRange = firstTile->image->yuvRange;
-    avifBool tileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]) ? AVIF_TRUE
-                                                                                                                    : AVIF_FALSE;
+    avifBool tileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
 
     for (unsigned int i = 1; i < tileCount; ++i) {
         avifTile * tile = &data->tiles.tile[firstTileIndex + i];
@@ -678,11 +677,7 @@ static avifBool avifDataFillImageGrid(avifData * data,
 
 static avifBool isAlphaURN(char * urn)
 {
-    if (!strcmp(urn, URN_ALPHA0))
-        return AVIF_TRUE;
-    if (!strcmp(urn, URN_ALPHA1))
-        return AVIF_TRUE;
-    return AVIF_FALSE;
+    return !strcmp(urn, URN_ALPHA0) || !strcmp(urn, URN_ALPHA1);
 }
 
 // ---------------------------------------------------------------------------
