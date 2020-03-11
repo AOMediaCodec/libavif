@@ -3,10 +3,12 @@
 
 #include "avif/avif.h"
 
+#include "avifpng.h"
 #include "avifutil.h"
 #include "y4m.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define NEXTARG()                                                     \
@@ -18,10 +20,11 @@
 
 static void syntax(void)
 {
-    printf("Syntax: avifdec [options] input.avif output.y4m\n");
+    printf("Syntax: avifdec [options] input.avif output.[png|y4m]\n");
     printf("Options:\n");
     printf("    -h,--help         : Show syntax help\n");
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
+    printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained)\n");
     printf("\n");
     avifPrintVersions();
 }
@@ -30,6 +33,7 @@ int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;
     const char * outputFilename = NULL;
+    int requestedDepth = 0;
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
 
     if (argc < 2) {
@@ -56,6 +60,13 @@ int main(int argc, char * argv[])
                     fprintf(stderr, "ERROR: AV1 Codec cannot decode: %s\n", arg);
                     return 1;
                 }
+            }
+        } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
+            NEXTARG();
+            requestedDepth = atoi(arg);
+            if ((requestedDepth != 8) && (requestedDepth != 16)) {
+                fprintf(stderr, "ERROR: invalid depth: %s\n", arg);
+                return 1;
             }
         } else {
             // Positional argument
@@ -115,8 +126,16 @@ int main(int argc, char * argv[])
         printf("Image decoded: %s\n", inputFilename);
         printf("Image details:\n");
         avifImageDump(avif);
-        if (!y4mWrite(avif, outputFilename)) {
-            returnCode = 1;
+
+        const char * fileExt = strrchr(outputFilename, '.');
+        if (fileExt && (!strcmp(fileExt, ".y4m"))) {
+            if (!y4mWrite(avif, outputFilename)) {
+                returnCode = 1;
+            }
+        } else {
+            if (!avifPNGWrite(avif, outputFilename, requestedDepth)) {
+                returnCode = 1;
+            }
         }
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));

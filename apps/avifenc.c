@@ -3,6 +3,7 @@
 
 #include "avif/avif.h"
 
+#include "avifpng.h"
 #include "avifutil.h"
 #include "y4m.h"
 
@@ -19,10 +20,12 @@
 
 static void syntax(void)
 {
-    printf("Syntax: avifenc [options] input.y4m output.avif\n");
+    printf("Syntax: avifenc [options] input.[png|y4m] output.avif\n");
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
+    printf("    -d,--depth D                      : Output depth [8,10,12]. (PNG only; For y4m, depth is retained)\n");
+    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420]. (PNG only; For y4m, format is retained)\n");
     printf("    -n,--nclx P/T/M/R                 : Set nclx colr box values (4 raw numbers)\n");
     printf("                                        P = enum avifNclxColourPrimaries\n");
     printf("                                        T = enum avifNclxTransferCharacteristics\n");
@@ -133,6 +136,8 @@ int main(int argc, char * argv[])
     }
 
     int jobs = 1;
+    avifPixelFormat requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
+    int requestedDepth = 0;
     int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     int maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
@@ -163,6 +168,25 @@ int main(int argc, char * argv[])
             jobs = atoi(arg);
             if (jobs < 1) {
                 jobs = 1;
+            }
+        } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
+            NEXTARG();
+            requestedDepth = atoi(arg);
+            if ((requestedDepth != 8) && (requestedDepth != 10) && (requestedDepth != 12)) {
+                fprintf(stderr, "ERROR: invalid depth: %s\n", arg);
+                return 1;
+            }
+        } else if (!strcmp(arg, "-y") || !strcmp(arg, "--yuv")) {
+            NEXTARG();
+            if (!strcmp(arg, "444")) {
+                requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
+            } else if (!strcmp(arg, "422")) {
+                requestedFormat = AVIF_PIXEL_FORMAT_YUV422;
+            } else if (!strcmp(arg, "420")) {
+                requestedFormat = AVIF_PIXEL_FORMAT_YUV420;
+            } else {
+                fprintf(stderr, "ERROR: invalid format: %s\n", arg);
+                return 1;
             }
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
@@ -281,9 +305,17 @@ int main(int argc, char * argv[])
     avifImage * avif = avifImageCreateEmpty();
     avifRWData raw = AVIF_DATA_EMPTY;
 
-    if (!y4mRead(avif, inputFilename)) {
-        returnCode = 1;
-        goto cleanup;
+    const char * fileExt = strrchr(inputFilename, '.');
+    if (fileExt && (!strcmp(fileExt, ".y4m"))) {
+        if (!y4mRead(avif, inputFilename)) {
+            returnCode = 1;
+            goto cleanup;
+        }
+    } else {
+        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
+            returnCode = 1;
+            goto cleanup;
+        }
     }
     printf("Successfully loaded: %s\n", inputFilename);
 

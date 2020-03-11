@@ -1,9 +1,11 @@
 /build*
 /obj*
 /ext/aom
-/ext/rav1e
 /ext/dav1d
 /ext/libgav1
+/ext/libpng
+/ext/rav1e
+/ext/zlib
 .clangd/
 cscope.*
 tags
