@@ -177,10 +177,6 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
         }
     }
 
-    if (rgbDepth > 8) {
-        png_set_swap(png);
-    }
-
     png_set_IHDR(
         png, info, avif->width, avif->height, rgbDepth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
@@ -195,6 +191,10 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
     for (uint32_t y = 0; y < rgb.height; ++y) {
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
+    }
+
+    if (rgbDepth > 8) {
+        png_set_swap(png);
     }
 
     png_write_image(png, rowPointers);
