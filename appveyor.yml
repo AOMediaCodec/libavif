@@ -48,3 +48,11 @@ artifacts:
   name: Static Lib and Includes
 - path: 'build\*.exe'
   name: Basic apps
+
+deploy:
+ - provider: GitHub
+   auth_token:
+     secure: 'DlFHAFoK4/3O5jgutXxPMsYfXftRiazS2GUh171hpDTQerLgfhhpQ+pjQ3sWiiBy'
+   prerelease: true
+   on:
+     appveyor_repo_tag: true
