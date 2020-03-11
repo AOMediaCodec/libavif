@@ -77,10 +77,8 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
         png_set_expand_gray_1_2_4_to_8(png);
     }
 
-    avifBool hasAlpha = AVIF_FALSE;
     if (png_get_valid(png, info, PNG_INFO_tRNS)) {
         png_set_tRNS_to_alpha(png);
-        hasAlpha = AVIF_TRUE;
     }
 
     if ((rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
