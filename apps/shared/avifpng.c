@@ -14,7 +14,7 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
     avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    png_bytep * rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * avif->height);
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -112,7 +112,6 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.depth = imgBitDepth;
     avifRGBImageAllocatePixels(&rgb);
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
     for (uint32_t y = 0; y < rgb.height; ++y) {
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
@@ -127,9 +126,7 @@ cleanup:
     if (png) {
         png_destroy_read_struct(&png, &info, NULL);
     }
-    if (rowPointers) {
-        free(rowPointers);
-    }
+    free(rowPointers);
     avifRGBImageFreePixels(&rgb);
     return readResult;
 }
@@ -139,7 +136,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
     avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    png_bytep * rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * avif->height);
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -192,7 +189,6 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
     rgb.depth = rgbDepth;
     avifRGBImageAllocatePixels(&rgb);
     avifImageYUVToRGB(avif, &rgb);
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
     for (uint32_t y = 0; y < rgb.height; ++y) {
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
@@ -208,9 +204,7 @@ cleanup:
     if (png) {
         png_destroy_write_struct(&png, &info);
     }
-    if (rowPointers) {
-        free(rowPointers);
-    }
+    free(rowPointers);
     avifRGBImageFreePixels(&rgb);
     return writeResult;
 }
