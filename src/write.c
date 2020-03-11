@@ -116,10 +116,15 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWStreamStart(&s, output);
 
     // -----------------------------------------------------------------------
-    // Reformat pixels, if need be
+    // Validate image
 
-    if (!image->width || !image->height || (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) || !image->yuvPlanes[AVIF_CHAN_Y]) {
+    if (!image->width || !image->height || !image->yuvPlanes[AVIF_CHAN_Y]) {
         result = AVIF_RESULT_NO_CONTENT;
+        goto writeCleanup;
+    }
+
+    if (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
+        result = AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
         goto writeCleanup;
     }
 
