@@ -14,7 +14,7 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
     avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    png_bytep * volatile rowPointers = NULL; // volatile avoids -Wclobbered due to libpng's setjmp
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -139,7 +139,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
     avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    png_bytep * volatile rowPointers = NULL; // volatile avoids -Wclobbered due to libpng's setjmp
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
