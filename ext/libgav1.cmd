@@ -11,7 +11,7 @@
 git clone https://chromium.googlesource.com/codecs/libgav1
 
 cd libgav1
-git checkout 1fccd75
+git checkout 45a1d76
 git clone https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
 mkdir build
 cd build
