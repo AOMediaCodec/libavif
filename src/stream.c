@@ -127,7 +127,7 @@ avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t out
         return AVIF_FALSE;
     }
 
-    char * streamString = (char *)p;
+    const char * streamString = (const char *)p;
     size_t stringLen = strlen(streamString);
     stream->offset += stringLen + 1; // update the stream to have read the "whole string" in
 
