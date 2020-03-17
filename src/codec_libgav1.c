@@ -44,8 +44,11 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         // Feed another sample
         avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
         ++codec->internal->inputSampleIndex;
-        if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder, sample->data.data, sample->data.size,
-                                       /*user_private_data=*/0) != kLibgav1StatusOk) {
+        if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
+                                       sample->data.data,
+                                       sample->data.size,
+                                       /*user_private_data=*/0,
+                                       /*buffer_private_data=*/NULL) != kLibgav1StatusOk) {
             return AVIF_FALSE;
         }
         // Each Libgav1DecoderDequeueFrame() call invalidates the output frame
