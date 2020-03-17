@@ -201,5 +201,7 @@ avifCodec * avifCodecCreateDav1d(void)
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     dav1d_default_settings(&codec->internal->dav1dSettings);
+    // Set a maximum frame size limit to avoid OOM'ing fuzzers.
+    codec->internal->dav1dSettings.frame_size_limit = 16384 * 16384;
     return codec;
 }
