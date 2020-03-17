@@ -153,6 +153,10 @@ if(AVIF_CODEC_DAV1D)
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
     endif()
+
+    if(UNIX AND NOT APPLE)
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for dlsym
+    endif()
 endif()
 
 if(AVIF_CODEC_LIBGAV1)
