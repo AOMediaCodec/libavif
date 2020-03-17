@@ -67,24 +67,14 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Weverything
     -Werror
     -Wno-bad-function-cast
-    -Wno-c11-extensions
     -Wno-cast-align
-    -Wno-cast-qual
     -Wno-covered-switch-default
-    -Wno-deprecated-declarations
-    -Wno-disabled-macro-expansion
     -Wno-documentation
     -Wno-documentation-unknown-command
     -Wno-double-promotion
     -Wno-float-equal
-    -Wno-format-nonliteral
-    -Wno-language-extension-token
-    -Wno-missing-noreturn
     -Wno-padded
-    -Wno-reserved-id-macro
     -Wno-sign-conversion
-    -Wno-switch-enum
-    -Wno-undef
   )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=gnu99) # Enforce C99 for gcc

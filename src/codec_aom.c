@@ -211,6 +211,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alpha, int 
                 fmt = AOM_IMG_FMT_YV12;
                 *yShift = 1;
                 break;
+            case AVIF_PIXEL_FORMAT_NONE:
             default:
                 return AOM_IMG_FMT_NONE;
         }
