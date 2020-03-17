@@ -70,6 +70,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-cast-align
     -Wno-conversion
     -Wno-covered-switch-default
+    -Wno-disabled-macro-expansion
     -Wno-documentation
     -Wno-documentation-unknown-command
     -Wno-double-promotion
