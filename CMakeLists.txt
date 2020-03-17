@@ -68,6 +68,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Werror
     -Wno-bad-function-cast
     -Wno-cast-align
+    -Wno-conversion
     -Wno-covered-switch-default
     -Wno-documentation
     -Wno-documentation-unknown-command
