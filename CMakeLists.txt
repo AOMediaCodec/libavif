@@ -113,7 +113,7 @@ set(AVIF_SRCS
 )
 
 set(AVIF_PLATFORM_LIBRARIES)
-if(NOT WIN32)
+if(UNIX)
     # Find out if we have threading available
     set(CMAKE_THREAD_PREFER_PTHREADS ON)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
