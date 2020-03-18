@@ -502,7 +502,7 @@ typedef struct avifIOStats
     size_t alphaOBUSize;
 } avifIOStats;
 
-struct avifData;
+struct avifDecoderData;
 
 typedef enum avifDecoderSource
 {
@@ -579,7 +579,7 @@ typedef struct avifDecoder
     avifIOStats ioStats;
 
     // Internals used by the decoder
-    struct avifData * data;
+    struct avifDecoderData * data;
 } avifDecoder;
 
 avifDecoder * avifDecoderCreate(void);
@@ -616,6 +616,8 @@ uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 // ---------------------------------------------------------------------------
 // avifEncoder
 
+struct avifEncoderData;
+
 // Notes:
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
@@ -643,6 +645,9 @@ typedef struct avifEncoder
 
     // stats from the most recent write
     avifIOStats ioStats;
+
+    // Internals used by the encoder
+    struct avifEncoderData * data;
 } avifEncoder;
 
 avifEncoder * avifEncoderCreate(void);

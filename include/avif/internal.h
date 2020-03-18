@@ -130,14 +130,6 @@ typedef struct avifCodecConfigurationBox
     // }
 } avifCodecConfigurationBox;
 
-typedef enum avifCodecPlanes
-{
-    AVIF_CODEC_PLANES_COLOR = 0, // YUV
-    AVIF_CODEC_PLANES_ALPHA,
-
-    AVIF_CODEC_PLANES_COUNT
-} avifCodecPlanes;
-
 struct avifCodec;
 struct avifCodecInternal;
 
