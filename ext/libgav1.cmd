@@ -8,7 +8,7 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2017 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone https://chromium.googlesource.com/codecs/libgav1
+git clone --single-branch https://chromium.googlesource.com/codecs/libgav1
 
 cd libgav1
 git checkout 45a1d76
