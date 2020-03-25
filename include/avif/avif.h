@@ -467,6 +467,10 @@ typedef struct avifReformatState
     uint32_t rgbOffsetBytesA;
 
     avifPixelFormatInfo formatInfo;
+
+    // LUTs for going from YUV limited/full unorm -> full range RGB FP32
+    float unormFloatTableY[1 << 12];
+    float unormFloatTableUV[1 << 12];
 } avifReformatState;
 avifBool avifPrepareReformatState(avifImage * image, avifRGBImage * rgb, avifReformatState * state);
 

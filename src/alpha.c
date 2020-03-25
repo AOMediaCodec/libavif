@@ -5,28 +5,33 @@
 
 #include <string.h>
 
-avifBool avifFillAlpha(avifAlphaParams * params)
+static int calcMaxChannel(uint32_t depth, avifRange range)
+{
+    int maxChannel = (int)((1 << depth) - 1);
+    if (range == AVIF_RANGE_LIMITED) {
+        maxChannel = avifFullToLimitedY(depth, maxChannel);
+    }
+    return maxChannel;
+}
+
+avifBool avifFillAlpha(const avifAlphaParams * const params)
 {
     if (params->dstDepth > 8) {
-        uint16_t maxChannel = (uint16_t)((1 << params->dstDepth) - 1);
-        if (params->dstRange == AVIF_RANGE_LIMITED) {
-            maxChannel = (uint16_t)avifFullToLimitedY(params->dstDepth, maxChannel);
-        }
+        const uint16_t maxChannel = (uint16_t)calcMaxChannel(params->dstDepth, params->dstRange);
         for (uint32_t j = 0; j < params->height; ++j) {
             uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
             for (uint32_t i = 0; i < params->width; ++i) {
-                *((uint16_t *)&dstRow[i * params->dstPixelBytes]) = maxChannel;
+                *((uint16_t *)dstRow) = maxChannel;
+                dstRow += params->dstPixelBytes;
             }
         }
     } else {
-        uint8_t maxChannel = 255;
-        if (params->dstRange == AVIF_RANGE_LIMITED) {
-            maxChannel = (uint8_t)avifFullToLimitedY(params->dstDepth, maxChannel);
-        }
+        const uint8_t maxChannel = (uint8_t)calcMaxChannel(params->dstDepth, params->dstRange);
         for (uint32_t j = 0; j < params->height; ++j) {
             uint8_t * dstRow = &params->dstPlane[params->dstOffsetBytes + (j * params->dstRowBytes)];
             for (uint32_t i = 0; i < params->width; ++i) {
-                dstRow[i * params->dstPixelBytes] = maxChannel;
+                *dstRow = maxChannel;
+                dstRow += params->dstPixelBytes;
             }
         }
     }
@@ -35,12 +40,12 @@ avifBool avifFillAlpha(avifAlphaParams * params)
 
 // Note: The [limited -> limited] paths are here for completeness, but in practice those
 //       paths will never be used, as avifRGBImage is always full range.
-avifBool avifReformatAlpha(avifAlphaParams * params)
+avifBool avifReformatAlpha(const avifAlphaParams * const params)
 {
-    int srcMaxChannel = (1 << params->srcDepth) - 1;
-    int dstMaxChannel = (1 << params->dstDepth) - 1;
-    float srcMaxChannelF = (float)srcMaxChannel;
-    float dstMaxChannelF = (float)dstMaxChannel;
+    const int srcMaxChannel = (1 << params->srcDepth) - 1;
+    const int dstMaxChannel = (1 << params->dstDepth) - 1;
+    const float srcMaxChannelF = (float)srcMaxChannel;
+    const float dstMaxChannelF = (float)dstMaxChannel;
 
     if (params->srcDepth == params->dstDepth) {
         // no depth rescale

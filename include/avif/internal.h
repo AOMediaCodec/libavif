@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 // Yes, clamp macros are nasty. Do not use them.
-#define AVIF_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#define AVIF_CLAMP(x, low, high) (((x) < (low))) ? (low) : (((high) < (x)) ? (high) : (x))
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 // Used by stream related things.
@@ -81,8 +81,8 @@ typedef struct avifAlphaParams
 
 } avifAlphaParams;
 
-avifBool avifFillAlpha(avifAlphaParams * params);
-avifBool avifReformatAlpha(avifAlphaParams * params);
+avifBool avifFillAlpha(const avifAlphaParams * const params);
+avifBool avifReformatAlpha(const avifAlphaParams * const params);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
