@@ -2098,7 +2098,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
         }
 
-        if ((data->colorGrid.rows > 0) && (data->colorGrid.columns > 0)) {
+        if ((data->colorGrid.rows > 0) && (data->colorGrid.columns > 0) && colorOBUItem) {
             if (!avifDecoderDataGenerateImageGridTiles(data, &data->colorGrid, colorOBUItem, AVIF_FALSE)) {
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
@@ -2115,7 +2115,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->data->colorTileCount = 1;
         }
 
-        if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0)) {
+        if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0) && alphaOBUItem) {
             if (!avifDecoderDataGenerateImageGridTiles(data, &data->alphaGrid, alphaOBUItem, AVIF_FALSE)) {
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
