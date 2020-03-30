@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.6.3] - 2020-03-30
 ### Changed
 - Avoid throwing away const unnecessarily in `avifROStreamReadString()`
 - Re-enable a bunch of clang warnings
@@ -348,8 +350,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.6.2...HEAD
-[0.6.1]: https://github.com/AOMediaCodec/libavif/compare/v0.6.1...v0.6.2
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/AOMediaCodec/libavif/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/AOMediaCodec/libavif/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/AOMediaCodec/libavif/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/AOMediaCodec/libavif/compare/v0.5.7...v0.6.0
 [0.5.7]: https://github.com/AOMediaCodec/libavif/compare/v0.5.6...v0.5.7
