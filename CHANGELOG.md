@@ -6,7 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+- Avoid throwing away const unnecessarily in `avifROStreamReadString()`
+- Re-enable a bunch of clang warnings
+- Set dav1dSettings.frame_size_limit to avoid OOM (wantehchang)
 - Refactor write.c to use a similar Data/Item design as read.c
+- YUV to RGB optimizations
 
 ## [0.6.2] - 2020-03-11
 ### Changed
