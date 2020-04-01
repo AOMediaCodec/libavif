@@ -311,9 +311,9 @@ static avifResult avifImageYUV16ToRGB16Color(avifImage * image, avifRGBImage * r
             uint32_t uvI = AVIF_MIN(i >> state->formatInfo.chromaShiftX, maxUVI);
 
             // clamp incoming data to protect against bad LUT lookups
-            const uint16_t unormY = AVIF_CLAMP(ptrY[i], 0, yuvMaxChannel);
-            const uint16_t unormU = AVIF_CLAMP(ptrU[uvI], 0, yuvMaxChannel);
-            const uint16_t unormV = AVIF_CLAMP(ptrV[uvI], 0, yuvMaxChannel);
+            const uint16_t unormY = AVIF_MIN(ptrY[i], yuvMaxChannel);
+            const uint16_t unormU = AVIF_MIN(ptrU[uvI], yuvMaxChannel);
+            const uint16_t unormV = AVIF_MIN(ptrV[uvI], yuvMaxChannel);
 
             // Convert unorm to float
             const float Y = unormFloatTableY[unormY];
@@ -357,7 +357,7 @@ static avifResult avifImageYUV16ToRGB16Mono(avifImage * image, avifRGBImage * rg
 
         for (uint32_t i = 0; i < image->width; ++i) {
             // clamp incoming data to protect against bad LUT lookups
-            const uint16_t unormY = AVIF_CLAMP(ptrY[i], 0, yuvMaxChannel);
+            const uint16_t unormY = AVIF_MIN(ptrY[i], yuvMaxChannel);
 
             // Convert unorm to float
             const float Y = unormFloatTableY[unormY];
@@ -408,9 +408,9 @@ static avifResult avifImageYUV16ToRGB8Color(avifImage * image, avifRGBImage * rg
             uint32_t uvI = AVIF_MIN(i >> state->formatInfo.chromaShiftX, maxUVI);
 
             // clamp incoming data to protect against bad LUT lookups
-            const uint16_t unormY = AVIF_CLAMP(ptrY[i], 0, yuvMaxChannel);
-            const uint16_t unormU = AVIF_CLAMP(ptrU[uvI], 0, yuvMaxChannel);
-            const uint16_t unormV = AVIF_CLAMP(ptrV[uvI], 0, yuvMaxChannel);
+            const uint16_t unormY = AVIF_MIN(ptrY[i], yuvMaxChannel);
+            const uint16_t unormU = AVIF_MIN(ptrU[uvI], yuvMaxChannel);
+            const uint16_t unormV = AVIF_MIN(ptrV[uvI], yuvMaxChannel);
 
             // Convert unorm to float
             const float Y = unormFloatTableY[unormY];
@@ -454,7 +454,7 @@ static avifResult avifImageYUV16ToRGB8Mono(avifImage * image, avifRGBImage * rgb
 
         for (uint32_t i = 0; i < image->width; ++i) {
             // clamp incoming data to protect against bad LUT lookups
-            const uint16_t unormY = AVIF_CLAMP(ptrY[i], 0, yuvMaxChannel);
+            const uint16_t unormY = AVIF_MIN(ptrY[i], yuvMaxChannel);
 
             // Convert unorm to float
             const float Y = unormFloatTableY[unormY];
