@@ -28,6 +28,9 @@ struct avifCodecInternal
 
 static void dav1dCodecDestroyInternal(avifCodec * codec)
 {
+    if (codec->internal->dav1dData.sz) {
+        dav1d_data_unref(&codec->internal->dav1dData);
+    }
     if (codec->internal->hasPicture) {
         dav1d_picture_unref(&codec->internal->dav1dPicture);
     }
@@ -41,8 +44,6 @@ static void dav1dCodecDestroyInternal(avifCodec * codec)
 static avifBool dav1dFeedData(avifCodec * codec)
 {
     if (!codec->internal->dav1dData.sz) {
-        dav1d_data_unref(&codec->internal->dav1dData);
-
         if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
             avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
