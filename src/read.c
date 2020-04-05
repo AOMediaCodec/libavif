@@ -2097,7 +2097,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
         }
 
-        if ((data->colorGrid.rows > 0) && (data->colorGrid.columns > 0) && colorOBUItem) {
+        if ((data->colorGrid.rows > 0) && (data->colorGrid.columns > 0)) {
             if (!avifDecoderDataGenerateImageGridTiles(data, &data->colorGrid, colorOBUItem, AVIF_FALSE)) {
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
