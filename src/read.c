@@ -2306,19 +2306,19 @@ avifResult avifDecoderNthImageTiming(avifDecoder * decoder, uint32_t frameIndex,
         return AVIF_RESULT_OK;
     }
 
-    decoder->imageTiming.timescale = decoder->timescale;
-    decoder->imageTiming.ptsInTimescales = 0;
+    outTiming->timescale = decoder->timescale;
+    outTiming->ptsInTimescales = 0;
     for (int imageIndex = 0; imageIndex < (int)frameIndex; ++imageIndex) {
-        decoder->imageTiming.ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
+        outTiming->ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
     }
-    decoder->imageTiming.durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, frameIndex);
+    outTiming->durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, frameIndex);
 
-    if (decoder->imageTiming.timescale > 0) {
-        decoder->imageTiming.pts = (double)decoder->imageTiming.ptsInTimescales / (double)decoder->imageTiming.timescale;
-        decoder->imageTiming.duration = (double)decoder->imageTiming.durationInTimescales / (double)decoder->imageTiming.timescale;
+    if (outTiming->timescale > 0) {
+        outTiming->pts = (double)outTiming->ptsInTimescales / (double)outTiming->timescale;
+        outTiming->duration = (double)outTiming->durationInTimescales / (double)outTiming->timescale;
     } else {
-        decoder->imageTiming.pts = 0.0;
-        decoder->imageTiming.duration = 0.0;
+        outTiming->pts = 0.0;
+        outTiming->duration = 0.0;
     }
     return AVIF_RESULT_OK;
 }
