@@ -617,6 +617,9 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 
+// Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
+avifResult avifDecoderNthImageTiming(avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
+
 // ---------------------------------------------------------------------------
 // avifEncoder
 

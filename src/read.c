@@ -2280,20 +2280,46 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     if (decoder->data->sourceSampleTable) {
         // Decoding from a track! Provide timing information.
 
-        decoder->imageTiming.timescale = decoder->timescale;
-        decoder->imageTiming.ptsInTimescales = 0;
-        for (int imageIndex = 0; imageIndex < decoder->imageIndex; ++imageIndex) {
-            decoder->imageTiming.ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
+        avifResult timingResult = avifDecoderNthImageTiming(decoder, decoder->imageIndex, &decoder->imageTiming);
+        if (timingResult != AVIF_RESULT_OK) {
+            return timingResult;
         }
-        decoder->imageTiming.durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, decoder->imageIndex);
+    }
+    return AVIF_RESULT_OK;
+}
 
-        if (decoder->imageTiming.timescale > 0) {
-            decoder->imageTiming.pts = (double)decoder->imageTiming.ptsInTimescales / (double)decoder->imageTiming.timescale;
-            decoder->imageTiming.duration = (double)decoder->imageTiming.durationInTimescales / (double)decoder->imageTiming.timescale;
-        } else {
-            decoder->imageTiming.pts = 0.0;
-            decoder->imageTiming.duration = 0.0;
-        }
+avifResult avifDecoderNthImageTiming(avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming)
+{
+    if (!decoder->data) {
+        // Nothing has been parsed yet
+        return AVIF_RESULT_NO_CONTENT;
+    }
+
+    if ((int)frameIndex >= decoder->imageCount) {
+        // Impossible index
+        return AVIF_RESULT_NO_IMAGES_REMAINING;
+    }
+
+    if (!decoder->data->sourceSampleTable) {
+        // There isn't any real timing associated with this decode, so
+        // just hand back the defaults chosen in avifDecoderReset().
+        memcpy(outTiming, &decoder->imageTiming, sizeof(avifImageTiming));
+        return AVIF_RESULT_OK;
+    }
+
+    decoder->imageTiming.timescale = decoder->timescale;
+    decoder->imageTiming.ptsInTimescales = 0;
+    for (int imageIndex = 0; imageIndex < (int)frameIndex; ++imageIndex) {
+        decoder->imageTiming.ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
+    }
+    decoder->imageTiming.durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, frameIndex);
+
+    if (decoder->imageTiming.timescale > 0) {
+        decoder->imageTiming.pts = (double)decoder->imageTiming.ptsInTimescales / (double)decoder->imageTiming.timescale;
+        decoder->imageTiming.duration = (double)decoder->imageTiming.durationInTimescales / (double)decoder->imageTiming.timescale;
+    } else {
+        decoder->imageTiming.pts = 0.0;
+        decoder->imageTiming.duration = 0.0;
     }
     return AVIF_RESULT_OK;
 }
