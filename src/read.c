@@ -2362,9 +2362,6 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData 
     if (result != AVIF_RESULT_OK) {
         return result;
     }
-    if (!decoder->image) {
-        return AVIF_RESULT_NO_IMAGES_REMAINING;
-    }
     avifImageCopy(image, decoder->image);
     return AVIF_RESULT_OK;
 }

@@ -544,7 +544,7 @@ typedef struct avifDecoder
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;
 
-    // The current decoded image, owned by the decoder. Can be NULL if the decoder hasn't run or has run
+    // The current decoded image, owned by the decoder. Is invalid if the decoder hasn't run or has run
     // out of images. The YUV and A contents of this image are likely owned by the decoder, so be
     // sure to copy any data inside of this image before advancing to the next image or reusing the
     // decoder. It is legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(),
