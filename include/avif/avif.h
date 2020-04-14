@@ -598,13 +598,18 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData 
 //
 // Usage / function call order is:
 // * avifDecoderCreate()
-// * avifDecoderSetSource() - optional
+// * avifDecoderSetSource() - optional, the default (AVIF_DECODER_SOURCE_AUTO) is usually sufficient
 // * avifDecoderParse()
 // * avifDecoderNextImage() - in a loop, using decoder->image after each successful call
 // * avifDecoderDestroy()
 //
 // You can use avifDecoderReset() any time after a successful call to avifDecoderParse()
-// to reset the internal decoder back to before the first frame.
+// to reset the internal decoder back to before the first frame. Calling either
+// avifDecoderSetSource() or avifDecoderParse() will automatically Reset the decoder.
+//
+// avifDecoderSetSource() allows you not only to choose whether to parse tracks or
+// items in a file containing both, but switch between sources without having to
+// Parse again. Normally AVIF_DECODER_SOURCE_AUTO is enough for the common path.
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
 avifResult avifDecoderParse(avifDecoder * decoder, avifROData * input);
 avifResult avifDecoderNextImage(avifDecoder * decoder);
