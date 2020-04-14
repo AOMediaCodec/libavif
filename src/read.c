@@ -649,7 +649,6 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                 }
 
                 // UV
-                widthToCopy >>= formatInfo.chromaShiftX;
                 heightToCopy >>= formatInfo.chromaShiftY;
                 size_t uvColOffset = yaColOffset >> formatInfo.chromaShiftX;
                 size_t uvRowOffset = yaRowOffset >> formatInfo.chromaShiftY;

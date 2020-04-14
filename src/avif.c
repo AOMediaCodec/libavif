@@ -483,13 +483,14 @@ avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags)
 
 void avifCodecVersions(char outBuffer[256])
 {
+    const size_t maxChars = sizeof(outBuffer) - 1;
     outBuffer[0] = 0;
     for (int i = 0; i < availableCodecsCount; ++i) {
         if (i > 0) {
-            strcat(outBuffer, ", ");
+            strncat(outBuffer, ", ", maxChars);
         }
-        strcat(outBuffer, availableCodecs[i].name);
-        strcat(outBuffer, ":");
-        strcat(outBuffer, availableCodecs[i].version());
+        strncat(outBuffer, availableCodecs[i].name, maxChars);
+        strncat(outBuffer, ":", maxChars);
+        strncat(outBuffer, availableCodecs[i].version(), maxChars);
     }
 }
