@@ -61,8 +61,8 @@ endif()
 option(AVIF_LOCAL_JPEG "Build jpeg by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_JPEG)
     add_subdirectory(ext/libjpeg)
-    set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg")
-    set(JPEG_LIBRARY jpeg)
+    set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg" PARENT_SCOPE)
+    set(JPEG_LIBRARY jpeg PARENT_SCOPE)
 endif()
 # ---------------------------------------------------------------------------------------
 
