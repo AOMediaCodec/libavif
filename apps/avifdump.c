@@ -18,6 +18,7 @@ int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;
     if (argc < 2) {
+        syntax();
         return 0;
     }
     inputFilename = argv[1];
