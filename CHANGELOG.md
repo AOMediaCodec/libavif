@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added `avifDecoderNthImageTiming()` for querying frame timing without needing to decode the frame
+- Added some comments explaining `avifDecoderSetSource()`
 
 ### Changed
 - Fix clang warning (switch clamp to min)
+- Fix a few clang analyzer issues
+- Avoid incorrect YUV range cast
+- Call dav1d_data_unref in dav1dCodecDestroyInternal (wantehchang)
+- Declare some avifSampleTable * pointers as const (wantehchang)
+- Update to cJSON v1.7.13 (wantehchang)
+- Minor code cleanup
 
 ## [0.6.3] - 2020-03-30
 ### Changed
