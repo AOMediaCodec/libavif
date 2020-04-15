@@ -54,7 +54,6 @@ void avifImageDump(avifImage * avif)
             printf("    * imir (Mirror)        : %u (%s)\n", avif->imir.axis, (avif->imir.axis == 0) ? "Vertical" : "Horizontal");
         }
     }
-    printf("\n");
 }
 
 void avifPrintVersions(void)

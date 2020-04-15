@@ -322,6 +322,17 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY})
     target_include_directories(avifdec PRIVATE apps/shared ${PNG_PNG_INCLUDE_DIR})
 
+    add_executable(avifdump
+        apps/avifdump.c
+
+        apps/shared/avifutil.c
+    )
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avifdump PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
+    target_link_libraries(avifdump avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY})
+    target_include_directories(avifdump PRIVATE apps/shared ${PNG_PNG_INCLUDE_DIR})
+
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
             RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
