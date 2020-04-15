@@ -81,6 +81,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-documentation-unknown-command
     -Wno-double-promotion
     -Wno-float-equal
+    -Wno-missing-noreturn
     -Wno-padded
     -Wno-sign-conversion
   )
