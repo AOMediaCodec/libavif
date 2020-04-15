@@ -3,6 +3,7 @@
 
 #include "avif/avif.h"
 
+#include "avifjpeg.h"
 #include "avifpng.h"
 #include "avifutil.h"
 #include "y4m.h"
@@ -20,12 +21,12 @@
 
 static void syntax(void)
 {
-    printf("Syntax: avifenc [options] input.[png|y4m] output.avif\n");
+    printf("Syntax: avifenc [options] input.[jpg|png|y4m] output.avif\n");
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
-    printf("    -d,--depth D                      : Output depth [8,10,12]. (PNG only; For y4m, depth is retained)\n");
-    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420]. (PNG only; For y4m, format is retained)\n");
+    printf("    -d,--depth D                      : Output depth [8,10,12]. (JPG/PNG only; For y4m, depth is retained)\n");
+    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420]. (JPG/PNG only; For y4m, format is retained)\n");
     printf("    -n,--nclx P/T/M/R                 : Set nclx colr box values (4 raw numbers)\n");
     printf("                                        P = enum avifNclxColourPrimaries\n");
     printf("                                        T = enum avifNclxTransferCharacteristics\n");
@@ -306,22 +307,33 @@ int main(int argc, char * argv[])
     avifRWData raw = AVIF_DATA_EMPTY;
 
     const char * fileExt = strrchr(inputFilename, '.');
-    if (fileExt && (!strcmp(fileExt, ".y4m"))) {
+    if (!fileExt) {
+        fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
+        return 1;
+    }
+    if (!strcmp(fileExt, ".y4m")) {
         if (!y4mRead(avif, inputFilename)) {
             returnCode = 1;
             goto cleanup;
         }
-    } else {
+    } else if (!strcmp(fileExt, ".jpg") || !strcmp(fileExt, ".jpeg")) {
+        if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
+            returnCode = 1;
+            goto cleanup;
+        }
+    } else if (!strcmp(fileExt, ".png")) {
         if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
+    } else {
+        fprintf(stderr, "Unrecognized file extension: %s\n", fileExt + 1);
+        return 1;
     }
     printf("Successfully loaded: %s\n", inputFilename);
 
     if (nclxSet) {
-        avif->profileFormat = AVIF_PROFILE_FORMAT_NCLX;
-        memcpy(&avif->nclx, &nclx, sizeof(nclx));
+        avifImageSetProfileNCLX(avif, &nclx);
     }
 
     if (paspCount == 2) {

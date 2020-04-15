@@ -2,6 +2,7 @@
 /obj*
 /ext/aom
 /ext/dav1d
+/ext/libjpeg
 /ext/libgav1
 /ext/libpng
 /ext/rav1e
