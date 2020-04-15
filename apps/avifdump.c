@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-int syntax(void)
+static int syntax(void)
 {
     printf("Syntax: aviffuzz input.avif\n");
     return 0;
