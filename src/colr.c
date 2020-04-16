@@ -307,6 +307,10 @@ static avifBool calcYUVInfoFromICC(const uint8_t * iccData, size_t iccSize, floa
     gbMat3 colorants;
     gbMat3 chad, invChad;
     gbVec3 wtpt;
+    for (int i = 0; i < 9; ++i) {
+        colorants.e[i] = 0.0f;
+        chad.e[i] = 0.0f;
+    }
     wtpt.e[0] = 0.0f;
     wtpt.e[1] = 0.0f;
     wtpt.e[2] = 0.0f;
