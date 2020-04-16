@@ -364,7 +364,7 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
     }
 
     const char * rangeString = "XCOLORRANGE=FULL";
-    if ((avif->yuvRange == AVIF_RANGE_LIMITED)) {
+    if (avif->yuvRange == AVIF_RANGE_LIMITED) {
         rangeString = "XCOLORRANGE=LIMITED";
     }
 
