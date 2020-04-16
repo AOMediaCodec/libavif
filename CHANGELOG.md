@@ -6,10 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- avifenc JPEG support
+- Docker test script to build avifenc + deps in a shared libs (distro-like) env
 - Added simple `avifdump` tool for aiding in AVIF debugging
+- Added some comments in `avif.h` to clarify `avifDecoderSetSource()` usage
 
 ### Changed
-- avifRange cleanup/refactor
+- avifRange cleanup/refactor (breaking change)
+- avifenc now has `-r` to set YUV range (when using JPEG/PNG), `--nclx` now takes 3 arguments as a result
 
 ## [0.6.4] - 2020-04-14
 ### Added
