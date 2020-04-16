@@ -150,7 +150,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
             nclx.colourPrimaries = (uint16_t)dav1dImage->seq_hdr->pri;
             nclx.transferCharacteristics = (uint16_t)dav1dImage->seq_hdr->trc;
             nclx.matrixCoefficients = (uint16_t)dav1dImage->seq_hdr->mtrx;
-            nclx.fullRangeFlag = (image->yuvRange == AVIF_RANGE_LIMITED) ? AVIF_NCLX_LIMITED_RANGE : AVIF_NCLX_FULL_RANGE;
+            nclx.range = image->yuvRange;
             avifImageSetProfileNCLX(image, &nclx);
         }
 

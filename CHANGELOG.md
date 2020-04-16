@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added simple `avifdump` tool for aiding in AVIF debugging
 
+### Changed
+- avifRange cleanup/refactor
+
 ## [0.6.4] - 2020-04-14
 ### Added
 - Added `avifDecoderNthImageTiming()` for querying frame timing without needing to decode the frame

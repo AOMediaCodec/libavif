@@ -146,6 +146,15 @@ typedef struct avifPixelFormatInfo
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
 
 // ---------------------------------------------------------------------------
+// avifRange
+
+typedef enum avifRange
+{
+    AVIF_RANGE_LIMITED = 0,
+    AVIF_RANGE_FULL = 0x80
+} avifRange;
+
+// ---------------------------------------------------------------------------
 // avifNclxColorProfile
 
 typedef enum avifNclxColourPrimaries
@@ -234,29 +243,13 @@ typedef enum avifNclxMatrixCoefficients
     AVIF_NCLX_MATRIX_COEFFICIENTS_ICTCP = 14
 } avifNclxMatrixCoefficients;
 
-// for fullRangeFlag
-typedef enum avifNclxRangeFlag
-{
-    AVIF_NCLX_LIMITED_RANGE = 0,
-    AVIF_NCLX_FULL_RANGE = 0x80
-} avifNclxRangeFlag;
-
 typedef struct avifNclxColorProfile
 {
-    uint16_t colourPrimaries;
-    uint16_t transferCharacteristics;
-    uint16_t matrixCoefficients;
-    uint8_t fullRangeFlag;
+    avifNclxColourPrimaries colourPrimaries;
+    avifNclxTransferCharacteristics transferCharacteristics;
+    avifNclxMatrixCoefficients matrixCoefficients;
+    avifRange range;
 } avifNclxColorProfile;
-
-// ---------------------------------------------------------------------------
-// avifRange
-
-typedef enum avifRange
-{
-    AVIF_RANGE_LIMITED = 0,
-    AVIF_RANGE_FULL,
-} avifRange;
 
 // ---------------------------------------------------------------------------
 // avifProfileFormat

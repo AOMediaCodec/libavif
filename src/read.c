@@ -576,8 +576,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             ((tileProfile == AVIF_PROFILE_FORMAT_NCLX) &&
              ((tile->image->profileFormat != tileProfile) || (tile->image->nclx.colourPrimaries != tileNCLX->colourPrimaries) ||
               (tile->image->nclx.transferCharacteristics != tileNCLX->transferCharacteristics) ||
-              (tile->image->nclx.matrixCoefficients != tileNCLX->matrixCoefficients) ||
-              (tile->image->nclx.fullRangeFlag != tileNCLX->fullRangeFlag)))) {
+              (tile->image->nclx.matrixCoefficients != tileNCLX->matrixCoefficients) || (tile->image->nclx.range != tileNCLX->range)))) {
             return AVIF_FALSE;
         }
     }
@@ -848,16 +847,21 @@ static avifBool avifParseColourInformationBox(avifDecoderData * data, const uint
         data->properties.prop[propertyIndex].colr.icc = avifROStreamCurrent(&s);
         data->properties.prop[propertyIndex].colr.iccSize = avifROStreamRemainingBytes(&s);
     } else if (!memcmp(colourType, "nclx", 4)) {
+        uint16_t tmp16;
         // unsigned int(16) colour_primaries;
-        CHECK(avifROStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.colourPrimaries));
+        CHECK(avifROStreamReadU16(&s, &tmp16));
+        data->properties.prop[propertyIndex].colr.nclx.colourPrimaries = (avifNclxColourPrimaries)tmp16;
         // unsigned int(16) transfer_characteristics;
-        CHECK(avifROStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.transferCharacteristics));
+        CHECK(avifROStreamReadU16(&s, &tmp16));
+        data->properties.prop[propertyIndex].colr.nclx.transferCharacteristics = (avifNclxTransferCharacteristics)tmp16;
         // unsigned int(16) matrix_coefficients;
-        CHECK(avifROStreamReadU16(&s, &data->properties.prop[propertyIndex].colr.nclx.matrixCoefficients));
+        CHECK(avifROStreamReadU16(&s, &tmp16));
+        data->properties.prop[propertyIndex].colr.nclx.matrixCoefficients = (avifNclxMatrixCoefficients)tmp16;
         // unsigned int(1) full_range_flag;
         // unsigned int(7) reserved = 0;
-        CHECK(avifROStreamRead(&s, &data->properties.prop[propertyIndex].colr.nclx.fullRangeFlag, 1));
-        data->properties.prop[propertyIndex].colr.nclx.fullRangeFlag |= 0x80;
+        uint8_t tmp8;
+        CHECK(avifROStreamRead(&s, &tmp8, 1));
+        data->properties.prop[propertyIndex].colr.nclx.range = (avifRange)(tmp8 | 0x80);
         data->properties.prop[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NCLX;
     }
     return AVIF_TRUE;

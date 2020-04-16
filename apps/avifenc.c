@@ -31,7 +31,7 @@ static void syntax(void)
     printf("                                        P = enum avifNclxColourPrimaries\n");
     printf("                                        T = enum avifNclxTransferCharacteristics\n");
     printf("                                        M = enum avifNclxMatrixCoefficients\n");
-    printf("                                        R = avifNclxRangeFlag (any nonzero value becomes AVIF_NCLX_FULL_RANGE)\n");
+    printf("                                        R = range (0 = limited range, nonzero = full range)\n");
     printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
@@ -99,7 +99,7 @@ static avifBool parseNCLX(avifNclxColorProfile * nclx, const char * arg)
         nclx->colourPrimaries = (uint16_t)values[0];
         nclx->transferCharacteristics = (uint16_t)values[1];
         nclx->matrixCoefficients = (uint16_t)values[2];
-        nclx->fullRangeFlag = values[3] ? AVIF_NCLX_FULL_RANGE : AVIF_NCLX_LIMITED_RANGE;
+        nclx->range = values[3] ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
         return AVIF_TRUE;
     }
     return AVIF_FALSE;

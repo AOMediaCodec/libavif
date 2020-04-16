@@ -142,7 +142,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
             nclx.colourPrimaries = (uint16_t)codec->internal->image->cp;
             nclx.transferCharacteristics = (uint16_t)codec->internal->image->tc;
             nclx.matrixCoefficients = (uint16_t)codec->internal->image->mc;
-            nclx.fullRangeFlag = (image->yuvRange == AVIF_RANGE_LIMITED) ? AVIF_NCLX_LIMITED_RANGE : AVIF_NCLX_FULL_RANGE;
+            nclx.range = image->yuvRange;
             avifImageSetProfileNCLX(image, &nclx);
         }
 

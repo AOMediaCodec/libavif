@@ -157,7 +157,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     int depth = -1;
     avifBool hasAlpha = AVIF_FALSE;
     avifPixelFormat format = AVIF_PIXEL_FORMAT_NONE;
-    avifNclxRangeFlag rangeFlag = AVIF_NCLX_LIMITED_RANGE;
+    avifRange range = AVIF_RANGE_LIMITED;
     while (p != end) {
         switch (*p) {
             case 'W': // width
@@ -182,7 +182,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
                     goto cleanup;
                 }
                 if (!strcmp(tmpBuffer, "XCOLORRANGE=FULL")) {
-                    rangeFlag = AVIF_NCLX_FULL_RANGE;
+                    range = AVIF_RANGE_FULL;
                 }
                 break;
             default:
@@ -238,7 +238,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     avif->height = height;
     avif->depth = depth;
     avif->yuvFormat = format;
-    avif->yuvRange = (rangeFlag == AVIF_NCLX_LIMITED_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
+    avif->yuvRange = range;
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     avifPixelFormatInfo info;
@@ -364,7 +364,7 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
     }
 
     const char * rangeString = "XCOLORRANGE=FULL";
-    if ((avif->profileFormat == AVIF_PROFILE_FORMAT_NCLX) && !avif->nclx.fullRangeFlag) {
+    if ((avif->yuvRange == AVIF_RANGE_LIMITED)) {
         rangeString = "XCOLORRANGE=LIMITED";
     }
 

@@ -401,7 +401,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
                 avifRWStreamWriteU16(&s, item->image->nclx.colourPrimaries);         // unsigned int(16) colour_primaries;
                 avifRWStreamWriteU16(&s, item->image->nclx.transferCharacteristics); // unsigned int(16) transfer_characteristics;
                 avifRWStreamWriteU16(&s, item->image->nclx.matrixCoefficients);      // unsigned int(16) matrix_coefficients;
-                avifRWStreamWriteU8(&s, item->image->nclx.fullRangeFlag & 0x80);     // unsigned int(1) full_range_flag;
+                avifRWStreamWriteU8(&s, item->image->nclx.range & 0x80);             // unsigned int(1) full_range_flag;
                                                                                      // unsigned int(7) reserved = 0;
                 avifRWStreamFinishBox(&s, colr);
                 ipmaPush(&item->ipma, ++itemPropertyIndex);

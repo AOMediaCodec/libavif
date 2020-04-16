@@ -24,7 +24,7 @@ void avifImageDump(avifImage * avif)
                    avif->nclx.colourPrimaries,
                    avif->nclx.transferCharacteristics,
                    avif->nclx.matrixCoefficients,
-                   avif->nclx.fullRangeFlag ? "Full" : "Limited");
+                   (avif->nclx.range == AVIF_RANGE_FULL) ? "Full" : "Limited");
             break;
     }
 
