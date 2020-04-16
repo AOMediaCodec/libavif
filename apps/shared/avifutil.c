@@ -12,6 +12,7 @@ void avifImageDump(avifImage * avif)
     printf(" * Bit Depth      : %d\n", avif->depth);
     printf(" * Format         : %s\n", avifPixelFormatToString(avif->yuvFormat));
     printf(" * Alpha          : %s\n", (avif->alphaPlane && (avif->alphaRowBytes > 0)) ? "Present" : "Absent");
+    printf(" * Range          : %s\n", (avif->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited");
     switch (avif->profileFormat) {
         case AVIF_PROFILE_FORMAT_NONE:
             printf(" * Color Profile  : None\n");

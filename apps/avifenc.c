@@ -25,13 +25,13 @@ static void syntax(void)
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
-    printf("    -d,--depth D                      : Output depth [8,10,12]. (JPG/PNG only; For y4m, depth is retained)\n");
-    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420]. (JPG/PNG only; For y4m, format is retained)\n");
-    printf("    -n,--nclx P/T/M/R                 : Set nclx colr box values (4 raw numbers)\n");
+    printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m, depth is retained)\n");
+    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420]. (JPEG/PNG only; For y4m, format is retained)\n");
+    printf("    -n,--nclx P/T/M                   : Set nclx colr box values (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = enum avifNclxColourPrimaries\n");
     printf("                                        T = enum avifNclxTransferCharacteristics\n");
     printf("                                        M = enum avifNclxMatrixCoefficients\n");
-    printf("                                        R = range (0 = limited range, nonzero = full range)\n");
+    printf("    -r,--range RANGE                  : YUV range [limited, full]. (JPEG/PNG only; For y4m, range is retained)\n");
     printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
@@ -82,24 +82,24 @@ static avifBool parseNCLX(avifNclxColorProfile * nclx, const char * arg)
     strncpy(buffer, arg, 127);
     buffer[127] = 0;
 
-    int values[4];
+    int values[3];
     int index = 0;
     char * token = strtok(buffer, "/");
     while (token != NULL) {
         values[index] = atoi(token);
         ++index;
-        if (index >= 4) {
+        if (index >= 3) {
             break;
         }
 
         token = strtok(NULL, "/");
     }
 
-    if (index == 4) {
+    if (index == 3) {
         nclx->colourPrimaries = (uint16_t)values[0];
         nclx->transferCharacteristics = (uint16_t)values[1];
         nclx->matrixCoefficients = (uint16_t)values[2];
-        nclx->range = values[3] ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
+        nclx->range = AVIF_RANGE_FULL; // This will be set later
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
@@ -151,6 +151,8 @@ int main(int argc, char * argv[])
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
     uint8_t imirAxis = 0xff;  // sentinel value indicating "unused"
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
+    avifRange requestedRange = AVIF_RANGE_FULL;
+    avifBool requestedRangeSet = AVIF_FALSE;
     avifBool nclxSet = AVIF_FALSE;
     avifEncoder * encoder = NULL;
 
@@ -231,6 +233,17 @@ int main(int argc, char * argv[])
                 return 1;
             }
             nclxSet = AVIF_TRUE;
+        } else if (!strcmp(arg, "-r") || !strcmp(arg, "--range")) {
+            NEXTARG();
+            if (!strcmp(arg, "limited") || !strcmp(arg, "l")) {
+                requestedRange = AVIF_RANGE_LIMITED;
+            } else if (!strcmp(arg, "full") || !strcmp(arg, "f")) {
+                requestedRange = AVIF_RANGE_FULL;
+            } else {
+                fprintf(stderr, "ERROR: Unknown range: %s\n", arg);
+                return 1;
+            }
+            requestedRangeSet = AVIF_TRUE;
         } else if (!strcmp(arg, "-s") || !strcmp(arg, "--speed")) {
             NEXTARG();
             speed = atoi(arg);
@@ -312,17 +325,20 @@ int main(int argc, char * argv[])
         return 1;
     }
     if (!strcmp(fileExt, ".y4m")) {
+        if (requestedRangeSet) {
+            fprintf(stderr, "Warning: Ignoring range (-r) value when encoding from y4m content.\n");
+        }
         if (!y4mRead(avif, inputFilename)) {
             returnCode = 1;
             goto cleanup;
         }
     } else if (!strcmp(fileExt, ".jpg") || !strcmp(fileExt, ".jpeg")) {
-        if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
+        if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth, requestedRange)) {
             returnCode = 1;
             goto cleanup;
         }
     } else if (!strcmp(fileExt, ".png")) {
-        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
+        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth, requestedRange)) {
             returnCode = 1;
             goto cleanup;
         }
@@ -333,6 +349,7 @@ int main(int argc, char * argv[])
     printf("Successfully loaded: %s\n", inputFilename);
 
     if (nclxSet) {
+        nclx.range = avif->yuvRange;
         avifImageSetProfileNCLX(avif, &nclx);
     }
 
