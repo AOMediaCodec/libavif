@@ -11,6 +11,6 @@ supported codecs as shared libraries, and finally building and installing
 
 If you just want to force a (re)build and skip the interactive shell, run:
 
-    docker-compose up --build libavif
+    docker-compose up --build --force-recreate libavif
 
 *Note: This build process will take a while (15-30m or more depending on your machine).*
