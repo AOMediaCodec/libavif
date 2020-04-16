@@ -319,6 +319,15 @@ int main(int argc, char * argv[])
     avifImage * avif = avifImageCreateEmpty();
     avifRWData raw = AVIF_DATA_EMPTY;
 
+    // Set range and nclx in advance so any upcoming RGB -> YUV use the proper coefficients
+    if (requestedRangeSet) {
+        avif->yuvRange = requestedRange;
+    }
+    if (nclxSet) {
+        nclx.range = avif->yuvRange;
+        avifImageSetProfileNCLX(avif, &nclx);
+    }
+
     const char * fileExt = strrchr(inputFilename, '.');
     if (!fileExt) {
         fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
@@ -332,13 +341,18 @@ int main(int argc, char * argv[])
             returnCode = 1;
             goto cleanup;
         }
+        if (nclxSet && (nclx.range != avif->yuvRange)) {
+            // Update the NCLX profile based on the new range from the y4m file
+            nclx.range = avif->yuvRange;
+            avifImageSetProfileNCLX(avif, &nclx);
+        }
     } else if (!strcmp(fileExt, ".jpg") || !strcmp(fileExt, ".jpeg")) {
-        if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth, requestedRange)) {
+        if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
     } else if (!strcmp(fileExt, ".png")) {
-        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth, requestedRange)) {
+        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
@@ -347,11 +361,6 @@ int main(int argc, char * argv[])
         return 1;
     }
     printf("Successfully loaded: %s\n", inputFilename);
-
-    if (nclxSet) {
-        nclx.range = avif->yuvRange;
-        avifImageSetProfileNCLX(avif, &nclx);
-    }
 
     if (paspCount == 2) {
         avif->transformFlags |= AVIF_TRANSFORM_PASP;

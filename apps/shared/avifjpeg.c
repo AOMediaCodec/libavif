@@ -27,7 +27,7 @@ static void setup_read_icc_profile(j_decompress_ptr cinfo);
 static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
-avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth, avifRange requestedRange)
+avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;
@@ -69,7 +69,6 @@ avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFor
     avif->height = cinfo.output_height;
     avif->yuvFormat = requestedFormat;
     avif->depth = requestedDepth ? requestedDepth : 8;
-    avif->yuvRange = requestedRange;
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.format = AVIF_RGB_FORMAT_RGB;
     rgb.depth = 8;

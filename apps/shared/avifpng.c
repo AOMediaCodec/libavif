@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth, avifRange requestedRange)
+avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
 {
     avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -101,7 +101,6 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
     avif->height = rawHeight;
     avif->yuvFormat = requestedFormat;
     avif->depth = requestedDepth;
-    avif->yuvRange = requestedRange;
     if (avif->depth == 0) {
         if (imgBitDepth == 8) {
             avif->depth = 8;
