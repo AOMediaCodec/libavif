@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+- avifenc - Allow --nclx to override embedded ICC profiles (with a warning), instead of --nclx being ignored
 - avifdump - Fix format specifiers for 32bit
 
 ## [0.7.1] - 2020-04-16

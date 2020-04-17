@@ -335,7 +335,7 @@ int main(int argc, char * argv[])
     }
     if (!strcmp(fileExt, ".y4m")) {
         if (requestedRangeSet) {
-            fprintf(stderr, "Warning: Ignoring range (-r) value when encoding from y4m content.\n");
+            fprintf(stderr, "WARNING: Ignoring range (-r) value when encoding from y4m content.\n");
         }
         if (!y4mRead(avif, inputFilename)) {
             returnCode = 1;
