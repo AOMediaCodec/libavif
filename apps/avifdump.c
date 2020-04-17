@@ -5,6 +5,7 @@
 
 #include "avifutil.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -62,7 +63,7 @@ int main(int argc, char * argv[])
                 firstImage = AVIF_FALSE;
                 avifImageDump(decoder->image);
 
-                printf(" * %zu timescales per second, %2.2f seconds (%zu timescales), %d frame%s\n",
+                printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
                        decoder->timescale,
                        decoder->duration,
                        decoder->durationInTimescales,
@@ -71,7 +72,7 @@ int main(int argc, char * argv[])
                 printf(" * Frames:\n");
             }
 
-            printf("   * Decoded frame [%d] [pts %2.2f (%zu timescales)] [duration %2.2f (%zu timescales)]\n",
+            printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
                    frameIndex,
                    decoder->imageTiming.pts,
                    decoder->imageTiming.ptsInTimescales,
