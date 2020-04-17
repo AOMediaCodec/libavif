@@ -244,14 +244,16 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     // Speed 10: RealTime    CpuUsed 8
     unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
     int aomCpuUsed = -1;
-    if (encoder->speed != AVIF_SPEED_DEFAULT) {
-        if (encoder->speed < 8) {
-            aomUsage = AOM_USAGE_GOOD_QUALITY;
-            aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 5);
-        } else {
-            aomUsage = AOM_USAGE_REALTIME;
-            aomCpuUsed = AVIF_CLAMP(encoder->speed - 2, 6, 8);
-        }
+    int speed = encoder->speed;
+    if (speed == AVIF_SPEED_DEFAULT) {
+        speed = 8; // Semi-arbitrary; chosen as a good balance of speed and output for a cmdline default
+    }
+    if (speed < 8) {
+        aomUsage = AOM_USAGE_GOOD_QUALITY;
+        aomCpuUsed = AVIF_CLAMP(speed, 0, 5);
+    } else {
+        aomUsage = AOM_USAGE_REALTIME;
+        aomCpuUsed = AVIF_CLAMP(speed - 2, 6, 8);
     }
 
     if (image->depth > 8) {

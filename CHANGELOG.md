@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - avifenc - Allow --nclx to override embedded ICC profiles (with a warning), instead of --nclx being ignored
 - avifdump - Fix format specifiers for 32bit
+- Changed default libaom encode speed to 8; now prioritizing libaom over rav1e
 
 ## [0.7.1] - 2020-04-16
 ### Changed
