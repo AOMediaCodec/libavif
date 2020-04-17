@@ -140,7 +140,7 @@ int main(int argc, char * argv[])
     avifPixelFormat requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
     int requestedDepth = 0;
     int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
-    int maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+    int maxQuantizer = 10; // "High Quality", but not lossless
     int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int speed = AVIF_SPEED_DEFAULT;
