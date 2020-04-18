@@ -48,7 +48,9 @@ static void syntax(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest to fastest)\n", AVIF_SPEED_SLOWEST, AVIF_SPEED_FASTEST);
+    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' for codec internal defaults. default speed: 8)\n",
+           AVIF_SPEED_SLOWEST,
+           AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
@@ -143,7 +145,7 @@ int main(int argc, char * argv[])
     int maxQuantizer = 10; // "High Quality", but not lossless
     int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-    int speed = AVIF_SPEED_DEFAULT;
+    int speed = 8;
     int paspCount = 0;
     uint32_t paspValues[8]; // only the first two are used
     int clapCount = 0;
@@ -246,12 +248,16 @@ int main(int argc, char * argv[])
             requestedRangeSet = AVIF_TRUE;
         } else if (!strcmp(arg, "-s") || !strcmp(arg, "--speed")) {
             NEXTARG();
-            speed = atoi(arg);
-            if (speed > AVIF_SPEED_FASTEST) {
-                speed = AVIF_SPEED_FASTEST;
-            }
-            if (speed < AVIF_SPEED_SLOWEST) {
-                speed = AVIF_SPEED_SLOWEST;
+            if (!strcmp(arg, "default") || !strcmp(arg, "d")) {
+                speed = AVIF_SPEED_DEFAULT;
+            } else {
+                speed = atoi(arg);
+                if (speed > AVIF_SPEED_FASTEST) {
+                    speed = AVIF_SPEED_FASTEST;
+                }
+                if (speed < AVIF_SPEED_SLOWEST) {
+                    speed = AVIF_SPEED_SLOWEST;
+                }
             }
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
@@ -390,8 +396,9 @@ int main(int argc, char * argv[])
     printf("AVIF to be written:\n");
     avifImageDump(avif);
 
-    printf("Encoding with AV1 codec '%s', color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
+    printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
+           speed,
            minQuantizer,
            quantizerString(minQuantizer),
            maxQuantizer,

@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - avifenc - Allow --nclx to override embedded ICC profiles (with a warning), instead of --nclx being ignored
-- avifenc - Choose high-quality-but-lossy QP defaults
+- avifenc - Choose high-quality-but-lossy QP defaults, and a default speed of 8
 - avifdump - Fix format specifiers for 32bit
-- Changed default libaom encode speed to 8; now prioritizing libaom over rav1e
+- Now prioritizing libaom over rav1e when both are present
 
 ## [0.7.1] - 2020-04-16
 ### Changed
