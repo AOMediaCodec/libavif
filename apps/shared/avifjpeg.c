@@ -24,14 +24,15 @@ static void my_error_exit(j_common_ptr cinfo)
 }
 
 static void setup_read_icc_profile(j_decompress_ptr cinfo);
-static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
+static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET * volatile * icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
 avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
 {
-    avifBool ret = AVIF_FALSE;
-    FILE * f = NULL;
-    uint8_t * iccData = NULL;
+    // volatile qualifiers here avoid -Wclobbered due to libjpeg's setjmp
+    avifBool volatile ret = AVIF_FALSE;
+    FILE * volatile f = NULL;
+    uint8_t * volatile iccData = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -298,7 +299,7 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  * return FALSE.  You might want to issue an error message instead.
  */
 
-static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len)
+static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET * volatile * icc_data_ptr, unsigned int * icc_data_len)
 {
     jpeg_saved_marker_ptr marker;
     int num_markers = 0;
