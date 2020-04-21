@@ -3,6 +3,8 @@
 
 #include "avif/avif.h"
 
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -127,7 +129,7 @@ int main(int argc, char * argv[])
                 dstRGB.format = AVIF_RGB_FORMAT_RGB;
                 avifRGBImageAllocatePixels(&dstRGB);
 
-                size_t driftPixelCounts[MAX_DRIFT];
+                uint64_t driftPixelCounts[MAX_DRIFT];
                 for (int i = 0; i < MAX_DRIFT; ++i) {
                     driftPixelCounts[i] = 0;
                 }
@@ -215,10 +217,10 @@ int main(int argc, char * argv[])
 
                 printf(" * depth: %d, matrixCoeffs: %d, maxDrift: %2d\n", yuvDepth, matrixCoeffs, maxDrift);
 
-                const size_t totalPixelCount = (size_t)dim * dim * dim;
+                const uint64_t totalPixelCount = (uint64_t)dim * dim * dim;
                 for (int i = 0; i < MAX_DRIFT; ++i) {
                     if (verbose && (driftPixelCounts[i] > 0)) {
-                        printf("   * drift: %2d -> %11zu / %11zu pixels (%.2f %%)\n",
+                        printf("   * drift: %2d -> %12" PRIu64 " / %12" PRIu64 " pixels (%.2f %%)\n",
                                i,
                                driftPixelCounts[i],
                                totalPixelCount,
