@@ -97,6 +97,7 @@ int main(int argc, char * argv[])
             uint32_t yuvDepth = yuvDepths[yuvDepthIndex];
 
             const avifNclxMatrixCoefficients matrixCoeffsList[] = { AVIF_NCLX_MATRIX_COEFFICIENTS_SRGB,
+                                                                    AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL,
                                                                     AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY };
             const int matrixCoeffsCount = (int)(sizeof(matrixCoeffsList) / sizeof(matrixCoeffsList[0]));
 
