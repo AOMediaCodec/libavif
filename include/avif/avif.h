@@ -443,6 +443,12 @@ int avifFullToLimitedUV(int depth, int v);
 int avifLimitedToFullY(int depth, int v);
 int avifLimitedToFullUV(int depth, int v);
 
+typedef enum avifReformatMode
+{
+    AVIF_REFORMAT_MODE_YUV_COEFFICIENTS = 0, // Normal YUV conversion using coefficients
+    AVIF_REFORMAT_MODE_IDENTITY              // Pack GBR directly into YUV planes (AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY)
+} avifReformatMode;
+
 typedef struct avifReformatState
 {
     // YUV coefficients
@@ -464,6 +470,8 @@ typedef struct avifReformatState
     // LUTs for going from YUV limited/full unorm -> full range RGB FP32
     float unormFloatTableY[1 << 12];
     float unormFloatTableUV[1 << 12];
+
+    avifReformatMode mode;
 } avifReformatState;
 avifBool avifPrepareReformatState(avifImage * image, avifRGBImage * rgb, avifReformatState * state);
 
