@@ -103,6 +103,7 @@ typedef struct avifDecoderItem
     uint32_t auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;      // if non-zero, this item is a content description for Item #{descForID}
     uint32_t dimgForID;      // if non-zero, this item is a derived image for Item #{dimgForID}
+    avifBool hasUnsupportedEssentialProperty; // If true, this file cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem, item);
 
@@ -519,6 +520,10 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
             if (memcmp(item->type, "av01", 4)) {
                 continue;
             }
+            if (item->hasUnsupportedEssentialProperty) {
+                // An essential property isn't supported by libavif; ignore the item.
+                continue;
+            }
 
             ++tilesAvailable;
         }
@@ -532,6 +537,10 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
         avifDecoderItem * item = &data->items.item[i];
         if (item->dimgForID == gridItem->id) {
             if (memcmp(item->type, "av01", 4)) {
+                continue;
+            }
+            if (item->hasUnsupportedEssentialProperty) {
+                // An essential property isn't supported by libavif; ignore the item.
                 continue;
             }
 
@@ -1015,16 +1024,16 @@ static avifBool avifParseItemPropertyAssociation(avifDecoderData * data, const u
         uint8_t associationCount;
         CHECK(avifROStreamRead(&s, &associationCount, 1));
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
-            // avifBool essential = AVIF_FALSE; // currently unused
+            avifBool essential = AVIF_FALSE;
             uint16_t propertyIndex = 0;
             if (propertyIndexIsU16) {
                 CHECK(avifROStreamReadU16(&s, &propertyIndex));
-                // essential = ((propertyIndex & 0x8000) != 0);
+                essential = ((propertyIndex & 0x8000) != 0);
                 propertyIndex &= 0x7fff;
             } else {
                 uint8_t tmp;
                 CHECK(avifROStreamRead(&s, &tmp, 1));
-                // essential = ((tmp & 0x80) != 0);
+                essential = ((tmp & 0x80) != 0);
                 propertyIndex = tmp & 0x7f;
             }
 
@@ -1069,6 +1078,12 @@ static avifBool avifParseItemPropertyAssociation(avifDecoderData * data, const u
             } else if (!memcmp(prop->type, "imir", 4)) {
                 item->imirPresent = AVIF_TRUE;
                 memcpy(&item->imir, &prop->imir, sizeof(avifImageMirror));
+            } else {
+                if (essential) {
+                    // Discovered an essential item property that libavif doesn't support!
+                    // Make a note to ignore this item later.
+                    item->hasUnsupportedEssentialProperty = AVIF_TRUE;
+                }
             }
         }
     }
@@ -1819,6 +1834,10 @@ avifResult avifDecoderParse(avifDecoder * decoder, avifROData * rawInput)
     // Sanity check items
     for (uint32_t itemIndex = 0; itemIndex < decoder->data->items.count; ++itemIndex) {
         avifDecoderItem * item = &decoder->data->items.item[itemIndex];
+        if (item->hasUnsupportedEssentialProperty) {
+            // An essential property isn't supported by libavif; ignore the item.
+            continue;
+        }
         const uint8_t * p = avifDecoderDataCalcItemPtr(decoder->data, item);
         if (p == NULL) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -2002,6 +2021,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!item->id || !item->size) {
                 break;
             }
+            if (item->hasUnsupportedEssentialProperty) {
+                // An essential property isn't supported by libavif; ignore the item.
+                continue;
+            }
             avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
             if (memcmp(item->type, "av01", 4) && !isGrid) {
                 // probably exif or some other data
@@ -2043,6 +2066,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!item->id || !item->size) {
                 break;
             }
+            if (item->hasUnsupportedEssentialProperty) {
+                // An essential property isn't supported by libavif; ignore the item.
+                continue;
+            }
             avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
             if (memcmp(item->type, "av01", 4) && !isGrid) {
                 // probably exif or some other data
@@ -2077,6 +2104,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             avifDecoderItem * item = &data->items.item[itemIndex];
             if (!item->id || !item->size) {
                 break;
+            }
+            if (item->hasUnsupportedEssentialProperty) {
+                // An essential property isn't supported by libavif; ignore the item.
+                continue;
             }
 
             if (item->descForID != colorOBUItem->id) {
