@@ -477,14 +477,33 @@ avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags)
 
 void avifCodecVersions(char outBuffer[256])
 {
-    const size_t maxChars = 255;
-    outBuffer[0] = 0;
+    char * dest = outBuffer;
+    size_t maxChars = 255;
+    size_t len;
     for (int i = 0; i < availableCodecsCount; ++i) {
         if (i > 0) {
-            strncat(outBuffer, ", ", maxChars);
+            len = (maxChars < 2) ? maxChars : 2;
+            memcpy(dest, ", ", len);
+            dest += len;
+            maxChars -= len;
         }
-        strncat(outBuffer, availableCodecs[i].name, maxChars);
-        strncat(outBuffer, ":", maxChars);
-        strncat(outBuffer, availableCodecs[i].version(), maxChars);
+
+        len = strlen(availableCodecs[i].name);
+        len = (maxChars < len) ? maxChars : len;
+        memcpy(dest, availableCodecs[i].name, len);
+        dest += len;
+        maxChars -= len;
+
+        len = (maxChars < 1) ? maxChars : 1;
+        memcpy(dest, ":", len);
+        dest += len;
+        maxChars -= len;
+
+        len = strlen(availableCodecs[i].version());
+        len = (maxChars < len) ? maxChars : len;
+        memcpy(dest, availableCodecs[i].version(), len);
+        dest += len;
+        maxChars -= len;
     }
+    dest[0] = '\0';
 }
