@@ -482,25 +482,25 @@ void avifCodecVersions(char outBuffer[256])
     size_t len;
     for (int i = 0; i < availableCodecsCount; ++i) {
         if (i > 0) {
-            len = (maxChars < 2) ? maxChars : 2;
+            len = AVIF_MIN(maxChars, 2);
             memcpy(dest, ", ", len);
             dest += len;
             maxChars -= len;
         }
 
         len = strlen(availableCodecs[i].name);
-        len = (maxChars < len) ? maxChars : len;
+        len = AVIF_MIN(maxChars, len);
         memcpy(dest, availableCodecs[i].name, len);
         dest += len;
         maxChars -= len;
 
-        len = (maxChars < 1) ? maxChars : 1;
+        len = AVIF_MIN(maxChars, 1);
         memcpy(dest, ":", len);
         dest += len;
         maxChars -= len;
 
         len = strlen(availableCodecs[i].version());
-        len = (maxChars < len) ? maxChars : len;
+        len = AVIF_MIN(maxChars, len);
         memcpy(dest, availableCodecs[i].version(), len);
         dest += len;
         maxChars -= len;
