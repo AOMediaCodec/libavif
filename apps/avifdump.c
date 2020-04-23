@@ -11,14 +11,14 @@
 
 static int syntax(void)
 {
-    printf("Syntax: aviffuzz input.avif\n");
+    printf("Syntax: avifdump input.avif\n");
     return 0;
 }
 
 int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;
-    if (argc < 2) {
+    if (argc != 2) {
         syntax();
         return 0;
     }
