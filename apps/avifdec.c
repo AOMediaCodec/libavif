@@ -23,12 +23,12 @@
 
 static void syntax(void)
 {
-    printf("Syntax: avifdec [options] input.avif output.[jpg|png|y4m]\n");
+    printf("Syntax: avifdec [options] input.avif output.[jpg|jpeg|png|y4m]\n");
     printf("Options:\n");
     printf("    -h,--help         : Show syntax help\n");
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
-    printf("    -q,--quality Q    : Output quality [1-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
+    printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
     printf("\n");
     avifPrintVersions();
 }
@@ -76,8 +76,8 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
             NEXTARG();
             jpegQuality = atoi(arg);
-            if (jpegQuality < 1) {
-                jpegQuality = 1;
+            if (jpegQuality < 0) {
+                jpegQuality = 0;
             } else if (jpegQuality > 100) {
                 jpegQuality = 100;
             }
@@ -143,9 +143,8 @@ int main(int argc, char * argv[])
         const char * fileExt = strrchr(outputFilename, '.');
         if (!fileExt) {
             fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
-            return 1;
-        }
-        if (!strcmp(fileExt, ".y4m")) {
+            returnCode = 1;
+        } else if (!strcmp(fileExt, ".y4m")) {
             if (!y4mWrite(avif, outputFilename)) {
                 returnCode = 1;
             }
@@ -157,6 +156,9 @@ int main(int argc, char * argv[])
             if (!avifPNGWrite(avif, outputFilename, requestedDepth)) {
                 returnCode = 1;
             }
+        } else {
+            fprintf(stderr, "Unrecognized file extension: %s\n", fileExt + 1);
+            returnCode = 1;
         }
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
