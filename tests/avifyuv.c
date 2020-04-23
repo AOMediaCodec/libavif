@@ -98,7 +98,7 @@ int main(int argc, char * argv[])
         for (int yuvDepthIndex = 0; yuvDepthIndex < yuvDepthsCount; ++yuvDepthIndex) {
             uint32_t yuvDepth = yuvDepths[yuvDepthIndex];
 
-            const avifNclxMatrixCoefficients matrixCoeffsList[] = { AVIF_NCLX_MATRIX_COEFFICIENTS_SRGB,
+            const avifNclxMatrixCoefficients matrixCoeffsList[] = { AVIF_NCLX_MATRIX_COEFFICIENTS_BT709,
                                                                     AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL,
                                                                     AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY };
             const int matrixCoeffsCount = (int)(sizeof(matrixCoeffsList) / sizeof(matrixCoeffsList[0]));
@@ -110,7 +110,7 @@ int main(int argc, char * argv[])
                 int maxDrift = 0;
 
                 avifNclxColorProfile nclx;
-                nclx.colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_SRGB;
+                nclx.colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT709;
                 nclx.transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SRGB;
                 nclx.matrixCoefficients = matrixCoeffs;
                 nclx.range = AVIF_RANGE_FULL;
