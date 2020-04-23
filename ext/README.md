@@ -11,4 +11,4 @@ However, if you are building this for a distribution or Unix-like environment
 in general, you can safely *ignore* this directory. Allow `BUILD_SHARED_LIBS`
 to keep its default (`ON`), enable the appropriate `AVIF_BUILD_*` CMake flags
 depending on which shared AV1 codec libraries you plan to leverage and depend
-on, and use the system's zlib and libpng.
+on, and use the system's zlib, libpng, and libjpeg.
