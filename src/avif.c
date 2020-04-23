@@ -485,14 +485,12 @@ static void append(char ** writePos, size_t * remainingLen, const char * appendS
     memcpy(*writePos, appendStr, appendLen);
     *remainingLen -= appendLen;
     *writePos += appendLen;
-    *(*writePos) = 0;
 }
 
 void avifCodecVersions(char outBuffer[256])
 {
     size_t remainingLen = 255;
     char * writePos = outBuffer;
-    *writePos = 0;
 
     for (int i = 0; i < availableCodecsCount; ++i) {
         if (i > 0) {
@@ -502,4 +500,5 @@ void avifCodecVersions(char outBuffer[256])
         append(&writePos, &remainingLen, ":");
         append(&writePos, &remainingLen, availableCodecs[i].version());
     }
+    *writePos = 0;
 }
