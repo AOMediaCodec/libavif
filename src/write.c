@@ -434,21 +434,21 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
                 avifRWStreamWriteU32(&s, item->image->clap.vertOffN);  // unsigned int(32) vertOffN;
                 avifRWStreamWriteU32(&s, item->image->clap.vertOffD);  // unsigned int(32) vertOffD;
                 avifRWStreamFinishBox(&s, clap);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
             }
             if (item->image->transformFlags & AVIF_TRANSFORM_IROT) {
                 avifBoxMarker irot = avifRWStreamWriteBox(&s, "irot", -1, 0);
                 uint8_t angle = item->image->irot.angle & 0x3;
                 avifRWStreamWrite(&s, &angle, 1); // unsigned int (6) reserved = 0; unsigned int (2) angle;
                 avifRWStreamFinishBox(&s, irot);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
             }
             if (item->image->transformFlags & AVIF_TRANSFORM_IMIR) {
                 avifBoxMarker imir = avifRWStreamWriteBox(&s, "imir", -1, 0);
                 uint8_t axis = item->image->imir.axis & 0x1;
                 avifRWStreamWrite(&s, &axis, 1); // unsigned int (7) reserved = 0; unsigned int (1) axis;
                 avifRWStreamFinishBox(&s, imir);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
             }
         }
     }
