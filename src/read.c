@@ -71,6 +71,13 @@ typedef struct avifColourInformationBox
     avifNclxColorProfile nclx;
 } avifColourInformationBox;
 
+#define MAX_PIXI_PLANE_DEPTHS 4
+typedef struct avifPixelInformationProperty
+{
+    uint8_t planeDepths[MAX_PIXI_PLANE_DEPTHS];
+    uint8_t planeCount;
+} avifPixelInformationProperty;
+
 // ---------------------------------------------------------------------------
 // Top-level structures
 
@@ -99,6 +106,8 @@ typedef struct avifDecoderItem
     avifImageRotation irot;
     avifBool imirPresent;
     avifImageMirror imir;
+    avifBool pixiPresent;
+    avifPixelInformationProperty pixi;
     uint32_t thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
     uint32_t auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;      // if non-zero, this item is a content description for Item #{descForID}
@@ -119,6 +128,7 @@ typedef struct avifProperty
     avifCleanApertureBox clap;
     avifImageRotation irot;
     avifImageMirror imir;
+    avifPixelInformationProperty pixi;
 } avifProperty;
 AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
 
@@ -961,6 +971,22 @@ static avifBool avifParseImageMirrorProperty(avifDecoderData * data, const uint8
     return AVIF_TRUE;
 }
 
+static avifBool avifParsePixelInformationProperty(avifDecoderData * data, const uint8_t * raw, size_t rawLen, int propertyIndex)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
+
+    avifPixelInformationProperty * pixi = &data->properties.prop[propertyIndex].pixi;
+    CHECK(avifROStreamRead(&s, &pixi->planeCount, 1)); // unsigned int (8) num_channels;
+    if (pixi->planeCount > MAX_PIXI_PLANE_DEPTHS) {
+        return AVIF_FALSE;
+    }
+    for (uint8_t i = 0; i < pixi->planeCount; ++i) {
+        CHECK(avifROStreamRead(&s, &pixi->planeDepths[i], 1)); // unsigned int (8) bits_per_channel;
+    }
+    return AVIF_TRUE;
+}
+
 static avifBool avifParseItemPropertyContainerBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
@@ -994,6 +1020,9 @@ static avifBool avifParseItemPropertyContainerBox(avifDecoderData * data, const 
         }
         if (!memcmp(header.type, "imir", 4)) {
             CHECK(avifParseImageMirrorProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
+        }
+        if (!memcmp(header.type, "pixi", 4)) {
+            CHECK(avifParsePixelInformationProperty(data, avifROStreamCurrent(&s), header.size, propertyIndex));
         }
 
         CHECK(avifROStreamSkip(&s, header.size));
@@ -1078,6 +1107,9 @@ static avifBool avifParseItemPropertyAssociation(avifDecoderData * data, const u
             } else if (!memcmp(prop->type, "imir", 4)) {
                 item->imirPresent = AVIF_TRUE;
                 memcpy(&item->imir, &prop->imir, sizeof(avifImageMirror));
+            } else if (!memcmp(prop->type, "pixi", 4)) {
+                item->pixiPresent = AVIF_TRUE;
+                memcpy(&item->pixi, &prop->pixi, sizeof(avifPixelInformationProperty));
             } else {
                 if (essential) {
                     // Discovered an essential item property that libavif doesn't support!
