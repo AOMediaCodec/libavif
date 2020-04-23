@@ -475,16 +475,31 @@ avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags)
     return NULL;
 }
 
+static void append(char ** writePos, size_t * remainingLen, const char * appendStr)
+{
+    size_t appendLen = strlen(appendStr);
+    if (appendLen > *remainingLen) {
+        appendLen = *remainingLen;
+    }
+
+    memcpy(*writePos, appendStr, appendLen);
+    *remainingLen -= appendLen;
+    *writePos += appendLen;
+    *(*writePos) = 0;
+}
+
 void avifCodecVersions(char outBuffer[256])
 {
-    const size_t maxChars = 255;
-    outBuffer[0] = 0;
+    size_t remainingLen = 255;
+    char * writePos = outBuffer;
+    *writePos = 0;
+
     for (int i = 0; i < availableCodecsCount; ++i) {
         if (i > 0) {
-            strncat(outBuffer, ", ", maxChars);
+            append(&writePos, &remainingLen, ", ");
         }
-        strncat(outBuffer, availableCodecs[i].name, maxChars);
-        strncat(outBuffer, ":", maxChars);
-        strncat(outBuffer, availableCodecs[i].version(), maxChars);
+        append(&writePos, &remainingLen, availableCodecs[i].name);
+        append(&writePos, &remainingLen, ":");
+        append(&writePos, &remainingLen, availableCodecs[i].version());
     }
 }
