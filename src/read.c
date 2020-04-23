@@ -870,7 +870,7 @@ static avifBool avifParseColourInformationBox(avifDecoderData * data, const uint
         // unsigned int(7) reserved = 0;
         uint8_t tmp8;
         CHECK(avifROStreamRead(&s, &tmp8, 1));
-        data->properties.prop[propertyIndex].colr.nclx.range = (avifRange)(tmp8 | 0x80);
+        data->properties.prop[propertyIndex].colr.nclx.range = (avifRange)(tmp8 & 0x80);
         data->properties.prop[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NCLX;
     }
     return AVIF_TRUE;
