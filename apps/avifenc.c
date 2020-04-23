@@ -21,7 +21,7 @@
 
 static void syntax(void)
 {
-    printf("Syntax: avifenc [options] input.[jpg|png|y4m] output.avif\n");
+    printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
@@ -31,7 +31,7 @@ static void syntax(void)
     printf("                                        P = enum avifNclxColourPrimaries\n");
     printf("                                        T = enum avifNclxTransferCharacteristics\n");
     printf("                                        M = enum avifNclxMatrixCoefficients\n");
-    printf("    -r,--range RANGE                  : YUV range [limited, full]. (JPEG/PNG only; For y4m, range is retained)\n");
+    printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m, range is retained)\n");
     printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
@@ -337,7 +337,8 @@ int main(int argc, char * argv[])
     const char * fileExt = strrchr(inputFilename, '.');
     if (!fileExt) {
         fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
-        return 1;
+        returnCode = 1;
+        goto cleanup;
     }
     if (!strcmp(fileExt, ".y4m")) {
         if (requestedRangeSet) {
@@ -364,7 +365,8 @@ int main(int argc, char * argv[])
         }
     } else {
         fprintf(stderr, "Unrecognized file extension: %s\n", fileExt + 1);
-        return 1;
+        returnCode = 1;
+        goto cleanup;
     }
     printf("Successfully loaded: %s\n", inputFilename);
 
