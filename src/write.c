@@ -9,11 +9,13 @@
 struct ipmaArray
 {
     uint8_t associations[MAX_ASSOCIATIONS];
+    avifBool essential[MAX_ASSOCIATIONS];
     uint8_t count;
 };
-static void ipmaPush(struct ipmaArray * ipma, uint8_t assoc)
+static void ipmaPush(struct ipmaArray * ipma, uint8_t assoc, avifBool essential)
 {
     ipma->associations[ipma->count] = assoc;
+    ipma->essential[ipma->count] = essential;
     ++ipma->count;
 }
 
@@ -371,7 +373,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
         avifRWStreamWriteU32(&s, item->image->width);  // unsigned int(32) image_width;
         avifRWStreamWriteU32(&s, item->image->height); // unsigned int(32) image_height;
         avifRWStreamFinishBox(&s, ispe);
-        ipmaPush(&item->ipma, ++itemPropertyIndex); // ipma is 1-indexed, doing this afterwards is correct
+        ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE); // ipma is 1-indexed, doing this afterwards is correct
 
         uint8_t channelCount = item->alpha ? 1 : 3; // TODO: write the correct value here when adding monochrome support
         avifBoxMarker pixi = avifRWStreamWriteBox(&s, "pixi", 0, 0);
@@ -380,10 +382,10 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
             avifRWStreamWriteU8(&s, (uint8_t)item->image->depth); // unsigned int (8) bits_per_channel;
         }
         avifRWStreamFinishBox(&s, pixi);
-        ipmaPush(&item->ipma, ++itemPropertyIndex);
+        ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
 
         writeConfigBox(&s, &item->codec->configBox);
-        ipmaPush(&item->ipma, ++itemPropertyIndex);
+        ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
 
         if (item->alpha) {
             // Alpha specific properties
@@ -391,7 +393,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
             avifBoxMarker auxC = avifRWStreamWriteBox(&s, "auxC", 0, 0);
             avifRWStreamWriteChars(&s, alphaURN, alphaURNSize); //  string aux_type;
             avifRWStreamFinishBox(&s, auxC);
-            ipmaPush(&item->ipma, ++itemPropertyIndex);
+            ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
         } else {
             // Color specific properties
 
@@ -404,13 +406,13 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
                 avifRWStreamWriteU8(&s, item->image->nclx.range & 0x80);             // unsigned int(1) full_range_flag;
                                                                                      // unsigned int(7) reserved = 0;
                 avifRWStreamFinishBox(&s, colr);
-                ipmaPush(&item->ipma, ++itemPropertyIndex);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             } else if ((item->image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && item->image->icc.data && (item->image->icc.size > 0)) {
                 avifBoxMarker colr = avifRWStreamWriteBox(&s, "colr", -1, 0);
                 avifRWStreamWriteChars(&s, "prof", 4); // unsigned int(32) colour_type;
                 avifRWStreamWrite(&s, item->image->icc.data, item->image->icc.size);
                 avifRWStreamFinishBox(&s, colr);
-                ipmaPush(&item->ipma, ++itemPropertyIndex);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             }
 
             // Write (Optional) Transformations
@@ -419,7 +421,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
                 avifRWStreamWriteU32(&s, item->image->pasp.hSpacing); // unsigned int(32) hSpacing;
                 avifRWStreamWriteU32(&s, item->image->pasp.vSpacing); // unsigned int(32) vSpacing;
                 avifRWStreamFinishBox(&s, pasp);
-                ipmaPush(&item->ipma, ++itemPropertyIndex);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             }
             if (item->image->transformFlags & AVIF_TRANSFORM_CLAP) {
                 avifBoxMarker clap = avifRWStreamWriteBox(&s, "clap", -1, 0);
@@ -432,21 +434,21 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
                 avifRWStreamWriteU32(&s, item->image->clap.vertOffN);  // unsigned int(32) vertOffN;
                 avifRWStreamWriteU32(&s, item->image->clap.vertOffD);  // unsigned int(32) vertOffD;
                 avifRWStreamFinishBox(&s, clap);
-                ipmaPush(&item->ipma, ++itemPropertyIndex);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             }
             if (item->image->transformFlags & AVIF_TRANSFORM_IROT) {
                 avifBoxMarker irot = avifRWStreamWriteBox(&s, "irot", -1, 0);
                 uint8_t angle = item->image->irot.angle & 0x3;
                 avifRWStreamWrite(&s, &angle, 1); // unsigned int (6) reserved = 0; unsigned int (2) angle;
                 avifRWStreamFinishBox(&s, irot);
-                ipmaPush(&item->ipma, ++itemPropertyIndex);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             }
             if (item->image->transformFlags & AVIF_TRANSFORM_IMIR) {
                 avifBoxMarker imir = avifRWStreamWriteBox(&s, "imir", -1, 0);
                 uint8_t axis = item->image->imir.axis & 0x1;
                 avifRWStreamWrite(&s, &axis, 1); // unsigned int (7) reserved = 0; unsigned int (1) axis;
                 avifRWStreamFinishBox(&s, imir);
-                ipmaPush(&item->ipma, ++itemPropertyIndex);
+                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             }
         }
     }
@@ -469,10 +471,14 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
                 continue;
             }
 
-            avifRWStreamWriteU16(&s, item->id);                      // unsigned int(16) item_ID;
-            avifRWStreamWriteU8(&s, item->ipma.count);               // unsigned int(8) association_count;
-            for (int i = 0; i < item->ipma.count; ++i) {             //
-                avifRWStreamWriteU8(&s, item->ipma.associations[i]); // bit(1) essential; unsigned int(7) property_index;
+            avifRWStreamWriteU16(&s, item->id);          // unsigned int(16) item_ID;
+            avifRWStreamWriteU8(&s, item->ipma.count);   // unsigned int(8) association_count;
+            for (int i = 0; i < item->ipma.count; ++i) { //
+                uint8_t essentialAndIndex = item->ipma.associations[i];
+                if (item->ipma.essential[i]) {
+                    essentialAndIndex |= 0x80;
+                }
+                avifRWStreamWriteU8(&s, essentialAndIndex); // bit(1) essential; unsigned int(7) property_index;
             }
         }
     }
