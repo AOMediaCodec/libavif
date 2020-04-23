@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.0] - 2020-04-16
 ### Added
-- avifenc JPEG support
+- avifenc and avifdec JPEG support
 - Docker test script to build avifenc + deps in a shared libs (distro-like) env
 - Added simple `avifdump` tool for aiding in AVIF debugging
 - Added some comments in `avif.h` to clarify `avifDecoderSetSource()` usage
