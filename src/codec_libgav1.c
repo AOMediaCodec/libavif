@@ -109,9 +109,9 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         if (image->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
             // If the AVIF container doesn't provide a color profile, allow the AV1 OBU to provide one as a fallback
             avifNclxColorProfile nclx;
-            nclx.colourPrimaries = (uint16_t)gav1Image->color_primary;
-            nclx.transferCharacteristics = (uint16_t)gav1Image->transfer_characteristics;
-            nclx.matrixCoefficients = (uint16_t)gav1Image->matrix_coefficients;
+            nclx.colourPrimaries = (avifNclxColourPrimaries)gav1Image->color_primary;
+            nclx.transferCharacteristics = (avifNclxTransferCharacteristics)gav1Image->transfer_characteristics;
+            nclx.matrixCoefficients = (avifNclxMatrixCoefficients)gav1Image->matrix_coefficients;
             nclx.range = image->yuvRange;
             avifImageSetProfileNCLX(image, &nclx);
         }

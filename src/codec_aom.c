@@ -139,9 +139,9 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         if (image->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
             // If the AVIF container doesn't provide a color profile, allow the AV1 OBU to provide one as a fallback
             avifNclxColorProfile nclx;
-            nclx.colourPrimaries = (uint16_t)codec->internal->image->cp;
-            nclx.transferCharacteristics = (uint16_t)codec->internal->image->tc;
-            nclx.matrixCoefficients = (uint16_t)codec->internal->image->mc;
+            nclx.colourPrimaries = (avifNclxColourPrimaries)codec->internal->image->cp;
+            nclx.transferCharacteristics = (avifNclxTransferCharacteristics)codec->internal->image->tc;
+            nclx.matrixCoefficients = (avifNclxMatrixCoefficients)codec->internal->image->mc;
             nclx.range = image->yuvRange;
             avifImageSetProfileNCLX(image, &nclx);
         }
@@ -367,9 +367,9 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
         }
 
         if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
-            aomImage->cp = image->nclx.colourPrimaries;
-            aomImage->tc = image->nclx.transferCharacteristics;
-            aomImage->mc = image->nclx.matrixCoefficients;
+            aomImage->cp = (aom_color_primaries_t)image->nclx.colourPrimaries;
+            aomImage->tc = (aom_transfer_characteristics_t)image->nclx.transferCharacteristics;
+            aomImage->mc = (aom_matrix_coefficients_t)image->nclx.matrixCoefficients;
             aom_codec_control(&aomEncoder, AV1E_SET_COLOR_PRIMARIES, aomImage->cp);
             aom_codec_control(&aomEncoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage->tc);
             aom_codec_control(&aomEncoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage->mc);
