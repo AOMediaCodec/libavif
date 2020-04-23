@@ -140,7 +140,7 @@ cleanup:
 
 avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int requestedDepth)
 {
-    avifBool writeResult = AVIF_FALSE;
+    avifBool volatile writeResult = AVIF_FALSE; // volatile avoids -Wclobbered due to libpng's setjmp
     png_structp png = NULL;
     png_infop info = NULL;
     png_bytep * volatile rowPointers = NULL; // volatile avoids -Wclobbered due to libpng's setjmp
