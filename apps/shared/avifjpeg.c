@@ -12,11 +12,6 @@
 
 #include "iccjpeg.h"
 
-// This warning triggers false postives way too often in here.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic ignored "-Wclobbered"
-#endif
-
 struct my_error_mgr
 {
     struct jpeg_error_mgr pub;
@@ -32,7 +27,6 @@ static void my_error_exit(j_common_ptr cinfo)
 
 avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
 {
-    avifBool ret = AVIF_FALSE;
     FILE * f = NULL;
     uint8_t * iccData = NULL;
 
@@ -47,6 +41,7 @@ avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFor
         return AVIF_FALSE;
     }
 
+    avifBool ret = AVIF_FALSE;
     jpeg_create_decompress(&cinfo);
 
     f = fopen(inputFilename, "rb");

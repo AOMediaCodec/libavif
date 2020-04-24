@@ -9,17 +9,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-// This warning triggers false postives way too often in here.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic ignored "-Wclobbered"
-#endif
-
 avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
 {
     avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    struct
+    {
+        png_bytep * rowPointers;
+    } x;
+    x.rowPointers = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -121,11 +120,11 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.depth = imgBitDepth;
     avifRGBImageAllocatePixels(&rgb);
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
+    x.rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
     for (uint32_t y = 0; y < rgb.height; ++y) {
-        rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
+        x.rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
-    png_read_image(png, rowPointers);
+    png_read_image(png, x.rowPointers);
     avifImageRGBToYUV(avif, &rgb);
     readResult = AVIF_TRUE;
 
@@ -136,8 +135,8 @@ cleanup:
     if (png) {
         png_destroy_read_struct(&png, &info, NULL);
     }
-    if (rowPointers) {
-        free(rowPointers);
+    if (x.rowPointers) {
+        free(x.rowPointers);
     }
     avifRGBImageFreePixels(&rgb);
     return readResult;
@@ -145,10 +144,15 @@ cleanup:
 
 avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int requestedDepth)
 {
-    avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    struct
+    {
+        avifBool writeResult;
+        png_bytep * rowPointers;
+    } x;
+    x.writeResult = AVIF_FALSE;
+    x.rowPointers = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -197,19 +201,19 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
     rgb.depth = rgbDepth;
     avifRGBImageAllocatePixels(&rgb);
     avifImageYUVToRGB(avif, &rgb);
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
+    x.rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
     for (uint32_t y = 0; y < rgb.height; ++y) {
-        rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
+        x.rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
 
     if (rgbDepth > 8) {
         png_set_swap(png);
     }
 
-    png_write_image(png, rowPointers);
+    png_write_image(png, x.rowPointers);
     png_write_end(png, NULL);
 
-    writeResult = AVIF_TRUE;
+    x.writeResult = AVIF_TRUE;
     printf("Wrote PNG: %s\n", outputFilename);
 cleanup:
     if (f) {
@@ -218,9 +222,9 @@ cleanup:
     if (png) {
         png_destroy_write_struct(&png, &info);
     }
-    if (rowPointers) {
-        free(rowPointers);
+    if (x.rowPointers) {
+        free(x.rowPointers);
     }
     avifRGBImageFreePixels(&rgb);
-    return writeResult;
+    return x.writeResult;
 }
