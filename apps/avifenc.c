@@ -334,13 +334,13 @@ int main(int argc, char * argv[])
         avifImageSetProfileNCLX(avif, &nclx);
     }
 
-    const char * fileExt = strrchr(inputFilename, '.');
-    if (!fileExt) {
+    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFilename);
+    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
         returnCode = 1;
         goto cleanup;
     }
-    if (!strcmp(fileExt, ".y4m")) {
+    if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (requestedRangeSet) {
             fprintf(stderr, "WARNING: Ignoring range (-r) value when encoding from y4m content.\n");
         }
@@ -353,18 +353,18 @@ int main(int argc, char * argv[])
             nclx.range = avif->yuvRange;
             avifImageSetProfileNCLX(avif, &nclx);
         }
-    } else if (!strcmp(fileExt, ".jpg") || !strcmp(fileExt, ".jpeg")) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
-    } else if (!strcmp(fileExt, ".png")) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
         if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
     } else {
-        fprintf(stderr, "Unrecognized file extension: %s\n", fileExt + 1);
+        fprintf(stderr, "Unrecognized file extension: %s\n", inputFilename);
         returnCode = 1;
         goto cleanup;
     }
@@ -436,7 +436,7 @@ int main(int argc, char * argv[])
         fprintf(stderr, "Failed to write %zu bytes: %s\n", raw.size, outputFilename);
         returnCode = 1;
     } else {
-        printf("Wrote: %s\n", outputFilename);
+        printf("Wrote AVIF: %s\n", outputFilename);
     }
     fclose(f);
 

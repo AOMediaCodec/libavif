@@ -149,7 +149,7 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
 
     jpeg_finish_compress(&cinfo);
     ret = AVIF_TRUE;
-    printf("Wrote: %s\n", outputFilename);
+    printf("Wrote JPEG: %s\n", outputFilename);
 cleanup:
     if (f) {
         fclose(f);

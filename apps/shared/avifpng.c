@@ -210,7 +210,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
     png_write_end(png, NULL);
 
     writeResult = AVIF_TRUE;
-    printf("Wrote: %s\n", outputFilename);
+    printf("Wrote PNG: %s\n", outputFilename);
 cleanup:
     if (f) {
         fclose(f);

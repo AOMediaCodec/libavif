@@ -140,24 +140,22 @@ int main(int argc, char * argv[])
         printf("Image details:\n");
         avifImageDump(avif);
 
-        const char * fileExt = strrchr(outputFilename, '.');
-        if (!fileExt) {
-            fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
-            returnCode = 1;
-        } else if (!strcmp(fileExt, ".y4m")) {
+        avifAppFileFormat outputFormat = avifGuessFileFormat(outputFilename);
+        if (outputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+        } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
             if (!y4mWrite(avif, outputFilename)) {
                 returnCode = 1;
             }
-        } else if (!strcmp(fileExt, ".jpg") || !strcmp(fileExt, ".jpeg")) {
+        } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
             if (!avifJPEGWrite(avif, outputFilename, jpegQuality)) {
                 returnCode = 1;
             }
-        } else if (!strcmp(fileExt, ".png")) {
+        } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
             if (!avifPNGWrite(avif, outputFilename, requestedDepth)) {
                 returnCode = 1;
             }
         } else {
-            fprintf(stderr, "Unrecognized file extension: %s\n", fileExt + 1);
+            fprintf(stderr, "Unrecognized file extension: %s\n", inputFilename);
             returnCode = 1;
         }
     } else {
