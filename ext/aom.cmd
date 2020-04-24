@@ -8,9 +8,10 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2017 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -b v1.0.0-errata1-avif --depth 1 https://aomedia.googlesource.com/aom
-
+git clone -n --depth 2000 https://aomedia.googlesource.com/aom
 cd aom
+git checkout 93c4d56
+
 mkdir build.libavif
 cd build.libavif
 
