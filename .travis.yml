@@ -19,6 +19,7 @@ before_script:
   - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   - source $HOME/.cargo/env
   - cd $TRAVIS_BUILD_DIR/ext
+  - export MAKEFLAGS=-j$(nproc)
   - bash aom.cmd
   - bash dav1d.cmd
   - bash libgav1.cmd
