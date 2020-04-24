@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - avifenc - Choose high-quality-but-lossy QP defaults, and a default speed of 8
 - avifdump - Fix format specifiers for 32bit
 - Now prioritizing libaom over rav1e when both are present
+- Ext: Update default libaom version to 93c4d56
 
 ## [0.7.1] - 2020-04-16
 ### Changed
