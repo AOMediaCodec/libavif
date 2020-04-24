@@ -84,8 +84,8 @@ echo
 
 echo " * avifenc location:" `which avifenc`
 echo
-avifenc || true
+avifenc -h
 
 echo " * avifdec location:" `which avifdec`
 echo
-avifdec || true
+avifdec -h
