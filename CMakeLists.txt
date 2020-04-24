@@ -314,6 +314,7 @@ if(AVIF_BUILD_APPS)
         apps/avifenc.c
 
         apps/shared/avifjpeg.c
+        apps/shared/iccjpeg.c
         apps/shared/avifpng.c
         apps/shared/avifutil.c
         apps/shared/y4m.c
@@ -327,6 +328,7 @@ if(AVIF_BUILD_APPS)
         apps/avifdec.c
 
         apps/shared/avifjpeg.c
+        apps/shared/iccjpeg.c
         apps/shared/avifpng.c
         apps/shared/avifutil.c
         apps/shared/y4m.c
