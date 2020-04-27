@@ -25,6 +25,7 @@ static void syntax(void)
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
+    printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m, depth is retained)\n");
     printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420]. (JPEG/PNG only; For y4m, format is retained)\n");
     printf("    -n,--nclx P/T/M                   : Set nclx colr box values (3 raw numbers, use -r to set range flag)\n");
@@ -156,6 +157,7 @@ int main(int argc, char * argv[])
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool requestedRangeSet = AVIF_FALSE;
     avifBool nclxSet = AVIF_FALSE;
+    avifBool lossless = AVIF_FALSE;
     avifEncoder * encoder = NULL;
 
     avifNclxColorProfile nclx;
@@ -300,6 +302,19 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: Invalid imir axis: %s\n", arg);
                 return 1;
             }
+        } else if (!strcmp(arg, "-l") || !strcmp(arg, "--lossless")) {
+            lossless = AVIF_TRUE;
+
+            // Set defaults, and warn later on if anything looks incorrect
+            requestedFormat = AVIF_PIXEL_FORMAT_YUV444;  // don't subsample GBR
+            minQuantizer = AVIF_QUANTIZER_LOSSLESS;      // lossless
+            maxQuantizer = AVIF_QUANTIZER_LOSSLESS;      // lossless
+            minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS; // lossless
+            maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS; // lossless
+            codecChoice = AVIF_CODEC_CHOICE_AOM;         // rav1e doesn't support lossless transform yet:
+                                                         // https://github.com/xiph/rav1e/issues/151
+            requestedRange = AVIF_RANGE_FULL;            // avoid limited range
+            requestedRangeSet = AVIF_TRUE;
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -325,6 +340,26 @@ int main(int argc, char * argv[])
     avifImage * avif = avifImageCreateEmpty();
     avifRWData raw = AVIF_DATA_EMPTY;
 
+    uint32_t sourceDepth = 0;
+    avifBool sourceWasRGB = AVIF_TRUE;
+    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFilename);
+    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+        fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
+        returnCode = 1;
+        goto cleanup;
+    }
+
+    if (lossless && (inputFormat != AVIF_APP_FILE_FORMAT_Y4M)) {
+        if (!nclxSet) { // don't stomp on the user's cmdline nclx values
+            // Assume SRGB unless they tell us otherwise via --nclx
+            nclx.colourPrimaries = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT709;
+            nclx.transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SRGB;
+            nclx.matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
+            nclx.range = AVIF_RANGE_FULL;
+            nclxSet = AVIF_TRUE;
+        }
+    }
+
     // Set range and nclx in advance so any upcoming RGB -> YUV use the proper coefficients
     if (requestedRangeSet) {
         avif->yuvRange = requestedRange;
@@ -334,12 +369,6 @@ int main(int argc, char * argv[])
         avifImageSetProfileNCLX(avif, &nclx);
     }
 
-    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFilename);
-    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-        fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
-        returnCode = 1;
-        goto cleanup;
-    }
     if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (requestedRangeSet) {
             fprintf(stderr, "WARNING: Ignoring range (-r) value when encoding from y4m content.\n");
@@ -353,13 +382,16 @@ int main(int argc, char * argv[])
             nclx.range = avif->yuvRange;
             avifImageSetProfileNCLX(avif, &nclx);
         }
+        sourceDepth = avif->depth;
+        sourceWasRGB = AVIF_FALSE;
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
+        sourceDepth = 8;
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
+        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth, &sourceDepth)) {
             returnCode = 1;
             goto cleanup;
         }
@@ -395,7 +427,78 @@ int main(int argc, char * argv[])
         avif->imir.axis = imirAxis;
     }
 
-    printf("AVIF to be written:\n");
+    avifBool usingAOM = AVIF_FALSE;
+    const char * codecName = avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+    if (codecName && !strcmp(codecName, "aom")) {
+        usingAOM = AVIF_TRUE;
+    }
+    avifBool hasAlpha = (avif->alphaPlane && avif->alphaRowBytes);
+    avifBool losslessColorQP = (minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS);
+    avifBool losslessAlphaQP = (minQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS);
+    avifBool depthMatches = (sourceDepth == avif->depth);
+    avifBool using444 = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
+    avifBool usingFullRange = (avif->yuvRange == AVIF_RANGE_FULL);
+    avifBool usingIdentityMatrix = (nclxSet && (nclx.matrixCoefficients == AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY));
+
+    // Guess if the enduser is asking for lossless and enable it so that warnings can be emitted
+    if (losslessColorQP && (!hasAlpha || losslessAlphaQP)) {
+        // The enduser is probably expecting lossless. Turn it on and emit warnings
+        printf("Min/max QPs set to %d, assuming --lossless to enable warnings on potential lossless issues.\n", AVIF_QUANTIZER_LOSSLESS);
+        lossless = AVIF_TRUE;
+    }
+
+    // Check for any reasons lossless will fail, and complain loudly
+    if (lossless) {
+        if (!usingAOM) {
+            fprintf(stderr, "WARNING: [--lossless] Only aom (-c) supports lossless transforms. Output might not be lossless.\n");
+            lossless = AVIF_FALSE;
+        }
+
+        if (!losslessColorQP) {
+            fprintf(stderr,
+                    "WARNING: [--lossless] Color quantizer range (--min, --max) not set to %d. Color output might not be lossless.\n",
+                    AVIF_QUANTIZER_LOSSLESS);
+            lossless = AVIF_FALSE;
+        }
+
+        if (hasAlpha && !losslessAlphaQP) {
+            fprintf(stderr,
+                    "WARNING: [--lossless] Alpha present and alpha quantizer range (--minalpha, --maxalpha) not set to %d. Alpha output might not be lossless.\n",
+                    AVIF_QUANTIZER_LOSSLESS);
+            lossless = AVIF_FALSE;
+        }
+
+        if (!depthMatches) {
+            fprintf(stderr,
+                    "WARNING: [--lossless] Input depth (%d) does not match output depth (%d). Output might not be lossless.\n",
+                    sourceDepth,
+                    avif->depth);
+            lossless = AVIF_FALSE;
+        }
+
+        if (sourceWasRGB) {
+            if (!using444) {
+                fprintf(stderr, "WARNING: [--lossless] Input data was RGB and YUV subsampling (-y) isn't YUV444. Output might not be lossless.\n");
+                lossless = AVIF_FALSE;
+            }
+
+            if (!usingFullRange) {
+                fprintf(stderr, "WARNING: [--lossless] Input data was RGB and output range (-r) isn't full. Output might not be lossless.\n");
+                lossless = AVIF_FALSE;
+            }
+
+            if (!usingIdentityMatrix) {
+                fprintf(stderr, "WARNING: [--lossless] Input data was RGB and nclx matrixCoefficients isn't set to identity (--nclx x/x/0); Output might not be lossless.\n");
+                lossless = AVIF_FALSE;
+            }
+        }
+    }
+
+    const char * lossyHint = " (Lossy)";
+    if (lossless) {
+        lossyHint = " (Lossless)";
+    }
+    printf("AVIF to be written:%s\n", lossyHint);
     avifImageDump(avif);
 
     printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",

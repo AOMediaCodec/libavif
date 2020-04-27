@@ -14,7 +14,7 @@
 #pragma GCC diagnostic ignored "-Wclobbered"
 #endif
 
-avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
+avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, uint32_t requestedDepth, uint32_t * outPNGDepth)
 {
     avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -104,6 +104,10 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
         imgBitDepth = 16;
     }
 
+    if (outPNGDepth) {
+        *outPNGDepth = imgBitDepth;
+    }
+
     png_read_update_info(png, info);
 
     avif->width = rawWidth;
@@ -143,7 +147,7 @@ cleanup:
     return readResult;
 }
 
-avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int requestedDepth)
+avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t requestedDepth)
 {
     avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
