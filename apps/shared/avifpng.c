@@ -9,12 +9,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+// This warning triggers false postives way too often in here.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wclobbered"
+#endif
+
 avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
 {
     avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * volatile rowPointers = NULL; // volatile avoids -Wclobbered due to libpng's setjmp
+    png_bytep * rowPointers = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -140,10 +145,10 @@ cleanup:
 
 avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int requestedDepth)
 {
-    avifBool volatile writeResult = AVIF_FALSE; // volatile avoids -Wclobbered due to libpng's setjmp
+    avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * volatile rowPointers = NULL; // volatile avoids -Wclobbered due to libpng's setjmp
+    png_bytep * rowPointers = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -205,7 +210,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, int request
     png_write_end(png, NULL);
 
     writeResult = AVIF_TRUE;
-    printf("Wrote: %s\n", outputFilename);
+    printf("Wrote PNG: %s\n", outputFilename);
 cleanup:
     if (f) {
         fclose(f);

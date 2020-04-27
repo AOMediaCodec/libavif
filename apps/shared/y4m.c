@@ -422,7 +422,7 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
 cleanup:
     fclose(f);
     if (success) {
-        printf("Wrote: %s\n", outputFilename);
+        printf("Wrote Y4M: %s\n", outputFilename);
     }
     return success;
 }

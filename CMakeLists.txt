@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.5)
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C CXX VERSION 0.7.1)
+project(libavif LANGUAGES C CXX VERSION 0.7.2)
 
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
@@ -16,9 +16,9 @@ project(libavif LANGUAGES C CXX VERSION 0.7.1)
 #     Increment MINOR. Set PATCH to 0
 #   If the source code was changed, but there were no interface changes:
 #     Increment PATCH.
-set(LIBRARY_VERSION_MAJOR 3)
+set(LIBRARY_VERSION_MAJOR 4)
 set(LIBRARY_VERSION_MINOR 0)
-set(LIBRARY_VERSION_PATCH 1)
+set(LIBRARY_VERSION_PATCH 0)
 set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH}")
 set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 
@@ -314,6 +314,7 @@ if(AVIF_BUILD_APPS)
         apps/avifenc.c
 
         apps/shared/avifjpeg.c
+        apps/shared/iccjpeg.c
         apps/shared/avifpng.c
         apps/shared/avifutil.c
         apps/shared/y4m.c
@@ -327,6 +328,7 @@ if(AVIF_BUILD_APPS)
         apps/avifdec.c
 
         apps/shared/avifjpeg.c
+        apps/shared/iccjpeg.c
         apps/shared/avifpng.c
         apps/shared/avifutil.c
         apps/shared/y4m.c

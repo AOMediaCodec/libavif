@@ -399,12 +399,12 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
 
             if (item->image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
                 avifBoxMarker colr = avifRWStreamWriteBox(&s, "colr", -1, 0);
-                avifRWStreamWriteChars(&s, "nclx", 4);                               // unsigned int(32) colour_type;
-                avifRWStreamWriteU16(&s, item->image->nclx.colourPrimaries);         // unsigned int(16) colour_primaries;
-                avifRWStreamWriteU16(&s, item->image->nclx.transferCharacteristics); // unsigned int(16) transfer_characteristics;
-                avifRWStreamWriteU16(&s, item->image->nclx.matrixCoefficients);      // unsigned int(16) matrix_coefficients;
-                avifRWStreamWriteU8(&s, item->image->nclx.range & 0x80);             // unsigned int(1) full_range_flag;
-                                                                                     // unsigned int(7) reserved = 0;
+                avifRWStreamWriteChars(&s, "nclx", 4);                                 // unsigned int(32) colour_type;
+                avifRWStreamWriteU16(&s, (uint16_t)item->image->nclx.colourPrimaries); // unsigned int(16) colour_primaries;
+                avifRWStreamWriteU16(&s, (uint16_t)item->image->nclx.transferCharacteristics); // unsigned int(16) transfer_characteristics;
+                avifRWStreamWriteU16(&s, (uint16_t)item->image->nclx.matrixCoefficients); // unsigned int(16) matrix_coefficients;
+                avifRWStreamWriteU8(&s, item->image->nclx.range & 0x80);                  // unsigned int(1) full_range_flag;
+                                                                                          // unsigned int(7) reserved = 0;
                 avifRWStreamFinishBox(&s, colr);
                 ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             } else if ((item->image->profileFormat == AVIF_PROFILE_FORMAT_ICC) && item->image->icc.data && (item->image->icc.size > 0)) {
