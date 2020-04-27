@@ -441,7 +441,7 @@ int main(int argc, char * argv[])
     avifBool usingIdentityMatrix = (nclxSet && (nclx.matrixCoefficients == AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY));
 
     // Guess if the enduser is asking for lossless and enable it so that warnings can be emitted
-    if (losslessColorQP && (!hasAlpha || losslessAlphaQP)) {
+    if (!lossless && losslessColorQP && (!hasAlpha || losslessAlphaQP)) {
         // The enduser is probably expecting lossless. Turn it on and emit warnings
         printf("Min/max QPs set to %d, assuming --lossless to enable warnings on potential lossless issues.\n", AVIF_QUANTIZER_LOSSLESS);
         lossless = AVIF_TRUE;
