@@ -80,7 +80,7 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
     }
 
     for (size_t i = 0; i < fileExtLen; ++i) {
-        lowercaseExt[i] = (char)tolower(fileExt[i]);
+        lowercaseExt[i] = (char)tolower((unsigned char)fileExt[i]);
     }
     lowercaseExt[fileExtLen] = 0;
 
