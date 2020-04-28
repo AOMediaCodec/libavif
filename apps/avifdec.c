@@ -142,6 +142,8 @@ int main(int argc, char * argv[])
 
         avifAppFileFormat outputFormat = avifGuessFileFormat(outputFilename);
         if (outputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+            fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
+            returnCode = 1;
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
             if (!y4mWrite(avif, outputFilename)) {
                 returnCode = 1;
@@ -155,7 +157,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
             }
         } else {
-            fprintf(stderr, "Unrecognized file extension: %s\n", inputFilename);
+            fprintf(stderr, "Unrecognized file extension: %s\n", outputFilename);
             returnCode = 1;
         }
     } else {
