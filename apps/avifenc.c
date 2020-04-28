@@ -49,7 +49,7 @@ static void syntax(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' for codec internal defaults. default speed: 8)\n",
+    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 8)\n",
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
