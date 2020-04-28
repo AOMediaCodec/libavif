@@ -9,17 +9,26 @@
 #include <stdlib.h>
 #include <string.h>
 
-// This warning triggers false postives way too often in here.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic ignored "-Wclobbered"
-#endif
+// Note on setjmp() and volatile variables:
+//
+// K & R, The C Programming Language 2nd Ed, p. 254 says:
+//   ... Accessible objects have the values they had when longjmp was called,
+//   except that non-volatile automatic variables in the function calling setjmp
+//   become undefined if they were changed after the setjmp call.
+//
+// Therefore, 'rowPointers' is declared as volatile. 'rgb' should be declared as
+// volatile, but doing so would be inconvenient (try it) and since it is a
+// struct, the compiler is unlikely to put it in a register. 'readResult' and
+// 'writeResult' do not need to be declared as volatile because they are not
+// modified between setjmp and longjmp. But GCC's -Wclobbered warning may have
+// trouble figuring that out, so we preemptively declare them as volatile.
 
 avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, uint32_t requestedDepth, uint32_t * outPNGDepth)
 {
-    avifBool readResult = AVIF_FALSE;
+    volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    png_bytep * volatile rowPointers = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -149,10 +158,10 @@ cleanup:
 
 avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t requestedDepth)
 {
-    avifBool writeResult = AVIF_FALSE;
+    volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * rowPointers = NULL;
+    png_bytep * volatile rowPointers = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
