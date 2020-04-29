@@ -352,7 +352,7 @@ int main(int argc, char * argv[])
     if (lossless && (inputFormat != AVIF_APP_FILE_FORMAT_Y4M)) {
         if (!nclxSet) { // don't stomp on the user's cmdline nclx values
             // Assume SRGB unless they tell us otherwise via --nclx
-            nclx.colourPrimaries = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT709;
+            nclx.colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT709;
             nclx.transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SRGB;
             nclx.matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
             nclx.range = AVIF_RANGE_FULL;
