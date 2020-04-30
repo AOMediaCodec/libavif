@@ -26,6 +26,13 @@ struct avifCodecInternal
     uint32_t inputSampleIndex;
 };
 
+static void avifDav1dFreeCallback(const uint8_t * buf, void * cookie)
+{
+    // This data is owned by the decoder; nothing to free here
+    (void)buf;
+    (void)cookie;
+}
+
 static void dav1dCodecDestroyInternal(avifCodec * codec)
 {
     if (codec->internal->dav1dData.sz) {
@@ -48,9 +55,9 @@ static avifBool dav1dFeedData(avifCodec * codec)
             avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
 
-            // OPTIMIZE: Carefully switch this to use dav1d_data_wrap or dav1d_data_wrap_user_data
-            uint8_t * dav1dDataPtr = dav1d_data_create(&codec->internal->dav1dData, sample->data.size);
-            memcpy(dav1dDataPtr, sample->data.data, sample->data.size);
+            if (dav1d_data_wrap(&codec->internal->dav1dData, sample->data.data, sample->data.size, avifDav1dFreeCallback, NULL) != 0) {
+                return AVIF_FALSE;
+            }
         } else {
             // No more data
             return AVIF_FALSE;
