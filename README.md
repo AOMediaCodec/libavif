@@ -254,7 +254,7 @@ avifImageAllocatePlanes(image, AVIF_PLANES_A);
 // Optional: Set color profile based on NCLX box
 avifNclxColorProfile nclx;
 nclx.colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT709;
-nclx.transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA22;
+nclx.transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SRGB;
 nclx.matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT709;
 nclx.fullRangeFlag = AVIF_NCLX_FULL_RANGE;
 avifImageSetProfileNCLX(image, &nclx);
