@@ -344,6 +344,9 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
             if (sampleOffset > (uint64_t)rawInput->size) {
                 return AVIF_FALSE;
             }
+            if ((sampleOffset + sampleSize) > (uint64_t)rawInput->size) {
+                return AVIF_FALSE;
+            }
 
             sampleOffset += sampleSize;
             ++sampleSizeIndex;
