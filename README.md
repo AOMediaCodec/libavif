@@ -226,7 +226,7 @@ avifImageAllocatePlanes(image, AVIF_PLANES_RGB);
 uint32_t rgbDepth = ...;                        // [8, 10, 12, 16]; Does not need to match image->depth.
                                                 // If >8, rgb->pixels is uint16_t*
 avifRGBFormat rgbFormat = AVIF_RGB_FORMAT_RGBA; // See choices in avif.h
-avifRGBImage * rgb = avifRGBImageCreate(image->width, image->width, rgbDepth, rgbFormat);
+avifRGBImage * rgb = avifRGBImageCreate(image->width, image->height, rgbDepth, rgbFormat);
 ... rgb->pixels;  // fill these pixels; all channel data must be full range
 ... rgb->rowBytes;
 avifImageRGBToYUV(image, rgb); // if alpha is present, it will also be copied/converted
