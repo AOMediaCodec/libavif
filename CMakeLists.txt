@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.5)
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C CXX VERSION 0.7.2)
+project(libavif LANGUAGES C CXX VERSION 0.7.3)
 
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
@@ -18,7 +18,7 @@ project(libavif LANGUAGES C CXX VERSION 0.7.2)
 #     Increment PATCH.
 set(LIBRARY_VERSION_MAJOR 4)
 set(LIBRARY_VERSION_MINOR 0)
-set(LIBRARY_VERSION_PATCH 0)
+set(LIBRARY_VERSION_PATCH 1)
 set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH}")
 set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 
