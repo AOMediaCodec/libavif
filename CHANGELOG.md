@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+* CICP Refactor (breaking change!)
+  * Remove most references to "NCLX", as it is mostly an implementation detail, and the values are really from MPEG-CICP
+  * Eliminate avifProfileFormat: having an ICC profile is not mutually exclusive with signaling CICP
+  * CICP is now always available in an avifImage, set to unspecified by default
+  * Added --cicp as an alias for --nclx (semi-deprecated)
+  * Setting CICP via avifenc no longer overrides ICC profiles, they co-exist
+  * Simplified avifenc argument parsing / warnings logic
+  * avifenc/avifdec/avifdump now all display CICP when dumping AVIF information
+  * nclx colr box contents are guaranteed to override AV1 bitstream CICP (as MIAF standard specifies)
+  * Added comments explaining various decisions and citing standards
+  * Removed ICC inspection code regarding chroma-derived mtxCoeffs; this was overdesigned. Now just honor the assoc. colorPrimaries enum
+  * Reworked all examples in the README to reflect the new state of things, and clean out some cruft
+
 ## [0.7.3] - 2020-05-04
 ### Added
 - avifenc: Lossless (--lossless, -l) mode, which sets new defaults and warns when anything would cause the AVIF to not be lossless

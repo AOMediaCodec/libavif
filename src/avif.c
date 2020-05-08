@@ -103,6 +103,9 @@ static void avifImageSetDefaults(avifImage * image)
     memset(image, 0, sizeof(avifImage));
     image->yuvRange = AVIF_RANGE_FULL;
     image->alphaRange = AVIF_RANGE_FULL;
+    image->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+    image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+    image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
 }
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat)
@@ -132,19 +135,17 @@ void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
     dstImage->yuvRange = srcImage->yuvRange;
     dstImage->alphaRange = srcImage->alphaRange;
 
+    dstImage->colorPrimaries = srcImage->colorPrimaries;
+    dstImage->transferCharacteristics = srcImage->transferCharacteristics;
+    dstImage->matrixCoefficients = srcImage->matrixCoefficients;
+
     dstImage->transformFlags = srcImage->transformFlags;
     memcpy(&dstImage->pasp, &srcImage->pasp, sizeof(dstImage->pasp));
     memcpy(&dstImage->clap, &srcImage->clap, sizeof(dstImage->clap));
     memcpy(&dstImage->irot, &srcImage->irot, sizeof(dstImage->irot));
     memcpy(&dstImage->imir, &srcImage->imir, sizeof(dstImage->pasp));
 
-    if (srcImage->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
-        avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
-    } else if (srcImage->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
-        avifImageSetProfileNCLX(dstImage, &srcImage->nclx);
-    } else {
-        avifImageSetProfileNone(dstImage);
-    }
+    avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
 
     avifImageSetMetadataExif(dstImage, srcImage->exif.data, srcImage->exif.size);
     avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
@@ -202,26 +203,9 @@ void avifImageDestroy(avifImage * image)
     avifFree(image);
 }
 
-void avifImageSetProfileNone(avifImage * image)
-{
-    image->profileFormat = AVIF_PROFILE_FORMAT_NONE;
-    avifRWDataFree(&image->icc);
-}
-
 void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize)
 {
-    avifImageSetProfileNone(image);
-    if (iccSize) {
-        image->profileFormat = AVIF_PROFILE_FORMAT_ICC;
-        avifRWDataSet(&image->icc, icc, iccSize);
-    }
-}
-
-void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx)
-{
-    avifImageSetProfileNone(image);
-    image->profileFormat = AVIF_PROFILE_FORMAT_NCLX;
-    memcpy(&image->nclx, nclx, sizeof(avifNclxColorProfile));
+    avifRWDataSet(&image->icc, icc, iccSize);
 }
 
 void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)

@@ -75,11 +75,7 @@ avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFor
     unsigned int iccDataLen;
     if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
         iccData = iccDataTmp;
-        if (avif->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
-            avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen);
-        } else {
-            fprintf(stderr, "WARNING: JPEG contains ICC profile which is being overridden with --nclx\n");
-        }
+        avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen);
     }
 
     avif->width = cinfo.output_width;
@@ -148,7 +144,7 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
     jpeg_set_quality(&cinfo, jpegQuality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
 
-    if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+    if (avif->icc.data && (avif->icc.size > 0)) {
         write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
     }
 

@@ -14,21 +14,14 @@ void avifImageDump(avifImage * avif)
     printf(" * Format         : %s\n", avifPixelFormatToString(avif->yuvFormat));
     printf(" * Alpha          : %s\n", (avif->alphaPlane && (avif->alphaRowBytes > 0)) ? "Present" : "Absent");
     printf(" * Range          : %s\n", (avif->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited");
-    switch (avif->profileFormat) {
-        case AVIF_PROFILE_FORMAT_NONE:
-            printf(" * Color Profile  : None\n");
-            break;
-        case AVIF_PROFILE_FORMAT_ICC:
-            printf(" * Color Profile  : ICC (%zu bytes)\n", avif->icc.size);
-            break;
-        case AVIF_PROFILE_FORMAT_NCLX:
-            printf(" * Color Profile  : nclx - P:%d / T:%d / M:%d / R:%s\n",
-                   avif->nclx.colourPrimaries,
-                   avif->nclx.transferCharacteristics,
-                   avif->nclx.matrixCoefficients,
-                   (avif->nclx.range == AVIF_RANGE_FULL) ? "Full" : "Limited");
-            break;
-    }
+
+    printf(" * Color Primaries: %d\n", avif->colorPrimaries);
+    printf(" * Transfer Char. : %d\n", avif->transferCharacteristics);
+    printf(" * Matrix Coeffs. : %d\n", avif->matrixCoefficients);
+
+    printf(" * ICC Profile    : %s (%zu bytes)\n", (avif->icc.size > 0) ? "Present" : "Absent", avif->icc.size);
+    printf(" * XMP Metadata   : %s (%zu bytes)\n", (avif->xmp.size > 0) ? "Present" : "Absent", avif->xmp.size);
+    printf(" * EXIF Metadata  : %s (%zu bytes)\n", (avif->exif.size > 0) ? "Present" : "Absent", avif->exif.size);
 
     if (avif->transformFlags == AVIF_TRANSFORM_NONE) {
         printf(" * Transformations: None\n");

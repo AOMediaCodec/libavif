@@ -75,11 +75,7 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
     unsigned char * iccpData = NULL;
     png_uint_32 iccpDataLen = 0;
     if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-        if (avif->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
-            avifImageSetProfileICC(avif, iccpData, iccpDataLen);
-        } else {
-            fprintf(stderr, "WARNING: PNG contains ICC profile which is being overridden with --nclx\n");
-        }
+        avifImageSetProfileICC(avif, iccpData, iccpDataLen);
     }
 
     int rawWidth = png_get_image_width(png, info);
@@ -201,7 +197,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
 
     png_set_IHDR(
         png, info, avif->width, avif->height, rgbDepth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-    if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+    if (avif->icc.data && (avif->icc.size > 0)) {
         png_set_iCCP(png, info, "libavif", 0, avif->icc.data, (png_uint_32)avif->icc.size);
     }
     png_write_info(png, info);

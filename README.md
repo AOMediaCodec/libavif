@@ -35,12 +35,19 @@ if (decodeResult == AVIF_RESULT_OK) {
     ... image->width;
     ... image->height;
     ... image->depth;     // If >8, all plane ptrs below are uint16_t*
-    ... image->yuvFormat; // U and V planes might be smaller than Y based on format,
-                          // use avifGetPixelFormatInfo() to find out in a generic way
 
     // Option 1: Use YUV planes directly
     ... image->yuvPlanes;
     ... image->yuvRowBytes;
+    ... image->yuvRange;
+    ... image->yuvFormat;          // U and V planes might be smaller than Y based on format,
+                                   // use avifGetPixelFormatInfo() to find out in a generic way
+    ... image->matrixCoefficients; // specifies how to convert YUV planes to RGB
+    if (image->alphaPlane) {       // Use alpha plane, if present.
+        ... image->alphaPlane;
+        ... image->alphaRowBytes;
+        ... image->alphaRange;     // Note: This might be limited range!
+    }
 
     // Option 2: Convert to interleaved RGB(A)/BGR(A) using a libavif-allocated buffer.
     avifRGBImage rgb;
@@ -67,26 +74,11 @@ if (decodeResult == AVIF_RESULT_OK) {
     ... rgb.rowBytes;                 // all channels are always full range
     // Use your own buffer; no need to call avifRGBImageFreePixels()
 
-    // Use alpha plane, if present.
-    // Note: This might be limited range!
-    if (image->alphaPlane) {
-        ... image->alphaPlane;
-        ... image->alphaRowBytes;
-        ... image->alphaRange;
-    }
-
-    // Optional: query color profile
-    if (image->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
-        // ICC profile present
-        ... image->icc.data;
-        ... image->icc.size;
-    } else if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
-        // NCLX profile present
-        ... image->nclx.colourPrimaries;
-        ... image->nclx.transferCharacteristics;
-        ... image->nclx.matrixCoefficients;
-        ... image->nclx.fullRangeFlag;
-    }
+    // Color profile information
+    ... image->icc.data;                // * If present and you support ICC,
+    ... image->icc.size;                //   honor this ICC profile payload
+    ... image->colorPrimaries;          // * Otherwise, leverage these two values,
+    ... image->transferCharacteristics; //   if not set to unspecified
 
     // Optional: Exif and XMP metadata querying
     if(image->exif.size > 0) {
@@ -144,15 +136,22 @@ if (decodeResult == AVIF_RESULT_OK) {
         ... decoder->image->yuvFormat; // U and V planes might be smaller than Y based on format,
                                        // use avifGetPixelFormatInfo() to find out in a generic way
 
-        // See Basic Decoding example for color profile and metadata querying
-
         // Option 1: Use YUV planes directly
         ... decoder->image->yuvPlanes;
         ... decoder->image->yuvRowBytes;
+        ... decoder->image->yuvRange;
+        ... decoder->image->yuvFormat;          // U and V planes might be smaller than Y based on format,
+                                                // use avifGetPixelFormatInfo() to find out in a generic way
+        ... decoder->image->matrixCoefficients; // specifies how to convert YUV planes to RGB
+        if (decoder->image->alphaPlane) {       // Use alpha plane, if present.
+            ... decoder->image->alphaPlane;
+            ... decoder->image->alphaRowBytes;
+            ... decoder->image->alphaRange;     // Note: This might be limited range!
+        }
 
         // Option 2: Convert to interleaved RGB(A)/BGR(A) using a libavif-allocated buffer.
         avifRGBImage rgb;
-        avifRGBImageSetDefaults(&rgb, image);
+        avifRGBImageSetDefaults(&rgb, decoder->image);
         rgb.format = ...;                 // See choices in avif.h
         rgb.depth = ...;                  // [8, 10, 12, 16]; Does not need to match image->depth.
                                           // If >8, rgb->pixels is uint16_t*
@@ -164,23 +163,33 @@ if (decodeResult == AVIF_RESULT_OK) {
 
         // Option 3: Convert directly into your own pre-existing interleaved RGB(A)/BGR(A) buffer
         avifRGBImage rgb;
-        avifRGBImageSetDefaults(&rgb, image);
+        avifRGBImageSetDefaults(&rgb, decoder->image);
         rgb.format = ...;                 // See choices in avif.h
         rgb.depth = ...;                  // [8, 10, 12, 16]; Does not need to match image->depth.
                                           // If >8, rgb->pixels is uint16_t*
         rgb.pixels = ...;                 // Point at your RGB(A)/BGR(A) pixels here
         rgb.rowBytes = ...;
-        avifImageYUVToRGB(image, &rgb);
+        avifImageYUVToRGB(decoder->image, &rgb);
         ... rgb.pixels;                   // Pixels in interleaved rgbFormat chosen above;
         ... rgb.rowBytes;                 // all channels are always full range
         // Use your own buffer; no need to call avifRGBImageFreePixels()
 
-        // Use alpha plane, if present.
-        // Note: This might be limited range!
-        if (decoder->image->alphaPlane) {
-            ... image->alphaPlane;
-            ... image->alphaRowBytes;
-            ... image->alphaRange;
+        // Color profile information
+        ... decoder->image->icc.data;                // * If present and you support ICC,
+        ... decoder->image->icc.size;                //   honor this ICC profile payload
+        ... decoder->image->colorPrimaries;          // * Otherwise, leverage these two values,
+        ... decoder->image->transferCharacteristics; //   if not set to unspecified
+
+        // Optional: Exif and XMP metadata querying
+        if(decoder->image->exif.size > 0) {
+            // Parse Exif payload
+            ... decoder->image->exif.data;
+            ... decoder->image->exif.size;
+        }
+        if(decoder->image->xmp.size > 0) {
+            // Parse XMP document
+            ... decoder->image->xmp.data;
+            ... decoder->image->xmp.size;
         }
 
         // Timing and frame information
@@ -212,15 +221,18 @@ int depth = 8;
 avifPixelFormat format = AVIF_PIXEL_FORMAT_YUV420;
 avifImage * image = avifImageCreate(width, height, depth, format);
 
+// (Semi-)optional: Describe the color profile, YUV<->RGB conversion, and range.
+// These default to "unspecified" and full range. You should at least set the
+// matrixCoefficients to indicate how you would like YUV<->RGB conversion to be done.
+image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+image->yuvRange = AVIF_RANGE_FULL;
+
 // Option 1: Populate YUV planes
 avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 ... image->yuvPlanes;
 ... image->yuvRowBytes;
-
-// Option 2: Populate RGB planes (if YUV planes are absent, RGB->YUV conversion will automatically happen)
-avifImageAllocatePlanes(image, AVIF_PLANES_RGB);
-... image->rgbPlanes;
-... image->rgbRowBytes;
 
 // Option 2: Convert from interleaved RGB(A)/BGR(A) using a libavif-allocated buffer.
 uint32_t rgbDepth = ...;                        // [8, 10, 12, 16]; Does not need to match image->depth.
@@ -250,16 +262,9 @@ avifImageRGBToYUV(image, rgb); // if alpha is present, it will also be copied/co
 avifImageAllocatePlanes(image, AVIF_PLANES_A);
 ... image->alphaPlane;
 ... image->alphaRowBytes;
+... image->alphaRange;
 
-// Optional: Set color profile based on NCLX box
-avifNclxColorProfile nclx;
-nclx.colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT709;
-nclx.transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SRGB;
-nclx.matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT709;
-nclx.fullRangeFlag = AVIF_NCLX_FULL_RANGE;
-avifImageSetProfileNCLX(image, &nclx);
-
-// Optional: Set color profile based on ICC profile
+// Optional: Set an ICC profile
 uint8_t * icc = ...;  // raw ICC profile data
 size_t iccSize = ...; // Length of raw ICC profile data
 avifImageSetProfileICC(image, icc, iccSize);

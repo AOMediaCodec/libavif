@@ -98,25 +98,22 @@ int main(int argc, char * argv[])
         for (int yuvDepthIndex = 0; yuvDepthIndex < yuvDepthsCount; ++yuvDepthIndex) {
             uint32_t yuvDepth = yuvDepths[yuvDepthIndex];
 
-            const avifNclxMatrixCoefficients matrixCoeffsList[] = { AVIF_NCLX_MATRIX_COEFFICIENTS_BT709,
-                                                                    AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL,
-                                                                    AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY };
+            const avifMatrixCoefficients matrixCoeffsList[] = { AVIF_MATRIX_COEFFICIENTS_BT709,
+                                                                AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
+                                                                AVIF_MATRIX_COEFFICIENTS_IDENTITY };
             const int matrixCoeffsCount = (int)(sizeof(matrixCoeffsList) / sizeof(matrixCoeffsList[0]));
 
             for (int matrixCoeffsIndex = 0; matrixCoeffsIndex < matrixCoeffsCount; ++matrixCoeffsIndex) {
-                avifNclxMatrixCoefficients matrixCoeffs = matrixCoeffsList[matrixCoeffsIndex];
+                avifMatrixCoefficients matrixCoeffs = matrixCoeffsList[matrixCoeffsIndex];
 
                 int dim = 1 << yuvDepth;
                 int maxDrift = 0;
 
-                avifNclxColorProfile nclx;
-                nclx.colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT709;
-                nclx.transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SRGB;
-                nclx.matrixCoefficients = matrixCoeffs;
-                nclx.range = AVIF_RANGE_FULL;
-
                 avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
-                avifImageSetProfileNCLX(image, &nclx);
+                image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+                image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+                image->matrixCoefficients = matrixCoeffs;
+                image->yuvRange = AVIF_RANGE_FULL;
                 avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 
                 avifRGBImage srcRGB;

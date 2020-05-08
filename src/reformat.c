@@ -29,16 +29,14 @@ avifBool avifPrepareReformatState(avifImage * image, avifRGBImage * rgb, avifRef
     avifCalcYUVCoefficients(image, &state->kr, &state->kg, &state->kb);
     state->mode = AVIF_REFORMAT_MODE_YUV_COEFFICIENTS;
 
-    if (image->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
-        if (image->nclx.matrixCoefficients == AVIF_NCLX_MATRIX_COEFFICIENTS_IDENTITY) {
-            state->mode = AVIF_REFORMAT_MODE_IDENTITY;
-        }
+    if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+        state->mode = AVIF_REFORMAT_MODE_IDENTITY;
+    }
 
-        if (state->mode != AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
-            state->kr = 0.0f;
-            state->kg = 0.0f;
-            state->kb = 0.0f;
-        }
+    if (state->mode != AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
+        state->kr = 0.0f;
+        state->kg = 0.0f;
+        state->kb = 0.0f;
     }
 
     state->yuvChannelBytes = (image->depth > 8) ? 2 : 1;

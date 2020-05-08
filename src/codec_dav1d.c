@@ -151,15 +151,9 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->yuvFormat = yuvFormat;
         image->yuvRange = codec->internal->colorRange;
 
-        if (image->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
-            // If the AVIF container doesn't provide a color profile, allow the AV1 OBU to provide one as a fallback
-            avifNclxColorProfile nclx;
-            nclx.colourPrimaries = (avifNclxColourPrimaries)dav1dImage->seq_hdr->pri;
-            nclx.transferCharacteristics = (avifNclxTransferCharacteristics)dav1dImage->seq_hdr->trc;
-            nclx.matrixCoefficients = (avifNclxMatrixCoefficients)dav1dImage->seq_hdr->mtrx;
-            nclx.range = image->yuvRange;
-            avifImageSetProfileNCLX(image, &nclx);
-        }
+        image->colorPrimaries = (avifColorPrimaries)dav1dImage->seq_hdr->pri;
+        image->transferCharacteristics = (avifTransferCharacteristics)dav1dImage->seq_hdr->trc;
+        image->matrixCoefficients = (avifMatrixCoefficients)dav1dImage->seq_hdr->mtrx;
 
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
