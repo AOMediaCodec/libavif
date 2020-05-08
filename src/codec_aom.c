@@ -248,7 +248,8 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
         }
     }
 
-    if (image->depth > 8) {
+    int aomMajorVersion = aom_codec_version_major();
+    if ((aomMajorVersion < 2) && (image->depth > 8)) {
         // Due to a known issue with libavif v1.0.0-errata1-avif, 10bpc and
         // 12bpc image encodes will call the wrong variant of
         // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
