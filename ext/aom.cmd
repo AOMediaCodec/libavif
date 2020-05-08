@@ -8,7 +8,8 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2017 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -b v1.0.0-errata1-avif --depth 1 https://aomedia.googlesource.com/aom
+git clone -n -b applejack --single-branch https://aomedia.googlesource.com/aom
+git checkout 52fcf205565d5530773933cf38eb4c45357b6ad1
 
 cd aom
 mkdir build.libavif
