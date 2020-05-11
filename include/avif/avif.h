@@ -179,7 +179,7 @@ typedef enum avifColorPrimaries
 
 // outPrimaries: rX, rY, gX, gY, bX, bY, wX, wY
 void avifColorPrimariesGetValues(avifColorPrimaries acp, float outPrimaries[8]);
-avifColorPrimaries avifColorPrimariesFind(float inPrimaries[8], const char ** outName);
+avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char ** outName);
 
 typedef enum avifTransferCharacteristics
 {
@@ -335,8 +335,8 @@ typedef struct avifImage
 } avifImage;
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
-avifImage * avifImageCreateEmpty(void);                         // helper for making an image to decode into
-void avifImageCopy(avifImage * dstImage, avifImage * srcImage); // deep copy
+avifImage * avifImageCreateEmpty(void);                               // helper for making an image to decode into
+void avifImageCopy(avifImage * dstImage, const avifImage * srcImage); // deep copy
 void avifImageDestroy(avifImage * image);
 
 void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
@@ -386,16 +386,16 @@ typedef struct avifRGBImage
     uint32_t rowBytes;
 } avifRGBImage;
 
-void avifRGBImageSetDefaults(avifRGBImage * rgb, avifImage * image);
-uint32_t avifRGBImagePixelSize(avifRGBImage * rgb);
+void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image);
+uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb);
 
 // Convenience functions. If you supply your own pixels/rowBytes, you do not need to use these.
 void avifRGBImageAllocatePixels(avifRGBImage * rgb);
 void avifRGBImageFreePixels(avifRGBImage * rgb);
 
 // The main conversion functions
-avifResult avifImageRGBToYUV(avifImage * image, avifRGBImage * rgb);
-avifResult avifImageYUVToRGB(avifImage * image, avifRGBImage * rgb);
+avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb);
+avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb);
 
 // ---------------------------------------------------------------------------
 // YUV Utils
@@ -435,7 +435,7 @@ typedef struct avifReformatState
 
     avifReformatMode mode;
 } avifReformatState;
-avifBool avifPrepareReformatState(avifImage * image, avifRGBImage * rgb, avifReformatState * state);
+avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state);
 
 // ---------------------------------------------------------------------------
 // Codec selection
@@ -553,7 +553,7 @@ avifDecoder * avifDecoderCreate(void);
 void avifDecoderDestroy(avifDecoder * decoder);
 
 // Simple interface to decode a single image, independent of the decoder afterwards (decoder may be deestroyed).
-avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData * input);
+avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, const avifROData * input);
 
 // Multi-function alternative to avifDecoderRead() for image sequences and gaining direct access
 // to the decoder's YUV buffers (for performance's sake). Data passed into avifDecoderParse() is NOT
@@ -574,7 +574,7 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData 
 // items in a file containing both, but switch between sources without having to
 // Parse again. Normally AVIF_DECODER_SOURCE_AUTO is enough for the common path.
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
-avifResult avifDecoderParse(avifDecoder * decoder, avifROData * input);
+avifResult avifDecoderParse(avifDecoder * decoder, const avifROData * input);
 avifResult avifDecoderNextImage(avifDecoder * decoder);
 avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex);
 avifResult avifDecoderReset(avifDecoder * decoder);
@@ -582,11 +582,11 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 // Keyframe information
 // frameIndex - 0-based, matching avifDecoder->imageIndex, bound by avifDecoder->imageCount
 // "nearest" keyframe means the keyframe prior to this frame index (returns frameIndex if it is a keyframe)
-avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
-uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
+avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
+uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
 
 // Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
-avifResult avifDecoderNthImageTiming(avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
+avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
 
 // ---------------------------------------------------------------------------
 // avifEncoder
@@ -626,15 +626,15 @@ typedef struct avifEncoder
 } avifEncoder;
 
 avifEncoder * avifEncoderCreate(void);
-avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData * output);
+avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output);
 void avifEncoderDestroy(avifEncoder * encoder);
 
 // Helpers
-avifBool avifImageUsesU16(avifImage * image);
+avifBool avifImageUsesU16(const avifImage * image);
 
 // Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
-avifBool avifPeekCompatibleFileType(avifROData * input);
+avifBool avifPeekCompatibleFileType(const avifROData * input);
 
 #ifdef __cplusplus
 } // extern "C"

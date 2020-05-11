@@ -52,7 +52,7 @@ static avifBool primariesMatch(const float p1[8], const float p2[8])
            matchesTo3RoundedPlaces(p1[5], p2[5]) && matchesTo3RoundedPlaces(p1[6], p2[6]) && matchesTo3RoundedPlaces(p1[7], p2[7]);
 }
 
-avifColorPrimaries avifColorPrimariesFind(float inPrimaries[8], const char ** outName)
+avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char ** outName)
 {
     if (outName) {
         *outName = NULL;
@@ -94,7 +94,7 @@ static const struct avifMatrixCoefficientsTable matrixCoefficientsTables[] = {
 
 static const int avifMatrixCoefficientsTableSize = sizeof(matrixCoefficientsTables) / sizeof(matrixCoefficientsTables[0]);
 
-static avifBool calcYUVInfoFromCICP(avifImage * image, float coeffs[3])
+static avifBool calcYUVInfoFromCICP(const avifImage * image, float coeffs[3])
 {
     if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL) {
         float primaries[8];
@@ -135,7 +135,7 @@ static avifBool calcYUVInfoFromCICP(avifImage * image, float coeffs[3])
     return AVIF_FALSE;
 }
 
-void avifCalcYUVCoefficients(avifImage * image, float * outR, float * outG, float * outB)
+void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG, float * outB)
 {
     // sRGB (BT.709) defaults, as explained here:
     //

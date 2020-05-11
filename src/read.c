@@ -1798,7 +1798,7 @@ static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
     return avifCompatible;
 }
 
-avifBool avifPeekCompatibleFileType(avifROData * input)
+avifBool avifPeekCompatibleFileType(const avifROData * input)
 {
     BEGIN_STREAM(s, input->data, input->size);
 
@@ -1851,7 +1851,7 @@ avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source)
     return avifDecoderReset(decoder);
 }
 
-avifResult avifDecoderParse(avifDecoder * decoder, avifROData * rawInput)
+avifResult avifDecoderParse(avifDecoder * decoder, const avifROData * rawInput)
 {
     // Cleanup anything lingering in the decoder
     avifDecoderCleanup(decoder);
@@ -2372,7 +2372,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     return AVIF_RESULT_OK;
 }
 
-avifResult avifDecoderNthImageTiming(avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming)
+avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming)
 {
     if (!decoder->data) {
         // Nothing has been parsed yet
@@ -2442,7 +2442,7 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
     return AVIF_RESULT_OK;
 }
 
-avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex)
+avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 {
     if ((decoder->data->tiles.count > 0) && decoder->data->tiles.tile[0].input) {
         if (frameIndex < decoder->data->tiles.tile[0].input->samples.count) {
@@ -2452,7 +2452,7 @@ avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex)
     return AVIF_FALSE;
 }
 
-uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex)
+uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 {
     for (; frameIndex != 0; --frameIndex) {
         if (avifDecoderIsKeyframe(decoder, frameIndex)) {
@@ -2462,7 +2462,7 @@ uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex)
     return frameIndex;
 }
 
-avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData * input)
+avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, const avifROData * input)
 {
     avifResult result = avifDecoderParse(decoder, input);
     if (result != AVIF_RESULT_OK) {

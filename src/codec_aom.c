@@ -180,7 +180,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
     return AVIF_TRUE;
 }
 
-static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alpha, int * yShift)
+static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha, int * yShift)
 {
     *yShift = 0;
 
@@ -218,7 +218,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(avifImage * image, avifBool alpha, int 
     return fmt;
 }
 
-static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha)
+static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha)
 {
     avifBool success = AVIF_FALSE;
     aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();

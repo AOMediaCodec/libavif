@@ -124,7 +124,7 @@ avifImage * avifImageCreateEmpty(void)
     return avifImageCreate(0, 0, 0, AVIF_PIXEL_FORMAT_NONE);
 }
 
-void avifImageCopy(avifImage * dstImage, avifImage * srcImage)
+void avifImageCopy(avifImage * dstImage, const avifImage * srcImage)
 {
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
 
@@ -317,7 +317,7 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
     }
 }
 
-avifBool avifImageUsesU16(avifImage * image)
+avifBool avifImageUsesU16(const avifImage * image)
 {
     return (image->depth > 8);
 }
@@ -345,12 +345,12 @@ uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
     return avifRGBFormatHasAlpha(format) ? 4 : 3;
 }
 
-uint32_t avifRGBImagePixelSize(avifRGBImage * rgb)
+uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb)
 {
     return avifRGBFormatChannelCount(rgb->format) * ((rgb->depth > 8) ? 2 : 1);
 }
 
-void avifRGBImageSetDefaults(avifRGBImage * rgb, avifImage * image)
+void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
 {
     rgb->width = image->width;
     rgb->height = image->height;
