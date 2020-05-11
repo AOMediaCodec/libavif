@@ -244,13 +244,12 @@ if(AVIF_CODEC_AOM)
         src/codec_aom.c
     )
     if(AVIF_LOCAL_AOM)
-        if(WIN32)
-            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/aom.lib")
-        else()
-            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/libaom.a")
-        endif()
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/aom.lib")
         if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/libaom.a")
+            if(NOT EXISTS "${LIB_FILENAME}")
+                message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+            endif()
         endif()
 
         set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
