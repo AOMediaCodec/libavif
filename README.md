@@ -235,19 +235,20 @@ avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 ... image->yuvRowBytes;
 
 // Option 2: Convert from interleaved RGB(A)/BGR(A) using a libavif-allocated buffer.
-uint32_t rgbDepth = ...;                        // [8, 10, 12, 16]; Does not need to match image->depth.
-                                                // If >8, rgb->pixels is uint16_t*
-avifRGBFormat rgbFormat = AVIF_RGB_FORMAT_RGBA; // See choices in avif.h
-avifRGBImage * rgb = avifRGBImageCreate(image->width, image->height, rgbDepth, rgbFormat);
+avifRGBImage rgb;
+avifRGBImageSetDefaults(&rgb, image);
+rgb.depth = ...;   // [8, 10, 12, 16]; Does not need to match image->depth.
+                   // If >8, rgb->pixels is uint16_t*
+rgb.format = ...;  // See choices in avif.h
+avifRGBImageAllocatePixels(&rgb);
 ... rgb->pixels;  // fill these pixels; all channel data must be full range
 ... rgb->rowBytes;
 avifImageRGBToYUV(image, rgb); // if alpha is present, it will also be copied/converted
-avifRGBImageDestroy(rgb);
+avifRGBImageFreePixels(&rgb);
 
 // Option 3: Convert directly from your own pre-existing interleaved RGB(A)/BGR(A) buffer
 avifRGBImage rgb;
-rgb.width = image->width;
-rgb.height = image->height;
+avifRGBImageSetDefaults(&rgb, image);
 rgb.depth = ...;   // [8, 10, 12, 16]; Does not need to match image->depth.
                    // If >8, rgb->pixels is uint16_t*
 rgb.format = ...;  // See choices in avif.h, match to your buffer's pixel format
