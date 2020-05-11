@@ -13,7 +13,7 @@ struct YUVBlock
     float v;
 };
 
-avifBool avifPrepareReformatState(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
     if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
         return AVIF_FALSE;
@@ -122,7 +122,7 @@ static int yuvToUNorm(int chan, avifRange range, int depth, float maxChannel, fl
     return unorm;
 }
 
-avifResult avifImageRGBToYUV(avifImage * image, avifRGBImage * rgb)
+avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 {
     if (!rgb->pixels) {
         return AVIF_RESULT_REFORMAT_FAILED;
@@ -310,7 +310,7 @@ avifResult avifImageRGBToYUV(avifImage * image, avifRGBImage * rgb)
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUVAnyToRGBAnySlow(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -408,7 +408,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(avifImage * image, avifRGBImage * 
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUV16ToRGB16Color(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV16ToRGB16Color(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -462,7 +462,7 @@ static avifResult avifImageYUV16ToRGB16Color(avifImage * image, avifRGBImage * r
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUV16ToRGB16Mono(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV16ToRGB16Mono(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -505,7 +505,7 @@ static avifResult avifImageYUV16ToRGB16Mono(avifImage * image, avifRGBImage * rg
     }
     return AVIF_RESULT_OK;
 }
-static avifResult avifImageYUV16ToRGB8Color(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV16ToRGB8Color(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -559,7 +559,7 @@ static avifResult avifImageYUV16ToRGB8Color(avifImage * image, avifRGBImage * rg
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUV16ToRGB8Mono(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV16ToRGB8Mono(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -603,7 +603,7 @@ static avifResult avifImageYUV16ToRGB8Mono(avifImage * image, avifRGBImage * rgb
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUV8ToRGB16Color(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV8ToRGB16Color(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -651,7 +651,7 @@ static avifResult avifImageYUV8ToRGB16Color(avifImage * image, avifRGBImage * rg
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUV8ToRGB16Mono(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV8ToRGB16Mono(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -691,7 +691,7 @@ static avifResult avifImageYUV8ToRGB16Mono(avifImage * image, avifRGBImage * rgb
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageIdentity8ToRGB8ColorFullRange(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageIdentity8ToRGB8ColorFullRange(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const uint32_t rgbPixelBytes = state->rgbPixelBytes;
     for (uint32_t j = 0; j < image->height; ++j) {
@@ -715,7 +715,7 @@ static avifResult avifImageIdentity8ToRGB8ColorFullRange(avifImage * image, avif
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUV8ToRGB8Color(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV8ToRGB8Color(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -763,7 +763,7 @@ static avifResult avifImageYUV8ToRGB8Color(avifImage * image, avifRGBImage * rgb
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUV8ToRGB8Mono(avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUV8ToRGB8Mono(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
     const float kg = state->kg;
@@ -803,7 +803,7 @@ static avifResult avifImageYUV8ToRGB8Mono(avifImage * image, avifRGBImage * rgb,
     return AVIF_RESULT_OK;
 }
 
-avifResult avifImageYUVToRGB(avifImage * image, avifRGBImage * rgb)
+avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 {
     if (!image->yuvPlanes[AVIF_CHAN_Y]) {
         return AVIF_RESULT_REFORMAT_FAILED;

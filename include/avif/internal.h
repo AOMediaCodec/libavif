@@ -41,7 +41,7 @@ uint32_t avifNTOHL(uint32_t l);
 uint64_t avifHTON64(uint64_t l);
 uint64_t avifNTOH64(uint64_t l);
 
-void avifCalcYUVCoefficients(avifImage * image, float * outR, float * outG, float * outB);
+void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG, float * outB);
 
 #define AVIF_ARRAY_DECLARE(TYPENAME, ITEMSTYPE, ITEMSNAME) \
     typedef struct TYPENAME                                \
@@ -136,7 +136,11 @@ struct avifCodecInternal;
 typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, uint32_t firstSampleIndex);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
 // avifCodecEncodeImageFunc: if either OBU* is null, skip its encode. alpha should always be lossless
-typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha);
+typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
+                                             const avifImage * image,
+                                             avifEncoder * encoder,
+                                             avifRWData * obu,
+                                             avifBool alpha);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec

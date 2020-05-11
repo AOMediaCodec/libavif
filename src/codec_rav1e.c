@@ -24,7 +24,7 @@ static avifBool rav1eCodecOpen(struct avifCodec * codec, uint32_t firstSampleInd
     return AVIF_TRUE;
 }
 
-static avifBool rav1eCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha)
+static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha)
 {
     (void)codec; // unused
 
