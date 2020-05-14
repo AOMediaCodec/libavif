@@ -4,8 +4,8 @@ jobs:
   build:
     runs-on: ubuntu-18.04
     env:
-      CC: gcc-8
-      CXX: g++-8
+      CC: gcc-10
+      CXX: g++-10
     steps:
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         DEBIAN_FRONTEND=noninteractive sudo apt-get update
-        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y ninja-build gcc-8 g++-8
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y ninja-build gcc-10 g++-10
         pip install --upgrade pip
         pip install setuptools
         pip install meson
