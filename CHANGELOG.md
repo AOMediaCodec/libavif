@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Reworked all examples in the README to reflect the new state of things, and clean out some cruft
 * Switch libaom.cmd to point at v2.0.0-rc1
 * Re-enable cpu-used=7+ in codec_aom when libaom major version > 1
+* Update default rav1e version to v0.4.0
 
 ## [0.7.3] - 2020-05-04
 ### Added
