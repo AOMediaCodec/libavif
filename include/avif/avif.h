@@ -296,12 +296,12 @@ typedef struct avifImage
     avifRange yuvRange;
     uint8_t * yuvPlanes[AVIF_PLANE_COUNT_YUV];
     uint32_t yuvRowBytes[AVIF_PLANE_COUNT_YUV];
-    avifBool decoderOwnsYUVPlanes;
+    avifBool imageOwnsYUVPlanes;
 
     avifRange alphaRange;
     uint8_t * alphaPlane;
     uint32_t alphaRowBytes;
-    avifBool decoderOwnsAlphaPlane;
+    avifBool imageOwnsAlphaPlane;
 
     // ICC Profile
     avifRWData icc;

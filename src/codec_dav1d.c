@@ -163,7 +163,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
             image->yuvPlanes[yuvPlane] = dav1dImage->data[yuvPlane];
             image->yuvRowBytes[yuvPlane] = (uint32_t)dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
         }
-        image->decoderOwnsYUVPlanes = AVIF_TRUE;
+        image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
@@ -182,7 +182,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
         image->alphaRange = codec->internal->colorRange;
-        image->decoderOwnsAlphaPlane = AVIF_TRUE;
+        image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
     return AVIF_TRUE;
 }

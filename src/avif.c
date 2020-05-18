@@ -245,19 +245,21 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
             image->yuvRowBytes[AVIF_CHAN_V] = uvRowBytes;
             image->yuvPlanes[AVIF_CHAN_V] = avifAlloc(uvSize);
         }
+        image->imageOwnsYUVPlanes = AVIF_TRUE;
     }
     if (planes & AVIF_PLANES_A) {
         if (!image->alphaPlane) {
             image->alphaRowBytes = fullRowBytes;
             image->alphaPlane = avifAlloc(fullRowBytes * image->height);
         }
+        image->imageOwnsAlphaPlane = AVIF_TRUE;
     }
 }
 
 void avifImageFreePlanes(avifImage * image, uint32_t planes)
 {
     if ((planes & AVIF_PLANES_YUV) && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
-        if (!image->decoderOwnsYUVPlanes) {
+        if (image->imageOwnsYUVPlanes) {
             avifFree(image->yuvPlanes[AVIF_CHAN_Y]);
             avifFree(image->yuvPlanes[AVIF_CHAN_U]);
             avifFree(image->yuvPlanes[AVIF_CHAN_V]);
@@ -268,15 +270,15 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes)
         image->yuvRowBytes[AVIF_CHAN_U] = 0;
         image->yuvPlanes[AVIF_CHAN_V] = NULL;
         image->yuvRowBytes[AVIF_CHAN_V] = 0;
-        image->decoderOwnsYUVPlanes = AVIF_FALSE;
+        image->imageOwnsYUVPlanes = AVIF_FALSE;
     }
     if (planes & AVIF_PLANES_A) {
-        if (!image->decoderOwnsAlphaPlane) {
+        if (image->imageOwnsAlphaPlane) {
             avifFree(image->alphaPlane);
         }
         image->alphaPlane = NULL;
         image->alphaRowBytes = 0;
-        image->decoderOwnsAlphaPlane = AVIF_FALSE;
+        image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 }
 
@@ -301,8 +303,8 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
 
         dstImage->yuvFormat = srcImage->yuvFormat;
         dstImage->yuvRange = srcImage->yuvRange;
-        dstImage->decoderOwnsYUVPlanes = srcImage->decoderOwnsYUVPlanes;
-        srcImage->decoderOwnsYUVPlanes = AVIF_FALSE;
+        dstImage->imageOwnsYUVPlanes = srcImage->imageOwnsYUVPlanes;
+        srcImage->imageOwnsYUVPlanes = AVIF_FALSE;
     }
     if (planes & AVIF_PLANES_A) {
         dstImage->alphaPlane = srcImage->alphaPlane;
@@ -312,8 +314,8 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
         srcImage->alphaPlane = NULL;
         srcImage->alphaRowBytes = 0;
 
-        dstImage->decoderOwnsAlphaPlane = srcImage->decoderOwnsAlphaPlane;
-        srcImage->decoderOwnsAlphaPlane = AVIF_FALSE;
+        dstImage->imageOwnsAlphaPlane = srcImage->imageOwnsAlphaPlane;
+        srcImage->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 }
 
