@@ -154,9 +154,12 @@ int main(int argc, char * argv[])
     avifBool lossless = AVIF_FALSE;
     avifEncoder * encoder = NULL;
 
+    // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
+    // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT709
+    // coefficients anyway (as MC:2 falls back to MC:1), so we might as well signal it explicitly.
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
 
     int argIndex = 1;
     while (argIndex < argc) {
