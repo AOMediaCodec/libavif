@@ -54,6 +54,7 @@ static void syntax(void)
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
+    printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
@@ -152,6 +153,7 @@ int main(int argc, char * argv[])
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool lossless = AVIF_FALSE;
+    avifBool ignoreICC = AVIF_FALSE;
     avifEncoder * encoder = NULL;
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
@@ -274,6 +276,8 @@ int main(int argc, char * argv[])
                     return 1;
                 }
             }
+        } else if (!strcmp(arg, "--ignore-icc")) {
+            ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--pasp")) {
             NEXTARG();
             paspCount = parseU32List(paspValues, arg);
@@ -379,6 +383,10 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
     printf("Successfully loaded: %s\n", inputFilename);
+
+    if (ignoreICC) {
+        avifImageSetProfileICC(avif, NULL, 0);
+    }
 
     if (paspCount == 2) {
         avif->transformFlags |= AVIF_TRANSFORM_PASP;
