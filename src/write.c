@@ -584,6 +584,9 @@ static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool a
                 case AVIF_PIXEL_FORMAT_YUV420:
                     seqProfile = 0;
                     break;
+                case AVIF_PIXEL_FORMAT_YUV400:
+                    seqProfile = 0;
+                    break;
                 case AVIF_PIXEL_FORMAT_YV12:
                     seqProfile = 0;
                     break;
