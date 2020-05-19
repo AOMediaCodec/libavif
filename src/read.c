@@ -626,6 +626,9 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             dstImage->matrixCoefficients = firstTile->image->matrixCoefficients;
         }
     }
+    if (alpha) {
+        dstImage->alphaRange = firstTile->image->alphaRange;
+    }
 
     avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
