@@ -409,8 +409,8 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
                 avifRWStreamWriteU16(&s, (uint16_t)item->image->colorPrimaries);          // unsigned int(16) colour_primaries;
                 avifRWStreamWriteU16(&s, (uint16_t)item->image->transferCharacteristics); // unsigned int(16) transfer_characteristics;
                 avifRWStreamWriteU16(&s, (uint16_t)item->image->matrixCoefficients);      // unsigned int(16) matrix_coefficients;
-                avifRWStreamWriteU8(&s, item->image->yuvRange & 0x80);                    // unsigned int(1) full_range_flag;
-                                                                                          // unsigned int(7) reserved = 0;
+                avifRWStreamWriteU8(&s, (item->image->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
+                                                                                                // unsigned int(7) reserved = 0;
                 avifRWStreamFinishBox(&s, colr);
                 ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
             }
