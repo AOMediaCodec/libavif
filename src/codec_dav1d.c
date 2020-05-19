@@ -126,6 +126,8 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
         switch (dav1dImage->p.layout) {
             case DAV1D_PIXEL_LAYOUT_I400:
+                yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+                break;
             case DAV1D_PIXEL_LAYOUT_I420:
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
                 break;
@@ -159,7 +161,8 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
 
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+        for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = dav1dImage->data[yuvPlane];
             image->yuvRowBytes[yuvPlane] = (uint32_t)dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
         }

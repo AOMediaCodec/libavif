@@ -23,6 +23,8 @@ const char * avifPixelFormatToString(avifPixelFormat format)
             return "YUV420";
         case AVIF_PIXEL_FORMAT_YUV422:
             return "YUV422";
+        case AVIF_PIXEL_FORMAT_YUV400:
+            return "YUV400";
         case AVIF_PIXEL_FORMAT_YV12:
             return "YV12";
         case AVIF_PIXEL_FORMAT_NONE:
@@ -52,6 +54,11 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
         case AVIF_PIXEL_FORMAT_YUV420:
             info->chromaShiftX = 1;
             info->chromaShiftY = 1;
+            break;
+
+        case AVIF_PIXEL_FORMAT_YUV400:
+            info->chromaShiftX = 1; // ignored, but some codecs might use 420 for mono
+            info->chromaShiftY = 1; // ignored, but some codecs might use 420 for mono
             break;
 
         case AVIF_PIXEL_FORMAT_YV12:
@@ -237,13 +244,16 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
             image->yuvRowBytes[AVIF_CHAN_Y] = fullRowBytes;
             image->yuvPlanes[AVIF_CHAN_Y] = avifAlloc(fullSize);
         }
-        if (!image->yuvPlanes[AVIF_CHAN_U]) {
-            image->yuvRowBytes[AVIF_CHAN_U] = uvRowBytes;
-            image->yuvPlanes[AVIF_CHAN_U] = avifAlloc(uvSize);
-        }
-        if (!image->yuvPlanes[AVIF_CHAN_V]) {
-            image->yuvRowBytes[AVIF_CHAN_V] = uvRowBytes;
-            image->yuvPlanes[AVIF_CHAN_V] = avifAlloc(uvSize);
+
+        if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
+            if (!image->yuvPlanes[AVIF_CHAN_U]) {
+                image->yuvRowBytes[AVIF_CHAN_U] = uvRowBytes;
+                image->yuvPlanes[AVIF_CHAN_U] = avifAlloc(uvSize);
+            }
+            if (!image->yuvPlanes[AVIF_CHAN_V]) {
+                image->yuvRowBytes[AVIF_CHAN_V] = uvRowBytes;
+                image->yuvPlanes[AVIF_CHAN_V] = avifAlloc(uvSize);
+            }
         }
         image->imageOwnsYUVPlanes = AVIF_TRUE;
     }

@@ -121,6 +121,9 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
             default:
                 break;
         }
+        if (codec->internal->image->monochrome) {
+            yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+        }
 
         if (image->width && image->height) {
             if ((image->width != codec->internal->image->d_w) || (image->height != codec->internal->image->d_h) ||
@@ -145,7 +148,8 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
 
         // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+        for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             int aomPlaneIndex = yuvPlane;
             if (yuvPlane == AVIF_CHAN_U) {
                 aomPlaneIndex = formatInfo.aomIndexU;
@@ -198,6 +202,10 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
                 fmt = AOM_IMG_FMT_I422;
                 break;
             case AVIF_PIXEL_FORMAT_YUV420:
+                fmt = AOM_IMG_FMT_I420;
+                *yShift = 1;
+                break;
+            case AVIF_PIXEL_FORMAT_YUV400:
                 fmt = AOM_IMG_FMT_I420;
                 *yShift = 1;
                 break;
@@ -300,6 +308,10 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
     cfg.rc_min_quantizer = minQuantizer;
     cfg.rc_max_quantizer = maxQuantizer;
 
+    if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+        cfg.monochrome = 1;
+    }
+
     aom_codec_flags_t encoderFlags = 0;
     if (image->depth > 8) {
         encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
@@ -337,13 +349,16 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
             memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
         }
 
-        // Zero out U and V
-        memset(aomImage->planes[1], 0, aomImage->stride[1] * uvHeight);
-        memset(aomImage->planes[2], 0, aomImage->stride[2] * uvHeight);
+        // Ignore UV planes when monochrome
     } else {
         aomImage->range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
         aom_codec_control(&aomEncoder, AV1E_SET_COLOR_RANGE, aomImage->range);
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        int yuvPlaneCount = 3;
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+            yuvPlaneCount = 1; // Ignore UV planes when monochrome
+            aomImage->monochrome = 1;
+        }
+        for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             int aomPlaneIndex = yuvPlane;
             int planeHeight = image->height;
             if (yuvPlane == AVIF_CHAN_U) {

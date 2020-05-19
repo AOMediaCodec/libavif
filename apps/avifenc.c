@@ -27,7 +27,7 @@ static void syntax(void)
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m, depth is retained)\n");
-    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420]. (JPEG/PNG only; For y4m, format is retained)\n");
+    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420, 400]. (JPEG/PNG only; For y4m, format is retained)\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = enum avifColorPrimaries\n");
     printf("                                        T = enum avifTransferCharacteristics\n");
@@ -191,6 +191,8 @@ int main(int argc, char * argv[])
                 requestedFormat = AVIF_PIXEL_FORMAT_YUV422;
             } else if (!strcmp(arg, "420")) {
                 requestedFormat = AVIF_PIXEL_FORMAT_YUV420;
+            } else if (!strcmp(arg, "400")) {
+                requestedFormat = AVIF_PIXEL_FORMAT_YUV400;
             } else {
                 fprintf(stderr, "ERROR: invalid format: %s\n", arg);
                 return 1;

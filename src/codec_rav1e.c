@@ -40,7 +40,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image
     RaPixelRange rav1eRange;
     if (alpha) {
         rav1eRange = (image->alphaRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
-        chromaSampling = RA_CHROMA_SAMPLING_CS422; // I can't seem to get RA_CHROMA_SAMPLING_CS400 to work right now, unfortunately
+        chromaSampling = RA_CHROMA_SAMPLING_CS400;
     } else {
         rav1eRange = (image->yuvRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
         switch (image->yuvFormat) {
@@ -52,6 +52,10 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image
                 break;
             case AVIF_PIXEL_FORMAT_YUV420:
                 chromaSampling = RA_CHROMA_SAMPLING_CS420;
+                yShift = 1;
+                break;
+            case AVIF_PIXEL_FORMAT_YUV400:
+                chromaSampling = RA_CHROMA_SAMPLING_CS400;
                 yShift = 1;
                 break;
             case AVIF_PIXEL_FORMAT_YV12:
@@ -130,8 +134,10 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image
     } else {
         uint32_t uvHeight = (image->height + yShift) >> yShift;
         rav1e_frame_fill_plane(rav1eFrame, 0, image->yuvPlanes[0], image->yuvRowBytes[0] * image->height, image->yuvRowBytes[0], byteWidth);
-        rav1e_frame_fill_plane(rav1eFrame, 1, image->yuvPlanes[1], image->yuvRowBytes[1] * uvHeight, image->yuvRowBytes[1], byteWidth);
-        rav1e_frame_fill_plane(rav1eFrame, 2, image->yuvPlanes[2], image->yuvRowBytes[2] * uvHeight, image->yuvRowBytes[2], byteWidth);
+        if (chromaSampling != RA_CHROMA_SAMPLING_CS400) {
+            rav1e_frame_fill_plane(rav1eFrame, 1, image->yuvPlanes[1], image->yuvRowBytes[1] * uvHeight, image->yuvRowBytes[1], byteWidth);
+            rav1e_frame_fill_plane(rav1eFrame, 2, image->yuvPlanes[2], image->yuvRowBytes[2] * uvHeight, image->yuvRowBytes[2], byteWidth);
+        }
     }
 
     RaEncoderStatus encoderStatus = rav1e_send_frame(rav1eContext, rav1eFrame);

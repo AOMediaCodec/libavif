@@ -80,6 +80,21 @@ static avifBool y4mColorSpaceParse(const char * formatString, avifPixelFormat * 
         *depth = 8;
         return AVIF_TRUE;
     }
+    if (!strcmp(formatString, "Cmono")) {
+        *format = AVIF_PIXEL_FORMAT_YUV400;
+        *depth = 8;
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "Cmono10")) {
+        *format = AVIF_PIXEL_FORMAT_YUV400;
+        *depth = 10;
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "Cmono12")) {
+        *format = AVIF_PIXEL_FORMAT_YUV400;
+        *depth = 12;
+        return AVIF_TRUE;
+    }
     return AVIF_FALSE;
 }
 
@@ -304,6 +319,9 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                 case AVIF_PIXEL_FORMAT_YUV420:
                     y4mHeaderFormat = "C420jpeg XYSCSS=420JPEG";
                     break;
+                case AVIF_PIXEL_FORMAT_YUV400:
+                    y4mHeaderFormat = "Cmono XYSCSS=400";
+                    break;
                 case AVIF_PIXEL_FORMAT_YV12:
                     y4mHeaderFormat = "C420jpeg XYSCSS=420JPEG";
                     swapUV = AVIF_TRUE;
@@ -324,6 +342,9 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                 case AVIF_PIXEL_FORMAT_YUV420:
                     y4mHeaderFormat = "C420p10 XYSCSS=420P10";
                     break;
+                case AVIF_PIXEL_FORMAT_YUV400:
+                    y4mHeaderFormat = "Cmono10 XYSCSS=400";
+                    break;
                 case AVIF_PIXEL_FORMAT_YV12:
                     y4mHeaderFormat = "C422p10 XYSCSS=422P10";
                     swapUV = AVIF_TRUE;
@@ -343,6 +364,9 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                     break;
                 case AVIF_PIXEL_FORMAT_YUV420:
                     y4mHeaderFormat = "C420p12 XYSCSS=420P12";
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV400:
+                    y4mHeaderFormat = "Cmono12 XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_YV12:
                     y4mHeaderFormat = "C422p12 XYSCSS=422P12";
