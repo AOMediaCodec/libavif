@@ -8,7 +8,7 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2017 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -b 0.6.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
+git clone -b 0.7.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
 
 cd dav1d
 mkdir build
