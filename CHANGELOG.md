@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Added comments explaining various decisions and citing standards
   * Removed ICC inspection code regarding chroma-derived mtxCoeffs; this was overdesigned. Now just honor the assoc. colorPrimaries enum
   * Reworked all examples in the README to reflect the new state of things, and clean out some cruft
-* Switch libaom.cmd to point at v2.0.0
+* Update libaom.cmd to point at the v2.0.0 tag
+* Update dav1d.cmd to point at the 0.7.0 tag
 * Re-enable cpu-used=7+ in codec_aom when libaom major version > 1
 
 ## [0.7.3] - 2020-05-04
