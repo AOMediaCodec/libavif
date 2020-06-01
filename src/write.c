@@ -29,6 +29,9 @@ static avifBool avifImageIsOpaque(const avifImage * image);
 static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool alpha);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
+static avifResult avifEncoderWriteItems(avifEncoder * encoder, avifRWData * output);
+static avifResult avifEncoderWriteTracks(avifEncoder * encoder, avifRWData * output);
+
 // ---------------------------------------------------------------------------
 // avifEncoderItem
 
@@ -305,8 +308,14 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         }
     }
 
-    // TODO: If encoder->data->receivedFrameCount > 1, encode with tracks instead of items
+    if (encoder->data->receivedFrameCount > 1) {
+        return avifEncoderWriteTracks(encoder, output);
+    }
+    return avifEncoderWriteItems(encoder, output);
+}
 
+static avifResult avifEncoderWriteItems(avifEncoder * encoder, avifRWData * output)
+{
     // -----------------------------------------------------------------------
     // Begin write stream
 
@@ -585,6 +594,13 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifRWStreamFinishWrite(&s);
 
     return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderWriteTracks(avifEncoder * encoder, avifRWData * output)
+{
+    (void)encoder;
+    (void)output;
+    return AVIF_RESULT_UNKNOWN_ERROR;
 }
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
