@@ -235,7 +235,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
-static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha, avifRWData * obu)
+static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha, avifRWData * outSample)
 {
     if (!codec->internal->encoderInitialized) {
         // Map encoder speed to AOM usage + CpuUsed:
@@ -400,7 +400,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
             break;
         }
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
-            avifRWDataSet(obu, pkt->data.frame.buf, pkt->data.frame.sz);
+            avifRWDataSet(outSample, pkt->data.frame.buf, pkt->data.frame.sz);
             break;
         }
     }
@@ -409,7 +409,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
     return AVIF_TRUE;
 }
 
-static avifBool aomCodecEncodeFinish(avifCodec * codec, avifRWData * obu)
+static avifBool aomCodecEncodeFinish(avifCodec * codec, avifRWData * outSample)
 {
     avifBool success = AVIF_FALSE;
 
@@ -426,7 +426,7 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifRWData * obu)
             continue;
         }
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
-            avifRWDataSet(obu, pkt->data.frame.buf, pkt->data.frame.sz);
+            avifRWDataSet(outSample, pkt->data.frame.buf, pkt->data.frame.sz);
             success = AVIF_TRUE;
             break;
         }

@@ -141,8 +141,8 @@ typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                              const avifImage * image,
                                              avifEncoder * encoder,
                                              avifBool alpha,
-                                             avifRWData * obu);
-typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifRWData * obu);
+                                             avifRWData * outSample);
+typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifRWData * outSample);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
