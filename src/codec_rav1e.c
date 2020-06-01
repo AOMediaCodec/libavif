@@ -154,7 +154,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image
 
     RaPacket * pkt = NULL;
     encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
-    if (encoderStatus != 0) {
+    if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_NEED_MORE_DATA)) {
         goto cleanup;
     } else if (pkt && pkt->data && (pkt->len > 0)) {
         avifRWDataSet(obu, pkt->data, pkt->len);
