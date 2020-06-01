@@ -31,7 +31,7 @@ static avifBool rav1eCodecOpen(struct avifCodec * codec, uint32_t firstSampleInd
     return AVIF_TRUE;
 }
 
-static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha)
+static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha, avifRWData * obu)
 {
     (void)codec; // unused
 
@@ -151,11 +151,16 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image
     if (encoderStatus != 0) {
         goto cleanup;
     }
-    encoderStatus = rav1e_send_frame(codec->internal->rav1eContext, NULL); // flush
+
+    RaPacket * pkt = NULL;
+    encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
     if (encoderStatus != 0) {
         goto cleanup;
+    } else if (pkt && pkt->data && (pkt->len > 0)) {
+        avifRWDataSet(obu, pkt->data, pkt->len);
+        rav1e_packet_unref(pkt);
+        pkt = NULL;
     }
-
     success = AVIF_TRUE;
 cleanup:
     if (rav1eFrame) {
@@ -171,15 +176,22 @@ cleanup:
 
 static avifBool rav1eCodecEncodeFinish(avifCodec * codec, avifRWData * obu)
 {
+    RaEncoderStatus encoderStatus = rav1e_send_frame(codec->internal->rav1eContext, NULL); // flush
+    if (encoderStatus != 0) {
+        return AVIF_FALSE;
+    }
+
     RaPacket * pkt = NULL;
-    RaEncoderStatus encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
-    if ((encoderStatus == 0) && pkt && pkt->data && (pkt->len > 0)) {
+    encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
+    if (encoderStatus != 0) {
+        return AVIF_FALSE;
+    }
+    if (pkt && pkt->data && (pkt->len > 0)) {
         avifRWDataSet(obu, pkt->data, pkt->len);
         rav1e_packet_unref(pkt);
         pkt = NULL;
-        return AVIF_TRUE;
     }
-    return AVIF_FALSE;
+    return AVIF_TRUE;
 }
 
 const char * avifCodecVersionRav1e(void)

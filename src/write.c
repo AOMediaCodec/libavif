@@ -37,8 +37,9 @@ typedef struct avifEncoderItem
 {
     uint16_t id;
     uint8_t type[4];
-    avifCodec * codec;  // only present on type==av01
-    avifRWData content; // OBU data on av01, metadata payload for Exif/XMP
+    avifCodec * codec;       // only present on type==av01
+    avifRWDataArray samples; // AV1 sample data for image sequences
+    avifRWData content;      // OBU data on av01 items-based image, metadata payload for Exif/XMP
     avifBool alpha;
 
     const char * infeName;
@@ -65,6 +66,7 @@ typedef struct avifEncoderData
     avifEncoderItem * alphaItem;
     uint16_t lastItemID;
     uint16_t primaryItemID;
+    uint32_t receivedFrameCount; // incremented on each call to avifEncoderAddImage()
 } avifEncoderData;
 
 static avifEncoderData * avifEncoderDataCreate()
@@ -84,6 +86,7 @@ static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const
     memcpy(item->type, type, sizeof(item->type));
     item->infeName = infeName;
     item->infeNameSize = infeNameSize;
+    avifArrayCreate(&item->samples, sizeof(avifRWData), 1);
     return item;
 }
 
@@ -94,6 +97,10 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
         if (item->codec) {
             avifCodecDestroy(item->codec);
         }
+        for (uint32_t sampleIndex = 0; sampleIndex < item->samples.count; ++sampleIndex) {
+            avifRWDataFree(&item->samples.raw[sampleIndex]);
+        }
+        avifArrayDestroy(&item->samples);
         avifRWDataFree(&item->content);
     }
     avifImageDestroy(data->imageMetadata);
@@ -238,11 +245,18 @@ static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * i
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeImage(item->codec, image, encoder, item->alpha)) {
+            avifRWData tmpSampleData = AVIF_DATA_EMPTY;
+            if (!item->codec->encodeImage(item->codec, image, encoder, item->alpha, &tmpSampleData)) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
+            }
+            if (tmpSampleData.data && tmpSampleData.size) {
+                avifRWData * sampleData = (avifRWData *)avifArrayPushPtr(&item->samples);
+                memcpy(sampleData, &tmpSampleData, sizeof(avifRWData));
             }
         }
     }
+
+    ++encoder->data->receivedFrameCount;
     return AVIF_RESULT_OK;
 }
 
@@ -258,17 +272,40 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeFinish(item->codec, &item->content)) {
+            avifRWData tmpSampleData = AVIF_DATA_EMPTY;
+            if (!item->codec->encodeFinish(item->codec, &tmpSampleData)) {
+                return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
+            }
+            if (tmpSampleData.data && tmpSampleData.size) {
+                avifRWData * sampleData = (avifRWData *)avifArrayPushPtr(&item->samples);
+                memcpy(sampleData, &tmpSampleData, sizeof(avifRWData));
+            }
+
+            if (item->samples.count != encoder->data->receivedFrameCount) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
 
+            size_t obuSize = 0;
+            for (uint32_t sampleIndex = 0; sampleIndex < item->samples.count; ++sampleIndex) {
+                obuSize += item->samples.raw[sampleIndex].size;
+            }
             if (item->alpha) {
-                encoder->ioStats.alphaOBUSize = item->content.size;
+                encoder->ioStats.alphaOBUSize = obuSize;
             } else {
-                encoder->ioStats.colorOBUSize = item->content.size;
+                encoder->ioStats.colorOBUSize = obuSize;
+            }
+
+            if (item->samples.count == 1) {
+                // Detected a single image (non-sequence). Hand over the only sample to item->content
+                // so that the image is encoded with items instead of tracks.
+                memcpy(&item->content, &item->samples.raw[0], sizeof(avifRWData));
+                memset(&item->samples.raw[0], 0, sizeof(avifRWData));
+                item->samples.count = 0;
             }
         }
     }
+
+    // TODO: If encoder->data->receivedFrameCount > 1, encode with tracks instead of items
 
     // -----------------------------------------------------------------------
     // Begin write stream

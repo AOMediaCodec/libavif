@@ -135,8 +135,13 @@ struct avifCodecInternal;
 
 typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, uint32_t firstSampleIndex);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
-// avifCodecEncodeImageFunc: if either OBU* is null, skip its encode. alpha should always be lossless
-typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha);
+// EncodeImage and EncodeFinish are not required to always emit an OBU, but when all images are
+// encoded and Finish is called, the number of OBUs emitted must match the number of submitted frames.
+typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
+                                             const avifImage * image,
+                                             avifEncoder * encoder,
+                                             avifBool alpha,
+                                             avifRWData * obu);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifRWData * obu);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 

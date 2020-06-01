@@ -235,7 +235,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
-static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha)
+static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha, avifRWData * obu)
 {
     if (!codec->internal->encoderInitialized) {
         // Map encoder speed to AOM usage + CpuUsed:
@@ -392,6 +392,19 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
     }
 
     aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, 0);
+
+    aom_codec_iter_t iter = NULL;
+    for (;;) {
+        const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&codec->internal->encoder, &iter);
+        if (pkt == NULL) {
+            break;
+        }
+        if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
+            avifRWDataSet(obu, pkt->data.frame.buf, pkt->data.frame.sz);
+            break;
+        }
+    }
+
     aom_img_free(aomImage);
     return AVIF_TRUE;
 }
