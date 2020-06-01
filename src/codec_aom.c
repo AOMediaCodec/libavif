@@ -34,12 +34,21 @@ struct avifCodecInternal
     aom_codec_iter_t iter;
     uint32_t inputSampleIndex;
     aom_image_t * image;
+
+    avifBool encoderInitialized;
+    aom_codec_ctx_t encoder;
+    avifPixelFormatInfo formatInfo;
+    aom_img_fmt_t aomFormat;
+    int yShift;
 };
 
 static void aomCodecDestroyInternal(avifCodec * codec)
 {
     if (codec->internal->decoderInitialized) {
         aom_codec_destroy(&codec->internal->decoder);
+    }
+    if (codec->internal->encoderInitialized) {
+        aom_codec_destroy(&codec->internal->encoder);
     }
     avifFree(codec->internal);
 }
@@ -226,122 +235,120 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
-static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifRWData * obu, avifBool alpha)
+static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha)
 {
-    avifBool success = AVIF_FALSE;
-    aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
-    aom_codec_ctx_t aomEncoder;
+    if (!codec->internal->encoderInitialized) {
+        // Map encoder speed to AOM usage + CpuUsed:
+        // Speed  0: GoodQuality CpuUsed 0
+        // Speed  1: GoodQuality CpuUsed 1
+        // Speed  2: GoodQuality CpuUsed 2
+        // Speed  3: GoodQuality CpuUsed 3
+        // Speed  4: GoodQuality CpuUsed 4
+        // Speed  5: GoodQuality CpuUsed 5
+        // Speed  6: GoodQuality CpuUsed 5
+        // Speed  7: GoodQuality CpuUsed 5
+        // Speed  8: RealTime    CpuUsed 6
+        // Speed  9: RealTime    CpuUsed 7
+        // Speed 10: RealTime    CpuUsed 8
+        unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
+        int aomCpuUsed = -1;
+        if (encoder->speed != AVIF_SPEED_DEFAULT) {
+            if (encoder->speed < 8) {
+                aomUsage = AOM_USAGE_GOOD_QUALITY;
+                aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 5);
+            } else {
+                aomUsage = AOM_USAGE_REALTIME;
+                aomCpuUsed = AVIF_CLAMP(encoder->speed - 2, 6, 8);
+            }
+        }
 
-    // Map encoder speed to AOM usage + CpuUsed:
-    // Speed  0: GoodQuality CpuUsed 0
-    // Speed  1: GoodQuality CpuUsed 1
-    // Speed  2: GoodQuality CpuUsed 2
-    // Speed  3: GoodQuality CpuUsed 3
-    // Speed  4: GoodQuality CpuUsed 4
-    // Speed  5: GoodQuality CpuUsed 5
-    // Speed  6: GoodQuality CpuUsed 5
-    // Speed  7: GoodQuality CpuUsed 5
-    // Speed  8: RealTime    CpuUsed 6
-    // Speed  9: RealTime    CpuUsed 7
-    // Speed 10: RealTime    CpuUsed 8
-    unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
-    int aomCpuUsed = -1;
-    if (encoder->speed != AVIF_SPEED_DEFAULT) {
-        if (encoder->speed < 8) {
-            aomUsage = AOM_USAGE_GOOD_QUALITY;
-            aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 5);
-        } else {
-            aomUsage = AOM_USAGE_REALTIME;
-            aomCpuUsed = AVIF_CLAMP(encoder->speed - 2, 6, 8);
+        int aomMajorVersion = aom_codec_version_major();
+        if ((aomMajorVersion < 2) && (image->depth > 8)) {
+            // Due to a known issue with libavif v1.0.0-errata1-avif, 10bpc and
+            // 12bpc image encodes will call the wrong variant of
+            // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
+            // a new tagged release from libaom with the fix and can verify we're
+            // running with that version of libaom, we must avoid using
+            // cpu-used=7/8 on any >8bpc image encodes.
+            //
+            // Context:
+            //   * https://github.com/AOMediaCodec/libavif/issues/49
+            //   * https://bugs.chromium.org/p/aomedia/issues/detail?id=2587
+            //
+            // Continued bug tracking here:
+            //   * https://github.com/AOMediaCodec/libavif/issues/56
+
+            if (aomCpuUsed > 6) {
+                aomCpuUsed = 6;
+            }
+        }
+
+        codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha, &codec->internal->yShift);
+        if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
+            return AVIF_FALSE;
+        }
+
+        avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
+
+        aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
+        struct aom_codec_enc_cfg cfg;
+        aom_codec_enc_config_default(encoder_interface, &cfg, aomUsage);
+        codec->internal->encoderInitialized = AVIF_TRUE;
+
+        cfg.g_profile = codec->configBox.seqProfile;
+        cfg.g_bit_depth = image->depth;
+        cfg.g_input_bit_depth = image->depth;
+        cfg.g_w = image->width;
+        cfg.g_h = image->height;
+        if (encoder->maxThreads > 1) {
+            cfg.g_threads = encoder->maxThreads;
+        }
+
+        int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
+        int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
+        if (alpha) {
+            minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
+            maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
+        }
+        avifBool lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS));
+        cfg.rc_min_quantizer = minQuantizer;
+        cfg.rc_max_quantizer = maxQuantizer;
+
+        if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+            cfg.monochrome = 1;
+        }
+
+        aom_codec_flags_t encoderFlags = 0;
+        if (image->depth > 8) {
+            encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
+        }
+        aom_codec_enc_init(&codec->internal->encoder, encoder_interface, &cfg, encoderFlags);
+
+        if (lossless) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, 1);
+        }
+        if (encoder->maxThreads > 1) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_ROW_MT, 1);
+        }
+        if (encoder->tileRowsLog2 != 0) {
+            int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
+        }
+        if (encoder->tileColsLog2 != 0) {
+            int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+        }
+        if (aomCpuUsed != -1) {
+            aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed);
         }
     }
 
-    int aomMajorVersion = aom_codec_version_major();
-    if ((aomMajorVersion < 2) && (image->depth > 8)) {
-        // Due to a known issue with libavif v1.0.0-errata1-avif, 10bpc and
-        // 12bpc image encodes will call the wrong variant of
-        // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
-        // a new tagged release from libaom with the fix and can verify we're
-        // running with that version of libaom, we must avoid using
-        // cpu-used=7/8 on any >8bpc image encodes.
-        //
-        // Context:
-        //   * https://github.com/AOMediaCodec/libavif/issues/49
-        //   * https://bugs.chromium.org/p/aomedia/issues/detail?id=2587
-        //
-        // Continued bug tracking here:
-        //   * https://github.com/AOMediaCodec/libavif/issues/56
-
-        if (aomCpuUsed > 6) {
-            aomCpuUsed = 6;
-        }
-    }
-
-    int yShift = 0;
-    aom_img_fmt_t aomFormat = avifImageCalcAOMFmt(image, alpha, &yShift);
-    if (aomFormat == AOM_IMG_FMT_NONE) {
-        return AVIF_FALSE;
-    }
-
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
-
-    struct aom_codec_enc_cfg cfg;
-    aom_codec_enc_config_default(encoder_interface, &cfg, aomUsage);
-
-    cfg.g_profile = codec->configBox.seqProfile;
-    cfg.g_bit_depth = image->depth;
-    cfg.g_input_bit_depth = image->depth;
-    cfg.g_w = image->width;
-    cfg.g_h = image->height;
-    if (encoder->maxThreads > 1) {
-        cfg.g_threads = encoder->maxThreads;
-    }
-
-    int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-    int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
-    if (alpha) {
-        minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
-        maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
-    }
-    avifBool lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS));
-    cfg.rc_min_quantizer = minQuantizer;
-    cfg.rc_max_quantizer = maxQuantizer;
-
-    if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
-        cfg.monochrome = 1;
-    }
-
-    aom_codec_flags_t encoderFlags = 0;
-    if (image->depth > 8) {
-        encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
-    }
-    aom_codec_enc_init(&aomEncoder, encoder_interface, &cfg, encoderFlags);
-
-    if (lossless) {
-        aom_codec_control(&aomEncoder, AV1E_SET_LOSSLESS, 1);
-    }
-    if (encoder->maxThreads > 1) {
-        aom_codec_control(&aomEncoder, AV1E_SET_ROW_MT, 1);
-    }
-    if (encoder->tileRowsLog2 != 0) {
-        int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
-        aom_codec_control(&aomEncoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
-    }
-    if (encoder->tileColsLog2 != 0) {
-        int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
-        aom_codec_control(&aomEncoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
-    }
-    if (aomCpuUsed != -1) {
-        aom_codec_control(&aomEncoder, AOME_SET_CPUUSED, aomCpuUsed);
-    }
-
-    uint32_t uvHeight = (image->height + yShift) >> yShift;
-    aom_image_t * aomImage = aom_img_alloc(NULL, aomFormat, image->width, image->height, 16);
+    uint32_t uvHeight = (image->height + codec->internal->yShift) >> codec->internal->yShift;
+    aom_image_t * aomImage = aom_img_alloc(NULL, codec->internal->aomFormat, image->width, image->height, 16);
 
     if (alpha) {
         aomImage->range = (image->alphaRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
-        aom_codec_control(&aomEncoder, AV1E_SET_COLOR_RANGE, aomImage->range);
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         aomImage->monochrome = 1;
         for (uint32_t j = 0; j < image->height; ++j) {
             uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
@@ -352,7 +359,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
         // Ignore UV planes when monochrome
     } else {
         aomImage->range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
-        aom_codec_control(&aomEncoder, AV1E_SET_COLOR_RANGE, aomImage->range);
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         int yuvPlaneCount = 3;
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             yuvPlaneCount = 1; // Ignore UV planes when monochrome
@@ -362,10 +369,10 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
             int aomPlaneIndex = yuvPlane;
             int planeHeight = image->height;
             if (yuvPlane == AVIF_CHAN_U) {
-                aomPlaneIndex = formatInfo.aomIndexU;
+                aomPlaneIndex = codec->internal->formatInfo.aomIndexU;
                 planeHeight = uvHeight;
             } else if (yuvPlane == AVIF_CHAN_V) {
-                aomPlaneIndex = formatInfo.aomIndexV;
+                aomPlaneIndex = codec->internal->formatInfo.aomIndexV;
                 planeHeight = uvHeight;
             }
 
@@ -379,22 +386,29 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
         aomImage->cp = (aom_color_primaries_t)image->colorPrimaries;
         aomImage->tc = (aom_transfer_characteristics_t)image->transferCharacteristics;
         aomImage->mc = (aom_matrix_coefficients_t)image->matrixCoefficients;
-        aom_codec_control(&aomEncoder, AV1E_SET_COLOR_PRIMARIES, aomImage->cp);
-        aom_codec_control(&aomEncoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage->tc);
-        aom_codec_control(&aomEncoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage->mc);
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, aomImage->cp);
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage->tc);
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage->mc);
     }
 
-    aom_codec_encode(&aomEncoder, aomImage, 0, 1, 0);
+    aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, 0);
+    aom_img_free(aomImage);
+    return AVIF_TRUE;
+}
+
+static avifBool aomCodecEncodeFinish(avifCodec * codec, avifRWData * obu)
+{
+    avifBool success = AVIF_FALSE;
 
     avifBool flushed = AVIF_FALSE;
     aom_codec_iter_t iter = NULL;
     for (;;) {
-        const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&aomEncoder, &iter);
+        const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&codec->internal->encoder, &iter);
         if (pkt == NULL) {
             if (flushed)
                 break;
 
-            aom_codec_encode(&aomEncoder, NULL, 0, 1, 0); // flush
+            aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0); // flush
             flushed = AVIF_TRUE;
             continue;
         }
@@ -404,9 +418,6 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
             break;
         }
     }
-
-    aom_img_free(aomImage);
-    aom_codec_destroy(&aomEncoder);
     return success;
 }
 
@@ -422,6 +433,7 @@ avifCodec * avifCodecCreateAOM(void)
     codec->open = aomCodecOpen;
     codec->getNextImage = aomCodecGetNextImage;
     codec->encodeImage = aomCodecEncodeImage;
+    codec->encodeFinish = aomCodecEncodeFinish;
     codec->destroyInternal = aomCodecDestroyInternal;
 
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));

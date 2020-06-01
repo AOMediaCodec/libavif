@@ -336,8 +336,8 @@ typedef struct avifImage
 } avifImage;
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
-avifImage * avifImageCreateEmpty(void);                               // helper for making an image to decode into
-void avifImageCopy(avifImage * dstImage, const avifImage * srcImage); // deep copy
+avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
+void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t planes); // deep copy
 void avifImageDestroy(avifImage * image);
 
 void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);

@@ -131,7 +131,7 @@ avifImage * avifImageCreateEmpty(void)
     return avifImageCreate(0, 0, 0, AVIF_PIXEL_FORMAT_NONE);
 }
 
-void avifImageCopy(avifImage * dstImage, const avifImage * srcImage)
+void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t planes)
 {
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
 
@@ -157,7 +157,7 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage)
     avifImageSetMetadataExif(dstImage, srcImage->exif.data, srcImage->exif.size);
     avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
 
-    if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
+    if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
 
         avifPixelFormatInfo formatInfo;
@@ -191,7 +191,7 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage)
         }
     }
 
-    if (srcImage->alphaPlane) {
+    if ((planes & AVIF_PLANES_A) && srcImage->alphaPlane) {
         avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
         for (uint32_t j = 0; j < dstImage->height; ++j) {
             uint8_t * srcAlphaRow = &srcImage->alphaPlane[j * srcImage->alphaRowBytes];
