@@ -411,8 +411,6 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
 
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifRWData * outSample)
 {
-    avifBool success = AVIF_FALSE;
-
     avifBool flushed = AVIF_FALSE;
     aom_codec_iter_t iter = NULL;
     for (;;) {
@@ -427,11 +425,10 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifRWData * outSample)
         }
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
             avifRWDataSet(outSample, pkt->data.frame.buf, pkt->data.frame.sz);
-            success = AVIF_TRUE;
             break;
         }
     }
-    return success;
+    return AVIF_TRUE;
 }
 
 const char * avifCodecVersionAOM(void)
