@@ -52,7 +52,7 @@ static avifBool dav1dFeedData(avifCodec * codec)
 {
     if (!codec->internal->dav1dData.sz) {
         if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
-            avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
+            avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
 
             if (dav1d_data_wrap(&codec->internal->dav1dData, sample->data.data, sample->data.size, avifDav1dFreeCallback, NULL) != 0) {

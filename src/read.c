@@ -302,7 +302,7 @@ avifCodecDecodeInput * avifCodecDecodeInputCreate(void)
 {
     avifCodecDecodeInput * decodeInput = (avifCodecDecodeInput *)avifAlloc(sizeof(avifCodecDecodeInput));
     memset(decodeInput, 0, sizeof(avifCodecDecodeInput));
-    avifArrayCreate(&decodeInput->samples, sizeof(avifSample), 1);
+    avifArrayCreate(&decodeInput->samples, sizeof(avifDecodeSample), 1);
     return decodeInput;
 }
 
@@ -344,7 +344,7 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
                 sampleSize = sampleSizePtr->size;
             }
 
-            avifSample * sample = (avifSample *)avifArrayPushPtr(&decodeInput->samples);
+            avifDecodeSample * sample = (avifDecodeSample *)avifArrayPushPtr(&decodeInput->samples);
             sample->data.data = rawInput->data + sampleOffset;
             sample->data.size = sampleSize;
             sample->sync = AVIF_FALSE; // to potentially be set to true following the outer loop
@@ -569,7 +569,7 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
             }
 
             avifTile * tile = avifDecoderDataCreateTile(data);
-            avifSample * sample = (avifSample *)avifArrayPushPtr(&tile->input->samples);
+            avifDecodeSample * sample = (avifDecodeSample *)avifArrayPushPtr(&tile->input->samples);
             sample->data.data = avifDecoderDataCalcItemPtr(data, item);
             sample->data.size = item->size;
             sample->sync = AVIF_TRUE;
@@ -2195,7 +2195,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
 
             avifTile * colorTile = avifDecoderDataCreateTile(decoder->data);
-            avifSample * colorSample = (avifSample *)avifArrayPushPtr(&colorTile->input->samples);
+            avifDecodeSample * colorSample = (avifDecodeSample *)avifArrayPushPtr(&colorTile->input->samples);
             memcpy(&colorSample->data, &colorOBU, sizeof(avifROData));
             colorSample->sync = AVIF_TRUE;
             decoder->data->colorTileCount = 1;
@@ -2211,7 +2211,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (alphaOBU.size > 0) {
                 alphaTile = avifDecoderDataCreateTile(decoder->data);
 
-                avifSample * alphaSample = (avifSample *)avifArrayPushPtr(&alphaTile->input->samples);
+                avifDecodeSample * alphaSample = (avifDecodeSample *)avifArrayPushPtr(&alphaTile->input->samples);
                 memcpy(&alphaSample->data, &alphaOBU, sizeof(avifROData));
                 alphaSample->sync = AVIF_TRUE;
                 alphaTile->input->alpha = AVIF_TRUE;

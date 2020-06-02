@@ -80,7 +80,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
             break;
         } else if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
             // Feed another sample
-            avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
+            avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {

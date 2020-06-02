@@ -42,7 +42,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
     // Check if there are more samples to feed
     if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
         // Feed another sample
-        avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
+        avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
         ++codec->internal->inputSampleIndex;
         if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
                                        sample->data.data,

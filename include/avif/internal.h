@@ -87,16 +87,16 @@ avifBool avifReformatAlpha(const avifAlphaParams * const params);
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
-typedef struct avifSample
+typedef struct avifDecodeSample
 {
     avifROData data;
     avifBool sync; // is sync sample (keyframe)
-} avifSample;
-AVIF_ARRAY_DECLARE(avifSampleArray, avifSample, sample);
+} avifDecodeSample;
+AVIF_ARRAY_DECLARE(avifDecodeSampleArray, avifDecodeSample, sample);
 
 typedef struct avifCodecDecodeInput
 {
-    avifSampleArray samples;
+    avifDecodeSampleArray samples;
     avifBool alpha; // if true, this is decoding an alpha plane
 } avifCodecDecodeInput;
 
