@@ -411,17 +411,14 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
 
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifRWData * outSample)
 {
-    avifBool flushed = AVIF_FALSE;
+    // flush encoder
+    aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0);
+
     aom_codec_iter_t iter = NULL;
     for (;;) {
         const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&codec->internal->encoder, &iter);
         if (pkt == NULL) {
-            if (flushed)
-                break;
-
-            aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0); // flush
-            flushed = AVIF_TRUE;
-            continue;
+            break;
         }
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
             avifRWDataSet(outSample, pkt->data.frame.buf, pkt->data.frame.sz);
