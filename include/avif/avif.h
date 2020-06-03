@@ -619,6 +619,9 @@ typedef struct avifEncoder
     int tileColsLog2;
     int speed;
 
+    // Default image timing for all incoming frames
+    avifImageTiming imageTiming;
+
     // stats from the most recent write
     avifIOStats ioStats;
 

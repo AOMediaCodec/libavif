@@ -86,17 +86,26 @@ typedef struct avifEncoderItem
 AVIF_ARRAY_DECLARE(avifEncoderItemArray, avifEncoderItem, item);
 
 // ---------------------------------------------------------------------------
+// avifEncoderFrame
+
+typedef struct avifEncoderFrame
+{
+    avifImageTiming timing;
+} avifEncoderFrame;
+AVIF_ARRAY_DECLARE(avifEncoderFrameArray, avifEncoderFrame, frame);
+
+// ---------------------------------------------------------------------------
 // avifEncoderData
 
 typedef struct avifEncoderData
 {
     avifEncoderItemArray items;
+    avifEncoderFrameArray frames;
     avifImage * imageMetadata;
     avifEncoderItem * colorItem;
     avifEncoderItem * alphaItem;
     uint16_t lastItemID;
     uint16_t primaryItemID;
-    uint32_t receivedFrameCount; // incremented on each call to avifEncoderAddImage()
 } avifEncoderData;
 
 static avifEncoderData * avifEncoderDataCreate()
@@ -105,6 +114,7 @@ static avifEncoderData * avifEncoderDataCreate()
     memset(data, 0, sizeof(avifEncoderData));
     data->imageMetadata = avifImageCreateEmpty();
     avifArrayCreate(&data->items, sizeof(avifEncoderItem), 8);
+    avifArrayCreate(&data->frames, sizeof(avifEncoderFrame), 1);
     return data;
 }
 
@@ -132,6 +142,7 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
     }
     avifImageDestroy(data->imageMetadata);
     avifArrayDestroy(&data->items);
+    avifArrayDestroy(&data->frames);
     avifFree(data);
 }
 
@@ -150,6 +161,11 @@ avifEncoder * avifEncoderCreate(void)
     encoder->tileColsLog2 = 0;
     encoder->speed = AVIF_SPEED_DEFAULT;
     encoder->data = avifEncoderDataCreate();
+    encoder->imageTiming.timescale = 1;
+    encoder->imageTiming.pts = 0;
+    encoder->imageTiming.ptsInTimescales = 0;
+    encoder->imageTiming.duration = 1;
+    encoder->imageTiming.durationInTimescales = 1;
     return encoder;
 }
 
@@ -159,7 +175,7 @@ void avifEncoderDestroy(avifEncoder * encoder)
     avifFree(encoder);
 }
 
-static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image)
+static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, const avifImageTiming * imageTiming)
 {
     // -----------------------------------------------------------------------
     // Validate image
@@ -177,6 +193,10 @@ static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * i
     }
 
     // -----------------------------------------------------------------------
+
+    if (imageTiming == NULL) {
+        imageTiming = &encoder->imageTiming;
+    }
 
     if (encoder->data->items.count == 0) {
         // Make a copy of the first image's metadata (sans pixels) for future writing/validation
@@ -278,7 +298,8 @@ static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * i
         }
     }
 
-    ++encoder->data->receivedFrameCount;
+    avifEncoderFrame * frame = (avifEncoderFrame *)avifArrayPushPtr(&encoder->data->frames);
+    memcpy(&frame->timing, imageTiming, sizeof(avifImageTiming));
     return AVIF_RESULT_OK;
 }
 
@@ -298,7 +319,7 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
 
-            if (item->encodeOutput->samples.count != encoder->data->receivedFrameCount) {
+            if (item->encodeOutput->samples.count != encoder->data->frames.count) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
 
@@ -322,7 +343,7 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         }
     }
 
-    if (encoder->data->receivedFrameCount > 1) {
+    if (encoder->data->frames.count > 1) {
         return avifEncoderWriteTracks(encoder, output);
     }
     return avifEncoderWriteItems(encoder, output);
@@ -619,7 +640,7 @@ static avifResult avifEncoderWriteTracks(avifEncoder * encoder, avifRWData * out
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
 {
-    avifResult addImageResult = avifEncoderAddImage(encoder, image);
+    avifResult addImageResult = avifEncoderAddImage(encoder, image, NULL);
     if (addImageResult != AVIF_RESULT_OK) {
         return addImageResult;
     }
