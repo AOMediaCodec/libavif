@@ -221,8 +221,8 @@ avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t facto
 avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v);
 avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize);
 avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header);
-avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint8_t * flags); // flags is an optional uint8_t[3]
-avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion);          // currently discards flags
+avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags); // version and flags ptrs are both optional
+avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion); // currently discards flags
 
 typedef struct avifRWStream
 {
@@ -238,12 +238,17 @@ void avifRWStreamSetOffset(avifRWStream * stream, size_t offset);
 void avifRWStreamFinishWrite(avifRWStream * stream);
 void avifRWStreamWrite(avifRWStream * stream, const uint8_t * data, size_t size);
 void avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size);
-avifBoxMarker avifRWStreamWriteBox(avifRWStream * stream, const char * type, int version /* -1 for "not a FullBox" */, size_t contentSize);
+avifBoxMarker avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t contentSize);
+avifBoxMarker avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags);
 void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
 void avifRWStreamWriteU8(avifRWStream * stream, uint8_t v);
 void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
 void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
+void avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
 void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
+
+// This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
+#define AVIF_BOX_SIZE_TBD 0
 
 #ifdef __cplusplus
 } // extern "C"

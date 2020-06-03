@@ -618,9 +618,7 @@ typedef struct avifEncoder
     int tileRowsLog2;
     int tileColsLog2;
     int speed;
-
-    // Default image timing for all incoming frames
-    avifImageTiming imageTiming;
+    uint64_t timescale; // timescale of the media (Hz)
 
     // stats from the most recent write
     avifIOStats ioStats;

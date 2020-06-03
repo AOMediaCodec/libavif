@@ -727,8 +727,7 @@ static avifBool avifParseItemLocationBox(avifDecoderData * data, const uint8_t *
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version;
-    uint8_t flags[3];
-    CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, NULL));
     if (version > 2) {
         return AVIF_FALSE;
     }
@@ -1054,9 +1053,9 @@ static avifBool avifParseItemPropertyAssociation(avifDecoderData * data, const u
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version;
-    uint8_t flags[3];
-    CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
-    avifBool propertyIndexIsU16 = ((flags[2] & 0x1) != 0);
+    uint32_t flags;
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
+    avifBool propertyIndexIsU16 = ((flags & 0x1) != 0);
 
     uint32_t entryCount;
     CHECK(avifROStreamReadU32(&s, &entryCount));
@@ -1387,8 +1386,7 @@ static avifBool avifParseTrackHeaderBox(avifDecoderData * data, avifTrack * trac
     (void)data;
 
     uint8_t version;
-    uint8_t flags[3];
-    CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, NULL));
 
     uint32_t ignored32, trackID;
     uint64_t ignored64;
@@ -1437,8 +1435,7 @@ static avifBool avifParseMediaHeaderBox(avifDecoderData * data, avifTrack * trac
     (void)data;
 
     uint8_t version;
-    uint8_t flags[3];
-    CHECK(avifROStreamReadVersionAndFlags(&s, &version, flags));
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, NULL));
 
     uint32_t ignored32, mediaTimescale, mediaDuration32;
     uint64_t ignored64, mediaDuration64;
@@ -1984,6 +1981,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!track->sampleTable) {
                 continue;
             }
+            if (!track->id) {
+                continue;
+            }
             if (!track->sampleTable->chunks.count) {
                 continue;
             }
@@ -2006,6 +2006,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         for (; alphaTrackIndex < decoder->data->tracks.count; ++alphaTrackIndex) {
             avifTrack * track = &decoder->data->tracks.track[alphaTrackIndex];
             if (!track->sampleTable) {
+                continue;
+            }
+            if (!track->id) {
                 continue;
             }
             if (!track->sampleTable->chunks.count) {
