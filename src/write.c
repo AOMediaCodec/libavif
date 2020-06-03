@@ -29,9 +29,6 @@ static avifBool avifImageIsOpaque(const avifImage * image);
 static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool alpha);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
-static avifResult avifEncoderWriteItems(avifEncoder * encoder, avifRWData * output);
-static avifResult avifEncoderWriteTracks(avifEncoder * encoder, avifRWData * output);
-
 // ---------------------------------------------------------------------------
 // avifCodecEncodeOutput
 
@@ -332,25 +329,9 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             } else {
                 encoder->ioStats.colorOBUSize = obuSize;
             }
-
-            if (item->encodeOutput->samples.count == 1) {
-                // Detected a single image (non-sequence). Hand over the only sample to item->content
-                // so that the image is encoded with items instead of tracks.
-                memcpy(&item->content, &item->encodeOutput->samples.sample[0].data, sizeof(avifRWData));
-                memset(&item->encodeOutput->samples.sample[0].data, 0, sizeof(avifRWData));
-                item->encodeOutput->samples.count = 0;
-            }
         }
     }
 
-    if (encoder->data->frames.count > 1) {
-        return avifEncoderWriteTracks(encoder, output);
-    }
-    return avifEncoderWriteItems(encoder, output);
-}
-
-static avifResult avifEncoderWriteItems(avifEncoder * encoder, avifRWData * output)
-{
     // -----------------------------------------------------------------------
     // Begin write stream
 
@@ -414,12 +395,18 @@ static avifResult avifEncoderWriteItems(avifEncoder * encoder, avifRWData * outp
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-        avifRWStreamWriteU16(&s, item->id);                     // unsigned int(16) item_ID;
-        avifRWStreamWriteU16(&s, 0);                            // unsigned int(16) data_reference_index;
-        avifRWStreamWriteU16(&s, 1);                            // unsigned int(16) extent_count;
-        item->infeOffsetOffset = avifRWStreamOffset(&s);        //
-        avifRWStreamWriteU32(&s, 0 /* set later */);            // unsigned int(offset_size*8) extent_offset;
-        avifRWStreamWriteU32(&s, (uint32_t)item->content.size); // unsigned int(length_size*8) extent_length;
+
+        uint32_t contentSize = (uint32_t)item->content.size;
+        if (item->encodeOutput->samples.count > 0) {
+            contentSize = (uint32_t)item->encodeOutput->samples.sample[0].data.size;
+        }
+
+        avifRWStreamWriteU16(&s, item->id);              // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, 0);                     // unsigned int(16) data_reference_index;
+        avifRWStreamWriteU16(&s, 1);                     // unsigned int(16) extent_count;
+        item->infeOffsetOffset = avifRWStreamOffset(&s); //
+        avifRWStreamWriteU32(&s, 0 /* set later */);     // unsigned int(offset_size*8) extent_offset;
+        avifRWStreamWriteU32(&s, (uint32_t)contentSize); // unsigned int(length_size*8) extent_length;
     }
 
     avifRWStreamFinishBox(&s, iloc);
@@ -602,17 +589,31 @@ static avifResult avifEncoderWriteItems(avifEncoder * encoder, avifRWData * outp
     avifRWStreamFinishBox(&s, meta);
 
     // -----------------------------------------------------------------------
+    // Write tracks (if an image sequence
+
+    if (encoder->data->frames.count > 1) {
+        // TODO
+    }
+
+    // -----------------------------------------------------------------------
     // Write mdat
 
     avifBoxMarker mdat = avifRWStreamWriteBox(&s, "mdat", -1, 0);
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-        if (item->content.size == 0) {
+        if ((item->content.size == 0) && (item->encodeOutput->samples.count == 0)) {
             continue;
         }
 
         uint32_t infeOffset = (uint32_t)s.offset;
-        avifRWStreamWrite(&s, item->content.data, item->content.size);
+        if (item->encodeOutput->samples.count > 0) {
+            for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
+                avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
+                avifRWStreamWrite(&s, sample->data.data, sample->data.size);
+            }
+        } else {
+            avifRWStreamWrite(&s, item->content.data, item->content.size);
+        }
 
         if (item->infeOffsetOffset != 0) {
             size_t prevOffset = avifRWStreamOffset(&s);
@@ -629,13 +630,6 @@ static avifResult avifEncoderWriteItems(avifEncoder * encoder, avifRWData * outp
     avifRWStreamFinishWrite(&s);
 
     return AVIF_RESULT_OK;
-}
-
-static avifResult avifEncoderWriteTracks(avifEncoder * encoder, avifRWData * output)
-{
-    (void)encoder;
-    (void)output;
-    return AVIF_RESULT_UNKNOWN_ERROR;
 }
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
