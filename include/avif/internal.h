@@ -104,6 +104,25 @@ avifCodecDecodeInput * avifCodecDecodeInputCreate(void);
 void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput);
 
 // ---------------------------------------------------------------------------
+// avifCodecEncodeOutput
+
+typedef struct avifEncodeSample
+{
+    avifRWData data;
+    avifBool sync; // is sync sample (keyframe)
+} avifEncodeSample;
+AVIF_ARRAY_DECLARE(avifEncodeSampleArray, avifEncodeSample, sample);
+
+typedef struct avifCodecEncodeOutput
+{
+    avifEncodeSampleArray samples;
+} avifCodecEncodeOutput;
+
+avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void);
+void avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync);
+void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput);
+
+// ---------------------------------------------------------------------------
 // avifCodec (abstraction layer to use different AV1 implementations)
 
 typedef struct avifCodecConfigurationBox
@@ -141,8 +160,8 @@ typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                              const avifImage * image,
                                              avifEncoder * encoder,
                                              avifBool alpha,
-                                             avifRWData * outSample);
-typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifRWData * outSample);
+                                             avifCodecEncodeOutput * output);
+typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
