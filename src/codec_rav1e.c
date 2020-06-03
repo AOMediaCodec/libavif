@@ -153,13 +153,17 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image
     }
 
     RaPacket * pkt = NULL;
-    encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
-    if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_NEED_MORE_DATA)) {
-        goto cleanup;
-    } else if (pkt && pkt->data && (pkt->len > 0)) {
-        avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
-        rav1e_packet_unref(pkt);
-        pkt = NULL;
+    for (;;) {
+        encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
+        if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_NEED_MORE_DATA)) {
+            goto cleanup;
+        } else if (pkt && pkt->data && (pkt->len > 0)) {
+            avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
+            rav1e_packet_unref(pkt);
+            pkt = NULL;
+        } else {
+            break;
+        }
     }
     success = AVIF_TRUE;
 cleanup:
@@ -182,14 +186,18 @@ static avifBool rav1eCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput 
     }
 
     RaPacket * pkt = NULL;
-    encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
-    if (encoderStatus != 0) {
-        return AVIF_FALSE;
-    }
-    if (pkt && pkt->data && (pkt->len > 0)) {
-        avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
-        rav1e_packet_unref(pkt);
-        pkt = NULL;
+    for (;;) {
+        encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
+        if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_LIMIT_REACHED)) {
+            return AVIF_FALSE;
+        }
+        if (pkt && pkt->data && (pkt->len > 0)) {
+            avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
+            rav1e_packet_unref(pkt);
+            pkt = NULL;
+        } else {
+            break;
+        }
     }
     return AVIF_TRUE;
 }
