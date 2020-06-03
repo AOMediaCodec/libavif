@@ -516,8 +516,8 @@ int main(int argc, char * argv[])
     }
 
     printf("Encoded successfully.\n");
-    printf(" * ColorOBU size: %zu bytes\n", encoder->ioStats.colorOBUSize);
-    printf(" * AlphaOBU size: %zu bytes\n", encoder->ioStats.alphaOBUSize);
+    printf(" * Color AV1 total size: %zu bytes\n", encoder->ioStats.colorOBUSize);
+    printf(" * Alpha AV1 total size: %zu bytes\n", encoder->ioStats.alphaOBUSize);
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
