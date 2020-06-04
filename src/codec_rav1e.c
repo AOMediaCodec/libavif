@@ -188,7 +188,7 @@ static avifBool rav1eCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput 
     RaPacket * pkt = NULL;
     for (;;) {
         encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
-        if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_LIMIT_REACHED)) {
+        if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_LIMIT_REACHED) && (encoderStatus != RA_ENCODER_STATUS_ENCODED)) {
             return AVIF_FALSE;
         }
         if (pkt && pkt->data && (pkt->len > 0)) {
