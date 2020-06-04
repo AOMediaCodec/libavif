@@ -694,6 +694,13 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteZeros(&s, 6); // template unsigned int(16)[3] opcolor = {0, 0, 0};
             avifRWStreamFinishBox(&s, vmhd);
 
+            avifBoxMarker dinf = avifRWStreamWriteBox(&s, "dinf", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker dref = avifRWStreamWriteFullBox(&s, "dref", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifRWStreamWriteU32(&s, 1);                   // unsigned int(32) entry_count;
+            avifRWStreamWriteFullBox(&s, "url ", 0, 0, 1); // flags:1 means data is in this file
+            avifRWStreamFinishBox(&s, dref);
+            avifRWStreamFinishBox(&s, dinf);
+
             avifBoxMarker stbl = avifRWStreamWriteBox(&s, "stbl", AVIF_BOX_SIZE_TBD);
 
             avifBoxMarker stco = avifRWStreamWriteFullBox(&s, "stco", AVIF_BOX_SIZE_TBD, 0, 0);
