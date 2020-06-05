@@ -401,7 +401,6 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
         }
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
             avifCodecEncodeOutputAddSample(output, pkt->data.frame.buf, pkt->data.frame.sz, (pkt->data.frame.flags & AOM_FRAME_IS_KEY));
-            break;
         }
     }
 
@@ -422,7 +421,6 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
         }
         if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
             avifCodecEncodeOutputAddSample(output, pkt->data.frame.buf, pkt->data.frame.sz, (pkt->data.frame.flags & AOM_FRAME_IS_KEY));
-            break;
         }
     }
     return AVIF_TRUE;
