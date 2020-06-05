@@ -274,15 +274,15 @@ static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBo
     return 8;
 }
 
-static uint32_t avifSampleTableGetDepth(const avifSampleTable * sampleTable)
+static const avifCodecConfigurationBox * avifSampleTableGetConfigurationBox(const avifSampleTable * sampleTable)
 {
     for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
         const avifSampleDescription * description = &sampleTable->sampleDescriptions.description[i];
         if (!memcmp(description->format, "av01", 4) && description->av1CPresent) {
-            return avifCodecConfigurationBoxGetDepth(&description->av1C);
+            return &description->av1C;
         }
     }
-    return 0;
+    return NULL;
 }
 
 // one video track ("trak" contents)
@@ -1984,6 +1984,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         data->source = decoder->requestedSource;
     }
 
+    const avifCodecConfigurationBox * configBox = NULL;
     if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
         avifTrack * colorTrack = NULL;
         avifTrack * alphaTrack = NULL;
@@ -2073,7 +2074,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         decoder->containerWidth = colorTrack->width;
         decoder->containerHeight = colorTrack->height;
-        decoder->containerDepth = avifSampleTableGetDepth(colorTrack->sampleTable);
+        configBox = avifSampleTableGetConfigurationBox(colorTrack->sampleTable);
+        decoder->containerAlphaPresent = (alphaTrack != NULL);
     } else {
         // Create from items
 
@@ -2296,10 +2298,23 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->containerHeight = 0;
         }
         if (colorOBUItem->av1CPresent) {
-            decoder->containerDepth = avifCodecConfigurationBoxGetDepth(&colorOBUItem->av1C);
-        } else {
-            decoder->containerDepth = 0;
+            configBox = &colorOBUItem->av1C;
         }
+        decoder->containerAlphaPresent = (alphaOBUItem != NULL);
+    }
+
+    if (configBox) {
+        decoder->containerDepth = avifCodecConfigurationBoxGetDepth(configBox);
+        decoder->containerChromaSubsamplingX = configBox->chromaSubsamplingX;
+        decoder->containerChromaSubsamplingY = configBox->chromaSubsamplingY;
+        decoder->containerMonochrome = (configBox->monochrome != 0);
+    } else {
+        // I believe this path is very, very unlikely. An av1C box should be mandatory
+        // in all valid AVIF configurations.
+        decoder->containerDepth = 0;
+        decoder->containerChromaSubsamplingX = 0; // TODO: use sentinel value here?
+        decoder->containerChromaSubsamplingY = 0; // TODO: use sentinel value here?
+        decoder->containerMonochrome = AVIF_FALSE;
     }
 
     return avifDecoderFlush(decoder);
