@@ -933,13 +933,7 @@ static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool a
     codec->configBox.monochrome = (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 0;
     codec->configBox.chromaSubsamplingX = (uint8_t)formatInfo.chromaShiftX;
     codec->configBox.chromaSubsamplingY = (uint8_t)formatInfo.chromaShiftY;
-
-    // TODO: choose the correct one from below:
-    //   * 0 - CSP_UNKNOWN   Unknown (in this case the source video transfer function must be signaled outside the AV1 bitstream)
-    //   * 1 - CSP_VERTICAL  Horizontally co-located with (0, 0) luma sample, vertical position in the middle between two luma samples
-    //   * 2 - CSP_COLOCATED co-located with (0, 0) luma sample
-    //   * 3 - CSP_RESERVED
-    codec->configBox.chromaSamplePosition = 0;
+    codec->configBox.chromaSamplePosition = image->yuvSamplePosition;
 }
 
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)

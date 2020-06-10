@@ -141,6 +141,7 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t pl
     dstImage->depth = srcImage->depth;
     dstImage->yuvFormat = srcImage->yuvFormat;
     dstImage->yuvRange = srcImage->yuvRange;
+    dstImage->yuvSamplePosition = srcImage->yuvSamplePosition;
     dstImage->alphaRange = srcImage->alphaRange;
 
     dstImage->colorPrimaries = srcImage->colorPrimaries;
@@ -314,6 +315,7 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
 
         dstImage->yuvFormat = srcImage->yuvFormat;
         dstImage->yuvRange = srcImage->yuvRange;
+        dstImage->yuvSamplePosition = srcImage->yuvSamplePosition;
         dstImage->imageOwnsYUVPlanes = srcImage->imageOwnsYUVPlanes;
         srcImage->imageOwnsYUVPlanes = AVIF_FALSE;
     }

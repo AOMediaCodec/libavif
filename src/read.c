@@ -1968,6 +1968,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     decoder->image = avifImageCreateEmpty();
     data->cicpSet = AVIF_FALSE;
 
+    memset(&decoder->av1C, 0, sizeof(decoder->av1C));
     memset(&decoder->ioStats, 0, sizeof(decoder->ioStats));
 
     // -----------------------------------------------------------------------
@@ -2072,10 +2073,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
         memset(&decoder->imageTiming, 0, sizeof(decoder->imageTiming)); // to be set in avifDecoderNextImage()
 
-        decoder->containerWidth = colorTrack->width;
-        decoder->containerHeight = colorTrack->height;
+        decoder->image->width = colorTrack->width;
+        decoder->image->height = colorTrack->height;
         configBox = avifSampleTableGetConfigurationBox(colorTrack->sampleTable);
-        decoder->containerAlphaPresent = (alphaTrack != NULL);
+        decoder->alphaPresent = (alphaTrack != NULL);
     } else {
         // Create from items
 
@@ -2291,16 +2292,16 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->ioStats.alphaOBUSize = alphaOBU.size;
 
         if (colorOBUItem->ispePresent) {
-            decoder->containerWidth = colorOBUItem->ispe.width;
-            decoder->containerHeight = colorOBUItem->ispe.height;
+            decoder->image->width = colorOBUItem->ispe.width;
+            decoder->image->height = colorOBUItem->ispe.height;
         } else {
-            decoder->containerWidth = 0;
-            decoder->containerHeight = 0;
+            decoder->image->width = 0;
+            decoder->image->height = 0;
         }
         if (colorOBUItem->av1CPresent) {
             configBox = &colorOBUItem->av1C;
         }
-        decoder->containerAlphaPresent = (alphaOBUItem != NULL);
+        decoder->alphaPresent = (alphaOBUItem != NULL);
     }
 
     if (!decoder->data->cicpSet && (data->tiles.count > 0)) {
@@ -2319,26 +2320,28 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     }
 
     if (configBox) {
-        decoder->containerDepth = avifCodecConfigurationBoxGetDepth(configBox);
+        memcpy(&decoder->av1C, configBox, sizeof(decoder->av1C));
+
+        decoder->image->depth = avifCodecConfigurationBoxGetDepth(configBox);
         if (configBox->monochrome) {
-            decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV400;
+            decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         } else {
             if (configBox->chromaSubsamplingX && configBox->chromaSubsamplingY) {
-                decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV420;
+                decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
             } else if (configBox->chromaSubsamplingX) {
-                decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV422;
+                decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
 
             } else {
-                decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV444;
+                decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
             }
         }
-        decoder->containerChromaSamplePosition = (avifChromaSamplePosition)configBox->chromaSamplePosition;
+        decoder->image->yuvSamplePosition = (avifChromaSamplePosition)configBox->chromaSamplePosition;
     } else {
         // I believe this path is very, very unlikely. An av1C box should be mandatory
         // in all valid AVIF configurations.
-        decoder->containerDepth = 0;
-        decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV444;
-        decoder->containerChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        decoder->image->depth = 0;
+        decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
+        decoder->image->yuvSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     }
 
     return avifDecoderFlush(decoder);
@@ -2388,13 +2391,13 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             decoder->image->width = srcColor->width;
             decoder->image->height = srcColor->height;
             decoder->image->depth = srcColor->depth;
+        }
 
-            if (!decoder->data->cicpSet) {
-                decoder->data->cicpSet = AVIF_TRUE;
-                decoder->image->colorPrimaries = srcColor->colorPrimaries;
-                decoder->image->transferCharacteristics = srcColor->transferCharacteristics;
-                decoder->image->matrixCoefficients = srcColor->matrixCoefficients;
-            }
+        if (!decoder->data->cicpSet) {
+            decoder->data->cicpSet = AVIF_TRUE;
+            decoder->image->colorPrimaries = srcColor->colorPrimaries;
+            decoder->image->transferCharacteristics = srcColor->transferCharacteristics;
+            decoder->image->matrixCoefficients = srcColor->matrixCoefficients;
         }
 
         avifImageStealPlanes(decoder->image, srcColor, AVIF_PLANES_YUV);

@@ -306,6 +306,7 @@ typedef struct avifImage
 
     avifPixelFormat yuvFormat;
     avifRange yuvRange;
+    avifChromaSamplePosition yuvSamplePosition;
     uint8_t * yuvPlanes[AVIF_PLANE_COUNT_YUV];
     uint32_t yuvRowBytes[AVIF_PLANE_COUNT_YUV];
     avifBool imageOwnsYUVPlanes;
@@ -471,6 +472,30 @@ typedef enum avifCodecFlags
 const char * avifCodecName(avifCodecChoice choice, uint32_t requiredFlags);
 avifCodecChoice avifCodecChoiceFromName(const char * name);
 
+typedef struct avifCodecConfigurationBox
+{
+    // [skipped; is constant] unsigned int (1)marker = 1;
+    // [skipped; is constant] unsigned int (7)version = 1;
+
+    uint8_t seqProfile;           // unsigned int (3) seq_profile;
+    uint8_t seqLevelIdx0;         // unsigned int (5) seq_level_idx_0;
+    uint8_t seqTier0;             // unsigned int (1) seq_tier_0;
+    uint8_t highBitdepth;         // unsigned int (1) high_bitdepth;
+    uint8_t twelveBit;            // unsigned int (1) twelve_bit;
+    uint8_t monochrome;           // unsigned int (1) monochrome;
+    uint8_t chromaSubsamplingX;   // unsigned int (1) chroma_subsampling_x;
+    uint8_t chromaSubsamplingY;   // unsigned int (1) chroma_subsampling_y;
+    uint8_t chromaSamplePosition; // unsigned int (2) chroma_sample_position;
+
+    // unsigned int (3)reserved = 0;
+    // unsigned int (1)initial_presentation_delay_present;
+    // if (initial_presentation_delay_present) {
+    //     unsigned int (4)initial_presentation_delay_minus_one;
+    // } else {
+    //     unsigned int (4)reserved = 0;
+    // }
+} avifCodecConfigurationBox;
+
 // ---------------------------------------------------------------------------
 // avifDecoder
 
@@ -521,21 +546,17 @@ typedef struct avifDecoder
 
     // All decoded image data; owned by the decoder. All information in this image is incrementally
     // added and updated as avifDecoder*() functions are called. After a successful call to
-    // avifDecoderParse(), the following avifDecoder->image values are valid:
-    //   * ICC profile
-    //   * CICP Information
-    //   * Transformations
-    //   * Range
-    //   * EXIF
-    //   * XMP
-    //
-    // All other avifDecoder->image values are only valid after a successful call to avifDecoderRead(),
-    // avifDecoderNextImage(), or avifDecoderNthImage().
+    // avifDecoderParse(), all values in decoder->image (other than the planes/rowBytes themselves)
+    // will be pre-populated with all information found in the outer AVIF container, prior to any
+    // AV1 decoding. If the contents of the inner AV1 payload disagree with the outer container,
+    // these values may change after calls to avifDecoderRead(),avifDecoderNextImage(), or
+    // avifDecoderNthImage().
     //
     // The YUV and A contents of this image are likely owned by the decoder, so be sure to copy any
     // data inside of this image before advancing to the next image or reusing the decoder. It is
     // legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(), but use
-    // avifImageCopy() if you want to make a permanent copy of this image's contents.
+    // avifImageCopy() if you want to make a complete, permanent copy of this image's YUV content or
+    // metadata.
     avifImage * image;
 
     // Counts and timing for the current image in an image sequence. Uninteresting for single image files.
@@ -546,34 +567,13 @@ typedef struct avifDecoder
     double duration;               // in seconds (durationInTimescales / timescale)
     uint64_t durationInTimescales; // duration in "timescales"
 
-    // All values below prefixed with "container" are valid after a successful call to avifDecoderParse().
+    // This is true when avifDecoderParse() detects an alpha plane. Use this to find out if alpha is
+    // present after a successful call to avifDecoderParse(), but prior to any call to
+    // avifDecoderNextImage(), as decoder->image->alphaPlane won't exist yet.
+    avifBool alphaPresent;
 
-    // The width and height as reported by the AVIF container, if any. There is no guarantee
-    // these match the decoded images; they are merely reporting what is independently offered
-    // from the container's boxes.
-    // * If decoding an "item" and the item is associated with an ImageSpatialExtentsBox,
-    //   it will use the box's width/height
-    // * Else if decoding tracks, these will be the integer portions of the TrackHeaderBox width/height
-    // * Else both will be set to 0.
-    uint32_t containerWidth;
-    uint32_t containerHeight;
-
-    // The bit depth as reported by the AVIF container, if any. There is no guarantee
-    // this matches the decoded images; it is merely reporting what is independently offered
-    // from the container's boxes.
-    // * If decoding an "item" and the item is associated with an av1C property,
-    //   it will use the box's depth flags.
-    // * Else if decoding tracks and there is a SampleDescriptionBox of type av01 containing an av1C box,
-    //   it will use the box's depth flags.
-    // * Else it will be set to 0.
-    uint32_t containerDepth;
-
-    // The pixel format and chroma sample position as reported by the AVIF container.
-    avifPixelFormat containerYUVFormat;
-    avifChromaSamplePosition containerChromaSamplePosition;
-
-    // This is true when avifDecoderParse() detects an alpha plane.
-    avifBool containerAlphaPresent;
+    // The av1C box from the AVIF container. Valid after avifDecoderParse().
+    avifCodecConfigurationBox av1C;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
