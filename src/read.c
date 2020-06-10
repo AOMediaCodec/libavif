@@ -2313,6 +2313,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 decoder->image->colorPrimaries = sequenceHeader.colorPrimaries;
                 decoder->image->transferCharacteristics = sequenceHeader.transferCharacteristics;
                 decoder->image->matrixCoefficients = sequenceHeader.matrixCoefficients;
+                decoder->image->yuvRange = sequenceHeader.range;
             }
         }
     }

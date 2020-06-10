@@ -525,6 +525,7 @@ typedef struct avifDecoder
     //   * ICC profile
     //   * CICP Information
     //   * Transformations
+    //   * Range
     //   * EXIF
     //   * XMP
     //
