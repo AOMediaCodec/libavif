@@ -338,12 +338,10 @@ avifBool avifSequenceHeaderParse(avifSequenceHeader * header, avifROData * const
         const uint32_t obu_has_size_field = avifBitsRead(&bits, 1);
         avifBitsRead(&bits, 1); // obu_reserved_1bit
 
-        uint32_t temporal_id = 0;
-        uint32_t spatial_id = 0;
         if (obu_extension_flag == 1) { // obu_extension_header()
-            temporal_id = avifBitsRead(&bits, 3);
-            spatial_id = avifBitsRead(&bits, 2);
-            avifBitsRead(&bits, 3); // extension_header_reserved_3bits
+            avifBitsRead(&bits, 3);    // temporal_id
+            avifBitsRead(&bits, 2);    // spatial_id
+            avifBitsRead(&bits, 3);    // extension_header_reserved_3bits
         }
 
         uint32_t obu_size = 0;
