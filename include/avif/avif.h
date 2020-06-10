@@ -142,6 +142,7 @@ typedef struct avifPixelFormatInfo
     int chromaShiftY;
     int aomIndexU; // maps U plane to AOM-side plane index
     int aomIndexV; // maps V plane to AOM-side plane index
+    avifBool monochrome;
 } avifPixelFormatInfo;
 
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
@@ -566,16 +567,12 @@ typedef struct avifDecoder
     // * Else it will be set to 0.
     uint32_t containerDepth;
 
-    // The chroma subsampling and sample position as reported by the AVIF container.
-    uint8_t containerChromaSubsamplingX;
-    uint8_t containerChromaSubsamplingY;
+    // The pixel format and chroma sample position as reported by the AVIF container.
+    avifPixelFormat containerYUVFormat;
     avifChromaSamplePosition containerChromaSamplePosition;
 
     // This is true when avifDecoderParse() detects an alpha plane.
     avifBool containerAlphaPresent;
-
-    // This is true when avifDecoderParse() detects a monochrome image.
-    avifBool containerMonochrome;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;

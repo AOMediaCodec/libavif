@@ -2319,19 +2319,25 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     if (configBox) {
         decoder->containerDepth = avifCodecConfigurationBoxGetDepth(configBox);
-        decoder->containerChromaSubsamplingX = configBox->chromaSubsamplingX;
-        decoder->containerChromaSubsamplingY = configBox->chromaSubsamplingY;
-        decoder->containerMonochrome = (configBox->monochrome != 0);
+        if (configBox->monochrome) {
+            decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV400;
+        } else {
+            if (configBox->chromaSubsamplingX && configBox->chromaSubsamplingY) {
+                decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV420;
+            } else if (configBox->chromaSubsamplingX) {
+                decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV422;
+
+            } else {
+                decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV444;
+            }
+        }
         decoder->containerChromaSamplePosition = (avifChromaSamplePosition)configBox->chromaSamplePosition;
     } else {
         // I believe this path is very, very unlikely. An av1C box should be mandatory
         // in all valid AVIF configurations.
         decoder->containerDepth = 0;
-        decoder->containerChromaSubsamplingX = 0; // TODO: use sentinel value here?
-        decoder->containerChromaSubsamplingY = 0; // TODO: use sentinel value here?
+        decoder->containerYUVFormat = AVIF_PIXEL_FORMAT_YUV444;
         decoder->containerChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-
-        decoder->containerMonochrome = AVIF_FALSE;
     }
 
     return avifDecoderFlush(decoder);
