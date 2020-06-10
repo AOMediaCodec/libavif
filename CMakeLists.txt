@@ -118,6 +118,7 @@ set(AVIF_SRCS
     src/avif.c
     src/colr.c
     src/mem.c
+    src/obu.c
     src/rawdata.c
     src/read.c
     src/reformat.c

@@ -149,6 +149,16 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
 // ---------------------------------------------------------------------------
 // avifRange
 
+typedef enum avifChromaSamplePosition
+{
+    AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN = 0,
+    AVIF_CHROMA_SAMPLE_POSITION_VERTICAL = 1,
+    AVIF_CHROMA_SAMPLE_POSITION_COLOCATED = 2
+} avifChromaSamplePosition;
+
+// ---------------------------------------------------------------------------
+// avifRange
+
 typedef enum avifRange
 {
     AVIF_RANGE_LIMITED = 0,
@@ -508,11 +518,22 @@ typedef struct avifDecoder
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;
 
-    // The current decoded image, owned by the decoder. Is invalid if the decoder hasn't run or has run
-    // out of images. The YUV and A contents of this image are likely owned by the decoder, so be
-    // sure to copy any data inside of this image before advancing to the next image or reusing the
-    // decoder. It is legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(),
-    // but use avifImageCopy() if you want to make a permanent copy of this image's contents.
+    // All decoded image data; owned by the decoder. All information in this image is incrementally
+    // added and updated as avifDecoder*() functions are called. After a successful call to
+    // avifDecoderParse(), the following avifDecoder->image values are valid:
+    //   * ICC profile
+    //   * CICP Information
+    //   * Transformations
+    //   * EXIF
+    //   * XMP
+    //
+    // All other avifDecoder->image values are only valid after a successful call to avifDecoderRead(),
+    // avifDecoderNextImage(), or avifDecoderNthImage().
+    //
+    // The YUV and A contents of this image are likely owned by the decoder, so be sure to copy any
+    // data inside of this image before advancing to the next image or reusing the decoder. It is
+    // legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(), but use
+    // avifImageCopy() if you want to make a permanent copy of this image's contents.
     avifImage * image;
 
     // Counts and timing for the current image in an image sequence. Uninteresting for single image files.
@@ -522,6 +543,8 @@ typedef struct avifDecoder
     uint64_t timescale;            // timescale of the media (Hz)
     double duration;               // in seconds (durationInTimescales / timescale)
     uint64_t durationInTimescales; // duration in "timescales"
+
+    // All values below prefixed with "container" are valid after a successful call to avifDecoderParse().
 
     // The width and height as reported by the AVIF container, if any. There is no guarantee
     // these match the decoded images; they are merely reporting what is independently offered
@@ -543,9 +566,10 @@ typedef struct avifDecoder
     // * Else it will be set to 0.
     uint32_t containerDepth;
 
-    // The chroma subsampling as reported by the AVIF container.
+    // The chroma subsampling and sample position as reported by the AVIF container.
     uint8_t containerChromaSubsamplingX;
     uint8_t containerChromaSubsamplingY;
+    avifChromaSamplePosition containerChromaSamplePosition;
 
     // This is true when avifDecoderParse() detects an alpha plane.
     avifBool containerAlphaPresent;
@@ -597,6 +621,7 @@ avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
 
 // Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
+// This function may be be used after a successful call to avifDecoderParse().
 avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
 
 // ---------------------------------------------------------------------------

@@ -250,6 +250,18 @@ void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
 // This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
 #define AVIF_BOX_SIZE_TBD 0
 
+typedef struct avifSequenceHeader
+{
+    uint32_t maxWidth;
+    uint32_t maxHeight;
+    avifPixelFormat yuvFormat;
+    avifColorPrimaries colorPrimaries;
+    avifTransferCharacteristics transferCharacteristics;
+    avifMatrixCoefficients matrixCoefficients;
+    avifRange range;
+} avifSequenceHeader;
+avifBool avifSequenceHeaderParse(avifSequenceHeader * header, avifROData * const sample);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

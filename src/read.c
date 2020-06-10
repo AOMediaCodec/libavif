@@ -2303,17 +2303,34 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->containerAlphaPresent = (alphaOBUItem != NULL);
     }
 
+    if (!decoder->data->cicpSet && (data->tiles.count > 0)) {
+        avifTile * firstTile = &data->tiles.tile[0];
+        if (firstTile->input->samples.count > 0) {
+            avifDecodeSample * sample = &firstTile->input->samples.sample[0];
+            avifSequenceHeader sequenceHeader;
+            if (avifSequenceHeaderParse(&sequenceHeader, &sample->data)) {
+                decoder->data->cicpSet = AVIF_TRUE;
+                decoder->image->colorPrimaries = sequenceHeader.colorPrimaries;
+                decoder->image->transferCharacteristics = sequenceHeader.transferCharacteristics;
+                decoder->image->matrixCoefficients = sequenceHeader.matrixCoefficients;
+            }
+        }
+    }
+
     if (configBox) {
         decoder->containerDepth = avifCodecConfigurationBoxGetDepth(configBox);
         decoder->containerChromaSubsamplingX = configBox->chromaSubsamplingX;
         decoder->containerChromaSubsamplingY = configBox->chromaSubsamplingY;
         decoder->containerMonochrome = (configBox->monochrome != 0);
+        decoder->containerChromaSamplePosition = (avifChromaSamplePosition)configBox->chromaSamplePosition;
     } else {
         // I believe this path is very, very unlikely. An av1C box should be mandatory
         // in all valid AVIF configurations.
         decoder->containerDepth = 0;
         decoder->containerChromaSubsamplingX = 0; // TODO: use sentinel value here?
         decoder->containerChromaSubsamplingY = 0; // TODO: use sentinel value here?
+        decoder->containerChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+
         decoder->containerMonochrome = AVIF_FALSE;
     }
 
