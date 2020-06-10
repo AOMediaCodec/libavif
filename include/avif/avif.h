@@ -148,7 +148,7 @@ typedef struct avifPixelFormatInfo
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
 
 // ---------------------------------------------------------------------------
-// avifRange
+// avifChromaSamplePosition
 
 typedef enum avifChromaSamplePosition
 {
