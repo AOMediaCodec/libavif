@@ -170,6 +170,75 @@ void avifEncoderDestroy(avifEncoder * encoder)
     avifFree(encoder);
 }
 
+static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * imageMetadata, struct ipmaArray * ipma, uint8_t * itemPropertyIndex)
+{
+    if (imageMetadata->icc.data && (imageMetadata->icc.size > 0)) {
+        avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
+        avifRWStreamWriteChars(s, "prof", 4); // unsigned int(32) colour_type;
+        avifRWStreamWrite(s, imageMetadata->icc.data, imageMetadata->icc.size);
+        avifRWStreamFinishBox(s, colr);
+        if (ipma && itemPropertyIndex) {
+            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
+        }
+    } else {
+        avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
+        avifRWStreamWriteChars(s, "nclx", 4);                                      // unsigned int(32) colour_type;
+        avifRWStreamWriteU16(s, (uint16_t)imageMetadata->colorPrimaries);          // unsigned int(16) colour_primaries;
+        avifRWStreamWriteU16(s, (uint16_t)imageMetadata->transferCharacteristics); // unsigned int(16) transfer_characteristics;
+        avifRWStreamWriteU16(s, (uint16_t)imageMetadata->matrixCoefficients);      // unsigned int(16) matrix_coefficients;
+        avifRWStreamWriteU8(s, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
+                                                                                         // unsigned int(7) reserved = 0;
+        avifRWStreamFinishBox(s, colr);
+        if (ipma && itemPropertyIndex) {
+            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
+        }
+    }
+
+    // Write (Optional) Transformations
+    if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
+        avifBoxMarker pasp = avifRWStreamWriteBox(s, "pasp", AVIF_BOX_SIZE_TBD);
+        avifRWStreamWriteU32(s, imageMetadata->pasp.hSpacing); // unsigned int(32) hSpacing;
+        avifRWStreamWriteU32(s, imageMetadata->pasp.vSpacing); // unsigned int(32) vSpacing;
+        avifRWStreamFinishBox(s, pasp);
+        if (ipma && itemPropertyIndex) {
+            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
+        }
+    }
+    if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
+        avifBoxMarker clap = avifRWStreamWriteBox(s, "clap", AVIF_BOX_SIZE_TBD);
+        avifRWStreamWriteU32(s, imageMetadata->clap.widthN);    // unsigned int(32) cleanApertureWidthN;
+        avifRWStreamWriteU32(s, imageMetadata->clap.widthD);    // unsigned int(32) cleanApertureWidthD;
+        avifRWStreamWriteU32(s, imageMetadata->clap.heightN);   // unsigned int(32) cleanApertureHeightN;
+        avifRWStreamWriteU32(s, imageMetadata->clap.heightD);   // unsigned int(32) cleanApertureHeightD;
+        avifRWStreamWriteU32(s, imageMetadata->clap.horizOffN); // unsigned int(32) horizOffN;
+        avifRWStreamWriteU32(s, imageMetadata->clap.horizOffD); // unsigned int(32) horizOffD;
+        avifRWStreamWriteU32(s, imageMetadata->clap.vertOffN);  // unsigned int(32) vertOffN;
+        avifRWStreamWriteU32(s, imageMetadata->clap.vertOffD);  // unsigned int(32) vertOffD;
+        avifRWStreamFinishBox(s, clap);
+        if (ipma && itemPropertyIndex) {
+            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_TRUE);
+        }
+    }
+    if (imageMetadata->transformFlags & AVIF_TRANSFORM_IROT) {
+        avifBoxMarker irot = avifRWStreamWriteBox(s, "irot", AVIF_BOX_SIZE_TBD);
+        uint8_t angle = imageMetadata->irot.angle & 0x3;
+        avifRWStreamWrite(s, &angle, 1); // unsigned int (6) reserved = 0; unsigned int (2) angle;
+        avifRWStreamFinishBox(s, irot);
+        if (ipma && itemPropertyIndex) {
+            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_TRUE);
+        }
+    }
+    if (imageMetadata->transformFlags & AVIF_TRANSFORM_IMIR) {
+        avifBoxMarker imir = avifRWStreamWriteBox(s, "imir", AVIF_BOX_SIZE_TBD);
+        uint8_t axis = imageMetadata->imir.axis & 0x1;
+        avifRWStreamWrite(s, &axis, 1); // unsigned int (7) reserved = 0; unsigned int (1) axis;
+        avifRWStreamFinishBox(s, imir);
+        if (ipma && itemPropertyIndex) {
+            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_TRUE);
+        }
+    }
+}
+
 static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales)
 {
     // -----------------------------------------------------------------------
@@ -480,7 +549,7 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifRWStreamFinishBox(&s, ispe);
         ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE); // ipma is 1-indexed, doing this afterwards is correct
 
-        uint8_t channelCount = item->alpha ? 1 : 3; // TODO: write the correct value here when adding monochrome support
+        uint8_t channelCount = (item->alpha || (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
         avifBoxMarker pixi = avifRWStreamWriteFullBox(&s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0);
         avifRWStreamWriteU8(&s, channelCount); // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
@@ -502,59 +571,7 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         } else {
             // Color specific properties
 
-            if (imageMetadata->icc.data && (imageMetadata->icc.size > 0)) {
-                avifBoxMarker colr = avifRWStreamWriteBox(&s, "colr", AVIF_BOX_SIZE_TBD);
-                avifRWStreamWriteChars(&s, "prof", 4); // unsigned int(32) colour_type;
-                avifRWStreamWrite(&s, imageMetadata->icc.data, imageMetadata->icc.size);
-                avifRWStreamFinishBox(&s, colr);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
-            } else {
-                avifBoxMarker colr = avifRWStreamWriteBox(&s, "colr", AVIF_BOX_SIZE_TBD);
-                avifRWStreamWriteChars(&s, "nclx", 4);                                      // unsigned int(32) colour_type;
-                avifRWStreamWriteU16(&s, (uint16_t)imageMetadata->colorPrimaries);          // unsigned int(16) colour_primaries;
-                avifRWStreamWriteU16(&s, (uint16_t)imageMetadata->transferCharacteristics); // unsigned int(16) transfer_characteristics;
-                avifRWStreamWriteU16(&s, (uint16_t)imageMetadata->matrixCoefficients); // unsigned int(16) matrix_coefficients;
-                avifRWStreamWriteU8(&s, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
-                                                                                                  // unsigned int(7) reserved = 0;
-                avifRWStreamFinishBox(&s, colr);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
-            }
-
-            // Write (Optional) Transformations
-            if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
-                avifBoxMarker pasp = avifRWStreamWriteBox(&s, "pasp", AVIF_BOX_SIZE_TBD);
-                avifRWStreamWriteU32(&s, imageMetadata->pasp.hSpacing); // unsigned int(32) hSpacing;
-                avifRWStreamWriteU32(&s, imageMetadata->pasp.vSpacing); // unsigned int(32) vSpacing;
-                avifRWStreamFinishBox(&s, pasp);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
-            }
-            if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
-                avifBoxMarker clap = avifRWStreamWriteBox(&s, "clap", AVIF_BOX_SIZE_TBD);
-                avifRWStreamWriteU32(&s, imageMetadata->clap.widthN);    // unsigned int(32) cleanApertureWidthN;
-                avifRWStreamWriteU32(&s, imageMetadata->clap.widthD);    // unsigned int(32) cleanApertureWidthD;
-                avifRWStreamWriteU32(&s, imageMetadata->clap.heightN);   // unsigned int(32) cleanApertureHeightN;
-                avifRWStreamWriteU32(&s, imageMetadata->clap.heightD);   // unsigned int(32) cleanApertureHeightD;
-                avifRWStreamWriteU32(&s, imageMetadata->clap.horizOffN); // unsigned int(32) horizOffN;
-                avifRWStreamWriteU32(&s, imageMetadata->clap.horizOffD); // unsigned int(32) horizOffD;
-                avifRWStreamWriteU32(&s, imageMetadata->clap.vertOffN);  // unsigned int(32) vertOffN;
-                avifRWStreamWriteU32(&s, imageMetadata->clap.vertOffD);  // unsigned int(32) vertOffD;
-                avifRWStreamFinishBox(&s, clap);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
-            }
-            if (imageMetadata->transformFlags & AVIF_TRANSFORM_IROT) {
-                avifBoxMarker irot = avifRWStreamWriteBox(&s, "irot", AVIF_BOX_SIZE_TBD);
-                uint8_t angle = imageMetadata->irot.angle & 0x3;
-                avifRWStreamWrite(&s, &angle, 1); // unsigned int (6) reserved = 0; unsigned int (2) angle;
-                avifRWStreamFinishBox(&s, irot);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
-            }
-            if (imageMetadata->transformFlags & AVIF_TRANSFORM_IMIR) {
-                avifBoxMarker imir = avifRWStreamWriteBox(&s, "imir", AVIF_BOX_SIZE_TBD);
-                uint8_t axis = imageMetadata->imir.axis & 0x1;
-                avifRWStreamWrite(&s, &axis, 1); // unsigned int (7) reserved = 0; unsigned int (1) axis;
-                avifRWStreamFinishBox(&s, imir);
-                ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
-            }
+            avifEncoderWriteColorProperties(&s, imageMetadata, &item->ipma, &itemPropertyIndex);
         }
     }
     avifRWStreamFinishBox(&s, ipco);
@@ -778,6 +795,9 @@ static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteU16(&s, 0x0018);                          // template unsigned int(16) depth = 0x0018;
             avifRWStreamWriteU16(&s, (uint16_t)0xffff);                // int(16) pre_defined = -1;
             writeConfigBox(&s, &item->codec->configBox);
+            if (!item->alpha) {
+                avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL);
+            }
             avifRWStreamFinishBox(&s, av01);
             avifRWStreamFinishBox(&s, stsd);
 
