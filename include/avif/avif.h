@@ -667,9 +667,12 @@ void avifEncoderDestroy(avifEncoder * encoder);
 // Multi-function alternative to avifEncoderWrite() for image sequences.
 //
 // Usage / function call order is:
+// * avifEncoderCreate()
 // * Set encoder->timescale (Hz) correctly
 // * avifEncoderAddImage() ... [repeatedly; at least once]
 // * avifEncoderFinish()
+// * avifEncoderDestroy()
+//
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales);
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
