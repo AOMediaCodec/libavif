@@ -752,7 +752,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
 }
 
 // If colorId == 0, accept any found EXIF/XMP metadata
-avifBool avifDecoderDataFindMetadata(avifDecoderData * data, avifMeta * meta, avifImage * image, uint32_t colorId)
+static avifBool avifDecoderDataFindMetadata(avifDecoderData * data, avifMeta * meta, avifImage * image, uint32_t colorId)
 {
     avifROData exifData = AVIF_DATA_EMPTY;
     avifROData xmpData = AVIF_DATA_EMPTY;
