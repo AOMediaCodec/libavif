@@ -58,7 +58,7 @@ static void syntax(void)
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second\n");
-    printf("    -k,--keyframe INTERVAL            : Set the keyframe interval (how many frames between keyframes). Set to 0 to disable. Default: %d\n",
+    printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable. Default: %d\n",
            KEYFRAME_INTERVAL_DEFAULT);
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
