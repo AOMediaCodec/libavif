@@ -664,6 +664,15 @@ avifEncoder * avifEncoderCreate(void);
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output);
 void avifEncoderDestroy(avifEncoder * encoder);
 
+// Multi-function alternative to avifEncoderWrite() for image sequences.
+//
+// Usage / function call order is:
+// * Set encoder->timescale (Hz) correctly
+// * avifEncoderAddImage() ... [repeatedly; at least once]
+// * avifEncoderFinish()
+avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales);
+avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
+
 // Helpers
 avifBool avifImageUsesU16(const avifImage * image);
 

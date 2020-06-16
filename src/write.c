@@ -331,7 +331,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamFinishBox(s, meta);
 }
 
-static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales)
+avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales)
 {
     // -----------------------------------------------------------------------
     // Validate image
@@ -459,7 +459,7 @@ static avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * i
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
+avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
     if (encoder->data->items.count < 1) {
         return AVIF_RESULT_NO_CONTENT;
