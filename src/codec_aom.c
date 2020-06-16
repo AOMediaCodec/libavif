@@ -235,7 +235,12 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
-static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, avifEncoder * encoder, avifBool alpha, avifCodecEncodeOutput * output)
+static avifBool aomCodecEncodeImage(avifCodec * codec,
+                                    const avifImage * image,
+                                    avifEncoder * encoder,
+                                    avifBool alpha,
+                                    avifBool forceKeyframe,
+                                    avifCodecEncodeOutput * output)
 {
     if (!codec->internal->encoderInitialized) {
         // Map encoder speed to AOM usage + CpuUsed:
@@ -303,6 +308,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
         if (encoder->maxThreads > 1) {
             cfg.g_threads = encoder->maxThreads;
         }
+        cfg.kf_mode = AOM_KF_DISABLED;
 
         int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
         int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
@@ -391,7 +397,11 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
         aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage->mc);
     }
 
-    aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, 0);
+    aom_enc_frame_flags_t encodeFlags = 0;
+    if (forceKeyframe) {
+        encodeFlags |= AOM_EFLAG_FORCE_KF;
+    }
+    aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, encodeFlags);
 
     aom_codec_iter_t iter = NULL;
     for (;;) {

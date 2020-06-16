@@ -446,10 +446,15 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
 
+    avifBool forceKeyframe = AVIF_FALSE;
+    if ((encoder->data->frames.count % 8) == 0) { // TODO: make this configurable
+        forceKeyframe = AVIF_TRUE;
+    }
+
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeImage(item->codec, image, encoder, item->alpha, item->encodeOutput)) {
+            if (!item->codec->encodeImage(item->codec, image, encoder, item->alpha, forceKeyframe, item->encodeOutput)) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
         }
