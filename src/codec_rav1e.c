@@ -35,7 +35,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
                                       const avifImage * image,
                                       avifEncoder * encoder,
                                       avifBool alpha,
-                                      avifBool forceKeyframe,
+                                      uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
     avifBool success = AVIF_FALSE;
@@ -79,7 +79,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
             goto cleanup;
         }
 
-        if (encoder->singleImage) {
+        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
             if (rav1e_config_parse(rav1eConfig, "still_picture", "true") == -1) {
                 goto cleanup;
             }
@@ -153,7 +153,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
     }
 
     RaFrameTypeOverride frameType = RA_FRAME_TYPE_OVERRIDE_NO;
-    if (forceKeyframe) {
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
         frameType = RA_FRAME_TYPE_OVERRIDE_KEY;
     }
     rav1e_frame_set_type(rav1eFrame, frameType);

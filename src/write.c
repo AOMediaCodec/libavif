@@ -177,7 +177,7 @@ avifEncoder * avifEncoderCreate(void)
     encoder->speed = AVIF_SPEED_DEFAULT;
     encoder->data = avifEncoderDataCreate();
     encoder->timescale = 1;
-    encoder->singleImage = AVIF_FALSE;
+    encoder->keyframeInterval = 0;
     return encoder;
 }
 
@@ -332,7 +332,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamFinishBox(s, meta);
 }
 
-avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales)
+avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, uint32_t addImageFlags)
 {
     // -----------------------------------------------------------------------
     // Validate image
@@ -446,15 +446,14 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
 
-    avifBool forceKeyframe = AVIF_FALSE;
-    if ((encoder->data->frames.count % 8) == 0) { // TODO: make this configurable
-        forceKeyframe = AVIF_TRUE;
+    if (encoder->keyframeInterval && ((encoder->data->frames.count % encoder->keyframeInterval) == 0)) {
+        addImageFlags |= AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME;
     }
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeImage(item->codec, image, encoder, item->alpha, forceKeyframe, item->encodeOutput)) {
+            if (!item->codec->encodeImage(item->codec, image, encoder, item->alpha, addImageFlags, item->encodeOutput)) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
         }
@@ -956,8 +955,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
 {
-    encoder->singleImage = AVIF_TRUE;
-    avifResult addImageResult = avifEncoderAddImage(encoder, image, 1);
+    avifResult addImageResult = avifEncoderAddImage(encoder, image, 1, AVIF_ADD_IMAGE_FLAG_SINGLE);
     if (addImageResult != AVIF_RESULT_OK) {
         return addImageResult;
     }

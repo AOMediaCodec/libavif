@@ -239,7 +239,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
                                     const avifImage * image,
                                     avifEncoder * encoder,
                                     avifBool alpha,
-                                    avifBool forceKeyframe,
+                                    uint32_t addImageFlags,
                                     avifCodecEncodeOutput * output)
 {
     if (!codec->internal->encoderInitialized) {
@@ -398,7 +398,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
     }
 
     aom_enc_frame_flags_t encodeFlags = 0;
-    if (forceKeyframe) {
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
         encodeFlags |= AOM_EFLAG_FORCE_KF;
     }
     aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, encodeFlags);

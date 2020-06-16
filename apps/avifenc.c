@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define KEYFRAME_INTERVAL_DEFAULT 8 // A reasonable (but arbitrary) default
+
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
         fprintf(stderr, "%s requires an argument.", arg);             \
@@ -56,6 +58,8 @@ static void syntax(void)
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second\n");
+    printf("    -k,--keyframe INTERVAL            : Set the keyframe interval (how many frames between keyframes). Set to 0 to disable. Default: %d\n",
+           KEYFRAME_INTERVAL_DEFAULT);
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
@@ -165,6 +169,7 @@ int main(int argc, char * argv[])
     avifImage * nextImage = NULL;
     avifRWData raw = AVIF_DATA_EMPTY;
     int timescale = 1; // 1 fps by default
+    int keyframeInterval = KEYFRAME_INTERVAL_DEFAULT;
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT709
@@ -212,6 +217,9 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+        } else if (!strcmp(arg, "-k") || !strcmp(arg, "--keyframe")) {
+            NEXTARG();
+            keyframeInterval = atoi(arg);
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
             minQuantizer = atoi(arg);
@@ -538,13 +546,18 @@ int main(int argc, char * argv[])
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
     encoder->timescale = (uint64_t)timescale;
-    encoder->singleImage = (inputFilenamesCount == 1);
+    encoder->keyframeInterval = keyframeInterval;
+
+    uint32_t addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
+    if (inputFilenamesCount == 1) {
+        addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
+    }
 
     uint32_t firstDurationInTimescales = 1; // TODO: allow arbitrary per-frame durations
     if (inputFilenamesCount > 1) {
         printf(" * Encoding frame 1 [%u/%d ts]: %s\n", firstDurationInTimescales, timescale, inputFilenames[0]);
     }
-    avifResult addImageResult = avifEncoderAddImage(encoder, image, 1);
+    avifResult addImageResult = avifEncoderAddImage(encoder, image, 1, addImageFlags);
     if (addImageResult != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
         goto cleanup;
@@ -630,7 +643,7 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
 
-            avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales);
+            avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
             if (nextImageResult != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
                 goto cleanup;

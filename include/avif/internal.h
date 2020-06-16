@@ -136,7 +136,7 @@ typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                              const avifImage * image,
                                              avifEncoder * encoder,
                                              avifBool alpha,
-                                             avifBool forceKeyframe,
+                                             uint32_t addImageFlags,
                                              avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
