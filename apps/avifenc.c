@@ -25,6 +25,7 @@ static void syntax(void)
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
+    printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m, depth is retained)\n");
     printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420, 400]. (JPEG/PNG only; For y4m, format is retained)\n");
@@ -54,6 +55,7 @@ static void syntax(void)
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
+    printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
@@ -128,7 +130,8 @@ static int parseU32List(uint32_t output[8], const char * arg)
 
 int main(int argc, char * argv[])
 {
-    const char * inputFilename = NULL;
+    int inputFilenamesCount = 0;
+    const char ** inputFilenames = NULL;
     const char * outputFilename = NULL;
 
     if (argc < 2) {
@@ -136,6 +139,9 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    inputFilenames = malloc(sizeof(char *) * argc);
+
+    int returnCode = 0;
     int jobs = 1;
     avifPixelFormat requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
     int requestedDepth = 0;
@@ -155,6 +161,10 @@ int main(int argc, char * argv[])
     avifBool lossless = AVIF_FALSE;
     avifBool ignoreICC = AVIF_FALSE;
     avifEncoder * encoder = NULL;
+    avifImage * image = NULL;
+    avifImage * nextImage = NULL;
+    avifRWData raw = AVIF_DATA_EMPTY;
+    int timescale = 1; // 1 fps by default
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT709
@@ -169,19 +179,23 @@ int main(int argc, char * argv[])
 
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
-            return 0;
+            goto cleanup;
         } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
             NEXTARG();
             jobs = atoi(arg);
             if (jobs < 1) {
                 jobs = 1;
             }
+        } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
+            NEXTARG();
+            outputFilename = arg;
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
             requestedDepth = atoi(arg);
             if ((requestedDepth != 8) && (requestedDepth != 10) && (requestedDepth != 12)) {
                 fprintf(stderr, "ERROR: invalid depth: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "-y") || !strcmp(arg, "--yuv")) {
             NEXTARG();
@@ -195,7 +209,8 @@ int main(int argc, char * argv[])
                 requestedFormat = AVIF_PIXEL_FORMAT_YUV400;
             } else {
                 fprintf(stderr, "ERROR: invalid format: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
@@ -237,7 +252,8 @@ int main(int argc, char * argv[])
             NEXTARG();
             int cicp[3];
             if (!parseCICP(cicp, arg)) {
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
             colorPrimaries = (avifColorPrimaries)cicp[0];
             transferCharacteristics = (avifTransferCharacteristics)cicp[1];
@@ -250,7 +266,8 @@ int main(int argc, char * argv[])
                 requestedRange = AVIF_RANGE_FULL;
             } else {
                 fprintf(stderr, "ERROR: Unknown range: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "-s") || !strcmp(arg, "--speed")) {
             NEXTARG();
@@ -265,17 +282,27 @@ int main(int argc, char * argv[])
                     speed = AVIF_SPEED_SLOWEST;
                 }
             }
+        } else if (!strcmp(arg, "--timescale") || !strcmp(arg, "--fps")) {
+            NEXTARG();
+            timescale = atoi(arg);
+            if (timescale < 1) {
+                fprintf(stderr, "ERROR: Invalid timescale: %d\n", timescale);
+                returnCode = 1;
+                goto cleanup;
+            }
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
             codecChoice = avifCodecChoiceFromName(arg);
             if (codecChoice == AVIF_CODEC_CHOICE_AUTO) {
                 fprintf(stderr, "ERROR: Unrecognized codec: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             } else {
                 const char * codecName = avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
                 if (codecName == NULL) {
                     fprintf(stderr, "ERROR: AV1 Codec cannot encode: %s\n", arg);
-                    return 1;
+                    returnCode = 1;
+                    goto cleanup;
                 }
             }
         } else if (!strcmp(arg, "--ignore-icc")) {
@@ -285,28 +312,32 @@ int main(int argc, char * argv[])
             paspCount = parseU32List(paspValues, arg);
             if (paspCount != 2) {
                 fprintf(stderr, "ERROR: Invalid pasp values: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "--clap")) {
             NEXTARG();
             clapCount = parseU32List(clapValues, arg);
             if (clapCount != 8) {
                 fprintf(stderr, "ERROR: Invalid clap values: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "--irot")) {
             NEXTARG();
             irotAngle = (uint8_t)atoi(arg);
             if (irotAngle > 3) {
                 fprintf(stderr, "ERROR: Invalid irot angle: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "--imir")) {
             NEXTARG();
             imirAxis = (uint8_t)atoi(arg);
             if (imirAxis > 1) {
                 fprintf(stderr, "ERROR: Invalid imir axis: %s\n", arg);
-                return 1;
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "-l") || !strcmp(arg, "--lossless")) {
             lossless = AVIF_TRUE;
@@ -323,96 +354,93 @@ int main(int argc, char * argv[])
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else {
             // Positional argument
-            if (!inputFilename) {
-                inputFilename = arg;
-            } else if (!outputFilename) {
-                outputFilename = arg;
-            } else {
-                fprintf(stderr, "Too many positional arguments: %s\n", arg);
-                syntax();
-                return 1;
-            }
+            inputFilenames[inputFilenamesCount] = arg;
+            ++inputFilenamesCount;
         }
 
         ++argIndex;
     }
 
-    if (!inputFilename || !outputFilename) {
-        syntax();
-        return 1;
+    if (!outputFilename && (inputFilenamesCount > 1)) {
+        --inputFilenamesCount;
+        outputFilename = inputFilenames[inputFilenamesCount];
     }
 
-    int returnCode = 0;
-    avifImage * avif = avifImageCreateEmpty();
-    avifRWData raw = AVIF_DATA_EMPTY;
+    if ((inputFilenamesCount < 1) || !outputFilename) {
+        syntax();
+        returnCode = 1;
+        goto cleanup;
+    }
+
+    image = avifImageCreateEmpty();
 
     uint32_t sourceDepth = 0;
     avifBool sourceWasRGB = AVIF_TRUE;
-    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFilename);
+    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFilenames[0]);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-        fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
+        fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilenames[0]);
         returnCode = 1;
         goto cleanup;
     }
 
     // Set these in advance so any upcoming RGB -> YUV use the proper coefficients
-    avif->colorPrimaries = colorPrimaries;
-    avif->transferCharacteristics = transferCharacteristics;
-    avif->matrixCoefficients = matrixCoefficients;
-    avif->yuvRange = requestedRange;
+    image->colorPrimaries = colorPrimaries;
+    image->transferCharacteristics = transferCharacteristics;
+    image->matrixCoefficients = matrixCoefficients;
+    image->yuvRange = requestedRange;
 
     if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
-        if (!y4mRead(avif, inputFilename)) {
+        if (!y4mRead(image, inputFilenames[0])) {
             returnCode = 1;
             goto cleanup;
         }
-        sourceDepth = avif->depth;
+        sourceDepth = image->depth;
         sourceWasRGB = AVIF_FALSE;
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
+        if (!avifJPEGRead(image, inputFilenames[0], requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
         sourceDepth = 8;
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth, &sourceDepth)) {
+        if (!avifPNGRead(image, inputFilenames[0], requestedFormat, requestedDepth, &sourceDepth)) {
             returnCode = 1;
             goto cleanup;
         }
     } else {
-        fprintf(stderr, "Unrecognized file extension: %s\n", inputFilename);
+        fprintf(stderr, "Unrecognized file extension: %s\n", inputFilenames[0]);
         returnCode = 1;
         goto cleanup;
     }
-    printf("Successfully loaded: %s\n", inputFilename);
+    printf("Successfully loaded: %s\n", inputFilenames[0]);
 
     if (ignoreICC) {
-        avifImageSetProfileICC(avif, NULL, 0);
+        avifImageSetProfileICC(image, NULL, 0);
     }
 
     if (paspCount == 2) {
-        avif->transformFlags |= AVIF_TRANSFORM_PASP;
-        avif->pasp.hSpacing = paspValues[0];
-        avif->pasp.vSpacing = paspValues[1];
+        image->transformFlags |= AVIF_TRANSFORM_PASP;
+        image->pasp.hSpacing = paspValues[0];
+        image->pasp.vSpacing = paspValues[1];
     }
     if (clapCount == 8) {
-        avif->transformFlags |= AVIF_TRANSFORM_CLAP;
-        avif->clap.widthN = clapValues[0];
-        avif->clap.widthD = clapValues[1];
-        avif->clap.heightN = clapValues[2];
-        avif->clap.heightD = clapValues[3];
-        avif->clap.horizOffN = clapValues[4];
-        avif->clap.horizOffD = clapValues[5];
-        avif->clap.vertOffN = clapValues[6];
-        avif->clap.vertOffD = clapValues[7];
+        image->transformFlags |= AVIF_TRANSFORM_CLAP;
+        image->clap.widthN = clapValues[0];
+        image->clap.widthD = clapValues[1];
+        image->clap.heightN = clapValues[2];
+        image->clap.heightD = clapValues[3];
+        image->clap.horizOffN = clapValues[4];
+        image->clap.horizOffD = clapValues[5];
+        image->clap.vertOffN = clapValues[6];
+        image->clap.vertOffD = clapValues[7];
     }
     if (irotAngle != 0xff) {
-        avif->transformFlags |= AVIF_TRANSFORM_IROT;
-        avif->irot.angle = irotAngle;
+        image->transformFlags |= AVIF_TRANSFORM_IROT;
+        image->irot.angle = irotAngle;
     }
     if (imirAxis != 0xff) {
-        avif->transformFlags |= AVIF_TRANSFORM_IMIR;
-        avif->imir.axis = imirAxis;
+        image->transformFlags |= AVIF_TRANSFORM_IMIR;
+        image->imir.axis = imirAxis;
     }
 
     avifBool usingAOM = AVIF_FALSE;
@@ -420,13 +448,13 @@ int main(int argc, char * argv[])
     if (codecName && !strcmp(codecName, "aom")) {
         usingAOM = AVIF_TRUE;
     }
-    avifBool hasAlpha = (avif->alphaPlane && avif->alphaRowBytes);
+    avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
     avifBool losslessColorQP = (minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS);
     avifBool losslessAlphaQP = (minQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS);
-    avifBool depthMatches = (sourceDepth == avif->depth);
-    avifBool using444 = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
-    avifBool usingFullRange = (avif->yuvRange == AVIF_RANGE_FULL);
-    avifBool usingIdentityMatrix = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY);
+    avifBool depthMatches = (sourceDepth == image->depth);
+    avifBool using444 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
+    avifBool usingFullRange = (image->yuvRange == AVIF_RANGE_FULL);
+    avifBool usingIdentityMatrix = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY);
 
     // Guess if the enduser is asking for lossless and enable it so that warnings can be emitted
     if (!lossless && losslessColorQP && (!hasAlpha || losslessAlphaQP)) {
@@ -460,7 +488,7 @@ int main(int argc, char * argv[])
             fprintf(stderr,
                     "WARNING: [--lossless] Input depth (%d) does not match output depth (%d). Output might not be lossless.\n",
                     sourceDepth,
-                    avif->depth);
+                    image->depth);
             lossless = AVIF_FALSE;
         }
 
@@ -487,7 +515,7 @@ int main(int argc, char * argv[])
         lossyHint = " (Lossless)";
     }
     printf("AVIF to be written:%s\n", lossyHint);
-    avifImageDump(avif);
+    avifImageDump(image);
 
     printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
@@ -509,9 +537,109 @@ int main(int argc, char * argv[])
     encoder->maxQuantizerAlpha = maxQuantizerAlpha;
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
-    avifResult encodeResult = avifEncoderWrite(encoder, avif, &raw);
-    if (encodeResult != AVIF_RESULT_OK) {
-        fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(encodeResult));
+    encoder->timescale = (uint64_t)timescale;
+
+    uint32_t firstDurationInTimescales = 1; // TODO: allow arbitrary per-frame durations
+    if (inputFilenamesCount > 1) {
+        printf(" * Encoding frame 1 [%u/%d ts]: %s\n", firstDurationInTimescales, timescale, inputFilenames[0]);
+    }
+    avifResult addImageResult = avifEncoderAddImage(encoder, image, 1);
+    if (addImageResult != AVIF_RESULT_OK) {
+        fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
+        goto cleanup;
+    }
+
+    if (inputFilenamesCount > 1) {
+        for (int nextImageIndex = 1; nextImageIndex < inputFilenamesCount; ++nextImageIndex) {
+            const char * nextImageFilename = inputFilenames[nextImageIndex];
+            uint32_t nextDurationInTimescales = 1; // TODO: allow arbitrary per-frame durations
+
+            printf(" * Encoding frame %d [%u/%d ts]: %s\n", nextImageIndex + 1, firstDurationInTimescales, timescale, nextImageFilename);
+
+            avifAppFileFormat nextInputFormat = avifGuessFileFormat(nextImageFilename);
+            if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+                fprintf(stderr, "Cannot determine input file extension: %s\n", nextImageFilename);
+                returnCode = 1;
+                goto cleanup;
+            }
+
+            nextImage = avifImageCreateEmpty();
+            nextImage->colorPrimaries = image->colorPrimaries;
+            nextImage->transferCharacteristics = image->transferCharacteristics;
+            nextImage->matrixCoefficients = image->matrixCoefficients;
+            nextImage->yuvRange = image->yuvRange;
+
+            if (nextInputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
+                if (!y4mRead(nextImage, nextImageFilename)) {
+                    returnCode = 1;
+                    goto cleanup;
+                }
+            } else if (nextInputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
+                if (!avifJPEGRead(nextImage, nextImageFilename, requestedFormat, requestedDepth)) {
+                    returnCode = 1;
+                    goto cleanup;
+                }
+                sourceDepth = 8;
+            } else if (nextInputFormat == AVIF_APP_FILE_FORMAT_PNG) {
+                if (!avifPNGRead(nextImage, nextImageFilename, requestedFormat, requestedDepth, &sourceDepth)) {
+                    returnCode = 1;
+                    goto cleanup;
+                }
+            } else {
+                fprintf(stderr, "Unrecognized file extension: %s\n", nextImageFilename);
+                returnCode = 1;
+                goto cleanup;
+            }
+
+            // Verify that this frame's properties matches the first frame's properties
+            if ((image->width != nextImage->width) || (image->height != nextImage->height)) {
+                fprintf(stderr,
+                        "ERROR: Image sequence dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
+                        image->width,
+                        image->height,
+                        nextImage->width,
+                        nextImage->height,
+                        nextImageFilename);
+                goto cleanup;
+            }
+            if (image->depth != nextImage->depth) {
+                fprintf(stderr, "ERROR: Image sequence depth mismatch, [%u] vs [%u]: %s\n", image->depth, nextImage->depth, nextImageFilename);
+                goto cleanup;
+            }
+            if ((image->colorPrimaries != nextImage->colorPrimaries) ||
+                (image->transferCharacteristics != nextImage->transferCharacteristics) ||
+                (image->matrixCoefficients != nextImage->matrixCoefficients)) {
+                fprintf(stderr,
+                        "ERROR: Image sequence CICP mismatch, [%u/%u/%u] vs [%u/%u/%u]: %s\n",
+                        image->colorPrimaries,
+                        image->matrixCoefficients,
+                        image->transferCharacteristics,
+                        nextImage->colorPrimaries,
+                        nextImage->transferCharacteristics,
+                        nextImage->matrixCoefficients,
+                        nextImageFilename);
+                goto cleanup;
+            }
+            if (image->yuvRange != nextImage->yuvRange) {
+                fprintf(stderr,
+                        "ERROR: Image sequence range mismatch, [%s] vs [%s]: %s\n",
+                        (image->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                        (nextImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                        nextImageFilename);
+                goto cleanup;
+            }
+
+            avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales);
+            if (nextImageResult != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
+                goto cleanup;
+            }
+        }
+    }
+
+    avifResult finishResult = avifEncoderFinish(encoder, &raw);
+    if (finishResult != AVIF_RESULT_OK) {
+        fprintf(stderr, "ERROR: Failed to finish encoding: %s\n", avifResultToString(finishResult));
         goto cleanup;
     }
 
@@ -535,7 +663,12 @@ cleanup:
     if (encoder) {
         avifEncoderDestroy(encoder);
     }
-    avifImageDestroy(avif);
+    if (image) {
+        avifImageDestroy(image);
+    }
+    if (nextImage) {
+        avifImageDestroy(nextImage);
+    }
     avifRWDataFree(&raw);
     return returnCode;
 }
