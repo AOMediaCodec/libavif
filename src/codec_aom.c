@@ -410,17 +410,26 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, const avifImage * image, 
 
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output)
 {
-    // flush encoder
-    aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0);
-
-    aom_codec_iter_t iter = NULL;
     for (;;) {
-        const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&codec->internal->encoder, &iter);
-        if (pkt == NULL) {
-            break;
+        // flush encoder
+        aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0);
+
+        avifBool gotPacket = AVIF_FALSE;
+        aom_codec_iter_t iter = NULL;
+        for (;;) {
+            const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&codec->internal->encoder, &iter);
+            if (pkt == NULL) {
+                break;
+            }
+            if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
+                gotPacket = AVIF_TRUE;
+                avifCodecEncodeOutputAddSample(
+                    output, pkt->data.frame.buf, pkt->data.frame.sz, (pkt->data.frame.flags & AOM_FRAME_IS_KEY));
+            }
         }
-        if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
-            avifCodecEncodeOutputAddSample(output, pkt->data.frame.buf, pkt->data.frame.sz, (pkt->data.frame.flags & AOM_FRAME_IS_KEY));
+
+        if (!gotPacket) {
+            break;
         }
     }
     return AVIF_TRUE;
