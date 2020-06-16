@@ -538,6 +538,7 @@ int main(int argc, char * argv[])
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
     encoder->timescale = (uint64_t)timescale;
+    encoder->singleImage = (inputFilenamesCount == 1);
 
     uint32_t firstDurationInTimescales = 1; // TODO: allow arbitrary per-frame durations
     if (inputFilenamesCount > 1) {

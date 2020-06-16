@@ -177,6 +177,7 @@ avifEncoder * avifEncoderCreate(void)
     encoder->speed = AVIF_SPEED_DEFAULT;
     encoder->data = avifEncoderDataCreate();
     encoder->timescale = 1;
+    encoder->singleImage = AVIF_FALSE;
     return encoder;
 }
 
@@ -950,6 +951,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
 {
+    encoder->singleImage = AVIF_TRUE;
     avifResult addImageResult = avifEncoderAddImage(encoder, image, 1);
     if (addImageResult != AVIF_RESULT_OK) {
         return addImageResult;

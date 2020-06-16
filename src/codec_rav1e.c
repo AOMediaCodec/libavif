@@ -76,8 +76,10 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec, const avifImage * image
             goto cleanup;
         }
 
-        if (rav1e_config_parse(rav1eConfig, "still_picture", "true") == -1) {
-            goto cleanup;
+        if (encoder->singleImage) {
+            if (rav1e_config_parse(rav1eConfig, "still_picture", "true") == -1) {
+                goto cleanup;
+            }
         }
         if (rav1e_config_parse_int(rav1eConfig, "width", image->width) == -1) {
             goto cleanup;
@@ -180,22 +182,31 @@ cleanup:
 
 static avifBool rav1eCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output)
 {
-    RaEncoderStatus encoderStatus = rav1e_send_frame(codec->internal->rav1eContext, NULL); // flush
-    if (encoderStatus != 0) {
-        return AVIF_FALSE;
-    }
-
-    RaPacket * pkt = NULL;
     for (;;) {
-        encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
-        if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_LIMIT_REACHED) && (encoderStatus != RA_ENCODER_STATUS_ENCODED)) {
+        RaEncoderStatus encoderStatus = rav1e_send_frame(codec->internal->rav1eContext, NULL); // flush
+        if (encoderStatus != 0) {
             return AVIF_FALSE;
         }
-        if (pkt && pkt->data && (pkt->len > 0)) {
-            avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
-            rav1e_packet_unref(pkt);
-            pkt = NULL;
-        } else {
+
+        avifBool gotPacket = AVIF_FALSE;
+        RaPacket * pkt = NULL;
+        for (;;) {
+            encoderStatus = rav1e_receive_packet(codec->internal->rav1eContext, &pkt);
+            if ((encoderStatus != 0) && (encoderStatus != RA_ENCODER_STATUS_LIMIT_REACHED) &&
+                (encoderStatus != RA_ENCODER_STATUS_ENCODED)) {
+                return AVIF_FALSE;
+            }
+            if (pkt && pkt->data && (pkt->len > 0)) {
+                gotPacket = AVIF_TRUE;
+                avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
+                rav1e_packet_unref(pkt);
+                pkt = NULL;
+            } else {
+                break;
+            }
+        }
+
+        if (!gotPacket) {
             break;
         }
     }

@@ -651,7 +651,10 @@ typedef struct avifEncoder
     int tileRowsLog2;
     int tileColsLog2;
     int speed;
-    uint64_t timescale; // timescale of the media (Hz)
+    uint64_t timescale;   // timescale of the media (Hz)
+    avifBool singleImage; // Set to true when encoding a single image. Signals "still_picture" to AV1 encoders, which
+                          // tweaks various compression rules. This is enabled automatically when using the
+                          // avifEncoderWrite() single-image encode path.
 
     // stats from the most recent write
     avifIOStats ioStats;
