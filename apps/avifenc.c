@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define KEYFRAME_INTERVAL_DEFAULT 8 // A reasonable (but arbitrary) default
-
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
         fprintf(stderr, "%s requires an argument.", arg);             \
@@ -58,8 +56,7 @@ static void syntax(void)
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second\n");
-    printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable. Default: %d\n",
-           KEYFRAME_INTERVAL_DEFAULT);
+    printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
@@ -169,7 +166,7 @@ int main(int argc, char * argv[])
     avifImage * nextImage = NULL;
     avifRWData raw = AVIF_DATA_EMPTY;
     int timescale = 1; // 1 fps by default
-    int keyframeInterval = KEYFRAME_INTERVAL_DEFAULT;
+    int keyframeInterval = 0;
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT709
