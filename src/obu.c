@@ -100,10 +100,10 @@ static uint32_t avifBitsReadUleb128(avifBits * bits)
 
     do {
         more = avifBitsRead(bits, 1);
-        uint32_t numBits = avifBitsRead(bits, 7);
-        if (i <= 3 || (i == 4 && numBits < (1 << 4)))
-            val |= numBits << (i * 7);
-        else if (numBits) {
+        uint32_t sevenBits = avifBitsRead(bits, 7);
+        if (i <= 3 || (i == 4 && sevenBits < (1 << 4)))
+            val |= sevenBits << (i * 7);
+        else if (sevenBits) {
             bits->error = 1;
             return 0;
         }
@@ -118,11 +118,11 @@ static uint32_t avifBitsReadUleb128(avifBits * bits)
 
 static uint32_t avifBitsReadVLC(avifBits * const bits)
 {
-    int sevenBits = 0;
+    int numBits = 0;
     while (!avifBitsRead(bits, 1))
-        if (++sevenBits == 32)
+        if (++numBits == 32)
             return 0xFFFFFFFFU;
-    return sevenBits ? ((1U << sevenBits) - 1) + avifBitsRead(bits, sevenBits) : 0;
+    return numBits ? ((1U << numBits) - 1) + avifBitsRead(bits, numBits) : 0;
 }
 
 // ---------------------------------------------------------------------------
