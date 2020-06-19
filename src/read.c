@@ -2349,11 +2349,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
         decoder->image->yuvChromaSamplePosition = (avifChromaSamplePosition)av1CProp->u.av1C.chromaSamplePosition;
     } else {
-        // I believe this path is very, very unlikely. An av1C box should be mandatory
-        // in all valid AVIF configurations.
-        decoder->image->depth = 0;
-        decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-        decoder->image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        // An av1C box is mandatory in all valid AVIF configurations. Bail out.
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
     return avifDecoderFlush(decoder);
