@@ -15,7 +15,7 @@
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
         fprintf(stderr, "%s requires an argument.", arg);             \
-        return 1;                                                     \
+        goto cleanup;                                                 \
     }                                                                 \
     arg = argv[++argIndex]
 
