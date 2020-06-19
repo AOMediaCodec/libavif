@@ -681,5 +681,6 @@ cleanup:
         avifImageDestroy(nextImage);
     }
     avifRWDataFree(&raw);
+    free((void *)inputFilenames);
     return returnCode;
 }
