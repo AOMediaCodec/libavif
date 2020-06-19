@@ -155,12 +155,7 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t pl
         avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
         int uvHeight = (dstImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
         for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-            int planeHeight = dstImage->height;
-            if (yuvPlane == AVIF_CHAN_U) {
-                planeHeight = uvHeight;
-            } else if (yuvPlane == AVIF_CHAN_V) {
-                planeHeight = uvHeight;
-            }
+            int planeHeight = (yuvPlane == AVIF_CHAN_Y) ? dstImage->height : uvHeight;
 
             if (!srcImage->yuvRowBytes[yuvPlane]) {
                 // plane is absent. If we're copying from a source without
