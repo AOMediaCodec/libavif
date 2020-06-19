@@ -121,11 +121,6 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
             case AOM_IMG_FMT_I44416:
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
                 break;
-            case AOM_IMG_FMT_YV12:
-            case AOM_IMG_FMT_AOMYV12:
-            case AOM_IMG_FMT_YV1216:
-                yuvFormat = AVIF_PIXEL_FORMAT_YV12;
-                break;
             case AOM_IMG_FMT_NONE:
             default:
                 break;
@@ -159,14 +154,8 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
-            int aomPlaneIndex = yuvPlane;
-            if (yuvPlane == AVIF_CHAN_U) {
-                aomPlaneIndex = formatInfo.aomIndexU;
-            } else if (yuvPlane == AVIF_CHAN_V) {
-                aomPlaneIndex = formatInfo.aomIndexV;
-            }
-            image->yuvPlanes[yuvPlane] = codec->internal->image->planes[aomPlaneIndex];
-            image->yuvRowBytes[yuvPlane] = codec->internal->image->stride[aomPlaneIndex];
+            image->yuvPlanes[yuvPlane] = codec->internal->image->planes[yuvPlane];
+            image->yuvRowBytes[yuvPlane] = codec->internal->image->stride[yuvPlane];
         }
         image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
@@ -218,10 +207,6 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
                 fmt = AOM_IMG_FMT_I420;
                 *yShift = 1;
                 break;
-            case AVIF_PIXEL_FORMAT_YV12:
-                fmt = AOM_IMG_FMT_YV12;
-                *yShift = 1;
-                break;
             case AVIF_PIXEL_FORMAT_NONE:
             default:
                 return AOM_IMG_FMT_NONE;
@@ -236,8 +221,8 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
 }
 
 static avifBool aomCodecEncodeImage(avifCodec * codec,
-                                    const avifImage * image,
                                     avifEncoder * encoder,
+                                    const avifImage * image,
                                     avifBool alpha,
                                     uint32_t addImageFlags,
                                     avifCodecEncodeOutput * output)
@@ -372,19 +357,16 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
             aomImage->monochrome = 1;
         }
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
-            int aomPlaneIndex = yuvPlane;
             int planeHeight = image->height;
             if (yuvPlane == AVIF_CHAN_U) {
-                aomPlaneIndex = codec->internal->formatInfo.aomIndexU;
                 planeHeight = uvHeight;
             } else if (yuvPlane == AVIF_CHAN_V) {
-                aomPlaneIndex = codec->internal->formatInfo.aomIndexV;
                 planeHeight = uvHeight;
             }
 
             for (int j = 0; j < planeHeight; ++j) {
                 uint8_t * srcRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
-                uint8_t * dstRow = &aomImage->planes[aomPlaneIndex][j * aomImage->stride[aomPlaneIndex]];
+                uint8_t * dstRow = &aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
                 memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
             }
         }

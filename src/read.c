@@ -2003,7 +2003,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     decoder->image = avifImageCreateEmpty();
     data->cicpSet = AVIF_FALSE;
 
-    memset(&decoder->av1C, 0, sizeof(decoder->av1C));
     memset(&decoder->ioStats, 0, sizeof(decoder->ioStats));
 
     // -----------------------------------------------------------------------
@@ -2335,28 +2334,26 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     const avifProperty * av1CProp = avifPropertyArrayFind(colorProperties, "av1C");
     if (av1CProp) {
-        memcpy(&decoder->av1C, &av1CProp->u.av1C, sizeof(decoder->av1C));
-
-        decoder->image->depth = avifCodecConfigurationBoxGetDepth(&decoder->av1C);
-        if (decoder->av1C.monochrome) {
+        decoder->image->depth = avifCodecConfigurationBoxGetDepth(&av1CProp->u.av1C);
+        if (av1CProp->u.av1C.monochrome) {
             decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         } else {
-            if (decoder->av1C.chromaSubsamplingX && decoder->av1C.chromaSubsamplingY) {
+            if (av1CProp->u.av1C.chromaSubsamplingX && av1CProp->u.av1C.chromaSubsamplingY) {
                 decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
-            } else if (decoder->av1C.chromaSubsamplingX) {
+            } else if (av1CProp->u.av1C.chromaSubsamplingX) {
                 decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
 
             } else {
                 decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
             }
         }
-        decoder->image->yuvSamplePosition = (avifChromaSamplePosition)decoder->av1C.chromaSamplePosition;
+        decoder->image->yuvChromaSamplePosition = (avifChromaSamplePosition)av1CProp->u.av1C.chromaSamplePosition;
     } else {
         // I believe this path is very, very unlikely. An av1C box should be mandatory
         // in all valid AVIF configurations.
         decoder->image->depth = 0;
         decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-        decoder->image->yuvSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        decoder->image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     }
 
     return avifDecoderFlush(decoder);

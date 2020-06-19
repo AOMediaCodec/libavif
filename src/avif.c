@@ -25,8 +25,6 @@ const char * avifPixelFormatToString(avifPixelFormat format)
             return "YUV422";
         case AVIF_PIXEL_FORMAT_YUV400:
             return "YUV400";
-        case AVIF_PIXEL_FORMAT_YV12:
-            return "YV12";
         case AVIF_PIXEL_FORMAT_NONE:
         default:
             break;
@@ -37,8 +35,6 @@ const char * avifPixelFormatToString(avifPixelFormat format)
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 {
     memset(info, 0, sizeof(avifPixelFormatInfo));
-    info->aomIndexU = 1;
-    info->aomIndexV = 2;
 
     switch (format) {
         case AVIF_PIXEL_FORMAT_YUV444:
@@ -60,13 +56,6 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
             info->chromaShiftX = 1; // ignored, but some codecs might use 420 for mono
             info->chromaShiftY = 1; // ignored, but some codecs might use 420 for mono
             info->monochrome = AVIF_TRUE;
-            break;
-
-        case AVIF_PIXEL_FORMAT_YV12:
-            info->chromaShiftX = 1;
-            info->chromaShiftY = 1;
-            info->aomIndexU = 2;
-            info->aomIndexV = 1;
             break;
 
         case AVIF_PIXEL_FORMAT_NONE:
@@ -141,7 +130,7 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t pl
     dstImage->depth = srcImage->depth;
     dstImage->yuvFormat = srcImage->yuvFormat;
     dstImage->yuvRange = srcImage->yuvRange;
-    dstImage->yuvSamplePosition = srcImage->yuvSamplePosition;
+    dstImage->yuvChromaSamplePosition = srcImage->yuvChromaSamplePosition;
     dstImage->alphaRange = srcImage->alphaRange;
 
     dstImage->colorPrimaries = srcImage->colorPrimaries;
@@ -166,27 +155,24 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t pl
         avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
         int uvHeight = (dstImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
         for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-            int aomPlaneIndex = yuvPlane;
             int planeHeight = dstImage->height;
             if (yuvPlane == AVIF_CHAN_U) {
-                aomPlaneIndex = formatInfo.aomIndexU;
                 planeHeight = uvHeight;
             } else if (yuvPlane == AVIF_CHAN_V) {
-                aomPlaneIndex = formatInfo.aomIndexV;
                 planeHeight = uvHeight;
             }
 
-            if (!srcImage->yuvRowBytes[aomPlaneIndex]) {
+            if (!srcImage->yuvRowBytes[yuvPlane]) {
                 // plane is absent. If we're copying from a source without
                 // them, mimic the source image's state by removing our copy.
-                avifFree(dstImage->yuvPlanes[aomPlaneIndex]);
-                dstImage->yuvPlanes[aomPlaneIndex] = NULL;
-                dstImage->yuvRowBytes[aomPlaneIndex] = 0;
+                avifFree(dstImage->yuvPlanes[yuvPlane]);
+                dstImage->yuvPlanes[yuvPlane] = NULL;
+                dstImage->yuvRowBytes[yuvPlane] = 0;
                 continue;
             }
 
             for (int j = 0; j < planeHeight; ++j) {
-                uint8_t * srcRow = &srcImage->yuvPlanes[aomPlaneIndex][j * srcImage->yuvRowBytes[aomPlaneIndex]];
+                uint8_t * srcRow = &srcImage->yuvPlanes[yuvPlane][j * srcImage->yuvRowBytes[yuvPlane]];
                 uint8_t * dstRow = &dstImage->yuvPlanes[yuvPlane][j * dstImage->yuvRowBytes[yuvPlane]];
                 memcpy(dstRow, srcRow, dstImage->yuvRowBytes[yuvPlane]);
             }
@@ -315,7 +301,7 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
 
         dstImage->yuvFormat = srcImage->yuvFormat;
         dstImage->yuvRange = srcImage->yuvRange;
-        dstImage->yuvSamplePosition = srcImage->yuvSamplePosition;
+        dstImage->yuvChromaSamplePosition = srcImage->yuvChromaSamplePosition;
         dstImage->imageOwnsYUVPlanes = srcImage->imageOwnsYUVPlanes;
         srcImage->imageOwnsYUVPlanes = AVIF_FALSE;
     }

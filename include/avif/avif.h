@@ -48,7 +48,7 @@ enum avifChannelIndex
     AVIF_CHAN_G = 1,
     AVIF_CHAN_B = 2,
 
-    // yuvPlanes - These are always correct, even if UV is flipped when encoded (YV12)
+    // yuvPlanes
     AVIF_CHAN_Y = 0,
     AVIF_CHAN_U = 1,
     AVIF_CHAN_V = 2
@@ -131,18 +131,15 @@ typedef enum avifPixelFormat
     AVIF_PIXEL_FORMAT_YUV444,
     AVIF_PIXEL_FORMAT_YUV422,
     AVIF_PIXEL_FORMAT_YUV420,
-    AVIF_PIXEL_FORMAT_YUV400,
-    AVIF_PIXEL_FORMAT_YV12
+    AVIF_PIXEL_FORMAT_YUV400
 } avifPixelFormat;
 const char * avifPixelFormatToString(avifPixelFormat format);
 
 typedef struct avifPixelFormatInfo
 {
+    avifBool monochrome;
     int chromaShiftX;
     int chromaShiftY;
-    int aomIndexU; // maps U plane to AOM-side plane index
-    int aomIndexV; // maps V plane to AOM-side plane index
-    avifBool monochrome;
 } avifPixelFormatInfo;
 
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
@@ -306,7 +303,7 @@ typedef struct avifImage
 
     avifPixelFormat yuvFormat;
     avifRange yuvRange;
-    avifChromaSamplePosition yuvSamplePosition;
+    avifChromaSamplePosition yuvChromaSamplePosition;
     uint8_t * yuvPlanes[AVIF_PLANE_COUNT_YUV];
     uint32_t yuvRowBytes[AVIF_PLANE_COUNT_YUV];
     avifBool imageOwnsYUVPlanes;
@@ -569,11 +566,8 @@ typedef struct avifDecoder
 
     // This is true when avifDecoderParse() detects an alpha plane. Use this to find out if alpha is
     // present after a successful call to avifDecoderParse(), but prior to any call to
-    // avifDecoderNextImage(), as decoder->image->alphaPlane won't exist yet.
+    // avifDecoderNextImage() or avifDecoderNthImage(), as decoder->image->alphaPlane won't exist yet.
     avifBool alphaPresent;
-
-    // The av1C box from the AVIF container. Valid after avifDecoderParse().
-    avifCodecConfigurationBox av1C;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
@@ -619,7 +613,7 @@ avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
 
 // Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
-// This function may be be used after a successful call to avifDecoderParse().
+// This function may be used after a successful call to avifDecoderParse().
 avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
 
 // ---------------------------------------------------------------------------

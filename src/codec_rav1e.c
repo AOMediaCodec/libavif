@@ -32,8 +32,8 @@ static avifBool rav1eCodecOpen(struct avifCodec * codec, uint32_t firstSampleInd
 }
 
 static avifBool rav1eCodecEncodeImage(avifCodec * codec,
-                                      const avifImage * image,
                                       avifEncoder * encoder,
+                                      const avifImage * image,
                                       avifBool alpha,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
@@ -66,7 +66,6 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
                     codec->internal->chromaSampling = RA_CHROMA_SAMPLING_CS400;
                     codec->internal->yShift = 1;
                     break;
-                case AVIF_PIXEL_FORMAT_YV12:
                 case AVIF_PIXEL_FORMAT_NONE:
                 default:
                     return AVIF_FALSE;

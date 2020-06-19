@@ -130,11 +130,11 @@ struct avifCodecInternal;
 
 typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, uint32_t firstSampleIndex);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
-// EncodeImage and EncodeFinish are not required to always emit an OBU, but when all images are
-// encoded and Finish is called, the number of OBUs emitted must match the number of submitted frames.
+// EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
+// encoded and Finish is called, the number of samples emitted must match the number of submitted frames.
 typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
-                                             const avifImage * image,
                                              avifEncoder * encoder,
+                                             const avifImage * image,
                                              avifBool alpha,
                                              uint32_t addImageFlags,
                                              avifCodecEncodeOutput * output);
@@ -231,13 +231,15 @@ typedef struct avifSequenceHeader
 {
     uint32_t maxWidth;
     uint32_t maxHeight;
+    uint32_t bitDepth;
     avifPixelFormat yuvFormat;
+    avifChromaSamplePosition chromaSamplePosition;
     avifColorPrimaries colorPrimaries;
     avifTransferCharacteristics transferCharacteristics;
     avifMatrixCoefficients matrixCoefficients;
     avifRange range;
 } avifSequenceHeader;
-avifBool avifSequenceHeaderParse(avifSequenceHeader * header, avifROData * const sample);
+avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
 
 #ifdef __cplusplus
 } // extern "C"

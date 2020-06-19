@@ -118,11 +118,11 @@ static uint32_t avifBitsReadUleb128(avifBits * bits)
 
 static uint32_t avifBitsReadVLC(avifBits * const bits)
 {
-    int numBits = 0;
+    int sevenBits = 0;
     while (!avifBitsRead(bits, 1))
-        if (++numBits == 32)
+        if (++sevenBits == 32)
             return 0xFFFFFFFFU;
-    return numBits ? ((1U << numBits) - 1) + avifBitsRead(bits, numBits) : 0;
+    return sevenBits ? ((1U << sevenBits) - 1) + avifBitsRead(bits, sevenBits) : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,14 +208,10 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     avifBitsRead(bits, 3); // use_128x128_superblock, enable_filter_intra, enable_intra_edge_filter
 
     if (!reduced_still_picture_header) {
-        avifBitsRead(bits, 1); // enable_interintra_compound
-        avifBitsRead(bits, 1); // enable_masked_compound
-        avifBitsRead(bits, 1); // enable_warped_motion
-        avifBitsRead(bits, 1); // enable_dual_filter
+        avifBitsRead(bits, 4); // enable_interintra_compound, enable_masked_compound, enable_warped_motion, enable_dual_filter
         uint32_t enable_order_hint = avifBitsRead(bits, 1);
         if (enable_order_hint) {
-            avifBitsRead(bits, 1); // enable_jnt_comp
-            avifBitsRead(bits, 1); // enable_ref_frame_mvs
+            avifBitsRead(bits, 2); // enable_jnt_comp, enable_ref_frame_mvs
         }
 
         uint32_t seq_force_screen_content_tools = 0;
@@ -239,13 +235,14 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     avifBitsRead(bits, 3); // enable_superres, enable_cdef, enable_restoration
 
     // color_config()
-    uint32_t bitDepth = 8;
+    header->bitDepth = 8;
+    header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     uint32_t high_bitdepth = avifBitsRead(bits, 1);
     if ((seq_profile == 2) && high_bitdepth) {
         uint32_t twelve_bit = avifBitsRead(bits, 1);
-        bitDepth = twelve_bit ? 12 : 10;
-    } else if (seq_profile <= 2) {
-        bitDepth = high_bitdepth ? 10 : 8;
+        header->bitDepth = twelve_bit ? 12 : 10;
+    } else /* if (seq_profile <= 2) */ {
+        header->bitDepth = high_bitdepth ? 10 : 8;
     }
     uint32_t mono_chrome = 0;
     if (seq_profile != 1) {
@@ -289,7 +286,7 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
                 header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
                 break;
             case 2:
-                if (bitDepth == 12) {
+                if (header->bitDepth == 12) {
                     subsampling_x = avifBitsRead(bits, 1);
                     if (subsampling_x) {
                         subsampling_y = avifBitsRead(bits, 1);
@@ -305,26 +302,23 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
                 }
                 break;
         }
+
+        if (subsampling_x && subsampling_y) {
+            header->chromaSamplePosition = (avifChromaSamplePosition)avifBitsRead(bits, 2); // chroma_sample_position
+        }
     }
 
-    if (subsampling_x && subsampling_y) {
-        avifBitsRead(bits, 2); // chroma_sample_position
-    }
     if (!mono_chrome) {
         avifBitsRead(bits, 1); // separate_uv_delta_q
     }
     avifBitsRead(bits, 1); // film_grain_params_present
 
-    if (bits->error) {
-        return AVIF_FALSE;
-    }
-    return AVIF_TRUE;
+    return !bits->error;
 }
 
-avifBool avifSequenceHeaderParse(avifSequenceHeader * header, avifROData * const sample)
+avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
 {
-    avifROData obus;
-    memcpy(&obus, sample, sizeof(avifROData));
+    avifROData obus = *sample;
 
     // Find the sequence header OBU
     while (obus.size > 0) {
@@ -338,17 +332,15 @@ avifBool avifSequenceHeaderParse(avifSequenceHeader * header, avifROData * const
         const uint32_t obu_has_size_field = avifBitsRead(&bits, 1);
         avifBitsRead(&bits, 1); // obu_reserved_1bit
 
-        if (obu_extension_flag == 1) { // obu_extension_header()
-            avifBitsRead(&bits, 3);    // temporal_id
-            avifBitsRead(&bits, 2);    // spatial_id
-            avifBitsRead(&bits, 3);    // extension_header_reserved_3bits
+        if (obu_extension_flag) {   // obu_extension_header()
+            avifBitsRead(&bits, 8); // temporal_id, spatial_id, extension_header_reserved_3bits
         }
 
         uint32_t obu_size = 0;
         if (obu_has_size_field)
             obu_size = avifBitsReadUleb128(&bits);
         else
-            obu_size = (int)sample->size - 1 - obu_extension_flag;
+            obu_size = (int)obus.size - 1 - obu_extension_flag;
 
         if (bits.error) {
             return AVIF_FALSE;
@@ -356,7 +348,7 @@ avifBool avifSequenceHeaderParse(avifSequenceHeader * header, avifROData * const
 
         const uint32_t init_bit_pos = avifBitsReadPos(&bits);
         const uint32_t init_byte_pos = init_bit_pos >> 3;
-        if (obu_size > sample->size - init_byte_pos)
+        if (obu_size > obus.size - init_byte_pos)
             return AVIF_FALSE;
 
         if (obu_type == 1) { // Sequence Header

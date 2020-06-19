@@ -453,7 +453,7 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeImage(item->codec, image, encoder, item->alpha, addImageFlags, item->encodeOutput)) {
+            if (!item->codec->encodeImage(item->codec, encoder, image, item->alpha, addImageFlags, item->encodeOutput)) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
         }
@@ -1022,9 +1022,6 @@ static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool a
                 case AVIF_PIXEL_FORMAT_YUV400:
                     seqProfile = 0;
                     break;
-                case AVIF_PIXEL_FORMAT_YV12:
-                    seqProfile = 0;
-                    break;
                 case AVIF_PIXEL_FORMAT_NONE:
                 default:
                     break;
@@ -1048,7 +1045,7 @@ static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool a
     codec->configBox.monochrome = (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 0;
     codec->configBox.chromaSubsamplingX = (uint8_t)formatInfo.chromaShiftX;
     codec->configBox.chromaSubsamplingY = (uint8_t)formatInfo.chromaShiftY;
-    codec->configBox.chromaSamplePosition = image->yuvSamplePosition;
+    codec->configBox.chromaSamplePosition = image->yuvChromaSamplePosition;
 }
 
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)
