@@ -122,8 +122,11 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
                 break;
             case AOM_IMG_FMT_NONE:
+            case AOM_IMG_FMT_YV12:
+            case AOM_IMG_FMT_AOMYV12:
+            case AOM_IMG_FMT_YV1216:
             default:
-                break;
+                return AVIF_FALSE;
         }
         if (codec->internal->image->monochrome) {
             yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
