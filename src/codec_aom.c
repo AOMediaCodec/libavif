@@ -360,9 +360,9 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
             aomImage->monochrome = 1;
         }
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
-            int planeHeight = (yuvPlane == AVIF_CHAN_Y) ? image->height : uvHeight;
+            uint32_t planeHeight = (yuvPlane == AVIF_CHAN_Y) ? image->height : uvHeight;
 
-            for (int j = 0; j < planeHeight; ++j) {
+            for (uint32_t j = 0; j < planeHeight; ++j) {
                 uint8_t * srcRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
                 uint8_t * dstRow = &aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
                 memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
