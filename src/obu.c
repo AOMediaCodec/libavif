@@ -258,21 +258,21 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
         header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
         header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     }
-    uint32_t subsampling_x = 0;
-    uint32_t subsampling_y = 0;
     if (mono_chrome) {
         header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
-        subsampling_x = 1;
-        subsampling_y = 1;
+        // subsampling_x = 1;
+        // subsampling_y = 1;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
     } else if (header->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709 &&
                header->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
                header->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
         header->range = AVIF_RANGE_FULL;
-        subsampling_x = 0;
-        subsampling_y = 0;
+        // subsampling_x = 0;
+        // subsampling_y = 0;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
     } else {
+        uint32_t subsampling_x = 0;
+        uint32_t subsampling_y = 0;
         header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
         switch (seq_profile) {
             case 0:
