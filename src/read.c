@@ -751,7 +751,9 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     return AVIF_TRUE;
 }
 
-// If colorId == 0, accept any found EXIF/XMP metadata
+// If colorId == 0 (a sentinel value as item IDs must be nonzero), accept any found EXIF/XMP metadata. Passing in 0
+// is used when finding metadata in a meta box embedded in a trak box, as any items inside of a meta box that is
+// inside of a trak box is implicitly associated to the track.
 static avifBool avifDecoderDataFindMetadata(avifDecoderData * data, avifMeta * meta, avifImage * image, uint32_t colorId)
 {
     avifROData exifData = AVIF_DATA_EMPTY;
@@ -2059,6 +2061,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         // Find Exif and/or XMP metadata, if any
         if (colorTrack->meta) {
+            // See the comment above avifDecoderDataFindMetadata() for the explanation of using 0 here
             if (!avifDecoderDataFindMetadata(data, colorTrack->meta, decoder->image, 0)) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
