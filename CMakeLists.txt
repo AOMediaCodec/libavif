@@ -451,6 +451,8 @@ endif()
 
 # ---------------------------------------------------------------------------------------
 # Contrib modules, enhancing other software with AVIF support
+#
+# Note: Anything listed here is not officially supported by libavif.
 
 option(AVIF_BUILD_GDK_PIXBUF "Build a gdk-pixbuf loader" OFF)
 if(AVIF_BUILD_GDK_PIXBUF)
