@@ -260,15 +260,15 @@ avifBoxMarker avifRWStreamWriteFullBox(avifRWStream * stream, const char * type,
 
     makeRoom(stream, headerSize);
     memset(stream->raw->data + stream->offset, 0, headerSize);
+    uint32_t noSize = avifHTONL((uint32_t)(headerSize + contentSize));
+    memcpy(stream->raw->data + stream->offset, &noSize, sizeof(uint32_t));
+    memcpy(stream->raw->data + stream->offset + 4, type, 4);
     if (version != -1) {
         stream->raw->data[stream->offset + 8] = (uint8_t)version;
         stream->raw->data[stream->offset + 9] = (uint8_t)((flags >> 16) & 0xff);
         stream->raw->data[stream->offset + 10] = (uint8_t)((flags >> 8) & 0xff);
         stream->raw->data[stream->offset + 11] = (uint8_t)((flags >> 0) & 0xff);
     }
-    uint32_t noSize = avifNTOHL((uint32_t)(headerSize + contentSize));
-    memcpy(stream->raw->data + stream->offset, &noSize, sizeof(uint32_t));
-    memcpy(stream->raw->data + stream->offset + 4, type, 4);
     stream->offset += headerSize;
 
     return marker;
