@@ -53,8 +53,8 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
             break;
 
         case AVIF_PIXEL_FORMAT_YUV400:
-            info->chromaShiftX = 1; // ignored, but some codecs might use 420 for mono
-            info->chromaShiftY = 1; // ignored, but some codecs might use 420 for mono
+            info->chromaShiftX = 1;
+            info->chromaShiftY = 1;
             info->monochrome = AVIF_TRUE;
             break;
 
