@@ -39,6 +39,7 @@ struct avifCodecInternal
     aom_codec_ctx_t encoder;
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
+    avifBool monochromeEnabled;
 };
 
 static void aomCodecDestroyInternal(avifCodec * codec)
@@ -247,8 +248,10 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        int aomMajorVersion = aom_codec_version_major();
-        if ((aomMajorVersion < 2) && (image->depth > 8)) {
+        // aom_codec.h says: aom_codec_version() == (1<<16 | 2<<8 | 3)
+        static const int aomVersion_2_0_0 = (2 << 16);
+        const int aomVersion = aom_codec_version();
+        if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
             // Due to a known issue with libavif v1.0.0-errata1-avif, 10bpc and
             // 12bpc image encodes will call the wrong variant of
             // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
@@ -300,8 +303,20 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         cfg.rc_min_quantizer = minQuantizer;
         cfg.rc_max_quantizer = maxQuantizer;
 
-        if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
-            cfg.monochrome = 1;
+        codec->internal->monochromeEnabled = AVIF_FALSE;
+        if (aomVersion > aomVersion_2_0_0) {
+            // There exists a bug in libaom's chroma_check() function where it will attempt to
+            // access nonexistent UV planes when encoding monochrome at slower libavif "speeds". It
+            // was fixed shortly after the 2.0.0 libaom release, and the fix exists in both the
+            // master and applejack branches. This ensures that the next version *after* 2.0.0 will
+            // have the fix, and we must avoid cfg.monochrome until then.
+            //
+            // Bugfix Change-Id: https://aomedia-review.googlesource.com/q/I26a39791f820b4d4e1d63ff7141f594c3c7181f5
+
+            if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+                codec->internal->monochromeEnabled = AVIF_TRUE;
+                cfg.monochrome = 1;
+            }
         }
 
         aom_codec_flags_t encoderFlags = 0;
@@ -332,11 +347,12 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
     int yShift = codec->internal->formatInfo.chromaShiftY;
     uint32_t uvHeight = (image->height + yShift) >> yShift;
     aom_image_t * aomImage = aom_img_alloc(NULL, codec->internal->aomFormat, image->width, image->height, 16);
+    avifBool monochromeRequested = AVIF_FALSE;
 
     if (alpha) {
         aomImage->range = (image->alphaRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
-        aomImage->monochrome = 1;
+        monochromeRequested = AVIF_TRUE;
         for (uint32_t j = 0; j < image->height; ++j) {
             uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
             uint8_t * dstAlphaRow = &aomImage->planes[0][j * aomImage->stride[0]];
@@ -350,7 +366,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         int yuvPlaneCount = 3;
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             yuvPlaneCount = 1; // Ignore UV planes when monochrome
-            aomImage->monochrome = 1;
+            monochromeRequested = AVIF_TRUE;
         }
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             uint32_t planeHeight = (yuvPlane == AVIF_CHAN_Y) ? image->height : uvHeight;
@@ -368,6 +384,33 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, aomImage->cp);
         aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage->tc);
         aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage->mc);
+    }
+
+    if (monochromeRequested && !codec->internal->monochromeEnabled) {
+        // The user requested monochrome (via alpha or YUV400) but libaom cannot currently support
+        // monochrome (see chroma_check comment above). Manually set UV planes to 0.5.
+
+        // aomImage is always 420 when we're monochrome
+        uint32_t monoUVWidth = (image->width + 1) >> 1;
+        uint32_t monoUVHeight = (image->height + 1) >> 1;
+
+        for (int yuvPlane = 1; yuvPlane < 3; ++yuvPlane) {
+            if (image->depth > 8) {
+                const uint16_t half = (image->depth == 10) ? 512 : 2048;
+                for (uint32_t j = 0; j < monoUVHeight; ++j) {
+                    uint16_t * dstRow = (uint16_t *)&aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
+                    for (uint32_t i = 0; i < monoUVWidth; ++i) {
+                        dstRow[i] = half;
+                    }
+                }
+            } else {
+                const uint8_t half = 128;
+                for (uint32_t j = 0; j < monoUVHeight; ++j) {
+                    uint8_t * dstRow = &aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
+                    memset(dstRow, half, aomImage->stride[yuvPlane]);
+                }
+            }
+        }
     }
 
     aom_enc_frame_flags_t encodeFlags = 0;
