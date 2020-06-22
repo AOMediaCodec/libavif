@@ -39,7 +39,6 @@ struct avifCodecInternal
     aom_codec_ctx_t encoder;
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
-    int yShift;
 };
 
 static void aomCodecDestroyInternal(avifCodec * codec)
@@ -185,15 +184,12 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
     return AVIF_TRUE;
 }
 
-static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha, int * yShift)
+static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha)
 {
-    *yShift = 0;
-
     aom_img_fmt_t fmt;
     if (alpha) {
         // We're going monochrome, who cares about chroma quality
         fmt = AOM_IMG_FMT_I420;
-        *yShift = 1;
     } else {
         switch (image->yuvFormat) {
             case AVIF_PIXEL_FORMAT_YUV444:
@@ -203,12 +199,8 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
                 fmt = AOM_IMG_FMT_I422;
                 break;
             case AVIF_PIXEL_FORMAT_YUV420:
-                fmt = AOM_IMG_FMT_I420;
-                *yShift = 1;
-                break;
             case AVIF_PIXEL_FORMAT_YUV400:
                 fmt = AOM_IMG_FMT_I420;
-                *yShift = 1;
                 break;
             case AVIF_PIXEL_FORMAT_NONE:
             default:
@@ -276,7 +268,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha, &codec->internal->yShift);
+        codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
         if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
             return AVIF_FALSE;
         }
@@ -337,7 +329,8 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    uint32_t uvHeight = (image->height + codec->internal->yShift) >> codec->internal->yShift;
+    int yShift = codec->internal->formatInfo.chromaShiftY;
+    uint32_t uvHeight = (image->height + yShift) >> yShift;
     aom_image_t * aomImage = aom_img_alloc(NULL, codec->internal->aomFormat, image->width, image->height, 16);
 
     if (alpha) {
