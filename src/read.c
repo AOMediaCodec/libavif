@@ -122,7 +122,7 @@ static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * prop
 typedef struct avifDecoderItem
 {
     uint32_t id;
-    struct avifMeta * meta;
+    struct avifMeta * meta; // Unowned; A back-pointer for convenience
     uint8_t type[4];
     uint32_t offset;
     uint32_t size;
@@ -395,12 +395,46 @@ typedef struct avifTile
 } avifTile;
 AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
 
+// This holds one "meta" box (from the BMFF and HEIF standards) worth of relevant-to-AVIF information.
+// * If a meta box is parsed from the root level of the BMFF, it can contain the information about
+//   "items" which might be color planes, alpha planes, or EXIF or XMP metadata.
+// * If a meta box is parsed from inside of a track ("trak") box, any metadata (EXIF/XMP) items inside
+//   of that box are implicitly associated with that track.
 typedef struct avifMeta
 {
+    // Items (from HEIF) are the generic storage for any data that does not require timed processing
+    // (single image color planes, alpha planes, EXIF, XMP, etc). Each item a unique integer ID >1,
+    // and are defined by a series of child boxes in a meta box:
+    //  * iloc - location:     byte offset to item data, item size in bytes
+    //  * iinf - information:  type of item (color planes, alpha plane, EXIF, XMP)
+    //  * ipco - properties:   dimensions, aspect ratio, image transformations, references to other items
+    //  * ipma - associations: Attaches an item in the properties list to a given item
+    //
+    // Items are lazily created in this array when any of the above boxes refer to one by a new (unseen) ID,
+    // and are then further modified/updated as new information for an item's ID is parsed.
     avifDecoderItemArray items;
+
+    // Any ipco boxes explained above are populated into this array as a staging area, which are
+    // then duplicated into the appropriate items upon encountering an item property association
+    // (ipma) box.
     avifPropertyArray properties;
+
+    // Filled with the contents of "idat" boxes, which are raw data that an item can directly refer to in its
+    // item location box (iloc) instead of just giving an offset into the overall file. If all items' iloc boxes
+    // simply point at an offset/length in the file itself, this array will likely be empty.
     avifDecoderItemDataArray idats;
-    uint32_t itemDataID; // Ever-incrementing ID for uniquely identifying which 'meta' box contains an idat (when multiple meta boxes exist as BMFF siblings)
+
+    // Ever-incrementing ID for uniquely identifying which 'meta' box contains an idat (when
+    // multiple meta boxes exist as BMFF siblings) Each time avifParseMetaBox() is called on an
+    // avifMeta struct, this value is incremented. Any time an additional meta box is detected at
+    // the same "level" (root level, trak level, etc), this ID helps distinguish which meta box's
+    // "idat" are which, as items implicitly reference idat boxes that exist in the same meta
+    // box.
+    uint32_t idatID;
+
+    // Contents of a pitm box, which signal which of the items in this file is the main image. For
+    // AVIF, this should point at an av01 type item containing color planes, and all other items
+    // are ignored unless they refer to this item in some way (alpha plane, EXIF/XMP metadata).
     uint32_t primaryItemID;
 } avifMeta;
 
@@ -448,7 +482,7 @@ static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
 typedef struct avifDecoderData
 {
     avifFileType ftyp;
-    avifMeta * meta;
+    avifMeta * meta; // The root-level meta box
     avifTrackArray tracks;
     avifROData rawInput;
     avifTileArray tiles;
@@ -761,8 +795,8 @@ static avifBool avifDecoderDataFindMetadata(avifDecoderData * data, avifMeta * m
 
     for (uint32_t itemIndex = 0; itemIndex < meta->items.count; ++itemIndex) {
         avifDecoderItem * item = &meta->items.item[itemIndex];
-        if (!item->id || !item->size) {
-            break;
+        if (!item->size) {
+            continue;
         }
         if (item->hasUnsupportedEssentialProperty) {
             // An essential property isn't supported by libavif; ignore the item.
@@ -783,9 +817,7 @@ static avifBool avifDecoderDataFindMetadata(avifDecoderData * data, avifMeta * m
 
             exifData.data = avifROStreamCurrent(&exifBoxStream);
             exifData.size = avifROStreamRemainingBytes(&exifBoxStream);
-        }
-
-        if (!memcmp(item->type, "mime", 4) && !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
+        } else if (!memcmp(item->type, "mime", 4) && !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
             xmpData.data = avifDecoderDataCalcItemPtr(data, item);
             xmpData.size = item->size;
         }
@@ -867,7 +899,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
                 return AVIF_FALSE;
             }
             if (constructionMethod == 1) {
-                idatID = meta->itemDataID;
+                idatID = meta->idatID;
             }
         }
 
@@ -1232,18 +1264,16 @@ static avifBool avifParsePrimaryItemBox(avifMeta * meta, const uint8_t * raw, si
 
 static avifBool avifParseItemDataBox(avifMeta * meta, const uint8_t * raw, size_t rawLen)
 {
-    uint32_t idatID = meta->itemDataID;
-
     // Check to see if we've already seen an idat box for this meta box. If so, bail out
     for (uint32_t i = 0; i < meta->idats.count; ++i) {
-        if (meta->idats.idat[i].id == idatID) {
+        if (meta->idats.idat[i].id == meta->idatID) {
             return AVIF_FALSE;
         }
     }
 
     int index = avifArrayPushIndex(&meta->idats);
     avifDecoderItemData * idat = &meta->idats.idat[index];
-    idat->id = idatID;
+    idat->id = meta->idatID;
     idat->data.data = raw;
     idat->data.size = rawLen;
     return AVIF_TRUE;
@@ -1422,7 +1452,7 @@ static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t ra
 
     CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
-    ++meta->itemDataID; // for tracking idat
+    ++meta->idatID; // for tracking idat
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
@@ -2033,7 +2063,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!track->sampleTable) {
                 continue;
             }
-            if (!track->id) {
+            if (!track->id) { // trak box might be missing a tkhd box inside, skip it
                 continue;
             }
             if (!track->sampleTable->chunks.count) {
@@ -2136,8 +2166,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         // Find the colorOBU (primary) item
         for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
             avifDecoderItem * item = &data->meta->items.item[itemIndex];
-            if (!item->id || !item->size) {
-                break;
+            if (!item->size) {
+                continue;
             }
             if (item->hasUnsupportedEssentialProperty) {
                 // An essential property isn't supported by libavif; ignore the item.
@@ -2182,8 +2212,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         // Find the alphaOBU item, if any
         for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
             avifDecoderItem * item = &data->meta->items.item[itemIndex];
-            if (!item->id || !item->size) {
-                break;
+            if (!item->size) {
+                continue;
             }
             if (item->hasUnsupportedEssentialProperty) {
                 // An essential property isn't supported by libavif; ignore the item.
@@ -2405,12 +2435,15 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             decoder->image->depth = srcColor->depth;
         }
 
+#if 0
+        // This code is currently unnecessary as the CICP is always set by the end of avifDecoderParse().
         if (!decoder->data->cicpSet) {
             decoder->data->cicpSet = AVIF_TRUE;
             decoder->image->colorPrimaries = srcColor->colorPrimaries;
             decoder->image->transferCharacteristics = srcColor->transferCharacteristics;
             decoder->image->matrixCoefficients = srcColor->matrixCoefficients;
         }
+#endif
 
         avifImageStealPlanes(decoder->image, srcColor, AVIF_PLANES_YUV);
     }
