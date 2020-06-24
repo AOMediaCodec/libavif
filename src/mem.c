@@ -7,7 +7,11 @@
 
 void * avifAlloc(size_t size)
 {
-    return malloc(size);
+    void* out = malloc(size);
+    if (out == NULL) {
+        abort();
+    }
+    return out;
 }
 
 void avifFree(void * p)
