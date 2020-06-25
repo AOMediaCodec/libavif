@@ -288,6 +288,12 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         cfg.g_input_bit_depth = image->depth;
         cfg.g_w = image->width;
         cfg.g_h = image->height;
+        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+            // Set the maximum number of frames to encode to 1. This instructs
+            // libaom to set still_picture and reduced_still_picture_header to
+            // 1 in AV1 sequence headers.
+            cfg.g_limit = 1;
+        }
         if (encoder->maxThreads > 1) {
             cfg.g_threads = encoder->maxThreads;
         }
