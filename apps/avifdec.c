@@ -8,6 +8,7 @@
 #include "avifutil.h"
 #include "y4m.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,13 +25,82 @@
 static void syntax(void)
 {
     printf("Syntax: avifdec [options] input.avif output.[jpg|jpeg|png|y4m]\n");
+    printf("        avifdec --info    input.avif\n");
     printf("Options:\n");
     printf("    -h,--help         : Show syntax help\n");
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
+    printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("\n");
     avifPrintVersions();
+}
+
+static int info(const char * inputFilename)
+{
+    FILE * inputFile = fopen(inputFilename, "rb");
+    if (!inputFile) {
+        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+        return 1;
+    }
+    fseek(inputFile, 0, SEEK_END);
+    size_t inputFileSize = ftell(inputFile);
+    fseek(inputFile, 0, SEEK_SET);
+
+    if (inputFileSize < 1) {
+        fprintf(stderr, "File too small: %s\n", inputFilename);
+        fclose(inputFile);
+        return 1;
+    }
+
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWDataRealloc(&raw, inputFileSize);
+    if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
+        fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
+        fclose(inputFile);
+        avifRWDataFree(&raw);
+        return 1;
+    }
+
+    fclose(inputFile);
+    inputFile = NULL;
+
+    avifDecoder * decoder = avifDecoderCreate();
+    avifResult result = avifDecoderParse(decoder, (avifROData *)&raw);
+    if (result == AVIF_RESULT_OK) {
+        printf("Image decoded: %s\n", inputFilename);
+
+        int frameIndex = 0;
+        avifBool firstImage = AVIF_TRUE;
+        while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
+            if (firstImage) {
+                firstImage = AVIF_FALSE;
+                avifImageDump(decoder->image);
+
+                printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
+                       decoder->timescale,
+                       decoder->duration,
+                       decoder->durationInTimescales,
+                       decoder->imageCount,
+                       (decoder->imageCount == 1) ? "" : "s");
+                printf(" * Frames:\n");
+            }
+
+            printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
+                   frameIndex,
+                   decoder->imageTiming.pts,
+                   decoder->imageTiming.ptsInTimescales,
+                   decoder->imageTiming.duration,
+                   decoder->imageTiming.durationInTimescales);
+            ++frameIndex;
+        }
+    } else {
+        printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
+    }
+
+    avifRWDataFree(&raw);
+    avifDecoderDestroy(decoder);
+    return 0;
 }
 
 int main(int argc, char * argv[])
@@ -40,6 +110,7 @@ int main(int argc, char * argv[])
     int requestedDepth = 0;
     int jpegQuality = DEFAULT_JPEG_QUALITY;
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
+    avifBool infoOnly = AVIF_FALSE;
 
     if (argc < 2) {
         syntax();
@@ -81,6 +152,8 @@ int main(int argc, char * argv[])
             } else if (jpegQuality > 100) {
                 jpegQuality = 100;
             }
+        } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
+            infoOnly = AVIF_TRUE;
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -97,9 +170,22 @@ int main(int argc, char * argv[])
         ++argIndex;
     }
 
-    if (!inputFilename || !outputFilename) {
+    if (!inputFilename) {
         syntax();
         return 1;
+    }
+
+    if (infoOnly) {
+        if (!inputFilename || outputFilename) {
+            syntax();
+            return 1;
+        }
+        return info(inputFilename);
+    } else {
+        if (!inputFilename || !outputFilename) {
+            syntax();
+            return 1;
+        }
     }
 
     FILE * inputFile = fopen(inputFilename, "rb");
