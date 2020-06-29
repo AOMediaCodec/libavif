@@ -638,6 +638,7 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
         return AVIF_FALSE;
     }
 
+    avifBool firstTile = AVIF_TRUE;
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
         avifDecoderItem * item = &gridItem->meta->items.item[i];
         if (item->dimgForID == gridItem->id) {
@@ -655,6 +656,19 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
             sample->data.size = item->size;
             sample->sync = AVIF_TRUE;
             tile->input->alpha = alpha;
+
+            if (firstTile) {
+                firstTile = AVIF_FALSE;
+
+                // Adopt the av1C property of the first av01 tile, so that it can be queried from
+                // the top-level color/alpha item during avifDecoderReset().
+                const avifProperty * srcProp = avifPropertyArrayFind(&item->properties, "av1C");
+                if (!srcProp) {
+                    return AVIF_FALSE;
+                }
+                avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&gridItem->properties);
+                memcpy(dstProp, srcProp, sizeof(avifProperty));
+            }
         }
     }
     return AVIF_TRUE;
