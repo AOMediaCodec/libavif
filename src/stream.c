@@ -161,7 +161,7 @@ avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header
     }
 
     size_t bytesRead = stream->offset - startOffset;
-    if (size < bytesRead || size - bytesRead > SIZE_MAX) {
+    if ((size < bytesRead) || ((size - bytesRead) > SIZE_MAX)) {
         return AVIF_FALSE;
     }
     header->size = (size_t)(size - bytesRead);
