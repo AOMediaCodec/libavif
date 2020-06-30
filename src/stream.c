@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <stdint.h>
 #include <string.h>
 
 // ---------------------------------------------------------------------------
@@ -159,7 +160,11 @@ avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header
         CHECK(avifROStreamSkip(stream, 16));
     }
 
-    header->size = (size_t)(size - (stream->offset - startOffset));
+    size_t bytesRead = stream->offset - startOffset;
+    if (size < bytesRead || size - bytesRead > SIZE_MAX) {
+        return AVIF_FALSE;
+    }
+    header->size = (size_t)(size - bytesRead);
 
     // Make the assumption here that this box's contents must fit in the remaining portion of the parent stream
     if (header->size > avifROStreamRemainingBytes(stream)) {
