@@ -1872,25 +1872,11 @@ static avifBool avifParse(avifDecoderData * data, const uint8_t * raw, size_t ra
 
 static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
 {
-    avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0);
-    if (!avifCompatible) {
-        avifCompatible = (memcmp(ftyp->majorBrand, "avis", 4) == 0);
-    }
-    if (!avifCompatible) {
-        avifCompatible = (memcmp(ftyp->majorBrand, "av01", 4) == 0);
-    }
+    avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0 || memcmp(ftyp->majorBrand, "avis", 4) == 0);
     if (!avifCompatible) {
         for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
             uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
-            if (!memcmp(compatibleBrand, "avif", 4)) {
-                avifCompatible = AVIF_TRUE;
-                break;
-            }
-            if (!memcmp(compatibleBrand, "avis", 4)) {
-                avifCompatible = AVIF_TRUE;
-                break;
-            }
-            if (!memcmp(compatibleBrand, "av01", 4)) {
+            if (!memcmp(compatibleBrand, "avif", 4) || !memcmp(compatibleBrand, "avis", 4)) {
                 avifCompatible = AVIF_TRUE;
                 break;
             }
