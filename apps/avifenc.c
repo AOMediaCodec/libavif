@@ -55,6 +55,7 @@ static void syntax(void)
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
+    printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second\n");
     printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
@@ -129,10 +130,16 @@ static int parseU32List(uint32_t output[8], const char * arg)
     return index;
 }
 
+struct avifInputFile
+{
+    const char * filename;
+    int duration;
+};
+
 int main(int argc, char * argv[])
 {
-    int inputFilenamesCount = 0;
-    const char ** inputFilenames = NULL;
+    int inputFilesCount = 0;
+    struct avifInputFile * inputFiles = NULL;
     const char * outputFilename = NULL;
 
     if (argc < 2) {
@@ -140,7 +147,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    inputFilenames = malloc(sizeof(char *) * argc);
+    inputFiles = malloc(sizeof(struct avifInputFile) * argc);
 
     int returnCode = 0;
     int jobs = 1;
@@ -165,6 +172,7 @@ int main(int argc, char * argv[])
     avifImage * image = NULL;
     avifImage * nextImage = NULL;
     avifRWData raw = AVIF_DATA_EMPTY;
+    int duration = 1;  // in timescales, stored per-inputFile (see struct avifInputFile)
     int timescale = 1; // 1 fps by default
     int keyframeInterval = 0;
 
@@ -287,6 +295,14 @@ int main(int argc, char * argv[])
                     speed = AVIF_SPEED_SLOWEST;
                 }
             }
+        } else if (!strcmp(arg, "--duration")) {
+            NEXTARG();
+            duration = atoi(arg);
+            if (duration < 1) {
+                fprintf(stderr, "ERROR: Invalid duration: %d\n", duration);
+                returnCode = 1;
+                goto cleanup;
+            }
         } else if (!strcmp(arg, "--timescale") || !strcmp(arg, "--fps")) {
             NEXTARG();
             timescale = atoi(arg);
@@ -359,19 +375,20 @@ int main(int argc, char * argv[])
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else {
             // Positional argument
-            inputFilenames[inputFilenamesCount] = arg;
-            ++inputFilenamesCount;
+            inputFiles[inputFilesCount].filename = arg;
+            inputFiles[inputFilesCount].duration = duration;
+            ++inputFilesCount;
         }
 
         ++argIndex;
     }
 
-    if (!outputFilename && (inputFilenamesCount > 1)) {
-        --inputFilenamesCount;
-        outputFilename = inputFilenames[inputFilenamesCount];
+    if (!outputFilename && (inputFilesCount > 1)) {
+        --inputFilesCount;
+        outputFilename = inputFiles[inputFilesCount].filename;
     }
 
-    if ((inputFilenamesCount < 1) || !outputFilename) {
+    if ((inputFilesCount < 1) || !outputFilename) {
         syntax();
         returnCode = 1;
         goto cleanup;
@@ -381,9 +398,9 @@ int main(int argc, char * argv[])
 
     uint32_t sourceDepth = 0;
     avifBool sourceWasRGB = AVIF_TRUE;
-    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFilenames[0]);
+    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFiles[0].filename);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-        fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilenames[0]);
+        fprintf(stderr, "Cannot determine input file extension: %s\n", inputFiles[0].filename);
         returnCode = 1;
         goto cleanup;
     }
@@ -395,29 +412,29 @@ int main(int argc, char * argv[])
     image->yuvRange = requestedRange;
 
     if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
-        if (!y4mRead(image, inputFilenames[0])) {
+        if (!y4mRead(image, inputFiles[0].filename)) {
             returnCode = 1;
             goto cleanup;
         }
         sourceDepth = image->depth;
         sourceWasRGB = AVIF_FALSE;
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(image, inputFilenames[0], requestedFormat, requestedDepth)) {
+        if (!avifJPEGRead(image, inputFiles[0].filename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
         sourceDepth = 8;
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(image, inputFilenames[0], requestedFormat, requestedDepth, &sourceDepth)) {
+        if (!avifPNGRead(image, inputFiles[0].filename, requestedFormat, requestedDepth, &sourceDepth)) {
             returnCode = 1;
             goto cleanup;
         }
     } else {
-        fprintf(stderr, "Unrecognized file extension: %s\n", inputFilenames[0]);
+        fprintf(stderr, "Unrecognized file extension: %s\n", inputFiles[0].filename);
         returnCode = 1;
         goto cleanup;
     }
-    printf("Successfully loaded: %s\n", inputFilenames[0]);
+    printf("Successfully loaded: %s\n", inputFiles[0].filename);
 
     if (ignoreICC) {
         avifImageSetProfileICC(image, NULL, 0);
@@ -546,26 +563,26 @@ int main(int argc, char * argv[])
     encoder->keyframeInterval = keyframeInterval;
 
     uint32_t addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
-    if (inputFilenamesCount == 1) {
+    if (inputFilesCount == 1) {
         addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
     }
 
-    uint32_t firstDurationInTimescales = 1; // TODO: allow arbitrary per-frame durations
-    if (inputFilenamesCount > 1) {
-        printf(" * Encoding frame 1 [%u/%d ts]: %s\n", firstDurationInTimescales, timescale, inputFilenames[0]);
+    uint32_t firstDurationInTimescales = inputFiles[0].duration;
+    if (inputFilesCount > 1) {
+        printf(" * Encoding frame 1 [%u/%d ts]: %s\n", firstDurationInTimescales, timescale, inputFiles[0].filename);
     }
-    avifResult addImageResult = avifEncoderAddImage(encoder, image, 1, addImageFlags);
+    avifResult addImageResult = avifEncoderAddImage(encoder, image, firstDurationInTimescales, addImageFlags);
     if (addImageResult != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
         goto cleanup;
     }
 
-    if (inputFilenamesCount > 1) {
-        for (int nextImageIndex = 1; nextImageIndex < inputFilenamesCount; ++nextImageIndex) {
-            const char * nextImageFilename = inputFilenames[nextImageIndex];
-            uint32_t nextDurationInTimescales = 1; // TODO: allow arbitrary per-frame durations
+    if (inputFilesCount > 1) {
+        for (int nextImageIndex = 1; nextImageIndex < inputFilesCount; ++nextImageIndex) {
+            const char * nextImageFilename = inputFiles[nextImageIndex].filename;
+            uint32_t nextDurationInTimescales = inputFiles[nextImageIndex].duration;
 
-            printf(" * Encoding frame %d [%u/%d ts]: %s\n", nextImageIndex + 1, firstDurationInTimescales, timescale, nextImageFilename);
+            printf(" * Encoding frame %d [%u/%d ts]: %s\n", nextImageIndex + 1, nextDurationInTimescales, timescale, nextImageFilename);
 
             avifAppFileFormat nextInputFormat = avifGuessFileFormat(nextImageFilename);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
@@ -681,6 +698,6 @@ cleanup:
         avifImageDestroy(nextImage);
     }
     avifRWDataFree(&raw);
-    free((void *)inputFilenames);
+    free((void *)inputFiles);
     return returnCode;
 }
