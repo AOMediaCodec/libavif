@@ -489,21 +489,21 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
             }
 
             float R, G, B;
-            if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
-                // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
-                if (hasColor) {
+            if (hasColor) {
+                if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
+                    // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
                     G = Y;
                     B = Cb;
                     R = Cr;
                 } else {
-                    G = Y;
-                    B = Y;
-                    R = Y;
+                    R = Y + (2 * (1 - kr)) * Cr;
+                    B = Y + (2 * (1 - kb)) * Cb;
+                    G = Y - ((2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb))) / kg);
                 }
             } else {
-                R = Y + (2 * (1 - kr)) * Cr;
-                B = Y + (2 * (1 - kb)) * Cb;
-                G = Y - ((2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb))) / kg);
+                R = Y;
+                G = Y;
+                B = Y;
             }
             const float Rc = AVIF_CLAMP(R, 0.0f, 1.0f);
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
