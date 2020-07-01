@@ -467,7 +467,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         }
                     }
 
-                    if (rgb->upsampling == AVIF_UPSAMPLING_BILINEAR) {
+                    if (rgb->upsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR) {
                         // Bilinear filtering with weights
                         Cb = (unormFloatTableUV[unormU[0][0]] * (9.0f / 16.0f)) + (unormFloatTableUV[unormU[1][0]] * (3.0f / 16.0f)) +
                              (unormFloatTableUV[unormU[0][1]] * (3.0f / 16.0f)) + (unormFloatTableUV[unormU[1][1]] * (1.0f / 16.0f));
@@ -944,7 +944,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     }
 
     if ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ||
-        (rgb->upsampling == AVIF_UPSAMPLING_NEAREST)) {
+        (rgb->upsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
         // None of these fast paths currently support bilinear upsampling, so avoid all of them
         // unless the YUV data isn't subsampled or they explicitly requested AVIF_UPSAMPLING_NEAREST.
 
