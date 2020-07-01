@@ -381,6 +381,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                     // *   *   *   *
                     //   A       B
                     // *   1   2   *
+                    //
                     // *   3   4   *
                     //   C       D
                     // *   *   *   *
