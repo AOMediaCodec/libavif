@@ -385,12 +385,20 @@ typedef enum avifRGBFormat
 uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
 avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
+typedef enum avifRGBUpsampling
+{
+    AVIF_UPSAMPLING_BILINEAR = 0, // Slower and pretter (default)
+    AVIF_UPSAMPLING_NEAREST = 1   // Faster and uglier
+} avifRGBUpsampling;
+
 typedef struct avifRGBImage
 {
-    uint32_t width;       // must match associated avifImage
-    uint32_t height;      // must match associated avifImage
-    uint32_t depth;       // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
-    avifRGBFormat format; // all channels are always full range
+    uint32_t width;               // must match associated avifImage
+    uint32_t height;              // must match associated avifImage
+    uint32_t depth;               // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
+    avifRGBFormat format;         // all channels are always full range
+    avifRGBUpsampling upsampling; // How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
+                                  // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
 
     uint8_t * pixels;
     uint32_t rowBytes;
