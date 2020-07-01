@@ -7,7 +7,6 @@
 
 #define AUXTYPE_SIZE 64
 #define CONTENTTYPE_SIZE 64
-#define MAX_COMPATIBLE_BRANDS 32
 
 // class VisualSampleEntry(codingname) extends SampleEntry(codingname) {
 //     unsigned int(16) pre_defined = 0;
@@ -39,7 +38,8 @@ typedef struct avifFileType
 {
     uint8_t majorBrand[4];
     uint32_t minorVersion;
-    uint8_t compatibleBrands[4 * MAX_COMPATIBLE_BRANDS];
+    // If not null, points to a memory block of 4 * compatibleBrandsCount bytes.
+    const uint8_t * compatibleBrands;
     int compatibleBrandsCount;
 } avifFileType;
 
@@ -1837,11 +1837,8 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
     if ((compatibleBrandsBytes % 4) != 0) {
         return AVIF_FALSE;
     }
-    if (compatibleBrandsBytes > (4 * MAX_COMPATIBLE_BRANDS)) {
-        // TODO: stop clamping and resize this
-        compatibleBrandsBytes = (4 * MAX_COMPATIBLE_BRANDS);
-    }
-    CHECK(avifROStreamRead(&s, ftyp->compatibleBrands, compatibleBrandsBytes));
+    ftyp->compatibleBrands = avifROStreamCurrent(&s);
+    CHECK(avifROStreamSkip(&s, compatibleBrandsBytes));
     ftyp->compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
 
     return AVIF_TRUE;
@@ -1875,7 +1872,7 @@ static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
     avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0 || memcmp(ftyp->majorBrand, "avis", 4) == 0);
     if (!avifCompatible) {
         for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
-            uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
+            const uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
             if (!memcmp(compatibleBrand, "avif", 4) || !memcmp(compatibleBrand, "avis", 4)) {
                 avifCompatible = AVIF_TRUE;
                 break;
