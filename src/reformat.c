@@ -326,7 +326,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
     const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
     const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
     const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
-    const uint32_t channelBytes = (image->depth > 8) ? 2 : 1;
 
     const uint32_t uvIMax = ((image->width + state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1;
     const uint32_t uvJMax = ((image->height + state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1;
@@ -415,11 +414,11 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         vAdjCol = 0;
                     } else {
                         if ((i % 2) != 0) {
-                            uAdjCol = channelBytes;
-                            vAdjCol = channelBytes;
+                            uAdjCol = (int)state->yuvChannelBytes;
+                            vAdjCol = (int)state->yuvChannelBytes;
                         } else {
-                            uAdjCol = -1 * channelBytes;
-                            vAdjCol = -1 * channelBytes;
+                            uAdjCol = -1 * (int)state->yuvChannelBytes;
+                            vAdjCol = -1 * (int)state->yuvChannelBytes;
                         }
                     }
 
@@ -440,23 +439,23 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                     }
 
                     if (image->depth == 8) {
-                        unormU[0][0] = uPlane[(uvJ * uRowBytes) + (uvI * channelBytes)];
-                        unormV[0][0] = vPlane[(uvJ * vRowBytes) + (uvI * channelBytes)];
-                        unormU[1][0] = uPlane[(uvJ * uRowBytes) + (uvI * channelBytes) + uAdjCol];
-                        unormV[1][0] = vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + vAdjCol];
-                        unormU[0][1] = uPlane[(uvJ * uRowBytes) + (uvI * channelBytes) + uAdjRow];
-                        unormV[0][1] = vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + vAdjRow];
-                        unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * channelBytes) + uAdjCol + uAdjRow];
-                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + uAdjCol + vAdjRow];
+                        unormU[0][0] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes)];
+                        unormV[0][0] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes)];
+                        unormU[1][0] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol];
+                        unormV[1][0] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjCol];
+                        unormU[0][1] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjRow];
+                        unormV[0][1] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjRow];
+                        unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + uAdjRow];
+                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + vAdjRow];
                     } else {
-                        unormU[0][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * channelBytes)]);
-                        unormV[0][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * channelBytes)]);
-                        unormU[1][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * channelBytes) + uAdjCol]);
-                        unormV[1][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + vAdjCol]);
-                        unormU[0][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * channelBytes) + uAdjRow]);
-                        unormV[0][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + vAdjRow]);
-                        unormU[1][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * channelBytes) + uAdjCol + uAdjRow]);
-                        unormV[1][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + uAdjCol + vAdjRow]);
+                        unormU[0][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes)]);
+                        unormV[0][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes)]);
+                        unormU[1][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol]);
+                        unormV[1][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjCol]);
+                        unormU[0][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjRow]);
+                        unormV[0][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjRow]);
+                        unormU[1][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + uAdjRow]);
+                        unormV[1][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
                         for (int bJ = 0; bJ < 2; ++bJ) {
