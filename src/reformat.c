@@ -414,7 +414,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         uAdjCol = 0;
                         vAdjCol = 0;
                     } else {
-                        if ((i % 2) == 1) {
+                        if ((i % 2) != 0) {
                             uAdjCol = channelBytes;
                             vAdjCol = channelBytes;
                         } else {
@@ -430,7 +430,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         uAdjRow = 0;
                         vAdjRow = 0;
                     } else {
-                        if ((j % 2) == 1) {
+                        if ((j % 2) != 0) {
                             uAdjRow = (int)uRowBytes;
                             vAdjRow = (int)vRowBytes;
                         } else {
@@ -457,13 +457,13 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         unormV[0][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + vAdjRow]);
                         unormU[1][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * channelBytes) + uAdjCol + uAdjRow]);
                         unormV[1][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * channelBytes) + uAdjCol + vAdjRow]);
-                    }
 
-                    // clamp incoming data to protect against bad LUT lookups
-                    for (int bJ = 0; bJ < 2; ++bJ) {
-                        for (int bI = 0; bI < 2; ++bI) {
-                            unormU[bI][bJ] = AVIF_MIN(unormU[bI][bJ], yuvMaxChannel);
-                            unormV[bI][bJ] = AVIF_MIN(unormV[bI][bJ], yuvMaxChannel);
+                        // clamp incoming data to protect against bad LUT lookups
+                        for (int bJ = 0; bJ < 2; ++bJ) {
+                            for (int bI = 0; bI < 2; ++bI) {
+                                unormU[bI][bJ] = AVIF_MIN(unormU[bI][bJ], yuvMaxChannel);
+                                unormV[bI][bJ] = AVIF_MIN(unormV[bI][bJ], yuvMaxChannel);
+                            }
                         }
                     }
 
@@ -943,14 +943,15 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         }
     }
 
-    if ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ||
-        (rgb->upsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
+    const avifBool hasColor =
+        (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
+
+    if (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (rgb->upsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
         // None of these fast paths currently support bilinear upsampling, so avoid all of them
-        // unless the YUV data isn't subsampled or they explicitly requested AVIF_UPSAMPLING_NEAREST.
+        // unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
 
         if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-            if ((image->depth == 8) && (rgb->depth == 8) && image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] &&
-                (image->yuvRange == AVIF_RANGE_FULL)) {
+            if ((image->depth == 8) && (rgb->depth == 8) && hasColor && (image->yuvRange == AVIF_RANGE_FULL)) {
                 return avifImageIdentity8ToRGB8ColorFullRange(image, rgb, &state);
             }
 
@@ -962,14 +963,14 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
                 if (rgb->depth > 8) {
                     // yuv:u16, rgb:u16
 
-                    if (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V]) {
+                    if (hasColor) {
                         return avifImageYUV16ToRGB16Color(image, rgb, &state);
                     }
                     return avifImageYUV16ToRGB16Mono(image, rgb, &state);
                 } else {
                     // yuv:u16, rgb:u8
 
-                    if (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V]) {
+                    if (hasColor) {
                         return avifImageYUV16ToRGB8Color(image, rgb, &state);
                     }
                     return avifImageYUV16ToRGB8Mono(image, rgb, &state);
@@ -980,14 +981,14 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
                 if (rgb->depth > 8) {
                     // yuv:u8, rgb:u16
 
-                    if (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V]) {
+                    if (hasColor) {
                         return avifImageYUV8ToRGB16Color(image, rgb, &state);
                     }
                     return avifImageYUV8ToRGB16Mono(image, rgb, &state);
                 } else {
                     // yuv:u8, rgb:u8
 
-                    if (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V]) {
+                    if (hasColor) {
                         return avifImageYUV8ToRGB8Color(image, rgb, &state);
                     }
                     return avifImageYUV8ToRGB8Mono(image, rgb, &state);
