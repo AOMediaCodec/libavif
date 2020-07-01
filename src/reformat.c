@@ -315,26 +315,34 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
 static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
+    // Aliases for some state
     const float kr = state->kr;
     const float kg = state->kg;
     const float kb = state->kb;
-    const uint32_t rgbPixelBytes = state->rgbPixelBytes;
     const float * const unormFloatTableY = state->unormFloatTableY;
     const float * const unormFloatTableUV = state->unormFloatTableUV;
+    const uint32_t yuvChannelBytes = state->yuvChannelBytes;
+    const uint32_t rgbPixelBytes = state->rgbPixelBytes;
+
+    // Aliases for plane data
+    const uint8_t * yPlane = image->yuvPlanes[AVIF_CHAN_Y];
     const uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
     const uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
+    const uint32_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
     const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
     const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
-    const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
 
+    // Various observations and limits
+    const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
     const uint32_t uvIMax = ((image->width + state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1;
     const uint32_t uvJMax = ((image->height + state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1;
     const uint16_t yuvMaxChannel = (uint16_t)((1 << image->depth) - 1);
     const float rgbMaxChannel = (float)((1 << rgb->depth) - 1);
+
     for (uint32_t j = 0; j < image->height; ++j) {
         const uint32_t uvJ = j >> state->formatInfo.chromaShiftY;
-        uint8_t * ptrY8 = &image->yuvPlanes[AVIF_CHAN_Y][(j * image->yuvRowBytes[AVIF_CHAN_Y])];
-        uint16_t * ptrY16 = (uint16_t *)ptrY8;
+        const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
+        const uint16_t * ptrY16 = (uint16_t *)ptrY8;
 
         uint8_t * ptrR = &rgb->pixels[state->rgbOffsetBytesR + (j * rgb->rowBytes)];
         uint8_t * ptrG = &rgb->pixels[state->rgbOffsetBytesG + (j * rgb->rowBytes)];
@@ -414,11 +422,11 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         vAdjCol = 0;
                     } else {
                         if ((i % 2) != 0) {
-                            uAdjCol = (int)state->yuvChannelBytes;
-                            vAdjCol = (int)state->yuvChannelBytes;
+                            uAdjCol = yuvChannelBytes;
+                            vAdjCol = yuvChannelBytes;
                         } else {
-                            uAdjCol = -1 * (int)state->yuvChannelBytes;
-                            vAdjCol = -1 * (int)state->yuvChannelBytes;
+                            uAdjCol = -1 * yuvChannelBytes;
+                            vAdjCol = -1 * yuvChannelBytes;
                         }
                     }
 
@@ -439,23 +447,23 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                     }
 
                     if (image->depth == 8) {
-                        unormU[0][0] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes)];
-                        unormV[0][0] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes)];
-                        unormU[1][0] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol];
-                        unormV[1][0] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjCol];
-                        unormU[0][1] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjRow];
-                        unormV[0][1] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjRow];
-                        unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + uAdjRow];
-                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + vAdjRow];
+                        unormU[0][0] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)];
+                        unormV[0][0] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)];
+                        unormU[1][0] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol];
+                        unormV[1][0] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol];
+                        unormU[0][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow];
+                        unormV[0][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow];
+                        unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow];
+                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + vAdjRow];
                     } else {
-                        unormU[0][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes)]);
-                        unormV[0][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes)]);
-                        unormU[1][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol]);
-                        unormV[1][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjCol]);
-                        unormU[0][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjRow]);
-                        unormV[0][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + vAdjRow]);
-                        unormU[1][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + uAdjRow]);
-                        unormV[1][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * state->yuvChannelBytes) + uAdjCol + vAdjRow]);
+                        unormU[0][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)]);
+                        unormV[0][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)]);
+                        unormU[1][0] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol]);
+                        unormV[1][0] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol]);
+                        unormU[0][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow]);
+                        unormV[0][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow]);
+                        unormU[1][1] = *((uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
+                        unormV[1][1] = *((uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
                         for (int bJ = 0; bJ < 2; ++bJ) {
@@ -466,7 +474,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         }
                     }
 
-                    if (rgb->upsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR) {
+                    if (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR) {
                         // Bilinear filtering with weights
                         Cb = (unormFloatTableUV[unormU[0][0]] * (9.0f / 16.0f)) + (unormFloatTableUV[unormU[1][0]] * (3.0f / 16.0f)) +
                              (unormFloatTableUV[unormU[0][1]] * (3.0f / 16.0f)) + (unormFloatTableUV[unormU[1][1]] * (1.0f / 16.0f));
@@ -945,7 +953,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     const avifBool hasColor =
         (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
 
-    if (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (rgb->upsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
+    if (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
         // None of these fast paths currently support bilinear upsampling, so avoid all of them
         // unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
 

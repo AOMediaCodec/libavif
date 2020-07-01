@@ -393,12 +393,12 @@ typedef enum avifChromaUpsampling
 
 typedef struct avifRGBImage
 {
-    uint32_t width;                  // must match associated avifImage
-    uint32_t height;                 // must match associated avifImage
-    uint32_t depth;                  // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
-    avifRGBFormat format;            // all channels are always full range
-    avifChromaUpsampling upsampling; // How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
-                                     // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
+    uint32_t width;                        // must match associated avifImage
+    uint32_t height;                       // must match associated avifImage
+    uint32_t depth;                        // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
+    avifRGBFormat format;                  // all channels are always full range
+    avifChromaUpsampling chromaUpsampling; // How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
+                                           // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
 
     uint8_t * pixels;
     uint32_t rowBytes;
