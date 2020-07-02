@@ -31,6 +31,34 @@ static avifBool rav1eCodecOpen(struct avifCodec * codec, uint32_t firstSampleInd
     return AVIF_TRUE;
 }
 
+// Official support wasn't added until v0.4.0
+static avifBool rav1eSupports400(void)
+{
+    const char * rav1eVersionString = rav1e_version_short();
+
+    // Check major version > 0
+    int majorVersion = atoi(rav1eVersionString);
+    if (majorVersion > 0) {
+        return AVIF_TRUE;
+    }
+
+    // Check minor version >= 4
+    const char * minorVersionString = strchr(rav1eVersionString, '.');
+    if (!minorVersionString) {
+        return AVIF_FALSE;
+    }
+    ++minorVersionString;
+    if (!(*minorVersionString)) {
+        return AVIF_FALSE;
+    }
+    int minorVersion = atoi(minorVersionString);
+    if (minorVersion >= 4) {
+        return AVIF_TRUE;
+    }
+
+    return AVIF_FALSE;
+}
+
 static avifBool rav1eCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
@@ -42,12 +70,14 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
 
     RaConfig * rav1eConfig = NULL;
     RaFrame * rav1eFrame = NULL;
+    const avifBool supports400 = rav1eSupports400();
 
     if (!codec->internal->rav1eContext) {
         RaPixelRange rav1eRange;
         if (alpha) {
             rav1eRange = (image->alphaRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
-            codec->internal->chromaSampling = RA_CHROMA_SAMPLING_CS400;
+            codec->internal->chromaSampling = supports400 ? RA_CHROMA_SAMPLING_CS400 : RA_CHROMA_SAMPLING_CS420;
+            codec->internal->yShift = 1;
         } else {
             rav1eRange = (image->yuvRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
             codec->internal->yShift = 0;
@@ -63,7 +93,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
                     codec->internal->yShift = 1;
                     break;
                 case AVIF_PIXEL_FORMAT_YUV400:
-                    codec->internal->chromaSampling = RA_CHROMA_SAMPLING_CS400;
+                    codec->internal->chromaSampling = supports400 ? RA_CHROMA_SAMPLING_CS400 : RA_CHROMA_SAMPLING_CS420;
                     codec->internal->yShift = 1;
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
@@ -143,9 +173,9 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
     if (alpha) {
         rav1e_frame_fill_plane(rav1eFrame, 0, image->alphaPlane, image->alphaRowBytes * image->height, image->alphaRowBytes, byteWidth);
     } else {
-        uint32_t uvHeight = (image->height + codec->internal->yShift) >> codec->internal->yShift;
         rav1e_frame_fill_plane(rav1eFrame, 0, image->yuvPlanes[0], image->yuvRowBytes[0] * image->height, image->yuvRowBytes[0], byteWidth);
-        if (codec->internal->chromaSampling != RA_CHROMA_SAMPLING_CS400) {
+        if ((codec->internal->chromaSampling != RA_CHROMA_SAMPLING_CS400) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
+            uint32_t uvHeight = (image->height + codec->internal->yShift) >> codec->internal->yShift;
             rav1e_frame_fill_plane(rav1eFrame, 1, image->yuvPlanes[1], image->yuvRowBytes[1] * uvHeight, image->yuvRowBytes[1], byteWidth);
             rav1e_frame_fill_plane(rav1eFrame, 2, image->yuvPlanes[2], image->yuvRowBytes[2] * uvHeight, image->yuvRowBytes[2], byteWidth);
         }
