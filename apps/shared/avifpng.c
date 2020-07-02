@@ -152,7 +152,7 @@ cleanup:
     return readResult;
 }
 
-avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t requestedDepth)
+avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling)
 {
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -204,6 +204,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
 
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.depth = rgbDepth;
+    rgb.chromaUpsampling = chromaUpsampling;
     avifRGBImageAllocatePixels(&rgb);
     avifImageYUVToRGB(avif, &rgb);
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);

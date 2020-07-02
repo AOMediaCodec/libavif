@@ -31,6 +31,7 @@ static void syntax(void)
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
+    printf("    -u,--upsampling U : Chroma upsampling (for 420/422). bilinear (default) or nearest\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("\n");
     avifPrintVersions();
@@ -111,6 +112,7 @@ int main(int argc, char * argv[])
     int jpegQuality = DEFAULT_JPEG_QUALITY;
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool infoOnly = AVIF_FALSE;
+    avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
 
     if (argc < 2) {
         syntax();
@@ -151,6 +153,16 @@ int main(int argc, char * argv[])
                 jpegQuality = 0;
             } else if (jpegQuality > 100) {
                 jpegQuality = 100;
+            }
+        } else if (!strcmp(arg, "-u") || !strcmp(arg, "--upsampling")) {
+            NEXTARG();
+            if (!strcmp(arg, "bilinear")) {
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
+            } else if (!strcmp(arg, "nearest")) {
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_NEAREST;
+            } else {
+                fprintf(stderr, "ERROR: invalid upsampling: %s\n", arg);
+                return 1;
             }
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
@@ -235,11 +247,11 @@ int main(int argc, char * argv[])
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-            if (!avifJPEGWrite(avif, outputFilename, jpegQuality)) {
+            if (!avifJPEGWrite(avif, outputFilename, jpegQuality, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-            if (!avifPNGWrite(avif, outputFilename, requestedDepth)) {
+            if (!avifPNGWrite(avif, outputFilename, requestedDepth, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else {
