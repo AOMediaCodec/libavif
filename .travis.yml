@@ -12,7 +12,7 @@ addons:
 before_script:
   - curl -L https://github.com/netwide-assembler/nasm/archive/nasm-2.15.02.tar.gz | tar xvz
   - cd nasm-nasm-2.15.02
-  - ./configure && make -j2 && sudo make install
+  - ./autogen.sh && ./configure && make -j2 && sudo make install
   - nasm --version
   - pip3 --disable-pip-version-check install setuptools
   - pip3 --disable-pip-version-check install meson
