@@ -10,7 +10,7 @@ addons:
       - python3-pip
 
 before_script:
-  - curl -L https://github.com/netwide-assembler/nasm/archive/nasm-2.15.02.tar.gz | tar xvz
+  - curl -L -O https://github.com/netwide-assembler/nasm/archive/nasm-2.15.02.tar.gz | tar xvz
   - cd nasm-2.15.02
   - ./configure && make -j2 && sudo make install
   - nasm --version
