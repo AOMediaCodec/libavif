@@ -27,8 +27,8 @@ cargo install cargo-c
 
 # NASM
 cd
-curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-cd nasm-2.14
+curl -L https://github.com/netwide-assembler/nasm/archive/nasm-2.15.02.tar.gz | tar xvz
+cd nasm-2.15.02
 ./configure --prefix=/usr && make -j2 && make install
 nasm --version
 
