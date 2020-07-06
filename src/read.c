@@ -2312,6 +2312,18 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->alphaPresent = (alphaOBUItem != NULL);
     }
 
+    // Sanity check tiles
+    for (uint32_t tileIndex = 0; tileIndex < data->tiles.count; ++tileIndex) {
+        avifTile * tile = &data->tiles.tile[tileIndex];
+        for (uint32_t sampleIndex = 0; sampleIndex < tile->input->samples.count; ++sampleIndex) {
+            avifDecodeSample * sample = &tile->input->samples.sample[0];
+            if (!sample->data.data || !sample->data.size) {
+                // Every sample must have some data
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+        }
+    }
+
     const avifProperty * colrProp = avifPropertyArrayFind(colorProperties, "colr");
     if (colrProp) {
         if (colrProp->u.colr.hasICC) {
