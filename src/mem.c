@@ -7,7 +7,7 @@
 
 void * avifAlloc(size_t size)
 {
-    void* out = malloc(size);
+    void * out = malloc(size);
     if (out == NULL) {
         abort();
     }
