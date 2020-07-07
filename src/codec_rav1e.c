@@ -52,11 +52,7 @@ static avifBool rav1eSupports400(void)
         return AVIF_FALSE;
     }
     int minorVersion = atoi(minorVersionString);
-    if (minorVersion >= 4) {
-        return AVIF_TRUE;
-    }
-
-    return AVIF_FALSE;
+    return minorVersion >= 4;
 }
 
 static avifBool rav1eCodecEncodeImage(avifCodec * codec,
@@ -70,9 +66,9 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
 
     RaConfig * rav1eConfig = NULL;
     RaFrame * rav1eFrame = NULL;
-    const avifBool supports400 = rav1eSupports400();
 
     if (!codec->internal->rav1eContext) {
+        const avifBool supports400 = rav1eSupports400();
         RaPixelRange rav1eRange;
         if (alpha) {
             rav1eRange = (image->alphaRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
@@ -174,7 +170,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
         rav1e_frame_fill_plane(rav1eFrame, 0, image->alphaPlane, image->alphaRowBytes * image->height, image->alphaRowBytes, byteWidth);
     } else {
         rav1e_frame_fill_plane(rav1eFrame, 0, image->yuvPlanes[0], image->yuvRowBytes[0] * image->height, image->yuvRowBytes[0], byteWidth);
-        if ((codec->internal->chromaSampling != RA_CHROMA_SAMPLING_CS400) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
+        if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
             uint32_t uvHeight = (image->height + codec->internal->yShift) >> codec->internal->yShift;
             rav1e_frame_fill_plane(rav1eFrame, 1, image->yuvPlanes[1], image->yuvRowBytes[1] * uvHeight, image->yuvRowBytes[1], byteWidth);
             rav1e_frame_fill_plane(rav1eFrame, 2, image->yuvPlanes[2], image->yuvRowBytes[2] * uvHeight, image->yuvRowBytes[2], byteWidth);
