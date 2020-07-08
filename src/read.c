@@ -3,7 +3,77 @@
 
 #include "avif/internal.h"
 
+#include <stdio.h>
+
 #include <string.h>
+
+
+const int kIncreaseIndent = 2;
+const int kDecreaseIndent = -2;
+
+int g_indent = 0;
+char* g_indent_str = NULL;
+
+void UpdateString() {
+  int i;
+
+  avifFree(g_indent_str);
+  g_indent_str = (char*)avifAlloc(sizeof(char) * (g_indent + 1));
+  for (i = 0; i < g_indent; ++i) {
+    g_indent_str[i] = ' ';
+  }
+  g_indent_str[g_indent] = '\0';
+}
+
+void IncrementString() {
+  g_indent += kIncreaseIndent;
+  UpdateString();
+}
+
+void DecrementString() {
+  g_indent += kDecreaseIndent;
+  if (g_indent < 0)
+    g_indent = 0;
+  UpdateString();
+}
+
+void PrintString(const char *str) {
+  printf("%s%s\n", g_indent_str, str);
+}
+
+void PrintBrand(const char *name, const uint8_t *brand) {
+    char brand_str[5];
+    memcpy(brand_str, brand, 4);
+    brand_str[4] = '\0';
+
+    char brand_out[64];
+    sprintf(brand_out, "%s: %s", name, brand_str);
+    PrintString(brand_out);
+}
+
+void PrintInt(const char *name, int value) {
+    char brand_out[64];
+    sprintf(brand_out, "%s: %d", name, value);
+    PrintString(brand_out);
+}
+
+void PrintStringValue(const char *name, const char *value) {
+    char brand_out[256];
+    sprintf(brand_out, "%s: %s", name, value);
+    PrintString(brand_out);
+}
+
+void PrintHeader(const avifBoxHeader *header) {
+  char header_type[5];
+  memcpy(header_type, header->type, 4);
+  header_type[4] = '\0';
+
+  if (g_indent_str == NULL) {
+    UpdateString();
+  }
+  printf("%s%s\n", g_indent_str, header_type);
+  IncrementString();
+}
 
 #define AUXTYPE_SIZE 64
 #define CONTENTTYPE_SIZE 64
@@ -884,6 +954,11 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
         }
     }
 
+    PrintInt("offset_size", offsetSize);
+    PrintInt("length_size", lengthSize);
+    PrintInt("base_offset_size", baseOffsetSize);
+    PrintInt("index_size", indexSize);
+
     uint16_t tmp16;
     uint32_t itemCount;
     if (version < 2) {
@@ -892,6 +967,10 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
     } else {
         CHECK(avifROStreamReadU32(&s, &itemCount)); // unsigned int(32) item_count;
     }
+
+    PrintInt("item_count", itemCount);
+    IncrementString();
+
     for (uint32_t i = 0; i < itemCount; ++i) {
         uint32_t itemID;
         uint32_t idatID = 0;
@@ -901,6 +980,8 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
         } else {
             CHECK(avifROStreamReadU32(&s, &itemID)); // unsigned int(32) item_ID;
         }
+
+        PrintInt("item_ID", itemID);
 
         if ((version == 1) || (version == 2)) {
             uint8_t ignored;
@@ -915,6 +996,8 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             if (constructionMethod == 1) {
                 idatID = meta->idatID;
             }
+
+            PrintInt("construction_method", constructionMethod);
         }
 
         uint16_t dataReferenceIndex;                                 // unsigned int(16) data_ref rence_index;
@@ -946,7 +1029,11 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             // TODO: support more than one extent
             return AVIF_FALSE;
         }
+
+        PrintInt("data_ref_rence_index", dataReferenceIndex);
+        PrintInt("extent_count", extentCount);
     }
+    DecrementString();
     return AVIF_TRUE;
 }
 
@@ -991,6 +1078,10 @@ static avifBool avifParseImageSpatialExtentsProperty(avifProperty * prop, const 
     avifImageSpatialExtents * ispe = &prop->u.ispe;
     CHECK(avifROStreamReadU32(&s, &ispe->width));
     CHECK(avifROStreamReadU32(&s, &ispe->height));
+
+    PrintInt("width", ispe->width);
+    PrintInt("height", ispe->height);
+
     return AVIF_TRUE;
 }
 
@@ -1000,6 +1091,9 @@ static avifBool avifParseAuxiliaryTypeProperty(avifProperty * prop, const uint8_
     CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
 
     CHECK(avifROStreamReadString(&s, prop->u.auxC.auxType, AUXTYPE_SIZE));
+
+    PrintStringValue("auxType", prop->u.auxC.auxType);
+
     return AVIF_TRUE;
 }
 
@@ -1013,6 +1107,9 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, const uint8_t
 
     uint8_t colorType[4]; // unsigned int(32) colour_type;
     CHECK(avifROStreamRead(&s, colorType, 4));
+
+    PrintBrand("colour_type", colorType);
+
     if (!memcmp(colorType, "rICC", 4) || !memcmp(colorType, "prof", 4)) {
         colr->hasICC = AVIF_TRUE;
         colr->icc = avifROStreamCurrent(&s);
@@ -1034,6 +1131,11 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, const uint8_t
         CHECK(avifROStreamRead(&s, &tmp8, 1));
         colr->range = (tmp8 & 0x80) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
         colr->hasNCLX = AVIF_TRUE;
+
+        PrintInt("colour_primaries", colr->colorPrimaries);
+        PrintInt("transfer_characteristics", colr->transferCharacteristics);
+        PrintInt("matrix_coefficients", colr->matrixCoefficients);
+        PrintInt("range", colr->range);
     }
     return AVIF_TRUE;
 }
@@ -1063,6 +1165,17 @@ static avifBool avifParseAV1CodecConfigurationBox(const uint8_t * raw, size_t ra
     av1C->chromaSubsamplingX = (rawFlags >> 3) & 0x1;      // unsigned int (1) chroma_subsampling_x;
     av1C->chromaSubsamplingY = (rawFlags >> 2) & 0x1;      // unsigned int (1) chroma_subsampling_y;
     av1C->chromaSamplePosition = (rawFlags >> 0) & 0x3;    // unsigned int (2) chroma_sample_position;
+
+    PrintInt("seq_profile", av1C->seqProfile);
+    PrintInt("seq_level_idx_0", av1C->seqLevelIdx0);
+    PrintInt("seq_tier_0", av1C->seqTier0);
+    PrintInt("high_bitdepth", av1C->highBitdepth);
+    PrintInt("twelve_bit", av1C->twelveBit);
+    PrintInt("monochrome", av1C->monochrome);
+    PrintInt("chroma_subsampling_x", av1C->chromaSubsamplingX);
+    PrintInt("chroma_subsampling_y", av1C->chromaSubsamplingY);
+    PrintInt("chroma_sample_position", av1C->chromaSamplePosition);
+
     return AVIF_TRUE;
 }
 
@@ -1078,6 +1191,10 @@ static avifBool avifParsePixelAspectRatioBoxProperty(avifProperty * prop, const 
     avifPixelAspectRatioBox * pasp = &prop->u.pasp;
     CHECK(avifROStreamReadU32(&s, &pasp->hSpacing)); // unsigned int(32) hSpacing;
     CHECK(avifROStreamReadU32(&s, &pasp->vSpacing)); // unsigned int(32) vSpacing;
+
+    PrintInt("hSpacing", pasp->hSpacing);
+    PrintInt("vSpacing", pasp->vSpacing);
+
     return AVIF_TRUE;
 }
 
@@ -1094,6 +1211,16 @@ static avifBool avifParseCleanApertureBoxProperty(avifProperty * prop, const uin
     CHECK(avifROStreamReadU32(&s, &clap->horizOffD)); // unsigned int(32) horizOffD;
     CHECK(avifROStreamReadU32(&s, &clap->vertOffN));  // unsigned int(32) vertOffN;
     CHECK(avifROStreamReadU32(&s, &clap->vertOffD));  // unsigned int(32) vertOffD;
+
+    PrintInt("cleanApertureWidthN", clap->widthN);
+    PrintInt("cleanApertureWidthD", clap->widthD);
+    PrintInt("cleanApertureHeightN", clap->heightN);
+    PrintInt("cleanApertureHeightD", clap->heightD);
+    PrintInt("horizOffN", clap->horizOffN);
+    PrintInt("horizOffD", clap->horizOffD);
+    PrintInt("vertOffN", clap->vertOffN);
+    PrintInt("vertOffD", clap->vertOffD);
+
     return AVIF_TRUE;
 }
 
@@ -1107,6 +1234,9 @@ static avifBool avifParseImageRotationProperty(avifProperty * prop, const uint8_
         // reserved bits must be 0
         return AVIF_FALSE;
     }
+
+    PrintInt("angle", irot->angle);
+
     return AVIF_TRUE;
 }
 
@@ -1120,6 +1250,9 @@ static avifBool avifParseImageMirrorProperty(avifProperty * prop, const uint8_t 
         // reserved bits must be 0
         return AVIF_FALSE;
     }
+
+    PrintInt("axis", imir->axis);
+
     return AVIF_TRUE;
 }
 
@@ -1136,6 +1269,14 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
     for (uint8_t i = 0; i < pixi->planeCount; ++i) {
         CHECK(avifROStreamRead(&s, &pixi->planeDepths[i], 1)); // unsigned int (8) bits_per_channel;
     }
+
+    PrintInt("num_channels", pixi->planeCount);
+    for (uint8_t i = 0; i < pixi->planeCount; ++i) {
+        char temp[128];
+        sprintf(temp, "bits_per_channel[%d]", i);
+        PrintInt(temp, pixi->planeDepths[i]);
+    }
+
     return AVIF_TRUE;
 }
 
@@ -1146,6 +1287,8 @@ static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         CHECK(avifROStreamReadBoxHeader(&s, &header));
+
+        PrintHeader(&header);
 
         int propertyIndex = avifArrayPushIndex(properties);
         avifProperty * prop = &properties->prop[propertyIndex];
@@ -1168,7 +1311,13 @@ static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties
             CHECK(avifParseImageMirrorProperty(prop, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "pixi", 4)) {
             CHECK(avifParsePixelInformationProperty(prop, avifROStreamCurrent(&s), header.size));
+        } else if (!memcmp(header.type, "mdcv", 4)) {
+            PrintString("MasteringDisplayColourVolumeBox need to parse!");
+        } else if (!memcmp(header.type, "clli", 4)) {
+            PrintString("ContentLightLevelBox need to parse!");
         }
+
+        DecrementString();
 
         CHECK(avifROStreamSkip(&s, header.size));
     }
@@ -1186,6 +1335,9 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
 
     uint32_t entryCount;
     CHECK(avifROStreamReadU32(&s, &entryCount));
+
+    PrintInt("numEntries", entryCount);
+
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         unsigned int itemID;
         if (version < 1) {
@@ -1197,6 +1349,11 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
         }
         uint8_t associationCount;
         CHECK(avifROStreamRead(&s, &associationCount, 1));
+
+        PrintInt("itemID", itemID);
+        PrintInt("associationCount", associationCount);
+        IncrementString();
+
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
             avifBool essential = AVIF_FALSE;
             uint16_t propertyIndex = 0;
@@ -1210,6 +1367,9 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                 essential = ((tmp & 0x80) != 0);
                 propertyIndex = tmp & 0x7f;
             }
+
+            PrintInt("propertyIndex", propertyIndex);
+            PrintInt("essential", essential);
 
             if (propertyIndex == 0) {
                 // Not associated with any item
@@ -1228,6 +1388,8 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
 
             // Copy property to item
             avifProperty * srcProp = &meta->properties.prop[propertyIndex];
+
+            PrintBrand("type", srcProp->type);
 
             static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap", "irot", "imir", "pixi" };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
@@ -1249,6 +1411,8 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                 }
             }
         }
+
+        DecrementString();
     }
 
     return AVIF_TRUE;
@@ -1273,6 +1437,9 @@ static avifBool avifParsePrimaryItemBox(avifMeta * meta, const uint8_t * raw, si
     } else {
         CHECK(avifROStreamReadU32(&s, &meta->primaryItemID)); // unsigned int(32) item_ID;
     }
+
+    PrintInt("item_ID", meta->primaryItemID);
+
     return AVIF_TRUE;
 }
 
@@ -1303,6 +1470,8 @@ static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw,
         return AVIF_FALSE;
     }
 
+    PrintHeader(&ipcoHeader);
+
     // Read all item properties inside of ItemPropertyContainerBox
     CHECK(avifParseItemPropertyContainerBox(&meta->properties, avifROStreamCurrent(&s), ipcoHeader.size));
     CHECK(avifROStreamSkip(&s, ipcoHeader.size));
@@ -1312,6 +1481,8 @@ static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw,
         avifBoxHeader ipmaHeader;
         CHECK(avifROStreamReadBoxHeader(&s, &ipmaHeader));
 
+        PrintHeader(&ipmaHeader);
+
         if (!memcmp(ipmaHeader.type, "ipma", 4)) {
             CHECK(avifParseItemPropertyAssociation(meta, avifROStreamCurrent(&s), ipmaHeader.size));
         } else {
@@ -1319,8 +1490,13 @@ static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw,
             return AVIF_FALSE;
         }
 
+        DecrementString();
+
         CHECK(avifROStreamSkip(&s, ipmaHeader.size));
     }
+
+    DecrementString();
+
     return AVIF_TRUE;
 }
 
@@ -1336,6 +1512,10 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
     CHECK(avifROStreamReadU16(&s, &itemProtectionIndex)); //
     uint8_t itemType[4];                                  // unsigned int(32) item_type;
     CHECK(avifROStreamRead(&s, itemType, 4));             //
+
+    PrintInt("item_ID", itemID);
+    PrintInt("item_protection_index", itemProtectionIndex);
+    PrintBrand("item_type", itemType);
 
     avifContentType contentType;
     if (!memcmp(itemType, "mime", 4)) {
@@ -1372,9 +1552,13 @@ static avifBool avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, size_
         return AVIF_FALSE;
     }
 
+    PrintInt("entry_count", entryCount);
+
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         avifBoxHeader infeHeader;
         CHECK(avifROStreamReadBoxHeader(&s, &infeHeader));
+
+        PrintHeader(&infeHeader);
 
         if (!memcmp(infeHeader.type, "infe", 4)) {
             CHECK(avifParseItemInfoEntry(meta, avifROStreamCurrent(&s), infeHeader.size));
@@ -1382,6 +1566,8 @@ static avifBool avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, size_
             // These must all be type ipma
             return AVIF_FALSE;
         }
+
+        DecrementString();
 
         CHECK(avifROStreamSkip(&s, infeHeader.size));
     }
@@ -1400,6 +1586,8 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
         avifBoxHeader irefHeader;
         CHECK(avifROStreamReadBoxHeader(&s, &irefHeader));
 
+        PrintHeader(&irefHeader);
+
         uint32_t fromID = 0;
         if (version == 0) {
             uint16_t tmp;
@@ -1415,6 +1603,10 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
         uint16_t referenceCount = 0;
         CHECK(avifROStreamReadU16(&s, &referenceCount)); // unsigned int(16) reference_count;
 
+        PrintInt("from_item_ID", fromID);
+        PrintInt("reference_count", referenceCount);
+        IncrementString();
+
         for (uint16_t refIndex = 0; refIndex < referenceCount; ++refIndex) {
             uint32_t toID = 0;
             if (version == 0) {
@@ -1427,6 +1619,8 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
                 // unsupported iref version, skip it
                 break;
             }
+
+            PrintInt("to_item_ID", toID);
 
             // Read this reference as "{fromID} is a {irefType} for {toID}"
             if (fromID && toID) {
@@ -1455,6 +1649,9 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
                 }
             }
         }
+
+        DecrementString();
+        DecrementString();
     }
 
     return AVIF_TRUE;
@@ -1468,9 +1665,13 @@ static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t ra
 
     ++meta->idatID; // for tracking idat
 
+    PrintInt("idatID", meta->idatID);
+
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         CHECK(avifROStreamReadBoxHeader(&s, &header));
+
+        PrintHeader(&header);
 
         if (!memcmp(header.type, "iloc", 4)) {
             CHECK(avifParseItemLocationBox(meta, avifROStreamCurrent(&s), header.size));
@@ -1485,6 +1686,8 @@ static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t ra
         } else if (!memcmp(header.type, "iref", 4)) {
             CHECK(avifParseItemReferenceBox(meta, avifROStreamCurrent(&s), header.size));
         }
+
+        DecrementString();
 
         CHECK(avifROStreamSkip(&s, header.size));
     }
@@ -1833,6 +2036,9 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
     CHECK(avifROStreamRead(&s, ftyp->majorBrand, 4));
     CHECK(avifROStreamReadU32(&s, &ftyp->minorVersion));
 
+    PrintBrand("majorBrand", ftyp->majorBrand);
+    PrintInt("minorVersion", ftyp->minorVersion);
+
     size_t compatibleBrandsBytes = avifROStreamRemainingBytes(&s);
     if ((compatibleBrandsBytes % 4) != 0) {
         return AVIF_FALSE;
@@ -1840,6 +2046,11 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
     ftyp->compatibleBrands = avifROStreamCurrent(&s);
     CHECK(avifROStreamSkip(&s, compatibleBrandsBytes));
     ftyp->compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
+
+    for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
+        const uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
+        PrintBrand("brand", compatibleBrand);
+    }
 
     return AVIF_TRUE;
 }
@@ -1852,6 +2063,8 @@ static avifBool avifParse(avifDecoderData * data, const uint8_t * raw, size_t ra
         avifBoxHeader header;
         CHECK(avifROStreamReadBoxHeader(&s, &header));
 
+        PrintHeader(&header);
+
         if (!memcmp(header.type, "ftyp", 4)) {
             CHECK(avifParseFileTypeBox(&data->ftyp, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "meta", 4)) {
@@ -1859,6 +2072,8 @@ static avifBool avifParse(avifDecoderData * data, const uint8_t * raw, size_t ra
         } else if (!memcmp(header.type, "moov", 4)) {
             CHECK(avifParseMoovBox(data, avifROStreamCurrent(&s), header.size));
         }
+
+        DecrementString();
 
         CHECK(avifROStreamSkip(&s, header.size));
     }
