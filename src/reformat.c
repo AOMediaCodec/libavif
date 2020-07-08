@@ -394,14 +394,14 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                     // *   *   *   *
                     //
                     // When converting from YUV420 to RGB, for any given "high-resolution" RGB
-                    // coordinate (1,2,3,4,*) in a 2x2 grid, there are up to four "low-resolution"
-                    // UV samples (A,B,C,D) that are "nearest" to the pixel. For RGB pixel #1, A is
-                    // the closest UV sample, B and C are "adjacent" to it on the same row and column,
-                    // and D is the diagonal. For RGB pixel 3, C is the closest UV sample, A and D
-                    // are adjacent, and B is the diagonal. Sometimes the adjacent pixel on the same
-                    // row is to the left or right, and sometimes the adjacent pixel on the same
-                    // column is up or down. For any edge or corner, there might only be only one
-                    // or two samples nearby, so they'll be duplicated.
+                    // coordinate (1,2,3,4,*), there are up to four "low-resolution" UV samples
+                    // (A,B,C,D) that are "nearest" to the pixel. For RGB pixel #1, A is the closest
+                    // UV sample, B and C are "adjacent" to it on the same row and column, and D is
+                    // the diagonal. For RGB pixel 3, C is the closest UV sample, A and D are
+                    // adjacent, and B is the diagonal. Sometimes the adjacent pixel on the same row
+                    // is to the left or right, and sometimes the adjacent pixel on the same column
+                    // is up or down. For any edge or corner, there might only be only one or two
+                    // samples nearby, so they'll be duplicated.
                     //
                     // The following code attempts to find all four nearest UV samples and put them
                     // in the following unormU and unormV grid as follows:
