@@ -334,8 +334,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
 
     // Various observations and limits
     const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
-    const uint32_t uvIMax = ((image->width + state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1;
-    const uint32_t uvJMax = ((image->height + state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1;
     const uint16_t yuvMaxChannel = (uint16_t)((1 << image->depth) - 1);
     const float rgbMaxChannel = (float)((1 << rgb->depth) - 1);
 
@@ -417,7 +415,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
 
                     // How many bytes to add to a uint8_t pointer index to get to the adjacent (lesser) sample in a given direction
                     int uAdjCol, vAdjCol, uAdjRow, vAdjRow;
-                    if ((uvI == 0) || (uvI == uvIMax)) {
+                    if ((i == 0) || ((i == (image->width - 1)) && ((i % 2) != 0))) {
                         uAdjCol = 0;
                         vAdjCol = 0;
                     } else {
@@ -433,7 +431,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                     // For YUV422, uvJ will always be a fresh value (always corresponds to j), so
                     // we'll simply duplicate the sample as if we were on the top or bottom row and
                     // it'll behave as plain old linear (1D) upsampling, which is all we want.
-                    if ((uvJ == 0) || (uvJ == uvJMax) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
+                    if ((j == 0) || ((j == (image->height - 1)) && ((j % 2) != 0)) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
                         uAdjRow = 0;
                         vAdjRow = 0;
                     } else {
