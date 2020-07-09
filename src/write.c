@@ -893,7 +893,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteU32(&s, 0x00480000);                      // template unsigned int(32) vertresolution
             avifRWStreamWriteU32(&s, 0);                               // const unsigned int(32) reserved = 0;
             avifRWStreamWriteU16(&s, 1);                               // template unsigned int(16) frame_count = 1;
-            avifRWStreamWriteZeros(&s, 32);                            // string[32] compressorname;
+            avifRWStreamWriteChars(&s, "\012AOM Coding", 11);          // string[32] compressorname;
+            avifRWStreamWriteZeros(&s, 32 - 11);                       //
             avifRWStreamWriteU16(&s, 0x0018);                          // template unsigned int(16) depth = 0x0018;
             avifRWStreamWriteU16(&s, (uint16_t)0xffff);                // int(16) pre_defined = -1;
             writeConfigBox(&s, &item->codec->configBox);
@@ -926,7 +927,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             continue;
         }
 
-        uint32_t chunkOffset = (uint32_t)s.offset;
+        uint32_t chunkOffset = (uint32_t)avifRWStreamOffset(&s);
         if (item->encodeOutput->samples.count > 0) {
             for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
                 avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
