@@ -365,8 +365,20 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
         }
         encoder->data->primaryItemID = encoder->data->colorItem->id;
 
-        avifBool imageIsOpaque = avifImageIsOpaque(image);
-        if (!imageIsOpaque) {
+        avifBool needsAlpha = (image->alphaPlane != NULL);
+        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+            // If encoding a single image in which the alpha plane exists but is entirely opaque,
+            // simply skip writing an alpha AV1 payload entirely, as it'll be interpreted as opaque
+            // and is less bytes.
+            //
+            // However, if encoding an image sequence, the first frame's alpha plane being entirely
+            // opaque could be a false positive for removing the alpha AV1 payload, as it might simply
+            // be a fade out later in the sequence. This is why avifImageIsOpaque() is only called
+            // when encoding a single image.
+
+            needsAlpha = !avifImageIsOpaque(image);
+        }
+        if (needsAlpha) {
             encoder->data->alphaItem = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6);
             encoder->data->alphaItem->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
             if (!encoder->data->alphaItem->codec) {
@@ -435,6 +447,12 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
         }
     } else {
         // Another frame in an image sequence
+
+        if (encoder->data->alphaItem && !image->alphaPlane) {
+            // If the first image in the sequence had an alpha plane (even if fully opaque), all
+            // subsequence images must have alpha as well.
+            return AVIF_RESULT_ENCODE_ALPHA_FAILED;
+        }
     }
 
     // -----------------------------------------------------------------------
