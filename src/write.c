@@ -189,7 +189,7 @@ void avifEncoderDestroy(avifEncoder * encoder)
 
 static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * imageMetadata, struct ipmaArray * ipma, uint8_t * itemPropertyIndex)
 {
-    if (imageMetadata->icc.data && (imageMetadata->icc.size > 0)) {
+    if (imageMetadata->icc.size > 0) {
         avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
         avifRWStreamWriteChars(s, "prof", 4); // unsigned int(32) colour_type;
         avifRWStreamWrite(s, imageMetadata->icc.data, imageMetadata->icc.size);
@@ -300,12 +300,12 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
             contentSize = (uint32_t)item->encodeOutput->samples.sample[0].data.size;
         }
 
-        avifRWStreamWriteU16(s, item->id);              // unsigned int(16) item_ID;
-        avifRWStreamWriteU16(s, 0);                     // unsigned int(16) data_reference_index;
-        avifRWStreamWriteU16(s, 1);                     // unsigned int(16) extent_count;
-        avifEncoderItemAddMdatFixup(item, s);           //
-        avifRWStreamWriteU32(s, 0 /* set later */);     // unsigned int(offset_size*8) extent_offset;
-        avifRWStreamWriteU32(s, (uint32_t)contentSize); // unsigned int(length_size*8) extent_length;
+        avifRWStreamWriteU16(s, item->id);          // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(s, 0);                 // unsigned int(16) data_reference_index;
+        avifRWStreamWriteU16(s, 1);                 // unsigned int(16) extent_count;
+        avifEncoderItemAddMdatFixup(item, s);       //
+        avifRWStreamWriteU32(s, 0 /* set later */); // unsigned int(offset_size*8) extent_offset;
+        avifRWStreamWriteU32(s, contentSize);       // unsigned int(length_size*8) extent_length;
     }
     avifRWStreamFinishBox(s, iloc);
 
@@ -387,27 +387,25 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
         if (image->exif.size > 0) {
             // Validate Exif payload (if any) and find TIFF header offset
             uint32_t exifTiffHeaderOffset = 0;
-            if (image->exif.size > 0) {
-                if (image->exif.size < 4) {
-                    // Can't even fit the TIFF header, something is wrong
-                    return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
-                }
+            if (image->exif.size < 4) {
+                // Can't even fit the TIFF header, something is wrong
+                return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+            }
 
-                const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
-                const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
-                for (; exifTiffHeaderOffset < (image->exif.size - 4); ++exifTiffHeaderOffset) {
-                    if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
-                        break;
-                    }
-                    if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
-                        break;
-                    }
+            const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
+            const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
+            for (; exifTiffHeaderOffset < (image->exif.size - 4); ++exifTiffHeaderOffset) {
+                if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
+                    break;
                 }
+                if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
+                    break;
+                }
+            }
 
-                if (exifTiffHeaderOffset >= image->exif.size - 4) {
-                    // Couldn't find the TIFF header
-                    return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
-                }
+            if (exifTiffHeaderOffset >= image->exif.size - 4) {
+                // Couldn't find the TIFF header
+                return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
             }
 
             avifEncoderItem * exifItem = avifEncoderDataCreateItem(encoder->data, "Exif", "Exif", 5);
@@ -466,7 +464,7 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
 
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
-    if (encoder->data->items.count < 1) {
+    if (encoder->data->items.count == 0) {
         return AVIF_RESULT_NO_CONTENT;
     }
 
@@ -718,7 +716,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         uint64_t durationInTimescales = 0;
         for (uint32_t frameIndex = 0; frameIndex < encoder->data->frames.count; ++frameIndex) {
-            avifEncoderFrame * frame = &encoder->data->frames.frame[frameIndex];
+            const avifEncoderFrame * frame = &encoder->data->frames.frame[frameIndex];
             durationInTimescales += frame->durationInTimescales;
         }
 
