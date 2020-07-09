@@ -131,7 +131,7 @@ struct avifCodecInternal;
 typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, uint32_t firstSampleIndex);
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
 // EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
-// encoded and Finish is called, the number of samples emitted must match the number of submitted frames.
+// encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.
 typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                              avifEncoder * encoder,
                                              const avifImage * image,
