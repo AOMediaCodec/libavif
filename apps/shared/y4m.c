@@ -10,6 +10,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define Y4M_MAX_LINE_SIZE 2048 // Arbitrary limit. Y4M headers should be much smaller than this
+
+struct y4mFrameIterator
+{
+    int width;
+    int height;
+    int depth;
+    avifBool hasAlpha;
+    avifPixelFormat format;
+    avifRange range;
+
+    FILE * inputFile;
+    const char * displayFilename;
+};
+
 static avifBool y4mColorSpaceParse(const char * formatString, avifPixelFormat * format, int * depth, avifBool * hasAlpha)
 {
     *hasAlpha = AVIF_FALSE;
@@ -117,6 +132,31 @@ static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t m
     return AVIF_TRUE;
 }
 
+static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayFilename)
+{
+    static const int maxBytes = Y4M_MAX_LINE_SIZE;
+    int bytesRead = 0;
+    uint8_t * front = raw->data;
+
+    for (;;) {
+        if (fread(front, 1, 1, inputFile) != 1) {
+            fprintf(stderr, "Failed to read line: %s\n", displayFilename);
+            break;
+        }
+
+        ++bytesRead;
+        if (bytesRead >= maxBytes) {
+            break;
+        }
+
+        if (*front == '\n') {
+            return bytesRead;
+        }
+        ++front;
+    }
+    return -1;
+}
+
 #define ADVANCE(BYTES)    \
     do {                  \
         p += BYTES;       \
@@ -124,136 +164,136 @@ static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t m
             goto cleanup; \
     } while (0)
 
-avifBool y4mRead(avifImage * avif, const char * inputFilename)
+avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIterator ** iter)
 {
-    FILE * inputFile = fopen(inputFilename, "rb");
-    if (!inputFile) {
-        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
-        return AVIF_FALSE;
-    }
-    fseek(inputFile, 0, SEEK_END);
-    size_t inputFileSize = ftell(inputFile);
-    fseek(inputFile, 0, SEEK_SET);
-
-    if (inputFileSize < 10) {
-        fprintf(stderr, "File too small: %s\n", inputFilename);
-        fclose(inputFile);
-        return AVIF_FALSE;
-    }
-
-    avifRWData raw = AVIF_DATA_EMPTY;
-    avifRWDataRealloc(&raw, inputFileSize);
-    if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
-        fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
-        fclose(inputFile);
-        avifRWDataFree(&raw);
-        return AVIF_FALSE;
-    }
-
     avifBool result = AVIF_FALSE;
 
-    fclose(inputFile);
-    inputFile = NULL;
+    struct y4mFrameIterator frame;
+    frame.width = -1;
+    frame.height = -1;
+    frame.depth = -1;
+    frame.hasAlpha = AVIF_FALSE;
+    frame.format = AVIF_PIXEL_FORMAT_NONE;
+    frame.range = AVIF_RANGE_LIMITED;
+    frame.inputFile = NULL;
+    frame.displayFilename = inputFilename;
 
-    uint8_t * end = raw.data + raw.size;
-    uint8_t * p = raw.data;
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWDataRealloc(&raw, Y4M_MAX_LINE_SIZE);
 
-    if (memcmp(p, "YUV4MPEG2 ", 10) != 0) {
-        fprintf(stderr, "Not a y4m file: %s\n", inputFilename);
-        avifRWDataFree(&raw);
-        return AVIF_FALSE;
-    }
-    ADVANCE(10); // skip past header
+    if (iter && *iter) {
+        // Continue reading FRAMEs from this y4m stream
+        memcpy(&frame, *iter, sizeof(struct y4mFrameIterator));
+    } else {
+        // Open a fresh y4m and read its header
 
-    char tmpBuffer[32];
-
-    int width = -1;
-    int height = -1;
-    int depth = -1;
-    avifBool hasAlpha = AVIF_FALSE;
-    avifPixelFormat format = AVIF_PIXEL_FORMAT_NONE;
-    avifRange range = AVIF_RANGE_LIMITED;
-    while (p != end) {
-        switch (*p) {
-            case 'W': // width
-                width = atoi((const char *)p + 1);
-                break;
-            case 'H': // height
-                height = atoi((const char *)p + 1);
-                break;
-            case 'C': // color space
-                if (!getHeaderString(p, end, tmpBuffer, 31)) {
-                    fprintf(stderr, "Bad y4m header: %s\n", inputFilename);
-                    goto cleanup;
-                }
-                if (!y4mColorSpaceParse(tmpBuffer, &format, &depth, &hasAlpha)) {
-                    fprintf(stderr, "Unsupported y4m pixel format: %s\n", inputFilename);
-                    goto cleanup;
-                }
-                break;
-            case 'X':
-                if (!getHeaderString(p, end, tmpBuffer, 31)) {
-                    fprintf(stderr, "Bad y4m header: %s\n", inputFilename);
-                    goto cleanup;
-                }
-                if (!strcmp(tmpBuffer, "XCOLORRANGE=FULL")) {
-                    range = AVIF_RANGE_FULL;
-                }
-                break;
-            default:
-                break;
+        if (inputFilename) {
+            frame.inputFile = fopen(inputFilename, "rb");
+            if (!frame.inputFile) {
+                fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+                goto cleanup;
+            }
+        } else {
+            frame.inputFile = stdin;
+            frame.displayFilename = "(stdin)";
         }
 
-        // Advance past header section
-        while ((*p != '\n') && (*p != ' ')) {
+        int headerBytes = y4mReadLine(frame.inputFile, &raw, frame.displayFilename);
+        if (headerBytes < 0) {
+            fprintf(stderr, "Y4M header too large: %s\n", frame.displayFilename);
+            goto cleanup;
+        }
+        if (headerBytes < 10) {
+            fprintf(stderr, "Y4M header too small: %s\n", frame.displayFilename);
+            goto cleanup;
+        }
+
+        uint8_t * end = raw.data + headerBytes;
+        uint8_t * p = raw.data;
+
+        if (memcmp(p, "YUV4MPEG2 ", 10) != 0) {
+            fprintf(stderr, "Not a y4m file: %s\n", frame.displayFilename);
+            goto cleanup;
+        }
+        ADVANCE(10); // skip past header
+
+        char tmpBuffer[32];
+
+        while (p != end) {
+            switch (*p) {
+                case 'W': // width
+                    frame.width = atoi((const char *)p + 1);
+                    break;
+                case 'H': // height
+                    frame.height = atoi((const char *)p + 1);
+                    break;
+                case 'C': // color space
+                    if (!getHeaderString(p, end, tmpBuffer, 31)) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    if (!y4mColorSpaceParse(tmpBuffer, &frame.format, &frame.depth, &frame.hasAlpha)) {
+                        fprintf(stderr, "Unsupported y4m pixel format: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    break;
+                case 'X':
+                    if (!getHeaderString(p, end, tmpBuffer, 31)) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    if (!strcmp(tmpBuffer, "XCOLORRANGE=FULL")) {
+                        frame.range = AVIF_RANGE_FULL;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            // Advance past header section
+            while ((*p != '\n') && (*p != ' ')) {
+                ADVANCE(1);
+            }
+            if (*p == '\n') {
+                // Done with y4m header
+                break;
+            }
+
             ADVANCE(1);
         }
-        if (*p == '\n') {
-            // Done with y4m header
-            break;
+
+        if (*p != '\n') {
+            fprintf(stderr, "Truncated y4m header (no newline): %s\n", frame.displayFilename);
+            goto cleanup;
         }
-
-        ADVANCE(1);
     }
 
-    if (*p != '\n') {
-        fprintf(stderr, "Truncated y4m header (no newline): %s\n", inputFilename);
+    int frameHeaderBytes = y4mReadLine(frame.inputFile, &raw, frame.displayFilename);
+    if (frameHeaderBytes < 0) {
+        fprintf(stderr, "Y4M frame header too large: %s\n", frame.displayFilename);
         goto cleanup;
     }
-    ADVANCE(1); // advance past newline
-
-    size_t remainingBytes = end - p;
-    if (remainingBytes < 6) {
-        fprintf(stderr, "Truncated y4m (no room for frame header): %s\n", inputFilename);
+    if (frameHeaderBytes < 6) {
+        fprintf(stderr, "Y4M frame header too small: %s\n", frame.displayFilename);
         goto cleanup;
     }
-    if (memcmp(p, "FRAME", 5) != 0) {
-        fprintf(stderr, "Truncated y4m (no frame): %s\n", inputFilename);
+    if (memcmp(raw.data, "FRAME", 5) != 0) {
+        fprintf(stderr, "Truncated y4m (no frame): %s\n", frame.displayFilename);
         goto cleanup;
     }
 
-    // Advance past frame header
-    // TODO: Parse frame overrides similarly to header parsing above?
-    while (*p != '\n') {
-        ADVANCE(1);
-    }
-    if (*p != '\n') {
-        fprintf(stderr, "Invalid y4m frame header: %s\n", inputFilename);
-        goto cleanup;
-    }
-    ADVANCE(1); // advance past newline
-
-    if ((width < 1) || (height < 1) || ((depth != 8) && (depth != 10) && (depth != 12)) || (format == AVIF_PIXEL_FORMAT_NONE)) {
-        fprintf(stderr, "Failed to parse y4m header (not enough information): %s\n", inputFilename);
+    if ((frame.width < 1) || (frame.height < 1) || ((frame.depth != 8) && (frame.depth != 10) && (frame.depth != 12)) ||
+        (frame.format == AVIF_PIXEL_FORMAT_NONE)) {
+        fprintf(stderr, "Failed to parse y4m header (not enough information): %s\n", frame.displayFilename);
         goto cleanup;
     }
 
     avifImageFreePlanes(avif, AVIF_PLANES_YUV | AVIF_PLANES_A);
-    avif->width = width;
-    avif->height = height;
-    avif->depth = depth;
-    avif->yuvFormat = format;
-    avif->yuvRange = range;
+    avif->width = frame.width;
+    avif->height = frame.height;
+    avif->depth = frame.depth;
+    avif->yuvFormat = frame.format;
+    avif->yuvRange = frame.range;
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     avifPixelFormatInfo info;
@@ -261,32 +301,51 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
 
     uint32_t planeBytes[4];
     planeBytes[0] = avif->yuvRowBytes[0] * avif->height;
-    planeBytes[1] = avif->yuvRowBytes[1] * (avif->height >> info.chromaShiftY);
-    planeBytes[2] = avif->yuvRowBytes[2] * (avif->height >> info.chromaShiftY);
-    if (hasAlpha) {
+    planeBytes[1] = avif->yuvRowBytes[1] * ((avif->height + info.chromaShiftY) >> info.chromaShiftY);
+    planeBytes[2] = avif->yuvRowBytes[2] * ((avif->height + info.chromaShiftY) >> info.chromaShiftY);
+    if (frame.hasAlpha) {
         planeBytes[3] = avif->alphaRowBytes * avif->height;
     } else {
         planeBytes[3] = 0;
     }
 
-    uint32_t bytesNeeded = planeBytes[0] + planeBytes[1] + planeBytes[2] + planeBytes[3];
-    remainingBytes = end - p;
-    if (bytesNeeded > remainingBytes) {
-        fprintf(stderr, "Not enough bytes in y4m for first frame: %s\n", inputFilename);
-        goto cleanup;
-    }
-
     for (int i = 0; i < 3; ++i) {
-        memcpy(avif->yuvPlanes[i], p, planeBytes[i]);
-        p += planeBytes[i];
+        uint32_t bytesRead = (uint32_t)fread(avif->yuvPlanes[i], 1, planeBytes[i], frame.inputFile);
+        if (bytesRead != planeBytes[i]) {
+            fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %d, got %d): %s\n", planeBytes[i], bytesRead, frame.displayFilename);
+            goto cleanup;
+        }
     }
-    if (hasAlpha) {
+    if (frame.hasAlpha) {
         avifImageAllocatePlanes(avif, AVIF_PLANES_A);
-        memcpy(avif->alphaPlane, p, planeBytes[3]);
+        if (fread(avif->alphaPlane, 1, planeBytes[3], frame.inputFile) != planeBytes[3]) {
+            fprintf(stderr, "Failed to read y4m plane (not enough data): %s\n", frame.displayFilename);
+            goto cleanup;
+        }
     }
 
     result = AVIF_TRUE;
 cleanup:
+    if (iter) {
+        if (*iter) {
+            free(*iter);
+            *iter = NULL;
+        }
+
+        if (result && frame.inputFile) {
+            ungetc(fgetc(frame.inputFile), frame.inputFile); // Kick frame.inputFile to force EOF
+
+            if (!feof(frame.inputFile)) {
+                // Remember y4m state for next time
+                *iter = malloc(sizeof(struct y4mFrameIterator));
+                memcpy(*iter, &frame, sizeof(struct y4mFrameIterator));
+            }
+        }
+    }
+
+    if (inputFilename && frame.inputFile && (!iter || !(*iter))) {
+        fclose(frame.inputFile);
+    }
     avifRWDataFree(&raw);
     return result;
 }

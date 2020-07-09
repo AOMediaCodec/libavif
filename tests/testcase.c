@@ -203,7 +203,7 @@ int testCaseRun(TestCase * tc, const char * dataDir, avifBool generating)
     y4mFilename[sizeof(y4mFilename) - 1] = 0;
 
     avifImage * image = avifImageCreateEmpty();
-    if (!y4mRead(image, y4mFilename)) {
+    if (!y4mRead(image, y4mFilename, NULL)) {
         avifImageDestroy(image);
         printf("ERROR[%s]: Can't read y4m: %s\n", tc->name, y4mFilename);
         return AVIF_FALSE;
