@@ -9,10 +9,15 @@
 #include "y4m.h"
 
 #include <fcntl.h>
-#include <io.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
