@@ -248,7 +248,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        // aom_codec.h says: aom_codec_version() == (1<<16 | 2<<8 | 3)
+        // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
         static const int aomVersion_2_0_0 = (2 << 16);
         const int aomVersion = aom_codec_version();
         if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
@@ -278,10 +278,9 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
 
         avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
 
-        aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
+        aom_codec_iface_t * encoderInterface = aom_codec_av1_cx();
         struct aom_codec_enc_cfg cfg;
-        aom_codec_enc_config_default(encoder_interface, &cfg, aomUsage);
-        codec->internal->encoderInitialized = AVIF_TRUE;
+        aom_codec_enc_config_default(encoderInterface, &cfg, aomUsage);
 
         cfg.g_profile = codec->configBox.seqProfile;
         cfg.g_bit_depth = image->depth;
@@ -312,7 +311,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         codec->internal->monochromeEnabled = AVIF_FALSE;
         if (aomVersion > aomVersion_2_0_0) {
             // There exists a bug in libaom's chroma_check() function where it will attempt to
-            // access nonexistent UV planes when encoding monochrome at slower libavif "speeds". It
+            // access nonexistent UV planes when encoding monochrome at faster libavif "speeds". It
             // was fixed shortly after the 2.0.0 libaom release, and the fix exists in both the
             // master and applejack branches. This ensures that the next version *after* 2.0.0 will
             // have the fix, and we must avoid cfg.monochrome until then.
@@ -329,7 +328,8 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         if (image->depth > 8) {
             encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
         }
-        aom_codec_enc_init(&codec->internal->encoder, encoder_interface, &cfg, encoderFlags);
+        aom_codec_enc_init(&codec->internal->encoder, encoderInterface, &cfg, encoderFlags);
+        codec->internal->encoderInitialized = AVIF_TRUE;
 
         if (lossless) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, 1);
