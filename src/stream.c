@@ -239,7 +239,7 @@ void avifRWStreamFinishWrite(avifRWStream * stream)
     }
 }
 
-void avifRWStreamWrite(avifRWStream * stream, const uint8_t * data, size_t size)
+void avifRWStreamWrite(avifRWStream * stream, const void * data, size_t size)
 {
     if (!size) {
         return;
@@ -252,7 +252,7 @@ void avifRWStreamWrite(avifRWStream * stream, const uint8_t * data, size_t size)
 
 void avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size)
 {
-    avifRWStreamWrite(stream, (const uint8_t *)chars, size);
+    avifRWStreamWrite(stream, chars, size);
 }
 
 avifBoxMarker avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags)

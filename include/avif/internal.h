@@ -213,7 +213,7 @@ size_t avifRWStreamOffset(avifRWStream * stream);
 void avifRWStreamSetOffset(avifRWStream * stream, size_t offset);
 
 void avifRWStreamFinishWrite(avifRWStream * stream);
-void avifRWStreamWrite(avifRWStream * stream, const uint8_t * data, size_t size);
+void avifRWStreamWrite(avifRWStream * stream, const void * data, size_t size);
 void avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size);
 avifBoxMarker avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t contentSize);
 avifBoxMarker avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags);
