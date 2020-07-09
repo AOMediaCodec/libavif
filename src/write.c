@@ -575,7 +575,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             //   so there must still be a primary item pointing at a sync sample. Since the first
             //   frame of the image sequence is guaranteed to be a sync sample, it is chosen here.
             //
-            // TODO: Offer the ability for an user to specify which frame in the sequence should
+            // TODO: Offer the ability for a user to specify which frame in the sequence should
             //       become the primary item's image, and force that frame to be a keyframe.
             contentSize = (uint32_t)item->encodeOutput->samples.sample[0].data.size;
         }
