@@ -305,15 +305,6 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-
-            if (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) {
-                if (lossless && (matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY)) {
-                    // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY
-                    // as a side effect of --lossless, and Identity is only valid with YUV444.
-                    // Set this back to the default.
-                    matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
-                }
-            }
         } else if (!strcmp(arg, "-k") || !strcmp(arg, "--keyframe")) {
             NEXTARG();
             keyframeInterval = atoi(arg);
@@ -516,6 +507,22 @@ int main(int argc, char * argv[])
     avifBool sourceWasRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
 
     printf("Successfully loaded: %s\n", firstFile->filename);
+
+    if (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) {
+        if (matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+            // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY
+            // as a side effect of --lossless, and Identity is only valid with YUV444.
+            // Set this back to the default.
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+
+            if (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV400) {
+                // Warn that we're doing this unless we're monochrome, in which the
+                // matrixCoefficients value here is effectively benign, as long as is it not
+                // IDENTITY.
+                printf("WARNING: matrixCoefficients may not be set to identity(0) when subsampling. Resetting to defaults.\n");
+            }
+        }
+    }
 
     if (ignoreICC) {
         avifImageSetProfileICC(image, NULL, 0);
