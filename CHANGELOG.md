@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Refactor avifDecoder internal structures to properly handle meta boxes in trak boxes (see avifMeta)
 * Update libaom.cmd to point at the v2.0.0 tag
 * Update dav1d.cmd to point at the 0.7.1 tag
-* Update rav1e.cmd to point at the p20200630 tag
+* Update rav1e.cmd to point at the p20200707 tag
 * Re-enable cpu-used=7+ in codec_aom when libaom major version > 1
 * Memory allocation failures now cause libavif to abort the process (rather than undefined behavior)
 * Fix to maintain alpha range when decoding an image grid with alpha
