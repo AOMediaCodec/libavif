@@ -75,8 +75,8 @@ typedef struct avifEncoderItem
     uint16_t id;
     uint8_t type[4];
     avifCodec * codec;                    // only present on type==av01
-    avifCodecEncodeOutput * encodeOutput; // AV1 sample data for image sequences
-    avifRWData content;                   // OBU data on av01 items-based image, metadata payload for Exif/XMP
+    avifCodecEncodeOutput * encodeOutput; // AV1 sample data
+    avifRWData metadataPayload;           // Exif/XMP data
     avifBool alpha;
 
     const char * infeName;
@@ -146,7 +146,7 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
             avifCodecDestroy(item->codec);
         }
         avifCodecEncodeOutputDestroy(item->encodeOutput);
-        avifRWDataFree(&item->content);
+        avifRWDataFree(&item->metadataPayload);
         avifArrayDestroy(&item->mdatFixups);
     }
     avifImageDestroy(data->imageMetadata);
@@ -292,20 +292,16 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     for (uint32_t trakItemIndex = 0; trakItemIndex < encoder->data->items.count; ++trakItemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[trakItemIndex];
         if (memcmp(item->type, "av01", 4) == 0) {
+            // Skip over all non-metadata items
             continue;
         }
 
-        uint32_t contentSize = (uint32_t)item->content.size;
-        if (item->encodeOutput->samples.count > 0) {
-            contentSize = (uint32_t)item->encodeOutput->samples.sample[0].data.size;
-        }
-
-        avifRWStreamWriteU16(s, item->id);          // unsigned int(16) item_ID;
-        avifRWStreamWriteU16(s, 0);                 // unsigned int(16) data_reference_index;
-        avifRWStreamWriteU16(s, 1);                 // unsigned int(16) extent_count;
-        avifEncoderItemAddMdatFixup(item, s);       //
-        avifRWStreamWriteU32(s, 0 /* set later */); // unsigned int(offset_size*8) extent_offset;
-        avifRWStreamWriteU32(s, contentSize);       // unsigned int(length_size*8) extent_length;
+        avifRWStreamWriteU16(s, item->id);                             // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(s, 0);                                    // unsigned int(16) data_reference_index;
+        avifRWStreamWriteU16(s, 1);                                    // unsigned int(16) extent_count;
+        avifEncoderItemAddMdatFixup(item, s);                          //
+        avifRWStreamWriteU32(s, 0 /* set later */);                    // unsigned int(offset_size*8) extent_offset;
+        avifRWStreamWriteU32(s, (uint32_t)item->metadataPayload.size); // unsigned int(length_size*8) extent_length;
     }
     avifRWStreamFinishBox(s, iloc);
 
@@ -412,10 +408,10 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
             exifItem->irefToID = encoder->data->primaryItemID;
             exifItem->irefType = "cdsc";
 
-            avifRWDataRealloc(&exifItem->content, sizeof(uint32_t) + image->exif.size);
+            avifRWDataRealloc(&exifItem->metadataPayload, sizeof(uint32_t) + image->exif.size);
             exifTiffHeaderOffset = avifHTONL(exifTiffHeaderOffset);
-            memcpy(exifItem->content.data, &exifTiffHeaderOffset, sizeof(uint32_t));
-            memcpy(exifItem->content.data + sizeof(uint32_t), image->exif.data, image->exif.size);
+            memcpy(exifItem->metadataPayload.data, &exifTiffHeaderOffset, sizeof(uint32_t));
+            memcpy(exifItem->metadataPayload.data + sizeof(uint32_t), image->exif.data, image->exif.size);
         }
 
         if (image->xmp.size > 0) {
@@ -425,7 +421,7 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
 
             xmpItem->infeContentType = xmpContentType;
             xmpItem->infeContentTypeSize = xmpContentTypeSize;
-            avifRWDataSet(&xmpItem->content, image->xmp.data, image->xmp.size);
+            avifRWDataSet(&xmpItem->metadataPayload, image->xmp.data, image->xmp.size);
         }
 
         // -----------------------------------------------------------------------
@@ -571,8 +567,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
 
-        uint32_t contentSize = (uint32_t)item->content.size;
+        uint32_t contentSize = (uint32_t)item->metadataPayload.size;
         if (item->encodeOutput->samples.count > 0) {
+            // This is choosing sample 0's size as there are two cases here:
+            // * This is a single image, in which this is correct
+            // * This is an image sequence, but this file should still be a valid single-image avif,
+            //   so there must still be a primary item pointing at a sync sample. Since the first
+            //   frame of the image sequence is guaranteed to be a sync sample, it is chosen here.
+            //
+            // TODO: Offer the ability for an user to specify which frame in the sequence should
+            //       become the primary item's image, and force that frame to be a keyframe.
             contentSize = (uint32_t)item->encodeOutput->samples.sample[0].data.size;
         }
 
@@ -922,7 +926,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifBoxMarker mdat = avifRWStreamWriteBox(&s, "mdat", AVIF_BOX_SIZE_TBD);
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-        if ((item->content.size == 0) && (item->encodeOutput->samples.count == 0)) {
+        if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
             continue;
         }
 
@@ -933,7 +937,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 avifRWStreamWrite(&s, sample->data.data, sample->data.size);
             }
         } else {
-            avifRWStreamWrite(&s, item->content.data, item->content.size);
+            avifRWStreamWrite(&s, item->metadataPayload.data, item->metadataPayload.size);
         }
 
         for (uint32_t fixupIndex = 0; fixupIndex < item->mdatFixups.count; ++fixupIndex) {
