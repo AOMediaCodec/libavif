@@ -1040,9 +1040,9 @@ static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool a
     codec->configBox.seqProfile = seqProfile;
     codec->configBox.seqLevelIdx0 = seqLevelIdx0;
     codec->configBox.seqTier0 = 0;
-    codec->configBox.highBitdepth = (image->depth > 8) ? 1 : 0;
-    codec->configBox.twelveBit = (image->depth == 12) ? 1 : 0;
-    codec->configBox.monochrome = (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 0;
+    codec->configBox.highBitdepth = (image->depth > 8);
+    codec->configBox.twelveBit = (image->depth == 12);
+    codec->configBox.monochrome = (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400));
     codec->configBox.chromaSubsamplingX = (uint8_t)formatInfo.chromaShiftX;
     codec->configBox.chromaSubsamplingY = (uint8_t)formatInfo.chromaShiftY;
     codec->configBox.chromaSamplePosition = image->yuvChromaSamplePosition;
