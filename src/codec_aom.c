@@ -402,7 +402,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
 
         for (int yuvPlane = 1; yuvPlane < 3; ++yuvPlane) {
             if (image->depth > 8) {
-                const uint16_t half = (image->depth == 10) ? 512 : 2048;
+                const uint16_t half = 1 << (image->depth - 1);
                 for (uint32_t j = 0; j < monoUVHeight; ++j) {
                     uint16_t * dstRow = (uint16_t *)&aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
                     for (uint32_t i = 0; i < monoUVWidth; ++i) {
@@ -411,10 +411,8 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
                 }
             } else {
                 const uint8_t half = 128;
-                for (uint32_t j = 0; j < monoUVHeight; ++j) {
-                    uint8_t * dstRow = &aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
-                    memset(dstRow, half, aomImage->stride[yuvPlane]);
-                }
+                size_t planeSize = (size_t)monoUVHeight * aomImage->stride[yuvPlane];
+                memset(aomImage->planes[yuvPlane], half, planeSize);
             }
         }
     }
