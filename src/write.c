@@ -737,7 +737,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifRWStreamWriteU16(&s, 0x0100);                       // template int(16) volume = 0x0100; // typically, full volume
         avifRWStreamWriteU16(&s, 0);                            // const bit(16) reserved = 0;
         avifRWStreamWriteZeros(&s, 8);                          // const unsigned int(32)[2] reserved = 0;
-        avifRWStreamWrite(&s, (const uint8_t *)unityMatrix, sizeof(unityMatrix));
+        avifRWStreamWrite(&s, unityMatrix, sizeof(unityMatrix));
         avifRWStreamWriteZeros(&s, 24);                       // bit(32)[6] pre_defined = 0;
         avifRWStreamWriteU32(&s, encoder->data->items.count); // unsigned int(32) next_track_ID;
         avifRWStreamFinishBox(&s, mvhd);
@@ -772,7 +772,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteU16(&s, 0);                      // template int(16) alternate_group = 0;
             avifRWStreamWriteU16(&s, 0);                      // template int(16) volume = {if track_is_audio 0x0100 else 0};
             avifRWStreamWriteU16(&s, 0);                      // const unsigned int(16) reserved = 0;
-            avifRWStreamWrite(&s, (const uint8_t *)unityMatrix, sizeof(unityMatrix)); // template int(32)[9] matrix= // { 0x00010000,0,0,0,0x00010000,0,0,0,0x40000000 };
+            avifRWStreamWrite(&s, unityMatrix, sizeof(unityMatrix)); // template int(32)[9] matrix= // { 0x00010000,0,0,0,0x00010000,0,0,0,0x40000000 };
             avifRWStreamWriteU32(&s, imageMetadata->width << 16);  // unsigned int(32) width;
             avifRWStreamWriteU32(&s, imageMetadata->height << 16); // unsigned int(32) height;
             avifRWStreamFinishBox(&s, tkhd);
