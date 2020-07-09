@@ -570,7 +570,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         uint32_t contentSize = (uint32_t)item->metadataPayload.size;
         if (item->encodeOutput->samples.count > 0) {
             // This is choosing sample 0's size as there are two cases here:
-            // * This is a single image, in which this is correct
+            // * This is a single image, in which case this is correct
             // * This is an image sequence, but this file should still be a valid single-image avif,
             //   so there must still be a primary item pointing at a sync sample. Since the first
             //   frame of the image sequence is guaranteed to be a sync sample, it is chosen here.
