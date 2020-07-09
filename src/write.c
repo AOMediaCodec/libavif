@@ -499,8 +499,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Begin write stream
 
-    avifImage * imageMetadata = encoder->data->imageMetadata;
-    uint64_t now = (uint64_t)time(NULL);
+    const avifImage * imageMetadata = encoder->data->imageMetadata;
+    // The epoch for creation_time and modification_time is midnight, Jan. 1,
+    // 1904, in UTC time. Add the number of seconds between that epoch and the
+    // Unix epoch.
+    uint64_t now = (uint64_t)time(NULL) + 2082844800;
 
     avifRWStream s;
     avifRWStreamStart(&s, output);
