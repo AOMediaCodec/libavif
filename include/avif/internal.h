@@ -185,11 +185,11 @@ typedef struct avifROStream
 
 const uint8_t * avifROStreamCurrent(avifROStream * stream);
 void avifROStreamStart(avifROStream * stream, avifROData * raw);
-size_t avifROStreamOffset(avifROStream * stream);
+size_t avifROStreamOffset(const avifROStream * stream);
 void avifROStreamSetOffset(avifROStream * stream, size_t offset);
 
-avifBool avifROStreamHasBytesLeft(avifROStream * stream, size_t byteCount);
-size_t avifROStreamRemainingBytes(avifROStream * stream);
+avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount);
+size_t avifROStreamRemainingBytes(const avifROStream * stream);
 avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount);
 avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size);
 avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v);
@@ -209,7 +209,7 @@ typedef struct avifRWStream
 
 uint8_t * avifRWStreamCurrent(avifRWStream * stream);
 void avifRWStreamStart(avifRWStream * stream, avifRWData * raw);
-size_t avifRWStreamOffset(avifRWStream * stream);
+size_t avifRWStreamOffset(const avifRWStream * stream);
 void avifRWStreamSetOffset(avifRWStream * stream, size_t offset);
 
 void avifRWStreamFinishWrite(avifRWStream * stream);

@@ -155,7 +155,7 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
     avifFree(data);
 }
 
-static void avifEncoderItemAddMdatFixup(avifEncoderItem * item, avifRWStream * s)
+static void avifEncoderItemAddMdatFixup(avifEncoderItem * item, const avifRWStream * s)
 {
     avifOffsetFixup * fixup = (avifOffsetFixup *)avifArrayPushPtr(&item->mdatFixups);
     fixup->offset = avifRWStreamOffset(s);

@@ -20,17 +20,17 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw)
     stream->offset = 0;
 }
 
-avifBool avifROStreamHasBytesLeft(avifROStream * stream, size_t byteCount)
+avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount)
 {
     return (stream->offset + byteCount) <= stream->raw->size;
 }
 
-size_t avifROStreamRemainingBytes(avifROStream * stream)
+size_t avifROStreamRemainingBytes(const avifROStream * stream)
 {
     return stream->raw->size - stream->offset;
 }
 
-size_t avifROStreamOffset(avifROStream * stream)
+size_t avifROStreamOffset(const avifROStream * stream)
 {
     return stream->offset;
 }
@@ -215,7 +215,7 @@ void avifRWStreamStart(avifRWStream * stream, avifRWData * raw)
     stream->offset = 0;
 }
 
-size_t avifRWStreamOffset(avifRWStream * stream)
+size_t avifRWStreamOffset(const avifRWStream * stream)
 {
     return stream->offset;
 }
