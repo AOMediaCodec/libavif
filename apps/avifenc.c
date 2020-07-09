@@ -305,6 +305,15 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+
+            if (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) {
+                if (lossless && (matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY)) {
+                    // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY
+                    // as a side effect of --lossless, and Identity is only valid with YUV444.
+                    // Set this back to the default.
+                    matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+                }
+            }
         } else if (!strcmp(arg, "-k") || !strcmp(arg, "--keyframe")) {
             NEXTARG();
             keyframeInterval = atoi(arg);
@@ -546,6 +555,7 @@ int main(int argc, char * argv[])
     avifBool losslessColorQP = (minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS);
     avifBool losslessAlphaQP = (minQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS);
     avifBool depthMatches = (sourceDepth == image->depth);
+    avifBool using400 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     avifBool using444 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
     avifBool usingFullRange = (image->yuvRange == AVIF_RANGE_FULL);
     avifBool usingIdentityMatrix = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY);
@@ -587,7 +597,7 @@ int main(int argc, char * argv[])
         }
 
         if (sourceWasRGB) {
-            if (!using444) {
+            if (!using444 && !using400) {
                 fprintf(stderr, "WARNING: [--lossless] Input data was RGB and YUV subsampling (-y) isn't YUV444. Output might not be lossless.\n");
                 lossless = AVIF_FALSE;
             }
@@ -597,7 +607,7 @@ int main(int argc, char * argv[])
                 lossless = AVIF_FALSE;
             }
 
-            if (!usingIdentityMatrix) {
+            if (!usingIdentityMatrix && !using400) {
                 fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0); Output might not be lossless.\n");
                 lossless = AVIF_FALSE;
             }
