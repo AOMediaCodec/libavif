@@ -8,15 +8,14 @@
 #include "avifutil.h"
 #include "y4m.h"
 
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #if defined(_WIN32)
+// for setmode()
+#include <fcntl.h>
 #include <io.h>
-#else
-#include <unistd.h>
 #endif
 
 #define NEXTARG()                                                     \
@@ -156,7 +155,7 @@ static int parseU32List(uint32_t output[8], const char * arg)
     return index;
 }
 
-avifInputFile * avifInputGetNextFile(avifInput * input)
+static avifInputFile * avifInputGetNextFile(avifInput * input)
 {
     if (input->useStdin) {
         ungetc(fgetc(stdin), stdin); // Kick stdin to force EOF
@@ -483,9 +482,11 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
+#if defined(_WIN32)
     if (input.useStdin) {
         setmode(fileno(stdin), O_BINARY);
     }
+#endif
 
     image = avifImageCreateEmpty();
 
