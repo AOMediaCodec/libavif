@@ -296,7 +296,6 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         if (encoder->maxThreads > 1) {
             cfg.g_threads = encoder->maxThreads;
         }
-        cfg.kf_mode = AOM_KF_DISABLED;
 
         int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
         int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
