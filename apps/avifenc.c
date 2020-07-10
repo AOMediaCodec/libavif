@@ -256,6 +256,7 @@ int main(int argc, char * argv[])
     int duration = 1;  // in timescales, stored per-inputFile (see avifInputFile)
     int timescale = 1; // 1 fps by default
     int keyframeInterval = 0;
+    avifBool cicpExplicitlySet = AVIF_FALSE;
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT709
@@ -354,6 +355,7 @@ int main(int argc, char * argv[])
             colorPrimaries = (avifColorPrimaries)cicp[0];
             transferCharacteristics = (avifTransferCharacteristics)cicp[1];
             matrixCoefficients = (avifMatrixCoefficients)cicp[2];
+            cicpExplicitlySet = AVIF_TRUE;
         } else if (!strcmp(arg, "-r") || !strcmp(arg, "--range")) {
             NEXTARG();
             if (!strcmp(arg, "limited") || !strcmp(arg, "l")) {
@@ -508,19 +510,15 @@ int main(int argc, char * argv[])
 
     printf("Successfully loaded: %s\n", firstFile->filename);
 
-    if (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) {
-        if (matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
-            // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY
-            // as a side effect of --lossless, and Identity is only valid with YUV444.
-            // Set this back to the default.
-            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
+        (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
+        // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect
+        // of --lossless, and Identity is only valid with YUV444. Set this back to the default.
+        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
 
-            if (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV400) {
-                // Warn that we're doing this unless we're monochrome, in which the
-                // matrixCoefficients value here is effectively benign, as long as is it not
-                // IDENTITY.
-                printf("WARNING: matrixCoefficients may not be set to identity(0) when subsampling. Resetting to defaults.\n");
-            }
+        if (cicpExplicitlySet) {
+            // Only warn if someone explicitly asked for identity.
+            printf("WARNING: matrixCoefficients may not be set to identity(0) when subsampling. Resetting MC to defaults.\n");
         }
     }
 
