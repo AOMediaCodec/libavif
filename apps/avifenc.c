@@ -510,8 +510,7 @@ int main(int argc, char * argv[])
 
     printf("Successfully loaded: %s\n", firstFile->filename);
 
-    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
-        (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
         // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect
         // of --lossless, and Identity is only valid with YUV444. Set this back to the default.
         image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
