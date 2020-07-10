@@ -386,9 +386,11 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
         aomImage->cp = (aom_color_primaries_t)image->colorPrimaries;
         aomImage->tc = (aom_transfer_characteristics_t)image->transferCharacteristics;
         aomImage->mc = (aom_matrix_coefficients_t)image->matrixCoefficients;
+        aomImage->csp = (aom_chroma_sample_position_t)image->yuvChromaSamplePosition;
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, aomImage->cp);
         aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage->tc);
         aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage->mc);
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, aomImage->csp);
     }
 
     if (monochromeRequested && !codec->internal->monochromeEnabled) {
