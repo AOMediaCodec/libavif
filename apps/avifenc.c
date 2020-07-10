@@ -76,6 +76,8 @@ static void syntax(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
+    printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
+    printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
     printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 8)\n",
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
@@ -238,6 +240,8 @@ int main(int argc, char * argv[])
     int maxQuantizer = 10; // "High Quality", but not lossless
     int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    int tileRowsLog2 = 0;
+    int tileColsLog2 = 0;
     int speed = 8;
     int paspCount = 0;
     uint32_t paspValues[8]; // only the first two are used
@@ -344,6 +348,24 @@ int main(int argc, char * argv[])
             }
             if (maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
                 maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+            }
+        } else if (!strcmp(arg, "--tilerowslog2")) {
+            NEXTARG();
+            tileRowsLog2 = atoi(arg);
+            if (tileRowsLog2 < 0) {
+                tileRowsLog2 = 0;
+            }
+            if (tileRowsLog2 > 6) {
+                tileRowsLog2 = 6;
+            }
+        } else if (!strcmp(arg, "--tilecolslog2")) {
+            NEXTARG();
+            tileColsLog2 = atoi(arg);
+            if (tileColsLog2 < 0) {
+                tileColsLog2 = 0;
+            }
+            if (tileColsLog2 > 6) {
+                tileColsLog2 = 6;
             }
         } else if (!strcmp(arg, "--cicp") || !strcmp(arg, "--nclx")) {
             NEXTARG();
@@ -625,7 +647,7 @@ int main(int argc, char * argv[])
     printf("AVIF to be written:%s\n", lossyHint);
     avifImageDump(image);
 
-    printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %d worker thread(s), please wait...\n",
+    printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], tileRowsLog2 [%d], tileColsLog2 [%d], %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
            speed,
            minQuantizer,
@@ -636,6 +658,8 @@ int main(int argc, char * argv[])
            quantizerString(minQuantizerAlpha),
            maxQuantizerAlpha,
            quantizerString(maxQuantizerAlpha),
+           tileRowsLog2,
+           tileColsLog2,
            jobs);
     encoder = avifEncoderCreate();
     encoder->maxThreads = jobs;
@@ -643,6 +667,8 @@ int main(int argc, char * argv[])
     encoder->maxQuantizer = maxQuantizer;
     encoder->minQuantizerAlpha = minQuantizerAlpha;
     encoder->maxQuantizerAlpha = maxQuantizerAlpha;
+    encoder->tileRowsLog2 = tileRowsLog2;
+    encoder->tileColsLog2 = tileColsLog2;
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
     encoder->timescale = (uint64_t)timescale;
