@@ -99,8 +99,11 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
         }
 
         rav1eConfig = rav1e_config_default();
-        if (rav1e_config_set_pixel_format(
-                rav1eConfig, (uint8_t)image->depth, codec->internal->chromaSampling, RA_CHROMA_SAMPLE_POSITION_UNKNOWN, rav1eRange) < 0) {
+        if (rav1e_config_set_pixel_format(rav1eConfig,
+                                          (uint8_t)image->depth,
+                                          codec->internal->chromaSampling,
+                                          (RaChromaSamplePosition)image->yuvChromaSamplePosition,
+                                          rav1eRange) < 0) {
             goto cleanup;
         }
 
