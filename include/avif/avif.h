@@ -15,8 +15,8 @@ extern "C" {
 // Constants
 
 #define AVIF_VERSION_MAJOR 0
-#define AVIF_VERSION_MINOR 7
-#define AVIF_VERSION_PATCH 3
+#define AVIF_VERSION_MINOR 8
+#define AVIF_VERSION_PATCH 0
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
