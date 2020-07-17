@@ -340,7 +340,11 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
     for (uint32_t j = 0; j < image->height; ++j) {
         const uint32_t uvJ = j >> state->formatInfo.chromaShiftY;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
+        const uint8_t * ptrU8 = &uPlane[(uvJ * uRowBytes)];
+        const uint8_t * ptrV8 = &vPlane[(uvJ * vRowBytes)];
         const uint16_t * ptrY16 = (const uint16_t *)ptrY8;
+        const uint16_t * ptrU16 = (const uint16_t *)ptrU8;
+        const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
 
         uint8_t * ptrR = &rgb->pixels[state->rgbOffsetBytesR + (j * rgb->rowBytes)];
         uint8_t * ptrG = &rgb->pixels[state->rgbOffsetBytesG + (j * rgb->rowBytes)];
@@ -365,15 +369,11 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
                     uint16_t unormU, unormV;
 
-                    const uint8_t * ptrU8 = &uPlane[(uvJ * uRowBytes)];
-                    const uint8_t * ptrV8 = &vPlane[(uvJ * vRowBytes)];
                     if (image->depth == 8) {
                         unormU = ptrU8[uvI];
                         unormV = ptrV8[uvI];
                     } else {
                         // clamp incoming data to protect against bad LUT lookups
-                        const uint16_t * ptrU16 = (const uint16_t *)ptrU8;
-                        const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
                         unormU = AVIF_MIN(ptrU16[uvI], yuvMaxChannel);
                         unormV = AVIF_MIN(ptrV16[uvI], yuvMaxChannel);
                     }
