@@ -6,6 +6,16 @@
 #include <math.h>
 #include <string.h>
 
+#ifdef __SSE4_1__
+#include <smmintrin.h>
+#elif defined(__ARM_NEON)
+#include <arm_neon.h>
+#endif
+
+#ifdef _MSC_VER
+#define __builtin_unreachable() __assume(0)
+#endif
+
 struct YUVBlock
 {
     float y;
@@ -122,6 +132,272 @@ static int yuvToUNorm(int chan, avifRange range, int depth, float maxChannel, fl
     return unorm;
 }
 
+#ifdef __SSE4_1__
+static avifResult avifRGB8ToIdentity8ColorFullRange(uint8_t * rgbPlane, uint8_t ** yuvPlanes, int width, int height, avifRGBFormat format)
+{
+    uint8_t extract_mask[2][16] = {
+        {0, 3, 6, 9, 1, 4, 7, 10, 2, 5, 8, 11, 0, 0, 0, 0},
+        {2, 5, 8, 11, 1, 4, 7, 10, 0, 3, 6, 9, 0, 0, 0, 0},
+    };
+    const __m128i * extract = (const __m128i *)((format == AVIF_RGB_FORMAT_BGR) ? extract_mask[1] : extract_mask[0]);
+    __m128i mask = _mm_load_si128(extract);
+
+    for (int i = 0; i < height; ++i) {
+        uint32_t * red_plane = (uint32_t *)&yuvPlanes[2][i * width];
+        uint32_t * green_plane = (uint32_t *)&yuvPlanes[0][i * width];
+        uint32_t * blue_plane = (uint32_t *)&yuvPlanes[1][i * width];
+        for (int j = 0; j < width; j += 4) {
+            const __m128i_u * rgb_ptr = (const __m128i_u *)&rgbPlane[i * width * 3 + j * 3];
+            __m128i rgb =  _mm_shuffle_epi8(_mm_loadu_si128(rgb_ptr), mask);
+            *red_plane++ = _mm_extract_epi32(rgb, 0);
+            *green_plane++ = _mm_extract_epi32(rgb, 1);
+            *blue_plane++ = _mm_extract_epi32(rgb, 2);
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifRGBA8ToIdentity8ColorFullRange(uint8_t * rgbPlane, uint8_t ** yuvPlanes, uint8_t * alphaPlane, int width, int height, avifRGBFormat format)
+{
+    uint8_t extract_mask[4][16] = {
+        {0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15},
+        {3, 7, 11, 15, 0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14},
+        {2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12, 3, 7, 11, 15},
+        {3, 7, 11, 15, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12},
+    };
+    const __m128i * extract;
+    switch (format) {
+        case AVIF_RGB_FORMAT_RGBA:
+            extract = (const __m128i *)extract_mask[0];
+            break;
+        case AVIF_RGB_FORMAT_ARGB:
+            extract = (const __m128i *)extract_mask[1];
+            break;
+        case AVIF_RGB_FORMAT_BGRA:
+            extract = (const __m128i *)extract_mask[2];
+            break;
+        case AVIF_RGB_FORMAT_ABGR:
+            extract = (const __m128i *)extract_mask[3];
+            break;
+        case AVIF_RGB_FORMAT_RGB:
+        case AVIF_RGB_FORMAT_BGR:
+        default:
+            __builtin_unreachable();
+    }
+    __m128i mask = _mm_load_si128(extract);
+
+    for (int i = 0; i < height; ++i) {
+        const __m128i * rgba_ptr = (const __m128i *)&rgbPlane[i * width * 4];
+        uint32_t * red_plane = (uint32_t *)&yuvPlanes[2][i * width];
+        uint32_t * green_plane = (uint32_t *)&yuvPlanes[0][i * width];
+        uint32_t * blue_plane = (uint32_t *)&yuvPlanes[1][i * width];
+        uint32_t * alpha_plane = (uint32_t *)&alphaPlane[i * width];
+        for (int j = 0; j < width; j += 4) {
+            __m128i rgba =  _mm_shuffle_epi8(_mm_load_si128(rgba_ptr++), mask);
+            *red_plane++ = _mm_extract_epi32(rgba, 0);
+            *green_plane++ = _mm_extract_epi32(rgba, 1);
+            *blue_plane++ = _mm_extract_epi32(rgba, 2);
+            *alpha_plane++ = _mm_extract_epi32(rgba, 3);
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}
+
+#elif defined(__ARM_NEON)
+static avifResult avifRGB8ToIdentity8ColorFullRange(uint8_t * rgbPlane, uint8_t ** yuvPlanes, int width, int height, avifRGBFormat format)
+{
+    size_t red_idx;
+    size_t green_idx;
+    size_t blue_idx;
+    switch (format) {
+        case AVIF_RGB_FORMAT_RGB:
+            red_idx = 0;
+            green_idx = 1;
+            blue_idx = 2;
+            break;
+        case AVIF_RGB_FORMAT_BGR:
+            red_idx = 2;
+            green_idx = 1;
+            blue_idx = 0;
+            break;
+        case AVIF_RGB_FORMAT_RGBA:
+        case AVIF_RGB_FORMAT_ARGB:
+        case AVIF_RGB_FORMAT_BGRA:
+        case AVIF_RGB_FORMAT_ABGR:
+        default:
+            __builtin_unreachable();
+    }
+
+    for (int i = 0; i < height; ++i) {
+        uint8_t * rgb_ptr = &rgbPlane[i * width * 3];
+        uint8_t * red_plane = &yuvPlanes[2][i * width];
+        uint8_t * green_plane = &yuvPlanes[0][i * width];
+        uint8_t * blue_plane = &yuvPlanes[1][i * width];
+        for (int j = 0; j < width; j += 16) {
+            uint8x16x3_t rgb = vld3q_u8(rgb_ptr + 3 * j);
+            vst1q_u8(red_plane + j, rgb.val[red_idx]);
+            vst1q_u8(green_plane + j, rgb.val[green_idx]);
+            vst1q_u8(blue_plane + j, rgb.val[blue_idx]);
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifRGBA8ToIdentity8ColorFullRange(uint8_t * rgbPlane, uint8_t ** yuvPlanes, uint8_t * alphaPlane, int width, int height, avifRGBFormat format)
+{
+    size_t red_idx;
+    size_t green_idx;
+    size_t blue_idx;
+    size_t alpha_idx;
+    switch (format) {
+        case AVIF_RGB_FORMAT_RGBA:
+            red_idx = 0;
+            green_idx = 1;
+            blue_idx = 2;
+            alpha_idx = 3;
+            break;
+        case AVIF_RGB_FORMAT_ARGB:
+            red_idx = 1;
+            green_idx = 2;
+            blue_idx = 3;
+            alpha_idx = 0;
+            break;
+        case AVIF_RGB_FORMAT_BGRA:
+            red_idx = 2;
+            green_idx = 1;
+            blue_idx = 0;
+            alpha_idx = 3;
+            break;
+        case AVIF_RGB_FORMAT_ABGR:
+            red_idx = 3;
+            green_idx = 2;
+            blue_idx = 1;
+            alpha_idx = 0;
+            break;
+        case AVIF_RGB_FORMAT_RGB:
+        case AVIF_RGB_FORMAT_BGR:
+        default:
+            __builtin_unreachable();
+    }
+
+    for (int i = 0; i < height; ++i) {
+        uint8_t * rgba_ptr = &rgbPlane[i * width * 4];
+        uint8_t * red_plane = &yuvPlanes[2][i * width];
+        uint8_t * green_plane = &yuvPlanes[0][i * width];
+        uint8_t * blue_plane = &yuvPlanes[1][i * width];
+        uint8_t * alpha_plane = &alphaPlane[i * width];
+        for (int j = 0; j < width; j += 16) {
+            uint8x16x4_t rgba = vld4q_u8(rgba_ptr + 4 * j);
+            vst1q_u8(red_plane + j, rgba.val[red_idx]);
+            vst1q_u8(green_plane + j, rgba.val[green_idx]);
+            vst1q_u8(blue_plane + j, rgba.val[blue_idx]);
+            vst1q_u8(alpha_plane + j, rgba.val[alpha_idx]);
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}
+
+#else
+static avifResult avifRGB8ToIdentity8ColorFullRange(uint8_t * rgbPlane, uint8_t ** yuvPlanes, int width, int height, avifRGBFormat format)
+{
+    size_t red_idx;
+    size_t green_idx;
+    size_t blue_idx;
+    switch (format) {
+        case AVIF_RGB_FORMAT_RGB:
+            red_idx = 0;
+            green_idx = 1;
+            blue_idx = 2;
+            break;
+        case AVIF_RGB_FORMAT_BGR:
+            red_idx = 2;
+            green_idx = 1;
+            blue_idx = 0;
+            break;
+        case AVIF_RGB_FORMAT_RGBA:
+        case AVIF_RGB_FORMAT_ARGB:
+        case AVIF_RGB_FORMAT_BGRA:
+        case AVIF_RGB_FORMAT_ABGR:
+        default:
+            __builtin_unreachable();
+    }
+
+    for (int i = 0; i < height; ++i) {
+        const uint8_t * rgb_ptr = &rgbPlane[i * width * 3];
+        uint8_t * red_plane = &yuvPlanes[2][i * width];
+        uint8_t * green_plane = &yuvPlanes[0][i * width];
+        uint8_t * blue_plane = &yuvPlanes[1][i * width];
+        for (int j = 0; j < width; ++j) {
+            *red_plane++ = rgb_ptr[red_idx];
+            *green_plane++ = rgb_ptr[green_idx];
+            *blue_plane++ = rgb_ptr[blue_idx];
+            rgb_ptr += 3;
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifRGBA8ToIdentity8ColorFullRange(uint8_t * rgbPlane, uint8_t ** yuvPlanes, uint8_t * alphaPlane, int width, int height, avifRGBFormat format)
+{
+    size_t red_idx;
+    size_t green_idx;
+    size_t blue_idx;
+    size_t alpha_idx;
+    switch (format) {
+        case AVIF_RGB_FORMAT_RGBA:
+            red_idx = 0;
+            green_idx = 1;
+            blue_idx = 2;
+            alpha_idx = 3;
+            break;
+        case AVIF_RGB_FORMAT_ARGB:
+            red_idx = 1;
+            green_idx = 2;
+            blue_idx = 3;
+            alpha_idx = 0;
+            break;
+        case AVIF_RGB_FORMAT_BGRA:
+            red_idx = 2;
+            green_idx = 1;
+            blue_idx = 0;
+            alpha_idx = 3;
+            break;
+        case AVIF_RGB_FORMAT_ABGR:
+            red_idx = 3;
+            green_idx = 2;
+            blue_idx = 1;
+            alpha_idx = 0;
+            break;
+        case AVIF_RGB_FORMAT_RGB:
+        case AVIF_RGB_FORMAT_BGR:
+        default:
+            __builtin_unreachable();
+    }
+
+    for (int i = 0; i < height; ++i) {
+        const uint8_t * rgba_ptr = &rgbPlane[i * width * 4];
+        uint8_t * red_plane = &yuvPlanes[2][i * width];
+        uint8_t * green_plane = &yuvPlanes[0][i * width];
+        uint8_t * blue_plane = &yuvPlanes[1][i * width];
+        uint8_t * alpha_plane = &alphaPlane[i * width];
+        for (int j = 0; j < width; ++j) {
+            *red_plane++ = rgba_ptr[red_idx];
+            *green_plane++ = rgba_ptr[green_idx];
+            *blue_plane++ = rgba_ptr[blue_idx];
+            *alpha_plane++ = rgba_ptr[alpha_idx];
+            rgba_ptr += 4;
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}
+#endif
+
 avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 {
     if (!rgb->pixels) {
@@ -136,6 +412,16 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
     if (avifRGBFormatHasAlpha(rgb->format)) {
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
+    }
+
+    if ((state.mode == AVIF_REFORMAT_MODE_IDENTITY) && (image->depth == 8) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) && (image->yuvRange == AVIF_RANGE_FULL)) {
+        if (image->alphaPlane) {
+            if (image->alphaRange == AVIF_RANGE_FULL) {
+                return avifRGBA8ToIdentity8ColorFullRange(rgb->pixels, image->yuvPlanes, image->alphaPlane, image->width, image->height, rgb->format);
+            }
+        } else {
+            return avifRGB8ToIdentity8ColorFullRange(rgb->pixels, image->yuvPlanes, image->width, image->height, rgb->format);
+        }
     }
 
     const float kr = state.kr;
