@@ -41,6 +41,10 @@ matrix:
   - name: "GCC Release"
     compiler: gcc
     config: Release
+  - name: "AArch64 GCC Release"
+    arch: arm64
+    compiler: gcc
+    config: Release
   - name: "Clang Debug"
     compiler: clang
     config: Debug
