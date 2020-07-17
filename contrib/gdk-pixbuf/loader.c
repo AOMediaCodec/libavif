@@ -182,7 +182,8 @@ static gboolean load_increment(gpointer data, const guchar * buf, guint size, GE
 {
     struct avif_context * context = (struct avif_context *) data;
     g_byte_array_append(context->data, buf, size);
-    *error = NULL;
+    if (error)
+        *error = NULL;
     return TRUE;
 }
 
