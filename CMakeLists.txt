@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.5)
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C CXX VERSION 0.8.0)
+project(libavif LANGUAGES C VERSION 0.8.0)
 
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
@@ -33,6 +33,10 @@ option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the rep
 option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_LIBGAV1 "Build the libgav1 codec by providing your own copy of the repo in ext/libgav1 (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo in ext/rav1e (see Local Builds in README)" OFF)
+
+if(AVIF_LOCAL_LIBGAV1)
+    enable_language(CXX)
+endif()
 
 # ---------------------------------------------------------------------------------------
 # This insanity is for people embedding libavif or making fully static or Windows builds.
