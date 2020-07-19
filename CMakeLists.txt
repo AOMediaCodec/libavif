@@ -9,6 +9,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 project(libavif LANGUAGES C VERSION 0.8.0)
 
+# Set C99 as the default
+set(CMAKE_C_STANDARD 99)
+
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
 #     Increment MAJOR. Set MINOR and PATCH to 0
@@ -95,7 +98,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-sign-conversion
   )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
-  add_definitions(-std=gnu99) # Enforce C99 for gcc
   MESSAGE(STATUS "libavif: Enabling warnings for GCC")
   add_definitions(-Werror -Wall -Wextra)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
