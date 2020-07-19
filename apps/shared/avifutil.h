@@ -6,6 +6,12 @@
 
 #include "avif/avif.h"
 
+#ifdef _WIN32
+# define AVIF_FMT_ZU "%Iu"
+#else
+# define AVIF_FMT_ZU "%zu"
+#endif
+
 void avifImageDump(avifImage * avif);
 void avifPrintVersions(void);
 
