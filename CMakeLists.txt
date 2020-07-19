@@ -79,46 +79,72 @@ endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
-if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-  MESSAGE(STATUS "libavif: Enabling warnings for Clang")
-  add_definitions(
-    -Weverything
-    -Werror
-    -Wno-bad-function-cast
-    -Wno-cast-align
-    -Wno-conversion
-    -Wno-covered-switch-default
-    -Wno-disabled-macro-expansion
-    -Wno-documentation
-    -Wno-documentation-unknown-command
-    -Wno-double-promotion
-    -Wno-float-equal
-    -Wno-missing-noreturn
-    -Wno-padded
-    -Wno-sign-conversion
-    -Wno-error=c11-extensions
-  )
+include(CheckCCompilerFlag)
+if(MSVC)
+    MESSAGE(STATUS "libavif: Detected MS CL")
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    MESSAGE(STATUS "libavif: Detected Clang")
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
-  MESSAGE(STATUS "libavif: Enabling warnings for GCC")
-  add_definitions(-Werror -Wall -Wextra)
-elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-  MESSAGE(STATUS "libavif: Enabling warnings for MS CL")
-  add_definitions(
-    /Wall   # All warnings
-    /WX     # Warnings as errors
-    /wd4255 # Disable: no function prototype given
-    /wd4324 # Disable: structure was padded due to alignment specifier
-    /wd4668 # Disable: is not defined as a preprocessor macro, replacing with '0'
-    /wd4710 # Disable: function not inlined
-    /wd4711 # Disable: function selected for inline expansion
-    /wd4738 # Disable: storing 32-bit float result in memory, possible loss of performance
-    /wd4820 # Disable: bytes padding added after data member
-    /wd4996 # Disable: potentially unsafe stdlib methods
-    /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
-  )
+    MESSAGE(STATUS "libavif: Detected GCC")
 else()
-  MESSAGE(FATAL_ERROR "libavif: Unknown compiler, bailing out")
+    MESSAGE(STATUS "libavif: Unknown compiler, setting flags based on capability")
 endif()
+
+if(MSVC)
+    set(AVIF_TEST_CFLAGS
+        /Wall   # All warnings
+        /WX     # Warnings as errors
+        /wd4255 # Disable: no function prototype given
+        /wd4324 # Disable: structure was padded due to alignment specifier
+        /wd4668 # Disable: is not defined as a preprocessor macro, replacing with '0'
+        /wd4710 # Disable: function not inlined
+        /wd4711 # Disable: function selected for inline expansion
+        /wd4738 # Disable: storing 32-bit float result in memory, possible loss of performance
+        /wd4820 # Disable: bytes padding added after data member
+        /wd4996 # Disable: potentially unsafe stdlib methods
+        /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+        )
+else()
+    set(AVIF_TEST_CFLAGS
+        -Wall
+        -Wextra
+        -Weverything
+        -Werror
+        -Wno-bad-function-cast
+        -Wno-cast-align
+        -Wno-conversion
+        -Wno-covered-switch-default
+        -Wno-disabled-macro-expansion
+        -Wno-documentation
+        -Wno-documentation-unknown-command
+        -Wno-double-promotion
+        -Wno-float-equal
+        -Wno-missing-noreturn
+        -Wno-padded
+        -Wno-sign-conversion
+        -Wno-error=c11-extensions)
+endif()
+
+set(AVIF_CFLAGS_TEMP)
+foreach(AVIF_TEST_CFLAG ${AVIF_TEST_CFLAGS})
+    # Get a cmake variable friendly string for each flag
+    string(REGEX REPLACE "[^A-Za-z0-9]" "_" AVIF_TEST_CFLAG_VAR "${AVIF_TEST_CFLAG}")
+    set(AVIF_TEST_CFLAG_VAR "AVIF_C${AVIF_TEST_CFLAG_VAR}")
+    # Test if the compiler supports the flag
+    check_c_compiler_flag(${AVIF_TEST_CFLAG} "${AVIF_TEST_CFLAG_VAR}")
+    if(${AVIF_TEST_CFLAG_VAR})
+        # Add flags to a temp variable
+        set(AVIF_CFLAGS_TEMP "${AVIF_CFLAGS_TEMP} ${AVIF_TEST_CFLAG}")
+    endif()
+endforeach()
+
+# Append user added flags after our own
+set(CMAKE_C_FLAGS "${AVIF_CFLAGS_TEMP} ${CMAKE_C_FLAGS}")
+
+# Unset temp variables
+set(AVIF_TEST_CFLAG_VAR)
+set(AVIF_CFLAGS_TEMP)
+set(AVIF_TEST_CFLAGS)
 
 set(AVIF_SRCS
     src/alpha.c
