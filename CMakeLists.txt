@@ -96,6 +96,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-missing-noreturn
     -Wno-padded
     -Wno-sign-conversion
+    -Wno-error=c11-extensions
   )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   MESSAGE(STATUS "libavif: Enabling warnings for GCC")
