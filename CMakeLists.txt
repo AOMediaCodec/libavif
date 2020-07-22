@@ -324,7 +324,12 @@ if(AVIF_BUILD_APPS)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
-    target_include_directories(avifenc PRIVATE apps/shared ${ZLIB_INCLUDE_DIR} ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
+    target_include_directories(avifenc
+                               PRIVATE
+                                   ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
+                                   ${ZLIB_INCLUDE_DIR}
+                                   ${PNG_PNG_INCLUDE_DIR}
+                                   ${JPEG_INCLUDE_DIR})
     add_executable(avifdec
         apps/avifdec.c
 
@@ -338,7 +343,12 @@ if(AVIF_BUILD_APPS)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
-    target_include_directories(avifdec PRIVATE apps/shared ${ZLIB_INCLUDE_DIR} ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
+    target_include_directories(avifdec
+                               PRIVATE
+                                   ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
+                                   ${ZLIB_INCLUDE_DIR}
+                                   ${PNG_PNG_INCLUDE_DIR}
+                                   ${JPEG_INCLUDE_DIR})
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
