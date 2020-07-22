@@ -88,7 +88,9 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     width = image->width;
     height = image->height;
 
-    (*context->size_func)(&width, &height, context->user_data);
+    if (context->size_func) {
+        (*context->size_func)(&width, &height, context->user_data);
+    }
 
     if (width == 0 || height == 0) {
         g_set_error_literal(error,
@@ -103,7 +105,7 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
 
         context->pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB,
                                          !!image->alphaPlane, bits_per_sample,
-                                         width, height);
+                                         image->width, image->height);
         if (context->pixbuf == NULL) {
             g_set_error_literal(error,
                                 GDK_PIXBUF_ERROR,
@@ -138,9 +140,7 @@ static gpointer begin_load(GdkPixbufModuleSizeFunc size_func,
     struct avif_context * context;
     avifDecoder * decoder;
 
-    g_assert(size_func != NULL);
     g_assert(prepared_func != NULL);
-    g_assert(updated_func != NULL);
 
     decoder = avifDecoderCreate();
     if (!decoder) {
