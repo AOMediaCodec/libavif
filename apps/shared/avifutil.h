@@ -7,9 +7,9 @@
 #include "avif/avif.h"
 
 #ifdef _WIN32
-# define FMT_ZU "%Iu"
+# define AVIF_FMT_ZU "%Iu"
 #else
-# define FMT_ZU "%zu"
+# define AVIF_FMT_ZU "%zu"
 #endif
 
 void avifImageDump(avifImage * avif);
