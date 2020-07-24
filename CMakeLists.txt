@@ -326,6 +326,7 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
     target_include_directories(avifenc
                                PRIVATE
+                                   $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
                                    ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
                                    ${ZLIB_INCLUDE_DIR}
                                    ${PNG_PNG_INCLUDE_DIR}
@@ -345,6 +346,7 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
     target_include_directories(avifdec
                                PRIVATE
+                                   $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
                                    ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
                                    ${ZLIB_INCLUDE_DIR}
                                    ${PNG_PNG_INCLUDE_DIR}
