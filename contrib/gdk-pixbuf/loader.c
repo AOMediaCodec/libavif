@@ -1,5 +1,6 @@
-// Copyright 2020 Emmanuel Gil Peyrot. All rights reserved.
-// SPDX-License-Identifier: BSD-2-Clause
+/* Copyright 2020 Emmanuel Gil Peyrot. All rights reserved.
+   SPDX-License-Identifier: BSD-2-Clause
+*/
 
 #include <avif/avif.h>
 
@@ -76,7 +77,7 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
 
     ret = avifDecoderNextImage(decoder);
     if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
-        // No more images, bail out. Verify that you got the expected amount of images decoded.
+        /* No more images, bail out. Verify that you got the expected amount of images decoded. */
         return TRUE;
     } else if (ret != AVIF_RESULT_OK) {
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
@@ -187,11 +188,184 @@ static gboolean load_increment(gpointer data, const guchar * buf, guint size, GE
     return TRUE;
 }
 
+static gboolean avif_is_save_option_supported (const gchar *option_key)
+{
+    if (g_strcmp0(option_key, "quality") == 0) {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+static gboolean avif_image_saver(FILE          *f,
+                                GdkPixbuf     *pixbuf,
+                                gchar        **keys,
+                                gchar        **values,
+                                GError       **error)
+{
+    int width, height, min_quantizer, max_quantizer, alpha_quantizer;
+    long quality = 52; /* default; must be between 0 and 100 */
+    gboolean save_alpha;
+    avifImage *avif;
+    avifRGBImage rgb;
+    avifResult res;
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifEncoder *encoder;
+    guint maxThreads;
+
+    if (f == NULL || pixbuf == NULL) {
+        return FALSE;
+    }
+
+    if (keys && *keys) {
+        gchar **kiter = keys;
+        gchar **viter = values;
+
+        while (*kiter) {
+            if (strcmp(*kiter, "quality") == 0) {
+                char *endptr = NULL;
+                quality = strtol(*viter, &endptr, 10);
+
+                if (endptr == *viter) {
+                    g_set_error(error,
+                                GDK_PIXBUF_ERROR,
+                                GDK_PIXBUF_ERROR_BAD_OPTION,
+                                "AVIF quality must be a value between 0 and 100; value “%s” could not be parsed.",
+                                *viter);
+
+                    return FALSE;
+                }
+
+                if (quality < 0 || quality > 100) {
+
+                    g_set_error(error,
+                                GDK_PIXBUF_ERROR,
+                                GDK_PIXBUF_ERROR_BAD_OPTION,
+                                "AVIF quality must be a value between 0 and 100; value “%d” is not allowed.",
+                                (int)quality);
+
+                    return FALSE;
+                }
+            } else {
+                g_warning("Unrecognized parameter (%s) passed to AVIF saver.", *kiter);
+            }
+
+            ++kiter;
+            ++viter;
+        }
+    }
+
+    if (gdk_pixbuf_get_bits_per_sample(pixbuf) != 8) {
+        g_set_error(error,
+                    GDK_PIXBUF_ERROR,
+                    GDK_PIXBUF_ERROR_UNKNOWN_TYPE,
+                    "Sorry, only 8bit images are supported by this AVIF saver");
+        return FALSE;
+    }
+
+    width = gdk_pixbuf_get_width(pixbuf);
+    height = gdk_pixbuf_get_height(pixbuf);
+
+    if ( width == 0 || height == 0) {
+        g_set_error(error,
+                    GDK_PIXBUF_ERROR,
+                    GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                    "Empty image, nothing to save");
+        return FALSE;
+    }
+
+    save_alpha = gdk_pixbuf_get_has_alpha(pixbuf);
+
+    if (save_alpha) {
+        if ( gdk_pixbuf_get_n_channels(pixbuf) != 4) {
+            g_set_error(error,
+                        GDK_PIXBUF_ERROR,
+                        GDK_PIXBUF_ERROR_UNKNOWN_TYPE,
+                        "Unsupported number of channels");
+            return FALSE;
+        }
+    }
+    else {
+        if ( gdk_pixbuf_get_n_channels(pixbuf) != 3) {
+            g_set_error(error,
+                        GDK_PIXBUF_ERROR,
+                        GDK_PIXBUF_ERROR_UNKNOWN_TYPE,
+                        "Unsupported number of channels");
+            return FALSE;
+        }
+    }
+
+    max_quantizer = AVIF_QUANTIZER_WORST_QUALITY * ( 100 - CLAMP(quality, 0, 100)) / 100;
+    min_quantizer = 0;
+    alpha_quantizer = 0;
+
+    if ( max_quantizer > 20 ) {
+        min_quantizer = max_quantizer - 20;
+
+        if (max_quantizer > 40) {
+            alpha_quantizer = max_quantizer - 40;
+        }
+    }
+
+    avif = avifImageCreate(width, height, 8, AVIF_PIXEL_FORMAT_YUV420);
+    avif->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+    avifRGBImageSetDefaults( &rgb, avif);
+
+    rgb.depth = 8;
+    rgb.pixels = (uint8_t*) gdk_pixbuf_read_pixels(pixbuf);
+    rgb.rowBytes = gdk_pixbuf_get_rowstride(pixbuf);
+
+    if (save_alpha) {
+        rgb.format = AVIF_RGB_FORMAT_RGBA;
+    } else {
+        rgb.format = AVIF_RGB_FORMAT_RGB;
+    }
+
+    res = avifImageRGBToYUV(avif, &rgb);
+    if ( res != AVIF_RESULT_OK ) {
+        g_set_error(error,
+                    GDK_PIXBUF_ERROR,
+                    GDK_PIXBUF_ERROR_FAILED,
+                    "Problem in RGB->YUV conversion: %s", avifResultToString(res));
+        avifImageDestroy(avif);
+        return FALSE;
+    }
+
+    maxThreads = g_get_num_processors();
+    encoder = avifEncoderCreate();
+
+    encoder->maxThreads = CLAMP(maxThreads, 1, 64);
+    encoder->minQuantizer = min_quantizer;
+    encoder->maxQuantizer = max_quantizer;
+    encoder->minQuantizerAlpha = 0;
+    encoder->maxQuantizerAlpha = alpha_quantizer;
+    encoder->speed = 8;
+
+    res = avifEncoderWrite(encoder, avif, &raw);
+    avifEncoderDestroy(encoder);
+    avifImageDestroy(avif);
+
+    if ( res == AVIF_RESULT_OK ) {
+        fwrite(raw.data, 1, raw.size, f);
+        avifRWDataFree(&raw);
+        return TRUE;
+    }
+
+    g_set_error(error,
+                GDK_PIXBUF_ERROR,
+                GDK_PIXBUF_ERROR_FAILED,
+                "AVIF encoder problem: %s", avifResultToString(res));
+    return FALSE;
+}
+
+
 G_MODULE_EXPORT void fill_vtable(GdkPixbufModule * module)
 {
     module->begin_load = begin_load;
     module->stop_load = stop_load;
     module->load_increment = load_increment;
+    module->is_save_option_supported = avif_is_save_option_supported;
+    module->save = avif_image_saver;
 }
 
 G_MODULE_EXPORT void fill_info(GdkPixbufFormat * info)
@@ -214,7 +388,7 @@ G_MODULE_EXPORT void fill_info(GdkPixbufFormat * info)
     info->description = "AV1 Image File Format";
     info->mime_types = (gchar **)mime_types;
     info->extensions = (gchar **)extensions;
-    info->flags = GDK_PIXBUF_FORMAT_THREADSAFE;
+    info->flags = GDK_PIXBUF_FORMAT_WRITABLE | GDK_PIXBUF_FORMAT_THREADSAFE;
     info->license = "BSD";
     info->disabled = FALSE;
 }
