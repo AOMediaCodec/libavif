@@ -633,17 +633,22 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Write iref boxes
 
+    avifBoxMarker iref = 0;
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->irefToID != 0) {
-            avifBoxMarker iref = avifRWStreamWriteFullBox(&s, "iref", AVIF_BOX_SIZE_TBD, 0, 0);
+            if (!iref) {
+                iref = avifRWStreamWriteFullBox(&s, "iref", AVIF_BOX_SIZE_TBD, 0, 0);
+            }
             avifBoxMarker refType = avifRWStreamWriteBox(&s, item->irefType, AVIF_BOX_SIZE_TBD);
             avifRWStreamWriteU16(&s, item->id);       // unsigned int(16) from_item_ID;
             avifRWStreamWriteU16(&s, 1);              // unsigned int(16) reference_count;
             avifRWStreamWriteU16(&s, item->irefToID); // unsigned int(16) to_item_ID;
             avifRWStreamFinishBox(&s, refType);
-            avifRWStreamFinishBox(&s, iref);
         }
+    }
+    if (iref) {
+        avifRWStreamFinishBox(&s, iref);
     }
 
     // -----------------------------------------------------------------------
