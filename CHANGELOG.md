@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+# Changed
+* Only ever create one iref box, filled with multiple cdsc boxes (#247)
+
 ## [0.8.0] - 2020-07-14
 
 ### Added
