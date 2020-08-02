@@ -134,7 +134,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     }
 
     avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
-    if (avifRGBFormatHasAlpha(rgb->format)) {
+    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
     }
 
@@ -297,7 +297,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         params.dstOffsetBytes = 0;
         params.dstPixelBytes = state.yuvChannelBytes;
 
-        if (avifRGBFormatHasAlpha(rgb->format)) {
+        if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
             params.srcDepth = rgb->depth;
             params.srcRange = AVIF_RANGE_FULL;
             params.srcPlane = rgb->pixels;
@@ -925,7 +925,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
-    if (avifRGBFormatHasAlpha(rgb->format)) {
+    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
         avifAlphaParams params;
 
         params.width = rgb->width;

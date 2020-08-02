@@ -399,6 +399,8 @@ typedef struct avifRGBImage
     avifRGBFormat format;                  // all channels are always full range
     avifChromaUpsampling chromaUpsampling; // How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
+    avifBool ignoreAlpha;                  // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
+                                           // RGB, treating the alpha bits as if they were all 1.
 
     uint8_t * pixels;
     uint32_t rowBytes;
