@@ -271,7 +271,7 @@ if(AVIF_CODEC_AOM)
 endif()
 
 if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)
-    message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
+    message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
 add_library(avif ${AVIF_SRCS})
