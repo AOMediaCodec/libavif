@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Changed
 * Only ever create one iref box, filled with multiple cdsc boxes (#247)
+* Fix incorrect 16-to-8 monochrome YUV conversion
 
 ## [0.8.0] - 2020-07-14
 

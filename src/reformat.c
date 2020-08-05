@@ -706,9 +706,9 @@ static avifResult avifImageYUV16ToRGB8Mono(const avifImage * image, avifRGBImage
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannel));
-            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannel));
-            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannel));
+            *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannel));
+            *ptrG = (uint8_t)(0.5f + (Gc * rgbMaxChannel));
+            *ptrB = (uint8_t)(0.5f + (Bc * rgbMaxChannel));
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
