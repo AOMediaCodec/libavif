@@ -6,9 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2020-08-05
+
+### Added
+* Add `ignoreAlpha` field to avifRGBImage (linkmauve)
+* Save support in gdk-pixbuf component (novomesk)
+
 ### Changed
 * Only ever create one iref box, filled with multiple cdsc boxes (#247)
 * Fix incorrect 16-to-8 monochrome YUV conversion
+* Make decoding optional in CMake, like encoding is
+* Include avif INTERFACE_INCLUDE_DIRECTORIES first (cryptomilk)
+* Set C standard to C99, adjust flags for dav1d (1480c1)
+* Minor cleanup/fixes in reformat.c (wantehchang)
+* Fix a crash in the gdk-pixbuf loader, removed unnecessary asserts (novomesk)
 
 ## [0.8.0] - 2020-07-14
 
@@ -457,7 +468,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/AOMediaCodec/libavif/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/AOMediaCodec/libavif/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/AOMediaCodec/libavif/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/AOMediaCodec/libavif/compare/v0.7.1...v0.7.2
