@@ -5,8 +5,8 @@
 
 : # cmake and ninja must be in your PATH.
 
-: # If you're running this on Windows, be sure you've already run this (from your VC2017 install dir):
-: #     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
+: # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
+: #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
 git clone -b v2.0.0 --depth 1 https://aomedia.googlesource.com/aom
 
