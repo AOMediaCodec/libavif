@@ -622,6 +622,7 @@ static avifResult avifImageYUV16ToRGB16Mono(const avifImage * image, avifRGBImag
     }
     return AVIF_RESULT_OK;
 }
+
 static avifResult avifImageYUV16ToRGB8Color(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
     const float kr = state->kr;
@@ -792,9 +793,9 @@ static avifResult avifImageYUV8ToRGB16Mono(const avifImage * image, avifRGBImage
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannel));
-            *ptrG = (uint8_t)(0.5f + (Gc * rgbMaxChannel));
-            *ptrB = (uint8_t)(0.5f + (Bc * rgbMaxChannel));
+            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannel));
+            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannel));
+            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannel));
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
