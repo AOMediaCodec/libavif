@@ -11,7 +11,7 @@
  * (and __USE_MINGW_ANSI_STDIO not set to 1), %z precision specifier is not
  * supported. Hence %I must be used. %I is on the other hand always supported.
  */
-#ifdef _WIN32
+#if (defined(_MSVC) && _MSVC < 1800) || (defined(__USE_MINGW_ANSI_STDIO) && __USE_MINGW_ANSI_STDIO == 0)
 # define AVIF_FMT_ZU "%Iu"
 #else
 # define AVIF_FMT_ZU "%zu"
