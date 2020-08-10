@@ -753,7 +753,13 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
 
             // Y and A channels
             size_t yaColOffset = colIndex * firstTile->image->width;
+            if (yaColOffset >= grid->outputWidth) {
+                return AVIF_FALSE;
+            }
             size_t yaRowOffset = rowIndex * firstTile->image->height;
+            if (yaRowOffset >= grid->outputHeight) {
+                return AVIF_FALSE;
+            }
             size_t yaRowBytes = widthToCopy * pixelBytes;
 
             if (alpha) {
