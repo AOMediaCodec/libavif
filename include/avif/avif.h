@@ -579,6 +579,9 @@ typedef struct avifDecoder
     // avifDecoderNextImage() or avifDecoderNthImage(), as decoder->image->alphaPlane won't exist yet.
     avifBool alphaPresent;
 
+    // Set this to true to disable support of grid images. If a grid image is encountered, AVIF_RESULT_BMFF_PARSE_FAILED will be returned.
+    avifBool disableGridImages;
+
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
 
