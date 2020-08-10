@@ -626,8 +626,9 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
                 continue;
             }
             if (item->hasUnsupportedEssentialProperty) {
-                // An essential property isn't supported by libavif; ignore the item.
-                continue;
+                // An essential property isn't supported by libavif; can't
+                // decode a grid image if any tile in the grid isn't supported.
+                return AVIF_FALSE;
             }
 
             ++tilesAvailable;
@@ -643,10 +644,6 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
         avifDecoderItem * item = &gridItem->meta->items.item[i];
         if (item->dimgForID == gridItem->id) {
             if (memcmp(item->type, "av01", 4)) {
-                continue;
-            }
-            if (item->hasUnsupportedEssentialProperty) {
-                // An essential property isn't supported by libavif; ignore the item.
                 continue;
             }
 
