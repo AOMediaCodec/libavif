@@ -980,6 +980,9 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
         CHECK(avifROStreamReadU32(&s, &grid->outputWidth));  // unsigned int(FieldLength) output_width;
         CHECK(avifROStreamReadU32(&s, &grid->outputHeight)); // unsigned int(FieldLength) output_height;
     }
+    if (grid->outputWidth > AVIF_MAX_IMAGE_SIZE / grid->outputHeight) {
+        return AVIF_FALSE;
+    }
     return AVIF_TRUE;
 }
 

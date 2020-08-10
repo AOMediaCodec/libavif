@@ -241,6 +241,10 @@ typedef struct avifSequenceHeader
 } avifSequenceHeader;
 avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
 
+// A maximum image size to avoid out-of-memory errors or integer overflow in
+// (32-bit) int or unsigned int arithmetic operations.
+#define AVIF_MAX_IMAGE_SIZE (16384 * 16384)
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
