@@ -2272,7 +2272,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0) && alphaOBUItem) {
-            if (!avifDecoderDataGenerateImageGridTiles(data, &data->alphaGrid, alphaOBUItem, AVIF_FALSE)) {
+            if (!avifDecoderDataGenerateImageGridTiles(data, &data->alphaGrid, alphaOBUItem, AVIF_TRUE)) {
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
             data->alphaTileCount = data->tiles.count - data->colorTileCount;
