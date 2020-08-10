@@ -2188,6 +2188,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
 
             if (isGrid) {
+                if (decoder->disableGridImages) {
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
                 const uint8_t * itemPtr = avifDecoderDataCalcItemPtr(data, item);
                 if (itemPtr == NULL) {
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -2232,6 +2235,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
             if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType) && (item->auxForID == colorOBUItem->id)) {
                 if (isGrid) {
+                    if (decoder->disableGridImages) {
+                        return AVIF_RESULT_BMFF_PARSE_FAILED;
+                    }
                     const uint8_t * itemPtr = avifDecoderDataCalcItemPtr(data, item);
                     if (itemPtr == NULL) {
                         return AVIF_RESULT_BMFF_PARSE_FAILED;
