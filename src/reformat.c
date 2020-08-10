@@ -960,7 +960,8 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         // unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
 
         if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-            if ((image->depth == 8) && (rgb->depth == 8) && hasColor && (image->yuvRange == AVIF_RANGE_FULL)) {
+            if ((image->depth == 8) && (rgb->depth == 8) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
+                (image->yuvRange == AVIF_RANGE_FULL)) {
                 return avifImageIdentity8ToRGB8ColorFullRange(image, rgb, &state);
             }
 
