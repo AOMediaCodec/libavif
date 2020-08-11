@@ -57,7 +57,7 @@ static int info(const char * inputFilename)
     avifRWData raw = AVIF_DATA_EMPTY;
     avifRWDataRealloc(&raw, inputFileSize);
     if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
-        fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
+        fprintf(stderr, "Failed to read " AVIF_FMT_ZU " bytes: %s\n", inputFileSize, inputFilename);
         fclose(inputFile);
         avifRWDataFree(&raw);
         return 1;
@@ -218,7 +218,7 @@ int main(int argc, char * argv[])
     avifRWData raw = AVIF_DATA_EMPTY;
     avifRWDataRealloc(&raw, inputFileSize);
     if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
-        fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
+        fprintf(stderr, "Failed to read " AVIF_FMT_ZU " bytes: %s\n", inputFileSize, inputFilename);
         fclose(inputFile);
         avifRWDataFree(&raw);
         return 1;
