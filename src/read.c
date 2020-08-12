@@ -986,7 +986,7 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
     if (grid->outputWidth == 0 || grid->outputHeight == 0 || grid->outputWidth > AVIF_MAX_IMAGE_SIZE / grid->outputHeight) {
         return AVIF_FALSE;
     }
-    return AVIF_TRUE;
+    return avifROStreamRemainingBytes(&s) == 0;
 }
 
 static avifBool avifParseImageSpatialExtentsProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen)
