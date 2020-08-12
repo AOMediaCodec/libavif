@@ -692,9 +692,9 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
         if ((tile->image->width != firstTile->image->width) || (tile->image->height != firstTile->image->height) ||
             (tile->image->depth != firstTile->image->depth) || (tile->image->yuvFormat != firstTile->image->yuvFormat) ||
             (tile->image->yuvRange != firstTile->image->yuvRange) || (uvPresent != firstTileUVPresent) ||
-            ((tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
-             (tile->image->transferCharacteristics != firstTile->image->transferCharacteristics) ||
-             (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients))) {
+            (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
+            (tile->image->transferCharacteristics != firstTile->image->transferCharacteristics) ||
+            (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients)) {
             return AVIF_FALSE;
         }
     }
@@ -703,30 +703,31 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     //
     // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
     //   The tiled input images shall completely “cover” the reconstructed image grid canvas, ...
-    if (firstTile->image->width * grid->columns < grid->outputWidth || firstTile->image->height * grid->rows < grid->outputHeight) {
+    if (((firstTile->image->width * grid->columns) < grid->outputWidth) ||
+        ((firstTile->image->height * grid->rows) < grid->outputHeight)) {
         return AVIF_FALSE;
     }
     // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
-    if (firstTile->image->width * (grid->columns - 1) >= grid->outputWidth ||
-        firstTile->image->height * (grid->rows - 1) >= grid->outputHeight) {
+    if (((firstTile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
+        ((firstTile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
         return AVIF_FALSE;
     }
     // Check the restrictions in MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2.
     //
     // The tile_width shall be greater than or equal to 64, and the tile_height shall be greater than or equal to 64.
-    if (firstTile->image->width < 64 || firstTile->image->height < 64) {
+    if ((firstTile->image->width < 64) || (firstTile->image->height < 64)) {
         return AVIF_FALSE;
     }
     if (!alpha) {
-        if (firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        if ((firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) || (firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
             // The horizontal tile offsets and widths, and the output width, shall be even numbers.
-            if ((firstTile->image->width & 1) != 0 || (grid->outputWidth & 1) != 0) {
+            if (((firstTile->image->width & 1) != 0) || ((grid->outputWidth & 1) != 0)) {
                 return AVIF_FALSE;
             }
         }
         if (firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
             // The vertical tile offsets and heights, and the output height, shall be even numbers.
-            if ((firstTile->image->height & 1) != 0 || (grid->outputHeight & 1) != 0) {
+            if (((firstTile->image->height & 1) != 0) || ((grid->outputHeight & 1) != 0)) {
                 return AVIF_FALSE;
             }
         }
@@ -1010,7 +1011,7 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
         CHECK(avifROStreamReadU32(&s, &grid->outputWidth));  // unsigned int(FieldLength) output_width;
         CHECK(avifROStreamReadU32(&s, &grid->outputHeight)); // unsigned int(FieldLength) output_height;
     }
-    if (grid->outputWidth == 0 || grid->outputHeight == 0 || grid->outputWidth > AVIF_MAX_IMAGE_SIZE / grid->outputHeight) {
+    if ((grid->outputWidth == 0) || (grid->outputHeight == 0) || (grid->outputWidth > (AVIF_MAX_IMAGE_SIZE / grid->outputHeight))) {
         return AVIF_FALSE;
     }
     return avifROStreamRemainingBytes(&s) == 0;
@@ -1332,7 +1333,7 @@ static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw,
 
     avifBoxHeader ipcoHeader;
     CHECK(avifROStreamReadBoxHeader(&s, &ipcoHeader));
-    if (memcmp(ipcoHeader.type, "ipco", 4) != 0) {
+    if (memcmp(ipcoHeader.type, "ipco", 4)) {
         return AVIF_FALSE;
     }
 
@@ -1902,7 +1903,7 @@ static avifBool avifParse(avifDecoderData * data, const uint8_t * raw, size_t ra
 
 static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
 {
-    avifBool avifCompatible = (memcmp(ftyp->majorBrand, "avif", 4) == 0 || memcmp(ftyp->majorBrand, "avis", 4) == 0);
+    avifBool avifCompatible = (!memcmp(ftyp->majorBrand, "avif", 4) || !memcmp(ftyp->majorBrand, "avis", 4));
     if (!avifCompatible) {
         for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
             const uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
@@ -1921,7 +1922,7 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
 
     avifBoxHeader header;
     CHECK(avifROStreamReadBoxHeader(&s, &header));
-    if (memcmp(header.type, "ftyp", 4) != 0) {
+    if (memcmp(header.type, "ftyp", 4)) {
         return AVIF_FALSE;
     }
 
