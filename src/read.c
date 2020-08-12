@@ -699,6 +699,39 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
         }
     }
 
+    // Validate grid image size and tile size.
+    //
+    // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
+    //   The tiled input images shall completely “cover” the reconstructed image grid canvas, ...
+    if (firstTile->image->width * grid->columns < grid->outputWidth || firstTile->image->height * grid->rows < grid->outputHeight) {
+        return AVIF_FALSE;
+    }
+    // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
+    if (firstTile->image->width * (grid->columns - 1) >= grid->outputWidth ||
+        firstTile->image->height * (grid->rows - 1) >= grid->outputHeight) {
+        return AVIF_FALSE;
+    }
+    // Check the restrictions in MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2.
+    //
+    // The tile_width shall be greater than or equal to 64, and the tile_height shall be greater than or equal to 64.
+    if (firstTile->image->width < 64 || firstTile->image->height < 64) {
+        return AVIF_FALSE;
+    }
+    if (!alpha) {
+        if (firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+            // The horizontal tile offsets and widths, and the output width, shall be even numbers.
+            if ((firstTile->image->width & 1) != 0 || (grid->outputWidth & 1) != 0) {
+                return AVIF_FALSE;
+            }
+        }
+        if (firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+            // The vertical tile offsets and heights, and the output height, shall be even numbers.
+            if ((firstTile->image->height & 1) != 0 || (grid->outputHeight & 1) != 0) {
+                return AVIF_FALSE;
+            }
+        }
+    }
+
     // Lazily populate dstImage with the new frame's properties. If we're decoding alpha,
     // these values must already match.
     if ((dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) ||
@@ -750,13 +783,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
 
             // Y and A channels
             size_t yaColOffset = colIndex * firstTile->image->width;
-            if (yaColOffset >= grid->outputWidth) {
-                return AVIF_FALSE;
-            }
             size_t yaRowOffset = rowIndex * firstTile->image->height;
-            if (yaRowOffset >= grid->outputHeight) {
-                return AVIF_FALSE;
-            }
             size_t yaRowBytes = widthToCopy * pixelBytes;
 
             if (alpha) {
