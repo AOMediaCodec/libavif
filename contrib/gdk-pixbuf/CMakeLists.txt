@@ -14,6 +14,9 @@ if(AVIF_BUILD_GDK_PIXBUF)
 
             # This is required because glib stupidly uses invalid #define names, such as __G_LIB_H__…
             add_definitions(-Wno-reserved-id-macro)
+            if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+                add_definitions(-Wno-cast-qual)
+            endif()
             target_link_libraries(pixbufloader-avif PUBLIC ${GDK_PIXBUF_LIBRARIES} avif)
             target_include_directories(pixbufloader-avif PUBLIC ${GDK_PIXBUF_INCLUDE_DIRS})
 
