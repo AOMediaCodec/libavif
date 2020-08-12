@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <string.h>
 
 #define AUXTYPE_SIZE 64
@@ -678,9 +679,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                                              unsigned int tileCount,
                                              avifBool alpha)
 {
-    if (tileCount == 0) {
-        return AVIF_FALSE;
-    }
+    assert(tileCount != 0);
 
     avifTile * firstTile = &data->tiles.tile[firstTileIndex];
     avifBool firstTileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
@@ -976,10 +975,7 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
         grid->outputWidth = outputWidth16;
         grid->outputHeight = outputHeight16;
     } else {
-        if (fieldLength != 32) {
-            // This should be impossible
-            return AVIF_FALSE;
-        }
+        assert(fieldLength == 32);
         CHECK(avifROStreamReadU32(&s, &grid->outputWidth));  // unsigned int(FieldLength) output_width;
         CHECK(avifROStreamReadU32(&s, &grid->outputHeight)); // unsigned int(FieldLength) output_height;
     }
@@ -2428,10 +2424,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         }
     }
 
-    if (decoder->data->tiles.count != (decoder->data->colorTileCount + decoder->data->alphaTileCount)) {
-        // TODO: assert here? This should be impossible.
-        return AVIF_RESULT_UNKNOWN_ERROR;
-    }
+    assert(decoder->data->tiles.count == (decoder->data->colorTileCount + decoder->data->alphaTileCount));
 
     if ((decoder->data->colorGrid.rows > 0) || (decoder->data->colorGrid.columns > 0)) {
         if (!avifDecoderDataFillImageGrid(
