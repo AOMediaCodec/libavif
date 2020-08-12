@@ -2061,8 +2061,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         // Find primary track - this probably needs some better detection
         uint32_t colorTrackIndex = 0;
-        for (; colorTrackIndex < decoder->data->tracks.count; ++colorTrackIndex) {
-            avifTrack * track = &decoder->data->tracks.track[colorTrackIndex];
+        for (; colorTrackIndex < data->tracks.count; ++colorTrackIndex) {
+            avifTrack * track = &data->tracks.track[colorTrackIndex];
             if (!track->sampleTable) {
                 continue;
             }
@@ -2082,10 +2082,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // Found one!
             break;
         }
-        if (colorTrackIndex == decoder->data->tracks.count) {
+        if (colorTrackIndex == data->tracks.count) {
             return AVIF_RESULT_NO_CONTENT;
         }
-        colorTrack = &decoder->data->tracks.track[colorTrackIndex];
+        colorTrack = &data->tracks.track[colorTrackIndex];
 
         colorProperties = avifSampleTableGetProperties(colorTrack->sampleTable);
         if (!colorProperties) {
@@ -2101,8 +2101,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         uint32_t alphaTrackIndex = 0;
-        for (; alphaTrackIndex < decoder->data->tracks.count; ++alphaTrackIndex) {
-            avifTrack * track = &decoder->data->tracks.track[alphaTrackIndex];
+        for (; alphaTrackIndex < data->tracks.count; ++alphaTrackIndex) {
+            avifTrack * track = &data->tracks.track[alphaTrackIndex];
             if (!track->sampleTable) {
                 continue;
             }
@@ -2120,24 +2120,24 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 break;
             }
         }
-        if (alphaTrackIndex != decoder->data->tracks.count) {
-            alphaTrack = &decoder->data->tracks.track[alphaTrackIndex];
+        if (alphaTrackIndex != data->tracks.count) {
+            alphaTrack = &data->tracks.track[alphaTrackIndex];
         }
 
-        avifTile * colorTile = avifDecoderDataCreateTile(decoder->data);
-        if (!avifCodecDecodeInputGetSamples(colorTile->input, colorTrack->sampleTable, &decoder->data->rawInput)) {
+        avifTile * colorTile = avifDecoderDataCreateTile(data);
+        if (!avifCodecDecodeInputGetSamples(colorTile->input, colorTrack->sampleTable, &data->rawInput)) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
-        decoder->data->colorTileCount = 1;
+        data->colorTileCount = 1;
 
         avifTile * alphaTile = NULL;
         if (alphaTrack) {
-            alphaTile = avifDecoderDataCreateTile(decoder->data);
-            if (!avifCodecDecodeInputGetSamples(alphaTile->input, alphaTrack->sampleTable, &decoder->data->rawInput)) {
+            alphaTile = avifDecoderDataCreateTile(data);
+            if (!avifCodecDecodeInputGetSamples(alphaTile->input, alphaTrack->sampleTable, &data->rawInput)) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             alphaTile->input->alpha = AVIF_TRUE;
-            decoder->data->alphaTileCount = 1;
+            data->alphaTileCount = 1;
         }
 
         // Stash off sample table for future timing information
@@ -2273,11 +2273,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
             }
 
-            avifTile * colorTile = avifDecoderDataCreateTile(decoder->data);
+            avifTile * colorTile = avifDecoderDataCreateTile(data);
             avifDecodeSample * colorSample = (avifDecodeSample *)avifArrayPushPtr(&colorTile->input->samples);
             memcpy(&colorSample->data, &colorOBU, sizeof(avifROData));
             colorSample->sync = AVIF_TRUE;
-            decoder->data->colorTileCount = 1;
+            data->colorTileCount = 1;
         }
 
         if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0) && alphaOBUItem) {
@@ -2288,13 +2288,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         } else {
             avifTile * alphaTile = NULL;
             if (alphaOBU.size > 0) {
-                alphaTile = avifDecoderDataCreateTile(decoder->data);
+                alphaTile = avifDecoderDataCreateTile(data);
 
                 avifDecodeSample * alphaSample = (avifDecodeSample *)avifArrayPushPtr(&alphaTile->input->samples);
                 memcpy(&alphaSample->data, &alphaOBU, sizeof(avifROData));
                 alphaSample->sync = AVIF_TRUE;
                 alphaTile->input->alpha = AVIF_TRUE;
-                decoder->data->alphaTileCount = 1;
+                data->alphaTileCount = 1;
             }
         }
 
@@ -2371,13 +2371,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         memcpy(&decoder->image->imir, &imirProp->u.imir, sizeof(avifImageMirror));
     }
 
-    if (!decoder->data->cicpSet && (data->tiles.count > 0)) {
+    if (!data->cicpSet && (data->tiles.count > 0)) {
         avifTile * firstTile = &data->tiles.tile[0];
         if (firstTile->input->samples.count > 0) {
             avifDecodeSample * sample = &firstTile->input->samples.sample[0];
             avifSequenceHeader sequenceHeader;
             if (avifSequenceHeaderParse(&sequenceHeader, &sample->data)) {
-                decoder->data->cicpSet = AVIF_TRUE;
+                data->cicpSet = AVIF_TRUE;
                 decoder->image->colorPrimaries = sequenceHeader.colorPrimaries;
                 decoder->image->transferCharacteristics = sequenceHeader.transferCharacteristics;
                 decoder->image->matrixCoefficients = sequenceHeader.matrixCoefficients;
