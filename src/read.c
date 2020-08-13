@@ -492,19 +492,12 @@ typedef struct avifDecoderData
     avifImageGrid alphaGrid;
     avifDecoderSource source;
     const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
-
-    // CICP information (either from nclx or the color item's AV1 sequence header)
-    avifColorPrimaries cicpColorPrimaries;
-    avifTransferCharacteristics cicpTransferCharacteristics;
-    avifMatrixCoefficients cicpMatrixCoefficients;
-    avifRange cicpYUVRange;
-    avifBool cicpSet; // True if the other cicp* values in this struct have been set yet.
-                      // This allows nclx colr boxes to override AV1 CICP, as specified in the MIAF
-                      // standard (ISO/IEC 23000-22:2019), section 7.3.6.4:
-                      //
-                      // "The colour information property takes precedence over any colour information
-                      // in the image bitstream, i.e. if the property is present, colour information
-                      // in the bitstream shall be ignored."
+    avifBool cicpSet;                          // True if avifDecoder's image has had its CICP set correctly yet.
+                                               // This allows nclx colr boxes to override AV1 CICP, as specified in the MIAF
+                                               // standard (ISO/IEC 23000-22:2019), section 7.3.6.4:
+                                               //
+    // "The colour information property takes precedence over any colour information in the image
+    // bitstream, i.e. if the property is present, colour information in the bitstream shall be ignored."
 } avifDecoderData;
 
 static avifDecoderData * avifDecoderDataCreate()
@@ -755,12 +748,12 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
         dstImage->height = grid->outputHeight;
         dstImage->depth = firstTile->image->depth;
         dstImage->yuvFormat = firstTile->image->yuvFormat;
+        dstImage->yuvRange = firstTile->image->yuvRange;
         if (!data->cicpSet) {
             data->cicpSet = AVIF_TRUE;
-            data->cicpColorPrimaries = firstTile->image->colorPrimaries;
-            data->cicpTransferCharacteristics = firstTile->image->transferCharacteristics;
-            data->cicpMatrixCoefficients = firstTile->image->matrixCoefficients;
-            data->cicpYUVRange = firstTile->image->yuvRange;
+            dstImage->colorPrimaries = firstTile->image->colorPrimaries;
+            dstImage->transferCharacteristics = firstTile->image->transferCharacteristics;
+            dstImage->matrixCoefficients = firstTile->image->matrixCoefficients;
         }
     }
     if (alpha) {
@@ -883,18 +876,6 @@ static avifBool avifDecoderDataFindMetadata(avifDecoderData * data, avifMeta * m
         avifImageSetMetadataXMP(image, xmpData.data, xmpData.size);
     }
     return AVIF_TRUE;
-}
-
-// avifDecoderData's cicp* values are determined during avifDecoderParse() and are
-// guaranteed to be correct by the end of the function as it will always fall back to
-// the color AV1 payload's sequence header values. Call this function any time this
-// information is about to be surfaced via an avifImage.
-static void avifDecoderDataSetImageCICP(avifDecoderData * data, avifImage * image)
-{
-    image->colorPrimaries = data->cicpColorPrimaries;
-    image->transferCharacteristics = data->cicpTransferCharacteristics;
-    image->matrixCoefficients = data->cicpMatrixCoefficients;
-    image->yuvRange = data->cicpYUVRange;
 }
 
 // ---------------------------------------------------------------------------
@@ -2388,10 +2369,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             avifImageSetProfileICC(decoder->image, colrProp->u.colr.icc, colrProp->u.colr.iccSize);
         } else if (colrProp->u.colr.hasNCLX) {
             data->cicpSet = AVIF_TRUE;
-            data->cicpColorPrimaries = colrProp->u.colr.colorPrimaries;
-            data->cicpTransferCharacteristics = colrProp->u.colr.transferCharacteristics;
-            data->cicpMatrixCoefficients = colrProp->u.colr.matrixCoefficients;
-            data->cicpYUVRange = colrProp->u.colr.range;
+            decoder->image->colorPrimaries = colrProp->u.colr.colorPrimaries;
+            decoder->image->transferCharacteristics = colrProp->u.colr.transferCharacteristics;
+            decoder->image->matrixCoefficients = colrProp->u.colr.matrixCoefficients;
+            decoder->image->yuvRange = colrProp->u.colr.range;
         }
     }
 
@@ -2424,18 +2405,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             avifSequenceHeader sequenceHeader;
             if (avifSequenceHeaderParse(&sequenceHeader, &sample->data)) {
                 data->cicpSet = AVIF_TRUE;
-                data->cicpColorPrimaries = sequenceHeader.colorPrimaries;
-                data->cicpTransferCharacteristics = sequenceHeader.transferCharacteristics;
-                data->cicpMatrixCoefficients = sequenceHeader.matrixCoefficients;
-                data->cicpYUVRange = sequenceHeader.range;
+                decoder->image->colorPrimaries = sequenceHeader.colorPrimaries;
+                decoder->image->transferCharacteristics = sequenceHeader.transferCharacteristics;
+                decoder->image->matrixCoefficients = sequenceHeader.matrixCoefficients;
+                decoder->image->yuvRange = sequenceHeader.range;
             }
         }
     }
-    if (!data->cicpSet) {
-        // We failed to acquire valid CICP from every possible source; bail out.
-        return AVIF_RESULT_BMFF_PARSE_FAILED;
-    }
-    avifDecoderDataSetImageCICP(data, decoder->image); // Makes this data available prior to a call to NextImage()
 
     const avifProperty * av1CProp = avifPropertyArrayFind(colorProperties, "av1C");
     if (av1CProp) {
@@ -2507,6 +2483,16 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             decoder->image->depth = srcColor->depth;
         }
 
+#if 0
+        // This code is currently unnecessary as the CICP is always set by the end of avifDecoderParse().
+        if (!decoder->data->cicpSet) {
+            decoder->data->cicpSet = AVIF_TRUE;
+            decoder->image->colorPrimaries = srcColor->colorPrimaries;
+            decoder->image->transferCharacteristics = srcColor->transferCharacteristics;
+            decoder->image->matrixCoefficients = srcColor->matrixCoefficients;
+        }
+#endif
+
         avifImageStealPlanes(decoder->image, srcColor, AVIF_PLANES_YUV);
     }
 
@@ -2534,8 +2520,6 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             avifImageStealPlanes(decoder->image, srcAlpha, AVIF_PLANES_A);
         }
     }
-
-    avifDecoderDataSetImageCICP(decoder->data, decoder->image);
 
     ++decoder->imageIndex;
     if (decoder->data->sourceSampleTable) {
