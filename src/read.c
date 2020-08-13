@@ -2462,7 +2462,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         return AVIF_RESULT_UNKNOWN_ERROR;
     }
 
-    if ((decoder->data->colorGrid.rows > 0) || (decoder->data->colorGrid.columns > 0)) {
+    if ((decoder->data->colorGrid.rows > 0) && (decoder->data->colorGrid.columns > 0)) {
         if (!avifDecoderDataFillImageGrid(
                 decoder->data, &decoder->data->colorGrid, decoder->image, 0, decoder->data->colorTileCount, AVIF_FALSE)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
@@ -2498,7 +2498,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         avifImageStealPlanes(decoder->image, srcColor, AVIF_PLANES_YUV);
     }
 
-    if ((decoder->data->alphaGrid.rows > 0) || (decoder->data->alphaGrid.columns > 0)) {
+    if ((decoder->data->alphaGrid.rows > 0) && (decoder->data->alphaGrid.columns > 0)) {
         if (!avifDecoderDataFillImageGrid(
                 decoder->data, &decoder->data->alphaGrid, decoder->image, decoder->data->colorTileCount, decoder->data->alphaTileCount, AVIF_TRUE)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
