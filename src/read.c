@@ -2260,11 +2260,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 // probably exif or some other data
                 continue;
             }
-            if (item->thumbnailForID != 0) {
-                // It's a thumbnail, skip it
-                continue;
-            }
 
+            // Is this an alpha auxiliary item of whatever we chose for colorOBUItem?
             const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
             if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType) && (item->auxForID == colorOBUItem->id)) {
                 if (isGrid) {
@@ -2310,13 +2307,17 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             data->colorTileCount = 1;
         }
 
-        if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0) && alphaOBUItem) {
-            if (!avifDecoderDataGenerateImageGridTiles(data, &data->alphaGrid, alphaOBUItem, AVIF_TRUE)) {
-                return AVIF_RESULT_INVALID_IMAGE_GRID;
-            }
-            data->alphaTileCount = data->tiles.count - data->colorTileCount;
-        } else {
-            if (alphaOBU.size > 0) {
+        if (alphaOBUItem) {
+            if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0)) {
+                if (!avifDecoderDataGenerateImageGridTiles(data, &data->alphaGrid, alphaOBUItem, AVIF_TRUE)) {
+                    return AVIF_RESULT_INVALID_IMAGE_GRID;
+                }
+                data->alphaTileCount = data->tiles.count - data->colorTileCount;
+            } else {
+                if (alphaOBU.size == 0) {
+                    return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
+                }
+
                 avifTile * alphaTile = avifDecoderDataCreateTile(data);
                 avifDecodeSample * alphaSample = (avifDecodeSample *)avifArrayPushPtr(&alphaTile->input->samples);
                 memcpy(&alphaSample->data, &alphaOBU, sizeof(avifROData));
