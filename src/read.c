@@ -763,9 +763,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
     avifPixelFormatInfo formatInfo;
-    if (!alpha) {
-        avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
-    }
+    avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
 
     unsigned int tileIndex = firstTileIndex;
     size_t pixelBytes = avifImageUsesU16(dstImage) ? 2 : 1;
