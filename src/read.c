@@ -694,7 +694,8 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             (tile->image->yuvRange != firstTile->image->yuvRange) || (uvPresent != firstTileUVPresent) ||
             (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
             (tile->image->transferCharacteristics != firstTile->image->transferCharacteristics) ||
-            (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients)) {
+            (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients) ||
+            (tile->image->alphaRange != firstTile->image->alphaRange)) {
             return AVIF_FALSE;
         }
     }
@@ -736,7 +737,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     // Lazily populate dstImage with the new frame's properties. If we're decoding alpha,
     // these values must already match.
     if ((dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) ||
-        (dstImage->depth != firstTile->image->depth) || (dstImage->yuvFormat != firstTile->image->yuvFormat)) {
+        (dstImage->depth != firstTile->image->depth) || (!alpha && (dstImage->yuvFormat != firstTile->image->yuvFormat))) {
         if (alpha) {
             // Alpha doesn't match size, just bail out
             return AVIF_FALSE;
@@ -762,7 +763,9 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
     avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
+    if (!alpha) {
+        avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
+    }
 
     unsigned int tileIndex = firstTileIndex;
     size_t pixelBytes = avifImageUsesU16(dstImage) ? 2 : 1;
