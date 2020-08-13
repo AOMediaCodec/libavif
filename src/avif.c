@@ -295,15 +295,12 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
         srcImage->yuvRowBytes[AVIF_CHAN_V] = 0;
 
         dstImage->yuvFormat = srcImage->yuvFormat;
-        dstImage->yuvRange = srcImage->yuvRange;
-        dstImage->yuvChromaSamplePosition = srcImage->yuvChromaSamplePosition;
         dstImage->imageOwnsYUVPlanes = srcImage->imageOwnsYUVPlanes;
         srcImage->imageOwnsYUVPlanes = AVIF_FALSE;
     }
     if (planes & AVIF_PLANES_A) {
         dstImage->alphaPlane = srcImage->alphaPlane;
         dstImage->alphaRowBytes = srcImage->alphaRowBytes;
-        dstImage->alphaRange = srcImage->alphaRange;
 
         srcImage->alphaPlane = NULL;
         srcImage->alphaRowBytes = 0;

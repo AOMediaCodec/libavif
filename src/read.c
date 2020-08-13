@@ -2518,6 +2518,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             }
 
             avifImageStealPlanes(decoder->image, srcAlpha, AVIF_PLANES_A);
+            decoder->image->alphaRange = srcAlpha->alphaRange;
         }
     }
 
