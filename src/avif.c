@@ -243,7 +243,7 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
     if (planes & AVIF_PLANES_A) {
         if (!image->alphaPlane) {
             image->alphaRowBytes = fullRowBytes;
-            image->alphaPlane = avifAlloc(fullRowBytes * image->height);
+            image->alphaPlane = avifAlloc(fullSize);
         }
         image->imageOwnsAlphaPlane = AVIF_TRUE;
     }
