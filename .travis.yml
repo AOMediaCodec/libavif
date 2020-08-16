@@ -56,8 +56,8 @@ matrix:
           sudo pkg install -y llvm10
         fi
     before_script:
-      - sudo pkg install -y aom dav1d librav1e ninja
-      - $WRAPPER cmake -B build -G Ninja -DAVIF_{CODEC_{AOM,DAV1D,RAV1E},BUILD_{APPS,TESTS}}=ON
+      - sudo pkg install -y aom dav1d gdk-pixbuf2 librav1e ninja
+      - $WRAPPER cmake -B build -G Ninja -DAVIF_{CODEC_{AOM,DAV1D,RAV1E},BUILD_{APPS,GDK_PIXBUF,TESTS}}=ON
     script:
       - $WRAPPER cmake --build build
   - <<: *freebsd_common
