@@ -7,6 +7,7 @@
 
 #define GDK_PIXBUF_ENABLE_BACKEND
 #include <gdk-pixbuf/gdk-pixbuf-io.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 
 G_MODULE_EXPORT void fill_vtable (GdkPixbufModule * module);
 G_MODULE_EXPORT void fill_info (GdkPixbufFormat * info);
@@ -60,6 +61,7 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     avifRGBImage rgb;
     avifROData raw;
     int width, height;
+    GdkPixbuf *output;
 
     raw.data = g_bytes_get_data(context->bytes, &raw.size);
 
@@ -90,6 +92,133 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     width = image->width;
     height = image->height;
 
+    avifRGBImageSetDefaults(&rgb, image);
+    rgb.depth = 8;
+
+    if (image->alphaPlane) {
+        rgb.format = AVIF_RGB_FORMAT_RGBA;
+        output = gdk_pixbuf_new(GDK_COLORSPACE_RGB,
+                                TRUE, 8, width, height);
+    } else {
+        rgb.format = AVIF_RGB_FORMAT_RGB;
+        output = gdk_pixbuf_new(GDK_COLORSPACE_RGB,
+                                FALSE, 8, width, height);
+    }
+
+    if (output == NULL) {
+        g_set_error_literal(error,
+                            GDK_PIXBUF_ERROR,
+                            GDK_PIXBUF_ERROR_INSUFFICIENT_MEMORY,
+                            "Insufficient memory to open AVIF file");
+        return FALSE;
+    }
+
+    rgb.pixels = gdk_pixbuf_get_pixels(output);
+    rgb.rowBytes = gdk_pixbuf_get_rowstride(output);
+
+    ret = avifImageYUVToRGB(image, &rgb);
+    if (ret != AVIF_RESULT_OK) {
+        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
+                    "Failed to convert YUV to RGB: %s", avifResultToString(ret));
+        return FALSE;
+    }
+
+    /* transformations */
+    if (image->transformFlags & AVIF_TRANSFORM_CLAP) {
+        if ((image->clap.widthD > 0) && (image->clap.heightD > 0) &&
+            (image->clap.horizOffD > 0) && (image->clap.vertOffD > 0)) {
+
+            int new_width, new_height;
+
+            new_width = (int)((double)(image->clap.widthN)  / (image->clap.widthD) + 0.5);
+            if (new_width > width) {
+                new_width = width;
+            }
+
+            new_height = (int)((double)(image->clap.heightN) / (image->clap.heightD) + 0.5);
+            if (new_height > height) {
+                new_height = height;
+            }
+
+            if (new_width > 0 && new_height > 0) {
+                int offx, offy;
+                GdkPixbuf *output_cropped;
+                GdkPixbuf *cropped_copy;
+
+                offx = ((double)((int32_t) image->clap.horizOffN)) / (image->clap.horizOffD) +
+                       (width - new_width) / 2.0 + 0.5;
+                if (offx < 0) {
+                    offx = 0;
+                } else if (offx > (width - new_width)) {
+                    offx = width - new_width;
+                }
+
+                offy = ((double)((int32_t) image->clap.vertOffN)) / (image->clap.vertOffD) +
+                       (height - new_height) / 2.0 + 0.5;
+                if (offy < 0) {
+                    offy = 0;
+                } else if (offy > (height - new_height)) {
+                    offy = height - new_height;
+                }
+
+                output_cropped = gdk_pixbuf_new_subpixbuf(output, offx, offy, new_width, new_height);
+                cropped_copy = gdk_pixbuf_copy(output_cropped);
+                g_clear_object(&output_cropped);
+
+                if (cropped_copy) {
+                    g_object_unref(output);
+                    output = cropped_copy;
+                }
+            }
+        } else {
+            /* Zero values, we need to avoid 0 divide. */
+            g_warning("Wrong values in avifCleanApertureBox\n");
+        }
+    }
+
+    if (image->transformFlags & AVIF_TRANSFORM_IROT) {
+        GdkPixbuf *output_rotated = NULL;
+
+        switch (image->irot.angle) {
+        case 1:
+            output_rotated = gdk_pixbuf_rotate_simple(output, GDK_PIXBUF_ROTATE_COUNTERCLOCKWISE);
+            break;
+        case 2:
+            output_rotated = gdk_pixbuf_rotate_simple(output, GDK_PIXBUF_ROTATE_UPSIDEDOWN);
+            break;
+        case 3:
+            output_rotated = gdk_pixbuf_rotate_simple(output, GDK_PIXBUF_ROTATE_CLOCKWISE);
+            break;
+        }
+
+        if (output_rotated) {
+          g_object_unref(output);
+          output = output_rotated;
+        }
+    }
+
+    if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
+        GdkPixbuf *output_mirrored = NULL;
+
+        switch (image->imir.axis) {
+        case 0:
+            output_mirrored = gdk_pixbuf_flip(output, FALSE);
+            break;
+        case 1:
+            output_mirrored = gdk_pixbuf_flip(output, TRUE);
+            break;
+        }
+
+        if (output_mirrored) {
+            g_object_unref(output);
+            output = output_mirrored;
+        }
+    }
+
+    /* width, height could be different after applied transformations */
+    width = gdk_pixbuf_get_width(output);
+    height = gdk_pixbuf_get_height(output);
+
     if (context->size_func) {
         (*context->size_func)(&width, &height, context->user_data);
     }
@@ -102,34 +231,24 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
         return FALSE;
     }
 
-    if (!context->pixbuf) {
-        int bits_per_sample = 8;
+    if ( width < gdk_pixbuf_get_width(output) ||
+         height < gdk_pixbuf_get_height(output)) {
+        GdkPixbuf *output_scaled = NULL;
 
-        context->pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB,
-                                         !!image->alphaPlane, bits_per_sample,
-                                         image->width, image->height);
-        if (context->pixbuf == NULL) {
-            g_set_error_literal(error,
-                                GDK_PIXBUF_ERROR,
-                                GDK_PIXBUF_ERROR_INSUFFICIENT_MEMORY,
-                                "Insufficient memory to open AVIF file");
-            return FALSE;
+        output_scaled = gdk_pixbuf_scale_simple(output, width, height, GDK_INTERP_HYPER);
+        if (output_scaled) {
+            g_object_unref(output);
+            output = output_scaled;
         }
-        context->prepared_func(context->pixbuf, NULL, context->user_data);
     }
 
-    avifRGBImageSetDefaults(&rgb, image);
-    rgb.depth = 8;
-    rgb.format = image->alphaPlane ? AVIF_RGB_FORMAT_RGBA : AVIF_RGB_FORMAT_RGB;
-    rgb.pixels = gdk_pixbuf_get_pixels(context->pixbuf);
-    rgb.rowBytes = gdk_pixbuf_get_rowstride(context->pixbuf);
-
-    ret = avifImageYUVToRGB(image, &rgb);
-    if (ret != AVIF_RESULT_OK) {
-        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
-                    "Failed to convert YUV to RGB: %s", avifResultToString(ret));
-        return FALSE;
+    if (context->pixbuf) {
+        g_object_unref(context->pixbuf);
+        context->pixbuf = NULL;
     }
+
+    context->pixbuf = output;
+    context->prepared_func(context->pixbuf, NULL, context->user_data);
 
     return TRUE;
 }
