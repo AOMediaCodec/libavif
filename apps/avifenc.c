@@ -263,11 +263,12 @@ int main(int argc, char * argv[])
     avifBool cicpExplicitlySet = AVIF_FALSE;
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
-    // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT709
-    // coefficients anyway (as MC:2 falls back to MC:1), so we might as well signal it explicitly.
+    // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
+    // coefficients anyway (as MC:2 falls back to MC:5/6), so we might as well signal it explicitly.
+    // See: ISO/IEC 23000-22:2019 Amendment 2, or the comment in avifCalcYUVCoefficients()
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
     int argIndex = 1;
     while (argIndex < argc) {
