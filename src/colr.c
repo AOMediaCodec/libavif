@@ -83,7 +83,7 @@ static const struct avifMatrixCoefficientsTable matrixCoefficientsTables[] = {
     { AVIF_MATRIX_COEFFICIENTS_BT709, "BT.709", 0.2126f, 0.0722f },
     { AVIF_MATRIX_COEFFICIENTS_FCC, "FCC USFC 73.682", 0.30f, 0.11f },
     { AVIF_MATRIX_COEFFICIENTS_BT470BG, "BT.470-6 System BG", 0.299f, 0.114f },
-    { AVIF_MATRIX_COEFFICIENTS_BT601, "BT.601", 0.299f, 0.144f },
+    { AVIF_MATRIX_COEFFICIENTS_BT601, "BT.601", 0.299f, 0.114f },
     { AVIF_MATRIX_COEFFICIENTS_SMPTE240, "SMPTE ST 240", 0.212f, 0.087f },
     { AVIF_MATRIX_COEFFICIENTS_BT2020_NCL, "BT.2020 (non-constant luminance)", 0.2627f, 0.0593f },
     //{ AVIF_MATRIX_COEFFICIENTS_BT2020_CL, "BT.2020 (constant luminance)", 0.2627f, 0.0593f }, // FIXME: It is not an linear transformation.
@@ -137,14 +137,24 @@ static avifBool calcYUVInfoFromCICP(const avifImage * image, float coeffs[3])
 
 void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG, float * outB)
 {
-    // sRGB (BT.709) defaults, as explained here:
+    // (As of ISO/IEC 23000-22:2019 Amendment 2)
+    // MIAF Section 7.3.6.4 "Colour information property":
     //
-    // https://github.com/AOMediaCodec/av1-avif/issues/83
+    // If a coded image has no associated colour property, the default property is defined as having
+    // colour_type equal to 'nclx' with properties as follows:
+    // –   colour_primaries equal to 1,
+    // –   transfer_characteristics equal to 13,
+    // –   matrix_coefficients equal to 5 or 6 (which are functionally identical), and
+    // –   full_range_flag equal to 1.
+    // Only if the colour information property of the image matches these default values, the colour
+    // property may be omitted; all other images shall have an explicitly declared colour space via
+    // association with a property of this type.
     //
-    // MIAF (ISO/IEC FDIS 23000-22) Section 7.3.6.4 states that matrix_coefficients should be assumed
-    // to be 1 (BT.709) if there is no associated colour property.
-    float kr = 0.2126f;
-    float kb = 0.0722f;
+    // See here for the discussion: https://github.com/AOMediaCodec/av1-avif/issues/77#issuecomment-676526097
+
+    // matrix_coefficients of [5,6] == BT.601:
+    float kr = 0.299f;
+    float kb = 0.114f;
     float kg = 1.0f - kr - kb;
 
     float coeffs[3];
