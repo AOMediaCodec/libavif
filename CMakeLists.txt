@@ -79,6 +79,7 @@ endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
+include(CheckCCompilerFlag)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   MESSAGE(STATUS "libavif: Enabling warnings for Clang")
   add_definitions(
@@ -98,6 +99,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-sign-conversion
     -Wno-error=c11-extensions
   )
+  # The detection of cross compilation by -Wpoison-system-directories has false positives on macOS because
+  # --sysroot is implicitly added. Turn the warning off.
+  check_c_compiler_flag(-Wpoison-system-directories HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
+  if(HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
+    add_definitions(-Wno-poison-system-directories)
+  endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   MESSAGE(STATUS "libavif: Enabling warnings for GCC")
   add_definitions(-Werror -Wall -Wextra)
