@@ -1540,7 +1540,8 @@ static avifBool avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, size_
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version;
-    CHECK(avifROStreamReadVersionAndFlags(&s, &version, NULL));
+    uint32_t flags;
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
     uint32_t entryCount;
     if (version == 0) {
         uint16_t tmp;
@@ -1553,6 +1554,9 @@ static avifBool avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, size_
     }
 
     PrintInt("entry_count", entryCount);
+    if ((flags & 1) == 1)  {
+      PrintInt("hidden", flags & 1);
+    }
 
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         avifBoxHeader infeHeader;
