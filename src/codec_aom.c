@@ -216,12 +216,12 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
-static avifBool aomCodecEncodeImage(avifCodec * codec,
-                                    avifEncoder * encoder,
-                                    const avifImage * image,
-                                    avifBool alpha,
-                                    uint32_t addImageFlags,
-                                    avifCodecEncodeOutput * output)
+static avifResult aomCodecEncodeImage(avifCodec * codec,
+                                      avifEncoder * encoder,
+                                      const avifImage * image,
+                                      avifBool alpha,
+                                      uint32_t addImageFlags,
+                                      avifCodecEncodeOutput * output)
 {
     if (!codec->internal->encoderInitialized) {
         // Map encoder speed to AOM usage + CpuUsed:
@@ -271,9 +271,14 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
+        if (codec->csOptions->count > 0) {
+            // None are currently supported!
+            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+        }
+
         codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
         if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
-            return AVIF_FALSE;
+            return AVIF_RESULT_UNKNOWN_ERROR;
         }
 
         avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
@@ -436,7 +441,7 @@ static avifBool aomCodecEncodeImage(avifCodec * codec,
     }
 
     aom_img_free(aomImage);
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output)

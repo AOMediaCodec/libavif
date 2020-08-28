@@ -55,19 +55,24 @@ static avifBool rav1eSupports400(void)
     return minorVersion >= 4;
 }
 
-static avifBool rav1eCodecEncodeImage(avifCodec * codec,
-                                      avifEncoder * encoder,
-                                      const avifImage * image,
-                                      avifBool alpha,
-                                      uint32_t addImageFlags,
-                                      avifCodecEncodeOutput * output)
+static avifResult rav1eCodecEncodeImage(avifCodec * codec,
+                                        avifEncoder * encoder,
+                                        const avifImage * image,
+                                        avifBool alpha,
+                                        uint32_t addImageFlags,
+                                        avifCodecEncodeOutput * output)
 {
-    avifBool success = AVIF_FALSE;
+    avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
 
     RaConfig * rav1eConfig = NULL;
     RaFrame * rav1eFrame = NULL;
 
     if (!codec->internal->rav1eContext) {
+        if (codec->csOptions->count > 0) {
+            // None are currently supported!
+            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+        }
+
         const avifBool supports400 = rav1eSupports400();
         RaPixelRange rav1eRange;
         if (alpha) {
@@ -94,7 +99,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
                 default:
-                    return AVIF_FALSE;
+                    return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
 
@@ -209,7 +214,7 @@ static avifBool rav1eCodecEncodeImage(avifCodec * codec,
             break;
         }
     }
-    success = AVIF_TRUE;
+    result = AVIF_RESULT_OK;
 cleanup:
     if (rav1eFrame) {
         rav1e_frame_unref(rav1eFrame);
@@ -219,7 +224,7 @@ cleanup:
         rav1e_config_unref(rav1eConfig);
         rav1eConfig = NULL;
     }
-    return success;
+    return result;
 }
 
 static avifBool rav1eCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output)

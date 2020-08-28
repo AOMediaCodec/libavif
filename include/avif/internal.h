@@ -123,6 +123,20 @@ void avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const 
 void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput);
 
 // ---------------------------------------------------------------------------
+// avifCodecSpecificOptions (KV string pairs for advanced tuning)
+
+typedef struct avifCodecSpecificOption
+{
+    char * key;   // Must be a simple lowercase alphanumeric string
+    char * value; // Free-form string to be interpreted by the codec
+} avifCodecSpecificOption;
+AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
+avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
+void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
+void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
+avifCodecSpecificOption * avifCodecSpecificOptionsGet(avifCodecSpecificOptions * csOptions, const char * key); // Returns NULL if not found
+
+// ---------------------------------------------------------------------------
 // avifCodec (abstraction layer to use different AV1 implementations)
 
 struct avifCodec;
@@ -132,20 +146,25 @@ typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, uint32_t firstSa
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifImage * image);
 // EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
 // encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.
-typedef avifBool (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
-                                             avifEncoder * encoder,
-                                             const avifImage * image,
-                                             avifBool alpha,
-                                             uint32_t addImageFlags,
-                                             avifCodecEncodeOutput * output);
+// avifCodecEncodeImageFunc may return AVIF_RESULT_UNKNOWN_ERROR to automatically emit the appropriate
+// AVIF_RESULT_ENCODE_COLOR_FAILED or AVIF_RESULT_ENCODE_ALPHA_FAILED depending on the alpha argument.
+typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
+                                               avifEncoder * encoder,
+                                               const avifImage * image,
+                                               avifBool alpha,
+                                               uint32_t addImageFlags,
+                                               avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
 {
     avifCodecDecodeInput * decodeInput;
-    avifCodecConfigurationBox configBox; // Pre-populated by avifEncoderWrite(), available and overridable by codec impls
-    struct avifCodecInternal * internal; // up to each codec to use how it wants
+    avifCodecConfigurationBox configBox;  // Pre-populated by avifEncoderWrite(), available and overridable by codec impls
+    avifCodecSpecificOptions * csOptions; // Contains codec-specific KV pairs for advanced tuning.
+                                          // If a codec uses a value, it must mark it as used.
+                                          // This array is NOT owned by avifCodec.
+    struct avifCodecInternal * internal;  // up to each codec to use how it wants
 
     avifCodecOpenFunc open;
     avifCodecGetNextImageFunc getNextImage;

@@ -89,7 +89,8 @@ typedef enum avifResult
     AVIF_RESULT_NO_CODEC_AVAILABLE,
     AVIF_RESULT_NO_IMAGES_REMAINING,
     AVIF_RESULT_INVALID_EXIF_PAYLOAD,
-    AVIF_RESULT_INVALID_IMAGE_GRID
+    AVIF_RESULT_INVALID_IMAGE_GRID,
+    AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION
 } avifResult;
 
 const char * avifResultToString(avifResult result);
@@ -633,6 +634,7 @@ avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frame
 // avifEncoder
 
 struct avifEncoderData;
+struct avifCodecSpecificOptions;
 
 // Notes:
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
@@ -666,6 +668,7 @@ typedef struct avifEncoder
 
     // Internals used by the encoder
     struct avifEncoderData * data;
+    struct avifCodecSpecificOptions * csOptions;
 } avifEncoder;
 
 avifEncoder * avifEncoderCreate(void);
@@ -696,6 +699,14 @@ enum avifAddImageFlags
 //
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, uint32_t addImageFlags);
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
+
+// Codec-specific, optional "advanced" settings tuning, in form of string key/value pairs. These
+// should be set as early as possible, preferably just after creating avifEncoder but before
+// performing any other actions.
+// key must be non-NULL, but passing a NULL value will delete that key, if it exists.
+// Setting an incorrect or unknown option for the current codec will cause errors of type
+// AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION.
+void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
 
 // Helpers
 avifBool avifImageUsesU16(const avifImage * image);

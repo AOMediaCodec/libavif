@@ -178,13 +178,20 @@ avifEncoder * avifEncoderCreate(void)
     encoder->data = avifEncoderDataCreate();
     encoder->timescale = 1;
     encoder->keyframeInterval = 0;
+    encoder->csOptions = avifCodecSpecificOptionsCreate();
     return encoder;
 }
 
 void avifEncoderDestroy(avifEncoder * encoder)
 {
+    avifCodecSpecificOptionsDestroy(encoder->csOptions);
     avifEncoderDataDestroy(encoder->data);
     avifFree(encoder);
+}
+
+void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
+{
+    avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
 }
 
 static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * imageMetadata, struct ipmaArray * ipma, uint8_t * itemPropertyIndex)
@@ -359,6 +366,7 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
 
         encoder->data->colorItem = avifEncoderDataCreateItem(encoder->data, "av01", "Color", 6);
         encoder->data->colorItem->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+        encoder->data->colorItem->codec->csOptions = encoder->csOptions;
         if (!encoder->data->colorItem->codec) {
             // Just bail out early, we're not surviving this function without an encoder compiled in
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
@@ -381,6 +389,7 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
         if (needsAlpha) {
             encoder->data->alphaItem = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6);
             encoder->data->alphaItem->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+            encoder->data->alphaItem->codec->csOptions = encoder->csOptions;
             if (!encoder->data->alphaItem->codec) {
                 return AVIF_RESULT_NO_CODEC_AVAILABLE;
             }
@@ -465,8 +474,13 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeImage(item->codec, encoder, image, item->alpha, addImageFlags, item->encodeOutput)) {
-                return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
+            avifResult encodeResult =
+                item->codec->encodeImage(item->codec, encoder, image, item->alpha, addImageFlags, item->encodeOutput);
+            if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
+                encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
+            }
+            if (encodeResult != AVIF_RESULT_OK) {
+                return encodeResult;
             }
         }
     }

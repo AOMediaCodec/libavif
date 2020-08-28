@@ -68,24 +68,25 @@ const char * avifResultToString(avifResult result)
 {
     // clang-format off
     switch (result) {
-        case AVIF_RESULT_OK:                        return "OK";
-        case AVIF_RESULT_INVALID_FTYP:              return "Invalid ftyp";
-        case AVIF_RESULT_NO_CONTENT:                return "No content";
-        case AVIF_RESULT_NO_YUV_FORMAT_SELECTED:    return "No YUV format selected";
-        case AVIF_RESULT_REFORMAT_FAILED:           return "Reformat failed";
-        case AVIF_RESULT_UNSUPPORTED_DEPTH:         return "Unsupported depth";
-        case AVIF_RESULT_ENCODE_COLOR_FAILED:       return "Encoding of color planes failed";
-        case AVIF_RESULT_ENCODE_ALPHA_FAILED:       return "Encoding of alpha plane failed";
-        case AVIF_RESULT_BMFF_PARSE_FAILED:         return "BMFF parsing failed";
-        case AVIF_RESULT_NO_AV1_ITEMS_FOUND:        return "No AV1 items found";
-        case AVIF_RESULT_DECODE_COLOR_FAILED:       return "Decoding of color planes failed";
-        case AVIF_RESULT_DECODE_ALPHA_FAILED:       return "Decoding of alpha plane failed";
-        case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH: return "Color and alpha planes size mismatch";
-        case AVIF_RESULT_ISPE_SIZE_MISMATCH:        return "Plane sizes don't match ispe values";
-        case AVIF_RESULT_NO_CODEC_AVAILABLE:        return "No codec available";
-        case AVIF_RESULT_NO_IMAGES_REMAINING:       return "No images remaining";
-        case AVIF_RESULT_INVALID_EXIF_PAYLOAD:      return "Invalid Exif payload";
-        case AVIF_RESULT_INVALID_IMAGE_GRID:        return "Invalid image grid";
+        case AVIF_RESULT_OK:                            return "OK";
+        case AVIF_RESULT_INVALID_FTYP:                  return "Invalid ftyp";
+        case AVIF_RESULT_NO_CONTENT:                    return "No content";
+        case AVIF_RESULT_NO_YUV_FORMAT_SELECTED:        return "No YUV format selected";
+        case AVIF_RESULT_REFORMAT_FAILED:               return "Reformat failed";
+        case AVIF_RESULT_UNSUPPORTED_DEPTH:             return "Unsupported depth";
+        case AVIF_RESULT_ENCODE_COLOR_FAILED:           return "Encoding of color planes failed";
+        case AVIF_RESULT_ENCODE_ALPHA_FAILED:           return "Encoding of alpha plane failed";
+        case AVIF_RESULT_BMFF_PARSE_FAILED:             return "BMFF parsing failed";
+        case AVIF_RESULT_NO_AV1_ITEMS_FOUND:            return "No AV1 items found";
+        case AVIF_RESULT_DECODE_COLOR_FAILED:           return "Decoding of color planes failed";
+        case AVIF_RESULT_DECODE_ALPHA_FAILED:           return "Decoding of alpha plane failed";
+        case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH:     return "Color and alpha planes size mismatch";
+        case AVIF_RESULT_ISPE_SIZE_MISMATCH:            return "Plane sizes don't match ispe values";
+        case AVIF_RESULT_NO_CODEC_AVAILABLE:            return "No codec available";
+        case AVIF_RESULT_NO_IMAGES_REMAINING:           return "No images remaining";
+        case AVIF_RESULT_INVALID_EXIF_PAYLOAD:          return "Invalid Exif payload";
+        case AVIF_RESULT_INVALID_IMAGE_GRID:            return "Invalid image grid";
+        case AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION: return "Invalid codec-specific option";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
@@ -373,6 +374,79 @@ void avifRGBImageFreePixels(avifRGBImage * rgb)
 
     rgb->pixels = NULL;
     rgb->rowBytes = 0;
+}
+
+// ---------------------------------------------------------------------------
+// avifCodecSpecificOption
+
+static char * avifStrdup(const char * str)
+{
+    size_t len = strlen(str);
+    char * dup = avifAlloc(len + 1);
+    memcpy(dup, str, len + 1);
+    return dup;
+}
+
+avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void)
+{
+    avifCodecSpecificOptions * ava = avifAlloc(sizeof(avifCodecSpecificOptions));
+    avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4);
+    return ava;
+}
+
+void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
+{
+    if (!csOptions) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < csOptions->count; ++i) {
+        avifCodecSpecificOption * entry = &csOptions->entries[i];
+        avifFree(entry->key);
+        avifFree(entry->value);
+    }
+    avifArrayDestroy(csOptions);
+    avifFree(csOptions);
+}
+
+void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value)
+{
+    // Check to see if a key must be replaced
+    for (uint32_t i = 0; i < csOptions->count; ++i) {
+        avifCodecSpecificOption * entry = &csOptions->entries[i];
+        if (!strcmp(entry->key, key)) {
+            if (value) {
+                // Update the value
+                avifFree(entry->value);
+                entry->value = avifStrdup(value);
+            } else {
+                // Delete the value
+                avifFree(entry->key);
+                avifFree(entry->value);
+                --csOptions->count;
+                if (csOptions->count > 0) {
+                    memmove(&csOptions->entries[i], &csOptions->entries[i + 1], (csOptions->count - i) * csOptions->elementSize);
+                }
+            }
+            return;
+        }
+    }
+
+    // Add a new key
+    avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
+    entry->key = avifStrdup(key);
+    entry->value = avifStrdup(value);
+}
+
+avifCodecSpecificOption * avifCodecSpecificOptionsGet(avifCodecSpecificOptions * csOptions, const char * key)
+{
+    for (uint32_t i = 0; i < csOptions->count; ++i) {
+        avifCodecSpecificOption * entry = &csOptions->entries[i];
+        if (!strcmp(entry->key, key)) {
+            return entry;
+        }
+    }
+    return NULL;
 }
 
 // ---------------------------------------------------------------------------
