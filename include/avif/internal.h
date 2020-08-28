@@ -123,7 +123,7 @@ void avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const 
 void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput);
 
 // ---------------------------------------------------------------------------
-// avifCodecSpecificOptions (KV string pairs for advanced tuning)
+// avifCodecSpecificOptions (key/value string pairs for advanced tuning)
 
 typedef struct avifCodecSpecificOption
 {
@@ -161,7 +161,7 @@ typedef struct avifCodec
 {
     avifCodecDecodeInput * decodeInput;
     avifCodecConfigurationBox configBox;  // Pre-populated by avifEncoderWrite(), available and overridable by codec impls
-    avifCodecSpecificOptions * csOptions; // Contains codec-specific KV pairs for advanced tuning.
+    avifCodecSpecificOptions * csOptions; // Contains codec-specific key/value pairs for advanced tuning.
                                           // If a codec uses a value, it must mark it as used.
                                           // This array is NOT owned by avifCodec.
     struct avifCodecInternal * internal;  // up to each codec to use how it wants
