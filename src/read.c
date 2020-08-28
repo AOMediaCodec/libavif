@@ -118,21 +118,29 @@ static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * prop
     return NULL;
 }
 
+typedef struct avifDecoderItemExtent
+{
+    uint32_t offset;
+    uint32_t size;
+} avifDecoderItemExtent;
+AVIF_ARRAY_DECLARE(avifDecoderItemExtentArray, avifDecoderItemExtent, extent);
+
 // one "item" worth for decoding (all iref, iloc, iprp, etc refer to one of these)
 typedef struct avifDecoderItem
 {
     uint32_t id;
     struct avifMeta * meta; // Unowned; A back-pointer for convenience
     uint8_t type[4];
-    uint32_t offset;
     uint32_t size;
     uint32_t idatID; // If non-zero, offset is relative to this idat box (iloc construction_method==1)
     avifContentType contentType;
     avifPropertyArray properties;
-    uint32_t thumbnailForID; // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
-    uint32_t auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
-    uint32_t descForID;      // if non-zero, this item is a content description for Item #{descForID}
-    uint32_t dimgForID;      // if non-zero, this item is a derived image for Item #{dimgForID}
+    avifDecoderItemExtentArray extents; // All extent offsets/sizes
+    avifRWData mergedExtents; // if populated, is a single contiguous block of this item's extents (unused when extents.count == 1)
+    uint32_t thumbnailForID;  // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
+    uint32_t auxForID;        // if non-zero, this item is an auxC plane for Item #{auxForID}
+    uint32_t descForID;       // if non-zero, this item is a content description for Item #{descForID}
+    uint32_t dimgForID;       // if non-zero, this item is a derived image for Item #{dimgForID}
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem, item);
@@ -453,6 +461,8 @@ static void avifMetaDestroy(avifMeta * meta)
     for (uint32_t i = 0; i < meta->items.count; ++i) {
         avifDecoderItem * item = &meta->items.item[i];
         avifArrayDestroy(&item->properties);
+        avifArrayDestroy(&item->extents);
+        avifRWDataFree(&item->mergedExtents);
     }
     avifArrayDestroy(&meta->items);
     avifArrayDestroy(&meta->properties);
@@ -474,6 +484,7 @@ static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
 
     avifDecoderItem * item = (avifDecoderItem *)avifArrayPushPtr(&meta->items);
     avifArrayCreate(&item->properties, sizeof(avifProperty), 16);
+    avifArrayCreate(&item->extents, sizeof(avifDecoderItemExtent), 1);
     item->id = itemID;
     item->meta = meta;
     return item;
@@ -581,6 +592,12 @@ static void avifDecoderDataDestroy(avifDecoderData * data)
 
 static const uint8_t * avifDecoderDataCalcItemPtr(avifDecoderData * data, avifDecoderItem * item)
 {
+    if (item->mergedExtents.data) {
+        // Multiple extents have already been concatenated for this item, just return it
+        return item->mergedExtents.data;
+    }
+
+    // Find this item's source of all extents' data, based on the construction method
     avifROData * offsetBuffer = NULL;
     if (item->idatID == 0) {
         // construction_method: file(0)
@@ -603,14 +620,48 @@ static const uint8_t * avifDecoderDataCalcItemPtr(avifDecoderData * data, avifDe
         }
     }
 
-    if (item->offset > offsetBuffer->size) {
+    if (item->extents.count == 0) {
+        return NULL;
+    } else if (item->extents.count == 1) {
+        // A single extent; just use the pre-existing buffer
+
+        avifDecoderItemExtent * extent = &item->extents.extent[0];
+        if (extent->offset > offsetBuffer->size) {
+            return NULL;
+        }
+        uint64_t offsetSize = (uint64_t)extent->offset + (uint64_t)extent->size;
+        if (offsetSize > (uint64_t)offsetBuffer->size) {
+            return NULL;
+        }
+        return offsetBuffer->data + extent->offset;
+    }
+
+    // Multiple extents; merge them into a single contiguous buffer
+    avifRWDataRealloc(&item->mergedExtents, item->size);
+    uint8_t * front = item->mergedExtents.data;
+    size_t remainingBytes = item->mergedExtents.size;
+    for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
+        avifDecoderItemExtent * extent = &item->extents.extent[extentIter];
+        if (extent->offset > offsetBuffer->size) {
+            return NULL;
+        }
+        uint64_t offsetSize = (uint64_t)extent->offset + (uint64_t)extent->size;
+        if (offsetSize > (uint64_t)offsetBuffer->size) {
+            return NULL;
+        }
+        if ((size_t)extent->size > remainingBytes) {
+            return NULL;
+        }
+
+        memcpy(front, offsetBuffer->data + extent->offset, extent->size);
+        front += extent->size;
+        remainingBytes -= extent->size;
+    }
+    if (remainingBytes != 0) {
+        // This should be impossible?
         return NULL;
     }
-    uint64_t offsetSize = (uint64_t)item->offset + (uint64_t)item->size;
-    if (offsetSize > (uint64_t)offsetBuffer->size) {
-        return NULL;
-    }
-    return offsetBuffer->data + item->offset;
+    return item->mergedExtents.data;
 }
 
 static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, avifImageGrid * grid, avifDecoderItem * gridItem, avifBool alpha)
@@ -949,13 +1000,20 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             }
         }
 
+        avifDecoderItem * item = avifMetaFindItem(meta, itemID);
+        if (!item) {
+            return AVIF_FALSE;
+        }
+        item->id = itemID;
+        item->idatID = idatID;
+
         uint16_t dataReferenceIndex;                                 // unsigned int(16) data_ref rence_index;
         CHECK(avifROStreamReadU16(&s, &dataReferenceIndex));         //
         uint64_t baseOffset;                                         // unsigned int(base_offset_size*8) base_offset;
         CHECK(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize)); //
         uint16_t extentCount;                                        // unsigned int(16) extent_count;
         CHECK(avifROStreamReadU16(&s, &extentCount));                //
-        if (extentCount == 1) {
+        for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
             // If extent_index is ever supported, this spec must be implemented here:
             // ::  if (((version == 1) || (version == 2)) && (index_size > 0)) {
             // ::      unsigned int(index_size*8) extent_index;
@@ -966,17 +1024,10 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             uint64_t extentLength; // unsigned int(offset_size*8) extent_length;
             CHECK(avifROStreamReadUX8(&s, &extentLength, lengthSize));
 
-            avifDecoderItem * item = avifMetaFindItem(meta, itemID);
-            if (!item) {
-                return AVIF_FALSE;
-            }
-            item->id = itemID;
-            item->offset = (uint32_t)(baseOffset + extentOffset);
-            item->size = (uint32_t)extentLength;
-            item->idatID = idatID;
-        } else {
-            // TODO: support more than one extent
-            return AVIF_FALSE;
+            avifDecoderItemExtent * extent = (avifDecoderItemExtent *)avifArrayPushPtr(&item->extents);
+            extent->offset = (uint32_t)(baseOffset + extentOffset);
+            extent->size = (uint32_t)extentLength;
+            item->size += extent->size;
         }
     }
     return AVIF_TRUE;
