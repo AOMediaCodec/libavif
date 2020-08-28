@@ -175,9 +175,9 @@ avifEncoder * avifEncoderCreate(void)
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
     encoder->speed = AVIF_SPEED_DEFAULT;
-    encoder->data = avifEncoderDataCreate();
-    encoder->timescale = 1;
     encoder->keyframeInterval = 0;
+    encoder->timescale = 1;
+    encoder->data = avifEncoderDataCreate();
     encoder->csOptions = avifCodecSpecificOptionsCreate();
     return encoder;
 }

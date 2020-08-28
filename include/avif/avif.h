@@ -700,12 +700,12 @@ enum avifAddImageFlags
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, uint32_t addImageFlags);
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
-// Codec-specific, optional "advanced" settings tuning, in form of string key/value pairs. These
+// Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs. These
 // should be set as early as possible, preferably just after creating avifEncoder but before
 // performing any other actions.
 // key must be non-NULL, but passing a NULL value will delete that key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
-// AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION.
+// AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().
 void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
 
 // Helpers
