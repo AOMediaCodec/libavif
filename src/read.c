@@ -672,6 +672,7 @@ static const uint8_t * avifDecoderDataCalcItemPtr(avifDecoderData * data, avifDe
             return NULL;
         }
         if ((size_t)extent->size > remainingBytes) {
+            // This should be impossible?
             return NULL;
         }
 
@@ -1050,8 +1051,21 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             CHECK(avifROStreamReadUX8(&s, &extentLength, lengthSize));
 
             avifDecoderItemExtent * extent = (avifDecoderItemExtent *)avifArrayPushPtr(&item->extents);
-            extent->offset = (uint32_t)(baseOffset + extentOffset);
+            if (extentOffset > UINT64_MAX - baseOffset) {
+                return AVIF_FALSE;
+            }
+            uint64_t offset = baseOffset + extentOffset;
+            if (offset > UINT32_MAX) {
+                return AVIF_FALSE;
+            }
+            extent->offset = (uint32_t)offset;
+            if (extentLength > UINT32_MAX) {
+                return AVIF_FALSE;
+            }
             extent->size = (uint32_t)extentLength;
+            if (extent->size > UINT32_MAX - item->size) {
+                return AVIF_FALSE;
+            }
             item->size += extent->size;
         }
     }
