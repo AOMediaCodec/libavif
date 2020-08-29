@@ -3,6 +3,7 @@
 */
 
 #include <avif/avif.h>
+#include <stdlib.h>
 
 #define GDK_PIXBUF_ENABLE_BACKEND
 #include <gdk-pixbuf/gdk-pixbuf-io.h>
