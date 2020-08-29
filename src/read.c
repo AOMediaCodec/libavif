@@ -654,8 +654,9 @@ static const uint8_t * avifDecoderDataCalcItemPtr(avifDecoderData * data, avifDe
     }
 
     // Multiple extents; merge them into a single contiguous buffer
-    if (item->size > data->rawInput.size) {
-        // Sanity check: somehow the sum of extents for this item exceeds the entire file size!
+    if (item->size > offsetBuffer->size) {
+        // Sanity check: somehow the sum of extents for this item exceeds the entire file or idat
+        // size!
         return NULL;
     }
     avifRWDataRealloc(&item->mergedExtents, item->size);
