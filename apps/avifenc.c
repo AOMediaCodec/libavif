@@ -92,6 +92,11 @@ static void syntax(void)
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir AXIS                       : Add imir property (mirroring). 0=vertical, 1=horizontal\n");
     printf("\n");
+    if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
+        printf("aom-specific advanced options:\n");
+        printf("    tune=METRIC                       : Tune the encoder for distortion metric (psnr or ssim, default: psnr)\n");
+        printf("\n");
+    }
     avifPrintVersions();
 }
 

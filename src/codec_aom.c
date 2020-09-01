@@ -271,11 +271,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        if (codec->csOptions->count > 0) {
-            // None are currently supported!
-            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
-        }
-
         codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
         if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
             return AVIF_RESULT_UNKNOWN_ERROR;
@@ -351,6 +346,23 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
         if (aomCpuUsed != -1) {
             aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed);
+        }
+        for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+            avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+            if (!strcmp(entry->key, "tune")) {
+                // Tune distortion metric.
+                int tuneMetric = -1;
+                if (!strcmp(entry->value, "psnr")) {
+                    tuneMetric = AOM_TUNE_PSNR;
+                } else if (!strcmp(entry->value, "ssim")) {
+                    tuneMetric = AOM_TUNE_SSIM;
+                } else {
+                    return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+                }
+                aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, tuneMetric);
+            } else {
+                return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+            }
         }
     }
 
