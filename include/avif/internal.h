@@ -134,7 +134,7 @@ AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
-avifCodecSpecificOption * avifCodecSpecificOptionsGet(avifCodecSpecificOptions * csOptions, const char * key); // Returns NULL if not found
+const avifCodecSpecificOption * avifCodecSpecificOptionsGet(const avifCodecSpecificOptions * csOptions, const char * key); // Returns NULL if not found
 
 // ---------------------------------------------------------------------------
 // avifCodec (abstraction layer to use different AV1 implementations)
