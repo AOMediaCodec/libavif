@@ -438,17 +438,6 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
     entry->value = avifStrdup(value);
 }
 
-const avifCodecSpecificOption * avifCodecSpecificOptionsGet(const avifCodecSpecificOptions * csOptions, const char * key)
-{
-    for (uint32_t i = 0; i < csOptions->count; ++i) {
-        const avifCodecSpecificOption * entry = &csOptions->entries[i];
-        if (!strcmp(entry->key, key)) {
-            return entry;
-        }
-    }
-    return NULL;
-}
-
 // ---------------------------------------------------------------------------
 // Codec availability and versions
 
