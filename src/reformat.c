@@ -1051,9 +1051,6 @@ int avifLimitedToFullY(int depth, int v)
         case 12:
             LIMITED_TO_FULL(256, 3760, 4095);
             break;
-        case 16:
-            LIMITED_TO_FULL(1024, 60160, 65535);
-            break;
     }
     return v;
 }
@@ -1069,9 +1066,6 @@ int avifLimitedToFullUV(int depth, int v)
             break;
         case 12:
             LIMITED_TO_FULL(256, 3840, 4095);
-            break;
-        case 16:
-            LIMITED_TO_FULL(1024, 61440, 65535);
             break;
     }
     return v;
@@ -1089,9 +1083,6 @@ int avifFullToLimitedY(int depth, int v)
         case 12:
             FULL_TO_LIMITED(256, 3760, 4095);
             break;
-        case 16:
-            FULL_TO_LIMITED(1024, 60160, 65535);
-            break;
     }
     return v;
 }
@@ -1107,9 +1098,6 @@ int avifFullToLimitedUV(int depth, int v)
             break;
         case 12:
             FULL_TO_LIMITED(256, 3840, 4095);
-            break;
-        case 16:
-            FULL_TO_LIMITED(1024, 61440, 65535);
             break;
     }
     return v;
