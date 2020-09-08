@@ -22,6 +22,14 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
         return AVIF_FALSE;
     }
 
+    // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
+    if ((image->matrixCoefficients == 3 /* CICP reserved */) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) ||
+        (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
+        (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
+        (image->matrixCoefficients >= AVIF_MATRIX_COEFFICIENTS_ICTCP)) { // Note the >= catching "future" CICP values here too
+        return AVIF_FALSE;
+    }
+
     if (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
         return AVIF_FALSE;
     }
