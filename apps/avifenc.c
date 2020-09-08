@@ -716,6 +716,9 @@ int main(int argc, char * argv[])
 
         printf(" * Encoding frame %d [%u/%d ts]: %s\n", nextImageIndex + 1, nextFile->duration, timescale, nextFile->filename);
 
+        if (nextImage) {
+            avifImageDestroy(nextImage);
+        }
         nextImage = avifImageCreateEmpty();
         nextImage->colorPrimaries = image->colorPrimaries;
         nextImage->transferCharacteristics = image->transferCharacteristics;
