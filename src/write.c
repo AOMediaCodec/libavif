@@ -962,28 +962,40 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write mdat
 
     avifBoxMarker mdat = avifRWStreamWriteBox(&s, "mdat", AVIF_BOX_SIZE_TBD);
-    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
-        avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-        if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
-            continue;
-        }
+    for (uint32_t itemPasses = 0; itemPasses < 2; ++itemPasses) {
+        // Use multiple passes to pack all alpha mdat payloads before color payloads.
+        // See here for the discussion:
+        //
+        // https://github.com/AOMediaCodec/libavif/issues/287
+        //
+        const avifBool alphaPass = (itemPasses == 0);
 
-        uint32_t chunkOffset = (uint32_t)avifRWStreamOffset(&s);
-        if (item->encodeOutput->samples.count > 0) {
-            for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
-                avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
-                avifRWStreamWrite(&s, sample->data.data, sample->data.size);
+        for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+            avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+            if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
+                continue;
             }
-        } else {
-            avifRWStreamWrite(&s, item->metadataPayload.data, item->metadataPayload.size);
-        }
+            if (!alphaPass != !item->alpha) {
+                continue;
+            }
 
-        for (uint32_t fixupIndex = 0; fixupIndex < item->mdatFixups.count; ++fixupIndex) {
-            avifOffsetFixup * fixup = &item->mdatFixups.fixup[fixupIndex];
-            size_t prevOffset = avifRWStreamOffset(&s);
-            avifRWStreamSetOffset(&s, fixup->offset);
-            avifRWStreamWriteU32(&s, chunkOffset);
-            avifRWStreamSetOffset(&s, prevOffset);
+            uint32_t chunkOffset = (uint32_t)avifRWStreamOffset(&s);
+            if (item->encodeOutput->samples.count > 0) {
+                for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
+                    avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
+                    avifRWStreamWrite(&s, sample->data.data, sample->data.size);
+                }
+            } else {
+                avifRWStreamWrite(&s, item->metadataPayload.data, item->metadataPayload.size);
+            }
+
+            for (uint32_t fixupIndex = 0; fixupIndex < item->mdatFixups.count; ++fixupIndex) {
+                avifOffsetFixup * fixup = &item->mdatFixups.fixup[fixupIndex];
+                size_t prevOffset = avifRWStreamOffset(&s);
+                avifRWStreamSetOffset(&s, fixup->offset);
+                avifRWStreamWriteU32(&s, chunkOffset);
+                avifRWStreamSetOffset(&s, prevOffset);
+            }
         }
     }
     avifRWStreamFinishBox(&s, mdat);
