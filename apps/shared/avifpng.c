@@ -195,6 +195,10 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
         }
     }
 
+    // Don't bother complaining about ICC profile's contents when transferring from AVIF to PNG.
+    // It is up to the enduser to decide if they want to keep their ICC profiles or not.
+    png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, 1);
+
     png_set_IHDR(
         png, info, avif->width, avif->height, rgbDepth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
