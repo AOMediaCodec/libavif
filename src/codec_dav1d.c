@@ -213,7 +213,13 @@ avifCodec * avifCodecCreateDav1d(void)
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     dav1d_default_settings(&codec->internal->dav1dSettings);
+
     // Set a maximum frame size limit to avoid OOM'ing fuzzers.
     codec->internal->dav1dSettings.frame_size_limit = AVIF_MAX_IMAGE_SIZE;
+
+    // Ensure that we only get the "highest spatial layer" as a single frame
+    // for each input sample, instead of getting each spatial layer as its own
+    // frame one at a time ("all layers").
+    codec->internal->dav1dSettings.all_layers = 0;
     return codec;
 }
