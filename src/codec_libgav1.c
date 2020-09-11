@@ -12,7 +12,6 @@ struct avifCodecInternal
     Libgav1DecoderSettings gav1Settings;
     Libgav1Decoder * gav1Decoder;
     const Libgav1DecoderBuffer * gav1Image;
-    avifRange colorRange;
     uint32_t inputSampleIndex;
 };
 
@@ -63,7 +62,6 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
 
     if (nextFrame) {
         codec->internal->gav1Image = nextFrame;
-        codec->internal->colorRange = (nextFrame->color_range == kLibgav1ColorRangeStudio) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
     } else {
         if (codec->decodeInput->alpha && codec->internal->gav1Image) {
             // Special case: reuse last alpha frame
@@ -106,7 +104,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         image->depth = gav1Image->bitdepth;
 
         image->yuvFormat = yuvFormat;
-        image->yuvRange = codec->internal->colorRange;
+        image->yuvRange = (avifRange)gav1Image->color_range;
 
         image->colorPrimaries = (avifColorPrimaries)gav1Image->color_primary;
         image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
@@ -140,7 +138,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = gav1Image->plane[0];
         image->alphaRowBytes = gav1Image->stride[0];
-        image->alphaRange = codec->internal->colorRange;
+        image->alphaRange = (avifRange)gav1Image->color_range;
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 

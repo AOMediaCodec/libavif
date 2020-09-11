@@ -28,7 +28,6 @@ struct avifCodecInternal
     Dav1dContext * dav1dContext;
     Dav1dPicture dav1dPicture;
     avifBool hasPicture;
-    avifRange colorRange;
     Dav1dData dav1dData;
     uint32_t inputSampleIndex;
 };
@@ -115,7 +114,6 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
     if (gotPicture) {
         dav1d_picture_unref(&codec->internal->dav1dPicture);
         codec->internal->dav1dPicture = nextFrame;
-        codec->internal->colorRange = codec->internal->dav1dPicture.seq_hdr->color_range ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
         codec->internal->hasPicture = AVIF_TRUE;
     } else {
         if (codec->decodeInput->alpha && codec->internal->hasPicture) {
@@ -158,7 +156,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->depth = dav1dImage->p.bpc;
 
         image->yuvFormat = yuvFormat;
-        image->yuvRange = codec->internal->colorRange;
+        image->yuvRange = (avifRange)dav1dImage->seq_hdr->color_range;
 
         image->colorPrimaries = (avifColorPrimaries)dav1dImage->seq_hdr->pri;
         image->transferCharacteristics = (avifTransferCharacteristics)dav1dImage->seq_hdr->trc;
@@ -191,7 +189,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
-        image->alphaRange = codec->internal->colorRange;
+        image->alphaRange = (avifRange)dav1dImage->seq_hdr->color_range;
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
     return AVIF_TRUE;
