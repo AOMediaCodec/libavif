@@ -236,6 +236,7 @@ int main(int argc, char * argv[])
     int returnCode = 0;
     avifImage * avif = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
+    decoder->codecChoice = codecChoice;
     avifResult decodeResult = avifDecoderRead(decoder, avif, (avifROData *)&raw);
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
