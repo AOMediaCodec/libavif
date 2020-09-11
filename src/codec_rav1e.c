@@ -76,11 +76,11 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
         const avifBool supports400 = rav1eSupports400();
         RaPixelRange rav1eRange;
         if (alpha) {
-            rav1eRange = (image->alphaRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
+            rav1eRange = (RaPixelRange)image->alphaRange;
             codec->internal->chromaSampling = supports400 ? RA_CHROMA_SAMPLING_CS400 : RA_CHROMA_SAMPLING_CS420;
             codec->internal->yShift = 1;
         } else {
-            rav1eRange = (image->yuvRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
+            rav1eRange = (RaPixelRange)image->yuvRange;
             codec->internal->yShift = 0;
             switch (image->yuvFormat) {
                 case AVIF_PIXEL_FORMAT_YUV444:

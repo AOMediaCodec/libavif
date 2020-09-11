@@ -144,7 +144,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->depth = codec->internal->image->bit_depth;
 
         image->yuvFormat = yuvFormat;
-        image->yuvRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
+        image->yuvRange = (avifRange)codec->internal->image->range;
 
         image->colorPrimaries = (avifColorPrimaries)codec->internal->image->cp;
         image->transferCharacteristics = (avifTransferCharacteristics)codec->internal->image->tc;
@@ -178,7 +178,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = codec->internal->image->planes[0];
         image->alphaRowBytes = codec->internal->image->stride[0];
-        image->alphaRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
+        image->alphaRange = (avifRange)codec->internal->image->range;
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 
@@ -372,7 +372,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     avifBool monochromeRequested = AVIF_FALSE;
 
     if (alpha) {
-        aomImage->range = (image->alphaRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
+        aomImage->range = (aom_color_range_t)image->alphaRange;
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         monochromeRequested = AVIF_TRUE;
         for (uint32_t j = 0; j < image->height; ++j) {
@@ -383,7 +383,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
         // Ignore UV planes when monochrome
     } else {
-        aomImage->range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
+        aomImage->range = (aom_color_range_t)image->yuvRange;
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
         int yuvPlaneCount = 3;
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
