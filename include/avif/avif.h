@@ -448,6 +448,15 @@ typedef struct avifReformatState
     uint32_t rgbOffsetBytesB;
     uint32_t rgbOffsetBytesA;
 
+    uint32_t yuvDepth;
+    uint32_t rgbDepth;
+    avifRange yuvRange;
+    int yuvMaxChannel;
+    int rgbMaxChannel;
+    float yuvMaxChannelF;
+    float rgbMaxChannelF;
+    int uvBias; // the integer value of 0.5 for the appropriate bit depth [128, 512, 2048]
+
     avifPixelFormatInfo formatInfo;
 
     // LUTs for going from YUV limited/full unorm -> full range RGB FP32
