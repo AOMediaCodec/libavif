@@ -219,6 +219,28 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
+static avifBool avifProcessAOMSpecificOptions(avifCodec * codec)
+{
+    for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+        avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        if (!strcmp(entry->key, "tune")) {
+            // Tune distortion metric.
+            int tuneMetric = -1;
+            if (!strcmp(entry->value, "psnr")) {
+                tuneMetric = AOM_TUNE_PSNR;
+            } else if (!strcmp(entry->value, "ssim")) {
+                tuneMetric = AOM_TUNE_SSIM;
+            } else {
+                return AVIF_FALSE;
+            }
+            aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, tuneMetric);
+        } else {
+            return AVIF_FALSE;
+        }
+    }
+    return AVIF_TRUE;
+}
+
 static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
@@ -350,22 +372,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (aomCpuUsed != -1) {
             aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed);
         }
-        for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
-            avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
-            if (!strcmp(entry->key, "tune")) {
-                // Tune distortion metric.
-                int tuneMetric = -1;
-                if (!strcmp(entry->value, "psnr")) {
-                    tuneMetric = AOM_TUNE_PSNR;
-                } else if (!strcmp(entry->value, "ssim")) {
-                    tuneMetric = AOM_TUNE_SSIM;
-                } else {
-                    return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
-                }
-                aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, tuneMetric);
-            } else {
-                return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
-            }
+        if (!avifProcessAOMSpecificOptions(codec)) {
+            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
     }
 
