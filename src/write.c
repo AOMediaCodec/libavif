@@ -975,7 +975,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
                 continue;
             }
-            if (!alphaPass != !item->alpha) {
+            if (alphaPass != item->alpha) {
                 continue;
             }
 
