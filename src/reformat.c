@@ -25,6 +25,7 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
     if ((image->matrixCoefficients == 3 /* CICP reserved */) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
+        (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
         (image->matrixCoefficients >= AVIF_MATRIX_COEFFICIENTS_ICTCP)) { // Note the >= catching "future" CICP values here too
         return AVIF_FALSE;
@@ -101,15 +102,7 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     state->rgbMaxChannel = (1 << rgb->depth) - 1;
     state->yuvMaxChannelF = (float)state->yuvMaxChannel;
     state->rgbMaxChannelF = (float)state->rgbMaxChannel;
-    if (image->depth == 8) {
-        state->uvBias = 128;
-    } else if (image->depth == 10) {
-        state->uvBias = 512;
-    } else if (image->depth == 12) {
-        state->uvBias = 2048;
-    } else {
-        return AVIF_FALSE;
-    }
+    state->uvBias = 1 << (image->depth - 1);
 
     uint32_t cpCount = 1 << image->depth;
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
