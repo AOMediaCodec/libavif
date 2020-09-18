@@ -25,6 +25,8 @@
 #pragma clang diagnostic ignored "-Wassign-enum"
 #endif
 
+#include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 
 struct avifCodecInternal
@@ -219,22 +221,127 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
-static avifBool avifProcessAOMSpecificOptions(avifCodec * codec)
+static avifBool aomOptionParseInt(const char * str, int * val)
+{
+    char * endptr;
+    const long rawval = strtol(str, &endptr, 10);
+
+    if (str[0] != '\0' && endptr[0] == '\0' && rawval >= INT_MIN && rawval <= INT_MAX) {
+        *val = (int)rawval;
+        return AVIF_TRUE;
+    }
+
+    return AVIF_FALSE;
+}
+
+struct aomOptionEnumList
+{
+    const char * name;
+    int val;
+};
+
+static avifBool aomOptionParseEnum(const char * str, const struct aomOptionEnumList * enums, int * val)
+{
+    const struct aomOptionEnumList * listptr;
+    long int rawval;
+    char * endptr;
+
+    // First see if the value can be parsed as a raw value.
+    rawval = strtol(str, &endptr, 10);
+    if (str[0] != '\0' && endptr[0] == '\0') {
+        // Got a raw value, make sure it's valid.
+        for (listptr = enums; listptr->name; listptr++)
+            if (listptr->val == rawval) {
+                *val = (int)rawval;
+                return AVIF_TRUE;
+            }
+    }
+
+    // Next see if it can be parsed as a string.
+    for (listptr = enums; listptr->name; listptr++) {
+        if (!strcmp(str, listptr->name)) {
+            *val = listptr->val;
+            return AVIF_TRUE;
+        }
+    }
+
+    return AVIF_FALSE;
+}
+
+static const struct aomOptionEnumList endUsageEnum[] = { //
+    { "vbr", AOM_VBR },                                  // Variable Bit Rate (VBR) mode
+    { "cbr", AOM_CBR },                                  // Constant Bit Rate (CBR) mode
+    { "cq", AOM_CQ },                                    // Constrained Quality (CQ)  mode
+    { "q", AOM_Q },                                      // Constrained Quality (CQ)  mode
+    { NULL, 0 }
+};
+
+static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, struct aom_codec_enc_cfg * cfg)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
         avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
-        if (!strcmp(entry->key, "tune")) {
-            // Tune distortion metric.
-            int tuneMetric = -1;
-            if (!strcmp(entry->value, "psnr")) {
-                tuneMetric = AOM_TUNE_PSNR;
-            } else if (!strcmp(entry->value, "ssim")) {
-                tuneMetric = AOM_TUNE_SSIM;
-            } else {
+        int val;
+        if (!strcmp(entry->key, "end-usage")) { // Rate control mode
+            if (!aomOptionParseEnum(entry->value, endUsageEnum, &val)) {
                 return AVIF_FALSE;
             }
-            aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, tuneMetric);
-        } else {
+            cfg->rc_end_usage = val;
+        }
+    }
+    return AVIF_TRUE;
+}
+
+struct aomOptionDef
+{
+    const char * name;
+    int controlId;
+    const struct aomOptionEnumList * enums;
+};
+
+static const struct aomOptionEnumList tuningEnum[] = { //
+    { "psnr", AOM_TUNE_PSNR },                         //
+    { "ssim", AOM_TUNE_SSIM },                         //
+    { NULL, 0 }
+};
+
+static const struct aomOptionDef aomOptionDefs[] = { //
+    { "aq-mode", AV1E_SET_AQ_MODE, NULL },           // Adaptive quantization mode
+    { "cq-level", AOME_SET_CQ_LEVEL, NULL },         // Constant/Constrained Quality level
+    { "sharpness", AOME_SET_SHARPNESS, NULL },       // Loop filter sharpness
+    { "tune", AOME_SET_TUNING, tuningEnum },         // Tune distortion metric
+    { NULL, 0, NULL }
+};
+
+static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec)
+{
+    for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+        avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        // Skip options processed by avifProcessAOMOptionsPreInit.
+        if (!strcmp(entry->key, "end-usage")) {
+            continue;
+        }
+
+        avifBool match = AVIF_FALSE;
+        for (int j = 0; aomOptionDefs[j].name; ++j) {
+            if (!strcmp(entry->key, aomOptionDefs[j].name)) {
+                match = AVIF_TRUE;
+                int val;
+                avifBool parsed;
+                if (aomOptionDefs[j].enums) {
+                    parsed = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, &val);
+                } else {
+                    parsed = aomOptionParseInt(entry->value, &val);
+                }
+                if (!parsed) {
+                    return AVIF_FALSE;
+                }
+                if (aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val) != AOM_CODEC_OK) {
+                    return AVIF_FALSE;
+                }
+                break;
+            }
+        }
+        if (!match) {
             return AVIF_FALSE;
         }
     }
@@ -348,6 +455,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
+        if (!avifProcessAOMOptionsPreInit(codec, &cfg)) {
+            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+        }
+
         aom_codec_flags_t encoderFlags = 0;
         if (image->depth > 8) {
             encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
@@ -372,7 +483,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (aomCpuUsed != -1) {
             aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed);
         }
-        if (!avifProcessAOMSpecificOptions(codec)) {
+        if (!avifProcessAOMOptionsPostInit(codec)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
     }
