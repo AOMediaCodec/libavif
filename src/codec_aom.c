@@ -63,13 +63,6 @@ static avifBool aomCodecOpen(struct avifCodec * codec, uint32_t firstSampleIndex
     }
     codec->internal->decoderInitialized = AVIF_TRUE;
 
-    // Ensure that we only get the "highest spatial layer" as a single frame
-    // for each input sample, instead of getting each spatial layer as its own
-    // frame one at a time ("all layers").
-    if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 0)) {
-        return AVIF_FALSE;
-    }
-
     codec->internal->inputSampleIndex = firstSampleIndex;
     codec->internal->iter = NULL;
     return AVIF_TRUE;
