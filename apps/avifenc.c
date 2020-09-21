@@ -82,6 +82,9 @@ static void syntax(void)
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
+    printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item\n");
+    printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item\n");
+    printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second\n");
@@ -230,6 +233,32 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
     return nextInputFormat;
 }
 
+static avifBool readEntireFile(const char * filename, avifRWData * raw)
+{
+    FILE * f = fopen(filename, "rb");
+    if (!f) {
+        return AVIF_FALSE;
+    }
+
+    fseek(f, 0, SEEK_END);
+    size_t fileSize = (size_t)ftell(f);
+    if (!fileSize) {
+        fclose(f);
+        return AVIF_FALSE;
+    }
+    fseek(f, 0, SEEK_SET);
+
+    avifRWDataRealloc(raw, fileSize);
+    size_t bytesRead = fread(raw->data, 1, fileSize, f);
+    fclose(f);
+
+    if (bytesRead != fileSize) {
+        avifRWDataFree(raw);
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
 int main(int argc, char * argv[])
 {
     if (argc < 2) {
@@ -267,6 +296,9 @@ int main(int argc, char * argv[])
     avifImage * image = NULL;
     avifImage * nextImage = NULL;
     avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWData exifOverride = AVIF_DATA_EMPTY;
+    avifRWData xmpOverride = AVIF_DATA_EMPTY;
+    avifRWData iccOverride = AVIF_DATA_EMPTY;
     int duration = 1;  // in timescales, stored per-inputFile (see avifInputFile)
     int timescale = 1; // 1 fps by default
     int keyframeInterval = 0;
@@ -412,6 +444,27 @@ int main(int argc, char * argv[])
                 if (speed < AVIF_SPEED_SLOWEST) {
                     speed = AVIF_SPEED_SLOWEST;
                 }
+            }
+        } else if (!strcmp(arg, "--exif")) {
+            NEXTARG();
+            if (!readEntireFile(arg, &exifOverride)) {
+                fprintf(stderr, "ERROR: Unable to read Exif content: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
+        } else if (!strcmp(arg, "--xmp")) {
+            NEXTARG();
+            if (!readEntireFile(arg, &xmpOverride)) {
+                fprintf(stderr, "ERROR: Unable to read XMP content: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
+        } else if (!strcmp(arg, "--icc")) {
+            NEXTARG();
+            if (!readEntireFile(arg, &iccOverride)) {
+                fprintf(stderr, "ERROR: Unable to read ICC profile: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "--duration")) {
             NEXTARG();
@@ -570,6 +623,15 @@ int main(int argc, char * argv[])
 
     if (ignoreICC) {
         avifImageSetProfileICC(image, NULL, 0);
+    }
+    if (iccOverride.size) {
+        avifImageSetProfileICC(image, iccOverride.data, iccOverride.size);
+    }
+    if (exifOverride.size) {
+        avifImageSetMetadataExif(image, exifOverride.data, exifOverride.size);
+    }
+    if (xmpOverride.size) {
+        avifImageSetMetadataXMP(image, xmpOverride.data, xmpOverride.size);
     }
 
     if (paspCount == 2) {
