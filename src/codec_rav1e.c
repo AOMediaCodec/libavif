@@ -23,10 +23,8 @@ static void rav1eCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool rav1eCodecOpen(struct avifCodec * codec, uint32_t firstSampleIndex)
+static avifBool rav1eCodecOpen(struct avifCodec * codec)
 {
-    (void)firstSampleIndex; // Codec is encode-only, this isn't used
-
     codec->internal->rav1eContext = NULL;
     return AVIF_TRUE;
 }

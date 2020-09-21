@@ -40,35 +40,9 @@ static void syntax(void)
 
 static int info(const char * inputFilename)
 {
-    FILE * inputFile = fopen(inputFilename, "rb");
-    if (!inputFile) {
-        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
-        return 1;
-    }
-    fseek(inputFile, 0, SEEK_END);
-    size_t inputFileSize = ftell(inputFile);
-    fseek(inputFile, 0, SEEK_SET);
-
-    if (inputFileSize < 1) {
-        fprintf(stderr, "File too small: %s\n", inputFilename);
-        fclose(inputFile);
-        return 1;
-    }
-
-    avifRWData raw = AVIF_DATA_EMPTY;
-    avifRWDataRealloc(&raw, inputFileSize);
-    if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
-        fprintf(stderr, "Failed to read " AVIF_FMT_ZU " bytes: %s\n", inputFileSize, inputFilename);
-        fclose(inputFile);
-        avifRWDataFree(&raw);
-        return 1;
-    }
-
-    fclose(inputFile);
-    inputFile = NULL;
-
     avifDecoder * decoder = avifDecoderCreate();
-    avifResult result = avifDecoderParse(decoder, (avifROData *)&raw);
+    avifDecoderSetIOFile(decoder, inputFilename);
+    avifResult result = avifDecoderParse(decoder);
     if (result == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
 
@@ -100,7 +74,6 @@ static int info(const char * inputFilename)
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
     }
 
-    avifRWDataFree(&raw);
     avifDecoderDestroy(decoder);
     return 0;
 }
@@ -204,40 +177,13 @@ int main(int argc, char * argv[])
         }
     }
 
-    FILE * inputFile = fopen(inputFilename, "rb");
-    if (!inputFile) {
-        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
-        return 1;
-    }
-    fseek(inputFile, 0, SEEK_END);
-    size_t inputFileSize = ftell(inputFile);
-    fseek(inputFile, 0, SEEK_SET);
-
-    if (inputFileSize < 1) {
-        fprintf(stderr, "File too small: %s\n", inputFilename);
-        fclose(inputFile);
-        return 1;
-    }
-
-    avifRWData raw = AVIF_DATA_EMPTY;
-    avifRWDataRealloc(&raw, inputFileSize);
-    if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
-        fprintf(stderr, "Failed to read " AVIF_FMT_ZU " bytes: %s\n", inputFileSize, inputFilename);
-        fclose(inputFile);
-        avifRWDataFree(&raw);
-        return 1;
-    }
-
-    fclose(inputFile);
-    inputFile = NULL;
-
     printf("Decoding with AV1 codec '%s', please wait...\n", avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE));
 
     int returnCode = 0;
     avifImage * avif = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
     decoder->codecChoice = codecChoice;
-    avifResult decodeResult = avifDecoderRead(decoder, avif, (avifROData *)&raw);
+    avifResult decodeResult = avifDecoderReadFile(decoder, avif, inputFilename);
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
         printf("Image details:\n");
@@ -272,7 +218,6 @@ int main(int argc, char * argv[])
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
         returnCode = 1;
     }
-    avifRWDataFree(&raw);
     avifDecoderDestroy(decoder);
     avifImageDestroy(avif);
     return returnCode;

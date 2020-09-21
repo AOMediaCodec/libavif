@@ -72,7 +72,7 @@ int main(int argc, char * argv[])
     // Decode it
     avifImage * decoded = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
-    avifResult decodeResult = avifDecoderRead(decoder, decoded, (avifROData *)&raw);
+    avifResult decodeResult = avifDecoderReadMemory(decoder, decoded, (avifROData *)&raw);
     avifDecoderDestroy(decoder);
 
     if (decodeResult != AVIF_RESULT_OK) {

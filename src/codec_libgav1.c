@@ -13,7 +13,6 @@ struct avifCodecInternal
     Libgav1Decoder * gav1Decoder;
     const Libgav1DecoderBuffer * gav1Image;
     avifRange colorRange;
-    uint32_t inputSampleIndex;
 };
 
 static void gav1CodecDestroyInternal(avifCodec * codec)
@@ -24,26 +23,22 @@ static void gav1CodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool gav1CodecOpen(avifCodec * codec, uint32_t firstSampleIndex)
+static avifBool gav1CodecOpen(avifCodec * codec)
 {
     if (codec->internal->gav1Decoder == NULL) {
         if (Libgav1DecoderCreate(&codec->internal->gav1Settings, &codec->internal->gav1Decoder) != kLibgav1StatusOk) {
             return AVIF_FALSE;
         }
     }
-
-    codec->internal->inputSampleIndex = firstSampleIndex;
     return AVIF_TRUE;
 }
 
-static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
+static avifBool gav1CodecGetNextImage(struct avifCodec * codec, avifDecodeSample * sample, avifBool alpha, avifImage * image)
 {
     const Libgav1DecoderBuffer * nextFrame = NULL;
     // Check if there are more samples to feed
-    if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
+    if (sample) {
         // Feed another sample
-        avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
-        ++codec->internal->inputSampleIndex;
         if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
                                        sample->data.data,
                                        sample->data.size,
@@ -65,7 +60,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         codec->internal->gav1Image = nextFrame;
         codec->internal->colorRange = (nextFrame->color_range == kLibgav1ColorRangeStudio) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
     } else {
-        if (codec->decodeInput->alpha && codec->internal->gav1Image) {
+        if (alpha && codec->internal->gav1Image) {
             // Special case: reuse last alpha frame
         } else {
             return AVIF_FALSE;
@@ -73,7 +68,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
     }
 
     const Libgav1DecoderBuffer * gav1Image = codec->internal->gav1Image;
-    avifBool isColor = !codec->decodeInput->alpha;
+    avifBool isColor = !alpha;
     if (isColor) {
         // Color (YUV) planes - set image to correct size / format, fill color
 

@@ -30,7 +30,6 @@ struct avifCodecInternal
     avifBool hasPicture;
     avifRange colorRange;
     Dav1dData dav1dData;
-    uint32_t inputSampleIndex;
 };
 
 static void avifDav1dFreeCallback(const uint8_t * buf, void * cookie)
@@ -55,13 +54,10 @@ static void dav1dCodecDestroyInternal(avifCodec * codec)
 }
 
 // returns AVIF_FALSE if there's nothing left to feed, or feeding fatally fails (say that five times fast)
-static avifBool dav1dFeedData(avifCodec * codec)
+static avifBool dav1dFeedData(avifCodec * codec, avifDecodeSample * sample)
 {
     if (!codec->internal->dav1dData.sz) {
-        if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
-            avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
-            ++codec->internal->inputSampleIndex;
-
+        if (sample) {
             if (dav1d_data_wrap(&codec->internal->dav1dData, sample->data.data, sample->data.size, avifDav1dFreeCallback, NULL) != 0) {
                 return AVIF_FALSE;
             }
@@ -78,26 +74,24 @@ static avifBool dav1dFeedData(avifCodec * codec)
     return AVIF_TRUE;
 }
 
-static avifBool dav1dCodecOpen(avifCodec * codec, uint32_t firstSampleIndex)
+static avifBool dav1dCodecOpen(avifCodec * codec)
 {
     if (codec->internal->dav1dContext == NULL) {
         if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
             return AVIF_FALSE;
         }
     }
-
-    codec->internal->inputSampleIndex = firstSampleIndex;
     return AVIF_TRUE;
 }
 
-static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
+static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, avifDecodeSample * sample, avifBool alpha, avifImage * image)
 {
     avifBool gotPicture = AVIF_FALSE;
     Dav1dPicture nextFrame;
     memset(&nextFrame, 0, sizeof(Dav1dPicture));
 
     for (;;) {
-        avifBool sentData = dav1dFeedData(codec);
+        avifBool sentData = dav1dFeedData(codec, sample);
         int res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
         if ((res == DAV1D_ERR(EAGAIN)) && sentData) {
             // send more data
@@ -118,7 +112,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         codec->internal->colorRange = codec->internal->dav1dPicture.seq_hdr->color_range ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
         codec->internal->hasPicture = AVIF_TRUE;
     } else {
-        if (codec->decodeInput->alpha && codec->internal->hasPicture) {
+        if (alpha && codec->internal->hasPicture) {
             // Special case: reuse last alpha frame
         } else {
             return AVIF_FALSE;
@@ -126,7 +120,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
     }
 
     Dav1dPicture * dav1dImage = &codec->internal->dav1dPicture;
-    avifBool isColor = !codec->decodeInput->alpha;
+    avifBool isColor = !alpha;
     if (isColor) {
         // Color (YUV) planes - set image to correct size / format, fill color
 

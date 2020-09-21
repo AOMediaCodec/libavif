@@ -34,7 +34,6 @@ struct avifCodecInternal
     avifBool decoderInitialized;
     aom_codec_ctx_t decoder;
     aom_codec_iter_t iter;
-    uint32_t inputSampleIndex;
     aom_image_t * image;
 
     avifBool encoderInitialized;
@@ -55,7 +54,7 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool aomCodecOpen(struct avifCodec * codec, uint32_t firstSampleIndex)
+static avifBool aomCodecOpen(struct avifCodec * codec)
 {
     aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
     if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, NULL, 0)) {
@@ -70,12 +69,11 @@ static avifBool aomCodecOpen(struct avifCodec * codec, uint32_t firstSampleIndex
         return AVIF_FALSE;
     }
 
-    codec->internal->inputSampleIndex = firstSampleIndex;
     codec->internal->iter = NULL;
     return AVIF_TRUE;
 }
 
-static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
+static avifBool aomCodecGetNextImage(struct avifCodec * codec, avifDecodeSample * sample, avifBool alpha, avifImage * image)
 {
     aom_image_t * nextFrame = NULL;
     for (;;) {
@@ -83,10 +81,8 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
         if (nextFrame) {
             // Got an image!
             break;
-        } else if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
+        } else if (sample) {
             // Feed another sample
-            avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
-            ++codec->internal->inputSampleIndex;
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
                 return AVIF_FALSE;
@@ -100,14 +96,14 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
     if (nextFrame) {
         codec->internal->image = nextFrame;
     } else {
-        if (codec->decodeInput->alpha && codec->internal->image) {
+        if (alpha && codec->internal->image) {
             // Special case: reuse last alpha frame
         } else {
             return AVIF_FALSE;
         }
     }
 
-    avifBool isColor = !codec->decodeInput->alpha;
+    avifBool isColor = !alpha;
     if (isColor) {
         // Color (YUV) planes - set image to correct size / format, fill color
 
