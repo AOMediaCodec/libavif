@@ -55,7 +55,7 @@ avifIO * avifIOCreateMemoryReader(const uint8_t * data, size_t size)
     memset(reader, 0, sizeof(avifIOMemoryReader));
     reader->io.destroy = avifIOMemoryReaderDestroy;
     reader->io.read = avifIOMemoryReaderRead;
-    reader->io.sizeLimit = size;
+    reader->io.sizeHint = size;
     reader->io.persistent = AVIF_TRUE;
     reader->rodata.data = data;
     reader->rodata.size = size;
@@ -84,8 +84,8 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
         return AVIF_RESULT_IO_ERROR;
     }
 
-    if (offset < reader->io.sizeLimit) {
-        uint64_t availableSize = reader->io.sizeLimit - offset;
+    if (offset < reader->io.sizeHint) {
+        uint64_t availableSize = reader->io.sizeHint - offset;
         if (size > availableSize) {
             size = availableSize;
         }
@@ -138,7 +138,7 @@ avifIO * avifIOCreateFilePtrReader(FILE * f, avifBool closeOnDestroy)
     reader->closeOnDestroy = closeOnDestroy;
     reader->io.destroy = avifIOFileReaderDestroy;
     reader->io.read = avifIOFileReaderRead;
-    reader->io.sizeLimit = fileSize;
+    reader->io.sizeHint = fileSize;
     reader->io.persistent = AVIF_FALSE;
     avifRWDataRealloc(&reader->buffer, 1024);
     return (avifIO *)reader;

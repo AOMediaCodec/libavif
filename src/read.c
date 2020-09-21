@@ -329,7 +329,7 @@ void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
     avifFree(decodeInput);
 }
 
-static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput, avifSampleTable * sampleTable, size_t sizeLimit)
+static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput, avifSampleTable * sampleTable, size_t sizeHint)
 {
     uint32_t sampleSizeIndex = 0;
     for (uint32_t chunkIndex = 0; chunkIndex < sampleTable->chunks.count; ++chunkIndex) {
@@ -366,7 +366,7 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
             sample->size = sampleSize;
             sample->sync = AVIF_FALSE; // to potentially be set to true following the outer loop
 
-            if (sizeLimit && ((sampleOffset + sampleSize) > (uint64_t)sizeLimit)) {
+            if (sizeHint && ((sampleOffset + sampleSize) > (uint64_t)sizeHint)) {
                 return AVIF_FALSE;
             }
 
@@ -654,7 +654,7 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
     }
 
     // Merge extents into a single contiguous buffer
-    if ((decoder->io->sizeLimit > 0) && (item->size > decoder->io->sizeLimit)) {
+    if ((decoder->io->sizeHint > 0) && (item->size > decoder->io->sizeHint)) {
         // Sanity check: somehow the sum of extents for this item exceeds the entire file or idat
         // size!
         return AVIF_RESULT_TRUNCATED_DATA;
@@ -2386,14 +2386,14 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         avifTile * colorTile = avifDecoderDataCreateTile(data);
-        if (!avifCodecDecodeInputGetSamples(colorTile->input, colorTrack->sampleTable, decoder->io->sizeLimit)) {
+        if (!avifCodecDecodeInputGetSamples(colorTile->input, colorTrack->sampleTable, decoder->io->sizeHint)) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
         data->colorTileCount = 1;
 
         if (alphaTrack) {
             avifTile * alphaTile = avifDecoderDataCreateTile(data);
-            if (!avifCodecDecodeInputGetSamples(alphaTile->input, alphaTrack->sampleTable, decoder->io->sizeLimit)) {
+            if (!avifCodecDecodeInputGetSamples(alphaTile->input, alphaTrack->sampleTable, decoder->io->sizeHint)) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             alphaTile->input->alpha = AVIF_TRUE;

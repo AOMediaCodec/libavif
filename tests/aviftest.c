@@ -300,7 +300,7 @@ avifIOTestReader * avifIOCreateTestReader(const uint8_t * data, size_t size)
     memset(reader, 0, sizeof(avifIOTestReader));
     reader->io.destroy = avifIOTestReaderDestroy;
     reader->io.read = avifIOTestReaderRead;
-    reader->io.sizeLimit = size;
+    reader->io.sizeHint = size;
     reader->io.persistent = AVIF_TRUE;
     reader->rodata.data = data;
     reader->rodata.size = size;
@@ -369,7 +369,7 @@ static int runIOTests(const char * dataDir)
 
             // Slowly pretend to have streamed-in / downloaded more and more bytes
             avifResult parseResult = AVIF_RESULT_UNKNOWN_ERROR;
-            for (io->availableBytes = 0; io->availableBytes <= io->io.sizeLimit; ++io->availableBytes) {
+            for (io->availableBytes = 0; io->availableBytes <= io->io.sizeHint; ++io->availableBytes) {
                 parseResult = avifDecoderParse(decoder);
                 if (parseResult == AVIF_RESULT_WAITING_ON_IO) {
                     continue;
@@ -381,7 +381,7 @@ static int runIOTests(const char * dataDir)
                 printf("File: [%s @ %zu / %zu bytes, %s, %s] parse returned: %s\n",
                        filename,
                        io->availableBytes,
-                       io->io.sizeLimit,
+                       io->io.sizeHint,
                        io->io.persistent ? "Persistent" : "NonPersistent",
                        decoder->ignoreExif ? "IgnoreMetadata" : "Metadata",
                        avifResultToString(parseResult));
@@ -389,7 +389,7 @@ static int runIOTests(const char * dataDir)
             }
 
             if (parseResult == AVIF_RESULT_OK) {
-                for (; io->availableBytes <= io->io.sizeLimit; ++io->availableBytes) {
+                for (; io->availableBytes <= io->io.sizeHint; ++io->availableBytes) {
                     avifResult nextImageResult = avifDecoderNextImage(decoder);
                     if (nextImageResult == AVIF_RESULT_WAITING_ON_IO) {
                         continue;
@@ -401,7 +401,7 @@ static int runIOTests(const char * dataDir)
                     printf("File: [%s @ %zu / %zu bytes, %s, %s] nextImage returned: %s\n",
                            filename,
                            io->availableBytes,
-                           io->io.sizeLimit,
+                           io->io.sizeHint,
                            io->io.persistent ? "Persistent" : "NonPersistent",
                            decoder->ignoreExif ? "IgnoreMetadata" : "Metadata",
                            avifResultToString(nextImageResult));

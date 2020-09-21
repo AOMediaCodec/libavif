@@ -555,7 +555,7 @@ typedef struct avifIO
     // can possibly be for your environment, but within your environment's memory constraints). This
     // is used for sanity checks when allocating internal buffers to protect against
     // malformed/malicious files.
-    size_t sizeLimit;
+    size_t sizeHint;
 
     // If true, *all* memory regions returned from *all* calls to read are guaranteed to be
     // persistent and exist for the lifetime of the avifDecoder object. If false, libavif will make
