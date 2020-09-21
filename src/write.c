@@ -962,20 +962,34 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write mdat
 
     avifBoxMarker mdat = avifRWStreamWriteBox(&s, "mdat", AVIF_BOX_SIZE_TBD);
-    for (uint32_t itemPasses = 0; itemPasses < 2; ++itemPasses) {
-        // Use multiple passes to pack all alpha mdat payloads before color payloads.
-        // See here for the discussion:
+    for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
+        // Use multiple passes to pack in the following order:
+        //   * Pass 0: metadata (Exif/XMP)
+        //   * Pass 1: alpha (AV1)
+        //   * Pass 2: all other item data (AV1 color)
         //
+        // See here for the discussion on alpha coming first:
         // https://github.com/AOMediaCodec/libavif/issues/287
         //
-        const avifBool alphaPass = (itemPasses == 0);
+        // Exif and XMP are packed first as they're required to be fully available
+        // by avifDecoderParse() before it returns AVIF_RESULT_OK, unless ignoreXMP
+        // and ignoreExif are enabled.
+        //
+        const avifBool metadataPass = (itemPasses == 0);
+        const avifBool alphaPass = (itemPasses == 1);
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
             if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
+                // this item has nothing for the mdat box
                 continue;
             }
-            if (!alphaPass != !item->alpha) {
+            if (metadataPass != (item->metadataPayload.size > 0)) {
+                // only process metadata payloads when metadataPass is true
+                continue;
+            }
+            if (alphaPass != item->alpha) {
+                // only process alpha payloads when alphaPass is true
                 continue;
             }
 
