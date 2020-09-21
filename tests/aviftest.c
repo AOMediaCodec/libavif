@@ -294,7 +294,7 @@ static void avifIOTestReaderDestroy(struct avifIO * io)
     avifFree(io);
 }
 
-avifIOTestReader * avifIOCreateTestReader(const uint8_t * data, size_t size)
+static avifIOTestReader * avifIOCreateTestReader(const uint8_t * data, size_t size)
 {
     avifIOTestReader * reader = avifAlloc(sizeof(avifIOTestReader));
     memset(reader, 0, sizeof(avifIOTestReader));
