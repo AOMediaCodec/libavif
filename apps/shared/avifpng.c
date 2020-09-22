@@ -158,11 +158,30 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
     png_structp png = NULL;
     png_infop info = NULL;
     png_bytep * volatile rowPointers = NULL;
+    FILE * f = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
 
-    FILE * f = fopen(outputFilename, "wb");
+    int rgbDepth = requestedDepth;
+    if (rgbDepth == 0) {
+        if (avif->depth > 8) {
+            rgbDepth = 16;
+        } else {
+            rgbDepth = 8;
+        }
+    }
+
+    avifRGBImageSetDefaults(&rgb, avif);
+    rgb.depth = rgbDepth;
+    rgb.chromaUpsampling = chromaUpsampling;
+    avifRGBImageAllocatePixels(&rgb);
+    if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
+        fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
+        goto cleanup;
+    }
+
+    f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "Can't open PNG file for write: %s\n", outputFilename);
         goto cleanup;
@@ -186,15 +205,6 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
 
     png_init_io(png, f);
 
-    int rgbDepth = requestedDepth;
-    if (rgbDepth == 0) {
-        if (avif->depth > 8) {
-            rgbDepth = 16;
-        } else {
-            rgbDepth = 8;
-        }
-    }
-
     // Don't bother complaining about ICC profile's contents when transferring from AVIF to PNG.
     // It is up to the enduser to decide if they want to keep their ICC profiles or not.
     png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, 1);
@@ -206,11 +216,6 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
     }
     png_write_info(png, info);
 
-    avifRGBImageSetDefaults(&rgb, avif);
-    rgb.depth = rgbDepth;
-    rgb.chromaUpsampling = chromaUpsampling;
-    avifRGBImageAllocatePixels(&rgb);
-    avifImageYUVToRGB(avif, &rgb);
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
     for (uint32_t y = 0; y < rgb.height; ++y) {
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
