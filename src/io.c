@@ -70,7 +70,6 @@ typedef struct avifIOFileReader
     avifIO io; // this must be the first member for easy casting to avifIO*
     avifRWData buffer;
     FILE * f;
-    avifBool closeOnDestroy;
 } avifIOFileReader;
 
 static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out)
@@ -115,15 +114,16 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
 static void avifIOFileReaderDestroy(struct avifIO * io)
 {
     avifIOFileReader * reader = (avifIOFileReader *)io;
-    if (reader->closeOnDestroy && reader->f) {
+    if (reader->f) {
         fclose(reader->f);
     }
     avifRWDataFree(&reader->buffer);
     avifFree(io);
 }
 
-avifIO * avifIOCreateFilePtrReader(FILE * f, avifBool closeOnDestroy)
+avifIO * avifIOCreateFileReader(const char * filename)
 {
+    FILE * f = fopen(filename, "rb");
     if (!f) {
         return NULL;
     }
@@ -135,20 +135,10 @@ avifIO * avifIOCreateFilePtrReader(FILE * f, avifBool closeOnDestroy)
     avifIOFileReader * reader = avifAlloc(sizeof(avifIOFileReader));
     memset(reader, 0, sizeof(avifIOFileReader));
     reader->f = f;
-    reader->closeOnDestroy = closeOnDestroy;
     reader->io.destroy = avifIOFileReaderDestroy;
     reader->io.read = avifIOFileReaderRead;
     reader->io.sizeHint = fileSize;
     reader->io.persistent = AVIF_FALSE;
     avifRWDataRealloc(&reader->buffer, 1024);
     return (avifIO *)reader;
-}
-
-avifIO * avifIOCreateFileReader(const char * filename)
-{
-    FILE * f = fopen(filename, "rb");
-    if (!f) {
-        return NULL;
-    }
-    return avifIOCreateFilePtrReader(f, AVIF_TRUE);
 }

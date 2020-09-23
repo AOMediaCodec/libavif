@@ -2163,11 +2163,6 @@ avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const avifROData * rawI
     return avifDecoderSetIO(decoder, avifIOCreateMemoryReader(rawInput->data, rawInput->size));
 }
 
-avifResult avifDecoderSetIOFilePtr(avifDecoder * decoder, FILE * f, avifBool closeOnDestroy)
-{
-    return avifDecoderSetIO(decoder, avifIOCreateFilePtrReader(f, closeOnDestroy));
-}
-
 avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename)
 {
     return avifDecoderSetIO(decoder, avifIOCreateFileReader(filename));

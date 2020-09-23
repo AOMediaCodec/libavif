@@ -6,7 +6,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -571,7 +570,6 @@ typedef struct avifIO
 
 avifIO * avifIOCreateMemoryReader(const uint8_t * data, size_t size);
 avifIO * avifIOCreateFileReader(const char * filename);
-avifIO * avifIOCreateFilePtrReader(FILE * f, avifBool closeOnDestroy);
 void avifIODestroy(avifIO * io);
 
 // ---------------------------------------------------------------------------
@@ -701,7 +699,6 @@ avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const c
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
 avifResult avifDecoderSetIO(avifDecoder * decoder, avifIO * io);
 avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const avifROData * rawInput);
-avifResult avifDecoderSetIOFilePtr(avifDecoder * decoder, FILE * f, avifBool closeOnDestroy);
 avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename);
 avifResult avifDecoderParse(avifDecoder * decoder);
 avifResult avifDecoderNextImage(avifDecoder * decoder);
