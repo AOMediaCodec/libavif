@@ -135,7 +135,10 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
     png_read_image(png, rowPointers);
-    avifImageRGBToYUV(avif, &rgb);
+    if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
+        fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
+        goto cleanup;
+    }
     readResult = AVIF_TRUE;
 
 cleanup:
