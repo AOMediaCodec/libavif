@@ -158,7 +158,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
     png_structp png = NULL;
     png_infop info = NULL;
     png_bytep * volatile rowPointers = NULL;
-    FILE * f = NULL;
+    FILE * volatile f = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
@@ -210,7 +210,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
     png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, 1);
 
     png_set_IHDR(
-        png, info, avif->width, avif->height, rgbDepth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        png, info, avif->width, avif->height, rgb.depth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
         png_set_iCCP(png, info, "libavif", 0, avif->icc.data, (png_uint_32)avif->icc.size);
     }
@@ -221,7 +221,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
 
-    if (rgbDepth > 8) {
+    if (rgb.depth > 8) {
         png_set_swap(png);
     }
 
