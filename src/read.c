@@ -2063,7 +2063,7 @@ static avifResult avifParse(avifDecoder * decoder)
             }
             if (boxContents.size != header.size) {
                 // A truncated box, bail out
-                return AVIF_RESULT_BMFF_PARSE_FAILED;
+                return AVIF_RESULT_TRUNCATED_DATA;
             }
         }
 
