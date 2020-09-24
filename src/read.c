@@ -526,9 +526,7 @@ static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
 
 typedef struct avifDecoderData
 {
-    avifFileType ftyp;
-    avifRWData ftypData; // cloned from avifIO
-    avifMeta * meta;     // The root-level meta box
+    avifMeta * meta; // The root-level meta box
     avifTrackArray tracks;
     avifTileArray tiles;
     unsigned int colorTileCount;
@@ -608,7 +606,6 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
 
 static void avifDecoderDataDestroy(avifDecoderData * data)
 {
-    avifRWDataFree(&data->ftypData);
     avifMetaDestroy(data->meta);
     for (uint32_t i = 0; i < data->tracks.count; ++i) {
         avifTrack * track = &data->tracks.track[i];
@@ -2029,6 +2026,8 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
+static avifBool avifFileTypeIsCompatible(avifFileType * ftyp);
+
 static avifResult avifParse(avifDecoder * decoder)
 {
     // Note: this top-level function is the only avifParse*() function that returns avifResult instead of avifBool.
@@ -2078,8 +2077,12 @@ static avifResult avifParse(avifDecoder * decoder)
 
         if (!memcmp(header.type, "ftyp", 4)) {
             CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 0), AVIF_RESULT_BMFF_PARSE_FAILED);
-            avifRWDataSet(&data->ftypData, boxContents.data, boxContents.size);
-            CHECKERR(avifParseFileTypeBox(&data->ftyp, data->ftypData.data, data->ftypData.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+            avifFileType ftyp;
+            CHECKERR(avifParseFileTypeBox(&ftyp, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+            avifBool avifCompatible = avifFileTypeIsCompatible(&ftyp);
+            if (!avifCompatible) {
+                return AVIF_RESULT_INVALID_FTYP;
+            }
         } else if (!memcmp(header.type, "meta", 4)) {
             CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
             CHECKERR(avifParseMetaBox(data->meta, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -2245,11 +2248,6 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     avifResult parseResult = avifParse(decoder);
     if (parseResult != AVIF_RESULT_OK) {
         return parseResult;
-    }
-
-    avifBool avifCompatible = avifFileTypeIsCompatible(&decoder->data->ftyp);
-    if (!avifCompatible) {
-        return AVIF_RESULT_INVALID_FTYP;
     }
 
     // Sanity check items
