@@ -2031,6 +2031,7 @@ static avifResult avifParse(avifDecoder * decoder)
     avifResult readResult;
     size_t parseOffset = 0;
     avifDecoderData * data = decoder->data;
+    uint32_t uniqueBoxFlags = 0;
 
     for (;;) {
         // Read just enough to get the next box header (a max of 32 bytes)
@@ -2048,7 +2049,7 @@ static avifResult avifParse(avifDecoder * decoder)
         // Parse the header, and find out how many bytes it actually was
         BEGIN_STREAM(headerStream, headerContents.data, headerContents.size);
         avifBoxHeader header;
-        CHECK(avifROStreamReadBoxHeaderPartial(&headerStream, &header));
+        CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
         parseOffset += headerStream.offset;
 
         // Try to get the remainder of the box, if necessary
@@ -2067,12 +2068,15 @@ static avifResult avifParse(avifDecoder * decoder)
         }
 
         if (!memcmp(header.type, "ftyp", 4)) {
+            CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 0), AVIF_RESULT_BMFF_PARSE_FAILED);
             avifRWDataSet(&data->ftypData, boxContents.data, boxContents.size);
-            CHECK(avifParseFileTypeBox(&data->ftyp, data->ftypData.data, data->ftypData.size));
+            CHECKERR(avifParseFileTypeBox(&data->ftyp, data->ftypData.data, data->ftypData.size), AVIF_RESULT_BMFF_PARSE_FAILED);
         } else if (!memcmp(header.type, "meta", 4)) {
-            CHECK(avifParseMetaBox(data->meta, boxContents.data, boxContents.size));
+            CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(avifParseMetaBox(data->meta, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
         } else if (!memcmp(header.type, "moov", 4)) {
-            CHECK(avifParseMoovBox(data, boxContents.data, boxContents.size));
+            CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 2), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(avifParseMoovBox(data, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
         }
 
         parseOffset += header.size;

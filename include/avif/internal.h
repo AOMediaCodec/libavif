@@ -21,6 +21,13 @@ extern "C" {
             return AVIF_FALSE; \
     } while (0)
 
+// Used instead of CHECK if needing to return a specific error on failure, instead of AVIF_FALSE
+#define CHECKERR(A, ERR) \
+    do {                 \
+        if (!(A))        \
+            return ERR;  \
+    } while (0)
+
 // ---------------------------------------------------------------------------
 // URNs and Content-Types
 
