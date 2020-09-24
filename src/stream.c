@@ -143,7 +143,7 @@ avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t out
     return AVIF_TRUE;
 }
 
-avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header)
+avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header)
 {
     size_t startOffset = stream->offset;
 
@@ -166,6 +166,14 @@ avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header
     }
     header->size = (size_t)(size - bytesRead);
     return AVIF_TRUE;
+}
+
+avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header)
+{
+    if (!avifROStreamReadBoxHeaderPartial(stream, header)) {
+        return AVIF_FALSE;
+    }
+    return (header->size <= avifROStreamRemainingBytes(stream));
 }
 
 avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags)

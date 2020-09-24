@@ -2048,7 +2048,7 @@ static avifResult avifParse(avifDecoder * decoder)
         // Parse the header, and find out how many bytes it actually was
         BEGIN_STREAM(headerStream, headerContents.data, headerContents.size);
         avifBoxHeader header;
-        CHECK(avifROStreamReadBoxHeader(&headerStream, &header));
+        CHECK(avifROStreamReadBoxHeaderPartial(&headerStream, &header));
         parseOffset += headerStream.offset;
 
         // Try to get the remainder of the box, if necessary
