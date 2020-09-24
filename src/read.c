@@ -2028,6 +2028,9 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
 
 static avifResult avifParse(avifDecoder * decoder)
 {
+    // Note: this top-level function is the only avifParse*() function that returns avifResult instead of avifBool.
+    // Be sure to use CHECKERR() in this function with an explicit error result instead of simply using CHECK().
+
     avifResult readResult;
     size_t parseOffset = 0;
     avifDecoderData * data = decoder->data;
