@@ -35,7 +35,7 @@ static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags,
         offset = 0;
         size = 0;
     }
-    if ((offset + size) > reader->rodata.size) {
+    if (size > (reader->rodata.size - offset)) {
         size = reader->rodata.size - offset;
     }
 
