@@ -22,7 +22,7 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw)
 
 avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount)
 {
-    return (stream->offset + byteCount) <= stream->raw->size;
+    return byteCount <= (stream->raw->size - stream->offset);
 }
 
 size_t avifROStreamRemainingBytes(const avifROStream * stream)
