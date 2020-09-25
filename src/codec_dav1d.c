@@ -29,7 +29,6 @@ struct avifCodecInternal
     Dav1dPicture dav1dPicture;
     avifBool hasPicture;
     avifRange colorRange;
-    Dav1dData dav1dData;
 };
 
 static void avifDav1dFreeCallback(const uint8_t * buf, void * cookie)
@@ -41,9 +40,6 @@ static void avifDav1dFreeCallback(const uint8_t * buf, void * cookie)
 
 static void dav1dCodecDestroyInternal(avifCodec * codec)
 {
-    if (codec->internal->dav1dData.sz) {
-        dav1d_data_unref(&codec->internal->dav1dData);
-    }
     if (codec->internal->hasPicture) {
         dav1d_picture_unref(&codec->internal->dav1dPicture);
     }
@@ -51,27 +47,6 @@ static void dav1dCodecDestroyInternal(avifCodec * codec)
         dav1d_close(&codec->internal->dav1dContext);
     }
     avifFree(codec->internal);
-}
-
-// returns AVIF_FALSE if there's nothing left to feed, or feeding fatally fails (say that five times fast)
-static avifBool dav1dFeedData(avifCodec * codec, avifDecodeSample * sample)
-{
-    if (!codec->internal->dav1dData.sz) {
-        if (sample) {
-            if (dav1d_data_wrap(&codec->internal->dav1dData, sample->data.data, sample->data.size, avifDav1dFreeCallback, NULL) != 0) {
-                return AVIF_FALSE;
-            }
-        } else {
-            // No more data
-            return AVIF_FALSE;
-        }
-    }
-
-    int res = dav1d_send_data(codec->internal->dav1dContext, &codec->internal->dav1dData);
-    if ((res < 0) && (res != DAV1D_ERR(EAGAIN))) {
-        return AVIF_FALSE;
-    }
-    return AVIF_TRUE;
 }
 
 static avifBool dav1dCodecOpen(avifCodec * codec)
@@ -90,20 +65,41 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, avifDecodeSampl
     Dav1dPicture nextFrame;
     memset(&nextFrame, 0, sizeof(Dav1dPicture));
 
+    Dav1dData dav1dData;
+    if (dav1d_data_wrap(&dav1dData, sample->data.data, sample->data.size, avifDav1dFreeCallback, NULL) != 0) {
+        return AVIF_FALSE;
+    }
+
     for (;;) {
-        avifBool sentData = dav1dFeedData(codec, sample);
+        if (dav1dData.data) {
+            int res = dav1d_send_data(codec->internal->dav1dContext, &dav1dData);
+            if ((res < 0) && (res != DAV1D_ERR(EAGAIN))) {
+                dav1d_data_unref(&dav1dData);
+                return AVIF_FALSE;
+            }
+        }
+
         int res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
-        if ((res == DAV1D_ERR(EAGAIN)) && sentData) {
-            // send more data
-            continue;
+        if (res == DAV1D_ERR(EAGAIN)) {
+            if (dav1dData.data) {
+                // send more data
+                continue;
+            }
+            return AVIF_FALSE;
         } else if (res < 0) {
             // No more frames
+            if (dav1dData.data) {
+                dav1d_data_unref(&dav1dData);
+            }
             return AVIF_FALSE;
         } else {
             // Got a picture!
             gotPicture = AVIF_TRUE;
             break;
         }
+    }
+    if (dav1dData.data) {
+        dav1d_data_unref(&dav1dData);
     }
 
     if (gotPicture) {
