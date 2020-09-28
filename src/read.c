@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <string.h>
 
 #define AUXTYPE_SIZE 64
@@ -694,6 +695,9 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
         } else {
             // construction_method: file(0)
 
+            if ((decoder->io->sizeHint > 0) && (extent->offset > decoder->io->sizeHint)) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
             avifResult readResult = decoder->io->read(decoder->io, 0, extent->offset, bytesToRead, &offsetBuffer);
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
@@ -2041,6 +2045,9 @@ static avifResult avifParse(avifDecoder * decoder)
     for (;;) {
         // Read just enough to get the next box header (a max of 32 bytes)
         avifROData headerContents;
+        if ((decoder->io->sizeHint > 0) && (parseOffset > decoder->io->sizeHint)) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
         readResult = decoder->io->read(decoder->io, 0, parseOffset, 32, &headerContents);
         if (readResult != AVIF_RESULT_OK) {
             return readResult;
@@ -2056,6 +2063,7 @@ static avifResult avifParse(avifDecoder * decoder)
         avifBoxHeader header;
         CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
         parseOffset += headerStream.offset;
+        assert((decoder->io->sizeHint == 0) || (parseOffset <= decoder->io->sizeHint));
 
         // Try to get the remainder of the box, if necessary
         avifROData boxContents = AVIF_DATA_EMPTY;
@@ -2211,6 +2219,9 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
             }
 
             avifROData sampleContents;
+            if ((decoder->io->sizeHint > 0) && (sample->offset > decoder->io->sizeHint)) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
             avifResult readResult = decoder->io->read(decoder->io, 0, sample->offset, bytesToRead, &sampleContents);
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
