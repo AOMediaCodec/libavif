@@ -300,11 +300,12 @@ static const struct aomOptionEnumList tuningEnum[] = { //
     { NULL, 0 }
 };
 
-static const struct aomOptionDef aomOptionDefs[] = { //
-    { "aq-mode", AV1E_SET_AQ_MODE, NULL },           // Adaptive quantization mode
-    { "cq-level", AOME_SET_CQ_LEVEL, NULL },         // Constant/Constrained Quality level
-    { "sharpness", AOME_SET_SHARPNESS, NULL },       // Loop filter sharpness
-    { "tune", AOME_SET_TUNING, tuningEnum },         // Tune distortion metric
+static const struct aomOptionDef aomOptionDefs[] = {                 //
+    { "aq-mode", AV1E_SET_AQ_MODE, NULL },                           // Adaptive quantization mode
+    { "cq-level", AOME_SET_CQ_LEVEL, NULL },                         // Constant/Constrained Quality level
+    { "enable-chroma-deltaq", AV1E_SET_ENABLE_CHROMA_DELTAQ, NULL }, // Enable delta quantization in chroma planes
+    { "sharpness", AOME_SET_SHARPNESS, NULL },                       // Loop filter sharpness
+    { "tune", AOME_SET_TUNING, tuningEnum },                         // Tune distortion metric
     { NULL, 0, NULL }
 };
 

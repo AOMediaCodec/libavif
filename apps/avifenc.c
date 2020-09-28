@@ -99,6 +99,7 @@ static void syntax(void)
         printf("aom-specific advanced options:\n");
         printf("    aq-mode=M                         : Adaptive quantization mode (0: off (default), 1: variance, 2: complexity, 3: cyclic refresh)\n");
         printf("    cq-level=Q                        : Constant/Constrained Quality level (0-63, end-usage must be set to cq or q)\n");
+        printf("    enable-chroma-deltaq=B            : Enable delta quantization in chroma planes (0: disable (default), 1: enable)\n");
         printf("    end-usage=MODE                    : Rate control mode (vbr, cbr, cq, or q)\n");
         printf("    sharpness=S                       : Loop filter sharpness (0-7, default: 0)\n");
         printf("    tune=METRIC                       : Tune the encoder for distortion metric (psnr or ssim, default: psnr)\n");
