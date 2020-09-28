@@ -31,12 +31,13 @@ static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags,
     avifIOMemoryReader * reader = (avifIOMemoryReader *)io;
 
     // Sanitize/clamp incoming request
-    if (offset >= reader->rodata.size) {
-        offset = 0;
-        size = 0;
+    if (offset > reader->rodata.size) {
+        // The offset is past the end of the buffer.
+        return AVIF_RESULT_IO_ERROR;
     }
-    if (size > (reader->rodata.size - offset)) {
-        size = reader->rodata.size - offset;
+    uint64_t availableSize = reader->rodata.size - offset;
+    if (size > availableSize) {
+        size = availableSize;
     }
 
     out->data = reader->rodata.data + offset;
@@ -83,14 +84,14 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
         return AVIF_RESULT_IO_ERROR;
     }
 
-    if (offset < reader->io.sizeHint) {
-        uint64_t availableSize = reader->io.sizeHint - offset;
-        if (size > availableSize) {
-            size = availableSize;
-        }
-    } else {
+    // Sanitize/clamp incoming request
+    if (offset > reader->io.sizeHint) {
         // The offset is past the EOF.
-        size = 0;
+        return AVIF_RESULT_IO_ERROR;
+    }
+    uint64_t availableSize = reader->io.sizeHint - offset;
+    if (size > availableSize) {
+        size = availableSize;
     }
 
     if (size > 0) {
