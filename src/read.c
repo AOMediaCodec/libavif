@@ -2032,7 +2032,7 @@ static avifResult avifParse(avifDecoder * decoder)
     // Be sure to use CHECKERR() in this function with an explicit error result instead of simply using CHECK().
 
     avifResult readResult;
-    size_t parseOffset = 0;
+    uint64_t parseOffset = 0;
     avifDecoderData * data = decoder->data;
     uint32_t uniqueBoxFlags = 0;
 
@@ -2068,7 +2068,10 @@ static avifResult avifParse(avifDecoder * decoder)
                 // A truncated box, bail out
                 return AVIF_RESULT_TRUNCATED_DATA;
             }
+        } else if (header.size > (UINT64_MAX - parseOffset)) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
+        parseOffset += header.size;
 
         if (!memcmp(header.type, "ftyp", 4)) {
             CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 0), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -2081,8 +2084,6 @@ static avifResult avifParse(avifDecoder * decoder)
             CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 2), AVIF_RESULT_BMFF_PARSE_FAILED);
             CHECKERR(avifParseMoovBox(data, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
         }
-
-        parseOffset += header.size;
     }
     return AVIF_RESULT_OK;
 }
