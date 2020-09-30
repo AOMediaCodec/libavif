@@ -366,6 +366,9 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
             sample->size = sampleSize;
             sample->sync = AVIF_FALSE; // to potentially be set to true following the outer loop
 
+            if (sampleSize > UINT64_MAX - sampleOffset) {
+                return AVIF_FALSE;
+            }
             if (sizeHint && ((sampleOffset + sampleSize) > (uint64_t)sizeHint)) {
                 return AVIF_FALSE;
             }
