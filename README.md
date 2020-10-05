@@ -226,7 +226,7 @@ avifImage * image = avifImageCreate(width, height, depth, format);
 // matrixCoefficients to indicate how you would like YUV<->RGB conversion to be done.
 image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
 image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 image->yuvRange = AVIF_RANGE_FULL;
 
 // Option 1: Populate YUV planes
