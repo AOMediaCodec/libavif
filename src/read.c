@@ -2736,11 +2736,11 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         }
     }
 
-    // Decode decode all frames now that the sample data is ready.
+    // Decode all frames now that the sample data is ready.
     for (unsigned int tileIndex = 0; tileIndex < decoder->data->tiles.count; ++tileIndex) {
         avifTile * tile = &decoder->data->tiles.tile[tileIndex];
 
-        avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
+        const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
 
         if (!tile->codec->getNextImage(tile->codec, sample, tile->input->alpha, tile->image)) {
             if (tile->input->alpha) {
