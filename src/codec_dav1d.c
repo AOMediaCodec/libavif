@@ -59,7 +59,7 @@ static avifBool dav1dCodecOpen(avifCodec * codec)
     return AVIF_TRUE;
 }
 
-static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, avifDecodeSample * sample, avifBool alpha, avifImage * image)
+static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
 {
     avifBool gotPicture = AVIF_FALSE;
     Dav1dPicture nextFrame;

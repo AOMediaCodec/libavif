@@ -155,7 +155,7 @@ struct avifCodec;
 struct avifCodecInternal;
 
 typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec);
-typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, avifDecodeSample * sample, avifBool alpha, avifImage * image);
+typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image);
 // EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
 // encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.
 // avifCodecEncodeImageFunc may return AVIF_RESULT_UNKNOWN_ERROR to automatically emit the appropriate

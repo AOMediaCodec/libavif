@@ -73,7 +73,7 @@ static avifBool aomCodecOpen(struct avifCodec * codec)
     return AVIF_TRUE;
 }
 
-static avifBool aomCodecGetNextImage(struct avifCodec * codec, avifDecodeSample * sample, avifBool alpha, avifImage * image)
+static avifBool aomCodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
 {
     aom_image_t * nextFrame = NULL;
     for (;;) {
@@ -82,13 +82,12 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec, avifDecodeSample 
             // Got an image!
             break;
         } else if (sample) {
-            // Feed another sample
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
                 return AVIF_FALSE;
             }
+            sample = NULL;
         } else {
-            // No more samples to feed
             break;
         }
     }

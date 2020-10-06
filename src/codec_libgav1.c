@@ -33,28 +33,24 @@ static avifBool gav1CodecOpen(avifCodec * codec)
     return AVIF_TRUE;
 }
 
-static avifBool gav1CodecGetNextImage(struct avifCodec * codec, avifDecodeSample * sample, avifBool alpha, avifImage * image)
+static avifBool gav1CodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
 {
-    const Libgav1DecoderBuffer * nextFrame = NULL;
-    // Check if there are more samples to feed
-    if (sample) {
-        // Feed another sample
-        if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
-                                       sample->data.data,
-                                       sample->data.size,
-                                       /*user_private_data=*/0,
-                                       /*buffer_private_data=*/NULL) != kLibgav1StatusOk) {
-            return AVIF_FALSE;
-        }
-        // Each Libgav1DecoderDequeueFrame() call invalidates the output frame
-        // returned by the previous Libgav1DecoderDequeueFrame() call. Clear
-        // our pointer to the previous output frame.
-        codec->internal->gav1Image = NULL;
-        if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
-            return AVIF_FALSE;
-        }
-        // Got an image!
+    if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
+                                   sample->data.data,
+                                   sample->data.size,
+                                   /*user_private_data=*/0,
+                                   /*buffer_private_data=*/NULL) != kLibgav1StatusOk) {
+        return AVIF_FALSE;
     }
+    // Each Libgav1DecoderDequeueFrame() call invalidates the output frame
+    // returned by the previous Libgav1DecoderDequeueFrame() call. Clear
+    // our pointer to the previous output frame.
+    codec->internal->gav1Image = NULL;
+    const Libgav1DecoderBuffer * nextFrame = NULL;
+    if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
+        return AVIF_FALSE;
+    }
+    // Got an image!
 
     if (nextFrame) {
         codec->internal->gav1Image = nextFrame;
