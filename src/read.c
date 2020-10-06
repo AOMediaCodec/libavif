@@ -627,7 +627,7 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
 {
     if (item->mergedExtents.data && !item->partialMergedExtents) {
         // Multiple extents have already been concatenated for this item, just return it
-        memcpy(outData, &item->mergedExtents.data, sizeof(avifROData));
+        memcpy(outData, &item->mergedExtents, sizeof(avifROData));
         return AVIF_RESULT_OK;
     }
 
@@ -637,7 +637,7 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
 
     // Find this item's source of all extents' data, based on the construction method
     avifRWData * idatBuffer = NULL;
-    if (item->idatID == 1) {
+    if (item->idatID != 0) {
         // construction_method: idat(1)
 
         // Find associated idat block
@@ -661,13 +661,18 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
         return AVIF_RESULT_TRUNCATED_DATA;
     }
 
+    size_t totalBytesToRead = item->size;
+    if (partialByteCount && (totalBytesToRead > partialByteCount)) {
+        totalBytesToRead = partialByteCount;
+    }
+
     // If there is a single extent for this item and the source of the read buffer is going to be
     // persistent for the lifetime of the avifDecoder (whether it comes from its own internal
     // idatBuffer or from a known-persistent IO), we can avoid buffer duplication and just use the
     // preexisting buffer.
     avifBool singlePersistentBuffer = ((item->extents.count == 1) && (idatBuffer || decoder->io->persistent));
     if (!singlePersistentBuffer) {
-        avifRWDataRealloc(&item->mergedExtents, item->size);
+        avifRWDataRealloc(&item->mergedExtents, totalBytesToRead);
         item->ownsMergedExtents = AVIF_TRUE;
     }
 
@@ -675,10 +680,6 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
     item->partialMergedExtents = AVIF_TRUE;
 
     uint8_t * front = item->mergedExtents.data;
-    size_t totalBytesToRead = item->size;
-    if (partialByteCount && (totalBytesToRead > partialByteCount)) {
-        totalBytesToRead = partialByteCount;
-    }
     size_t remainingBytes = totalBytesToRead;
     for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
         avifDecoderItemExtent * extent = &item->extents.extent[extentIter];
@@ -690,8 +691,14 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
 
         avifROData offsetBuffer;
         if (idatBuffer) {
-            offsetBuffer.data = idatBuffer->data;
-            offsetBuffer.size = idatBuffer->size;
+            if (extent->offset > idatBuffer->size) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            if (extent->size > idatBuffer->size - extent->offset) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            offsetBuffer.data = idatBuffer->data + extent->offset;
+            offsetBuffer.size = idatBuffer->size - extent->offset;
         } else {
             // construction_method: file(0)
 
@@ -701,9 +708,6 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
             avifResult readResult = decoder->io->read(decoder->io, 0, extent->offset, bytesToRead, &offsetBuffer);
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
-            }
-            if (bytesToRead != offsetBuffer.size) {
-                return AVIF_RESULT_TRUNCATED_DATA;
             }
         }
 
