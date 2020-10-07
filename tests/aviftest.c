@@ -430,6 +430,7 @@ int main(int argc, char * argv[])
     const char * dataDir = NULL;
     const char * testFilter = NULL;
     avifBool generate = AVIF_FALSE;
+    avifBool ioOnly = AVIF_FALSE;
 
 #ifdef WIN32_MEMORY_LEAK_DETECTION
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -441,6 +442,8 @@ int main(int argc, char * argv[])
         char * arg = argv[i];
         if (!strcmp(arg, "-g")) {
             generate = AVIF_TRUE;
+        } else if (!strcmp(arg, "--io-only")) {
+            ioOnly = AVIF_TRUE;
         } else if (dataDir == NULL) {
             dataDir = arg;
         } else if (testFilter == NULL) {
@@ -471,7 +474,7 @@ int main(int argc, char * argv[])
         retCode = generateEncodeDecodeTests(dataDir);
     } else {
         retCode = runIOTests(dataDir);
-        if (retCode == 0) {
+        if ((retCode == 0) && !ioOnly) {
             retCode = runEncodeDecodeTests(dataDir, testFilter);
         }
     }

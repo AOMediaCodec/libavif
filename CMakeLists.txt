@@ -138,6 +138,17 @@ if(AVIF_ENABLE_WERROR)
     endif()
 endif()
 
+if(AVIF_ENABLE_COVERAGE)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+        MESSAGE(STATUS "libavif: Enabling coverage for Clang")
+        add_definitions(-fprofile-instr-generate -fcoverage-mapping -O0)
+        set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fprofile-instr-generate -fcoverage-mapping")
+    else()
+        # TODO: Add support for other compilers
+        message(WARNING "libavif: Ignoring request for coverage (AVIF_ENABLE_COVERAGE); only clang is currently supported.")
+    endif()
+endif()
+
 set(AVIF_SRCS
     src/alpha.c
     src/avif.c
@@ -407,6 +418,17 @@ if(AVIF_BUILD_TESTS)
         COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
         DEPENDS aviftest
     )
+
+    if(AVIF_ENABLE_COVERAGE)
+        add_custom_target(avif_coverage
+            COMMAND LLVM_PROFILE_FILE=${CMAKE_BINARY_DIR}/aviftest.profraw $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data --io-only
+            COMMAND llvm-profdata merge -sparse ${CMAKE_BINARY_DIR}/aviftest.profraw -o ${CMAKE_BINARY_DIR}/aviftest.profdata
+            COMMAND cmake -E make_directory ${CMAKE_BINARY_DIR}/coverage
+            COMMAND llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_BINARY_DIR}/aviftest.profdata -project-title=libavif --format html -output-dir=${CMAKE_BINARY_DIR}/coverage
+            COMMAND echo Coverage report here: ${CMAKE_BINARY_DIR}/coverage/index.html
+            DEPENDS aviftest
+        )
+    endif()
 endif()
 
 configure_file(libavif.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc @ONLY)
