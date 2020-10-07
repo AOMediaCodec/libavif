@@ -43,6 +43,12 @@ if(AVIF_LOCAL_LIBGAV1)
     enable_language(CXX)
 endif()
 
+if(APPLE)
+    set(XCRUN xcrun)
+else()
+    set(XCRUN)
+endif()
+
 # ---------------------------------------------------------------------------------------
 # This insanity is for people embedding libavif or making fully static or Windows builds.
 # Any proper unix environment should ignore these entire following blocks.
@@ -422,9 +428,9 @@ if(AVIF_BUILD_TESTS)
     if(AVIF_ENABLE_COVERAGE)
         add_custom_target(avif_coverage
             COMMAND LLVM_PROFILE_FILE=${CMAKE_BINARY_DIR}/aviftest.profraw $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data --io-only
-            COMMAND llvm-profdata merge -sparse ${CMAKE_BINARY_DIR}/aviftest.profraw -o ${CMAKE_BINARY_DIR}/aviftest.profdata
+            COMMAND ${XCRUN} llvm-profdata merge -sparse ${CMAKE_BINARY_DIR}/aviftest.profraw -o ${CMAKE_BINARY_DIR}/aviftest.profdata
             COMMAND cmake -E make_directory ${CMAKE_BINARY_DIR}/coverage
-            COMMAND llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_BINARY_DIR}/aviftest.profdata -project-title=libavif --format html -output-dir=${CMAKE_BINARY_DIR}/coverage
+            COMMAND ${XCRUN} llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_BINARY_DIR}/aviftest.profdata -project-title=libavif --format html -output-dir=${CMAKE_BINARY_DIR}/coverage
             COMMAND echo Coverage report here: ${CMAKE_BINARY_DIR}/coverage/index.html
             DEPENDS aviftest
         )
