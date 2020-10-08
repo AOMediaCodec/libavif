@@ -968,7 +968,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         //   * Pass 1: alpha (AV1)
         //   * Pass 2: all other item data (AV1 color)
         //
-        // See here for the discussion on alpha coming first:
+        // See here for the discussion on alpha coming before color:
         // https://github.com/AOMediaCodec/libavif/issues/287
         //
         // Exif and XMP are packed first as they're required to be fully available
