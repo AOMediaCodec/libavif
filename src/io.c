@@ -129,7 +129,11 @@ avifIO * avifIOCreateFileReader(const char * filename)
     }
 
     fseek(f, 0, SEEK_END);
-    size_t fileSize = (size_t)ftell(f);
+    long fileSize = ftell(f);
+    if (fileSize < 0) {
+        fclose(f);
+        return NULL;
+    }
     fseek(f, 0, SEEK_SET);
 
     avifIOFileReader * reader = avifAlloc(sizeof(avifIOFileReader));
@@ -137,7 +141,7 @@ avifIO * avifIOCreateFileReader(const char * filename)
     reader->f = f;
     reader->io.destroy = avifIOFileReaderDestroy;
     reader->io.read = avifIOFileReaderRead;
-    reader->io.sizeHint = fileSize;
+    reader->io.sizeHint = (uint64_t)fileSize;
     reader->io.persistent = AVIF_FALSE;
     avifRWDataRealloc(&reader->buffer, 1024);
     return (avifIO *)reader;

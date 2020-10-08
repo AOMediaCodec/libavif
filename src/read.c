@@ -331,7 +331,7 @@ void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
     avifFree(decodeInput);
 }
 
-static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput, avifSampleTable * sampleTable, size_t sizeHint)
+static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput, avifSampleTable * sampleTable, uint64_t sizeHint)
 {
     uint32_t sampleSizeIndex = 0;
     for (uint32_t chunkIndex = 0; chunkIndex < sampleTable->chunks.count; ++chunkIndex) {
@@ -371,7 +371,7 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
             if (sampleSize > UINT64_MAX - sampleOffset) {
                 return AVIF_FALSE;
             }
-            if (sizeHint && ((sampleOffset + sampleSize) > (uint64_t)sizeHint)) {
+            if (sizeHint && ((sampleOffset + sampleSize) > sizeHint)) {
                 return AVIF_FALSE;
             }
 
