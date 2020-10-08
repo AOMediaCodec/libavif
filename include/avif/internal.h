@@ -100,8 +100,8 @@ typedef struct avifDecodeSample
     avifBool ownsData;
     avifBool partialData; // if true, data exists but doesn't have all of the sample in it
 
-    uint32_t itemID; // if non-zero, data comes from a mergedExtents buffer, not a file offset
-    uint64_t offset;
+    uint32_t itemID; // if non-zero, data comes from a mergedExtents buffer in an avifDecoderItem, not a file offset
+    uint64_t offset; // used only when itemID is zero, ignored and set to 0 when itemID is non-zero
     uint32_t size;
     avifBool sync; // is sync sample (keyframe)
 } avifDecodeSample;
