@@ -674,7 +674,7 @@ void avifDecoderDestroy(avifDecoder * decoder);
 
 // Simple interfaces to decode a single image, independent of the decoder afterwards (decoder may be destroyed).
 avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image); // call avifDecoderSetIO*() first
-avifResult avifDecoderReadMemory(avifDecoder * decoder, avifImage * image, const avifROData * input);
+avifResult avifDecoderReadMemory(avifDecoder * decoder, avifImage * image, const uint8_t * data, size_t size);
 avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const char * filename);
 
 // Multi-function alternative to avifDecoderRead() for image sequences and gaining direct access
@@ -698,7 +698,7 @@ avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const c
 // Parse again. Normally AVIF_DECODER_SOURCE_AUTO is enough for the common path.
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
 avifResult avifDecoderSetIO(avifDecoder * decoder, avifIO * io);
-avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const avifROData * rawInput);
+avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const uint8_t * data, size_t size);
 avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename);
 avifResult avifDecoderParse(avifDecoder * decoder);
 avifResult avifDecoderNextImage(avifDecoder * decoder);
