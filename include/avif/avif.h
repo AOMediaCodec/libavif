@@ -539,7 +539,7 @@ typedef void (*avifIODestroyFunc)(struct avifIO * io);
 //   all bytes from the offset to EOF, and return AVIF_RESULT_OK.
 typedef avifResult (*avifIOReadFunc)(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out);
 
-typedef avifResult (*avifIOWriteFunc)(struct avifIO * io, uint32_t writeFlags, uint64_t offset, uint8_t * data, uint64_t size);
+typedef avifResult (*avifIOWriteFunc)(struct avifIO * io, uint32_t writeFlags, uint64_t offset, const uint8_t * data, uint64_t size);
 
 typedef struct avifIO
 {
@@ -554,7 +554,7 @@ typedef struct avifIO
     // can possibly be for your environment, but within your environment's memory constraints). This
     // is used for sanity checks when allocating internal buffers to protect against
     // malformed/malicious files.
-    size_t sizeHint;
+    uint64_t sizeHint;
 
     // If true, *all* memory regions returned from *all* calls to read are guaranteed to be
     // persistent and exist for the lifetime of the avifIO object. If false, libavif will make
