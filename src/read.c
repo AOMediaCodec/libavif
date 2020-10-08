@@ -2665,7 +2665,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // of the first sample. Read in successively larger chunks until we successfully parse the sequence.
             static const size_t searchSampleChunkIncrement = 64;
             size_t searchSampleSize = 0;
-            for (;;) {
+            do {
                 searchSampleSize += searchSampleChunkIncrement;
                 if (searchSampleSize > sample->size) {
                     searchSampleSize = sample->size;
@@ -2685,11 +2685,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     decoder->image->yuvRange = sequenceHeader.range;
                     break;
                 }
-
-                if (searchSampleSize == sample->size) {
-                    break;
-                }
-            }
+            } while (searchSampleSize != sample->size);
         }
     }
 
