@@ -225,7 +225,7 @@ int testCaseRun(TestCase * tc, const char * dataDir, avifBool generating)
 
     decoder = avifDecoderCreate();
     decoder->codecChoice = tc->decodeChoice;
-    avifDecoderSetIOMemory(decoder, (avifROData *)&encodedData);
+    avifDecoderSetIOMemory(decoder, encodedData.data, encodedData.size);
     avifResult decodeResult = avifDecoderParse(decoder);
     if (decodeResult != AVIF_RESULT_OK) {
         printf("ERROR[%s]: Decode failed\n", tc->name);

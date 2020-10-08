@@ -59,13 +59,14 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     avifDecoder * decoder = context->decoder;
     avifImage * image;
     avifRGBImage rgb;
-    avifROData raw;
+    const uint8_t * data;
+    size_t size;
     int width, height;
     GdkPixbuf *output;
 
-    raw.data = g_bytes_get_data(context->bytes, &raw.size);
+    data = g_bytes_get_data(context->bytes, &size);
 
-    ret = avifDecoderSetIOMemory(decoder, &raw);
+    ret = avifDecoderSetIOMemory(decoder, data, size);
     if (ret != AVIF_RESULT_OK) {
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
                     "Couldn’t decode image: %s", avifResultToString(ret));

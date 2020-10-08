@@ -72,7 +72,7 @@ int main(int argc, char * argv[])
     // Decode it
     avifImage * decoded = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
-    avifResult decodeResult = avifDecoderReadMemory(decoder, decoded, (avifROData *)&raw);
+    avifResult decodeResult = avifDecoderReadMemory(decoder, decoded, raw.data, raw.size);
     avifDecoderDestroy(decoder);
 
     if (decodeResult != AVIF_RESULT_OK) {
@@ -114,7 +114,7 @@ encodeCleanup:
     avifImageDestroy(image);
     avifRGBImageFreePixels(&srcRGB);
     avifRGBImageFreePixels(&dstRGB);
-#else  /* if 1 */
+#else /* if 1 */
 
     FILE * f = fopen("test.avif", "rb");
     if (!f)
