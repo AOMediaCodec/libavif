@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #define AUXTYPE_SIZE 64
@@ -2841,7 +2842,7 @@ avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frame
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    if ((int)frameIndex >= decoder->imageCount) {
+    if ((frameIndex > INT_MAX) || ((int)frameIndex >= decoder->imageCount)) {
         // Impossible index
         return AVIF_RESULT_NO_IMAGES_REMAINING;
     }
@@ -2872,6 +2873,11 @@ avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frame
 
 avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 {
+    if (frameIndex > INT_MAX) {
+        // Impossible index
+        return AVIF_RESULT_NO_IMAGES_REMAINING;
+    }
+
     int requestedIndex = (int)frameIndex;
     if (requestedIndex == decoder->imageIndex) {
         // We're here already, nothing to do
