@@ -2485,10 +2485,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 if (readResult != AVIF_RESULT_OK) {
                     return readResult;
                 }
-                if ((readData.data == NULL) || (readData.size != item->size)) {
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
-                if (!avifParseImageGridBox(&data->colorGrid, readData.data, item->size)) {
+                if (!avifParseImageGridBox(&data->colorGrid, readData.data, readData.size)) {
                     return AVIF_RESULT_INVALID_IMAGE_GRID;
                 }
             }
@@ -2531,10 +2528,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     if (readResult != AVIF_RESULT_OK) {
                         return readResult;
                     }
-                    if ((readData.data == NULL) || (readData.size != item->size)) {
-                        return AVIF_RESULT_BMFF_PARSE_FAILED;
-                    }
-                    if (!avifParseImageGridBox(&data->alphaGrid, readData.data, item->size)) {
+                    if (!avifParseImageGridBox(&data->alphaGrid, readData.data, readData.size)) {
                         return AVIF_RESULT_INVALID_IMAGE_GRID;
                     }
                 }
