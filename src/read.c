@@ -637,7 +637,7 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
     }
 
     // Find this item's source of all extents' data, based on the construction method
-    avifRWData * idatBuffer = NULL;
+    const avifRWData * idatBuffer = NULL;
     if (item->idatID != 0) {
         // construction_method: idat(1)
 
@@ -710,10 +710,9 @@ static avifResult avifDecoderReadItem(avifDecoder * decoder, avifDecoderItem * i
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
             }
-        }
-
-        if (bytesToRead > offsetBuffer.size) {
-            return AVIF_RESULT_TRUNCATED_DATA;
+            if (bytesToRead != offsetBuffer.size) {
+                return AVIF_RESULT_TRUNCATED_DATA;
+            }
         }
 
         if (singlePersistentBuffer) {
