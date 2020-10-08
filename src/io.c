@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -24,7 +25,7 @@ typedef struct avifIOMemoryReader
 
 static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out)
 {
-    // printf("avifIOMemoryReaderRead offset %zu size %zu\n", offset, size);
+    // printf("avifIOMemoryReaderRead offset %" PRIu64 " size %" PRIu64 "\n", offset, size);
 
     (void)readFlags;
 
@@ -75,14 +76,11 @@ typedef struct avifIOFileReader
 
 static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out)
 {
-    // printf("avifIOFileReaderRead offset %zu size %zu\n", offset, size);
+    // printf("avifIOFileReaderRead offset %" PRIu64 " size %" PRIu64 "\n", offset, size);
 
     (void)readFlags;
 
     avifIOFileReader * reader = (avifIOFileReader *)io;
-    if (!reader->f) {
-        return AVIF_RESULT_IO_ERROR;
-    }
 
     // Sanitize/clamp incoming request
     if (offset > reader->io.sizeHint) {
@@ -95,6 +93,9 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
     }
 
     if (size > 0) {
+        if (offset > LONG_MAX) {
+            return AVIF_RESULT_IO_ERROR;
+        }
         if (reader->buffer.size < size) {
             avifRWDataRealloc(&reader->buffer, size);
         }
@@ -115,9 +116,7 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
 static void avifIOFileReaderDestroy(struct avifIO * io)
 {
     avifIOFileReader * reader = (avifIOFileReader *)io;
-    if (reader->f) {
-        fclose(reader->f);
-    }
+    fclose(reader->f);
     avifRWDataFree(&reader->buffer);
     avifFree(io);
 }
