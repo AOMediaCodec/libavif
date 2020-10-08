@@ -2058,7 +2058,7 @@ static avifResult avifParse(avifDecoder * decoder)
         }
         if (!headerContents.size) {
             // If we got AVIF_RESULT_OK from the reader but received 0 bytes,
-            // This we've reached the end of the file with no errors. Hooray!
+            // we've reached the end of the file with no errors. Hooray!
             break;
         }
 
@@ -2210,7 +2210,7 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
             }
 
             // avifDecoderReadItem is guaranteed to already be persisted by either the underlying IO
-            // or by mergedExtents; just make reuse the buffer here.
+            // or by mergedExtents; just reuse the buffer here.
             memcpy(&sample->data, &itemContents, sizeof(avifROData));
             sample->ownsData = AVIF_FALSE;
             sample->partialData = item->partialMergedExtents;

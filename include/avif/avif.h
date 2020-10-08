@@ -523,20 +523,20 @@ typedef struct avifCodecConfigurationBox
 struct avifIO;
 
 // Destroy must completely destroy all child structures *and* free the avifIO object itself.
-// This function pointer is optional, however, if the reader isn't intended to be owned by
+// This function pointer is optional, however, if the avifIO object isn't intended to be owned by
 // a libavif encoder/decoder.
 typedef void (*avifIODestroyFunc)(struct avifIO * io);
 
-// This function should return a block of memory that *must* remain valid until another call to this
-// avifIO struct is used (reusing a read buffer is acceptable/expected).
+// This function should return a block of memory that *must* remain valid until another read call to
+// this avifIO struct is made (reusing a read buffer is acceptable/expected).
 //
+// * If offset exceeds the size of the content (past EOF), return AVIF_RESULT_IO_ERROR.
 // * If (offset+size) does not exceed the contents' size but the *entire range* is unavailable yet
 //   (due to network conditions or any other reason), return AVIF_RESULT_WAITING_ON_IO.
 // * If (offset+size) does not exceed the contents' size, it must provide the *entire range* and
 //   return AVIF_RESULT_OK.
 // * If (offset+size) exceeds the contents' size, it must provide a truncated buffer that provides
 //   all bytes from the offset to EOF, and return AVIF_RESULT_OK.
-// * If offset exceeds the size of the content (past EOF), provide 0 bytes and return AVIF_RESULT_OK.
 typedef avifResult (*avifIOReadFunc)(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out);
 
 typedef avifResult (*avifIOWriteFunc)(struct avifIO * io, uint32_t writeFlags, uint64_t offset, uint8_t * data, uint64_t size);
@@ -557,13 +557,13 @@ typedef struct avifIO
     size_t sizeHint;
 
     // If true, *all* memory regions returned from *all* calls to read are guaranteed to be
-    // persistent and exist for the lifetime of the avifDecoder object. If false, libavif will make
+    // persistent and exist for the lifetime of the avifIO object. If false, libavif will make
     // in-memory copies of samples and metadata content, and a memory region returned from read must
     // only persist until the next call to read.
     avifBool persistent;
 
-    // The contents of this are defined by the IO implementation, and should be fully destroyed by
-    // the implementation of the associated destroy function, unless it isn't owned by the avifIO
+    // The contents of this are defined by the avifIO implementation, and should be fully destroyed
+    // by the implementation of the associated destroy function, unless it isn't owned by the avifIO
     // struct. It is not necessary to use this pointer in your implementation.
     void * data;
 } avifIO;
@@ -672,7 +672,7 @@ typedef struct avifDecoder
 avifDecoder * avifDecoderCreate(void);
 void avifDecoderDestroy(avifDecoder * decoder);
 
-// Simple interfaces to decode a single image, independent of the decoder afterwards (decoder may be deestroyed).
+// Simple interfaces to decode a single image, independent of the decoder afterwards (decoder may be destroyed).
 avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image); // call avifDecoderSetIO*() first
 avifResult avifDecoderReadMemory(avifDecoder * decoder, avifImage * image, const avifROData * input);
 avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const char * filename);
