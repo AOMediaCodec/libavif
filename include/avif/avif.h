@@ -537,9 +537,9 @@ typedef void (*avifIODestroyFunc)(struct avifIO * io);
 //   return AVIF_RESULT_OK.
 // * If (offset+size) exceeds the contents' size, it must provide a truncated buffer that provides
 //   all bytes from the offset to EOF, and return AVIF_RESULT_OK.
-typedef avifResult (*avifIOReadFunc)(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out);
+typedef avifResult (*avifIOReadFunc)(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out);
 
-typedef avifResult (*avifIOWriteFunc)(struct avifIO * io, uint32_t writeFlags, uint64_t offset, const uint8_t * data, uint64_t size);
+typedef avifResult (*avifIOWriteFunc)(struct avifIO * io, uint32_t writeFlags, uint64_t offset, const uint8_t * data, size_t size);
 
 typedef struct avifIO
 {

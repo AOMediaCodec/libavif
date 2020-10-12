@@ -23,9 +23,9 @@ typedef struct avifIOMemoryReader
     avifROData rodata;
 } avifIOMemoryReader;
 
-static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out)
+static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out)
 {
-    // printf("avifIOMemoryReaderRead offset %" PRIu64 " size %" PRIu64 "\n", offset, size);
+    // printf("avifIOMemoryReaderRead offset %" PRIu64 " size %zu\n", offset, size);
 
     (void)readFlags;
 
@@ -74,9 +74,9 @@ typedef struct avifIOFileReader
     FILE * f;
 } avifIOFileReader;
 
-static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out)
+static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out)
 {
-    // printf("avifIOFileReaderRead offset %" PRIu64 " size %" PRIu64 "\n", offset, size);
+    // printf("avifIOFileReaderRead offset %" PRIu64 " size %zu\n", offset, size);
 
     (void)readFlags;
 
