@@ -110,6 +110,9 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
         }
         size_t bytesRead = fread(reader->buffer.data, 1, size, reader->f);
         if (size != bytesRead) {
+            if (ferror(reader->f)) {
+                return AVIF_RESULT_IO_ERROR;
+            }
             size = bytesRead;
         }
     }
