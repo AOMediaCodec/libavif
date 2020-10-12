@@ -697,7 +697,11 @@ avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const c
 // items in a file containing both, but switch between sources without having to
 // Parse again. Normally AVIF_DECODER_SOURCE_AUTO is enough for the common path.
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
-avifResult avifDecoderSetIO(avifDecoder * decoder, avifIO * io);
+// Note: When avifDecoderSetIO() is called, whether 'decoder' takes ownership of 'io' depends on
+// whether io->destroy is set. avifDecoderDestroy(decoder) calls avifIODestroy(io), which calls
+// io->destroy(io) if io->destroy is set. Therefore, if io->destroy is not set, then
+// avifDecoderDestroy(decoder) has no effects on 'io'.
+void avifDecoderSetIO(avifDecoder * decoder, avifIO * io);
 avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const uint8_t * data, size_t size);
 avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename);
 avifResult avifDecoderParse(avifDecoder * decoder);
