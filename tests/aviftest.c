@@ -261,9 +261,9 @@ typedef struct avifIOTestReader
     size_t availableBytes;
 } avifIOTestReader;
 
-static avifResult avifIOTestReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, uint64_t size, avifROData * out)
+static avifResult avifIOTestReaderRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out)
 {
-    // printf("avifIOTestReaderRead offset %zu size %zu\n", offset, size);
+    // printf("avifIOTestReaderRead offset %" PRIu64 " size %zu\n", offset, size);
 
     (void)readFlags;
 
