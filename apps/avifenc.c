@@ -242,11 +242,12 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     }
 
     fseek(f, 0, SEEK_END);
-    size_t fileSize = (size_t)ftell(f);
-    if (!fileSize) {
+    long pos = ftell(f);
+    if (pos <= 0) {
         fclose(f);
         return AVIF_FALSE;
     }
+    size_t fileSize = (size_t)pos;
     fseek(f, 0, SEEK_SET);
 
     avifRWDataRealloc(raw, fileSize);
@@ -449,14 +450,14 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--exif")) {
             NEXTARG();
             if (!readEntireFile(arg, &exifOverride)) {
-                fprintf(stderr, "ERROR: Unable to read Exif content: %s\n", arg);
+                fprintf(stderr, "ERROR: Unable to read Exif metadata: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "--xmp")) {
             NEXTARG();
             if (!readEntireFile(arg, &xmpOverride)) {
-                fprintf(stderr, "ERROR: Unable to read XMP content: %s\n", arg);
+                fprintf(stderr, "ERROR: Unable to read XMP metadata: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }

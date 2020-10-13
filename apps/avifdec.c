@@ -41,8 +41,13 @@ static void syntax(void)
 static int info(const char * inputFilename)
 {
     avifDecoder * decoder = avifDecoderCreate();
-    avifDecoderSetIOFile(decoder, inputFilename);
-    avifResult result = avifDecoderParse(decoder);
+    avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
+    if (result != AVIF_RESULT_OK) {
+        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+        avifDecoderDestroy(decoder);
+        return 1;
+    }
+    result = avifDecoderParse(decoder);
     if (result == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
 

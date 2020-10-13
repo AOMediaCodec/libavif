@@ -270,18 +270,19 @@ static avifResult avifIOTestReaderRead(struct avifIO * io, uint32_t readFlags, u
     avifIOTestReader * reader = (avifIOTestReader *)io;
 
     // Sanitize/clamp incoming request
-    if (offset >= reader->rodata.size) {
-        offset = 0;
-        size = 0;
+    if (offset > reader->rodata.size) {
+        // The offset is past the end of the buffer.
+        return AVIF_RESULT_IO_ERROR;
     }
-    if ((offset + size) > reader->rodata.size) {
-        size = reader->rodata.size - offset;
+    uint64_t availableSize = reader->rodata.size - offset;
+    if (size > availableSize) {
+        size = availableSize;
     }
 
-    if (offset >= reader->availableBytes) {
+    if (offset > reader->availableBytes) {
         return AVIF_RESULT_WAITING_ON_IO;
     }
-    if ((offset + size) > reader->availableBytes) {
+    if (size > (reader->availableBytes - offset)) {
         return AVIF_RESULT_WAITING_ON_IO;
     }
 
@@ -317,8 +318,8 @@ static int runIOTests(const char * dataDir)
     static const char * ioSuffix = "/io/";
 
     char ioDir[FILENAME_MAX_LENGTH + 1];
-    int dataDirLen = (int)strlen(dataDir);
-    int ioSuffixLen = (int)strlen(ioSuffix);
+    size_t dataDirLen = strlen(dataDir);
+    size_t ioSuffixLen = strlen(ioSuffix);
 
     if ((dataDirLen + ioSuffixLen) > FILENAME_MAX_LENGTH) {
         printf("Path too long: %s\n", dataDir);
@@ -326,7 +327,7 @@ static int runIOTests(const char * dataDir)
     }
     strcpy(ioDir, dataDir);
     strcat(ioDir, ioSuffix);
-    int ioDirLen = (int)strlen(ioDir);
+    size_t ioDirLen = strlen(ioDir);
 
     int retCode = 0;
 
@@ -336,7 +337,7 @@ static int runIOTests(const char * dataDir)
     const char * filename = nextFilename(ioDir, "avif", &nfd);
     for (; filename != NULL; filename = nextFilename(ioDir, "avif", &nfd)) {
         char fullFilename[FILENAME_MAX_LENGTH + 1];
-        int filenameLen = (int)strlen(filename);
+        size_t filenameLen = strlen(filename);
         if ((ioDirLen + filenameLen) > FILENAME_MAX_LENGTH) {
             printf("Path too long: %s\n", filename);
             return 1;
@@ -423,7 +424,8 @@ static void syntax(void)
     fprintf(stderr,
             "Syntax: aviftest [options] dataDir [testFilter]\n"
             "Options:\n"
-            "    -g : Generate tests\n");
+            "    -g : Generate Encode/Decode tests\n"
+            "    --io-only : Run IO tests only\n");
 }
 
 int main(int argc, char * argv[])
