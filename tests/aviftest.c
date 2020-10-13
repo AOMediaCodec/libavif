@@ -265,7 +265,10 @@ static avifResult avifIOTestReaderRead(struct avifIO * io, uint32_t readFlags, u
 {
     // printf("avifIOTestReaderRead offset %" PRIu64 " size %zu\n", offset, size);
 
-    (void)readFlags;
+    if (readFlags != 0) {
+        // Unsupported readFlags
+        return AVIF_RESULT_IO_ERROR;
+    }
 
     avifIOTestReader * reader = (avifIOTestReader *)io;
 
