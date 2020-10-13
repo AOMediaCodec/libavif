@@ -92,7 +92,7 @@ typedef enum avifResult
     AVIF_RESULT_INVALID_IMAGE_GRID,
     AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION,
     AVIF_RESULT_TRUNCATED_DATA,
-    AVIF_RESULT_NO_IO,
+    AVIF_RESULT_IO_NOT_SET, // the avifIO field of avifDecoder is not set
     AVIF_RESULT_IO_ERROR,
     AVIF_RESULT_WAITING_ON_IO // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
 } avifResult;
