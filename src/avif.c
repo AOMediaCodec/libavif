@@ -88,7 +88,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_INVALID_IMAGE_GRID:            return "Invalid image grid";
         case AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION: return "Invalid codec-specific option";
         case AVIF_RESULT_TRUNCATED_DATA:                return "Truncated data";
-        case AVIF_RESULT_NO_IO:                         return "No IO";
+        case AVIF_RESULT_IO_NOT_SET:                    return "IO not set";
         case AVIF_RESULT_IO_ERROR:                      return "IO Error";
         case AVIF_RESULT_WAITING_ON_IO:                 return "Waiting on IO";
         case AVIF_RESULT_UNKNOWN_ERROR:
