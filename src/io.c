@@ -27,7 +27,10 @@ static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags,
 {
     // printf("avifIOMemoryReaderRead offset %" PRIu64 " size %zu\n", offset, size);
 
-    (void)readFlags;
+    if (readFlags != 0) {
+        // Unsupported readFlags
+        return AVIF_RESULT_IO_ERROR;
+    }
 
     avifIOMemoryReader * reader = (avifIOMemoryReader *)io;
 
@@ -78,7 +81,10 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
 {
     // printf("avifIOFileReaderRead offset %" PRIu64 " size %zu\n", offset, size);
 
-    (void)readFlags;
+    if (readFlags != 0) {
+        // Unsupported readFlags
+        return AVIF_RESULT_IO_ERROR;
+    }
 
     avifIOFileReader * reader = (avifIOFileReader *)io;
 
