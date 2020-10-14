@@ -5,6 +5,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+* avifIO reader API: allowing for parsing / image decoding without having the entire AVIF payload yet
+* Codec-specific options plumbing for advanced encoding settings
+* Add libaom codec-specific options (wantehchang)
+* avifenc: Allow endusers to ignore an AVIF's ICC profile during conversion (`--ignore-icc`)
+* avifenc: Allow the setting/overriding of XMP, Exif, and ICC profiles
+* Add the `disableGridImages` setting to `avifDecoder`
+* Add AVIF_FMT_ZU to fix compiling with non-standard/old compilers
+* Add `AVIF_ENABLE_WERROR` (ON by default)
+* Add `AVIF_ENABLE_COVERAGE` for basic llvm coverage report generation
+
+### Changed
+* Support multiple extents in an ItemLocationBox
+* Store all alpha payloads before color payloads in mdat
+* Perform 0.5 UV bias with integers, as 128/512/2048 aren't exactly 0.5, but are expected to behave as such
+* Avoid libpng's complaints about specific ICC profiles
+* Disable receiving one-frame-per-layer when decoding scalable AVIFs with aom and dav1d
+* Fix incorrect 8-to-16 monochrome YUV conversion
+* Set max image size to 16384 * 16384
+* Remove range and sample position from avifImageStealPlanes()
+* Ensure only one of each mandatory-unique box in a meta box exists
+* Ensure each item ID is cited once in an iloc box
+* Sanity check merged extents item size against the file size
+* Various image grid bugfixes
+* Error out with AVIF_RESULT_REFORMAT_FAILED if request uses an unsupported MC
+* Fix memory leak in avifenc when encoding image sequences
+* Move oss-fuzz fuzzer implementation into `tests/oss-fuzz`
+* avifdec: actually propagate the commandline codecChoice to the avifDecoder
+* Fix an infinite loop in codec_dav1d on a carefully-malformed AV1 payload
+* Fix a few issues with warnings in gcc/clang
+* Various comments tweaks
 
 ## [0.8.1] - 2020-08-05
 
