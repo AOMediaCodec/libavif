@@ -16,11 +16,10 @@
 typedef struct avifCodecInternal
 {
     /* SVT-AV1 Encoder Handle */
-    EbComponentType *svt_encoder;
+    EbComponentType * svt_encoder;
 
-    EbSvtAv1EncConfiguration *svt_config;
+    EbSvtAv1EncConfiguration * svt_config;
 } avifCodecInternal;
-
 
 static avifBool allocate_svt_buffers(EbBufferHeaderType ** input_buf);
 static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * output, avifBool done_sending_pics);
@@ -43,9 +42,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     EbColorFormat color_format = EB_YUV420;
 
     if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
-      return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+        return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
     }
-    
+
     int y_shift = 0;
     // EbColorRange svt_range;
     if (alpha) {
@@ -71,11 +70,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    EbSvtAv1EncConfiguration * svt_config = avifAlloc (sizeof (EbSvtAv1EncConfiguration));
+    EbSvtAv1EncConfiguration * svt_config = avifAlloc(sizeof(EbSvtAv1EncConfiguration));
     if (!svt_config)
-      return AVIF_RESULT_UNKNOWN_ERROR;
+        return AVIF_RESULT_UNKNOWN_ERROR;
     codec->internal->svt_config = svt_config;
-    
+
     svt_av1_enc_init_handle(&codec->internal->svt_encoder, NULL, svt_config);
     svt_config->encoder_color_format = color_format;
     svt_config->encoder_bit_depth = (uint8_t)image->depth;
@@ -87,7 +86,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     svt_config->enable_adaptive_quantization = AVIF_FALSE;
     // disable 2-pass
     svt_config->rc_firstpass_stats_out = AVIF_FALSE;
-    svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf){ NULL, 0 };
+    svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf) { NULL, 0 };
 
     if (alpha) {
         svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
@@ -96,7 +95,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
         svt_config->qp = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
     }
-    
+
     if (encoder->tileRowsLog2 != 0) {
         int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
         svt_config->tile_rows = 1 << tileRowsLog2;
@@ -107,7 +106,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     }
     if (encoder->speed != AVIF_SPEED_DEFAULT) {
         int speed = AVIF_CLAMP(encoder->speed, 0, 8);
-        svt_config->enc_mode = speed;
+        svt_config->enc_mode = (int8_t)speed;
     }
 
     if (color_format == EB_YUV422 || image->depth > 10) {
@@ -116,20 +115,19 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->profile = HIGH_PROFILE;
     }
 
-    EbErrorType res =
-      svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
+    EbErrorType res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
     EbBufferHeaderType * input_buffer = NULL;
     if (res == EB_ErrorBadParameter) {
-      goto cleanup;
+        goto cleanup;
     }
 
     res = svt_av1_enc_init(codec->internal->svt_encoder);
     if (res != EB_ErrorNone) {
-      goto cleanup;
+        goto cleanup;
     }
 
     allocate_svt_buffers(&input_buffer);
-    EbSvtIOFormat *input_picture_buffer = (EbSvtIOFormat *) input_buffer->p_buffer;
+    EbSvtIOFormat * input_picture_buffer = (EbSvtIOFormat *)input_buffer->p_buffer;
 
     int bytesPerPixel = image->depth > 8 ? 2 : 1;
     if (alpha) {
@@ -166,9 +164,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     result = dequeue_frame(codec, output, AVIF_FALSE);
 cleanup:
     if (input_buffer) {
-        avifFree (input_buffer->p_buffer);
+        avifFree(input_buffer->p_buffer);
         input_buffer->p_buffer = NULL;
-        avifFree (input_buffer);
+        avifFree(input_buffer);
         input_buffer = NULL;
     }
     return result;
@@ -197,7 +195,6 @@ static avifBool svtCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
 
 const char * avifCodecVersionSvt(void)
 {
-
     return SVT_FULL_VERSION;
 }
 
@@ -232,20 +229,20 @@ avifCodec * avifCodecCreateSvt(void)
 
 static avifBool allocate_svt_buffers(EbBufferHeaderType ** input_buf)
 {
-  *input_buf = avifAlloc (sizeof (EbBufferHeaderType));
-  if (!(*input_buf)) {
-    return AVIF_FALSE;
-  }
-  (*input_buf)->p_buffer = avifAlloc (sizeof (EbSvtIOFormat));
-  if (!(*input_buf)->p_buffer) {
-    return AVIF_FALSE;
-  }
-  memset((*input_buf)->p_buffer, 0, sizeof(EbSvtIOFormat));
-  (*input_buf)->size = sizeof (EbBufferHeaderType);
-  (*input_buf)->p_app_private = NULL;
-  (*input_buf)->pic_type = EB_AV1_INVALID_PICTURE;
+    *input_buf = avifAlloc(sizeof(EbBufferHeaderType));
+    if (!(*input_buf)) {
+        return AVIF_FALSE;
+    }
+    (*input_buf)->p_buffer = avifAlloc(sizeof(EbSvtIOFormat));
+    if (!(*input_buf)->p_buffer) {
+        return AVIF_FALSE;
+    }
+    memset((*input_buf)->p_buffer, 0, sizeof(EbSvtIOFormat));
+    (*input_buf)->size = sizeof(EbBufferHeaderType);
+    (*input_buf)->p_app_private = NULL;
+    (*input_buf)->pic_type = EB_AV1_INVALID_PICTURE;
 
-  return AVIF_TRUE;
+    return AVIF_TRUE;
 }
 
 static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * output, avifBool done_sending_pics)
@@ -254,14 +251,14 @@ static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * outpu
     int encode_at_eos = 0;
 
     do {
-        EbBufferHeaderType *output_buf = NULL;
+        EbBufferHeaderType * output_buf = NULL;
 
-        res = svt_av1_enc_get_packet(codec->internal->svt_encoder, &output_buf, done_sending_pics);
+        res = svt_av1_enc_get_packet(codec->internal->svt_encoder, &output_buf, (uint8_t)done_sending_pics);
         if (output_buf != NULL) {
-            encode_at_eos =
-                ((output_buf->flags & EB_BUFFERFLAG_EOS) == EB_BUFFERFLAG_EOS);
+            encode_at_eos = ((output_buf->flags & EB_BUFFERFLAG_EOS) == EB_BUFFERFLAG_EOS);
             if (output_buf->p_buffer && (output_buf->n_filled_len > 0)) {
-                avifCodecEncodeOutputAddSample(output, output_buf->p_buffer, output_buf->n_filled_len, (output_buf->pic_type == EB_AV1_KEY_PICTURE));
+                avifCodecEncodeOutputAddSample(
+                    output, output_buf->p_buffer, output_buf->n_filled_len, (output_buf->pic_type == EB_AV1_KEY_PICTURE));
             }
             svt_av1_enc_release_out_buffer(&output_buf);
         }

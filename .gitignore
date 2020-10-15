@@ -6,6 +6,7 @@
 /ext/libgav1
 /ext/libpng
 /ext/rav1e
+/ext/SVT-AV1
 /ext/zlib
 .clangd/
 cscope.*

@@ -1,12 +1,24 @@
+: # If you want to use a local build of SVT-AV1, you must clone the SVT-AV1 repo in this directory first,
+: # then enable CMake's AVIF_CODEC_SVT and AVIF_LOCAL_SVT options.
+: # cmake and ninja must be in your PATH.
 
-git clone https://github.com/AOMediaCodec/SVT-AV1.git
+: # The odd choice of comment style in this file is to try to share this script between *nix and win32.
+
+: # Switch to a sh-like command if not running in windows
+: ; $SHELL svt.sh
+: ; exit $?
+
+: # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
+: #    "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
+
+git clone --depth 1 https://github.com/AOMediaCodec/SVT-AV1.git
 
 cd SVT-AV1
-cd Build/linux
+cd Build/windows
 
-./build.sh release
+call build.bat release static
 cd ../..
-mkdir -p include/svt-av1
-cp Source/API/*.h include/svt-av1
+mkdir include\svt-av1
+copy Source\API\*.h include\svt-av1
 
 cd ..
