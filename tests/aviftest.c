@@ -279,7 +279,7 @@ static avifResult avifIOTestReaderRead(struct avifIO * io, uint32_t readFlags, u
     }
     uint64_t availableSize = reader->rodata.size - offset;
     if (size > availableSize) {
-        size = availableSize;
+        size = (size_t)availableSize;
     }
 
     if (offset > reader->availableBytes) {
