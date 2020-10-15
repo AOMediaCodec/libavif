@@ -195,6 +195,9 @@ avifCodec * avifCodecCreateGav1(void);    // requires AVIF_CODEC_LIBGAV1 (codec_
 const char * avifCodecVersionGav1(void);  // requires AVIF_CODEC_LIBGAV1 (codec_libgav1.c)
 avifCodec * avifCodecCreateRav1e(void);   // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
 const char * avifCodecVersionRav1e(void); // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
+avifCodec * avifCodecCreateSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
+const char * avifCodecVersionSvt(void); // requires AVIF_CODEC_SVT (codec_svt.c)
+
 
 // ---------------------------------------------------------------------------
 // avifStream

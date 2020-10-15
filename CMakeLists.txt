@@ -278,6 +278,41 @@ if(AVIF_CODEC_RAV1E)
     endif()
 endif()
 
+if(AVIF_CODEC_SVT)
+    message(STATUS "libavif: Codec enabled: svt (encode)")
+    set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_SVT=1)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/codec_svt.c
+    )
+
+    if(AVIF_LOCAL_SVT)
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/libSvtAv1Enc.so")
+        if(NOT EXISTS "${LIB_FILENAME}")
+            message(FATAL_ERROR "libavif: compiled svt library is missing (in ext/SVT-AV1/Bin/Release), bailing out")
+        endif()
+
+        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/include"
+        )
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
+    else()
+        # Check to see if svt is independently being built by the outer CMake project
+        if(NOT TARGET svt)
+            find_package(svt REQUIRED)
+            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${SVT_INCLUDE_DIR})
+        endif()
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
+    endif()
+
+    # Unfortunately, svt requires a few more libraries
+    if(WIN32)
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ws2_32.lib userenv.lib)
+    elseif(UNIX AND NOT APPLE)
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
+    endif()
+endif()
+
+
 if(AVIF_CODEC_AOM)
     message(STATUS "libavif: Codec enabled: aom (encode/decode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM=1)
