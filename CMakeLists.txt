@@ -305,15 +305,7 @@ if(AVIF_CODEC_SVT)
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
     endif()
-
-    # Unfortunately, svt requires a few more libraries
-    if(WIN32)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ws2_32.lib userenv.lib)
-    elseif(UNIX AND NOT APPLE)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
-    endif()
 endif()
-
 
 if(AVIF_CODEC_AOM)
     message(STATUS "libavif: Codec enabled: aom (encode/decode)")
@@ -329,7 +321,6 @@ if(AVIF_CODEC_AOM)
 
         set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.avif"
         )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
         message(STATUS "LIBAOM_INCLUDE_PATH: ${CMAKE_CURRENT_SOURCE_DIR}/ext/aom")
