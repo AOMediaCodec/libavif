@@ -396,7 +396,7 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     target_include_directories(avifenc
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
@@ -416,7 +416,7 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     target_include_directories(avifdec
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
