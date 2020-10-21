@@ -371,7 +371,8 @@ endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 if(AVIF_BUILD_APPS)
-    find_package(ZLIB REQUIRED)
+    # If find_package(ZLIB) is called twice, the second call fails. Since find_package(PNG) calls
+    # find_package(ZLIB) internally, we don't call find_package(ZLIB) here.
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)
 
