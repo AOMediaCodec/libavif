@@ -418,7 +418,6 @@ if(AVIF_BUILD_APPS)
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
                                    ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
-                                   ${ZLIB_INCLUDE_DIR}
                                    ${PNG_PNG_INCLUDE_DIR}
                                    ${JPEG_INCLUDE_DIR})
     add_executable(avifdec
@@ -438,7 +437,6 @@ if(AVIF_BUILD_APPS)
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
                                    ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
-                                   ${ZLIB_INCLUDE_DIR}
                                    ${PNG_PNG_INCLUDE_DIR}
                                    ${JPEG_INCLUDE_DIR})
 
