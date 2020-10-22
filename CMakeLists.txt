@@ -57,7 +57,10 @@ endif()
 option(AVIF_LOCAL_ZLIBPNG "Build zlib and libpng by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_ZLIBPNG)
     add_subdirectory(ext/zlib)
-    set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib")
+    # Put the value of ZLIB_INCLUDE_DIR in the cache. This works around cmake behavior that has been updated by
+    # cmake policy CMP0102 in cmake 3.17. Remove the CACHE workaround when we require cmake 3.17 or later. See
+    # https://gitlab.kitware.com/cmake/cmake/-/issues/21343.
+    set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE PATH "zlib include dir")
     include_directories("${CMAKE_CURRENT_BINARY_DIR}/ext/zlib")
     set(CMAKE_DEBUG_POSTFIX "")
 
