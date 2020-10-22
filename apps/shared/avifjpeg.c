@@ -50,7 +50,7 @@ avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFor
     FILE * f = fopen(inputFilename, "rb");
     if (!f) {
         fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
-        goto cleanup;
+        return ret;
     }
 
     struct my_error_mgr jerr;
