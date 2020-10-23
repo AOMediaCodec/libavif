@@ -6,6 +6,10 @@
 #include <math.h>
 #include <string.h>
 
+#if defined(AVIF_LIBYUV_ENABLED)
+#include <libyuv.h>
+#endif
+
 struct YUVBlock
 {
     float y;
@@ -947,6 +951,143 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
+    // Set to true when libyuv is successfully invoked, so avifImageYUVToRGB() can leave
+    // after handling alpha on its own. This is available outside of the AVIF_LIBYUV_ENABLED
+    // for the following alpha block to always be able to use it.
+    avifBool convertedWithLibYUV = AVIF_FALSE;
+
+#if defined(AVIF_LIBYUV_ENABLED)
+    // See if the current settings can be accomplished with libyuv, and use it (if possible).
+
+    // const struct YuvConstants * matrixYUV = NULL;
+    const struct YuvConstants * matrixYVU = NULL;
+    switch (image->matrixCoefficients) {
+        case AVIF_MATRIX_COEFFICIENTS_BT709:
+            // matrixYUV = &kYuvH709Constants;
+            matrixYVU = &kYvuH709Constants;
+            break;
+        case AVIF_MATRIX_COEFFICIENTS_BT470BG:
+        case AVIF_MATRIX_COEFFICIENTS_BT601:
+        case AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED:
+            // matrixYUV = &kYuvI601Constants;
+            matrixYVU = &kYvuI601Constants;
+            break;
+        case AVIF_MATRIX_COEFFICIENTS_BT2020_NCL:
+            // matrixYUV = &kYuv2020Constants;
+            matrixYVU = &kYvu2020Constants;
+            break;
+        case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL:
+            switch (image->colorPrimaries) {
+                case AVIF_COLOR_PRIMARIES_BT709:
+                    // matrixYUV = &kYuvH709Constants;
+                    matrixYVU = &kYvuH709Constants;
+                    break;
+                case AVIF_COLOR_PRIMARIES_BT470BG:
+                case AVIF_COLOR_PRIMARIES_BT601:
+                case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
+                    // matrixYUV = &kYuvI601Constants;
+                    matrixYVU = &kYvuI601Constants;
+                    break;
+                case AVIF_COLOR_PRIMARIES_BT2020:
+                    // matrixYUV = &kYuv2020Constants;
+                    matrixYVU = &kYvu2020Constants;
+                    break;
+
+                case AVIF_COLOR_PRIMARIES_UNKNOWN:
+                case AVIF_COLOR_PRIMARIES_BT470M:
+                case AVIF_COLOR_PRIMARIES_SMPTE240:
+                case AVIF_COLOR_PRIMARIES_GENERIC_FILM:
+                case AVIF_COLOR_PRIMARIES_XYZ:
+                case AVIF_COLOR_PRIMARIES_SMPTE431:
+                case AVIF_COLOR_PRIMARIES_SMPTE432:
+                case AVIF_COLOR_PRIMARIES_EBU3213:
+                    break;
+            }
+            break;
+        case AVIF_MATRIX_COEFFICIENTS_IDENTITY:
+        case AVIF_MATRIX_COEFFICIENTS_FCC:
+        case AVIF_MATRIX_COEFFICIENTS_SMPTE240:
+        case AVIF_MATRIX_COEFFICIENTS_YCGCO:
+        case AVIF_MATRIX_COEFFICIENTS_BT2020_CL:
+        case AVIF_MATRIX_COEFFICIENTS_SMPTE2085:
+        case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL:
+        case AVIF_MATRIX_COEFFICIENTS_ICTCP:
+            break;
+    }
+
+    if ((rgb->libYUVUsage != AVIF_LIBYUV_USAGE_DISABLED) && matrixYVU && (image->depth == 8) && (rgb->depth == 8)) {
+        if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
+            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+                if (I444ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                     image->yuvRowBytes[AVIF_CHAN_Y],
+                                     image->yuvPlanes[AVIF_CHAN_V],
+                                     image->yuvRowBytes[AVIF_CHAN_V],
+                                     image->yuvPlanes[AVIF_CHAN_U],
+                                     image->yuvRowBytes[AVIF_CHAN_U],
+                                     rgb->pixels,
+                                     rgb->rowBytes,
+                                     matrixYVU,
+                                     image->width,
+                                     image->height) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
+                }
+                convertedWithLibYUV = AVIF_TRUE;
+            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+                if (I422ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                     image->yuvRowBytes[AVIF_CHAN_Y],
+                                     image->yuvPlanes[AVIF_CHAN_V],
+                                     image->yuvRowBytes[AVIF_CHAN_V],
+                                     image->yuvPlanes[AVIF_CHAN_U],
+                                     image->yuvRowBytes[AVIF_CHAN_U],
+                                     rgb->pixels,
+                                     rgb->rowBytes,
+                                     matrixYVU,
+                                     image->width,
+                                     image->height) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
+                }
+                convertedWithLibYUV = AVIF_TRUE;
+            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                if (I420ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                     image->yuvRowBytes[AVIF_CHAN_Y],
+                                     image->yuvPlanes[AVIF_CHAN_V],
+                                     image->yuvRowBytes[AVIF_CHAN_V],
+                                     image->yuvPlanes[AVIF_CHAN_U],
+                                     image->yuvRowBytes[AVIF_CHAN_U],
+                                     rgb->pixels,
+                                     rgb->rowBytes,
+                                     matrixYVU,
+                                     image->width,
+                                     image->height) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
+                }
+                convertedWithLibYUV = AVIF_TRUE;
+            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                if (I400ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                     image->yuvRowBytes[AVIF_CHAN_Y],
+                                     rgb->pixels,
+                                     rgb->rowBytes,
+                                     matrixYVU,
+                                     image->width,
+                                     image->height) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
+                }
+                convertedWithLibYUV = AVIF_TRUE;
+            }
+        }
+    }
+
+    if (!convertedWithLibYUV && (rgb->libYUVUsage == AVIF_LIBYUV_USAGE_REQUIRED)) {
+        // libyuv was rqeuired, and the current combination couldn't be done with libyuv
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+#else // defined(AVIF_LIBYUV_ENABLED)
+    if (rgb->libYUVUsage == AVIF_LIBYUV_USAGE_REQUIRED) {
+        // Always fail if libyuv is required and isn't available
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+#endif
+
     if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
         avifAlphaParams params;
 
@@ -969,9 +1110,18 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
             avifReformatAlpha(&params);
         } else {
-            avifFillAlpha(&params);
+            if (!convertedWithLibYUV) { // libyuv fills alpha for us
+                avifFillAlpha(&params);
+            }
         }
     }
+
+#if defined(AVIF_LIBYUV_ENABLED)
+    // Do this after alpha conversion
+    if (convertedWithLibYUV) {
+        return AVIF_RESULT_OK;
+    }
+#endif
 
     const avifBool hasColor =
         (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));

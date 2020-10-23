@@ -5,6 +5,7 @@
 /ext/libjpeg
 /ext/libgav1
 /ext/libpng
+/ext/libyuv
 /ext/rav1e
 /ext/SVT-AV1
 /ext/zlib

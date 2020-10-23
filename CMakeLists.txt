@@ -86,6 +86,20 @@ if(AVIF_LOCAL_JPEG)
         set(JPEG_LIBRARY jpeg PARENT_SCOPE)
     endif()
 endif()
+option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
+if(AVIF_LOCAL_LIBYUV)
+    set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${CMAKE_STATIC_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    if(NOT EXISTS "${LIB_FILENAME}")
+        message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBYUV): ${LIB_FILENAME} is missing, bailing out")
+    endif()
+    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include")
+        set(LIBYUV_LIBRARY ${LIB_FILENAME})
+    else()
+        set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include" PARENT_SCOPE)
+        set(LIBYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
+    endif()
+endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
@@ -172,6 +186,8 @@ set(AVIF_SRCS
     src/write.c
 )
 
+set(AVIF_PLATFORM_DEFINITIONS)
+set(AVIF_PLATFORM_INCLUDES)
 set(AVIF_PLATFORM_LIBRARIES)
 if(UNIX)
     # Find out if we have threading available
@@ -179,6 +195,16 @@ if(UNIX)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
     set(AVIF_PLATFORM_LIBRARIES m Threads::Threads)
+endif()
+
+find_package(LIBYUV) # not required
+if(LIBYUV_FOUND)
+    message(STATUS "libavif: libyuv found, libyuv-based fast paths enabled.")
+    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
+    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
+    set(AVIF_PLATFORM_LIBRARIES ${LIBYUV_LIBRARY})
+else()
+    message(STATUS "libavif: libyuv not found, libyuv-based fast paths disabled.")
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)
@@ -323,7 +349,6 @@ if(AVIF_CODEC_AOM)
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
         )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-        message(STATUS "LIBAOM_INCLUDE_PATH: ${CMAKE_CURRENT_SOURCE_DIR}/ext/aom")
     else()
         # Check to see if aom is independently being built by the outer CMake project
         if(NOT TARGET aom)
@@ -344,13 +369,13 @@ set_target_properties(avif
                           VERSION ${LIBRARY_VERSION}
                           SOVERSION ${LIBRARY_SOVERSION})
 target_compile_definitions(avif
-                           PRIVATE ${AVIF_CODEC_DEFINITIONS})
+                           PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>
-                           PRIVATE ${AVIF_CODEC_INCLUDES})
+                           PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)

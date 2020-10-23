@@ -396,6 +396,13 @@ typedef enum avifChromaUpsampling
     AVIF_CHROMA_UPSAMPLING_NEAREST = 1   // Faster and uglier
 } avifChromaUpsampling;
 
+typedef enum avifLibYUVUsage
+{
+    AVIF_LIBYUV_USAGE_AUTOMATIC = 0, // Use libyuv if compiled-in and possible with the current settings (default)
+    AVIF_LIBYUV_USAGE_DISABLED,      // Avoid libyuv conversion, even if it is available
+    AVIF_LIBYUV_USAGE_REQUIRED       // If libyuv is unavailable or if the current combination cannot use it, fail
+} avifLibYUVUsage;
+
 typedef struct avifRGBImage
 {
     uint32_t width;                        // must match associated avifImage
@@ -406,6 +413,9 @@ typedef struct avifRGBImage
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
     avifBool ignoreAlpha; // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                           // RGB, treating the alpha bits as if they were all 1.
+
+    avifLibYUVUsage libYUVUsage; // Defaults to "automatic", but can be forced on or off for easy testing,
+                                 // or avoiding unexpected (slower) YUV paths.
 
     uint8_t * pixels;
     uint32_t rowBytes;
