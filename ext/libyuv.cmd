@@ -14,5 +14,5 @@ mkdir build
 cd build
 
 cmake -G Ninja -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=Release ..
-ninja
+ninja yuv
 cd ../..

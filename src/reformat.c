@@ -7,7 +7,15 @@
 #include <string.h>
 
 #if defined(AVIF_LIBYUV_ENABLED)
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes" // "this function declaration is not a prototype"
+#endif
 #include <libyuv.h>
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 #endif
 
 struct YUVBlock

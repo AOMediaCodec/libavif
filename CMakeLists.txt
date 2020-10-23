@@ -197,8 +197,8 @@ if(UNIX)
     set(AVIF_PLATFORM_LIBRARIES m Threads::Threads)
 endif()
 
-find_package(LIBYUV) # not required
-if(LIBYUV_FOUND)
+find_package(libyuv) # not required
+if(libyuv_FOUND)
     message(STATUS "libavif: libyuv found, libyuv-based fast paths enabled.")
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
     set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
