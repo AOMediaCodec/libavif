@@ -1078,7 +1078,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     }
 
     if (!convertedWithLibYUV && (rgb->libYUVUsage == AVIF_LIBYUV_USAGE_REQUIRED)) {
-        // libyuv was rqeuired, and the current combination couldn't be done with libyuv
+        // libyuv was required, and the current combination couldn't be done with libyuv
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 #else // defined(AVIF_LIBYUV_ENABLED)
@@ -1272,4 +1272,13 @@ int avifFullToLimitedUV(int depth, int v)
             break;
     }
     return v;
+}
+
+unsigned int avifLibYUVVersion(void)
+{
+#if defined(AVIF_LIBYUV_ENABLED)
+    return (unsigned int)LIBYUV_VERSION;
+#else
+    return 0;
+#endif
 }

@@ -55,7 +55,16 @@ void avifPrintVersions(void)
 {
     char codecVersions[256];
     avifCodecVersions(codecVersions);
-    printf("Version: %s (%s)\n\n", avifVersion(), codecVersions);
+    printf("Version: %s (%s)\n", avifVersion(), codecVersions);
+
+    unsigned int libyuvVersion = avifLibYUVVersion();
+    if (libyuvVersion == 0) {
+        printf("libyuv : unavailable\n");
+    } else {
+        printf("libyuv : available (%u)\n", libyuvVersion);
+    }
+
+    printf("\n");
 }
 
 avifAppFileFormat avifGuessFileFormat(const char * filename)

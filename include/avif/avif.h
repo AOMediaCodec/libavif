@@ -59,6 +59,7 @@ enum avifChannelIndex
 
 const char * avifVersion(void);
 void avifCodecVersions(char outBuffer[256]);
+unsigned int avifLibYUVVersion(void); // returns 0 if libavif wasn't compiled with libyuv support
 
 // ---------------------------------------------------------------------------
 // Memory management
