@@ -22,14 +22,18 @@ if (PKG_CONFIG_FOUND)
     pkg_check_modules(_LIBYUV libyuv)
 endif (PKG_CONFIG_FOUND)
 
-find_path(LIBYUV_INCLUDE_DIR
-          NAMES libyuv/libyuv.h
-          PATHS ${_LIBYUV_INCLUDEDIR}
-)
+if (NOT LIBYUV_INCLUDE_DIR)
+    find_path(LIBYUV_INCLUDE_DIR
+              NAMES libyuv/libyuv.h
+              PATHS ${_LIBYUV_INCLUDEDIR}
+    )
+endif()
 
-find_library(LIBYUV_LIBRARY
-             NAMES yuv
-             PATHS ${_LIBYUV_LIBDIR})
+if (NOT LIBYUV_LIBRARY)
+    find_library(LIBYUV_LIBRARY
+                 NAMES yuv
+                 PATHS ${_LIBYUV_LIBDIR})
+endif()
 
 if (LIBYUV_LIBRARY)
     set(LIBYUV_LIBRARIES
