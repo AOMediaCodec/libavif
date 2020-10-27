@@ -24,7 +24,7 @@ endif (PKG_CONFIG_FOUND)
 
 if (NOT LIBYUV_INCLUDE_DIR)
     find_path(LIBYUV_INCLUDE_DIR
-              NAMES libyuv/libyuv.h
+              NAMES libyuv.h
               PATHS ${_LIBYUV_INCLUDEDIR}
     )
 endif()
