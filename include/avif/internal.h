@@ -91,6 +91,12 @@ typedef struct avifAlphaParams
 avifBool avifFillAlpha(const avifAlphaParams * const params);
 avifBool avifReformatAlpha(const avifAlphaParams * const params);
 
+// Returns:
+// * AVIF_RESULT_OK         - Converted successfully with libavif
+// * AVIF_RESULT_NO_CONTENT - Incapable of converting this combination with libyuv, use built-in YUV conversion
+// * [any other error]      - Return error to caller
+avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
+
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
@@ -195,9 +201,8 @@ avifCodec * avifCodecCreateGav1(void);    // requires AVIF_CODEC_LIBGAV1 (codec_
 const char * avifCodecVersionGav1(void);  // requires AVIF_CODEC_LIBGAV1 (codec_libgav1.c)
 avifCodec * avifCodecCreateRav1e(void);   // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
 const char * avifCodecVersionRav1e(void); // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
-avifCodec * avifCodecCreateSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
-const char * avifCodecVersionSvt(void); // requires AVIF_CODEC_SVT (codec_svt.c)
-
+avifCodec * avifCodecCreateSvt(void);     // requires AVIF_CODEC_SVT (codec_svt.c)
+const char * avifCodecVersionSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
 
 // ---------------------------------------------------------------------------
 // avifStream

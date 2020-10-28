@@ -181,6 +181,7 @@ set(AVIF_SRCS
     src/rawdata.c
     src/read.c
     src/reformat.c
+    src/reformat_libyuv.c
     src/stream.c
     src/utils.c
     src/write.c
