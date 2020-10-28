@@ -34,6 +34,7 @@ static void syntax(void)
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). bilinear (default) or nearest\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
+    printf("    --libyuv          : Use libyuv to decode, if possible (8bpc only)\n");
     printf("\n");
     avifPrintVersions();
 }
@@ -93,6 +94,7 @@ int main(int argc, char * argv[])
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
     avifBool ignoreICC = AVIF_FALSE;
+    avifLibYUVUsage libYUVUsage = AVIF_LIBYUV_USAGE_DISABLED; // Use built-in paths by default for consistency and control over subsampling
 
     if (argc < 2) {
         syntax();
@@ -148,6 +150,8 @@ int main(int argc, char * argv[])
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
+        } else if (!strcmp(arg, "--libyuv")) {
+            libYUVUsage = AVIF_LIBYUV_USAGE_AUTOMATIC;
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -208,11 +212,11 @@ int main(int argc, char * argv[])
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-            if (!avifJPEGWrite(avif, outputFilename, jpegQuality, chromaUpsampling)) {
+            if (!avifJPEGWrite(avif, outputFilename, jpegQuality, chromaUpsampling, libYUVUsage)) {
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-            if (!avifPNGWrite(avif, outputFilename, requestedDepth, chromaUpsampling)) {
+            if (!avifPNGWrite(avif, outputFilename, requestedDepth, chromaUpsampling, libYUVUsage)) {
                 returnCode = 1;
             }
         } else {
