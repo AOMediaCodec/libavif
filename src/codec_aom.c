@@ -420,6 +420,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
             cfg.g_limit = 1;
+            // Set g_lag_in_frames to 1 to reduce the number of frame buffers
+            // (from 20 to 2) in libaom's lookahead structure. This reduces
+            // memory consumption when encoding a single image.
+            cfg.g_lag_in_frames = 1;
         }
         if (encoder->maxThreads > 1) {
             cfg.g_threads = encoder->maxThreads;
