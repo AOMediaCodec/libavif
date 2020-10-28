@@ -947,13 +947,17 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
-    avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
-    if ((libyuvResult != AVIF_RESULT_OK) && (libyuvResult != AVIF_RESULT_NO_CONTENT)) {
-        return libyuvResult;
-    }
-    if ((libyuvResult != AVIF_RESULT_OK) && (rgb->libYUVUsage == AVIF_LIBYUV_USAGE_REQUIRED)) {
-        // libyuv was required, and the current combination couldn't be done with libyuv
-        return AVIF_RESULT_REFORMAT_FAILED;
+    avifBool convertedWithLibYUV = AVIF_FALSE;
+    if (rgb->libYUVUsage != AVIF_LIBYUV_USAGE_DISABLED) {
+        avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
+        if ((libyuvResult != AVIF_RESULT_OK) && (libyuvResult != AVIF_RESULT_NO_CONTENT)) {
+            return libyuvResult;
+        }
+        if ((libyuvResult != AVIF_RESULT_OK) && (rgb->libYUVUsage == AVIF_LIBYUV_USAGE_REQUIRED)) {
+            // libyuv was required, and the current combination couldn't be done with libyuv
+            return AVIF_RESULT_REFORMAT_FAILED;
+        }
+        convertedWithLibYUV = (libyuvResult == AVIF_RESULT_OK);
     }
 
     if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
@@ -978,14 +982,14 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
             avifReformatAlpha(&params);
         } else {
-            if (libyuvResult != AVIF_RESULT_OK) { // libyuv fills alpha for us
+            if (!convertedWithLibYUV) { // libyuv fills alpha for us
                 avifFillAlpha(&params);
             }
         }
     }
 
     // Do this after alpha conversion
-    if (libyuvResult == AVIF_RESULT_OK) {
+    if (convertedWithLibYUV) {
         return AVIF_RESULT_OK;
     }
 

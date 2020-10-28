@@ -32,7 +32,7 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
 {
     // See if the current settings can be accomplished with libyuv, and use it (if possible).
 
-    if ((rgb->libYUVUsage == AVIF_LIBYUV_USAGE_DISABLED) || (image->depth != 8) || (rgb->depth != 8)) {
+    if ((image->depth != 8) || (rgb->depth != 8)) {
         return AVIF_RESULT_NO_CONTENT;
     }
 
