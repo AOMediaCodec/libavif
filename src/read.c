@@ -1379,6 +1379,12 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
         } else {
             CHECK(avifROStreamReadU32(&s, &itemID));
         }
+
+        avifDecoderItem * item = avifMetaFindItem(meta, itemID);
+        if (!item) {
+            return AVIF_FALSE;
+        }
+
         uint8_t associationCount;
         CHECK(avifROStreamRead(&s, &associationCount, 1));
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
@@ -1402,11 +1408,6 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
             --propertyIndex; // 1-indexed
 
             if (propertyIndex >= meta->properties.count) {
-                return AVIF_FALSE;
-            }
-
-            avifDecoderItem * item = avifMetaFindItem(meta, itemID);
-            if (!item) {
                 return AVIF_FALSE;
             }
 
