@@ -29,8 +29,8 @@ before_script:
   - cd ..
   - mkdir build
   - cd build
-  - cmake -G Ninja -DCMAKE_BUILD_TYPE=$config -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON -DAVIF_BUILD_TESTS=ON ..
 script:
+  - cmake -G Ninja -DCMAKE_BUILD_TYPE=$config -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON -DAVIF_BUILD_TESTS=ON ..
   - ninja
 
 matrix:
@@ -44,6 +44,18 @@ matrix:
   - name: "Clang Debug"
     compiler: clang
     config: Debug
+  - name: "Clang Debug (aom decode only)"
+    compiler: clang
+    config: Debug
+    script:
+      - cmake -G Ninja -DCMAKE_BUILD_TYPE=$config -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_AOM_ENCODE=0 -DAVIF_BUILD_APPS=ON ..
+      - ninja
+  - name: "Clang Debug (aom encode only)"
+    compiler: clang
+    config: Debug
+    script:
+      - cmake -G Ninja -DCMAKE_BUILD_TYPE=$config -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_AOM_DECODE=0 -DAVIF_BUILD_APPS=ON ..
+      - ninja
   - name: "Clang Release"
     compiler: clang
     config: Release
