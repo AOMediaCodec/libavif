@@ -393,8 +393,9 @@ avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
 typedef enum avifChromaUpsampling
 {
-    AVIF_CHROMA_UPSAMPLING_BILINEAR = 0, // Slower and prettier (default)
-    AVIF_CHROMA_UPSAMPLING_NEAREST = 1   // Faster and uglier
+    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0, // Chooses the best quality upsampling given the settings (currently bilinear always)
+    AVIF_CHROMA_UPSAMPLING_NEAREST = 1,   // Faster and uglier
+    AVIF_CHROMA_UPSAMPLING_BILINEAR = 2   // Slower and prettier
 } avifChromaUpsampling;
 
 typedef enum avifLibYUVUsage

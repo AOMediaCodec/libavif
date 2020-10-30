@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
@@ -358,6 +359,12 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
     const uint16_t yuvMaxChannel = (uint16_t)state->yuvMaxChannel;
     const float rgbMaxChannelF = state->rgbMaxChannelF;
 
+    // If upsampling is AUTOMATIC, choose an appropriate upsampling filter here.
+    // (This might be more complicated in the future.)
+    const avifChromaUpsampling chromaUpsampling =
+        (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST) ? AVIF_CHROMA_UPSAMPLING_NEAREST : AVIF_CHROMA_UPSAMPLING_BILINEAR;
+    assert(chromaUpsampling != AVIF_CHROMA_UPSAMPLING_AUTOMATIC);
+
     for (uint32_t j = 0; j < image->height; ++j) {
         const uint32_t uvJ = j >> state->formatInfo.chromaShiftY;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
@@ -493,13 +500,15 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         }
                     }
 
-                    if (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR) {
+                    if (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR) {
                         // Bilinear filtering with weights
                         Cb = (unormFloatTableUV[unormU[0][0]] * (9.0f / 16.0f)) + (unormFloatTableUV[unormU[1][0]] * (3.0f / 16.0f)) +
                              (unormFloatTableUV[unormU[0][1]] * (3.0f / 16.0f)) + (unormFloatTableUV[unormU[1][1]] * (1.0f / 16.0f));
                         Cr = (unormFloatTableUV[unormV[0][0]] * (9.0f / 16.0f)) + (unormFloatTableUV[unormV[1][0]] * (3.0f / 16.0f)) +
                              (unormFloatTableUV[unormV[0][1]] * (3.0f / 16.0f)) + (unormFloatTableUV[unormV[1][1]] * (1.0f / 16.0f));
                     } else {
+                        assert(chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST);
+
                         // Nearest neighbor; ignore all UVs but the closest one
                         Cb = unormFloatTableUV[unormU[0][0]];
                         Cr = unormFloatTableUV[unormV[0][0]];
