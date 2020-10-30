@@ -11,10 +11,15 @@
 #pragma clang diagnostic ignored "-Wused-but-marked-unused"
 #endif
 
-#include "aom/aom_decoder.h"
+#if defined(AVIF_CODEC_AOM_ENCODE)
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
+#endif
+
+#if defined(AVIF_CODEC_AOM_DECODE)
+#include "aom/aom_decoder.h"
 #include "aom/aomdx.h"
+#endif
 
 #ifdef __clang__
 #pragma clang diagnostic pop
@@ -31,29 +36,39 @@
 
 struct avifCodecInternal
 {
+#if defined(AVIF_CODEC_AOM_DECODE)
     avifBool decoderInitialized;
     aom_codec_ctx_t decoder;
     aom_codec_iter_t iter;
     aom_image_t * image;
+#endif
 
+#if defined(AVIF_CODEC_AOM_ENCODE)
     avifBool encoderInitialized;
     aom_codec_ctx_t encoder;
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
     avifBool monochromeEnabled;
+#endif
 };
 
 static void aomCodecDestroyInternal(avifCodec * codec)
 {
+#if defined(AVIF_CODEC_AOM_DECODE)
     if (codec->internal->decoderInitialized) {
         aom_codec_destroy(&codec->internal->decoder);
     }
+#endif
+
+#if defined(AVIF_CODEC_AOM_ENCODE)
     if (codec->internal->encoderInitialized) {
         aom_codec_destroy(&codec->internal->encoder);
     }
     avifFree(codec->internal);
+#endif
 }
 
+#if defined(AVIF_CODEC_AOM_DECODE)
 static avifBool aomCodecOpen(struct avifCodec * codec)
 {
     aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
@@ -184,6 +199,9 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec, const avifDecodeS
 
     return AVIF_TRUE;
 }
+#endif // defined(AVIF_CODEC_AOM_DECODE)
+
+#if defined(AVIF_CODEC_AOM_ENCODE)
 
 static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha)
 {
@@ -605,6 +623,8 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
     return AVIF_TRUE;
 }
 
+#endif // defined(AVIF_CODEC_AOM_ENCODE)
+
 const char * avifCodecVersionAOM(void)
 {
     return aom_codec_version_str();
@@ -614,12 +634,18 @@ avifCodec * avifCodecCreateAOM(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
+
+#if defined(AVIF_CODEC_AOM_DECODE)
     codec->open = aomCodecOpen;
     codec->getNextImage = aomCodecGetNextImage;
+#endif
+
+#if defined(AVIF_CODEC_AOM_ENCODE)
     codec->encodeImage = aomCodecEncodeImage;
     codec->encodeFinish = aomCodecEncodeFinish;
-    codec->destroyInternal = aomCodecDestroyInternal;
+#endif
 
+    codec->destroyInternal = aomCodecDestroyInternal;
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     return codec;

@@ -470,7 +470,18 @@ static struct AvailableCodec availableCodecs[] = {
     { AVIF_CODEC_CHOICE_LIBGAV1, "libgav1", avifCodecVersionGav1, avifCodecCreateGav1, AVIF_CODEC_FLAG_CAN_DECODE },
 #endif
 #if defined(AVIF_CODEC_AOM)
-    { AVIF_CODEC_CHOICE_AOM, "aom", avifCodecVersionAOM, avifCodecCreateAOM, AVIF_CODEC_FLAG_CAN_DECODE | AVIF_CODEC_FLAG_CAN_ENCODE },
+    { AVIF_CODEC_CHOICE_AOM,
+      "aom",
+      avifCodecVersionAOM,
+      avifCodecCreateAOM,
+#if defined(AVIF_CODEC_AOM_DECODE) && defined(AVIF_CODEC_AOM_ENCODE)
+      AVIF_CODEC_FLAG_CAN_DECODE | AVIF_CODEC_FLAG_CAN_ENCODE
+#elif defined(AVIF_CODEC_AOM_DECODE)
+      AVIF_CODEC_FLAG_CAN_DECODE
+#elif defined(AVIF_CODEC_AOM_ENCODE)
+      AVIF_CODEC_FLAG_CAN_ENCODE
+#endif
+    },
 #endif
 #if defined(AVIF_CODEC_RAV1E)
     { AVIF_CODEC_CHOICE_RAV1E, "rav1e", avifCodecVersionRav1e, avifCodecCreateRav1e, AVIF_CODEC_FLAG_CAN_ENCODE },
@@ -549,6 +560,14 @@ void avifCodecVersions(char outBuffer[256])
             append(&writePos, &remainingLen, ", ");
         }
         append(&writePos, &remainingLen, availableCodecs[i].name);
+        if ((availableCodecs[i].flags & (AVIF_CODEC_FLAG_CAN_ENCODE | AVIF_CODEC_FLAG_CAN_DECODE)) ==
+            (AVIF_CODEC_FLAG_CAN_ENCODE | AVIF_CODEC_FLAG_CAN_DECODE)) {
+            append(&writePos, &remainingLen, " [enc/dec]");
+        } else if (availableCodecs[i].flags & AVIF_CODEC_FLAG_CAN_ENCODE) {
+            append(&writePos, &remainingLen, " [enc]");
+        } else if (availableCodecs[i].flags & AVIF_CODEC_FLAG_CAN_DECODE) {
+            append(&writePos, &remainingLen, " [dec]");
+        }
         append(&writePos, &remainingLen, ":");
         append(&writePos, &remainingLen, availableCodecs[i].version());
     }

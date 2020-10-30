@@ -24,13 +24,6 @@ typedef struct avifCodecInternal
 static avifBool allocate_svt_buffers(EbBufferHeaderType ** input_buf);
 static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * output, avifBool done_sending_pics);
 
-static avifBool svtCodecOpen(struct avifCodec * codec)
-{
-    (void)(codec);
-
-    return AVIF_TRUE;
-}
-
 static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
@@ -216,7 +209,6 @@ avifCodec * avifCodecCreateSvt(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
-    codec->open = svtCodecOpen;
     codec->encodeImage = svtCodecEncodeImage;
     codec->encodeFinish = svtCodecEncodeFinish;
     codec->destroyInternal = svtCodecDestroyInternal;

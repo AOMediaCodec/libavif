@@ -41,6 +41,10 @@ option(AVIF_LOCAL_LIBGAV1 "Build the libgav1 codec by providing your own copy of
 option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo in ext/rav1e (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_SVT "Build the SVT-AV1 codec by providing your own copy of the repo in ext/SVT-AV1 (see Local Builds in README)" OFF)
 
+# These options allow libavif to only link against / use libaom's encoder or decoder, instead of being forced to use both
+option(AVIF_CODEC_AOM_DECODE "if AVIF_CODEC_AOM is on, use/offer libaom's decoder" ON)
+option(AVIF_CODEC_AOM_ENCODE "if AVIF_CODEC_AOM is on, use/offer libaom's encoder" ON)
+
 if(AVIF_LOCAL_LIBGAV1)
     enable_language(CXX)
 endif()
@@ -338,7 +342,18 @@ if(AVIF_CODEC_SVT)
 endif()
 
 if(AVIF_CODEC_AOM)
-    message(STATUS "libavif: Codec enabled: aom (encode/decode)")
+    if(AVIF_CODEC_AOM_ENCODE AND AVIF_CODEC_AOM_DECODE)
+        message(STATUS "libavif: Codec enabled: aom (encode/decode)")
+        set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_AOM_DECODE=1)
+    elseif(AVIF_CODEC_AOM_ENCODE)
+        message(STATUS "libavif: Codec enabled: aom (encode only)")
+        set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1)
+    elseif(AVIF_CODEC_AOM_DECODE)
+        message(STATUS "libavif: Codec enabled: aom (decode only)")
+        set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_DECODE=1)
+    else()
+        message(FATAL_ERROR "libavif: AVIF_CODEC_AOM is on, but both AVIF_CODEC_AOM_ENCODE and AVIF_CODEC_AOM_DECODE are off. Disable AVIF_CODEC_AOM to disable both parts of the codec.")
+    endif()
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_aom.c
