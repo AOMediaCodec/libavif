@@ -398,11 +398,19 @@ target_include_directories(avif
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
-    add_executable(avif_example1 examples/avif_example1.c)
-    if(AVIF_LOCAL_LIBGAV1)
-        set_target_properties(avif_example1 PROPERTIES LINKER_LANGUAGE "CXX")
-    endif()
-    target_link_libraries(avif_example1 avif ${AVIF_PLATFORM_LIBRARIES})
+    set(AVIF_EXAMPLES
+        avif_example_decode_memory
+        avif_example_decode_file
+        avif_example_encode
+    )
+
+    foreach(EXAMPLE ${AVIF_EXAMPLES})
+        add_executable(${EXAMPLE} examples/${EXAMPLE}.c)
+        if(AVIF_LOCAL_LIBGAV1)
+            set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
+        endif()
+        target_link_libraries(${EXAMPLE} avif ${AVIF_PLATFORM_LIBRARIES})
+    endforeach()
 endif()
 
 if(CMAKE_SKIP_INSTALL_RULES)
@@ -572,6 +580,11 @@ if(WIN32)
     endif()
     if(AVIF_LOCAL_JPEG)
         avif_set_folder_safe(jpeg "ext/libjpeg")
+    endif()
+    if(AVIF_BUILD_EXAMPLES)
+        foreach(EXAMPLE ${AVIF_EXAMPLES})
+            avif_set_folder_safe(${EXAMPLE} "ext/avif/examples")
+        endforeach()
     endif()
 endif()
 
