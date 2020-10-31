@@ -282,7 +282,7 @@ avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData *
 
 // A maximum image size to avoid out-of-memory errors or integer overflow in
 // (32-bit) int or unsigned int arithmetic operations.
-#define AVIF_MAX_IMAGE_SIZE (16384 * 16384)
+#define AVIF_MAX_IMAGE_SIZE (32768 * 32768)
 
 #ifdef __cplusplus
 } // extern "C"
