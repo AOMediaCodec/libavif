@@ -51,50 +51,51 @@ int main(int argc, char * argv[])
     }
 
     result = avifDecoderParse(decoder);
-    if (result == AVIF_RESULT_OK) {
-        // Now available:
-        // * All decoder->image information other than pixel data:
-        //   * width, height, depth
-        //   * transformations (pasp, clap, irot, imir)
-        //   * color profile (icc, CICP)
-        //   * metadata (Exif, XMP)
-        // * decoder->alphaPresent
-        // * number of total images in the AVIF (decoder->imageCount)
-        // * overall image sequence timing (including per-frame timing with avifDecoderNthImageTiming())
+    if (result != AVIF_RESULT_OK) {
+        fprintf(stderr, "Failed to decode image: %s\n", avifResultToString(result));
+        goto cleanup;
+    }
 
-        printf("Decoded frame: %ux%u (%ubpc)\n", decoder->image->width, decoder->image->height, decoder->image->depth);
+    // Now available:
+    // * All decoder->image information other than pixel data:
+    //   * width, height, depth
+    //   * transformations (pasp, clap, irot, imir)
+    //   * color profile (icc, CICP)
+    //   * metadata (Exif, XMP)
+    // * decoder->alphaPresent
+    // * number of total images in the AVIF (decoder->imageCount)
+    // * overall image sequence timing (including per-frame timing with avifDecoderNthImageTiming())
 
-        while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-            // Now available (for this frame):
-            // * All decoder->image YUV pixel data (yuvFormat, yuvPlanes, yuvRange, yuvChromaSamplePosition, yuvRowBytes)
-            // * decoder->image alpha data (alphaRange, alphaPlane, alphaRowBytes)
-            // * this frame's sequence timing
+    printf("Parsed AVIF: %ux%u (%ubpc)\n", decoder->image->width, decoder->image->height, decoder->image->depth);
 
-            avifRGBImageSetDefaults(&rgb, decoder->image);
-            // Override YUV(A)->RGB(A) defaults here: depth, format, chromaUpsampling, ignoreAlpha, libYUVUsage, etc
+    while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
+        // Now available (for this frame):
+        // * All decoder->image YUV pixel data (yuvFormat, yuvPlanes, yuvRange, yuvChromaSamplePosition, yuvRowBytes)
+        // * decoder->image alpha data (alphaRange, alphaPlane, alphaRowBytes)
+        // * this frame's sequence timing
 
-            // Alternative: set rgb.pixels and rgb.rowBytes yourself, which should match your chosen rgb.format
-            // Be sure to use uint16_t* instead of uint8_t* for rgb.pixels/rgb.rowBytes if (rgb.depth > 8)
-            avifRGBImageAllocatePixels(&rgb);
+        avifRGBImageSetDefaults(&rgb, decoder->image);
+        // Override YUV(A)->RGB(A) defaults here: depth, format, chromaUpsampling, ignoreAlpha, libYUVUsage, etc
 
-            if (avifImageYUVToRGB(decoder->image, &rgb) != AVIF_RESULT_OK) {
-                fprintf(stderr, "Conversion from YUV failed: %s\n", inputFilename);
-                goto cleanup;
-            }
+        // Alternative: set rgb.pixels and rgb.rowBytes yourself, which should match your chosen rgb.format
+        // Be sure to use uint16_t* instead of uint8_t* for rgb.pixels/rgb.rowBytes if (rgb.depth > 8)
+        avifRGBImageAllocatePixels(&rgb);
 
-            // Now available:
-            // * RGB(A) pixel data (rgb.pixels, rgb.rowBytes)
-
-            if (rgb.depth > 8) {
-                uint16_t * firstPixel = (uint16_t *)rgb.pixels;
-                printf(" * First pixel: RGBA(%u,%u,%u,%u)\n", firstPixel[0], firstPixel[1], firstPixel[2], firstPixel[3]);
-            } else {
-                uint8_t * firstPixel = rgb.pixels;
-                printf(" * First pixel: RGBA(%u,%u,%u,%u)\n", firstPixel[0], firstPixel[1], firstPixel[2], firstPixel[3]);
-            }
+        if (avifImageYUVToRGB(decoder->image, &rgb) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Conversion from YUV failed: %s\n", inputFilename);
+            goto cleanup;
         }
-    } else {
-        printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
+
+        // Now available:
+        // * RGB(A) pixel data (rgb.pixels, rgb.rowBytes)
+
+        if (rgb.depth > 8) {
+            uint16_t * firstPixel = (uint16_t *)rgb.pixels;
+            printf(" * First pixel: RGBA(%u,%u,%u,%u)\n", firstPixel[0], firstPixel[1], firstPixel[2], firstPixel[3]);
+        } else {
+            uint8_t * firstPixel = rgb.pixels;
+            printf(" * First pixel: RGBA(%u,%u,%u,%u)\n", firstPixel[0], firstPixel[1], firstPixel[2], firstPixel[3]);
+        }
     }
 
     returnCode = 0;
