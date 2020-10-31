@@ -544,6 +544,7 @@ typedef void (*avifIODestroyFunc)(struct avifIO * io);
 // this avifIO struct is made (reusing a read buffer is acceptable/expected).
 //
 // * If offset exceeds the size of the content (past EOF), return AVIF_RESULT_IO_ERROR.
+// * If offset is *exactly* at EOF, provide a 0-byte buffer and return AVIF_RESULT_OK.
 // * If (offset+size) does not exceed the contents' size but the *entire range* is unavailable yet
 //   (due to network conditions or any other reason), return AVIF_RESULT_WAITING_ON_IO.
 // * If (offset+size) does not exceed the contents' size, it must provide the *entire range* and

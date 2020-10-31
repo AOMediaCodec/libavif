@@ -401,6 +401,7 @@ if(AVIF_BUILD_EXAMPLES)
     set(AVIF_EXAMPLES
         avif_example_decode_memory
         avif_example_decode_file
+        avif_example_decode_streaming
         avif_example_encode
     )
 
