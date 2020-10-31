@@ -338,6 +338,13 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, uint32_t addImageFlags)
 {
     // -----------------------------------------------------------------------
+    // Verify encoding is possible
+
+    if (!avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE)) {
+        return AVIF_RESULT_NO_CODEC_AVAILABLE;
+    }
+
+    // -----------------------------------------------------------------------
     // Validate image
 
     if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
