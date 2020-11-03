@@ -146,6 +146,7 @@ typedef struct avifDecoderItem
     uint32_t descForID;            // if non-zero, this item is a content description for Item #{descForID}
     uint32_t dimgForID;            // if non-zero, this item is a derived image for Item #{dimgForID}
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
+    avifBool ipmaSeen; // if true, this item already received a property association
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem, item);
 
@@ -1370,7 +1371,11 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
 
     uint32_t entryCount;
     CHECK(avifROStreamReadU32(&s, &entryCount));
+    unsigned int prevItemID = 0;
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
+        // ISO/IEC 23008-12, First edition, 2017-12, Section 9.3.1:
+        //   Each ItemPropertyAssociation box shall be ordered by increasing item_ID, and there shall
+        //   be at most one association box for each item_ID, in any ItemPropertyAssociation box.
         unsigned int itemID;
         if (version < 1) {
             uint16_t tmp;
@@ -1379,11 +1384,19 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
         } else {
             CHECK(avifROStreamReadU32(&s, &itemID));
         }
+        if (itemID <= prevItemID) {
+            return AVIF_FALSE;
+        }
+        prevItemID = itemID;
 
         avifDecoderItem * item = avifMetaFindItem(meta, itemID);
         if (!item) {
             return AVIF_FALSE;
         }
+        if (item->ipmaSeen) {
+            return AVIF_FALSE;
+        }
+        item->ipmaSeen = AVIF_TRUE;
 
         uint8_t associationCount;
         CHECK(avifROStreamRead(&s, &associationCount, 1));
