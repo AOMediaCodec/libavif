@@ -2048,6 +2048,7 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
+static avifBool avifFileTypeHasBrand(avifFileType * ftyp, const char * brand);
 static avifBool avifFileTypeIsCompatible(avifFileType * ftyp);
 
 static avifResult avifParse(avifDecoder * decoder)
@@ -2058,7 +2059,11 @@ static avifResult avifParse(avifDecoder * decoder)
     avifResult readResult;
     uint64_t parseOffset = 0;
     avifDecoderData * data = decoder->data;
-    uint32_t uniqueBoxFlags = 0;
+    avifBool ftypSeen = AVIF_FALSE;
+    avifBool metaSeen = AVIF_FALSE;
+    avifBool moovSeen = AVIF_FALSE;
+    avifBool needsMeta = AVIF_FALSE;
+    avifBool needsMoov = AVIF_FALSE;
 
     for (;;) {
         // Read just enough to get the next box header (a max of 32 bytes)
@@ -2102,19 +2107,30 @@ static avifResult avifParse(avifDecoder * decoder)
         parseOffset += header.size;
 
         if (!memcmp(header.type, "ftyp", 4)) {
-            CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 0), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(!ftypSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             avifFileType ftyp;
             CHECKERR(avifParseFileTypeBox(&ftyp, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
-            avifBool avifCompatible = avifFileTypeIsCompatible(&ftyp);
-            if (!avifCompatible) {
+            if (!avifFileTypeIsCompatible(&ftyp)) {
                 return AVIF_RESULT_INVALID_FTYP;
             }
+            ftypSeen = AVIF_TRUE;
+            needsMeta = avifFileTypeHasBrand(&ftyp, "avif");
+            needsMoov = avifFileTypeHasBrand(&ftyp, "avis");
         } else if (!memcmp(header.type, "meta", 4)) {
-            CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             CHECKERR(avifParseMetaBox(data->meta, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+            metaSeen = AVIF_TRUE;
         } else if (!memcmp(header.type, "moov", 4)) {
-            CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, 2), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(!moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             CHECKERR(avifParseMoovBox(data, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+            moovSeen = AVIF_TRUE;
+        }
+
+        // See if there is enough information to consider Parse() a success and early-out:
+        // * If the brand 'avif' is present, require a meta box
+        // * If the brand 'avis' is present, require a moov box
+        if (ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen)) {
+            return AVIF_RESULT_OK;
         }
     }
     return AVIF_RESULT_OK;
@@ -2122,19 +2138,24 @@ static avifResult avifParse(avifDecoder * decoder)
 
 // ---------------------------------------------------------------------------
 
-static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
+static avifBool avifFileTypeHasBrand(avifFileType * ftyp, const char * brand)
 {
-    avifBool avifCompatible = (!memcmp(ftyp->majorBrand, "avif", 4) || !memcmp(ftyp->majorBrand, "avis", 4));
-    if (!avifCompatible) {
-        for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
-            const uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
-            if (!memcmp(compatibleBrand, "avif", 4) || !memcmp(compatibleBrand, "avis", 4)) {
-                avifCompatible = AVIF_TRUE;
-                break;
-            }
+    if (!memcmp(ftyp->majorBrand, brand, 4)) {
+        return AVIF_TRUE;
+    }
+
+    for (int compatibleBrandIndex = 0; compatibleBrandIndex < ftyp->compatibleBrandsCount; ++compatibleBrandIndex) {
+        const uint8_t * compatibleBrand = &ftyp->compatibleBrands[4 * compatibleBrandIndex];
+        if (!memcmp(compatibleBrand, brand, 4)) {
+            return AVIF_TRUE;
         }
     }
-    return avifCompatible;
+    return AVIF_FALSE;
+}
+
+static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
+{
+    return avifFileTypeHasBrand(ftyp, "avif") || avifFileTypeHasBrand(ftyp, "avis");
 }
 
 avifBool avifPeekCompatibleFileType(const avifROData * input)
