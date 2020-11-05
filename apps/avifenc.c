@@ -636,6 +636,15 @@ int main(int argc, char * argv[])
         avifImageSetMetadataXMP(image, xmpOverride.data, xmpOverride.size);
     }
 
+    if (!image->icc.size && !cicpExplicitlySet && (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
+        (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED)) {
+        // The final image has no ICC profile, the user didn't specify any CICP, and the source
+        // image didn't provide any CICP. Explicitly signal SRGB CP/TC here, as 2/2/x will be
+        // interpreted as SRGB anyway.
+        image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+        image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    }
+
     if (paspCount == 2) {
         image->transformFlags |= AVIF_TRANSFORM_PASP;
         image->pasp.hSpacing = paspValues[0];
