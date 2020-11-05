@@ -379,6 +379,19 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
 // conversion, if necessary. Pixels in an avifRGBImage buffer are always full range, and conversion
 // routines will fail if the width and height don't match the associated avifImage.
 
+// If libavif is built with libyuv fast paths enabled, libavif will use libyuv for conversion from
+// YUV to RGB if the following requirements are met:
+//
+// * YUV depth: 8
+// * RGB depth: 8
+// * rgb.chromaUpsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC (and upsampling is required: 420/422)
+// * rgb.format: AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA (420/422 support for AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_ARGB)
+// * CICP is one of the following combinations (CP/TC/MC/Range):
+//   * x/x/[2|5|6]/Full
+//   * [5|6]/x/12/Full
+//   * x/x/[1|2|5|6|9]/Limited
+//   * [1|2|5|6|9]/x/12/Limited
+
 typedef enum avifRGBFormat
 {
     AVIF_RGB_FORMAT_RGB = 0,
@@ -393,17 +406,10 @@ avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
 typedef enum avifChromaUpsampling
 {
-    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0, // Chooses the best quality upsampling given the settings (currently bilinear always)
+    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0, // Chooses the best quality upsampling (given the settings)
     AVIF_CHROMA_UPSAMPLING_NEAREST = 1,   // Faster and uglier
     AVIF_CHROMA_UPSAMPLING_BILINEAR = 2   // Slower and prettier
 } avifChromaUpsampling;
-
-typedef enum avifLibYUVUsage
-{
-    AVIF_LIBYUV_USAGE_AUTOMATIC = 0, // Use libyuv if compiled-in and possible with the current settings (default)
-    AVIF_LIBYUV_USAGE_DISABLED,      // Avoid libyuv conversion, even if it is available
-    AVIF_LIBYUV_USAGE_REQUIRED       // If libyuv is unavailable or if the current combination cannot use it, fail
-} avifLibYUVUsage;
 
 typedef struct avifRGBImage
 {
@@ -415,9 +421,6 @@ typedef struct avifRGBImage
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
     avifBool ignoreAlpha; // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                           // RGB, treating the alpha bits as if they were all 1.
-
-    avifLibYUVUsage libYUVUsage; // Defaults to "automatic", but can be forced on or off for easy testing,
-                                 // or avoiding unexpected (slower) YUV paths.
 
     uint8_t * pixels;
     uint32_t rowBytes;

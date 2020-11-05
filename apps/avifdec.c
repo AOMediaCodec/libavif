@@ -94,7 +94,6 @@ int main(int argc, char * argv[])
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     avifBool ignoreICC = AVIF_FALSE;
-    avifLibYUVUsage libYUVUsage = AVIF_LIBYUV_USAGE_DISABLED; // Use built-in paths by default for consistency and control over subsampling
 
     if (argc < 2) {
         syntax();
@@ -152,8 +151,6 @@ int main(int argc, char * argv[])
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
-        } else if (!strcmp(arg, "--libyuv")) {
-            libYUVUsage = AVIF_LIBYUV_USAGE_AUTOMATIC;
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -214,11 +211,11 @@ int main(int argc, char * argv[])
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-            if (!avifJPEGWrite(avif, outputFilename, jpegQuality, chromaUpsampling, libYUVUsage)) {
+            if (!avifJPEGWrite(avif, outputFilename, jpegQuality, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-            if (!avifPNGWrite(avif, outputFilename, requestedDepth, chromaUpsampling, libYUVUsage)) {
+            if (!avifPNGWrite(avif, outputFilename, requestedDepth, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else {

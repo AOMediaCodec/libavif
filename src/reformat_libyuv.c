@@ -36,6 +36,13 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_NO_CONTENT;
     }
 
+    if ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
+        if (rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_AUTOMATIC) {
+            // libyuv uses its own upsampling filter. If the enduser chose a specific one, avoid using libyuv.
+            return AVIF_RESULT_NO_CONTENT;
+        }
+    }
+
     // Find the correct libyuv YuvConstants, based on range and CP/MC
     const struct YuvConstants * matrixYUV = NULL;
     const struct YuvConstants * matrixYVU = NULL;
@@ -51,11 +58,11 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                 switch (image->colorPrimaries) {
                     case AVIF_COLOR_PRIMARIES_BT470BG:
                     case AVIF_COLOR_PRIMARIES_BT601:
-                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
                         matrixYUV = &kYuvJPEGConstants;
                         matrixYVU = &kYvuJPEGConstants;
                         break;
 
+                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
                     case AVIF_COLOR_PRIMARIES_UNKNOWN:
                     case AVIF_COLOR_PRIMARIES_BT709:
                     case AVIF_COLOR_PRIMARIES_BT470M:
@@ -101,12 +108,12 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
             case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL:
                 switch (image->colorPrimaries) {
                     case AVIF_COLOR_PRIMARIES_BT709:
+                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
                         matrixYUV = &kYuvH709Constants;
                         matrixYVU = &kYvuH709Constants;
                         break;
                     case AVIF_COLOR_PRIMARIES_BT470BG:
                     case AVIF_COLOR_PRIMARIES_BT601:
-                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
                         matrixYUV = &kYuvI601Constants;
                         matrixYVU = &kYvuI601Constants;
                         break;

@@ -111,7 +111,7 @@ cleanup:
     return ret;
 }
 
-avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQuality, avifChromaUpsampling chromaUpsampling, avifLibYUVUsage libYUVUsage)
+avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQuality, avifChromaUpsampling chromaUpsampling)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;
@@ -126,7 +126,6 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.format = AVIF_RGB_FORMAT_RGB;
     rgb.chromaUpsampling = chromaUpsampling;
-    rgb.libYUVUsage = libYUVUsage;
     rgb.depth = 8;
     avifRGBImageAllocatePixels(&rgb);
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {

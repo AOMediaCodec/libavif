@@ -155,7 +155,7 @@ cleanup:
     return readResult;
 }
 
-avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling, avifLibYUVUsage libYUVUsage)
+avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling)
 {
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -178,7 +178,6 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.depth = rgbDepth;
     rgb.chromaUpsampling = chromaUpsampling;
-    rgb.libYUVUsage = libYUVUsage;
     avifRGBImageAllocatePixels(&rgb);
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
