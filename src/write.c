@@ -204,18 +204,20 @@ static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * 
         if (ipma && itemPropertyIndex) {
             ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
         }
-    } else {
-        avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
-        avifRWStreamWriteChars(s, "nclx", 4);                                      // unsigned int(32) colour_type;
-        avifRWStreamWriteU16(s, (uint16_t)imageMetadata->colorPrimaries);          // unsigned int(16) colour_primaries;
-        avifRWStreamWriteU16(s, (uint16_t)imageMetadata->transferCharacteristics); // unsigned int(16) transfer_characteristics;
-        avifRWStreamWriteU16(s, (uint16_t)imageMetadata->matrixCoefficients);      // unsigned int(16) matrix_coefficients;
-        avifRWStreamWriteU8(s, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
-                                                                                         // unsigned int(7) reserved = 0;
-        avifRWStreamFinishBox(s, colr);
-        if (ipma && itemPropertyIndex) {
-            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
-        }
+    }
+
+    // HEIF 6.5.5.1, from Amendment 3 allows multiple colr boxes: "at most one for a given value of colour type"
+    // Therefore, *always* writing an nclx box, even if an a prof box was already written above.
+    avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
+    avifRWStreamWriteChars(s, "nclx", 4);                                            // unsigned int(32) colour_type;
+    avifRWStreamWriteU16(s, (uint16_t)imageMetadata->colorPrimaries);                // unsigned int(16) colour_primaries;
+    avifRWStreamWriteU16(s, (uint16_t)imageMetadata->transferCharacteristics);       // unsigned int(16) transfer_characteristics;
+    avifRWStreamWriteU16(s, (uint16_t)imageMetadata->matrixCoefficients);            // unsigned int(16) matrix_coefficients;
+    avifRWStreamWriteU8(s, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
+                                                                                     // unsigned int(7) reserved = 0;
+    avifRWStreamFinishBox(s, colr);
+    if (ipma && itemPropertyIndex) {
+        ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
     }
 
     // Write (Optional) Transformations

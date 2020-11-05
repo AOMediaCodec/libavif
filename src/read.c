@@ -2650,16 +2650,32 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
     }
 
-    const avifProperty * colrProp = avifPropertyArrayFind(colorProperties, "colr");
-    if (colrProp) {
-        if (colrProp->u.colr.hasICC) {
-            avifImageSetProfileICC(decoder->image, colrProp->u.colr.icc, colrProp->u.colr.iccSize);
-        } else if (colrProp->u.colr.hasNCLX) {
-            data->cicpSet = AVIF_TRUE;
-            decoder->image->colorPrimaries = colrProp->u.colr.colorPrimaries;
-            decoder->image->transferCharacteristics = colrProp->u.colr.transferCharacteristics;
-            decoder->image->matrixCoefficients = colrProp->u.colr.matrixCoefficients;
-            decoder->image->yuvRange = colrProp->u.colr.range;
+    // Find and adopt all colr boxes "at most one for a given value of colour type" (HEIF 6.5.5.1, from Amendment 3)
+    // Accept one of each type, and bail out if more than one of a given type is provided.
+    avifBool colrICCSeen = AVIF_FALSE;
+    avifBool colrNCLXSeen = AVIF_FALSE;
+    for (uint32_t propertyIndex = 0; propertyIndex < colorProperties->count; ++propertyIndex) {
+        avifProperty * prop = &colorProperties->prop[propertyIndex];
+
+        if (!memcmp(prop->type, "colr", 4)) {
+            if (prop->u.colr.hasICC) {
+                if (colrICCSeen) {
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                colrICCSeen = AVIF_TRUE;
+                avifImageSetProfileICC(decoder->image, prop->u.colr.icc, prop->u.colr.iccSize);
+            }
+            if (prop->u.colr.hasNCLX) {
+                if (colrNCLXSeen) {
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                colrNCLXSeen = AVIF_TRUE;
+                data->cicpSet = AVIF_TRUE;
+                decoder->image->colorPrimaries = prop->u.colr.colorPrimaries;
+                decoder->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
+                decoder->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
+                decoder->image->yuvRange = prop->u.colr.range;
+            }
         }
     }
 
