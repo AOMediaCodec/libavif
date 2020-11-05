@@ -177,7 +177,6 @@ typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
 {
-    avifCodecConfigurationBox configBox;  // Pre-populated by avifEncoderWrite(), available and overridable by codec impls
     avifCodecSpecificOptions * csOptions; // Contains codec-specific key/value pairs for advanced tuning.
                                           // If a codec uses a value, it must mark it as used.
                                           // This array is NOT owned by avifCodec.
@@ -277,6 +276,7 @@ typedef struct avifSequenceHeader
     avifTransferCharacteristics transferCharacteristics;
     avifMatrixCoefficients matrixCoefficients;
     avifRange range;
+    avifCodecConfigurationBox av1C;
 } avifSequenceHeader;
 avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
 

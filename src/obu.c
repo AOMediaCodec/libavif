@@ -134,6 +134,7 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     if (seq_profile > 2) {
         return AVIF_FALSE;
     }
+    header->av1C.seqProfile = (uint8_t)seq_profile;
 
     uint32_t still_picture = avifBitsRead(bits, 1);
     uint32_t reduced_still_picture_header = avifBitsRead(bits, 1);
@@ -142,7 +143,8 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     }
 
     if (reduced_still_picture_header) {
-        avifBitsRead(bits, 5); // seq_level_idx
+        header->av1C.seqLevelIdx0 = (uint8_t)avifBitsRead(bits, 5);
+        header->av1C.seqTier0 = 0;
     } else {
         uint32_t timing_info_present_flag = avifBitsRead(bits, 1);
         uint32_t decoder_model_info_present_flag = 0;
@@ -170,8 +172,15 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
         for (uint32_t i = 0; i < operating_points_cnt; i++) {
             avifBitsRead(bits, 12); // operating_point_idc
             uint32_t seq_level_idx = avifBitsRead(bits, 5);
+            if (i == 0) {
+                header->av1C.seqLevelIdx0 = (uint8_t)seq_level_idx;
+                header->av1C.seqTier0 = 0;
+            }
             if (seq_level_idx > 7) {
-                avifBitsRead(bits, 1); // seq_tier
+                uint32_t seq_tier = avifBitsRead(bits, 1);
+                if (i == 0) {
+                    header->av1C.seqTier0 = (uint8_t)seq_tier;
+                }
             }
             if (decoder_model_info_present_flag) {
                 uint32_t decoder_model_present_for_this_op = avifBitsRead(bits, 1);
@@ -234,17 +243,22 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     // color_config()
     header->bitDepth = 8;
     header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
     uint32_t high_bitdepth = avifBitsRead(bits, 1);
+    header->av1C.highBitdepth = (uint8_t)high_bitdepth;
     if ((seq_profile == 2) && high_bitdepth) {
         uint32_t twelve_bit = avifBitsRead(bits, 1);
         header->bitDepth = twelve_bit ? 12 : 10;
+        header->av1C.twelveBit = (uint8_t)twelve_bit;
     } else /* if (seq_profile <= 2) */ {
         header->bitDepth = high_bitdepth ? 10 : 8;
+        header->av1C.twelveBit = 0;
     }
     uint32_t mono_chrome = 0;
     if (seq_profile != 1) {
         mono_chrome = avifBitsRead(bits, 1);
     }
+    header->av1C.monochrome = (uint8_t)mono_chrome;
     uint32_t color_description_present_flag = avifBitsRead(bits, 1);
     if (color_description_present_flag) {
         header->colorPrimaries = (avifColorPrimaries)avifBitsRead(bits, 8);                   // color_primaries
@@ -257,15 +271,15 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     }
     if (mono_chrome) {
         header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
-        // subsampling_x = 1;
-        // subsampling_y = 1;
+        header->av1C.chromaSubsamplingX = 1;
+        header->av1C.chromaSubsamplingY = 1;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
     } else if (header->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709 &&
                header->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
                header->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
         header->range = AVIF_RANGE_FULL;
-        // subsampling_x = 0;
-        // subsampling_y = 0;
+        header->av1C.chromaSubsamplingX = 0;
+        header->av1C.chromaSubsamplingY = 0;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
     } else {
         uint32_t subsampling_x = 0;
@@ -303,6 +317,9 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
         if (subsampling_x && subsampling_y) {
             header->chromaSamplePosition = (avifChromaSamplePosition)avifBitsRead(bits, 2); // chroma_sample_position
         }
+        header->av1C.chromaSubsamplingX = (uint8_t)subsampling_x;
+        header->av1C.chromaSubsamplingY = (uint8_t)subsampling_y;
+        header->av1C.chromaSamplePosition = header->chromaSamplePosition;
     }
 
     if (!mono_chrome) {

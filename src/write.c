@@ -36,7 +36,6 @@ static const char xmpContentType[] = CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
 static avifBool avifImageIsOpaque(const avifImage * image);
-static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool alpha);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
 // ---------------------------------------------------------------------------
@@ -77,6 +76,7 @@ typedef struct avifEncoderItem
     avifCodec * codec;                    // only present on type==av01
     avifCodecEncodeOutput * encodeOutput; // AV1 sample data
     avifRWData metadataPayload;           // Exif/XMP data
+    avifCodecConfigurationBox av1C;       // Harvested in avifEncoderFinish(), if encodeOutput has samples
     avifBool alpha;
 
     const char * infeName;
@@ -451,16 +451,6 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
             xmpItem->infeContentTypeSize = xmpContentTypeSize;
             avifRWDataSet(&xmpItem->metadataPayload, image->xmp.data, image->xmp.size);
         }
-
-        // -----------------------------------------------------------------------
-        // Pre-fill config boxes based on image (codec can query/update later)
-
-        for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
-            avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-            if (item->codec) {
-                fillConfigBox(item->codec, image, item->alpha);
-            }
-        }
     } else {
         // Another frame in an image sequence
 
@@ -525,6 +515,23 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 encoder->ioStats.alphaOBUSize = obuSize;
             } else {
                 encoder->ioStats.colorOBUSize = obuSize;
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Harvest av1C properties from AV1 sequence headers
+
+    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+        avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+        if (item->encodeOutput->samples.count > 0) {
+            avifEncodeSample * firstSample = &item->encodeOutput->samples.sample[0];
+            avifSequenceHeader sequenceHeader;
+            if (avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data)) {
+                memcpy(&item->av1C, &sequenceHeader.av1C, sizeof(avifCodecConfigurationBox));
+            } else {
+                // This must be an invalid AV1 payload
+                return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
         }
     }
@@ -704,7 +711,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifRWStreamFinishBox(&s, pixi);
         ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
 
-        writeConfigBox(&s, &item->codec->configBox);
+        writeConfigBox(&s, &item->av1C);
         ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
 
         if (item->alpha) {
@@ -945,7 +952,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteZeros(&s, 32 - 11);                       //
             avifRWStreamWriteU16(&s, 0x0018);                          // template unsigned int(16) depth = 0x0018;
             avifRWStreamWriteU16(&s, (uint16_t)0xffff);                // int(16) pre_defined = -1;
-            writeConfigBox(&s, &item->codec->configBox);
+            writeConfigBox(&s, &item->av1C);
             if (!item->alpha) {
                 avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL);
             }
@@ -1064,64 +1071,6 @@ static avifBool avifImageIsOpaque(const avifImage * image)
         }
     }
     return AVIF_TRUE;
-}
-
-static void fillConfigBox(avifCodec * codec, const avifImage * image, avifBool alpha)
-{
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
-
-    // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
-    // Profile 1.  8-bit and 10-bit 4:4:4
-    // Profile 2.  8-bit and 10-bit 4:2:2
-    //            12-bit  4:0:0, 4:2:2 and 4:4:4
-    uint8_t seqProfile = 0;
-    if (image->depth == 12) {
-        // Only seqProfile 2 can handle 12 bit
-        seqProfile = 2;
-    } else {
-        // 8-bit or 10-bit
-
-        if (alpha) {
-            seqProfile = 0;
-        } else {
-            switch (image->yuvFormat) {
-                case AVIF_PIXEL_FORMAT_YUV444:
-                    seqProfile = 1;
-                    break;
-                case AVIF_PIXEL_FORMAT_YUV422:
-                    seqProfile = 2;
-                    break;
-                case AVIF_PIXEL_FORMAT_YUV420:
-                    seqProfile = 0;
-                    break;
-                case AVIF_PIXEL_FORMAT_YUV400:
-                    seqProfile = 0;
-                    break;
-                case AVIF_PIXEL_FORMAT_NONE:
-                default:
-                    break;
-            }
-        }
-    }
-
-    // TODO: Choose correct value from Annex A.3 table: https://aomediacodec.github.io/av1-spec/av1-spec.pdf
-    uint8_t seqLevelIdx0 = 31;
-    if ((image->width <= 8192) && (image->height <= 4352) && ((image->width * image->height) <= 8912896)) {
-        // Image is 5.1 compatible
-        seqLevelIdx0 = 13; // 5.1
-    }
-
-    memset(&codec->configBox, 0, sizeof(avifCodecConfigurationBox));
-    codec->configBox.seqProfile = seqProfile;
-    codec->configBox.seqLevelIdx0 = seqLevelIdx0;
-    codec->configBox.seqTier0 = 0;
-    codec->configBox.highBitdepth = (image->depth > 8);
-    codec->configBox.twelveBit = (image->depth == 12);
-    codec->configBox.monochrome = (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400));
-    codec->configBox.chromaSubsamplingX = (uint8_t)formatInfo.chromaShiftX;
-    codec->configBox.chromaSubsamplingY = (uint8_t)formatInfo.chromaShiftY;
-    codec->configBox.chromaSamplePosition = image->yuvChromaSamplePosition;
 }
 
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)

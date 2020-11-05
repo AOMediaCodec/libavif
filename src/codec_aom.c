@@ -428,7 +428,41 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         struct aom_codec_enc_cfg cfg;
         aom_codec_enc_config_default(encoderInterface, &cfg, aomUsage);
 
-        cfg.g_profile = codec->configBox.seqProfile;
+        // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
+        // Profile 1.  8-bit and 10-bit 4:4:4
+        // Profile 2.  8-bit and 10-bit 4:2:2
+        //            12-bit  4:0:0, 4:2:2 and 4:4:4
+        uint8_t seqProfile = 0;
+        if (image->depth == 12) {
+            // Only seqProfile 2 can handle 12 bit
+            seqProfile = 2;
+        } else {
+            // 8-bit or 10-bit
+
+            if (alpha) {
+                seqProfile = 0;
+            } else {
+                switch (image->yuvFormat) {
+                    case AVIF_PIXEL_FORMAT_YUV444:
+                        seqProfile = 1;
+                        break;
+                    case AVIF_PIXEL_FORMAT_YUV422:
+                        seqProfile = 2;
+                        break;
+                    case AVIF_PIXEL_FORMAT_YUV420:
+                        seqProfile = 0;
+                        break;
+                    case AVIF_PIXEL_FORMAT_YUV400:
+                        seqProfile = 0;
+                        break;
+                    case AVIF_PIXEL_FORMAT_NONE:
+                    default:
+                        break;
+                }
+            }
+        }
+
+        cfg.g_profile = seqProfile;
         cfg.g_bit_depth = image->depth;
         cfg.g_input_bit_depth = image->depth;
         cfg.g_w = image->width;
