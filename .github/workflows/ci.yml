@@ -13,7 +13,7 @@ jobs:
         python-version: '3.8'
     - name: Install dependencies
       run: |
-        DEBIAN_FRONTEND=noninteractive sudo apt-get update
+        DEBIAN_FRONTEND=noninteractive sudo apt-get update || true
         DEBIAN_FRONTEND=noninteractive sudo apt-get install -y ninja-build gcc-10 g++-10
         pip install --upgrade pip
         pip install setuptools
