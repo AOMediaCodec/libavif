@@ -98,6 +98,7 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec, const avifDecode
 
         image->yuvFormat = yuvFormat;
         image->yuvRange = codec->internal->colorRange;
+        image->yuvChromaSamplePosition = (avifChromaSamplePosition)gav1Image->chroma_sample_position;
 
         image->colorPrimaries = (avifColorPrimaries)gav1Image->color_primary;
         image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
