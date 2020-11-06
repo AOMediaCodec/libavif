@@ -28,6 +28,7 @@ static void syntax(void)
     printf("        avifdec --info    input.avif\n");
     printf("Options:\n");
     printf("    -h,--help         : Show syntax help\n");
+    printf("    -V,--version      : Show the version number\n");
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
@@ -106,6 +107,9 @@ int main(int argc, char * argv[])
 
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
+            return 0;
+        } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
+            avifPrintVersions();
             return 0;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();

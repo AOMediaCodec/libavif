@@ -48,6 +48,7 @@ static void syntax(void)
     printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
+    printf("    -V,--version                      : Show the version number\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
@@ -320,6 +321,9 @@ int main(int argc, char * argv[])
 
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
+            goto cleanup;
+        } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
+            avifPrintVersions();
             goto cleanup;
         } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
             NEXTARG();
