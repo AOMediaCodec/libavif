@@ -2929,9 +2929,12 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
         return AVIF_RESULT_NO_IMAGES_REMAINING;
     }
 
-    // If we get here, a decoder flush is necessary
-    decoder->imageIndex = ((int)avifDecoderNearestKeyframe(decoder, frameIndex)) - 1; // prepare to read nearest keyframe
-    avifDecoderFlush(decoder);
+    int nearestKeyFrame = (int)avifDecoderNearestKeyframe(decoder, frameIndex);
+    if ((nearestKeyFrame > (decoder->imageIndex + 1)) || (requestedIndex < decoder->imageIndex)) {
+        // If we get here, a decoder flush is necessary
+        decoder->imageIndex = nearestKeyFrame - 1; // prepare to read nearest keyframe
+        avifDecoderFlush(decoder);
+    }
     for (;;) {
         avifResult result = avifDecoderNextImage(decoder);
         if (result != AVIF_RESULT_OK) {
