@@ -273,14 +273,14 @@ static avifResult avifIOTestReaderRead(struct avifIO * io, uint32_t readFlags, u
     avifIOTestReader * reader = (avifIOTestReader *)io;
 
     // Sanitize/clamp incoming request
+    if (offset > reader->rodata.size) {
+        // The offset is past the end of the buffer.
+        return AVIF_RESULT_IO_ERROR;
+    }
     if (offset == reader->rodata.size) {
         // The parser is *exactly* at EOF: return a 0-size pointer to any valid buffer
         offset = 0;
         size = 0;
-    }
-    if (offset > reader->rodata.size) {
-        // The offset is past the end of the buffer.
-        return AVIF_RESULT_IO_ERROR;
     }
     uint64_t availableSize = reader->rodata.size - offset;
     if (size > availableSize) {
