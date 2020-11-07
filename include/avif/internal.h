@@ -92,7 +92,7 @@ avifBool avifFillAlpha(const avifAlphaParams * const params);
 avifBool avifReformatAlpha(const avifAlphaParams * const params);
 
 // Returns:
-// * AVIF_RESULT_OK         - Converted successfully with libavif
+// * AVIF_RESULT_OK         - Converted successfully with libyuv
 // * AVIF_RESULT_NO_CONTENT - Incapable of converting this combination with libyuv, use built-in YUV conversion
 // * [any other error]      - Return error to caller
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
