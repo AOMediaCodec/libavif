@@ -316,10 +316,10 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
 
         if (subsampling_x && subsampling_y) {
             header->chromaSamplePosition = (avifChromaSamplePosition)avifBitsRead(bits, 2); // chroma_sample_position
+            header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
         }
         header->av1C.chromaSubsamplingX = (uint8_t)subsampling_x;
         header->av1C.chromaSubsamplingY = (uint8_t)subsampling_y;
-        header->av1C.chromaSamplePosition = header->chromaSamplePosition;
     }
 
     if (!mono_chrome) {
