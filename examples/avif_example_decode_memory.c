@@ -21,7 +21,7 @@ int main(int argc, char * argv[])
     memset(&rgb, 0, sizeof(rgb));
 
     avifDecoder * decoder = avifDecoderCreate();
-    // Override decoder defaults here (codecChoice, requestedSource, disableGridImages, ignoreExif, ignoreXMP, etc)
+    // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
 
     // Read entire file into fileBuffer
     FILE * f = NULL;

@@ -129,7 +129,7 @@ int main(int argc, char * argv[])
 
     int returnCode = 1;
     avifDecoder * decoder = avifDecoderCreate();
-    // Override decoder defaults here (codecChoice, requestedSource, disableGridImages, ignoreExif, ignoreXMP, etc)
+    // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
 
     // Read entire file into fileBuffer
     FILE * f = NULL;
