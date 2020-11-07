@@ -335,7 +335,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
+                                              avifRGBImage * rgb,
+                                              avifReformatState * state,
+                                              const avifChromaUpsampling chromaUpsampling)
 {
     // Aliases for some state
     const float kr = state->kr;
@@ -359,11 +362,8 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
     const uint16_t yuvMaxChannel = (uint16_t)state->yuvMaxChannel;
     const float rgbMaxChannelF = state->rgbMaxChannelF;
 
-    // If upsampling is AUTOMATIC, choose an appropriate upsampling filter here.
-    // (This might be more complicated in the future.)
-    const avifChromaUpsampling chromaUpsampling =
-        (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST) ? AVIF_CHROMA_UPSAMPLING_NEAREST : AVIF_CHROMA_UPSAMPLING_BILINEAR;
-    assert(chromaUpsampling != AVIF_CHROMA_UPSAMPLING_AUTOMATIC);
+    // These are the only supported built-ins
+    assert((chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST));
 
     for (uint32_t j = 0; j < image->height; ++j) {
         const uint32_t uvJ = j >> state->formatInfo.chromaShiftY;
@@ -999,10 +999,25 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_OK;
     }
 
+    avifChromaUpsampling chromaUpsampling;
+    switch (rgb->chromaUpsampling) {
+        case AVIF_CHROMA_UPSAMPLING_AUTOMATIC:
+        case AVIF_CHROMA_UPSAMPLING_BEST_QUALITY:
+        case AVIF_CHROMA_UPSAMPLING_BILINEAR:
+        default:
+            chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
+            break;
+
+        case AVIF_CHROMA_UPSAMPLING_FASTEST:
+        case AVIF_CHROMA_UPSAMPLING_NEAREST:
+            chromaUpsampling = AVIF_CHROMA_UPSAMPLING_NEAREST;
+            break;
+    }
+
     const avifBool hasColor =
         (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
 
-    if (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
+    if (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
         // None of these fast paths currently support bilinear upsampling, so avoid all of them
         // unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
 
@@ -1055,7 +1070,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     }
 
     // If we get here, there is no fast path for this combination. Time to be slow!
-    return avifImageYUVAnyToRGBAnySlow(image, rgb, &state);
+    return avifImageYUVAnyToRGBAnySlow(image, rgb, &state, chromaUpsampling);
 }
 
 // Limited -> Full

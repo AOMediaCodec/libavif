@@ -37,7 +37,7 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     }
 
     if ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
-        if (rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_AUTOMATIC) {
+        if ((rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_AUTOMATIC) && (rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_FASTEST)) {
             // libyuv uses its own upsampling filter. If the enduser chose a specific one, avoid using libyuv.
             return AVIF_RESULT_NO_CONTENT;
         }

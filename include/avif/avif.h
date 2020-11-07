@@ -384,7 +384,7 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t p
 //
 // * YUV depth: 8
 // * RGB depth: 8
-// * rgb.chromaUpsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC (and upsampling is required: 420/422)
+// * rgb.chromaUpsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC, AVIF_CHROMA_UPSAMPLING_FASTEST (and upsampling is required: 420/422)
 // * rgb.format: AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA (420/422 support for AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_ARGB)
 // * CICP is one of the following combinations (CP/TC/MC/Range):
 //   * x/x/[2|5|6]/Full
@@ -406,9 +406,11 @@ avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
 typedef enum avifChromaUpsampling
 {
-    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0, // Chooses the best quality upsampling (given the settings)
-    AVIF_CHROMA_UPSAMPLING_NEAREST = 1,   // Faster and uglier
-    AVIF_CHROMA_UPSAMPLING_BILINEAR = 2   // Slower and prettier
+    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (prefers libyuv, else uses BEST_QUALITY)
+    AVIF_CHROMA_UPSAMPLING_FASTEST = 1,      // Chooses speed over quality (prefers libyuv, else uses NEAREST)
+    AVIF_CHROMA_UPSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling, given settings (avoids libyuv)
+    AVIF_CHROMA_UPSAMPLING_NEAREST = 3,      // Uses nearest-neighbor filter (built-in)
+    AVIF_CHROMA_UPSAMPLING_BILINEAR = 4      // Uses bilinear filter (built-in)
 } avifChromaUpsampling;
 
 typedef struct avifRGBImage
