@@ -20,7 +20,7 @@ int main(int argc, char * argv[])
     memset(&rgb, 0, sizeof(rgb));
 
     avifDecoder * decoder = avifDecoderCreate();
-    // Override decoder defaults here (codecChoice, requestedSource, disableGridImages, ignoreExif, ignoreXMP, etc)
+    // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
 
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
     if (result != AVIF_RESULT_OK) {
