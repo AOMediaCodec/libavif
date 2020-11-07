@@ -34,7 +34,6 @@ static void syntax(void)
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default, prioritizes quality), nearest, or bilinear\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
-    printf("    --libyuv          : Use libyuv to decode, if possible (8bpc only)\n");
     printf("\n");
     avifPrintVersions();
 }
