@@ -373,11 +373,11 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
 
         encoder->data->colorItem = avifEncoderDataCreateItem(encoder->data, "av01", "Color", 6);
         encoder->data->colorItem->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-        encoder->data->colorItem->codec->csOptions = encoder->csOptions;
         if (!encoder->data->colorItem->codec) {
             // Just bail out early, we're not surviving this function without an encoder compiled in
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
         }
+        encoder->data->colorItem->codec->csOptions = encoder->csOptions;
         encoder->data->primaryItemID = encoder->data->colorItem->id;
 
         avifBool needsAlpha = (image->alphaPlane != NULL);
@@ -396,10 +396,10 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
         if (needsAlpha) {
             encoder->data->alphaItem = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6);
             encoder->data->alphaItem->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-            encoder->data->alphaItem->codec->csOptions = encoder->csOptions;
             if (!encoder->data->alphaItem->codec) {
                 return AVIF_RESULT_NO_CODEC_AVAILABLE;
             }
+            encoder->data->alphaItem->codec->csOptions = encoder->csOptions;
             encoder->data->alphaItem->alpha = AVIF_TRUE;
             encoder->data->alphaItem->irefToID = encoder->data->primaryItemID;
             encoder->data->alphaItem->irefType = "auxl";
@@ -525,7 +525,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->encodeOutput->samples.count > 0) {
-            avifEncodeSample * firstSample = &item->encodeOutput->samples.sample[0];
+            const avifEncodeSample * firstSample = &item->encodeOutput->samples.sample[0];
             avifSequenceHeader sequenceHeader;
             if (avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data)) {
                 memcpy(&item->av1C, &sequenceHeader.av1C, sizeof(avifCodecConfigurationBox));
