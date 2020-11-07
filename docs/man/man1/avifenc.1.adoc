@@ -1,0 +1,217 @@
+// Copyright 2020 Shun Sakai. All rights reserved.
+// SPDX-License-Identifier: BSD-2-Clause
+
+= avifenc(1)
+:docdate: 2020-11-07
+ifndef::asciidoctor[]
+:revdate: {docdate}
+endif::[]
+:doctype: manpage
+ifdef::asciidoctor[]
+:mansource: libavif {manversion}
+endif::[]
+ifndef::asciidoctor[]
+:mansource: libavif
+endif::[]
+:manmanual: General Commands Manual
+
+== NAME
+avifenc - compress an image file to an AVIF file
+
+== SYNOPSIS
+*{manname}* [_OPTION_...] _INPUT-FILE_ _OUTPUT-FILE.avif_
+
+== DESCRIPTION
+*{manname}* compress an image file to an AV1 Image File Format (AVIF) file.
+Input format can be either JPEG, PNG or YUV4MPEG2.
+
+This is part of the libavif, the reference implementation for AVIF.
+
+== OPTIONS
+*-h*, *--help*::
+  Show help information.
+
+*-V*, *--version*::
+  Show the version number of both libavif and available AV1 codecs.
+
+*-j*, *--jobs* _J_::
+  Specify the number of worker threads to use.
+  (default: *1*)
+
+*-o*, *--output* _FILENAME_::
+  Specify the name of the output AVIF file.
+
+*-l*, *--lossless*::
+  Set all defaults to encode losslessly, and emit warnings when settings/input do not allow for it.
+
+*-d*, *--depth* _D_::
+  Specify the output depth.
+  _D_ are either *8*, *10* or *12*.
+  This option is only available when the output format is JPEG or PNG.
+
+*-y*, *--yuv* _FORMAT_::
+  Specify the output format.
+  _FORMAT_ are either *444*, *422*, *420* or *400*.
+  This option is only available when the output format is JPEG or PNG.
+  (default: *444*)
+
+*--stdin*::
+  Read y4m frames from standard input instead of files.
+  No input filenames allowed, must set before offering output filename.
+
+*--cicp*, *--nclx* _P_/_T_/_M_::
+  Set CICP values.
+  Use *-r* to set range flag, and use *2* for any you wish to leave unspecified.
+  - _P_ = *enum avifColorPrimaries*
+  - _T_ = *enum avifTransferCharacteristics*
+  - _M_ = *enum avifMatrixCoefficients*
+
+*-r*, *--range* _RANGE_::
+  Specify the YUV range.
+  _RANGE_ are either *limited*/*l* or *full*/*f*.
+  This option is only available when the output format is JPEG or PNG.
+  (default: *full*)
+
+*--min* _Q_::
+  Set minimum quantizer for color.
+  _Q_ are between *0* and *63*, where *0* is lossless.
+
+*--max* _Q_::
+  Set maximum quantizer for color.
+  _Q_ are between *0* and *63*, where *0* is lossless.
+
+*--minalpha* _Q_::
+  Set minimum quantizer for alpha.
+  _Q_ are between *0* and *63*, where *0* is lossless.
+
+*--maxalpha* _Q_::
+  Set maximum quantizer for alpha.
+  _Q_ are between *0* and *63*, where *0* is lossless.
+
+*--tilerowslog2* _R_::
+  Set log2 of number of tile rows.
+  _R_ are between *0* and *6*.
+  (default: *0*)
+
+*--tilecolslog2* _C_::
+  Set log2 of number of tile columns.
+  _C_ are between *0* and *6*.
+  (default: *0*)
+
+*-s*, *--speed* _S_::
+  Specify the encoder speed.
+  _S_ are between *0* (slowest) and *10* (fastest), and *default*/*d* for codec internal defaults.
+  (default: *8*)
+
+*-c*, *--codec* _C_::
+  Specify the AV1 codec to use.
+  Choose _C_ from codecs list below.
+ifdef::available-aom[]
+  - *aom*
+endif::[]
+ifdef::available-rav1e[]
+  - *rav1e*
+endif::[]
+ifdef::available-svt[]
+  - *svt*
+endif::[]
+
+*--exif* _FILENAME_::
+  Provide an Exif metadata payload to be associated with the primary item.
+
+*--xmp* _FILENAME_::
+  Provide an XMP metadata payload to be associated with the primary item.
+
+*--icc* _FILENAME_::
+  Provide an ICC profile payload to be associated with the primary item.
+
+*-a*, *--advanced* _KEY_[_=VALUE_]::
+  Pass an advanced, codec-specific key/value string pair directly to the codec.
+  *{manname}* will warn on any not used by the codec.
+
+*--duration* _D_::
+  Set all following frame durations in timescales.
+  Can be set multiple times before supplying each filename.
+  (default: *1*)
+
+*--timescale*, *--fps* _V_::
+  Set the timescale.
+  If all frames are 1 timescale in length, this is equivalent to frames per second.
+
+*-k*, *--keyframe* _INTERVAL_::
+  Set the forced keyframe interval (maximum frames between keyframes).
+  Set to *0* to disable.
+  (default: *0*)
+
+*--ignore-icc*::
+  If the input file contains an embedded ICC profile, ignore it.
+
+*--pasp* _H_,_V_::
+  Add pasp property (aspect ratio).
+  _H_ is horizontal spacing and _V_ is vertical spacing.
+
+*--clap* _WN_,_WD_,_HN_,_HD_,_HON_,_HOD_,_VON_,_VOD_::
+  Add clap property (clean aperture).
+  - _WN_ = Width in num
+  - _WD_ = Width in denom
+  - _HN_ = Height in num
+  - _HD_ = Height in denom
+  - _HON_ = HOffset in num
+  - _HOD_ = HOffset in denom
+  - _VON_ = VOffset in num
+  - _VOD_ = VOffset in denom
+
+*--irot* _ANGLE_::
+  Add irot property (rotation).
+  _ANGLE_ are between *0* and *3*, and makes (90 * _ANGLE_) degree rotation anti-clockwise.
+
+*--imir* _AXIS_::
+  Add imir property (mirroring).
+  _AXIS_ are either *0* (vertical) or *1* (horizontal).
+
+ifdef::available-aom[]
+=== AOM-Specific Advanced options
+*aq-mode*=_M_::
+  Adaptive quantization mode.
+  _M_ are either *0* (off), *1* (variance), *2* (complexity) or *3* (cyclic refresh).
+  (default: *0*)
+
+*cq-level*=_Q_::
+  Constant/Constrained Quality level.
+  _Q_ are between *0* and *63*, and *end-usage* must be set to *cq* or *q*.
+
+*enable-chroma-deltaq*=_B_::
+  Enable delta quantization in chroma planes.
+  _B_ are either *0* (disable) or *1* (enable).
+  (default: *0*)
+
+*end-usage*=_MODE_::
+  Rate control mode.
+  _MODE_ are either *vbr*, *cbr*, *cq* or *q*.
+
+*sharpness*=_S_::
+  Loop filter sharpness.
+  _S_ are between *0* and *7*.
+  (default: *0*)
+
+*tune*=_METRIC_::
+  Tune the encoder for distortion metric.
+  _METRIC_ are either *psnr* or *ssim*.
+  (default: *psnr*)
+endif::[]
+
+include::include/section-notes.adoc[]
+
+== EXAMPLES
+Compress a PNG file to an AVIF file::
+  $ *{manname} input.png output.avif*
+
+Compress to an AVIF file without any loss::
+  $ *{manname} -l input.png output.avif*
+
+include::include/section-reporting-bugs.adoc[]
+
+include::include/section-copyright.adoc[]
+
+== SEE ALSO
+*avifdec*(1)

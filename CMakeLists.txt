@@ -590,3 +590,4 @@ if(WIN32)
 endif()
 
 add_subdirectory(contrib)
+add_subdirectory(docs)

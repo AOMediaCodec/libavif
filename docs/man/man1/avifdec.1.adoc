@@ -1,0 +1,92 @@
+// Copyright 2020 Shun Sakai. All rights reserved.
+// SPDX-License-Identifier: BSD-2-Clause
+
+= avifdec(1)
+:docdate: 2020-11-07
+ifndef::asciidoctor[]
+:revdate: {docdate}
+endif::[]
+:doctype: manpage
+ifdef::asciidoctor[]
+:mansource: libavif {manversion}
+endif::[]
+ifndef::asciidoctor[]
+:mansource: libavif
+endif::[]
+:manmanual: General Commands Manual
+
+== NAME
+avifdec - decompress an AVIF file to an image file
+
+== SYNOPSIS
+ifdef::asciidoctor[]
+[%hardbreaks]
+endif::[]
+ifndef::asciidoctor[]
+[verse]
+endif::[]
+*{manname}* [_OPTION_...] _INPUT-FILE.avif_ _OUTPUT-FILE_
+*{manname} --info* _INPUT-FILE.avif_
+
+== DESCRIPTION
+*{manname}* decompress an AV1 Image File Format (AVIF) file to an image file.
+Output format can be either JPEG, PNG or YUV4MPEG2.
+
+This is part of the libavif, the reference implementation for AVIF.
+
+== OPTIONS
+*-h*, *--help*::
+  Show help information.
+
+*-V*, *--version*::
+  Show the version number of both libavif and available AV1 codecs.
+
+*-c*, *--codec* _C_::
+  Specify the AV1 codec to use.
+  Choose _C_ from codecs list below.
+ifdef::available-aom[]
+  - *aom*
+endif::[]
+ifdef::available-dav1d[]
+  - *dav1d*
+endif::[]
+ifdef::available-libgav1[]
+  - *libgav1*
+endif::[]
+
+*-d*, *--depth* _D_::
+  Specify the output depth.
+  _D_ are either *8* or *16*.
+  This option is only available when the output format is PNG.
+
+*-q*, *--quality* _Q_::
+  Specify the output quality between *0* and *100*.
+  This option is only available when the output format is JPEG.
+  (default: *90*)
+
+*-u*, *--upsampling* _U_::
+  Specify the chroma upsampling for 420/422.
+  _U_ are either *automatic*, *fastest*, *best*, *nearest* or *bilinear*.
+  (default: *automatic*)
+
+*-i*, *--info*::
+  Decode all frames and display all image information instead of saving to disk.
+
+*--ignore-icc*::
+  If the input file contains an embedded ICC profile, ignore it.
+
+include::include/section-notes.adoc[]
+
+== EXAMPLES
+Decompress an AVIF file to a PNG file::
+  $ *{manname} input.avif output.png*
+
+Decompress to a JPEG file with the specified output quality::
+  $ *{manname} -q 50 input.avif output.jpg*
+
+include::include/section-reporting-bugs.adoc[]
+
+include::include/section-copyright.adoc[]
+
+== SEE ALSO
+*avifenc*(1)

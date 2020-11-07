@@ -1,0 +1,9 @@
+// Copyright 2020 Shun Sakai. All rights reserved.
+// SPDX-License-Identifier: BSD-2-Clause
+
+== NOTES
+*AVIF specification*::
+  https://aomediacodec.github.io/av1-avif/
+
+*Git repository*::
+  https://github.com/AOMediaCodec/libavif.git

@@ -1,0 +1,5 @@
+// Copyright 2020 Shun Sakai. All rights reserved.
+// SPDX-License-Identifier: BSD-2-Clause
+
+== REPORTING BUGS
+Bugs and feature requests can be reported at https://github.com/AOMediaCodec/libavif/issues.
