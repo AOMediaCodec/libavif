@@ -419,7 +419,7 @@ typedef struct avifRGBImage
     uint32_t height;                       // must match associated avifImage
     uint32_t depth;                        // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
     avifRGBFormat format;                  // all channels are always full range
-    avifChromaUpsampling chromaUpsampling; // How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
+    avifChromaUpsampling chromaUpsampling; // Defaults to AVIF_CHROMA_UPSAMPLING_AUTOMATIC: How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
     avifBool ignoreAlpha; // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                           // RGB, treating the alpha bits as if they were all 1.

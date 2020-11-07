@@ -432,7 +432,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
         // Profile 1.  8-bit and 10-bit 4:4:4
         // Profile 2.  8-bit and 10-bit 4:2:2
-        //            12-bit  4:0:0, 4:2:2 and 4:4:4
+        //            12-bit 4:0:0, 4:2:0, 4:2:2 and 4:4:4
         uint8_t seqProfile = 0;
         if (image->depth == 12) {
             // Only seqProfile 2 can handle 12 bit
