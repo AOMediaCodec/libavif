@@ -29,11 +29,11 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" ON)
 
-option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
-option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
-option(AVIF_CODEC_LIBGAV1 "Use the libgav1 codec for decoding (overrides AOM decoding if also enabled)" OFF)
-option(AVIF_CODEC_RAV1E "Use the rav1e codec for encoding (overrides AOM and SVT encoding if also enabled)" OFF)
-option(AVIF_CODEC_SVT "Use the SVT-AV1 codec for encoding (overrides AOM encoding if also enabled)" OFF)
+option(AVIF_CODEC_AOM "Use the AOM codec for encoding/decoding (see AVIF_CODEC_AOM_DECODE/AVIF_CODEC_AOM_ENCODE)" OFF)
+option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding" OFF)
+option(AVIF_CODEC_LIBGAV1 "Use the libgav1 codec for decoding" OFF)
+option(AVIF_CODEC_RAV1E "Use the rav1e codec for encoding" OFF)
+option(AVIF_CODEC_SVT "Use the SVT-AV1 codec for encoding" OFF)
 
 option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d (see Local Builds in README)" OFF)
