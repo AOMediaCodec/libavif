@@ -479,6 +479,8 @@ static struct AvailableCodec availableCodecs[] = {
       AVIF_CODEC_FLAG_CAN_DECODE
 #elif defined(AVIF_CODEC_AOM_ENCODE)
       AVIF_CODEC_FLAG_CAN_ENCODE
+#else
+#error AVIF_CODEC_AOM_DECODE or AVIF_CODEC_AOM_ENCODE must be defined
 #endif
     },
 #endif
