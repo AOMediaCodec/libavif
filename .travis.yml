@@ -5,15 +5,23 @@ dist: bionic
 addons:
   apt:
     packages:
+      - docbook-xml
+      - docbook-xsl
+      - libxml2-utils
       - ninja-build
       - python3
       - python3-pip
+      - xsltproc
 
 before_script:
   - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
   - cd nasm-2.14
   - ./configure && make -j2 && sudo make install
   - nasm --version
+  - curl -L https://github.com/asciidoc/asciidoc-py3/releases/download/9.0.4/asciidoc-9.0.4.tar.gz | tar xvz
+  - cd asciidoc-9.0.4
+  - ./configure && sudo make install
+  - a2x --version
   - pip3 --disable-pip-version-check install setuptools
   - pip3 --disable-pip-version-check install meson
   - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -30,7 +38,7 @@ before_script:
   - mkdir build
   - cd build
 script:
-  - cmake -G Ninja -DCMAKE_BUILD_TYPE=$config -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON -DAVIF_BUILD_TESTS=ON ..
+  - cmake -G Ninja -DCMAKE_BUILD_TYPE=$config -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON -DAVIF_BUILD_MAN=ON -DAVIF_BUILD_TESTS=ON ..
   - ninja
 
 matrix:
