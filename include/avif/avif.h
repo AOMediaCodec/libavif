@@ -16,8 +16,8 @@ extern "C" {
 
 // AVIF_VERSION_DEVEL should always 0 for official releases / version tags,
 // and non-zero during development of the next release. This should allow for
-// downstream projects to do greater-than ifdef checks on AVIF_VERSION to
-// leverage in-development code without breaking their stable builds.
+// downstream projects to do greater-than preprocessor checks on AVIF_VERSION
+// to leverage in-development code without breaking their stable builds.
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 8
 #define AVIF_VERSION_PATCH 3
