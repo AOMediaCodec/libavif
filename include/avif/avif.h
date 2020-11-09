@@ -14,10 +14,15 @@ extern "C" {
 // ---------------------------------------------------------------------------
 // Constants
 
+// AVIF_VERSION_DEVEL should always 0 for official releases / version tags,
+// and non-zero during development of the next release. This should allow for
+// downstream projects to do greater-than ifdef checks on AVIF_VERSION to
+// leverage in-development code without breaking their stable builds.
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 8
 #define AVIF_VERSION_PATCH 3
-#define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
+#define AVIF_VERSION_DEVEL 1
+#define AVIF_VERSION (AVIF_VERSION_MAJOR * 100000) + (AVIF_VERSION_MINOR * 1000) + (AVIF_VERSION_PATCH * 10) + AVIF_VERSION_DEVEL
 
 typedef int avifBool;
 #define AVIF_TRUE 1
