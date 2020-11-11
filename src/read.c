@@ -2742,30 +2742,49 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     return avifDecoderFlush(decoder);
 }
 
-avifResult avifDecoderNextImage(avifDecoder * decoder)
+avifResult avifDecoderNthImageReady(avifDecoder * decoder, uint32_t frameIndex)
 {
+    if (!decoder->data) {
+        // Nothing has been parsed yet
+        return AVIF_RESULT_NO_CONTENT;
+    }
+
     if (!decoder->io || !decoder->io->read) {
         return AVIF_RESULT_IO_NOT_SET;
     }
 
-    uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
+    if ((frameIndex > INT_MAX) || ((int)frameIndex >= decoder->imageCount)) {
+        // Impossible index
+        return AVIF_RESULT_NO_IMAGES_REMAINING;
+    }
 
     // Acquire all sample data for the current image first, allowing for any read call to bail out
     // with AVIF_RESULT_WAITING_ON_IO harmlessly / idempotently.
     for (unsigned int tileIndex = 0; tileIndex < decoder->data->tiles.count; ++tileIndex) {
         avifTile * tile = &decoder->data->tiles.tile[tileIndex];
-        if (nextImageIndex >= tile->input->samples.count) {
+        if (frameIndex >= tile->input->samples.count) {
             return AVIF_RESULT_NO_IMAGES_REMAINING;
         }
 
-        avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
+        avifDecodeSample * sample = &tile->input->samples.sample[frameIndex];
         avifResult prepareResult = avifDecoderPrepareSample(decoder, sample, 0);
         if (prepareResult != AVIF_RESULT_OK) {
             return prepareResult;
         }
     }
+    return AVIF_RESULT_OK;
+}
 
-    // Decode all frames now that the sample data is ready.
+avifResult avifDecoderNextImage(avifDecoder * decoder)
+{
+    const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
+
+    avifResult readyResult = avifDecoderNthImageReady(decoder, nextImageIndex);
+    if (readyResult != AVIF_RESULT_OK) {
+        return readyResult;
+    }
+
+    // Decode all tiles now that the sample data is ready.
     for (unsigned int tileIndex = 0; tileIndex < decoder->data->tiles.count; ++tileIndex) {
         avifTile * tile = &decoder->data->tiles.tile[tileIndex];
 
@@ -2943,6 +2962,11 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 
 avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 {
+    if (!decoder->data) {
+        // Nothing has been parsed yet
+        return AVIF_FALSE;
+    }
+
     if ((decoder->data->tiles.count > 0) && decoder->data->tiles.tile[0].input) {
         if (frameIndex < decoder->data->tiles.tile[0].input->samples.count) {
             return decoder->data->tiles.tile[0].input->samples.sample[frameIndex].sync;
@@ -2953,6 +2977,11 @@ avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 
 uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 {
+    if (!decoder->data) {
+        // Nothing has been parsed yet
+        return 0;
+    }
+
     for (; frameIndex != 0; --frameIndex) {
         if (avifDecoderIsKeyframe(decoder, frameIndex)) {
             break;
