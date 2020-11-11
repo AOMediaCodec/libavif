@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+* Expose `maxThreads` to `avifDecoder`, add `--jobs` to `avifdec`
+
 ## [0.8.3] - 2020-11-09
 
 ### Added
