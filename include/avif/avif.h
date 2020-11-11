@@ -639,6 +639,9 @@ typedef struct avifDecoder
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
+    // Defaults to 1.
+    int maxThreads;
+
     // avifs can have multiple sets of images in them. This specifies which to decode.
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;

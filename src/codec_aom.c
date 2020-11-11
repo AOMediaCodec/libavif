@@ -69,10 +69,15 @@ static void aomCodecDestroyInternal(avifCodec * codec)
 }
 
 #if defined(AVIF_CODEC_AOM_DECODE)
-static avifBool aomCodecOpen(struct avifCodec * codec)
+static avifBool aomCodecOpen(struct avifCodec * codec, avifDecoder * decoder)
 {
+    aom_codec_dec_cfg_t cfg;
+    memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
+    cfg.threads = decoder->maxThreads;
+    cfg.allow_lowbitdepth = 1;
+
     aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
-    if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, NULL, 0)) {
+    if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, &cfg, 0)) {
         return AVIF_FALSE;
     }
     codec->internal->decoderInitialized = AVIF_TRUE;

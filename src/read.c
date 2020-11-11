@@ -2183,6 +2183,7 @@ avifDecoder * avifDecoderCreate(void)
 {
     avifDecoder * decoder = (avifDecoder *)avifAlloc(sizeof(avifDecoder));
     memset(decoder, 0, sizeof(avifDecoder));
+    decoder->maxThreads = 1;
     return decoder;
 }
 
@@ -2333,7 +2334,7 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
         if (!tile->codec) {
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
         }
-        if (!tile->codec->open(tile->codec)) {
+        if (!tile->codec->open(tile->codec, decoder)) {
             return AVIF_RESULT_DECODE_COLOR_FAILED;
         }
     }
