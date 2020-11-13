@@ -713,9 +713,6 @@ avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const c
 // * avifDecoderNextImage() - in a loop, using decoder->image after each successful call
 // * avifDecoderDestroy()
 //
-// NOTE: Until avifDecoderParse() returns AVIF_RESULT_OK, no data in avifDecoder should
-//       be considered valid, and no queries (such as Keyframe/Timing/Ready) should be made.
-//
 // You can use avifDecoderReset() any time after a successful call to avifDecoderParse()
 // to reset the internal decoder back to before the first frame. Calling either
 // avifDecoderSetSource() or avifDecoderParse() will automatically Reset the decoder.
@@ -745,12 +742,6 @@ uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameI
 // Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
 // This function may be used after a successful call to avifDecoderParse().
 avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
-
-// avifIO helper - This will attempt to use avifIO to read all still-unread sample data
-// for the requested frame index, and will return any errors encountered during read,
-// including AVIF_RESULT_WAITING_ON_IO. If this function returns AVIF_RESULT_OK,
-// attempting to decode this frame index should not incur any avifIO reads.
-avifResult avifDecoderNthImageReady(avifDecoder * decoder, uint32_t frameIndex);
 
 // ---------------------------------------------------------------------------
 // avifEncoder
