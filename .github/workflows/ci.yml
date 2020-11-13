@@ -2,15 +2,11 @@ name: CI
 on: [push, pull_request]
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       CC: gcc-10
       CXX: g++-10
     steps:
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
     - name: Install dependencies
       run: |
         DEBIAN_FRONTEND=noninteractive sudo apt-get update || true
@@ -18,12 +14,7 @@ jobs:
         pip install --upgrade pip
         pip install setuptools
         pip install meson
-    - name: Install nasm
-      run: |
-        curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-        cd nasm-2.14
-        ./configure && make -j2 && sudo make install
-        nasm --version
+    - uses: ilammy/setup-nasm@v1
     - uses: actions/checkout@v2
     - name: Setup aom
       working-directory: ./ext
