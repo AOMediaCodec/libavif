@@ -1,6 +1,6 @@
 language: c
 os: linux
-dist: bionic
+dist: focal
 
 addons:
   apt:
@@ -10,8 +10,8 @@ addons:
       - python3-pip
 
 before_script:
-  - curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-  - cd nasm-2.14
+  - curl -L https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar xvz
+  - cd nasm-2.15.05
   - ./configure && make -j2 && sudo make install
   - nasm --version
   - pip3 --disable-pip-version-check install setuptools
