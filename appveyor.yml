@@ -11,7 +11,7 @@ install:
  - git submodule update --init --recursive
  - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
  # Install Nasm
- - appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.14.02-win64.zip" -FileName "nasm.zip"
+ - appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.15.05-win64.zip" -FileName "nasm.zip"
  - 7z x "nasm.zip" > nul
  - move nasm-* NASM
  - set PATH=%PATH%;%CD%\NASM;
