@@ -120,12 +120,7 @@ static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * prop
     return NULL;
 }
 
-typedef struct avifDecoderItemExtent
-{
-    uint64_t offset;
-    size_t size;
-} avifDecoderItemExtent;
-AVIF_ARRAY_DECLARE(avifDecoderItemExtentArray, avifDecoderItemExtent, extent);
+AVIF_ARRAY_DECLARE(avifExtentArray, avifExtent, extent);
 
 // one "item" worth for decoding (all iref, iloc, iprp, etc refer to one of these)
 typedef struct avifDecoderItem
@@ -137,7 +132,7 @@ typedef struct avifDecoderItem
     uint32_t idatID; // If non-zero, offset is relative to this idat box (iloc construction_method==1)
     avifContentType contentType;
     avifPropertyArray properties;
-    avifDecoderItemExtentArray extents; // All extent offsets/sizes
+    avifExtentArray extents;       // All extent offsets/sizes
     avifRWData mergedExtents;      // if set, is a single contiguous block of this item's extents (unused when extents.count == 1)
     avifBool ownsMergedExtents;    // if true, mergedExtents must be freed when this item is destroyed
     avifBool partialMergedExtents; // If true, mergedExtents doesn't have all of the item data yet
@@ -521,7 +516,7 @@ static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
 
     avifDecoderItem * item = (avifDecoderItem *)avifArrayPushPtr(&meta->items);
     avifArrayCreate(&item->properties, sizeof(avifProperty), 16);
-    avifArrayCreate(&item->extents, sizeof(avifDecoderItemExtent), 1);
+    avifArrayCreate(&item->extents, sizeof(avifExtent), 1);
     item->id = itemID;
     item->meta = meta;
     return item;
@@ -625,6 +620,63 @@ static void avifDecoderDataDestroy(avifDecoderData * data)
     avifFree(data);
 }
 
+// This returns the max extent that has to be read in order to decode this item. If
+// the item is stored in an idat, the data has already been read during Parse() and
+// this function will return AVIF_RESULT_OK with a 0-byte extent.
+static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExtent * outExtent)
+{
+    if (item->extents.count == 0) {
+        return AVIF_RESULT_TRUNCATED_DATA;
+    }
+
+    if (item->idatID != 0) {
+        // construction_method: idat(1)
+
+        // Find associated idat block
+        for (uint32_t i = 0; i < item->meta->idats.count; ++i) {
+            if (item->meta->idats.idat[i].id == item->idatID) {
+                // Already read from a meta box during Parse()
+                memset(outExtent, 0, sizeof(avifExtent));
+                return AVIF_RESULT_OK;
+            }
+        }
+
+        // no idat box was found in this meta box, bail out
+        return AVIF_RESULT_NO_CONTENT;
+    }
+
+    // construction_method: file(0)
+
+    avifBool firstExtent = AVIF_TRUE;
+    uint64_t minOffset = 0;
+    uint64_t maxOffset = 0;
+    for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
+        avifExtent * extent = &item->extents.extent[extentIter];
+
+        if (extent->size > UINT64_MAX - extent->offset) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        const uint64_t endOffset = extent->offset + extent->size;
+
+        if (firstExtent) {
+            firstExtent = AVIF_FALSE;
+            minOffset = extent->offset;
+            maxOffset = endOffset;
+        } else {
+            if (minOffset > extent->offset) {
+                minOffset = extent->offset;
+            }
+            if (maxOffset < endOffset) {
+                maxOffset = endOffset;
+            }
+        }
+    }
+
+    outExtent->offset = minOffset;
+    outExtent->size = maxOffset - minOffset;
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifROData * outData, size_t partialByteCount)
 {
     if (item->mergedExtents.data && !item->partialMergedExtents) {
@@ -684,7 +736,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifR
     uint8_t * front = item->mergedExtents.data;
     size_t remainingBytes = totalBytesToRead;
     for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
-        avifDecoderItemExtent * extent = &item->extents.extent[extentIter];
+        avifExtent * extent = &item->extents.extent[extentIter];
 
         size_t bytesToRead = extent->size;
         if (bytesToRead > remainingBytes) {
@@ -1110,7 +1162,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             uint64_t extentLength; // unsigned int(offset_size*8) extent_length;
             CHECK(avifROStreamReadUX8(&s, &extentLength, lengthSize));
 
-            avifDecoderItemExtent * extent = (avifDecoderItemExtent *)avifArrayPushPtr(&item->extents);
+            avifExtent * extent = (avifExtent *)avifArrayPushPtr(&item->extents);
             if (extentOffset > UINT64_MAX - baseOffset) {
                 return AVIF_FALSE;
             }
@@ -2231,6 +2283,72 @@ avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename)
         return AVIF_RESULT_IO_ERROR;
     }
     avifDecoderSetIO(decoder, io);
+    return AVIF_RESULT_OK;
+}
+
+// 0-byte extents are ignored/overwritten during the merge, as they are the signal from helper
+// functions that no extent was necessary for this given sample. If both provided extents are
+// >0 bytes, this will set dst to be an extent that bounds both supplied extents.
+static void avifExtentMerge(avifExtent * dst, const avifExtent * src)
+{
+    if (!dst->size) {
+        memcpy(dst, src, sizeof(avifExtent));
+        return;
+    }
+    if (!src->size) {
+        return;
+    }
+
+    const uint64_t minExtent1 = dst->offset;
+    const uint64_t maxExtent1 = dst->offset + dst->size;
+    const uint64_t minExtent2 = src->offset;
+    const uint64_t maxExtent2 = src->offset + src->size;
+    dst->offset = AVIF_MIN(minExtent1, minExtent2);
+    dst->size = AVIF_MAX(maxExtent1, maxExtent2);
+}
+
+avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t frameIndex, avifBool includeDependentFrameExtents, avifExtent * outExtent)
+{
+    if (!decoder->data) {
+        // Nothing has been parsed yet
+        return AVIF_RESULT_NO_CONTENT;
+    }
+
+    memset(outExtent, 0, sizeof(avifExtent));
+
+    uint32_t startFrameIndex = includeDependentFrameExtents ? avifDecoderNearestKeyframe(decoder, frameIndex) : frameIndex;
+    uint32_t endFrameIndex = frameIndex;
+    for (uint32_t currentFrameIndex = startFrameIndex; currentFrameIndex <= endFrameIndex; ++currentFrameIndex) {
+        for (unsigned int tileIndex = 0; tileIndex < decoder->data->tiles.count; ++tileIndex) {
+            avifTile * tile = &decoder->data->tiles.tile[tileIndex];
+            if (currentFrameIndex >= tile->input->samples.count) {
+                return AVIF_RESULT_NO_IMAGES_REMAINING;
+            }
+
+            avifDecodeSample * sample = &tile->input->samples.sample[currentFrameIndex];
+            avifExtent sampleExtent;
+            if (sample->itemID) {
+                // The data comes from an item. Let avifDecoderItemMaxExtent() do the heavy lifting.
+
+                avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID);
+                avifResult maxExtentResult = avifDecoderItemMaxExtent(item, &sampleExtent);
+                if (maxExtentResult != AVIF_RESULT_OK) {
+                    return maxExtentResult;
+                }
+            } else {
+                // The data likely comes from a sample table. Use the sample position directly.
+
+                sampleExtent.offset = sample->offset;
+                sampleExtent.size = sample->size;
+            }
+
+            if (sampleExtent.size > UINT64_MAX - sampleExtent.offset) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            avifExtentMerge(outExtent, &sampleExtent);
+        }
+    }
     return AVIF_RESULT_OK;
 }
 

@@ -747,6 +747,34 @@ uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameI
 avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
 
 // ---------------------------------------------------------------------------
+// avifExtent
+
+typedef struct avifExtent
+{
+    uint64_t offset;
+    size_t size;
+} avifExtent;
+
+// Streaming data helper - Use this to calculate the maximal AVIF data extent encompassing all AV1
+// sample data needed to decode the Nth image. The offset will be the earliest offset of all required
+// AV1 extents for this frame, and the size will create a range including the last byte of the last AV1
+// sample needed. Note that this extent may include non-sample data, as a frame's sample data
+// may be broken into multiple extents and interleaved with other data, or in non-sequential order.
+//
+// If includeDependentFrameExtents is true (recommended), this extent will also encompass all AV1
+// samples that this frame's sample depends on to decode, from the nearest keyframe up to this Nth
+// frame.
+//
+// If avifDecoderNthImageMaxExtent() returns AVIF_RESULT_OK and the extent's size is 0 bytes, the
+// data for this frame was read as a part of avifDecoderParse() (typically in an idat box inside of
+// a meta box) and no additional data will need to be read to decode this frame, assuming
+// includeDependentFrameExtents is true or this frameIndex is a keyframe.
+avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder,
+                                        uint32_t frameIndex,
+                                        avifBool includeDependentFrameExtents,
+                                        avifExtent * outExtent);
+
+// ---------------------------------------------------------------------------
 // avifEncoder
 
 struct avifEncoderData;

@@ -400,21 +400,37 @@ static int runIOTests(const char * dataDir)
 
             if (parseResult == AVIF_RESULT_OK) {
                 for (; io->availableBytes <= io->io.sizeHint; ++io->availableBytes) {
-                    avifResult nextImageResult = avifDecoderNextImage(decoder);
-                    if (nextImageResult == AVIF_RESULT_WAITING_ON_IO) {
-                        continue;
-                    }
-                    if (nextImageResult != AVIF_RESULT_OK) {
+                    avifExtent extent;
+                    avifResult extentResult = avifDecoderNthImageMaxExtent(decoder, 0, AVIF_TRUE, &extent);
+                    if (extentResult != AVIF_RESULT_OK) {
                         retCode = 1;
-                    }
 
-                    printf("File: [%s @ %zu / %" PRIu64 " bytes, %s, %s] nextImage returned: %s\n",
-                           filename,
-                           io->availableBytes,
-                           io->io.sizeHint,
-                           io->io.persistent ? "Persistent" : "NonPersistent",
-                           decoder->ignoreExif ? "IgnoreMetadata" : "Metadata",
-                           avifResultToString(nextImageResult));
+                        printf("File: [%s @ %zu / %" PRIu64 " bytes, %s, %s] extentResult returned: %s\n",
+                               filename,
+                               io->availableBytes,
+                               io->io.sizeHint,
+                               io->io.persistent ? "Persistent" : "NonPersistent",
+                               decoder->ignoreExif ? "IgnoreMetadata" : "Metadata",
+                               avifResultToString(extentResult));
+                    } else {
+                        avifResult nextImageResult = avifDecoderNextImage(decoder);
+                        if (nextImageResult == AVIF_RESULT_WAITING_ON_IO) {
+                            continue;
+                        }
+                        if (nextImageResult != AVIF_RESULT_OK) {
+                            retCode = 1;
+                        }
+
+                        printf("File: [%s @ %zu / %" PRIu64 " bytes, %s, %s] nextImage [MaxExtent off %" PRIu64 ", size %zu] returned: %s\n",
+                               filename,
+                               io->availableBytes,
+                               io->io.sizeHint,
+                               io->io.persistent ? "Persistent" : "NonPersistent",
+                               decoder->ignoreExif ? "IgnoreMetadata" : "Metadata",
+                               extent.offset,
+                               extent.size,
+                               avifResultToString(nextImageResult));
+                    }
                     break;
                 }
             }
