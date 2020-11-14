@@ -714,7 +714,7 @@ avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const c
 // * avifDecoderDestroy()
 //
 // NOTE: Until avifDecoderParse() returns AVIF_RESULT_OK, no data in avifDecoder should
-//       be considered valid, and no queries (such as Keyframe/Timing/Ready) should be made.
+//       be considered valid, and no queries (such as Keyframe/Timing/MaxExtent) should be made.
 //
 // You can use avifDecoderReset() any time after a successful call to avifDecoderParse()
 // to reset the internal decoder back to before the first frame. Calling either
@@ -739,11 +739,12 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 // Keyframe information
 // frameIndex - 0-based, matching avifDecoder->imageIndex, bound by avifDecoder->imageCount
 // "nearest" keyframe means the keyframe prior to this frame index (returns frameIndex if it is a keyframe)
+// These functions may be used after a successful call (AVIF_RESULT_OK) to avifDecoderParse().
 avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
 uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
 
 // Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
-// This function may be used after a successful call to avifDecoderParse().
+// This function may be used after a successful call (AVIF_RESULT_OK) to avifDecoderParse().
 avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
 
 // ---------------------------------------------------------------------------
@@ -769,6 +770,8 @@ typedef struct avifExtent
 // data for this frame was read as a part of avifDecoderParse() (typically in an idat box inside of
 // a meta box) and no additional data will need to be read to decode this frame, assuming
 // includeDependentFrameExtents is true or this frameIndex is a keyframe.
+//
+// This function may be used after a successful call (AVIF_RESULT_OK) to avifDecoderParse().
 avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder,
                                         uint32_t frameIndex,
                                         avifBool includeDependentFrameExtents,
