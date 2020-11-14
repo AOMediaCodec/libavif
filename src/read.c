@@ -122,8 +122,8 @@ static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * prop
 
 typedef struct avifDecoderItemExtent
 {
-    uint32_t offset;
-    uint32_t size;
+    uint64_t offset;
+    size_t size;
 } avifDecoderItemExtent;
 AVIF_ARRAY_DECLARE(avifDecoderItemExtentArray, avifDecoderItemExtent, extent);
 
@@ -133,7 +133,7 @@ typedef struct avifDecoderItem
     uint32_t id;
     struct avifMeta * meta; // Unowned; A back-pointer for convenience
     uint8_t type[4];
-    uint32_t size;
+    size_t size;
     uint32_t idatID; // If non-zero, offset is relative to this idat box (iloc construction_method==1)
     avifContentType contentType;
     avifPropertyArray properties;
@@ -1115,15 +1115,12 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
                 return AVIF_FALSE;
             }
             uint64_t offset = baseOffset + extentOffset;
-            if (offset > UINT32_MAX) {
+            extent->offset = offset;
+            if (extentLength > SIZE_MAX) {
                 return AVIF_FALSE;
             }
-            extent->offset = (uint32_t)offset;
-            if (extentLength > UINT32_MAX) {
-                return AVIF_FALSE;
-            }
-            extent->size = (uint32_t)extentLength;
-            if (extent->size > UINT32_MAX - item->size) {
+            extent->size = (size_t)extentLength;
+            if (extent->size > SIZE_MAX - item->size) {
                 return AVIF_FALSE;
             }
             item->size += extent->size;

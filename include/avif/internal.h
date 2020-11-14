@@ -108,7 +108,7 @@ typedef struct avifDecodeSample
 
     uint32_t itemID; // if non-zero, data comes from a mergedExtents buffer in an avifDecoderItem, not a file offset
     uint64_t offset; // used only when itemID is zero, ignored and set to 0 when itemID is non-zero
-    uint32_t size;
+    size_t size;
     avifBool sync; // is sync sample (keyframe)
 } avifDecodeSample;
 AVIF_ARRAY_DECLARE(avifDecodeSampleArray, avifDecodeSample, sample);
