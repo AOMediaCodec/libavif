@@ -713,6 +713,9 @@ avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const c
 // * avifDecoderNextImage() - in a loop, using decoder->image after each successful call
 // * avifDecoderDestroy()
 //
+// NOTE: Until avifDecoderParse() returns AVIF_RESULT_OK, no data in avifDecoder should
+//       be considered valid, and no queries (such as Keyframe/Timing/Ready) should be made.
+//
 // You can use avifDecoderReset() any time after a successful call to avifDecoderParse()
 // to reset the internal decoder back to before the first frame. Calling either
 // avifDecoderSetSource() or avifDecoderParse() will automatically Reset the decoder.
