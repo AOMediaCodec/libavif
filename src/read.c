@@ -632,7 +632,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
     if (item->idatID != 0) {
         // construction_method: idat(1)
 
-        // Find associated idat block
+        // Find associated idat box
         for (uint32_t i = 0; i < item->meta->idats.count; ++i) {
             if (item->meta->idats.idat[i].id == item->idatID) {
                 // Already read from a meta box during Parse()
@@ -641,7 +641,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
             }
         }
 
-        // no idat box was found in this meta box, bail out
+        // no associated idat box was found in the meta box, bail out
         return AVIF_RESULT_NO_CONTENT;
     }
 
@@ -694,7 +694,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifR
     if (item->idatID != 0) {
         // construction_method: idat(1)
 
-        // Find associated idat block
+        // Find associated idat box
         for (uint32_t i = 0; i < item->meta->idats.count; ++i) {
             if (item->meta->idats.idat[i].id == item->idatID) {
                 idatBuffer = &item->meta->idats.idat[i].data;
@@ -703,7 +703,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifR
         }
 
         if (idatBuffer == NULL) {
-            // no idat box was found in this meta box, bail out
+            // no associated idat box was found in the meta box, bail out
             return AVIF_RESULT_NO_CONTENT;
         }
     }
