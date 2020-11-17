@@ -763,13 +763,13 @@ typedef struct avifExtent
 // may be broken into multiple extents and interleaved with other data, or in non-sequential order.
 //
 // If includeDependentFrameExtents is true (recommended), this extent will also encompass all AV1
-// samples that this frame's sample depends on to decode, from the nearest keyframe up to this Nth
-// frame.
+// samples that this frame's sample depends on to decode (such as samples for reference frames),
+// from the nearest keyframe up to this Nth frame.
 //
-// If avifDecoderNthImageMaxExtent() returns AVIF_RESULT_OK and the extent's size is 0 bytes, the
+// If avifDecoderNthImageMaxExtent() returns AVIF_RESULT_OK and the extent's size is 0 bytes, this
+// signals that libavif doesn't expect any additional reads for this frame's decode. This happens if
 // data for this frame was read as a part of avifDecoderParse() (typically in an idat box inside of
-// a meta box) and no additional data will need to be read to decode this frame, assuming
-// includeDependentFrameExtents is true or this frameIndex is a keyframe.
+// a meta box) and (if includeDependentFrameExtents is true) has no dependent frames.
 //
 // This function may be used after a successful call (AVIF_RESULT_OK) to avifDecoderParse().
 avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder,
