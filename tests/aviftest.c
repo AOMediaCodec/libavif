@@ -405,7 +405,7 @@ static int runIOTests(const char * dataDir)
                     if (extentResult != AVIF_RESULT_OK) {
                         retCode = 1;
 
-                        printf("File: [%s @ %zu / %" PRIu64 " bytes, %s, %s] extentResult returned: %s\n",
+                        printf("File: [%s @ %zu / %" PRIu64 " bytes, %s, %s] maxExtent returned: %s\n",
                                filename,
                                io->availableBytes,
                                io->io.sizeHint,
