@@ -647,8 +647,9 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
 
     // construction_method: file(0)
 
-    avifBool firstExtent = AVIF_TRUE;
-    uint64_t minOffset = 0;
+    // Assert that the for loop below will execute at least one iteration.
+    assert(item->extents.count != 0);
+    uint64_t minOffset = UINT64_MAX;
     uint64_t maxOffset = 0;
     for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
         avifExtent * extent = &item->extents.extent[extentIter];
@@ -658,17 +659,11 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
         }
         const uint64_t endOffset = extent->offset + extent->size;
 
-        if (firstExtent) {
-            firstExtent = AVIF_FALSE;
+        if (minOffset > extent->offset) {
             minOffset = extent->offset;
+        }
+        if (maxOffset < endOffset) {
             maxOffset = endOffset;
-        } else {
-            if (minOffset > extent->offset) {
-                minOffset = extent->offset;
-            }
-            if (maxOffset < endOffset) {
-                maxOffset = endOffset;
-            }
         }
     }
 
