@@ -673,7 +673,11 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
     }
 
     outExtent->offset = minOffset;
-    outExtent->size = maxOffset - minOffset;
+    const uint64_t extentLength = maxOffset - minOffset;
+    if (extentLength > SIZE_MAX) {
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+    outExtent->size = (size_t)extentLength;
     return AVIF_RESULT_OK;
 }
 
@@ -2289,14 +2293,14 @@ avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename)
 // 0-byte extents are ignored/overwritten during the merge, as they are the signal from helper
 // functions that no extent was necessary for this given sample. If both provided extents are
 // >0 bytes, this will set dst to be an extent that bounds both supplied extents.
-static void avifExtentMerge(avifExtent * dst, const avifExtent * src)
+static avifResult avifExtentMerge(avifExtent * dst, const avifExtent * src)
 {
     if (!dst->size) {
         memcpy(dst, src, sizeof(avifExtent));
-        return;
+        return AVIF_RESULT_OK;
     }
     if (!src->size) {
-        return;
+        return AVIF_RESULT_OK;
     }
 
     const uint64_t minExtent1 = dst->offset;
@@ -2304,7 +2308,12 @@ static void avifExtentMerge(avifExtent * dst, const avifExtent * src)
     const uint64_t minExtent2 = src->offset;
     const uint64_t maxExtent2 = src->offset + src->size;
     dst->offset = AVIF_MIN(minExtent1, minExtent2);
-    dst->size = AVIF_MAX(maxExtent1, maxExtent2);
+    const uint64_t extentLength = AVIF_MAX(maxExtent1, maxExtent2) - dst->offset;
+    if (extentLength > SIZE_MAX) {
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+    dst->size = (size_t)extentLength;
+    return AVIF_RESULT_OK;
 }
 
 avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t frameIndex, avifBool includeDependentFrameExtents, avifExtent * outExtent)
@@ -2346,7 +2355,10 @@ avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t fr
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
 
-            avifExtentMerge(outExtent, &sampleExtent);
+            avifResult extentMergeResult = avifExtentMerge(outExtent, &sampleExtent);
+            if (extentMergeResult != AVIF_RESULT_OK) {
+                return extentMergeResult;
+            }
         }
     }
     return AVIF_RESULT_OK;
