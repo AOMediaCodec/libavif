@@ -2311,7 +2311,7 @@ static avifResult avifExtentMerge(avifExtent * dst, const avifExtent * src)
     return AVIF_RESULT_OK;
 }
 
-avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t frameIndex, avifBool includeDependentFrameExtents, avifExtent * outExtent)
+avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t frameIndex, avifExtent * outExtent)
 {
     if (!decoder->data) {
         // Nothing has been parsed yet
@@ -2320,7 +2320,7 @@ avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t fr
 
     memset(outExtent, 0, sizeof(avifExtent));
 
-    uint32_t startFrameIndex = includeDependentFrameExtents ? avifDecoderNearestKeyframe(decoder, frameIndex) : frameIndex;
+    uint32_t startFrameIndex = avifDecoderNearestKeyframe(decoder, frameIndex);
     uint32_t endFrameIndex = frameIndex;
     for (uint32_t currentFrameIndex = startFrameIndex; currentFrameIndex <= endFrameIndex; ++currentFrameIndex) {
         for (unsigned int tileIndex = 0; tileIndex < decoder->data->tiles.count; ++tileIndex) {

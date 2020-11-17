@@ -757,25 +757,21 @@ typedef struct avifExtent
 } avifExtent;
 
 // Streaming data helper - Use this to calculate the maximal AVIF data extent encompassing all AV1
-// sample data needed to decode the Nth image. The offset will be the earliest offset of all required
-// AV1 extents for this frame, and the size will create a range including the last byte of the last AV1
-// sample needed. Note that this extent may include non-sample data, as a frame's sample data
-// may be broken into multiple extents and interleaved with other data, or in non-sequential order.
-//
-// If includeDependentFrameExtents is true (recommended), this extent will also encompass all AV1
-// samples that this frame's sample depends on to decode (such as samples for reference frames),
-// from the nearest keyframe up to this Nth frame.
+// sample data needed to decode the Nth image. The offset will be the earliest offset of all
+// required AV1 extents for this frame, and the size will create a range including the last byte of
+// the last AV1 sample needed. Note that this extent may include non-sample data, as a frame's
+// sample data may be broken into multiple extents and interleaved with other data, or in
+// non-sequential order. This extent will also encompass all AV1 samples that this frame's sample
+// depends on to decode (such as samples for reference frames), from the nearest keyframe up to this
+// Nth frame.
 //
 // If avifDecoderNthImageMaxExtent() returns AVIF_RESULT_OK and the extent's size is 0 bytes, this
-// signals that libavif doesn't expect any additional reads for this frame's decode. This happens if
+// signals that libavif doesn't expect to call avifIO's Read for this frame's decode. This happens if
 // data for this frame was read as a part of avifDecoderParse() (typically in an idat box inside of
-// a meta box) and (if includeDependentFrameExtents is true) has no dependent frames.
+// a meta box).
 //
 // This function may be used after a successful call (AVIF_RESULT_OK) to avifDecoderParse().
-avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder,
-                                        uint32_t frameIndex,
-                                        avifBool includeDependentFrameExtents,
-                                        avifExtent * outExtent);
+avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t frameIndex, avifExtent * outExtent);
 
 // ---------------------------------------------------------------------------
 // avifEncoder

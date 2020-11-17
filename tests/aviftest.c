@@ -401,7 +401,7 @@ static int runIOTests(const char * dataDir)
             if (parseResult == AVIF_RESULT_OK) {
                 for (; io->availableBytes <= io->io.sizeHint; ++io->availableBytes) {
                     avifExtent extent;
-                    avifResult extentResult = avifDecoderNthImageMaxExtent(decoder, 0, AVIF_TRUE, &extent);
+                    avifResult extentResult = avifDecoderNthImageMaxExtent(decoder, 0, &extent);
                     if (extentResult != AVIF_RESULT_OK) {
                         retCode = 1;
 
