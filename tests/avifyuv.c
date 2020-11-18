@@ -109,7 +109,8 @@ int main(int argc, char * argv[])
                 const avifMatrixCoefficients matrixCoeffsList[] = { AVIF_MATRIX_COEFFICIENTS_BT709,
                                                                     AVIF_MATRIX_COEFFICIENTS_BT601,
                                                                     AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
-                                                                    AVIF_MATRIX_COEFFICIENTS_IDENTITY };
+                                                                    AVIF_MATRIX_COEFFICIENTS_IDENTITY,
+                                                                    AVIF_MATRIX_COEFFICIENTS_YCGCO };
                 const int matrixCoeffsCount = (int)(sizeof(matrixCoeffsList) / sizeof(matrixCoeffsList[0]));
 
                 for (int matrixCoeffsIndex = 0; matrixCoeffsIndex < matrixCoeffsCount; ++matrixCoeffsIndex) {

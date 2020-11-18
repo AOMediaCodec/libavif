@@ -24,7 +24,11 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     }
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
-    if ((image->matrixCoefficients == 3 /* CICP reserved */) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) ||
+    //
+    // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
+    // on Y,U,V. So YCgCo with limited range is unsupported.
+    if ((image->matrixCoefficients == 3 /* CICP reserved */) ||
+        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) && (image->yuvRange == AVIF_RANGE_LIMITED)) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
@@ -41,6 +45,8 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
 
     if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
         state->mode = AVIF_REFORMAT_MODE_IDENTITY;
+    } else if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
+        state->mode = AVIF_REFORMAT_MODE_YCGCO;
     }
 
     if (state->mode != AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
@@ -214,6 +220,11 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         yuvBlock[bI][bJ].y = rgbPixel[1]; // G
                         yuvBlock[bI][bJ].u = rgbPixel[2]; // B
                         yuvBlock[bI][bJ].v = rgbPixel[0]; // R
+                    } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO) {
+                        // Formulas 44,45,46 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                        yuvBlock[bI][bJ].y = 0.5f * rgbPixel[1] + 0.25f * (rgbPixel[0] + rgbPixel[2]);
+                        yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
+                        yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
                     } else {
                         float Y = (kr * rgbPixel[0]) + (kg * rgbPixel[1]) + (kb * rgbPixel[2]);
                         yuvBlock[bI][bJ].y = Y;
@@ -523,6 +534,12 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     G = Y;
                     B = Cb;
                     R = Cr;
+                } else if (state->mode == AVIF_REFORMAT_MODE_YCGCO) {
+                    // Identity (GBR): Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                    const float t = Y - Cb;
+                    G = Y + Cb;
+                    B = t - Cr;
+                    R = t + Cr;
                 } else {
                     // Normal YUV
                     R = Y + (2 * (1 - kr)) * Cr;
@@ -1028,7 +1045,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
             }
 
             // TODO: Add more fast paths for identity
-        } else {
+        } else if (state.mode == AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
             if (image->depth > 8) {
                 // yuv:u16
 
