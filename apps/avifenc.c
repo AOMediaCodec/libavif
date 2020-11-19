@@ -188,6 +188,13 @@ static avifInputFile * avifInputGetNextFile(avifInput * input)
     }
     return &input->files[input->fileIndex];
 }
+static avifBool avifInputHasRemainingData(avifInput * input)
+{
+    if (input->useStdin) {
+        return !feof(stdin);
+    }
+    return (input->fileIndex < input->filesCount);
+}
 
 static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image, uint32_t * outDepth)
 {
@@ -777,7 +784,7 @@ int main(int argc, char * argv[])
     encoder->keyframeInterval = keyframeInterval;
 
     uint32_t addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
-    if (input.filesCount == 1) {
+    if (!avifInputHasRemainingData(&input)) {
         addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
     }
 
