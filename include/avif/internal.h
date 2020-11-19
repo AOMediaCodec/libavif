@@ -93,9 +93,9 @@ avifBool avifFillAlpha(const avifAlphaParams * const params);
 avifBool avifReformatAlpha(const avifAlphaParams * const params);
 
 // Returns:
-// * AVIF_RESULT_OK         - Converted successfully with libyuv
-// * AVIF_RESULT_NO_CONTENT - Incapable of converting this combination with libyuv, use built-in YUV conversion
-// * [any other error]      - Return error to caller
+// * AVIF_RESULT_OK              - Converted successfully with libyuv
+// * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
+// * [any other error]           - Return error to caller
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
 
 // ---------------------------------------------------------------------------

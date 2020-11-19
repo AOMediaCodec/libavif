@@ -92,6 +92,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_IO_ERROR:                      return "IO Error";
         case AVIF_RESULT_WAITING_ON_IO:                 return "Waiting on IO";
         case AVIF_RESULT_INVALID_ARGUMENT:              return "Invalid argument";
+        case AVIF_RESULT_NOT_IMPLEMENTED:               return "Not implemented";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;

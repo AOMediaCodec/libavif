@@ -961,7 +961,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     if (libyuvResult == AVIF_RESULT_OK) {
         convertedWithLibYUV = AVIF_TRUE;
     } else {
-        if (libyuvResult != AVIF_RESULT_NO_CONTENT) {
+        if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
             return libyuvResult;
         }
     }
