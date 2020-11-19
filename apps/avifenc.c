@@ -623,7 +623,8 @@ int main(int argc, char * argv[])
 
         if (cicpExplicitlySet) {
             // Only warn if someone explicitly asked for identity.
-            printf("WARNING: matrixCoefficients may not be set to identity(0) when subsampling. Resetting MC to defaults.\n");
+            printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
+                   image->matrixCoefficients);
         }
     }
 
