@@ -131,7 +131,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     )
     # The detection of cross compilation by -Wpoison-system-directories has false positives on macOS because
     # --sysroot is implicitly added. Turn the warning off.
-    check_c_compiler_flag(-Wpoison-system-directories HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
+    if(NOT DEFINED HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
+        check_c_compiler_flag(-Wpoison-system-directories HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
+    endif()
     if(HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
         add_definitions(-Wno-poison-system-directories)
     endif()
