@@ -113,6 +113,7 @@ typedef struct avifEncoderData
     avifEncoderItem * alphaItem;
     uint16_t lastItemID;
     uint16_t primaryItemID;
+    avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
 } avifEncoderData;
 
 static avifEncoderData * avifEncoderDataCreate()
@@ -359,6 +360,24 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
 
     if (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
         return AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
+    }
+
+    // -----------------------------------------------------------------------
+    // Validate flags
+
+    if (encoder->data->singleImage) {
+        // The previous call to avifEncoderAddImage() set AVIF_ADD_IMAGE_FLAG_SINGLE.
+        // avifEncoderAddImage() cannot be called again for this encode.
+        return AVIF_RESULT_ENCODE_COLOR_FAILED;
+    }
+
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+        encoder->data->singleImage = AVIF_TRUE;
+
+        if (encoder->data->items.count > 0) {
+            // AVIF_ADD_IMAGE_FLAG_SINGLE may only be set on the first and only image.
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
     }
 
     // -----------------------------------------------------------------------
