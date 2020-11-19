@@ -156,8 +156,8 @@ AVIF_ARRAY_DECLARE(avifDecoderItemDataArray, avifDecoderItemData, idat);
 // grid storage
 typedef struct avifImageGrid
 {
-    uint8_t rows;
-    uint8_t columns;
+    uint32_t rows;    // Legal range: [1-256]
+    uint32_t columns; // Legal range: [1-256]
     uint32_t outputWidth;
     uint32_t outputHeight;
 } avifImageGrid;
@@ -1189,11 +1189,12 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
     if (version != 0) {
         return AVIF_FALSE;
     }
-    CHECK(avifROStreamRead(&s, &flags, 1));         // unsigned int(8) flags;
-    CHECK(avifROStreamRead(&s, &grid->rows, 1));    // unsigned int(8) rows_minus_one;
-    CHECK(avifROStreamRead(&s, &grid->columns, 1)); // unsigned int(8) columns_minus_one;
-    ++grid->rows;
-    ++grid->columns;
+    uint8_t rowsMinusOne, columnsMinusOne;
+    CHECK(avifROStreamRead(&s, &flags, 1));           // unsigned int(8) flags;
+    CHECK(avifROStreamRead(&s, &rowsMinusOne, 1));    // unsigned int(8) rows_minus_one;
+    CHECK(avifROStreamRead(&s, &columnsMinusOne, 1)); // unsigned int(8) columns_minus_one;
+    grid->rows = (uint32_t)rowsMinusOne + 1;
+    grid->columns = (uint32_t)columnsMinusOne + 1;
 
     uint32_t fieldLength = ((flags & 1) + 1) * 16;
     if (fieldLength == 16) {
