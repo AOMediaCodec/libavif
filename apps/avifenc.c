@@ -188,6 +188,8 @@ static avifInputFile * avifInputGetNextFile(avifInput * input)
     }
     return &input->files[input->fileIndex];
 }
+
+// Returns whether the next avifInputGetNextFile() call will succeed.
 static avifBool avifInputHasRemainingData(avifInput * input)
 {
     if (input->useStdin) {
