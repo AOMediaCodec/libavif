@@ -7,12 +7,12 @@
 #include <stdio.h>
 #include <string.h>
 
-void avifImageDump(avifImage * avif)
+static void avifImageDumpInternal(avifImage * avif, avifBool alphaPresent)
 {
     printf(" * Resolution     : %dx%d\n", avif->width, avif->height);
     printf(" * Bit Depth      : %d\n", avif->depth);
     printf(" * Format         : %s\n", avifPixelFormatToString(avif->yuvFormat));
-    printf(" * Alpha          : %s\n", (avif->alphaPlane && (avif->alphaRowBytes > 0)) ? "Present" : "Absent");
+    printf(" * Alpha          : %s\n", alphaPresent ? "Present" : "Absent");
     printf(" * Range          : %s\n", (avif->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited");
 
     printf(" * Color Primaries: %d\n", avif->colorPrimaries);
@@ -49,6 +49,17 @@ void avifImageDump(avifImage * avif)
             printf("    * imir (Mirror)        : %u (%s)\n", avif->imir.axis, (avif->imir.axis == 0) ? "Vertical" : "Horizontal");
         }
     }
+}
+
+void avifImageDump(avifImage * avif)
+{
+    const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
+    avifImageDumpInternal(avif, alphaPresent);
+}
+
+void avifContainerDump(avifDecoder * decoder)
+{
+    avifImageDumpInternal(decoder->image, decoder->alphaPresent);
 }
 
 void avifPrintVersions(void)
