@@ -615,7 +615,7 @@ int main(int argc, char * argv[])
     uint32_t sourceDepth = 0;
     avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-        fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
+        fprintf(stderr, "Cannot determine input file format or read input file into avifImage: %s\n", firstFile->filename);
         returnCode = 1;
         goto cleanup;
     }
