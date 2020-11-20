@@ -52,23 +52,18 @@ static int info(const char * inputFilename)
     result = avifDecoderParse(decoder);
     if (result == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
+        avifContainerDump(decoder);
+
+        printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
+               decoder->timescale,
+               decoder->duration,
+               decoder->durationInTimescales,
+               decoder->imageCount,
+               (decoder->imageCount == 1) ? "" : "s");
+        printf(" * Frames:\n");
 
         int frameIndex = 0;
-        avifBool firstImage = AVIF_TRUE;
         while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-            if (firstImage) {
-                firstImage = AVIF_FALSE;
-                avifImageDump(decoder->image);
-
-                printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
-                       decoder->timescale,
-                       decoder->duration,
-                       decoder->durationInTimescales,
-                       decoder->imageCount,
-                       (decoder->imageCount == 1) ? "" : "s");
-                printf(" * Frames:\n");
-            }
-
             printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
                    frameIndex,
                    decoder->imageTiming.pts,

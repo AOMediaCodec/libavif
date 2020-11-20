@@ -21,6 +21,7 @@
 #endif
 
 void avifImageDump(avifImage * avif);
+void avifContainerDump(avifDecoder * decoder);
 void avifPrintVersions(void);
 
 typedef enum avifAppFileFormat
