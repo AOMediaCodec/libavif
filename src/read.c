@@ -794,7 +794,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifR
 
 static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, avifImageGrid * grid, avifDecoderItem * gridItem, avifBool alpha)
 {
-    unsigned int tilesRequested = (unsigned int)grid->rows * (unsigned int)grid->columns;
+    unsigned int tilesRequested = grid->rows * grid->columns;
 
     // Count number of dimg for this item, bail out if it doesn't match perfectly
     unsigned int tilesAvailable = 0;
