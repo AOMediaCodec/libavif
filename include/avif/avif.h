@@ -299,10 +299,14 @@ typedef struct avifImageRotation
 
 typedef struct avifImageMirror
 {
-    // 'imir' from ISO/IEC 23008-12:2017 6.5.12
-
-    // axis specifies a vertical (axis = 0) or horizontal (axis = 1) axis for the mirroring operation.
-    uint8_t axis; // legal values: [0, 1]
+    // 'imir' from ISO/IEC 23008-12:2017 6.5.12:
+    // "axis specifies a vertical (axis = 0) or horizontal (axis = 1) axis for the mirroring operation."
+    //
+    // Legal values: [0, 1]
+    //
+    // 0: flip along a vertical axis ("left-to-right")
+    // 1: flip along a horizontal axis ("top-to-bottom")
+    uint8_t axis;
 } avifImageMirror;
 
 // ---------------------------------------------------------------------------
