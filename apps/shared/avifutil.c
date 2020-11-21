@@ -48,7 +48,7 @@ void avifImageDump(avifImage * avif)
         if (avif->transformFlags & AVIF_TRANSFORM_IMIR) {
             printf("    * imir (Mirror)        : %u (%s)\n",
                    avif->imir.axis,
-                   (avif->imir.axis == 0) ? "Vertical axis (\"left-to-right\")" : "Horizontal axis (\"top-to-bottom\")");
+                   (avif->imir.axis == 0) ? "Vertical axis, \"left-to-right\"" : "Horizontal axis, \"top-to-bottom\"");
         }
     }
 }
