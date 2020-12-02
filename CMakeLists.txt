@@ -397,6 +397,9 @@ target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>
                            PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+if(AVIF_LOCAL_LIBGAV1 AND BUILD_SHARED_LIBS)
+    set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
