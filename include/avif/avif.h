@@ -331,6 +331,8 @@ typedef struct avifImage
     uint32_t alphaRowBytes;
     avifBool imageOwnsAlphaPlane;
 
+    avifBool useSharpYUVConversion;
+
     // ICC Profile
     avifRWData icc;
 

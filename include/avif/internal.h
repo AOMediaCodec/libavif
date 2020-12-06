@@ -50,6 +50,7 @@ uint64_t avifHTON64(uint64_t l);
 uint64_t avifNTOH64(uint64_t l);
 
 void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG, float * outB);
+avifBool avifTransferCharacteristicsGetConverter(avifTransferCharacteristics atc, float (*converter[2])(float));
 
 #define AVIF_ARRAY_DECLARE(TYPENAME, ITEMSTYPE, ITEMSNAME) \
     typedef struct TYPENAME                                \
@@ -89,6 +90,7 @@ typedef struct avifAlphaParams
 
 } avifAlphaParams;
 
+avifBool avifCheckAlphaOpaque(const struct avifAlphaParams * const params);
 avifBool avifFillAlpha(const avifAlphaParams * const params);
 avifBool avifReformatAlpha(const avifAlphaParams * const params);
 
@@ -97,6 +99,12 @@ avifBool avifReformatAlpha(const avifAlphaParams * const params);
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
 // * [any other error]           - Return error to caller
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
+
+// Returns:
+// * AVIF_RESULT_OK               - Converted successfully using sharp_yuv method
+// * AVIF_RESULT_INVALID_ARGUMENT - Sharp YUV doesn't improve quality with the specific matrixCoefficient, use normal conversion
+// * [any other error]            - Return error to caller
+avifResult avifImageRGBtoYUVSharp(avifImage * image, const avifRGBImage * rgb, avifReformatState * state);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput

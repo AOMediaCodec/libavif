@@ -172,6 +172,15 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
     }
 
+    if (image->useSharpYUVConversion) {
+        avifResult result = avifImageRGBtoYUVSharp(image, rgb, &state);
+
+        // fallback to normal method
+        if (result != AVIF_RESULT_INVALID_ARGUMENT) {
+            return result;
+        }
+    }
+
     const float kr = state.kr;
     const float kg = state.kg;
     const float kb = state.kb;

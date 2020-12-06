@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <float.h>
 #include <math.h>
 #include <string.h>
 
@@ -168,4 +169,285 @@ void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG
     *outR = kr;
     *outG = kg;
     *outB = kb;
+}
+
+struct avifTransferCharacteristicsTable
+{
+    avifTransferCharacteristics transferCharacteristicsEnum;
+    const char * name;
+    float (*const toLinear)(float);
+    float (*const fromLinear)(float);
+};
+
+static float toLinear709(float gamma)
+{
+    if (gamma < 0.f) {
+        return 0.f;
+    } else if (gamma < 4.5f * 0.018053968510807f) {
+        return gamma / 4.5f;
+    } else if (gamma < 1.f) {
+        return powf((gamma + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
+    } else {
+        return 1.f;
+    }
+}
+
+static float fromLinear709(float linear)
+{
+    if (linear < 0.f) {
+        return 0.f;
+    } else if (linear < 0.018053968510807f) {
+        return linear * 4.5f;
+    } else if (linear < 1.f) {
+        return 1.09929682680944f * powf(linear, 0.45f) - 0.09929682680944f;
+    } else {
+        return 1.f;
+    }
+}
+
+static float toLinear470M(float gamma)
+{
+    return powf(AVIF_CLAMP(gamma, 0.f, 1.f), 1.f / 2.2f);
+}
+
+static float fromLinear470M(float linear)
+{
+    return powf(AVIF_CLAMP(linear, 0.f, 1.f), 2.2f);
+}
+
+static float toLinear470BG(float gamma)
+{
+    return powf(AVIF_CLAMP(gamma, 0.f, 1.f), 1.f / 2.8f);
+}
+
+static float fromLinear470BG(float linear)
+{
+    return powf(AVIF_CLAMP(linear, 0.f, 1.f), 2.8f);
+}
+
+static float toLinearSMPTE240(float gamma)
+{
+    if (gamma < 0.f) {
+        return 0.f;
+    } else if (gamma < 4.f * 0.022821585529445f) {
+        return gamma / 4.f;
+    } else if (gamma < 1.f) {
+        return powf((gamma + 0.111572195921731f) / 1.111572195921731f, 1.f / 0.45f);
+    } else {
+        return 1.f;
+    }
+}
+
+static float fromLinearSMPTE240(float linear)
+{
+    if (linear < 0.f) {
+        return 0.f;
+    } else if (linear < 0.022821585529445f) {
+        return linear * 4.f;
+    } else if (linear < 1.f) {
+        return 1.111572195921731f * powf(linear, 0.45f) - 0.111572195921731f;
+    } else {
+        return 1.f;
+    }
+}
+
+static float toFromLinearLinear(float gamma)
+{
+    return AVIF_CLAMP(gamma, 0.f, 1.f);
+}
+
+static float toLinearLog100(float gamma)
+{
+    return gamma <= 0.01f ? 0.0f : 1.0f + log10f(AVIF_MIN(gamma, 1.f)) / 2.0f;
+}
+
+static float fromLinearLog100(float linear)
+{
+    return linear <= 0.0f ? 0.01f : powf(10.0f, 2.f * (AVIF_MIN(linear, 1.f) - 1.0f));
+}
+
+static float toLinearLog100Sqrt10(float gamma)
+{
+    return gamma <= 0.00316227766f ? 0.0f : 1.0f + log10f(AVIF_MIN(gamma, 1.f)) / 2.5f;
+}
+
+static float fromLinearLog100Sqrt10(float linear)
+{
+    return linear <= 0.0f ? 0.00316227766f : powf(10.0f, 2.5f * (AVIF_MIN(linear, 1.f) - 1.0f));
+}
+
+static float toLinearIEC61966(float gamma)
+{
+    if (gamma < -4.5f * 0.018053968510807f) {
+        return powf((-gamma + 0.09929682680944f) / -1.09929682680944f, 1.f / 0.45f);
+    } else if (gamma < 4.5f * 0.018053968510807f) {
+        return gamma / 4.5f;
+    } else {
+        return powf((gamma + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
+    }
+}
+
+static float fromLinearIEC61966(float linear)
+{
+    if (linear < -0.018053968510807f) {
+        return -1.09929682680944f * powf(-linear, 0.45f) + 0.09929682680944f;
+    } else if (linear < 0.018053968510807f) {
+        return linear * 4.5f;
+    } else {
+        return 1.09929682680944f * powf(linear, 0.45f) - 0.09929682680944f;
+    }
+}
+
+static float toLinearBT1361(float gamma)
+{
+    if (gamma < -0.25f) {
+        return -0.25f;
+    } else if (gamma < 0.f) {
+        return powf((gamma - 0.02482420670236f) / -0.27482420670236f, 1.f / 0.45f) / -4.f;
+    } else if (gamma < 4.5f * 0.018053968510807f) {
+        return gamma / 4.5f;
+    } else if (gamma < 1.f) {
+        return powf((gamma + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
+    } else {
+        return 1.f;
+    }
+}
+
+static float fromLinearBT1361(float linear)
+{
+    if (linear < -0.25f) {
+        return -0.25f;
+    } else if (linear < 0.f) {
+        return -0.27482420670236f * powf(-4.f * linear, 0.45f) + 0.02482420670236f;
+    } else if (linear < 0.018053968510807f) {
+        return linear * 4.5f;
+    } else if (linear < 1.f) {
+        return 1.09929682680944f * powf(linear, 0.45f) - 0.09929682680944f;
+    } else {
+        return 1.f;
+    }
+}
+
+static float toLinearSRGB(float gamma)
+{
+    if (gamma < 0.f) {
+        return 0.f;
+    } else if (gamma < 12.92f * 0.0030412825601275209f) {
+        return gamma / 12.92f;
+    } else if (gamma < 1.f) {
+        return powf((gamma + 0.0550107189475866f) / 1.0550107189475866f, 2.4f);
+    } else {
+        return 1.f;
+    }
+}
+
+static float fromLinearSRGB(float linear)
+{
+    if (linear < 0.f) {
+        return 0.f;
+    } else if (linear < 0.0030412825601275209f) {
+        return linear * 12.92f;
+    } else if (linear < 1.f) {
+        return 1.0550107189475866f * powf(linear, 1.f / 2.4f) - 0.0550107189475866f;
+    } else {
+        return 1.f;
+    }
+}
+
+static float toLinearPQ(float gamma)
+{
+    if (gamma > 0.f) {
+        float powGamma = powf(gamma, 1.0f / 78.84375f);
+        float num = AVIF_MAX(powGamma - 0.8359375f, 0.0f);
+        float den = AVIF_MAX(18.8515625f - 18.6875f * powGamma, FLT_MIN);
+        return powf(num / den, 1.0f / 0.1593017578125f);
+    } else {
+        return 0.f;
+    }
+}
+
+static float fromLinearPQ(float linear)
+{
+    if (linear > 0.f) {
+        float powLinear = powf(linear, 0.1593017578125f);
+        float num = 0.1640625f * powLinear - 0.1640625f;
+        float den = 1.0f + 18.6875f * powLinear;
+        return powf(1.0f + num / den, 78.84375f);
+    } else {
+        return 0.f;
+    }
+}
+
+static float toLinearSMPTE428(float gamma)
+{
+    return powf(0.91655527974030934f * AVIF_MAX(gamma, 0.f), 1.f / 2.6f);
+}
+
+static float fromLinearSMPTE428(float linear)
+{
+    return powf(AVIF_MAX(linear, 0.f), 2.6f) / 0.91655527974030934f;
+}
+
+// Conversion in BT.2100 requires RGB info. Simplify to gamma correction here.
+static float toLinearHLG(float gamma)
+{
+    if (gamma < 0.f) {
+        return 0.f;
+    } else if (gamma <= 0.5f) {
+        return powf((gamma * gamma) * (1.f / 3.f), 1.2f);
+    } else {
+        return powf((expf((gamma - 0.55991073f) / 0.17883277f) + 0.28466892f) / 12.0f, 1.2f);
+    }
+}
+
+static float fromLinearHLG(float linear)
+{
+    linear = powf(linear, 1.f / 1.2f);
+    if (linear < 0.f) {
+        return 0.f;
+    } else if (linear <= (1.f / 12.f)) {
+        return sqrtf(3.f * linear);
+    } else {
+        return 0.17883277f * logf(12.f * linear - 0.28466892f) + 0.55991073f;
+    }
+}
+
+static const struct avifTransferCharacteristicsTable transferCharacteristicsTables[] = {
+    { AVIF_TRANSFER_CHARACTERISTICS_BT709, "BT.709", toLinear709, fromLinear709 },
+    { AVIF_TRANSFER_CHARACTERISTICS_BT470M, "BT.470-6 System M", toLinear470M, fromLinear470M },
+    { AVIF_TRANSFER_CHARACTERISTICS_BT470BG, "BT.470-6 System BG", toLinear470BG, fromLinear470BG },
+    { AVIF_TRANSFER_CHARACTERISTICS_BT601, "BT.601", toLinear709, fromLinear709 },
+    { AVIF_TRANSFER_CHARACTERISTICS_SMPTE240, "SMPTE 240M", toLinearSMPTE240, fromLinearSMPTE240 },
+    { AVIF_TRANSFER_CHARACTERISTICS_LINEAR, "Linear", toFromLinearLinear, toFromLinearLinear },
+    { AVIF_TRANSFER_CHARACTERISTICS_LOG100, "100:1 Log", toLinearLog100, fromLinearLog100 },
+    { AVIF_TRANSFER_CHARACTERISTICS_LOG100_SQRT10, "100sqrt(10):1 Log", toLinearLog100Sqrt10, fromLinearLog100Sqrt10 },
+    { AVIF_TRANSFER_CHARACTERISTICS_IEC61966, "IEC 61966-2-4", toLinearIEC61966, fromLinearIEC61966 },
+    { AVIF_TRANSFER_CHARACTERISTICS_BT1361, "BT.1361", toLinearBT1361, fromLinearBT1361 },
+    { AVIF_TRANSFER_CHARACTERISTICS_SRGB, "sRGB", toLinearSRGB, fromLinearSRGB },
+    { AVIF_TRANSFER_CHARACTERISTICS_BT2020_10BIT, "10bit BT.2020", toLinear709, fromLinear709 },
+    { AVIF_TRANSFER_CHARACTERISTICS_BT2020_12BIT, "12bit BT.2020", toLinear709, fromLinear709 },
+    { AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084, "SMPTE ST 2084 (PQ)", toLinearPQ, fromLinearPQ },
+    { AVIF_TRANSFER_CHARACTERISTICS_SMPTE428, "SMPTE ST 428-1", toLinearSMPTE428, fromLinearSMPTE428 },
+    { AVIF_TRANSFER_CHARACTERISTICS_HLG, "ARIB STD-B67 (HLG)", toLinearHLG, fromLinearHLG }
+};
+
+static const int avifTransferCharacteristicsTableSize =
+    sizeof(transferCharacteristicsTables) / sizeof(transferCharacteristicsTables[0]);
+
+avifBool avifTransferCharacteristicsGetConverter(avifTransferCharacteristics atc, float (*converter[2])(float))
+{
+    for (int i = 0; i < avifTransferCharacteristicsTableSize; ++i) {
+        const struct avifTransferCharacteristicsTable * const table = &transferCharacteristicsTables[i];
+        if (table->transferCharacteristicsEnum == atc) {
+            converter[0] = table->toLinear;
+            converter[1] = table->fromLinear;
+            return AVIF_TRUE;
+        }
+    }
+
+    // provided a reasonable default
+    converter[0] = toLinear709;
+    converter[1] = fromLinear709;
+
+    return AVIF_TRUE;
 }

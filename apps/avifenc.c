@@ -61,6 +61,7 @@ static void syntax(void)
     printf("                                        M = enum avifMatrixCoefficients\n");
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
+    printf("    --sharp_yuv                        : Use sharper (and slower) RGB->YUV conversion (YUV422/YUV420 only; NCL MC only)\n");
     printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
@@ -313,6 +314,7 @@ int main(int argc, char * argv[])
     int timescale = 1; // 1 fps by default
     int keyframeInterval = 0;
     avifBool cicpExplicitlySet = AVIF_FALSE;
+    avifBool useSharpYUV = AVIF_FALSE;
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
@@ -571,6 +573,8 @@ int main(int argc, char * argv[])
                                                               // https://github.com/xiph/rav1e/issues/151
             requestedRange = AVIF_RANGE_FULL;                 // avoid limited range
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
+        } else if (!strcmp(arg, "--sharp_yuv")) {
+            useSharpYUV = AVIF_TRUE;
         } else {
             // Positional argument
             input.files[input.filesCount].filename = arg;
@@ -610,6 +614,27 @@ int main(int argc, char * argv[])
     image->transferCharacteristics = transferCharacteristics;
     image->matrixCoefficients = matrixCoefficients;
     image->yuvRange = requestedRange;
+
+    if (useSharpYUV) {
+        image->useSharpYUVConversion = AVIF_TRUE;
+
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+            fprintf(stderr, "WARNING: [--sharp_yuv] Sharp YUV conversion only improve quality on YUV422 and YUV420 subsampling mode.\n");
+            image->useSharpYUVConversion = AVIF_FALSE;
+        }
+
+        if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ||
+            (image->matrixCoefficients == 3 /* CICP reserved */) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) ||
+            (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
+            (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
+            (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
+            (image->matrixCoefficients >= AVIF_MATRIX_COEFFICIENTS_ICTCP)) {
+            fprintf(stderr, "WARNING: [--sharp_yuv] Sharp YUV conversion only improve quality on non-constant luminance matrix coefficients.\n");
+            image->useSharpYUVConversion = AVIF_FALSE;
+        }
+    } else {
+        image->useSharpYUVConversion = AVIF_FALSE;
+    }
 
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
