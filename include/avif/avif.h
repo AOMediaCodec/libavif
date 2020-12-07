@@ -280,11 +280,11 @@ typedef struct avifCleanApertureBox
     uint32_t heightN;
     uint32_t heightD;
 
-    // a fractional number which defines the horizontal offset of clean aperture centre minus (width‐1)/2. Typically 0.
+    // a fractional number which defines the horizontal offset of clean aperture centre minus (width-1)/2. Typically 0.
     uint32_t horizOffN;
     uint32_t horizOffD;
 
-    // a fractional number which defines the vertical offset of clean aperture centre minus (height‐1)/2. Typically 0.
+    // a fractional number which defines the vertical offset of clean aperture centre minus (height-1)/2. Typically 0.
     uint32_t vertOffN;
     uint32_t vertOffD;
 } avifCleanApertureBox;
