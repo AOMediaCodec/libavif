@@ -11,11 +11,6 @@
 #pragma clang diagnostic ignored "-Wused-but-marked-unused"
 #endif
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4819) // The file contains a character that cannot be represented in the current code page
-#endif
-
 #if defined(AVIF_CODEC_AOM_ENCODE)
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
@@ -24,10 +19,6 @@
 #if defined(AVIF_CODEC_AOM_DECODE)
 #include "aom/aom_decoder.h"
 #include "aom/aomdx.h"
-#endif
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
 #endif
 
 #ifdef __clang__
