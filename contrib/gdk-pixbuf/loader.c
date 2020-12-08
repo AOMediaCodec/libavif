@@ -69,14 +69,14 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     ret = avifDecoderSetIOMemory(decoder, data, size);
     if (ret != AVIF_RESULT_OK) {
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
-                    "Couldn’t decode image: %s", avifResultToString(ret));
+                    "Couldn't decode image: %s", avifResultToString(ret));
         return FALSE;
     }
 
     ret = avifDecoderParse(decoder);
     if (ret != AVIF_RESULT_OK) {
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
-                    "Couldn’t decode image: %s", avifResultToString(ret));
+                    "Couldn't decode image: %s", avifResultToString(ret));
         return FALSE;
     }
 
@@ -274,7 +274,7 @@ static gpointer begin_load(GdkPixbufModuleSizeFunc size_func,
     decoder = avifDecoderCreate();
     if (!decoder) {
         g_set_error_literal(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_INSUFFICIENT_MEMORY,
-                            "Couldn’t allocate memory for decoder");
+                            "Couldn't allocate memory for decoder");
         return NULL;
     }
 
@@ -358,7 +358,7 @@ static gboolean avif_image_saver(FILE          *f,
                     g_set_error(error,
                                 GDK_PIXBUF_ERROR,
                                 GDK_PIXBUF_ERROR_BAD_OPTION,
-                                "AVIF quality must be a value between 0 and 100; value “%s” could not be parsed.",
+                                "AVIF quality must be a value between 0 and 100; value \"%s\" could not be parsed.",
                                 *viter);
 
                     return FALSE;
@@ -369,7 +369,7 @@ static gboolean avif_image_saver(FILE          *f,
                     g_set_error(error,
                                 GDK_PIXBUF_ERROR,
                                 GDK_PIXBUF_ERROR_BAD_OPTION,
-                                "AVIF quality must be a value between 0 and 100; value “%d” is not allowed.",
+                                "AVIF quality must be a value between 0 and 100; value \"%d\" is not allowed.",
                                 (int)quality);
 
                     return FALSE;
