@@ -3,14 +3,7 @@
 
 #include "avif/internal.h"
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4819) // The file contains a character that cannot be represented in the current code page
-#endif
 #include "gav1/decoder.h"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 #include <string.h>
 

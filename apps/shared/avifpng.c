@@ -3,14 +3,7 @@
 
 #include "avifpng.h"
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4819) // The file contains a character that cannot be represented in the current code page
-#endif
 #include "png.h"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -153,6 +153,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
         /wd4820 # Disable: bytes padding added after data member
         /wd4996 # Disable: potentially unsafe stdlib methods
         /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+        # See https://github.com/AOMediaCodec/libavif/pull/438
+        # Error when attempting to print non-ASCII character to console
+        /source-charset:.65001 /execution-charset:.20127
     )
 else()
     MESSAGE(FATAL_ERROR "libavif: Unknown compiler, bailing out")
