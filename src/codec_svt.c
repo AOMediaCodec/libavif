@@ -3,9 +3,18 @@
 
 #include "avif/internal.h"
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4819) // The file contains a character that cannot be represented in the current code page
+#endif
+
 #include "svt-av1/EbSvtAv1.h"
 
 #include "svt-av1/EbSvtAv1Enc.h"
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #include <string.h>
 

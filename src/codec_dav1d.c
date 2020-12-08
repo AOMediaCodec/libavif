@@ -4,7 +4,9 @@
 #include "avif/internal.h"
 
 #if defined(_MSC_VER)
+#pragma warning(push)
 #pragma warning(disable : 4201) // nonstandard extension used: nameless struct/union
+#pragma warning(disable : 4819) // The file contains a character that cannot be represented in the current code page
 #endif
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -13,6 +15,9 @@
 #include "dav1d/dav1d.h"
 #if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
+#if defined(_MSC_VER)
+#pragma warning(pop)
 #endif
 
 #include <string.h>

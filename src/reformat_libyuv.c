@@ -23,7 +23,16 @@ unsigned int avifLibYUVVersion(void)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wstrict-prototypes" // "this function declaration is not a prototype"
 #endif
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4819) // The file contains a character that cannot be represented in the current code page
+#endif
+
 #include <libyuv.h>
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

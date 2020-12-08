@@ -143,10 +143,10 @@ void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG
     //
     // If a coded image has no associated colour property, the default property is defined as having
     // colour_type equal to 'nclx' with properties as follows:
-    // –   colour_primaries equal to 1,
-    // –   transfer_characteristics equal to 13,
-    // –   matrix_coefficients equal to 5 or 6 (which are functionally identical), and
-    // –   full_range_flag equal to 1.
+    // -   colour_primaries equal to 1,
+    // -   transfer_characteristics equal to 13,
+    // -   matrix_coefficients equal to 5 or 6 (which are functionally identical), and
+    // -   full_range_flag equal to 1.
     // Only if the colour information property of the image matches these default values, the colour
     // property may be omitted; all other images shall have an explicitly declared colour space via
     // association with a property of this type.

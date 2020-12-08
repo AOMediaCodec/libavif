@@ -883,7 +883,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     // Validate grid image size and tile size.
     //
     // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
-    //   The tiled input images shall completely “cover” the reconstructed image grid canvas, ...
+    //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
     if (((firstTile->image->width * grid->columns) < grid->outputWidth) ||
         ((firstTile->image->height * grid->rows) < grid->outputHeight)) {
         return AVIF_FALSE;
