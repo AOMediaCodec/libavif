@@ -26,6 +26,7 @@ set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY
 set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
+option(AVIF_INPLACE_EXPORT_HEADER "Place export header in source folder" OFF)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" ON)
 
@@ -393,13 +394,26 @@ target_compile_definitions(avif
                            PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+set_target_properties(avif PROPERTIES C_VISIBILITY_PRESET hidden)
 target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>
                            PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+include(GenerateExportHeader)
+if(AVIF_INPLACE_EXPORT_HEADER)
+    set(AVIF_EXPORT_HEADER_LOCATION ${libavif_SOURCE_DIR}/include/avif/avif_export.h)
+else()
+    set(AVIF_EXPORT_HEADER_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/export/avif_export.h)
+    target_include_directories(avif
+                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/export>)
+endif()
+generate_export_header(avif
+                       EXPORT_MACRO_NAME AVIF_API
+                       EXPORT_FILE_NAME ${AVIF_EXPORT_HEADER_LOCATION})
 if(AVIF_LOCAL_LIBGAV1 AND BUILD_SHARED_LIBS)
     set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
+
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
@@ -547,7 +561,7 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
-    install(FILES include/avif/avif.h
+    install(FILES include/avif/avif.h ${AVIF_EXPORT_HEADER_LOCATION}
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif"
     )
 endif()
