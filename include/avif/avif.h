@@ -4,10 +4,22 @@
 #ifndef AVIF_AVIF_H
 #define AVIF_AVIF_H
 
-#include "avif_export.h"
-
 #include <stddef.h>
 #include <stdint.h>
+
+#ifndef AVIF_API
+#if defined(AVIF_BUILDING_SHARED_LIBS)
+#if defined(_WIN32)
+#define AVIF_API __declspec(dllexport)
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#define AVIF_API __attribute__((visibility("default")))
+#else
+#define AVIF_API
+#endif // if defined(_WIN32)
+#else
+#define AVIF_API
+#endif // if defined(AVIF_BUILDING_SHARED_LIBS)
+#endif // ifndef AVIF_API
 
 #ifdef __cplusplus
 extern "C" {
