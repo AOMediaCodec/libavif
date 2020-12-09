@@ -389,12 +389,12 @@ add_library(avif ${AVIF_SRCS})
 set_target_properties(avif
                       PROPERTIES
                           VERSION ${LIBRARY_VERSION}
-                          SOVERSION ${LIBRARY_SOVERSION})
+                          SOVERSION ${LIBRARY_SOVERSION}
+                          C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif
                            PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-set_target_properties(avif PROPERTIES C_VISIBILITY_PRESET hidden)
 target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>
