@@ -396,7 +396,8 @@ add_library(avif ${AVIF_SRCS})
 set_target_properties(avif
                       PROPERTIES
                           VERSION ${LIBRARY_VERSION}
-                          SOVERSION ${LIBRARY_SOVERSION})
+                          SOVERSION ${LIBRARY_SOVERSION}
+                          C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif
                            PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif
@@ -405,9 +406,13 @@ target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>
                            PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
-if(AVIF_LOCAL_LIBGAV1 AND BUILD_SHARED_LIBS)
-    set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
+if(BUILD_SHARED_LIBS)
+    target_compile_definitions(avif PRIVATE -DAVIF_BUILDING_SHARED_LIBS)
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
 endif()
+
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
