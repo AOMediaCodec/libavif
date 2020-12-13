@@ -1,3 +1,5 @@
+
+
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
@@ -7,17 +9,23 @@
 #include <stdio.h>
 #include <string.h>
 
-static void avifImageDumpInternal(avifImage * avif, avifBool alphaPresent)
+static void avifImageDumpInternal(avifImage * avif, uint32_t gridX, uint32_t gridY, avifBool alphaPresent)
 {
-    printf(" * Resolution     : %dx%d\n", avif->width, avif->height);
-    printf(" * Bit Depth      : %d\n", avif->depth);
+    uint32_t width = avif->width;
+    uint32_t height = avif->height;
+    if (gridX && gridY) {
+        width *= gridX;
+        height *= gridY;
+    }
+    printf(" * Resolution     : %ux%u\n", width, height);
+    printf(" * Bit Depth      : %u\n", avif->depth);
     printf(" * Format         : %s\n", avifPixelFormatToString(avif->yuvFormat));
     printf(" * Alpha          : %s\n", alphaPresent ? "Present" : "Absent");
     printf(" * Range          : %s\n", (avif->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited");
 
-    printf(" * Color Primaries: %d\n", avif->colorPrimaries);
-    printf(" * Transfer Char. : %d\n", avif->transferCharacteristics);
-    printf(" * Matrix Coeffs. : %d\n", avif->matrixCoefficients);
+    printf(" * Color Primaries: %u\n", avif->colorPrimaries);
+    printf(" * Transfer Char. : %u\n", avif->transferCharacteristics);
+    printf(" * Matrix Coeffs. : %u\n", avif->matrixCoefficients);
 
     printf(" * ICC Profile    : %s (" AVIF_FMT_ZU " bytes)\n", (avif->icc.size > 0) ? "Present" : "Absent", avif->icc.size);
     printf(" * XMP Metadata   : %s (" AVIF_FMT_ZU " bytes)\n", (avif->xmp.size > 0) ? "Present" : "Absent", avif->xmp.size);
@@ -53,15 +61,15 @@ static void avifImageDumpInternal(avifImage * avif, avifBool alphaPresent)
     }
 }
 
-void avifImageDump(avifImage * avif)
+void avifImageDump(avifImage * avif, uint32_t gridX, uint32_t gridY)
 {
     const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
-    avifImageDumpInternal(avif, alphaPresent);
+    avifImageDumpInternal(avif, gridX, gridY, alphaPresent);
 }
 
 void avifContainerDump(avifDecoder * decoder)
 {
-    avifImageDumpInternal(decoder->image, decoder->alphaPresent);
+    avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent);
 }
 
 void avifPrintVersions(void)

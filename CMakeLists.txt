@@ -153,6 +153,14 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
         /wd4820 # Disable: bytes padding added after data member
         /wd4996 # Disable: potentially unsafe stdlib methods
         /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+        # Note: This tells MS CL to read source code as UTF-8,
+        # and assume console can only use ASCII (minimal safe).
+        # libavif uses ANSI API to print to console, which is not portable between systems using different
+        # languages and result in mojibake unless we only use codes that shared by every code page: ASCII.
+        # A C4556 warning will be generated on violation.
+        # Commonly used /utf-8 flag assume UTF-8 for both source and console, which is usually not the case.
+        # Warnings can be suppressed but there will still be random characters printed to the console.
+        /source-charset:utf-8 /execution-charset:us-ascii
     )
 else()
     MESSAGE(FATAL_ERROR "libavif: Unknown compiler, bailing out")
@@ -389,7 +397,8 @@ add_library(avif ${AVIF_SRCS})
 set_target_properties(avif
                       PROPERTIES
                           VERSION ${LIBRARY_VERSION}
-                          SOVERSION ${LIBRARY_SOVERSION})
+                          SOVERSION ${LIBRARY_SOVERSION}
+                          C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif
                            PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif
@@ -398,6 +407,13 @@ target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>
                            PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+if(BUILD_SHARED_LIBS)
+    target_compile_definitions(avif PRIVATE -DAVIF_BUILDING_SHARED_LIBS)
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
+endif()
+
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)

@@ -209,7 +209,7 @@ int main(int argc, char * argv[])
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
         printf("Image details:\n");
-        avifImageDump(avif);
+        avifImageDump(avif, 0, 0);
 
         if (ignoreICC && (avif->icc.size > 0)) {
             printf("[--ignore-icc] Discarding ICC profile.\n");
