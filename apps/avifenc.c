@@ -993,8 +993,8 @@ int main(int argc, char * argv[])
     encoder->keyframeInterval = keyframeInterval;
 
     if (gridDimsCount > 0) {
-        avifResult addImageResult =
-            avifEncoderAddImageGrid(encoder, (uint8_t)gridDims[0], (uint8_t)gridDims[1], gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+        avifResult addImageResult = avifEncoderAddImageGrid(
+            encoder, (uint8_t)gridDims[0], (uint8_t)gridDims[1], (const avifImage **)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
             returnCode = 1;
