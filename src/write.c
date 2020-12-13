@@ -499,6 +499,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
                 const avifImage * cellImage = cellImages[cellIndex];
 
+                if (cellImage->alphaPlane == NULL || cellImage->alphaRowBytes == 0) {
+                    continue;
+                }
+
                 params.width = cellImage->width;
                 params.height = cellImage->height;
                 params.srcDepth = cellImage->depth;
