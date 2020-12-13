@@ -52,23 +52,18 @@ static int info(const char * inputFilename)
     result = avifDecoderParse(decoder);
     if (result == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
+        avifContainerDump(decoder);
+
+        printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
+               decoder->timescale,
+               decoder->duration,
+               decoder->durationInTimescales,
+               decoder->imageCount,
+               (decoder->imageCount == 1) ? "" : "s");
+        printf(" * Frames:\n");
 
         int frameIndex = 0;
-        avifBool firstImage = AVIF_TRUE;
         while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-            if (firstImage) {
-                firstImage = AVIF_FALSE;
-                avifImageDump(decoder->image);
-
-                printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
-                       decoder->timescale,
-                       decoder->duration,
-                       decoder->durationInTimescales,
-                       decoder->imageCount,
-                       (decoder->imageCount == 1) ? "" : "s");
-                printf(" * Frames:\n");
-            }
-
             printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
                    frameIndex,
                    decoder->imageTiming.pts,
@@ -214,7 +209,7 @@ int main(int argc, char * argv[])
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
         printf("Image details:\n");
-        avifImageDump(avif);
+        avifImageDump(avif, 0, 0);
 
         if (ignoreICC && (avif->icc.size > 0)) {
             printf("[--ignore-icc] Discarding ICC profile.\n");

@@ -79,6 +79,9 @@ static void syntax(void)
            AVIF_QUANTIZER_LOSSLESS);
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
+    printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
+    printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
+    printf("                                        the color profile of the first image supplied.\n");
     printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 8)\n",
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
@@ -159,7 +162,7 @@ static int parseU32List(uint32_t output[8], const char * arg)
     buffer[127] = 0;
 
     int index = 0;
-    char * token = strtok(buffer, ",");
+    char * token = strtok(buffer, ",x");
     while (token != NULL) {
         output[index] = (uint32_t)atoi(token);
         ++index;
@@ -167,7 +170,7 @@ static int parseU32List(uint32_t output[8], const char * arg)
             break;
         }
 
-        token = strtok(NULL, ",");
+        token = strtok(NULL, ",x");
     }
     return index;
 }
@@ -269,6 +272,103 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
+avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
+{
+    if ((gridSplitImage->width % gridCols) != 0) {
+        fprintf(stderr, "ERROR: Can't split image width (%u) evenly into %u columns.\n", gridSplitImage->width, gridCols);
+        return AVIF_FALSE;
+    }
+    if ((gridSplitImage->height % gridRows) != 0) {
+        fprintf(stderr, "ERROR: Can't split image height (%u) evenly into %u rows.\n", gridSplitImage->height, gridRows);
+        return AVIF_FALSE;
+    }
+
+    uint32_t cellWidth = gridSplitImage->width / gridCols;
+    uint32_t cellHeight = gridSplitImage->height / gridRows;
+    if ((cellWidth < 64) || (cellHeight < 64)) {
+        fprintf(stderr, "ERROR: Split cell dimensions are too small (must be at least 64x64, and were %ux%u)\n", cellWidth, cellHeight);
+        return AVIF_FALSE;
+    }
+    if (((cellWidth % 2) != 0) || ((cellHeight % 2) != 0)) {
+        fprintf(stderr, "ERROR: Odd split cell dimensions are unsupported (%ux%u)\n", cellWidth, cellHeight);
+        return AVIF_FALSE;
+    }
+
+    for (uint32_t gridY = 0; gridY < gridRows; ++gridY) {
+        for (uint32_t gridX = 0; gridX < gridCols; ++gridX) {
+            uint32_t gridIndex = gridX + (gridY * gridCols);
+            avifImage * cellImage = avifImageCreateEmpty();
+            gridCells[gridIndex] = cellImage;
+
+            avifImageCopy(cellImage, gridSplitImage, 0);
+            cellImage->width = cellWidth;
+            cellImage->height = cellHeight;
+            avifImageAllocatePlanes(cellImage, AVIF_PLANES_YUV);
+
+            const uint32_t bytesPerPixel = avifImageUsesU16(cellImage) ? 2 : 1;
+
+            const uint32_t bytesPerRowY = bytesPerPixel * cellWidth;
+            const uint32_t srcRowBytesY = gridSplitImage->yuvRowBytes[AVIF_CHAN_Y];
+            const uint8_t * srcPlaneY =
+                &gridSplitImage->yuvPlanes[AVIF_CHAN_Y][(gridX * cellWidth) + (gridY * cellHeight) * srcRowBytesY];
+            const uint32_t dstRowBytesY = cellImage->yuvRowBytes[AVIF_CHAN_Y];
+            uint8_t * dstPlaneY = cellImage->yuvPlanes[AVIF_CHAN_Y];
+            for (uint32_t row = 0; row < cellHeight; ++row) {
+                const uint8_t * srcRow = &srcPlaneY[row * srcRowBytesY];
+                uint8_t * dstRow = &dstPlaneY[row * dstRowBytesY];
+                memcpy(dstRow, srcRow, bytesPerRowY);
+            }
+
+            if (gridSplitImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
+                avifPixelFormatInfo info;
+                avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &info);
+
+                const uint32_t uvWidth = (cellWidth + info.chromaShiftX) >> info.chromaShiftX;
+                const uint32_t uvHeight = (cellHeight + info.chromaShiftY) >> info.chromaShiftY;
+                const uint32_t bytesPerRowUV = bytesPerPixel * uvWidth;
+
+                const uint32_t srcRowBytesU = gridSplitImage->yuvRowBytes[AVIF_CHAN_U];
+                const uint8_t * srcPlaneU =
+                    &gridSplitImage->yuvPlanes[AVIF_CHAN_U][(gridX * uvWidth) + (gridY * uvHeight) * srcRowBytesU];
+                const uint32_t dstRowBytesU = cellImage->yuvRowBytes[AVIF_CHAN_U];
+                uint8_t * dstPlaneU = cellImage->yuvPlanes[AVIF_CHAN_U];
+                for (uint32_t row = 0; row < uvHeight; ++row) {
+                    const uint8_t * srcRow = &srcPlaneU[row * srcRowBytesU];
+                    uint8_t * dstRow = &dstPlaneU[row * dstRowBytesU];
+                    memcpy(dstRow, srcRow, bytesPerRowUV);
+                }
+
+                const uint32_t srcRowBytesV = gridSplitImage->yuvRowBytes[AVIF_CHAN_V];
+                const uint8_t * srcPlaneV =
+                    &gridSplitImage->yuvPlanes[AVIF_CHAN_V][(gridX * uvWidth) + (gridY * uvHeight) * srcRowBytesV];
+                const uint32_t dstRowBytesV = cellImage->yuvRowBytes[AVIF_CHAN_V];
+                uint8_t * dstPlaneV = cellImage->yuvPlanes[AVIF_CHAN_V];
+                for (uint32_t row = 0; row < uvHeight; ++row) {
+                    const uint8_t * srcRow = &srcPlaneV[row * srcRowBytesV];
+                    uint8_t * dstRow = &dstPlaneV[row * dstRowBytesV];
+                    memcpy(dstRow, srcRow, bytesPerRowUV);
+                }
+            }
+
+            if (gridSplitImage->alphaPlane) {
+                avifImageAllocatePlanes(cellImage, AVIF_PLANES_A);
+
+                const uint32_t bytesPerRowA = bytesPerPixel * cellWidth;
+                const uint32_t srcRowBytesA = gridSplitImage->alphaRowBytes;
+                const uint8_t * srcPlaneA = &gridSplitImage->alphaPlane[(gridX * cellWidth) + (gridY * cellHeight) * srcRowBytesA];
+                const uint32_t dstRowBytesA = cellImage->alphaRowBytes;
+                uint8_t * dstPlaneA = cellImage->alphaPlane;
+                for (uint32_t row = 0; row < cellHeight; ++row) {
+                    const uint8_t * srcRow = &srcPlaneA[row * srcRowBytesA];
+                    uint8_t * dstRow = &dstPlaneA[row * dstRowBytesA];
+                    memcpy(dstRow, srcRow, bytesPerRowA);
+                }
+            }
+        }
+    }
+    return AVIF_TRUE;
+}
+
 int main(int argc, char * argv[])
 {
     if (argc < 2) {
@@ -313,6 +413,13 @@ int main(int argc, char * argv[])
     int timescale = 1; // 1 fps by default
     int keyframeInterval = 0;
     avifBool cicpExplicitlySet = AVIF_FALSE;
+
+    int gridDimsCount = 0;
+    uint32_t gridDims[8]; // only the first two are used
+    uint32_t gridCellCount = 0;
+    avifImage ** gridCells = NULL;
+    avifImage * gridSplitImage = NULL; // used for cleanup tracking
+    memset(gridDims, 0, sizeof(gridDims));
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
@@ -422,6 +529,19 @@ int main(int argc, char * argv[])
             }
             if (tileColsLog2 > 6) {
                 tileColsLog2 = 6;
+            }
+        } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
+            NEXTARG();
+            gridDimsCount = parseU32List(gridDims, arg);
+            if (gridDimsCount != 2) {
+                fprintf(stderr, "ERROR: Invalid grid dims: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if ((gridDims[0] == 0) || (gridDims[0] > 256) || (gridDims[1] == 0) || (gridDims[1] > 256)) {
+                fprintf(stderr, "ERROR: Invalid grid dims (valid dim range [1-256]): %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
             }
         } else if (!strcmp(arg, "--cicp") || !strcmp(arg, "--nclx")) {
             NEXTARG();
@@ -750,12 +870,101 @@ int main(int argc, char * argv[])
         }
     }
 
+    if (gridDimsCount > 0) {
+        // Grid image!
+
+        gridCellCount = gridDims[0] * gridDims[1];
+        printf("Preparing to encode a %ux%u grid (%u cells)...\n", gridDims[0], gridDims[1], gridCellCount);
+
+        gridCells = malloc(gridCellCount * sizeof(avifImage *));
+        memset(gridCells, 0, gridCellCount * sizeof(avifImage *));
+        gridCells[0] = image; // take ownership of image
+
+        uint32_t gridCellIndex = 0;
+        avifInputFile * nextFile;
+        while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
+            if (!gridCellIndex) {
+                printf("Loading additional cells for grid image (%u cells)...\n", gridCellCount);
+            }
+            ++gridCellIndex;
+            if (gridCellIndex >= gridCellCount) {
+                // We have enough, warn and continue
+                fprintf(stderr,
+                        "WARNING: [--grid] More than %u images were supplied for this %ux%u grid. The rest will be ignored.\n",
+                        gridCellCount,
+                        gridDims[0],
+                        gridDims[1]);
+                break;
+            }
+
+            avifImage * cellImage = avifImageCreateEmpty();
+            cellImage->colorPrimaries = image->colorPrimaries;
+            cellImage->transferCharacteristics = image->transferCharacteristics;
+            cellImage->matrixCoefficients = image->matrixCoefficients;
+            cellImage->yuvRange = image->yuvRange;
+            gridCells[gridCellIndex] = cellImage;
+
+            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL);
+            if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+                returnCode = 1;
+                goto cleanup;
+            }
+
+            // Verify that this cell's properties matches the first cell's properties
+            if ((image->width != cellImage->width) || (image->height != cellImage->height)) {
+                fprintf(stderr,
+                        "ERROR: Image grid dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
+                        image->width,
+                        image->height,
+                        cellImage->width,
+                        cellImage->height,
+                        nextFile->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if (image->depth != cellImage->depth) {
+                fprintf(stderr, "ERROR: Image grid depth mismatch, [%u] vs [%u]: %s\n", image->depth, cellImage->depth, nextFile->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if (image->yuvRange != cellImage->yuvRange) {
+                fprintf(stderr,
+                        "ERROR: Image grid range mismatch, [%s] vs [%s]: %s\n",
+                        (image->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                        (nextImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                        nextFile->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+        }
+
+        if (gridCellIndex == 0) {
+            printf("Single image input for a grid image. Attempting split into %u cells...\n", gridCellCount);
+            gridSplitImage = image;
+            gridCells[0] = NULL;
+
+            if (!avifImageSplitGrid(gridSplitImage, gridDims[0], gridDims[1], gridCells)) {
+                returnCode = 1;
+                goto cleanup;
+            }
+            gridCellIndex = gridCellCount - 1;
+        }
+
+        for (uint32_t i = 0; i < gridCellCount; ++i) {
+            if (!gridCells[i]) {
+                fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
+                returnCode = 1;
+                goto cleanup;
+            }
+        }
+    }
+
     const char * lossyHint = " (Lossy)";
     if (lossless) {
         lossyHint = " (Lossless)";
     }
     printf("AVIF to be written:%s\n", lossyHint);
-    avifImageDump(image);
+    avifImageDump(gridCells ? gridCells[0] : image, gridDims[0], gridDims[1]);
 
     printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], tileRowsLog2 [%d], tileColsLog2 [%d], %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
@@ -783,91 +992,113 @@ int main(int argc, char * argv[])
     encoder->timescale = (uint64_t)timescale;
     encoder->keyframeInterval = keyframeInterval;
 
-    uint32_t addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
-    if (!avifInputHasRemainingData(&input)) {
-        addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
-    }
-
-    uint32_t firstDurationInTimescales = firstFile->duration;
-    if (input.useStdin || (input.filesCount > 1)) {
-        printf(" * Encoding frame 1 [%u/%d ts]: %s\n", firstDurationInTimescales, timescale, firstFile->filename);
-    }
-    avifResult addImageResult = avifEncoderAddImage(encoder, image, firstDurationInTimescales, addImageFlags);
-    if (addImageResult != AVIF_RESULT_OK) {
-        fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
-        goto cleanup;
-    }
-
-    avifInputFile * nextFile;
-    int nextImageIndex = -1;
-    while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
-        ++nextImageIndex;
-
-        printf(" * Encoding frame %d [%u/%d ts]: %s\n", nextImageIndex + 1, nextFile->duration, timescale, nextFile->filename);
-
-        if (nextImage) {
-            avifImageDestroy(nextImage);
-        }
-        nextImage = avifImageCreateEmpty();
-        nextImage->colorPrimaries = image->colorPrimaries;
-        nextImage->transferCharacteristics = image->transferCharacteristics;
-        nextImage->matrixCoefficients = image->matrixCoefficients;
-        nextImage->yuvRange = image->yuvRange;
-
-        avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL);
-        if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+    if (gridDimsCount > 0) {
+        avifResult addImageResult = avifEncoderAddImageGrid(
+            encoder, (uint8_t)gridDims[0], (uint8_t)gridDims[1], (const avifImage **)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+        if (addImageResult != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
             returnCode = 1;
             goto cleanup;
         }
-
-        // Verify that this frame's properties matches the first frame's properties
-        if ((image->width != nextImage->width) || (image->height != nextImage->height)) {
-            fprintf(stderr,
-                    "ERROR: Image sequence dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
-                    image->width,
-                    image->height,
-                    nextImage->width,
-                    nextImage->height,
-                    nextFile->filename);
-            goto cleanup;
-        }
-        if (image->depth != nextImage->depth) {
-            fprintf(stderr, "ERROR: Image sequence depth mismatch, [%u] vs [%u]: %s\n", image->depth, nextImage->depth, nextFile->filename);
-            goto cleanup;
-        }
-        if ((image->colorPrimaries != nextImage->colorPrimaries) ||
-            (image->transferCharacteristics != nextImage->transferCharacteristics) ||
-            (image->matrixCoefficients != nextImage->matrixCoefficients)) {
-            fprintf(stderr,
-                    "ERROR: Image sequence CICP mismatch, [%u/%u/%u] vs [%u/%u/%u]: %s\n",
-                    image->colorPrimaries,
-                    image->matrixCoefficients,
-                    image->transferCharacteristics,
-                    nextImage->colorPrimaries,
-                    nextImage->transferCharacteristics,
-                    nextImage->matrixCoefficients,
-                    nextFile->filename);
-            goto cleanup;
-        }
-        if (image->yuvRange != nextImage->yuvRange) {
-            fprintf(stderr,
-                    "ERROR: Image sequence range mismatch, [%s] vs [%s]: %s\n",
-                    (image->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                    (nextImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                    nextFile->filename);
-            goto cleanup;
+    } else {
+        uint32_t addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
+        if (!avifInputHasRemainingData(&input)) {
+            addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }
 
-        avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextFile->duration, AVIF_ADD_IMAGE_FLAG_NONE);
-        if (nextImageResult != AVIF_RESULT_OK) {
-            fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
+        uint32_t firstDurationInTimescales = firstFile->duration;
+        if (input.useStdin || (input.filesCount > 1)) {
+            printf(" * Encoding frame 1 [%u/%d ts]: %s\n", firstDurationInTimescales, timescale, firstFile->filename);
+        }
+        avifResult addImageResult = avifEncoderAddImage(encoder, image, firstDurationInTimescales, addImageFlags);
+        if (addImageResult != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
+            returnCode = 1;
             goto cleanup;
+        }
+    }
+
+    if (!gridDimsCount) {
+        // Not generating a single-image grid: Use all remaining input files as subsequent frames.
+
+        avifInputFile * nextFile;
+        int nextImageIndex = -1;
+        while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
+            ++nextImageIndex;
+
+            printf(" * Encoding frame %d [%u/%d ts]: %s\n", nextImageIndex + 1, nextFile->duration, timescale, nextFile->filename);
+
+            if (nextImage) {
+                avifImageDestroy(nextImage);
+            }
+            nextImage = avifImageCreateEmpty();
+            nextImage->colorPrimaries = image->colorPrimaries;
+            nextImage->transferCharacteristics = image->transferCharacteristics;
+            nextImage->matrixCoefficients = image->matrixCoefficients;
+            nextImage->yuvRange = image->yuvRange;
+
+            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL);
+            if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+                returnCode = 1;
+                goto cleanup;
+            }
+
+            // Verify that this frame's properties matches the first frame's properties
+            if ((image->width != nextImage->width) || (image->height != nextImage->height)) {
+                fprintf(stderr,
+                        "ERROR: Image sequence dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
+                        image->width,
+                        image->height,
+                        nextImage->width,
+                        nextImage->height,
+                        nextFile->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if (image->depth != nextImage->depth) {
+                fprintf(
+                    stderr, "ERROR: Image sequence depth mismatch, [%u] vs [%u]: %s\n", image->depth, nextImage->depth, nextFile->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if ((image->colorPrimaries != nextImage->colorPrimaries) ||
+                (image->transferCharacteristics != nextImage->transferCharacteristics) ||
+                (image->matrixCoefficients != nextImage->matrixCoefficients)) {
+                fprintf(stderr,
+                        "ERROR: Image sequence CICP mismatch, [%u/%u/%u] vs [%u/%u/%u]: %s\n",
+                        image->colorPrimaries,
+                        image->matrixCoefficients,
+                        image->transferCharacteristics,
+                        nextImage->colorPrimaries,
+                        nextImage->transferCharacteristics,
+                        nextImage->matrixCoefficients,
+                        nextFile->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if (image->yuvRange != nextImage->yuvRange) {
+                fprintf(stderr,
+                        "ERROR: Image sequence range mismatch, [%s] vs [%s]: %s\n",
+                        (image->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                        (nextImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                        nextFile->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+
+            avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextFile->duration, AVIF_ADD_IMAGE_FLAG_NONE);
+            if (nextImageResult != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
+                returnCode = 1;
+                goto cleanup;
+            }
         }
     }
 
     avifResult finishResult = avifEncoderFinish(encoder, &raw);
     if (finishResult != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to finish encoding: %s\n", avifResultToString(finishResult));
+        returnCode = 1;
         goto cleanup;
     }
 
@@ -877,6 +1108,7 @@ int main(int argc, char * argv[])
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
+        returnCode = 1;
         goto cleanup;
     }
     if (fwrite(raw.data, 1, raw.size, f) != raw.size) {
@@ -891,8 +1123,18 @@ cleanup:
     if (encoder) {
         avifEncoderDestroy(encoder);
     }
-    if (image) {
+    if (gridCells) {
+        for (uint32_t i = 0; i < gridCellCount; ++i) {
+            if (gridCells[i]) {
+                avifImageDestroy(gridCells[i]);
+            }
+        }
+        free(gridCells);
+    } else if (image) { // image is owned/cleaned up by gridCells if it exists
         avifImageDestroy(image);
+    }
+    if (gridSplitImage) {
+        avifImageDestroy(gridSplitImage);
     }
     if (nextImage) {
         avifImageDestroy(nextImage);

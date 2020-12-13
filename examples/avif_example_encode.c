@@ -84,6 +84,7 @@ int main(int argc, char * argv[])
 
     // Call avifEncoderAddImage() for each image in your sequence
     // Only set AVIF_ADD_IMAGE_FLAG_SINGLE if you're not encoding a sequence
+    // Use avifEncoderAddImageGrid() instead with an array of avifImage* to make a grid image
     avifResult addImageResult = avifEncoderAddImage(encoder, image, 1, AVIF_ADD_IMAGE_FLAG_SINGLE);
     if (addImageResult != AVIF_RESULT_OK) {
         fprintf(stderr, "Failed to add image to encoder: %s\n", avifResultToString(addImageResult));

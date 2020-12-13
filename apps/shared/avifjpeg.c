@@ -66,6 +66,7 @@ avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFor
     setup_read_icc_profile(&cinfo);
     jpeg_stdio_src(&cinfo, f);
     jpeg_read_header(&cinfo, TRUE);
+    cinfo.out_color_space = JCS_RGB;
     jpeg_start_decompress(&cinfo);
 
     int row_stride = cinfo.output_width * cinfo.output_components;
