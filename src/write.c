@@ -632,7 +632,7 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint8_t gridCols, uint
         encoder, gridCols, gridRows, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
 }
 
-size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
+static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
 {
     const size_t mdatCurrentOffset = avifRWStreamOffset(s);
     const size_t mdatSearchSize = mdatCurrentOffset - mdatStartOffset;
