@@ -402,7 +402,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     const avifImage * firstCell = cellImages[0];
-    if ((firstCell->width < 64) || (firstCell->height < 64)) {
+    if ((cellCount > 1) && ((firstCell->width < 64) || (firstCell->height < 64))) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 
