@@ -121,7 +121,7 @@ typedef struct avifSharpYUVReformatExtraState
 
 static avifResult avifPrepareSharpYUVReformatExtraState(const avifImage * image,
                                                         const avifRGBImage * rgb,
-                                                        avifReformatState * state,
+                                                        const avifReformatState * state,
                                                         avifSharpYUVReformatExtraState * exState)
 {
     exState->kr = state->kr;
@@ -162,8 +162,8 @@ static avifResult avifPrepareSharpYUVReformatExtraState(const avifImage * image,
     exState->baseWeight = 1.f / (float)(1 << (image->depth));
 
     avifAlphaParams params;
-    params.width = image->width;
-    params.height = image->height;
+    params.width = rgb->width;
+    params.height = rgb->height;
     params.srcDepth = rgb->depth;
     params.srcRange = AVIF_RANGE_FULL;
     params.srcPlane = rgb->pixels;

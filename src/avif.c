@@ -358,6 +358,7 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
     rgb->format = AVIF_RGB_FORMAT_RGBA;
     rgb->chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     rgb->ignoreAlpha = AVIF_FALSE;
+    rgb->useSharpYUVConversion = AVIF_FALSE;
     rgb->pixels = NULL;
     rgb->rowBytes = 0;
 }

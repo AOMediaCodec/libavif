@@ -331,8 +331,6 @@ typedef struct avifImage
     uint32_t alphaRowBytes;
     avifBool imageOwnsAlphaPlane;
 
-    avifBool useSharpYUVConversion;
-
     // ICC Profile
     avifRWData icc;
 
@@ -437,6 +435,8 @@ typedef struct avifRGBImage
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
     avifBool ignoreAlpha; // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                           // RGB, treating the alpha bits as if they were all 1.
+    avifBool useSharpYUVConversion; // Use a slower algorithm to downsample RGB into non-4:4:4 UV.
+                                    // This gives better result than the default fast method.
 
     uint8_t * pixels;
     uint32_t rowBytes;

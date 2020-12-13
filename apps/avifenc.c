@@ -197,7 +197,7 @@ static avifBool avifInputHasRemainingData(avifInput * input)
     return (input->fileIndex < input->filesCount);
 }
 
-static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image, uint32_t * outDepth)
+static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image, uint32_t * outDepth, avifBool useSharpYUV)
 {
     if (input->useStdin) {
         if (feof(stdin)) {
@@ -222,14 +222,14 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
             *outDepth = image->depth;
         }
     } else if (nextInputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(image, input->files[input->fileIndex].filename, input->requestedFormat, input->requestedDepth)) {
+        if (!avifJPEGRead(image, input->files[input->fileIndex].filename, input->requestedFormat, input->requestedDepth, useSharpYUV)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = 8;
         }
     } else if (nextInputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(image, input->files[input->fileIndex].filename, input->requestedFormat, input->requestedDepth, outDepth)) {
+        if (!avifPNGRead(image, input->files[input->fileIndex].filename, input->requestedFormat, input->requestedDepth, outDepth, useSharpYUV)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {
@@ -616,11 +616,9 @@ int main(int argc, char * argv[])
     image->yuvRange = requestedRange;
 
     if (useSharpYUV) {
-        image->useSharpYUVConversion = AVIF_TRUE;
-
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             fprintf(stderr, "WARNING: [--sharp_yuv] Sharp YUV conversion only improve quality on YUV422 and YUV420 subsampling mode.\n");
-            image->useSharpYUVConversion = AVIF_FALSE;
+            useSharpYUV = AVIF_FALSE;
         }
 
         if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ||
@@ -630,15 +628,13 @@ int main(int argc, char * argv[])
             (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
             (image->matrixCoefficients >= AVIF_MATRIX_COEFFICIENTS_ICTCP)) {
             fprintf(stderr, "WARNING: [--sharp_yuv] Sharp YUV conversion only improve quality on non-constant luminance matrix coefficients.\n");
-            image->useSharpYUVConversion = AVIF_FALSE;
+            useSharpYUV = AVIF_FALSE;
         }
-    } else {
-        image->useSharpYUVConversion = AVIF_FALSE;
     }
 
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
-    avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth);
+    avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth, useSharpYUV);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
         returnCode = 1;
@@ -839,7 +835,7 @@ int main(int argc, char * argv[])
         nextImage->matrixCoefficients = image->matrixCoefficients;
         nextImage->yuvRange = image->yuvRange;
 
-        avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL);
+        avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL, useSharpYUV);
         if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
             returnCode = 1;
             goto cleanup;

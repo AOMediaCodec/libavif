@@ -35,7 +35,6 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static const char xmpContentType[] = CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
-static avifBool avifImageIsOpaque(const avifImage * image);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
 // ---------------------------------------------------------------------------
@@ -401,7 +400,7 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
         encoder->data->colorItem->codec->csOptions = encoder->csOptions;
         encoder->data->primaryItemID = encoder->data->colorItem->id;
 
-        avifBool needsAlpha = (image->alphaPlane != NULL);
+        avifBool needsAlpha = (image->alphaPlane != NULL && image->alphaRowBytes);
         if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
             // If encoding a single image in which the alpha plane exists but is entirely opaque,
             // simply skip writing an alpha AV1 payload entirely, as it'll be interpreted as opaque
@@ -409,10 +408,21 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
             //
             // However, if encoding an image sequence, the first frame's alpha plane being entirely
             // opaque could be a false positive for removing the alpha AV1 payload, as it might simply
-            // be a fade out later in the sequence. This is why avifImageIsOpaque() is only called
-            // when encoding a single image.
+            // be a fade out later in the sequence. This is why we only check it if we are encoding a
+            // single image.
 
-            needsAlpha = !avifImageIsOpaque(image);
+            avifAlphaParams params;
+
+            params.width = image->width;
+            params.height = image->height;
+            params.srcDepth = image->depth;
+            params.srcRange = image->alphaRange;
+            params.srcPlane = image->alphaPlane;
+            params.srcRowBytes = image->alphaRowBytes;
+            params.srcOffsetBytes = 0;
+            params.srcPixelBytes = avifImageUsesU16(image) ? 2 : 1;
+
+            needsAlpha = !avifCheckAlphaOpaque(&params);
         }
         if (needsAlpha) {
             encoder->data->alphaItem = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6);
@@ -1064,34 +1074,6 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
         return addImageResult;
     }
     return avifEncoderFinish(encoder, output);
-}
-
-static avifBool avifImageIsOpaque(const avifImage * image)
-{
-    if (!image->alphaPlane) {
-        return AVIF_TRUE;
-    }
-
-    int maxChannel = (1 << image->depth) - 1;
-    if (avifImageUsesU16(image)) {
-        for (uint32_t j = 0; j < image->height; ++j) {
-            for (uint32_t i = 0; i < image->width; ++i) {
-                uint16_t * p = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
-                if (*p != maxChannel) {
-                    return AVIF_FALSE;
-                }
-            }
-        }
-    } else {
-        for (uint32_t j = 0; j < image->height; ++j) {
-            for (uint32_t i = 0; i < image->width; ++i) {
-                if (image->alphaPlane[i + (j * image->alphaRowBytes)] != maxChannel) {
-                    return AVIF_FALSE;
-                }
-            }
-        }
-    }
-    return AVIF_TRUE;
 }
 
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)

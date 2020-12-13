@@ -172,7 +172,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
     }
 
-    if (image->useSharpYUVConversion) {
+    if (rgb->useSharpYUVConversion) {
         avifResult result = avifImageRGBtoYUVSharp(image, rgb, &state);
 
         // fallback to normal method
