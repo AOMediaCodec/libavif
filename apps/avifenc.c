@@ -272,7 +272,7 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
-avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
+static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
 {
     if ((gridSplitImage->width % gridCols) != 0) {
         fprintf(stderr, "ERROR: Can't split image width (%u) evenly into %u columns.\n", gridSplitImage->width, gridCols);
@@ -994,7 +994,7 @@ int main(int argc, char * argv[])
 
     if (gridDimsCount > 0) {
         avifResult addImageResult = avifEncoderAddImageGrid(
-            encoder, (uint8_t)gridDims[0], (uint8_t)gridDims[1], (const avifImage **)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+            encoder, (uint8_t)gridDims[0], (uint8_t)gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
             returnCode = 1;
