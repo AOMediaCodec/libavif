@@ -382,7 +382,7 @@ static void avifWriteGridPayload(avifRWData * data, uint8_t gridCols, uint8_t gr
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint8_t gridCols,
                                               uint8_t gridRows,
-                                              const avifImage ** cellImages,
+                                              const avifImage * const * cellImages,
                                               uint64_t durationInTimescales,
                                               uint32_t addImageFlags)
 {
@@ -626,13 +626,13 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
     return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
 }
 
-avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint8_t gridCols, uint8_t gridRows, const avifImage ** cellImages, uint32_t addImageFlags)
+avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint8_t gridCols, uint8_t gridRows, const avifImage * const * cellImages, uint32_t addImageFlags)
 {
     return avifEncoderAddImageInternal(
         encoder, gridCols, gridRows, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
 }
 
-size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
+static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
 {
     const size_t mdatCurrentOffset = avifRWStreamOffset(s);
     const size_t mdatSearchSize = mdatCurrentOffset - mdatStartOffset;
