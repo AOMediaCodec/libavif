@@ -7,7 +7,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifndef AVIF_API
+// ---------------------------------------------------------------------------
+// Export macros
+
+// AVIF_BUILDING_SHARED_LIBS should only be defined when building shared
+// version of libavif library.
+// AVIF_DLL may only be defined when your project dynamically linking to libavif
+// on Windows, to allow compiler to generate more efficient function call
+// assembly. If you are using libavif as CMake dependency, through CMake
+// package config file or through pkg-config this is defined automatically.
+
 #if defined(AVIF_BUILDING_SHARED_LIBS)
 #if defined(_WIN32)
 #define AVIF_API __declspec(dllexport)
@@ -16,10 +25,11 @@
 #else
 #define AVIF_API
 #endif // if defined(_WIN32)
+#elif defined(_WIN32) && defined(AVIF_DLL)
+#define AVIF_API __declspec(dllimport)
 #else
 #define AVIF_API
 #endif // if defined(AVIF_BUILDING_SHARED_LIBS)
-#endif // ifndef AVIF_API
 
 #ifdef __cplusplus
 extern "C" {

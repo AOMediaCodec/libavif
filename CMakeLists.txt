@@ -406,13 +406,17 @@ target_include_directories(avif
                            PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>
                                   $<INSTALL_INTERFACE:include>
                            PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+set(AVIF_PC_EXTRA_DEFINITION "")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif PRIVATE -DAVIF_BUILDING_SHARED_LIBS)
+    if(WIN32)
+        target_compile_definitions(avif INTERFACE -DAVIF_DLL)
+        set(AVIF_PC_EXTRA_DEFINITION " -DAVIF_DLL")
+    endif()
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
 endif()
-
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
