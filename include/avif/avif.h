@@ -7,33 +7,39 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// ---------------------------------------------------------------------------
-// Export macros
-
-// AVIF_BUILDING_SHARED_LIBS should only be defined when building shared
-// version of libavif library.
-// AVIF_DLL may only be defined when your project dynamically linking to libavif
-// on Windows, to allow compiler to generate more efficient function call
-// assembly. If you are using libavif as CMake dependency, through CMake
-// package config file or through pkg-config this is defined automatically.
-
-#if defined(AVIF_BUILDING_SHARED_LIBS)
-#if defined(_WIN32)
-#define AVIF_API __declspec(dllexport)
-#elif defined(__GNUC__) && __GNUC__ >= 4
-#define AVIF_API __attribute__((visibility("default")))
-#else
-#define AVIF_API
-#endif // if defined(_WIN32)
-#elif defined(_WIN32) && defined(AVIF_DLL)
-#define AVIF_API __declspec(dllimport)
-#else
-#define AVIF_API
-#endif // if defined(AVIF_BUILDING_SHARED_LIBS)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// ---------------------------------------------------------------------------
+// Export macros
+
+// AVIF_BUILDING_SHARED_LIBS should only be defined when libavif is being built
+// as a shared library.
+// AVIF_DLL should be defined if libavif is a shared library. If you are using
+// libavif as CMake dependency, through CMake package config file or
+// through pkg-config, this is defined automatically.
+
+#if defined(_WIN32)
+#define AVIF_HELPER_EXPORT __declspec(dllexport)
+#define AVIF_HELPER_IMPORT __declspec(dllimport)
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#define AVIF_HELPER_EXPORT __attribute__((visibility("default")))
+#define AVIF_HELPER_IMPORT
+#else
+#define AVIF_HELPER_EXPORT
+#define AVIF_HELPER_IMPORT
+#endif
+
+#if defined(AVIF_DLL)
+#if defined(AVIF_BUILDING_SHARED_LIBS)
+#define AVIF_API AVIF_HELPER_EXPORT
+#else
+#define AVIF_API AVIF_HELPER_IMPORT
+#endif // if defined(AVIF_BUILDING_SHARED_LIBS)
+#else
+#define AVIF_API
+#endif //if defined(AVIF_DLL)
 
 // ---------------------------------------------------------------------------
 // Constants
