@@ -7,23 +7,46 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifndef AVIF_API
-#if defined(AVIF_BUILDING_SHARED_LIBS)
-#if defined(_WIN32)
-#define AVIF_API __declspec(dllexport)
-#elif defined(__GNUC__) && __GNUC__ >= 4
-#define AVIF_API __attribute__((visibility("default")))
-#else
-#define AVIF_API
-#endif // if defined(_WIN32)
-#else
-#define AVIF_API
-#endif // if defined(AVIF_BUILDING_SHARED_LIBS)
-#endif // ifndef AVIF_API
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// ---------------------------------------------------------------------------
+// Export macros
+
+// AVIF_BUILDING_SHARED_LIBS should only be defined when libavif is being built
+// as a shared library.
+// AVIF_DLL should be defined if libavif is a shared library. If you are using
+// libavif as CMake dependency, through CMake package config file or
+// through pkg-config, this is defined automatically.
+//
+// Here's what AVIF_API will be defined as in shared build:
+// |       |        Windows        |                  Unix                  |
+// | Build | __declspec(dllexport) | __attribute__((visibility("default"))) |
+// |  Use  | __declspec(dllimport) |                                        |
+//
+// For static build, AVIF_API is always defined as nothing.
+
+#if defined(_WIN32)
+#define AVIF_HELPER_EXPORT __declspec(dllexport)
+#define AVIF_HELPER_IMPORT __declspec(dllimport)
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#define AVIF_HELPER_EXPORT __attribute__((visibility("default")))
+#define AVIF_HELPER_IMPORT
+#else
+#define AVIF_HELPER_EXPORT
+#define AVIF_HELPER_IMPORT
+#endif
+
+#if defined(AVIF_DLL)
+#if defined(AVIF_BUILDING_SHARED_LIBS)
+#define AVIF_API AVIF_HELPER_EXPORT
+#else
+#define AVIF_API AVIF_HELPER_IMPORT
+#endif // if defined(AVIF_BUILDING_SHARED_LIBS)
+#else
+#define AVIF_API
+#endif //if defined(AVIF_DLL)
 
 // ---------------------------------------------------------------------------
 // Constants
