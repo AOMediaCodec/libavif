@@ -19,6 +19,13 @@ extern "C" {
 // AVIF_DLL should be defined if libavif is a shared library. If you are using
 // libavif as CMake dependency, through CMake package config file or
 // through pkg-config, this is defined automatically.
+//
+// Here's what `AVIF_API` will be defined to in shared build:
+// |       |        Windows        |                  Unix                  |
+// | Build | __declspec(dllexport) | __attribute__((visibility("default"))) |
+// |  Use  | __declspec(dllimport) |                                        |
+//
+// For static build, `AVIF_API` is always defined to nothing.
 
 #if defined(_WIN32)
 #define AVIF_HELPER_EXPORT __declspec(dllexport)
