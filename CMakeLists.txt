@@ -137,6 +137,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     if(HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
         add_definitions(-Wno-poison-system-directories)
     endif()
+    # MINGW declares printf with __attribute__ ((__unused__)) in stdio.h.
+    # It is out of our control so we just ignore it.
+    # See https://sourceforge.net/p/mingw-w64/bugs/868/
+    if(MINGW)
+        add_definitions(-Wno-used-but-marked-unused)
+    endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     MESSAGE(STATUS "libavif: Enabling warnings for GCC")
     add_definitions(-Wall -Wextra)
