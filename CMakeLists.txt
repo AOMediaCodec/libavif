@@ -137,7 +137,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     if(HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
         add_definitions(-Wno-poison-system-directories)
     endif()
-    # MINGW defines printf with __attribute__ ((__unused__)). It not our fault so we just ignore it.
+    # MINGW declares printf with __attribute__ ((__unused__)) in stdio.h.
+    # It is out of our control so we just ignore it.
+    # See: https://sourceforge.net/p/mingw-w64/bugs/868/
     if(MINGW)
         add_definitions(-Wno-used-but-marked-unused)
     endif()
