@@ -139,7 +139,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     endif()
     # MINGW declares printf with __attribute__ ((__unused__)) in stdio.h.
     # It is out of our control so we just ignore it.
-    # See: https://sourceforge.net/p/mingw-w64/bugs/868/
+    # See https://sourceforge.net/p/mingw-w64/bugs/868/
     if(MINGW)
         add_definitions(-Wno-used-but-marked-unused)
     endif()
