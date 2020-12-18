@@ -147,7 +147,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     MESSAGE(STATUS "libavif: Enabling warnings for GCC")
     add_definitions(-Wall -Wextra)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-    MESSAGE(STATUS "libavif: Enabling warnings for MS CL")
+    MESSAGE(STATUS "libavif: Enabling warnings for MSVC")
     add_definitions(
         /Wall   # All warnings
         /wd4255 # Disable: no function prototype given
@@ -159,12 +159,11 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
         /wd4820 # Disable: bytes padding added after data member
         /wd4996 # Disable: potentially unsafe stdlib methods
         /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
-        # Note: This tells MS CL to read source code as UTF-8,
-        # and assume console can only use ASCII (minimal safe).
+        # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
         # libavif uses ANSI API to print to console, which is not portable between systems using different
-        # languages and result in mojibake unless we only use codes that shared by every code page: ASCII.
+        # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
         # A C4556 warning will be generated on violation.
-        # Commonly used /utf-8 flag assume UTF-8 for both source and console, which is usually not the case.
+        # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
         # Warnings can be suppressed but there will still be random characters printed to the console.
         /source-charset:utf-8 /execution-charset:us-ascii
     )
@@ -414,8 +413,8 @@ target_include_directories(avif
                            PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
 set(AVIF_PKG_CONFIG_EXTRA_CFLAGS "")
 if(BUILD_SHARED_LIBS)
-    target_compile_definitions(avif PUBLIC AVIF_DLL)
-    target_compile_definitions(avif PRIVATE AVIF_BUILDING_SHARED_LIBS)
+    target_compile_definitions(avif PUBLIC AVIF_DLL
+                                    PRIVATE AVIF_BUILDING_SHARED_LIBS)
     set(AVIF_PKG_CONFIG_EXTRA_CFLAGS " -DAVIF_DLL")
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")

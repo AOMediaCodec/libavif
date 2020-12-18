@@ -17,8 +17,8 @@ extern "C" {
 // AVIF_BUILDING_SHARED_LIBS should only be defined when libavif is being built
 // as a shared library.
 // AVIF_DLL should be defined if libavif is a shared library. If you are using
-// libavif as CMake dependency, through CMake package config file or
-// through pkg-config, this is defined automatically.
+// libavif as CMake dependency, through CMake package config file or through
+// pkg-config, this is defined automatically.
 //
 // Here's what AVIF_API will be defined as in shared build:
 // |       |        Windows        |                  Unix                  |
@@ -43,10 +43,10 @@ extern "C" {
 #define AVIF_API AVIF_HELPER_EXPORT
 #else
 #define AVIF_API AVIF_HELPER_IMPORT
-#endif // if defined(AVIF_BUILDING_SHARED_LIBS)
+#endif // defined(AVIF_BUILDING_SHARED_LIBS)
 #else
 #define AVIF_API
-#endif //if defined(AVIF_DLL)
+#endif // defined(AVIF_DLL)
 
 // ---------------------------------------------------------------------------
 // Constants
