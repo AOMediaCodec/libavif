@@ -512,11 +512,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 gridAlphaItem->alpha = AVIF_TRUE;
                 gridAlphaItem->irefToID = encoder->data->primaryItemID;
                 gridAlphaItem->irefType = "auxl";
+                gridAlphaItem->gridCols = gridCols;
+                gridAlphaItem->gridRows = gridRows;
                 gridAlphaID = gridAlphaItem->id;
             }
 
             for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-                avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6, 0);
+                avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6, cellIndex);
                 item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
                 if (!item->codec) {
                     return AVIF_RESULT_NO_CODEC_AVAILABLE;
