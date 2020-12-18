@@ -9,13 +9,13 @@
 #include <stdio.h>
 #include <string.h>
 
-static void avifImageDumpInternal(avifImage * avif, uint32_t gridX, uint32_t gridY, avifBool alphaPresent)
+static void avifImageDumpInternal(avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent)
 {
     uint32_t width = avif->width;
     uint32_t height = avif->height;
-    if (gridX && gridY) {
-        width *= gridX;
-        height *= gridY;
+    if (gridCols && gridRows) {
+        width *= gridCols;
+        height *= gridRows;
     }
     printf(" * Resolution     : %ux%u\n", width, height);
     printf(" * Bit Depth      : %u\n", avif->depth);
@@ -61,10 +61,10 @@ static void avifImageDumpInternal(avifImage * avif, uint32_t gridX, uint32_t gri
     }
 }
 
-void avifImageDump(avifImage * avif, uint32_t gridX, uint32_t gridY)
+void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows)
 {
     const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
-    avifImageDumpInternal(avif, gridX, gridY, alphaPresent);
+    avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent);
 }
 
 void avifContainerDump(avifDecoder * decoder)
