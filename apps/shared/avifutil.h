@@ -20,7 +20,7 @@
 #define AVIF_FMT_ZU "%zu"
 #endif
 
-void avifImageDump(avifImage * avif, uint32_t gridX, uint32_t gridY);
+void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows);
 void avifContainerDump(avifDecoder * decoder);
 void avifPrintVersions(void);
 
