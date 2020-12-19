@@ -402,22 +402,26 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     const avifImage * firstCell = cellImages[0];
+    if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
+        return AVIF_RESULT_UNSUPPORTED_DEPTH;
+    }
+
+    if (!firstCell->width || !firstCell->height) {
+        return AVIF_RESULT_NO_CONTENT;
+    }
+
     if ((cellCount > 1) && ((firstCell->width < 64) || (firstCell->height < 64))) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
-        if ((cellImage->depth != 8) && (cellImage->depth != 10) && (cellImage->depth != 12)) {
-            return AVIF_RESULT_UNSUPPORTED_DEPTH;
-        }
-
         if ((cellImage->depth != firstCell->depth) || (cellImage->width != firstCell->width) ||
             (cellImage->height != firstCell->height) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
 
-        if (!cellImage->width || !cellImage->height || !cellImage->yuvPlanes[AVIF_CHAN_Y]) {
+        if (!cellImage->yuvPlanes[AVIF_CHAN_Y]) {
             return AVIF_RESULT_NO_CONTENT;
         }
 
@@ -476,15 +480,15 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
             item->codec->csOptions = encoder->csOptions;
 
-            if (gridColorID) {
+            if (cellCount > 1) {
                 item->dimgFromID = gridColorID;
-            } else if (!encoder->data->primaryItemID) {
+            } else {
                 encoder->data->primaryItemID = item->id;
             }
         }
 
         encoder->data->alphaPresent = (firstCell->alphaPlane != NULL);
-        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+        if (encoder->data->alphaPresent && (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
             // If encoding a single image in which the alpha plane exists but is entirely opaque,
             // simply skip writing an alpha AV1 payload entirely, as it'll be interpreted as opaque
             // and is less bytes.
@@ -526,7 +530,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 item->codec->csOptions = encoder->csOptions;
                 item->alpha = AVIF_TRUE;
 
-                if (gridAlphaID) {
+                if (cellCount > 1) {
                     item->dimgFromID = gridAlphaID;
                 } else {
                     item->irefToID = encoder->data->primaryItemID;
@@ -584,15 +588,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     } else {
         // Another frame in an image sequence
 
-        if (encoder->data->alphaPresent) {
-            for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-                const avifImage * cellImage = cellImages[cellIndex];
-                if (!cellImage->alphaPlane) {
-                    // If the first image in the sequence had an alpha plane (even if fully opaque), all
-                    // subsequence images must have alpha as well.
-                    return AVIF_RESULT_ENCODE_ALPHA_FAILED;
-                }
-            }
+        if (encoder->data->alphaPresent && !firstCell->alphaPlane) {
+            // If the first image in the sequence had an alpha plane (even if fully opaque), all
+            // subsequence images must have alpha as well.
+            return AVIF_RESULT_ENCODE_ALPHA_FAILED;
         }
     }
 
