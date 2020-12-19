@@ -341,8 +341,8 @@ typedef struct avifImageMirror
     //
     // Legal values: [0, 1]
     //
-    // 0: flip along a vertical axis ("left-to-right")
-    // 1: flip along a horizontal axis ("top-to-bottom")
+    // 0: Mirror about a vertical axis ("left-to-right")
+    // 1: Mirror about a horizontal axis ("top-to-bottom")
     uint8_t axis;
 } avifImageMirror;
 
