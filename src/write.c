@@ -130,7 +130,7 @@ static avifEncoderData * avifEncoderDataCreate()
     return data;
 }
 
-static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const char * type, const char * infeName, size_t infeNameSize, int cellIndex)
+static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const char * type, const char * infeName, size_t infeNameSize, uint32_t cellIndex)
 {
     avifEncoderItem * item = (avifEncoderItem *)avifArrayPushPtr(&data->items);
     ++data->lastItemID;
@@ -362,10 +362,10 @@ static void avifWriteGridPayload(avifRWData * data, uint8_t gridCols, uint8_t gr
 
     avifRWStream s;
     avifRWStreamStart(&s, data);
-    avifRWStreamWriteU8(&s, 0);                     // unsigned int(8) version = 0;
-    avifRWStreamWriteU8(&s, gridFlags);             // unsigned int(8) flags;
-    avifRWStreamWriteU8(&s, (uint8_t)gridRows - 1); // unsigned int(8) rows_minus_one;
-    avifRWStreamWriteU8(&s, (uint8_t)gridCols - 1); // unsigned int(8) columns_minus_one;
+    avifRWStreamWriteU8(&s, 0);                       // unsigned int(8) version = 0;
+    avifRWStreamWriteU8(&s, gridFlags);               // unsigned int(8) flags;
+    avifRWStreamWriteU8(&s, (uint8_t)(gridRows - 1)); // unsigned int(8) rows_minus_one;
+    avifRWStreamWriteU8(&s, (uint8_t)(gridCols - 1)); // unsigned int(8) columns_minus_one;
     if (gridFlags & 1) {
         avifRWStreamWriteU32(&s, gridWidth);  // unsigned int(FieldLength) output_width;
         avifRWStreamWriteU32(&s, gridHeight); // unsigned int(FieldLength) output_height;
@@ -381,7 +381,7 @@ static void avifWriteGridPayload(avifRWData * data, uint8_t gridCols, uint8_t gr
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint8_t gridCols,
                                               uint8_t gridRows,
-                                              const avifImage ** cellImages,
+                                              const avifImage * const * cellImages,
                                               uint64_t durationInTimescales,
                                               uint32_t addImageFlags)
 {
@@ -401,22 +401,26 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     const avifImage * firstCell = cellImages[0];
+    if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
+        return AVIF_RESULT_UNSUPPORTED_DEPTH;
+    }
+
+    if (!firstCell->width || !firstCell->height) {
+        return AVIF_RESULT_NO_CONTENT;
+    }
+
     if ((cellCount > 1) && ((firstCell->width < 64) || (firstCell->height < 64))) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
-        if ((cellImage->depth != 8) && (cellImage->depth != 10) && (cellImage->depth != 12)) {
-            return AVIF_RESULT_UNSUPPORTED_DEPTH;
-        }
-
         if ((cellImage->depth != firstCell->depth) || (cellImage->width != firstCell->width) ||
             (cellImage->height != firstCell->height) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
 
-        if (!cellImage->width || !cellImage->height || !cellImage->yuvPlanes[AVIF_CHAN_Y]) {
+        if (!cellImage->yuvPlanes[AVIF_CHAN_Y]) {
             return AVIF_RESULT_NO_CONTENT;
         }
 
@@ -475,15 +479,15 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
             item->codec->csOptions = encoder->csOptions;
 
-            if (gridColorID) {
+            if (cellCount > 1) {
                 item->dimgFromID = gridColorID;
-            } else if (!encoder->data->primaryItemID) {
+            } else {
                 encoder->data->primaryItemID = item->id;
             }
         }
 
         encoder->data->alphaPresent = (firstCell->alphaPlane != NULL);
-        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+        if (encoder->data->alphaPresent && (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
             // If encoding a single image in which the alpha plane exists but is entirely opaque,
             // simply skip writing an alpha AV1 payload entirely, as it'll be interpreted as opaque
             // and is less bytes.
@@ -526,11 +530,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 gridAlphaItem->alpha = AVIF_TRUE;
                 gridAlphaItem->irefToID = encoder->data->primaryItemID;
                 gridAlphaItem->irefType = "auxl";
+                gridAlphaItem->gridCols = gridCols;
+                gridAlphaItem->gridRows = gridRows;
                 gridAlphaID = gridAlphaItem->id;
             }
 
             for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-                avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6, 0);
+                avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6, cellIndex);
                 item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
                 if (!item->codec) {
                     return AVIF_RESULT_NO_CODEC_AVAILABLE;
@@ -538,7 +544,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 item->codec->csOptions = encoder->csOptions;
                 item->alpha = AVIF_TRUE;
 
-                if (gridAlphaID) {
+                if (cellCount > 1) {
                     item->dimgFromID = gridAlphaID;
                 } else {
                     item->irefToID = encoder->data->primaryItemID;
@@ -596,15 +602,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     } else {
         // Another frame in an image sequence
 
-        if (encoder->data->alphaPresent) {
-            for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-                const avifImage * cellImage = cellImages[cellIndex];
-                if (!cellImage->alphaPlane) {
-                    // If the first image in the sequence had an alpha plane (even if fully opaque), all
-                    // subsequence images must have alpha as well.
-                    return AVIF_RESULT_ENCODE_ALPHA_FAILED;
-                }
-            }
+        if (encoder->data->alphaPresent && !firstCell->alphaPlane) {
+            // If the first image in the sequence had an alpha plane (even if fully opaque), all
+            // subsequence images must have alpha as well.
+            return AVIF_RESULT_ENCODE_ALPHA_FAILED;
         }
     }
 
@@ -640,20 +641,20 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
     return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
 }
 
-avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint8_t gridCols, uint8_t gridRows, const avifImage ** cellImages, uint32_t addImageFlags)
+avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint8_t gridCols, uint8_t gridRows, const avifImage * const * cellImages, uint32_t addImageFlags)
 {
     return avifEncoderAddImageInternal(
         encoder, gridCols, gridRows, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
 }
 
-size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
+static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
 {
     const size_t mdatCurrentOffset = avifRWStreamOffset(s);
     const size_t mdatSearchSize = mdatCurrentOffset - mdatStartOffset;
     if (mdatSearchSize < size) {
         return 0;
     }
-    const size_t mdatEndSearchOffset = mdatStartOffset + (mdatSearchSize - size);
+    const size_t mdatEndSearchOffset = mdatCurrentOffset - size;
     for (size_t searchOffset = mdatStartOffset; searchOffset <= mdatEndSearchOffset; ++searchOffset) {
         if (!memcmp(data, &s->raw->data[searchOffset], size)) {
             return searchOffset;
@@ -881,8 +882,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         const avifBool isGrid = (item->gridCols > 0);
         memset(&item->ipma, 0, sizeof(item->ipma));
-        uint32_t imageWidth = imageMetadata->width;
-        uint32_t imageHeight = imageMetadata->height;
         if (!item->codec && !isGrid) {
             // No ipma to write for this item
             continue;
@@ -908,6 +907,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
         }
 
+        uint32_t imageWidth = imageMetadata->width;
+        uint32_t imageHeight = imageMetadata->height;
         if (isGrid) {
             imageWidth = imageMetadata->width * item->gridCols;
             imageHeight = imageMetadata->height * item->gridRows;
@@ -1244,7 +1245,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             if (!chunkOffset) {
                 // We've never seen this chunk before; write it out
-                chunkOffset = (uint32_t)avifRWStreamOffset(&s);
+                chunkOffset = avifRWStreamOffset(&s);
                 if (item->encodeOutput->samples.count > 0) {
                     for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
                         avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
