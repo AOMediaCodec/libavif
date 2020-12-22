@@ -889,8 +889,8 @@ enum avifAddImageFlags
 
 AVIF_API avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, uint32_t addImageFlags);
 AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
-                                            uint8_t gridCols,
-                                            uint8_t gridRows,
+                                            uint32_t gridCols,
+                                            uint32_t gridRows,
                                             const avifImage * const * cellImages,
                                             uint32_t addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);

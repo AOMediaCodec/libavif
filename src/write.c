@@ -89,8 +89,8 @@ typedef struct avifEncoderItem
     uint16_t irefToID; // if non-zero, make an iref from this id -> irefToID
     const char * irefType;
 
-    uint8_t gridCols; // if non-zero, this is a grid item
-    uint8_t gridRows; // if non-zero, this is a grid item
+    uint32_t gridCols; // if non-zero (legal range [1-256]), this is a grid item
+    uint32_t gridRows; // if non-zero (legal range [1-256]), this is a grid item
 
     uint16_t dimgFromID; // if non-zero, make an iref from dimgFromID -> this id
 
@@ -344,7 +344,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamFinishBox(s, meta);
 }
 
-static void avifWriteGridPayload(avifRWData * data, uint8_t gridCols, uint8_t gridRows, const avifImage * firstCell)
+static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t gridRows, const avifImage * firstCell)
 {
     // ISO/IEC 23008-12 6.6.2.3.2
     // aligned(8) class ImageGrid {
@@ -380,8 +380,8 @@ static void avifWriteGridPayload(avifRWData * data, uint8_t gridCols, uint8_t gr
 }
 
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
-                                              uint8_t gridCols,
-                                              uint8_t gridRows,
+                                              uint32_t gridCols,
+                                              uint32_t gridRows,
                                               const avifImage * const * cellImages,
                                               uint64_t durationInTimescales,
                                               uint32_t addImageFlags)
@@ -627,8 +627,11 @@ avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, u
     return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
 }
 
-avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint8_t gridCols, uint8_t gridRows, const avifImage * const * cellImages, uint32_t addImageFlags)
+avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint32_t gridCols, uint32_t gridRows, const avifImage * const * cellImages, uint32_t addImageFlags)
 {
+    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
     return avifEncoderAddImageInternal(
         encoder, gridCols, gridRows, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
 }
