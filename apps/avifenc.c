@@ -939,7 +939,7 @@ int main(int argc, char * argv[])
         }
 
         if (gridCellIndex == 0) {
-            printf("Single image input for a grid image. Attempting split into %u cells...\n", gridCellCount);
+            printf("Single image input for a grid image. Attempting to split into %u cells...\n", gridCellCount);
             gridSplitImage = image;
             gridCells[0] = NULL;
 
@@ -950,12 +950,10 @@ int main(int argc, char * argv[])
             gridCellIndex = gridCellCount - 1;
         }
 
-        for (uint32_t i = 0; i < gridCellCount; ++i) {
-            if (!gridCells[i]) {
-                fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
-                returnCode = 1;
-                goto cleanup;
-            }
+        if (gridCellIndex != gridCellCount - 1) {
+            fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
+            returnCode = 1;
+            goto cleanup;
         }
     }
 
@@ -994,7 +992,7 @@ int main(int argc, char * argv[])
 
     if (gridDimsCount > 0) {
         avifResult addImageResult = avifEncoderAddImageGrid(
-            encoder, (uint8_t)gridDims[0], (uint8_t)gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+            encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
             returnCode = 1;
@@ -1016,9 +1014,7 @@ int main(int argc, char * argv[])
             returnCode = 1;
             goto cleanup;
         }
-    }
 
-    if (!gridDimsCount) {
         // Not generating a single-image grid: Use all remaining input files as subsequent frames.
 
         avifInputFile * nextFile;
