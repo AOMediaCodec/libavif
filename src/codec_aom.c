@@ -253,6 +253,19 @@ static avifBool aomOptionParseInt(const char * str, int * val)
     return AVIF_FALSE;
 }
 
+static avifBool aomOptionParseUInt(const char * str, unsigned int * val)
+{
+    char * endptr;
+    const unsigned long rawval = strtoul(str, &endptr, 10);
+
+    if (str[0] != '\0' && endptr[0] == '\0' && rawval <= UINT_MAX) {
+        *val = (int)rawval;
+        return AVIF_TRUE;
+    }
+
+    return AVIF_FALSE;
+}
+
 struct aomOptionEnumList
 {
     const char * name;
@@ -310,10 +323,21 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, struct aom_codec
     return AVIF_TRUE;
 }
 
+typedef enum
+{
+    AVIF_AOM_NUL_OPTION = 0,
+
+    AVIF_AOM_STR_OPTION,
+    AVIF_AOM_INT_OPTION,
+    AVIF_AOM_UINT_OPTION,
+    AVIF_AOM_ENUM_OPTION,
+} avifAOMOptionType;
+
 struct aomOptionDef
 {
     const char * name;
     int controlId;
+    avifAOMOptionType type;
     const struct aomOptionEnumList * enums;
 };
 
@@ -323,13 +347,24 @@ static const struct aomOptionEnumList tuningEnum[] = { //
     { NULL, 0 }
 };
 
-static const struct aomOptionDef aomOptionDefs[] = {                 //
-    { "aq-mode", AV1E_SET_AQ_MODE, NULL },                           // Adaptive quantization mode
-    { "cq-level", AOME_SET_CQ_LEVEL, NULL },                         // Constant/Constrained Quality level
-    { "enable-chroma-deltaq", AV1E_SET_ENABLE_CHROMA_DELTAQ, NULL }, // Enable delta quantization in chroma planes
-    { "sharpness", AOME_SET_SHARPNESS, NULL },                       // Loop filter sharpness
-    { "tune", AOME_SET_TUNING, tuningEnum },                         // Tune distortion metric
-    { NULL, 0, NULL }
+static const struct aomOptionDef aomOptionDefs[] = {
+    // Adaptive quantization mode
+    { "aq-mode", AV1E_SET_AQ_MODE, AVIF_AOM_UINT_OPTION, NULL },
+    // Constant/Constrained Quality level
+    { "cq-level", AOME_SET_CQ_LEVEL, AVIF_AOM_UINT_OPTION, NULL },
+    // Enable delta quantization in chroma planes
+    { "enable-chroma-deltaq", AV1E_SET_ENABLE_CHROMA_DELTAQ, AVIF_AOM_INT_OPTION, NULL },
+    // Loop filter sharpness
+    { "sharpness", AOME_SET_SHARPNESS, AVIF_AOM_UINT_OPTION, NULL },
+    // Tune distortion metric
+    { "tune", AOME_SET_TUNING, AVIF_AOM_ENUM_OPTION, tuningEnum },
+    // Film grain test vector
+    { "film-grain-test", AV1E_SET_FILM_GRAIN_TEST_VECTOR, AVIF_AOM_INT_OPTION, NULL },
+    // Film grain table file
+    { "film-grain-table", AV1E_SET_FILM_GRAIN_TABLE, AVIF_AOM_STR_OPTION, NULL },
+
+    // Sentinel
+    { NULL, 0, AVIF_AOM_NUL_OPTION, NULL }
 };
 
 static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec)
@@ -345,12 +380,26 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec)
         for (int j = 0; aomOptionDefs[j].name; ++j) {
             if (!strcmp(entry->key, aomOptionDefs[j].name)) {
                 match = AVIF_TRUE;
-                int val;
-                avifBool parsed;
-                if (aomOptionDefs[j].enums) {
-                    parsed = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, &val);
-                } else {
-                    parsed = aomOptionParseInt(entry->value, &val);
+                // store either an int, an unsigned int or a char *.
+                void * val = NULL;
+                avifBool parsed = AVIF_FALSE;
+                switch (aomOptionDefs[j].type) {
+                    case AVIF_AOM_NUL_OPTION:
+                        parsed = AVIF_FALSE;
+                        break;
+                    case AVIF_AOM_STR_OPTION:
+                        val = entry->value;
+                        parsed = AVIF_TRUE;
+                        break;
+                    case AVIF_AOM_INT_OPTION:
+                        parsed = aomOptionParseInt(entry->value, (int *)(&val));
+                        break;
+                    case AVIF_AOM_UINT_OPTION:
+                        parsed = aomOptionParseUInt(entry->value, (unsigned int *)(&val));
+                        break;
+                    case AVIF_AOM_ENUM_OPTION:
+                        parsed = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, (int *)(&val));
+                        break;
                 }
                 if (!parsed) {
                     return AVIF_FALSE;
@@ -554,6 +603,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if (alpha) {
         aomImage->range = (image->alphaRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
+        // film grain should not be applied on alpha plane
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_FILM_GRAIN_TABLE, NULL);
+        aom_codec_control(&codec->internal->encoder, AV1E_SET_FILM_GRAIN_TEST_VECTOR, 0);
         monochromeRequested = AVIF_TRUE;
         for (uint32_t j = 0; j < image->height; ++j) {
             uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
