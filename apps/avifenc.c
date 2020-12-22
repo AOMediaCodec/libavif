@@ -310,7 +310,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
             const uint32_t bytesPerRowY = bytesPerPixel * cellWidth;
             const uint32_t srcRowBytesY = gridSplitImage->yuvRowBytes[AVIF_CHAN_Y];
             const uint8_t * srcPlaneY =
-                &gridSplitImage->yuvPlanes[AVIF_CHAN_Y][(gridX * cellWidth) + (gridY * cellHeight) * srcRowBytesY];
+                &gridSplitImage->yuvPlanes[AVIF_CHAN_Y][(gridX * cellWidth * bytesPerPixel) + (gridY * cellHeight) * srcRowBytesY];
             const uint32_t dstRowBytesY = cellImage->yuvRowBytes[AVIF_CHAN_Y];
             uint8_t * dstPlaneY = cellImage->yuvPlanes[AVIF_CHAN_Y];
             for (uint32_t row = 0; row < cellHeight; ++row) {
@@ -329,7 +329,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 
                 const uint32_t srcRowBytesU = gridSplitImage->yuvRowBytes[AVIF_CHAN_U];
                 const uint8_t * srcPlaneU =
-                    &gridSplitImage->yuvPlanes[AVIF_CHAN_U][(gridX * uvWidth) + (gridY * uvHeight) * srcRowBytesU];
+                    &gridSplitImage->yuvPlanes[AVIF_CHAN_U][(gridX * uvWidth * bytesPerPixel) + (gridY * uvHeight) * srcRowBytesU];
                 const uint32_t dstRowBytesU = cellImage->yuvRowBytes[AVIF_CHAN_U];
                 uint8_t * dstPlaneU = cellImage->yuvPlanes[AVIF_CHAN_U];
                 for (uint32_t row = 0; row < uvHeight; ++row) {
@@ -340,7 +340,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 
                 const uint32_t srcRowBytesV = gridSplitImage->yuvRowBytes[AVIF_CHAN_V];
                 const uint8_t * srcPlaneV =
-                    &gridSplitImage->yuvPlanes[AVIF_CHAN_V][(gridX * uvWidth) + (gridY * uvHeight) * srcRowBytesV];
+                    &gridSplitImage->yuvPlanes[AVIF_CHAN_V][(gridX * uvWidth * bytesPerPixel) + (gridY * uvHeight) * srcRowBytesV];
                 const uint32_t dstRowBytesV = cellImage->yuvRowBytes[AVIF_CHAN_V];
                 uint8_t * dstPlaneV = cellImage->yuvPlanes[AVIF_CHAN_V];
                 for (uint32_t row = 0; row < uvHeight; ++row) {
@@ -355,7 +355,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 
                 const uint32_t bytesPerRowA = bytesPerPixel * cellWidth;
                 const uint32_t srcRowBytesA = gridSplitImage->alphaRowBytes;
-                const uint8_t * srcPlaneA = &gridSplitImage->alphaPlane[(gridX * cellWidth) + (gridY * cellHeight) * srcRowBytesA];
+                const uint8_t * srcPlaneA = &gridSplitImage->alphaPlane[(gridX * cellWidth * bytesPerPixel) + (gridY * cellHeight) * srcRowBytesA];
                 const uint32_t dstRowBytesA = cellImage->alphaRowBytes;
                 uint8_t * dstPlaneA = cellImage->alphaPlane;
                 for (uint32_t row = 0; row < cellHeight; ++row) {
