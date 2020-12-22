@@ -570,13 +570,18 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             yuvPlaneCount = 1; // Ignore UV planes when monochrome
             monochromeRequested = AVIF_TRUE;
         }
+        int xShift = codec->internal->formatInfo.chromaShiftX;
+        uint32_t uvWidth = (image->width + xShift) >> xShift;
+        uint32_t bytesPerPixel = (image->depth > 8) ? 2 : 1;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
+            uint32_t planeWidth = (yuvPlane == AVIF_CHAN_Y) ? image->width : uvWidth;
             uint32_t planeHeight = (yuvPlane == AVIF_CHAN_Y) ? image->height : uvHeight;
+            uint32_t bytesPerRow = bytesPerPixel * planeWidth;
 
             for (uint32_t j = 0; j < planeHeight; ++j) {
                 uint8_t * srcRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
                 uint8_t * dstRow = &aomImage->planes[yuvPlane][j * aomImage->stride[yuvPlane]];
-                memcpy(dstRow, srcRow, image->yuvRowBytes[yuvPlane]);
+                memcpy(dstRow, srcRow, bytesPerRow);
             }
         }
 
