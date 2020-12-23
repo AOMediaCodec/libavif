@@ -109,7 +109,10 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     state->rgbMaxChannel = (1 << rgb->depth) - 1;
     state->yuvMaxChannelF = (float)state->yuvMaxChannel;
     state->rgbMaxChannelF = (float)state->rgbMaxChannel;
-    state->uvBias = 1 << (image->depth - 1);
+    state->yBias = (float)(state->yuvRange == AVIF_RANGE_LIMITED ? (16 << (state->yuvDepth - 8)) : 0);
+    state->uvBias = (float)(1 << (state->yuvDepth - 1));
+    state->yRange = state->yuvRange == AVIF_RANGE_LIMITED ? ((float)(235 << (state->yuvDepth - 8)) - state->yBias) : state->yuvMaxChannelF;
+    state->uvRange = state->yuvRange == AVIF_RANGE_LIMITED ? ((float)(240 << (state->yuvDepth - 8)) - state->yBias) : state->yuvMaxChannelF;
 
     uint32_t cpCount = 1 << image->depth;
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
@@ -129,30 +132,35 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     return AVIF_TRUE;
 }
 
+// Formulas 20-31 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
 static int avifReformatStateYToUNorm(avifReformatState * state, float v)
 {
-    int unorm = (int)avifRoundf(v * state->yuvMaxChannelF);
+    int unorm = (int)avifRoundf(v * state->yRange + state->yBias);
     unorm = AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
-    if (state->yuvRange == AVIF_RANGE_LIMITED) {
-        unorm = avifFullToLimitedY(state->yuvDepth, unorm);
-    }
     return unorm;
 }
 
 static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
 {
-    int unorm = (int)avifRoundf(v * state->yuvMaxChannelF);
-    if (state->mode != AVIF_REFORMAT_MODE_IDENTITY) { // Don't adjust U or V when data is raw RGB
-        unorm += state->uvBias;
+    int unorm = 0;
+
+    // For YCgCo, this is only correct for full range
+    if (state->mode == AVIF_REFORMAT_MODE_YCGCO) {
+        assert(state->yuvRange == AVIF_RANGE_FULL);
     }
-    unorm = AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
-    if (state->yuvRange == AVIF_RANGE_LIMITED) {
-        if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) { // use Y range for all channels when data is raw RGB
-            unorm = avifFullToLimitedY(state->yuvDepth, unorm);
-        } else {
-            unorm = avifFullToLimitedUV(state->yuvDepth, unorm);
-        }
+
+    switch (state->mode) {
+        case AVIF_REFORMAT_MODE_YCGCO:
+        case AVIF_REFORMAT_MODE_YUV_COEFFICIENTS:
+            unorm = (int)avifRoundf(v * state->uvRange + state->uvBias);
+            unorm = AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
+            break;
+        case AVIF_REFORMAT_MODE_IDENTITY:
+            unorm = (int)avifRoundf(v * state->yRange + state->yBias);
+            unorm = AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
+            break;
     }
+
     return unorm;
 }
 
