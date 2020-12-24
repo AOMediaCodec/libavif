@@ -109,24 +109,24 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     state->rgbMaxChannel = (1 << rgb->depth) - 1;
     state->yuvMaxChannelF = (float)state->yuvMaxChannel;
     state->rgbMaxChannelF = (float)state->rgbMaxChannel;
-    state->yBias = (float)(state->yuvRange == AVIF_RANGE_LIMITED ? (16 << (state->yuvDepth - 8)) : 0);
+    state->yBias = state->yuvRange == AVIF_RANGE_LIMITED ? (float)(16 << (state->yuvDepth - 8)) : 0.f;
     state->uvBias = (float)(1 << (state->yuvDepth - 1));
-    state->yRange = state->yuvRange == AVIF_RANGE_LIMITED ? ((float)(235 << (state->yuvDepth - 8)) - state->yBias) : state->yuvMaxChannelF;
-    state->uvRange = state->yuvRange == AVIF_RANGE_LIMITED ? ((float)(240 << (state->yuvDepth - 8)) - state->yBias) : state->yuvMaxChannelF;
+    state->yRange = state->yuvRange == AVIF_RANGE_LIMITED ? (float)(219 << (state->yuvDepth - 8)) : state->yuvMaxChannelF;
+    state->uvRange = state->yuvRange == AVIF_RANGE_LIMITED ? (float)(224 << (state->yuvDepth - 8)) : state->yuvMaxChannelF;
 
     uint32_t cpCount = 1 << image->depth;
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
-        int unormY = cp;
-        int unormUV = cp;
-        if (image->yuvRange == AVIF_RANGE_LIMITED) {
-            unormY = avifLimitedToFullY(image->depth, unormY);
-            unormUV = avifLimitedToFullUV(image->depth, unormUV);
-        }
-        state->unormFloatTableY[cp] = (float)unormY / state->yuvMaxChannelF;
-        if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
-            state->unormFloatTableUV[cp] = (float)unormY / state->yuvMaxChannelF;
-        } else {
-            state->unormFloatTableUV[cp] = ((float)unormUV - state->uvBias) / state->yuvMaxChannelF;
+        int unorm = cp;
+        switch (state->mode) {
+            case AVIF_REFORMAT_MODE_YCGCO:
+            case AVIF_REFORMAT_MODE_YUV_COEFFICIENTS:
+                state->unormFloatTableY[cp] = ((float)unorm - state->yBias) / state->yRange;
+                state->unormFloatTableUV[cp] = ((float)unorm - state->uvBias) / state->uvRange;
+                break;
+            case AVIF_REFORMAT_MODE_IDENTITY:
+                state->unormFloatTableY[cp] = ((float)unorm - state->yBias) / state->yRange;
+                state->unormFloatTableUV[cp] = ((float)unorm - state->yBias) / state->yRange;
+                break;
         }
     }
     return AVIF_TRUE;
@@ -144,7 +144,8 @@ static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
 {
     int unorm = 0;
 
-    // For YCgCo, this is only correct for full range
+    // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
+    // on Y,U,V. So YCgCo with limited range is unsupported.
     if (state->mode == AVIF_REFORMAT_MODE_YCGCO) {
         assert(state->yuvRange == AVIF_RANGE_FULL);
     }
