@@ -118,6 +118,7 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
         int unorm = cp;
         switch (state->mode) {
+            // review this when implementing YCgCo limited range support.
             case AVIF_REFORMAT_MODE_YCGCO:
             case AVIF_REFORMAT_MODE_YUV_COEFFICIENTS:
                 state->unormFloatTableY[cp] = ((float)unorm - state->yBias) / state->yRange;
