@@ -107,8 +107,8 @@ static void syntax(void)
         printf("    end-usage=MODE                    : Rate control mode (vbr, cbr, cq, or q)\n");
         printf("    sharpness=S                       : Loop filter sharpness (0-7, default: 0)\n");
         printf("    tune=METRIC                       : Tune the encoder for distortion metric (psnr or ssim, default: psnr)\n");
-        printf("    film-grain-test=FV                : Film grain test vectors (0: none (default), 1: test-1  2: test-2, ... 16: test-16)\n");
-        printf("    film-grain-table=FT               : Path to file containing film grain parameters\n");
+        printf("    film-grain-test=TEST              : Film grain test vectors (0: none (default), 1: test-1  2: test-2, ... 16: test-16)\n");
+        printf("    film-grain-table=FILENAME         : Path to file containing film grain parameters\n");
         printf("\n");
     }
     avifPrintVersions();

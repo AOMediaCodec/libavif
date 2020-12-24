@@ -259,7 +259,7 @@ static avifBool aomOptionParseUInt(const char * str, unsigned int * val)
     const unsigned long rawval = strtoul(str, &endptr, 10);
 
     if (str[0] != '\0' && endptr[0] == '\0' && rawval <= UINT_MAX) {
-        *val = (int)rawval;
+        *val = (unsigned int)rawval;
         return AVIF_TRUE;
     }
 
@@ -326,18 +326,18 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, struct aom_codec
 typedef enum
 {
     AVIF_AOM_NUL_OPTION = 0,
-
     AVIF_AOM_STR_OPTION,
     AVIF_AOM_INT_OPTION,
     AVIF_AOM_UINT_OPTION,
     AVIF_AOM_ENUM_OPTION,
-} avifAOMOptionType;
+} aomOptionType;
 
 struct aomOptionDef
 {
     const char * name;
     int controlId;
-    avifAOMOptionType type;
+    aomOptionType type;
+    // if type is AVIF_AOM_ENUM_OPTION, this must be set. Otherwise should be NULL
     const struct aomOptionEnumList * enums;
 };
 
@@ -380,31 +380,30 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec)
         for (int j = 0; aomOptionDefs[j].name; ++j) {
             if (!strcmp(entry->key, aomOptionDefs[j].name)) {
                 match = AVIF_TRUE;
-                // store either an int, an unsigned int or a char *.
-                void * val = NULL;
                 avifBool parsed = AVIF_FALSE;
+                int val_int = 0;
+                unsigned int val_uint = 0;
                 switch (aomOptionDefs[j].type) {
                     case AVIF_AOM_NUL_OPTION:
                         parsed = AVIF_FALSE;
                         break;
                     case AVIF_AOM_STR_OPTION:
-                        val = entry->value;
-                        parsed = AVIF_TRUE;
+                        parsed = aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, entry->value) == AOM_CODEC_OK;
                         break;
                     case AVIF_AOM_INT_OPTION:
-                        parsed = aomOptionParseInt(entry->value, (int *)(&val));
+                        parsed = aomOptionParseInt(entry->value, &val_int) &&
+                                 aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val_int) == AOM_CODEC_OK;
                         break;
                     case AVIF_AOM_UINT_OPTION:
-                        parsed = aomOptionParseUInt(entry->value, (unsigned int *)(&val));
+                        parsed = aomOptionParseUInt(entry->value, &val_uint) &&
+                                 aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val_uint) == AOM_CODEC_OK;
                         break;
                     case AVIF_AOM_ENUM_OPTION:
-                        parsed = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, (int *)(&val));
+                        parsed = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, &val_int) &&
+                                 aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val_int) == AOM_CODEC_OK;
                         break;
                 }
                 if (!parsed) {
-                    return AVIF_FALSE;
-                }
-                if (aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val) != AOM_CODEC_OK) {
                     return AVIF_FALSE;
                 }
                 break;
@@ -603,7 +602,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if (alpha) {
         aomImage->range = (image->alphaRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage->range);
-        // film grain should not be applied on alpha plane
+        // film grain should not be applied to the alpha plane
         aom_codec_control(&codec->internal->encoder, AV1E_SET_FILM_GRAIN_TABLE, NULL);
         aom_codec_control(&codec->internal->encoder, AV1E_SET_FILM_GRAIN_TEST_VECTOR, 0);
         monochromeRequested = AVIF_TRUE;
