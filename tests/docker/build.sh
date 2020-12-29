@@ -55,7 +55,7 @@ cd
 git clone --single-branch https://chromium.googlesource.com/codecs/libgav1
 cd libgav1
 git checkout b712ad2
-git clone  --single-branch https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
+git clone -b lts_2020_09_23 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release -DLIBGAV1_THREADPOOL_USE_STD_MUTEX=1 ..
