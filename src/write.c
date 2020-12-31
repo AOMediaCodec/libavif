@@ -1225,7 +1225,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             size_t chunkOffset = 0;
 
             // Deduplication - See if an identical chunk to this has already been written
-            if (item->encodeOutput->samples.count == 1) {
+            if (item->encodeOutput->samples.count > 0) {
                 avifEncodeSample * sample = &item->encodeOutput->samples.sample[0];
                 chunkOffset = avifEncoderFindExistingChunk(&s, mdatStartOffset, sample->data.data, sample->data.size);
             } else {
