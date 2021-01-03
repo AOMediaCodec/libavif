@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
-* Update dav1d.cmd to point at the 0.8.0 tag
+* Update dav1d.cmd to point at the 0.8.1 tag
 
 ## [0.8.4] - 2020-11-23
 
