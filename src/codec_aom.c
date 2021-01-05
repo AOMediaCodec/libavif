@@ -656,8 +656,7 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
             }
             if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
                 gotPacket = AVIF_TRUE;
-                avifCodecEncodeOutputAddSample(
-                    output, pkt->data.frame.buf, pkt->data.frame.sz, (pkt->data.frame.flags & AOM_FRAME_IS_KEY));
+                avifCodecEncodeOutputAddSample(output, pkt->data.frame.buf, pkt->data.frame.sz, (pkt->data.frame.flags & AOM_FRAME_IS_KEY));
             }
         }
 

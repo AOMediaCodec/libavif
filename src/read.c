@@ -1937,8 +1937,9 @@ static avifBool avifParseSampleDescriptionBox(avifSampleTable * sampleTable, con
         memcpy(description->format, sampleEntryHeader.type, sizeof(description->format));
         size_t remainingBytes = avifROStreamRemainingBytes(&s);
         if (!memcmp(description->format, "av01", 4) && (remainingBytes > VISUALSAMPLEENTRY_SIZE)) {
-            CHECK(avifParseItemPropertyContainerBox(
-                &description->properties, avifROStreamCurrent(&s) + VISUALSAMPLEENTRY_SIZE, remainingBytes - VISUALSAMPLEENTRY_SIZE));
+            CHECK(avifParseItemPropertyContainerBox(&description->properties,
+                                                    avifROStreamCurrent(&s) + VISUALSAMPLEENTRY_SIZE,
+                                                    remainingBytes - VISUALSAMPLEENTRY_SIZE));
         }
 
         CHECK(avifROStreamSkip(&s, sampleEntryHeader.size));
@@ -2934,8 +2935,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     }
 
     if ((decoder->data->colorGrid.rows > 0) && (decoder->data->colorGrid.columns > 0)) {
-        if (!avifDecoderDataFillImageGrid(
-                decoder->data, &decoder->data->colorGrid, decoder->image, 0, decoder->data->colorTileCount, AVIF_FALSE)) {
+        if (!avifDecoderDataFillImageGrid(decoder->data, &decoder->data->colorGrid, decoder->image, 0, decoder->data->colorTileCount, AVIF_FALSE)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
     } else {
@@ -2970,8 +2970,12 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     }
 
     if ((decoder->data->alphaGrid.rows > 0) && (decoder->data->alphaGrid.columns > 0)) {
-        if (!avifDecoderDataFillImageGrid(
-                decoder->data, &decoder->data->alphaGrid, decoder->image, decoder->data->colorTileCount, decoder->data->alphaTileCount, AVIF_TRUE)) {
+        if (!avifDecoderDataFillImageGrid(decoder->data,
+                                          &decoder->data->alphaGrid,
+                                          decoder->image,
+                                          decoder->data->colorTileCount,
+                                          decoder->data->alphaTileCount,
+                                          AVIF_TRUE)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
     } else {
