@@ -380,30 +380,30 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec)
         for (int j = 0; aomOptionDefs[j].name; ++j) {
             if (!strcmp(entry->key, aomOptionDefs[j].name)) {
                 match = AVIF_TRUE;
-                avifBool parsed = AVIF_FALSE;
-                int val_int = 0;
-                unsigned int val_uint = 0;
+                avifBool success = AVIF_FALSE;
+                int valInt;
+                unsigned int valUInt;
                 switch (aomOptionDefs[j].type) {
                     case AOM_OPTION_NUL:
-                        parsed = AVIF_FALSE;
+                        success = AVIF_FALSE;
                         break;
                     case AOM_OPTION_STR:
-                        parsed = aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, entry->value) == AOM_CODEC_OK;
+                        success = aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, entry->value) == AOM_CODEC_OK;
                         break;
                     case AOM_OPTION_INT:
-                        parsed = aomOptionParseInt(entry->value, &val_int) &&
-                                 aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val_int) == AOM_CODEC_OK;
+                        success = aomOptionParseInt(entry->value, &valInt) &&
+                                  aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valInt) == AOM_CODEC_OK;
                         break;
                     case AOM_OPTION_UINT:
-                        parsed = aomOptionParseUInt(entry->value, &val_uint) &&
-                                 aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val_uint) == AOM_CODEC_OK;
+                        success = aomOptionParseUInt(entry->value, &valUInt) &&
+                                  aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valUInt) == AOM_CODEC_OK;
                         break;
                     case AOM_OPTION_ENUM:
-                        parsed = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, &val_int) &&
-                                 aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, val_int) == AOM_CODEC_OK;
+                        success = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, &valInt) &&
+                                  aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valInt) == AOM_CODEC_OK;
                         break;
                 }
-                if (!parsed) {
+                if (!success) {
                     return AVIF_FALSE;
                 }
                 break;
