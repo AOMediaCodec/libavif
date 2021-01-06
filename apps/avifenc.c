@@ -358,15 +358,18 @@ int main(int argc, char * argv[])
     input.files = malloc(sizeof(avifInputFile) * argc);
     input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
 
+    // See here for the discussion on the semi-arbitrary defaults for speed/min/max:
+    //     https://github.com/AOMediaCodec/libavif/issues/440
+
     int returnCode = 0;
     int jobs = 1;
     int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     int maxQuantizer = 10; // "High Quality", but not lossless
-    int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-    int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    int minQuantizerAlpha = 24;
+    int maxQuantizerAlpha = 26;
     int tileRowsLog2 = 0;
     int tileColsLog2 = 0;
-    int speed = 8;
+    int speed = 4;
     int paspCount = 0;
     uint32_t paspValues[8]; // only the first two are used
     int clapCount = 0;
