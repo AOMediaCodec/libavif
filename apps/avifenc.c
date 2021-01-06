@@ -363,10 +363,10 @@ int main(int argc, char * argv[])
 
     int returnCode = 0;
     int jobs = 1;
-    int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
-    int maxQuantizer = 10; // "High Quality", but not lossless
-    int minQuantizerAlpha = 24;
-    int maxQuantizerAlpha = 26;
+    int minQuantizer = 24;
+    int maxQuantizer = 26;
+    int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int tileRowsLog2 = 0;
     int tileColsLog2 = 0;
     int speed = 4;
