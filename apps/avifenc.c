@@ -369,7 +369,7 @@ int main(int argc, char * argv[])
     int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int tileRowsLog2 = 0;
     int tileColsLog2 = 0;
-    int speed = 4;
+    int speed = 6;
     int paspCount = 0;
     uint32_t paspValues[8]; // only the first two are used
     int clapCount = 0;
