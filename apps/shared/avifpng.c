@@ -212,8 +212,7 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
     // It is up to the enduser to decide if they want to keep their ICC profiles or not.
     png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, 1);
 
-    png_set_IHDR(
-        png, info, avif->width, avif->height, rgb.depth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png, info, avif->width, avif->height, rgb.depth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
         png_set_iCCP(png, info, "libavif", 0, avif->icc.data, (png_uint_32)avif->icc.size);
     }

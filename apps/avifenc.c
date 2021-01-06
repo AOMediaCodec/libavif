@@ -969,8 +969,8 @@ int main(int argc, char * argv[])
     encoder->keyframeInterval = keyframeInterval;
 
     if (gridDimsCount > 0) {
-        avifResult addImageResult = avifEncoderAddImageGrid(
-            encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+        avifResult addImageResult =
+            avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
             returnCode = 1;
@@ -1030,8 +1030,11 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             if (image->depth != nextImage->depth) {
-                fprintf(
-                    stderr, "ERROR: Image sequence depth mismatch, [%u] vs [%u]: %s\n", image->depth, nextImage->depth, nextFile->filename);
+                fprintf(stderr,
+                        "ERROR: Image sequence depth mismatch, [%u] vs [%u]: %s\n",
+                        image->depth,
+                        nextImage->depth,
+                        nextFile->filename);
                 returnCode = 1;
                 goto cleanup;
             }
