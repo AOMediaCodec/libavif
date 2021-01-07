@@ -325,11 +325,11 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, struct aom_codec
 
 typedef enum
 {
-    AOM_OPTION_NUL = 0,
-    AOM_OPTION_STR,
-    AOM_OPTION_INT,
-    AOM_OPTION_UINT,
-    AOM_OPTION_ENUM,
+    AVIF_AOM_OPTION_NUL = 0,
+    AVIF_AOM_OPTION_STR,
+    AVIF_AOM_OPTION_INT,
+    AVIF_AOM_OPTION_UINT,
+    AVIF_AOM_OPTION_ENUM,
 } aomOptionType;
 
 struct aomOptionDef
@@ -337,7 +337,7 @@ struct aomOptionDef
     const char * name;
     int controlId;
     aomOptionType type;
-    // If type is AOM_OPTION_ENUM, this must be set. Otherwise should be NULL.
+    // If type is AVIF_AOM_OPTION_ENUM, this must be set. Otherwise should be NULL.
     const struct aomOptionEnumList * enums;
 };
 
@@ -349,22 +349,22 @@ static const struct aomOptionEnumList tuningEnum[] = { //
 
 static const struct aomOptionDef aomOptionDefs[] = {
     // Adaptive quantization mode
-    { "aq-mode", AV1E_SET_AQ_MODE, AOM_OPTION_UINT, NULL },
+    { "aq-mode", AV1E_SET_AQ_MODE, AVIF_AOM_OPTION_UINT, NULL },
     // Constant/Constrained Quality level
-    { "cq-level", AOME_SET_CQ_LEVEL, AOM_OPTION_UINT, NULL },
+    { "cq-level", AOME_SET_CQ_LEVEL, AVIF_AOM_OPTION_UINT, NULL },
     // Enable delta quantization in chroma planes
-    { "enable-chroma-deltaq", AV1E_SET_ENABLE_CHROMA_DELTAQ, AOM_OPTION_INT, NULL },
+    { "enable-chroma-deltaq", AV1E_SET_ENABLE_CHROMA_DELTAQ, AVIF_AOM_OPTION_INT, NULL },
     // Loop filter sharpness
-    { "sharpness", AOME_SET_SHARPNESS, AOM_OPTION_UINT, NULL },
+    { "sharpness", AOME_SET_SHARPNESS, AVIF_AOM_OPTION_UINT, NULL },
     // Tune distortion metric
-    { "tune", AOME_SET_TUNING, AOM_OPTION_ENUM, tuningEnum },
+    { "tune", AOME_SET_TUNING, AVIF_AOM_OPTION_ENUM, tuningEnum },
     // Film grain test vector
-    { "film-grain-test", AV1E_SET_FILM_GRAIN_TEST_VECTOR, AOM_OPTION_INT, NULL },
+    { "film-grain-test", AV1E_SET_FILM_GRAIN_TEST_VECTOR, AVIF_AOM_OPTION_INT, NULL },
     // Film grain table file
-    { "film-grain-table", AV1E_SET_FILM_GRAIN_TABLE, AOM_OPTION_STR, NULL },
+    { "film-grain-table", AV1E_SET_FILM_GRAIN_TABLE, AVIF_AOM_OPTION_STR, NULL },
 
     // Sentinel
-    { NULL, 0, AOM_OPTION_NUL, NULL }
+    { NULL, 0, AVIF_AOM_OPTION_NUL, NULL }
 };
 
 static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec)
@@ -384,21 +384,21 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec)
                 int valInt;
                 unsigned int valUInt;
                 switch (aomOptionDefs[j].type) {
-                    case AOM_OPTION_NUL:
+                    case AVIF_AOM_OPTION_NUL:
                         success = AVIF_FALSE;
                         break;
-                    case AOM_OPTION_STR:
+                    case AVIF_AOM_OPTION_STR:
                         success = aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, entry->value) == AOM_CODEC_OK;
                         break;
-                    case AOM_OPTION_INT:
+                    case AVIF_AOM_OPTION_INT:
                         success = aomOptionParseInt(entry->value, &valInt) &&
                                   aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valInt) == AOM_CODEC_OK;
                         break;
-                    case AOM_OPTION_UINT:
+                    case AVIF_AOM_OPTION_UINT:
                         success = aomOptionParseUInt(entry->value, &valUInt) &&
                                   aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valUInt) == AOM_CODEC_OK;
                         break;
-                    case AOM_OPTION_ENUM:
+                    case AVIF_AOM_OPTION_ENUM:
                         success = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, &valInt) &&
                                   aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valInt) == AOM_CODEC_OK;
                         break;
