@@ -43,7 +43,7 @@ ninja install
 
 # dav1d
 cd
-git clone -b 0.8.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
+git clone -b 0.8.1 --depth 1 https://code.videolan.org/videolan/dav1d.git
 cd dav1d
 mkdir build
 cd build
@@ -54,7 +54,7 @@ ninja install
 cd
 git clone --single-branch https://chromium.googlesource.com/codecs/libgav1
 cd libgav1
-git checkout b712ad2
+git checkout 4a89dc3
 git clone -b lts_2020_09_23 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
 mkdir build
 cd build
