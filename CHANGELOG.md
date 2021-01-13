@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * Update dav1d.cmd to point at the 0.8.1 tag
+* Update rav1e.cmd to point at the 0.4 maintenance branch
 
 ## [0.8.4] - 2020-11-23
 
