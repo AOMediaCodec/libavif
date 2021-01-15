@@ -133,13 +133,12 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
 static int avifReformatStateYToUNorm(avifReformatState * state, float v)
 {
     int unorm = (int)avifRoundf(v * state->rangeY + state->biasY);
-    unorm = AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
-    return unorm;
+    return AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
 }
 
 static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
 {
-    int unorm = 0;
+    int unorm;
 
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
