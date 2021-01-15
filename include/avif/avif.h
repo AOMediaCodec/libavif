@@ -524,9 +524,9 @@ typedef struct avifReformatState
     int yuvMaxChannel;
     int rgbMaxChannel;
     float rgbMaxChannelF;
-    float biasY; // minimum Y value
-    float biasUV; // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
-    float rangeY; // difference between max and min Y
+    float biasY;   // minimum Y value
+    float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
+    float rangeY;  // difference between max and min Y
     float rangeUV; // difference between max and min UV
 
     avifPixelFormatInfo formatInfo;
@@ -614,7 +614,7 @@ typedef struct avifIO
 {
     avifIODestroyFunc destroy;
     avifIOReadFunc read;
-    
+
     // This is reserved for further use - but currently ignored. Set it to a null pointer.
     avifIOWriteFunc write;
 
