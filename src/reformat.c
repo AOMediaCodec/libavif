@@ -103,57 +103,54 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     }
 
     state->yuvDepth = image->depth;
-    state->rgbDepth = rgb->depth;
     state->yuvRange = image->yuvRange;
     state->yuvMaxChannel = (1 << image->depth) - 1;
     state->rgbMaxChannel = (1 << rgb->depth) - 1;
-    state->yuvMaxChannelF = (float)state->yuvMaxChannel;
     state->rgbMaxChannelF = (float)state->rgbMaxChannel;
-    state->uvBias = 1 << (image->depth - 1);
+    state->biasY = (state->yuvRange == AVIF_RANGE_LIMITED) ? (float)(16 << (state->yuvDepth - 8)) : 0.0f;
+    state->biasUV = (float)(1 << (state->yuvDepth - 1));
+    state->rangeY = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (219 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
+    state->rangeUV = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (224 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
 
     uint32_t cpCount = 1 << image->depth;
-    for (uint32_t cp = 0; cp < cpCount; ++cp) {
-        int unormY = cp;
-        int unormUV = cp;
-        if (image->yuvRange == AVIF_RANGE_LIMITED) {
-            unormY = avifLimitedToFullY(image->depth, unormY);
-            unormUV = avifLimitedToFullUV(image->depth, unormUV);
+    if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
+        for (uint32_t cp = 0; cp < cpCount; ++cp) {
+            state->unormFloatTableY[cp] = ((float)cp - state->biasY) / state->rangeY;
+            state->unormFloatTableUV[cp] = ((float)cp - state->biasY) / state->rangeY;
         }
-        state->unormFloatTableY[cp] = (float)unormY / state->yuvMaxChannelF;
-        if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
-            state->unormFloatTableUV[cp] = (float)unormY / state->yuvMaxChannelF;
-        } else {
-            state->unormFloatTableUV[cp] = ((float)unormUV - state->uvBias) / state->yuvMaxChannelF;
+    } else {
+        for (uint32_t cp = 0; cp < cpCount; ++cp) {
+            // Review this when implementing YCgCo limited range support.
+            state->unormFloatTableY[cp] = ((float)cp - state->biasY) / state->rangeY;
+            state->unormFloatTableUV[cp] = ((float)cp - state->biasUV) / state->rangeUV;
         }
     }
+
     return AVIF_TRUE;
 }
 
+// Formulas 20-31 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
 static int avifReformatStateYToUNorm(avifReformatState * state, float v)
 {
-    int unorm = (int)avifRoundf(v * state->yuvMaxChannelF);
-    unorm = AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
-    if (state->yuvRange == AVIF_RANGE_LIMITED) {
-        unorm = avifFullToLimitedY(state->yuvDepth, unorm);
-    }
-    return unorm;
+    int unorm = (int)avifRoundf(v * state->rangeY + state->biasY);
+    return AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
 }
 
 static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
 {
-    int unorm = (int)avifRoundf(v * state->yuvMaxChannelF);
-    if (state->mode != AVIF_REFORMAT_MODE_IDENTITY) { // Don't adjust U or V when data is raw RGB
-        unorm += state->uvBias;
+    int unorm;
+
+    // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
+    // on Y,U,V. So YCgCo with limited range is unsupported.
+    assert((state->mode != AVIF_REFORMAT_MODE_YCGCO) || (state->yuvRange == AVIF_RANGE_FULL));
+
+    if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
+        unorm = (int)avifRoundf(v * state->rangeY + state->biasY);
+    } else {
+        unorm = (int)avifRoundf(v * state->rangeUV + state->biasUV);
     }
-    unorm = AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
-    if (state->yuvRange == AVIF_RANGE_LIMITED) {
-        if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) { // use Y range for all channels when data is raw RGB
-            unorm = avifFullToLimitedY(state->yuvDepth, unorm);
-        } else {
-            unorm = avifFullToLimitedUV(state->yuvDepth, unorm);
-        }
-    }
-    return unorm;
+
+    return AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
 }
 
 avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
@@ -535,7 +532,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     B = Cb;
                     R = Cr;
                 } else if (state->mode == AVIF_REFORMAT_MODE_YCGCO) {
-                    // Identity (GBR): Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                    // YCgCo: Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
                     const float t = Y - Cb;
                     G = Y + Cb;
                     B = t - Cr;

@@ -520,13 +520,14 @@ typedef struct avifReformatState
     uint32_t rgbOffsetBytesA;
 
     uint32_t yuvDepth;
-    uint32_t rgbDepth;
     avifRange yuvRange;
     int yuvMaxChannel;
     int rgbMaxChannel;
-    float yuvMaxChannelF;
     float rgbMaxChannelF;
-    int uvBias; // the integer value of 0.5 for the appropriate bit depth [128, 512, 2048]
+    float biasY; // minimum Y value
+    float biasUV; // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
+    float rangeY; // difference between max and min Y
+    float rangeUV; // difference between max and min UV
 
     avifPixelFormatInfo formatInfo;
 
