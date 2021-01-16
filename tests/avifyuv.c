@@ -130,18 +130,6 @@ int main(int argc, char * argv[])
                     for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
                         avifRange range = ranges[rangeIndex];
 
-                        // YCgCo with limited range is not implemented now
-                        if (range == AVIF_RANGE_LIMITED && cicp->mc == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
-                            printf(" * RGB depth: %d, YUV depth: %d, colorPrimaries: %d, transferCharas: %d, matrixCoeffs: %d, range: Limited\n"
-                                   "   * Skipped: currently not supported.\n",
-                                   rgbDepth,
-                                   yuvDepth,
-                                   cicp->cp,
-                                   cicp->tc,
-                                   cicp->mc);
-                            continue;
-                        }
-
                         int dim = 1 << rgbDepth;
                         int maxDrift = 0;
 

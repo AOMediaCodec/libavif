@@ -24,11 +24,7 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     }
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
-    //
-    // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
-    // on Y,U,V. So YCgCo with limited range is unsupported.
     if ((image->matrixCoefficients == 3 /* CICP reserved */) ||
-        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) && (image->yuvRange == AVIF_RANGE_LIMITED)) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
@@ -107,23 +103,35 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     state->yuvMaxChannel = (1 << image->depth) - 1;
     state->rgbMaxChannel = (1 << rgb->depth) - 1;
     state->rgbMaxChannelF = (float)state->rgbMaxChannel;
+    state->yuvMaxChannelF = (float)state->yuvMaxChannel;
     state->biasY = (state->yuvRange == AVIF_RANGE_LIMITED) ? (float)(16 << (state->yuvDepth - 8)) : 0.0f;
     state->biasUV = (float)(1 << (state->yuvDepth - 1));
-    state->rangeY = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (219 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
-    state->rangeUV = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (224 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
+    state->rangeY = (state->yuvRange == AVIF_RANGE_LIMITED) ? (float)(219 << (state->yuvDepth - 8)) : state->yuvMaxChannelF;
+    state->rangeUV = (state->yuvRange == AVIF_RANGE_LIMITED) ? (float)(224 << (state->yuvDepth - 8)) : state->yuvMaxChannelF;
 
     uint32_t cpCount = 1 << image->depth;
-    if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
-        for (uint32_t cp = 0; cp < cpCount; ++cp) {
-            state->unormFloatTableY[cp] = ((float)cp - state->biasY) / state->rangeY;
-            state->unormFloatTableUV[cp] = ((float)cp - state->biasY) / state->rangeY;
-        }
-    } else {
-        for (uint32_t cp = 0; cp < cpCount; ++cp) {
-            // Review this when implementing YCgCo limited range support.
-            state->unormFloatTableY[cp] = ((float)cp - state->biasY) / state->rangeY;
-            state->unormFloatTableUV[cp] = ((float)cp - state->biasUV) / state->rangeUV;
-        }
+    switch (state->mode) {
+        case AVIF_REFORMAT_MODE_YUV_COEFFICIENTS:
+            for (uint32_t cp = 0; cp < cpCount; ++cp) {
+                state->unormFloatTableY[cp] = ((float)cp - state->biasY) / state->rangeY;
+                state->unormFloatTableUV[cp] = ((float)cp - state->biasUV) / state->rangeUV;
+            }
+            break;
+
+        // For Identity and YCgCo mode, we can't combine round and range adjustment step here
+        case AVIF_REFORMAT_MODE_IDENTITY:
+            for (uint32_t cp = 0; cp < cpCount; ++cp) {
+                state->unormFloatTableY[cp] = (float)cp / state->yuvMaxChannelF;
+                state->unormFloatTableUV[cp] = (float)cp / state->yuvMaxChannelF;
+            }
+            break;
+
+        case AVIF_REFORMAT_MODE_YCGCO:
+            for (uint32_t cp = 0; cp < cpCount; ++cp) {
+                state->unormFloatTableY[cp] = (float)cp / state->yuvMaxChannelF;
+                state->unormFloatTableUV[cp] = ((float)cp - state->biasUV) / state->yuvMaxChannelF;
+            }
+            break;
     }
 
     return AVIF_TRUE;
@@ -132,22 +140,33 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
 // Formulas 20-31 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
 static int avifReformatStateYToUNorm(avifReformatState * state, float v)
 {
-    int unorm = (int)avifRoundf(v * state->rangeY + state->biasY);
+    int unorm;
+
+    if (state->mode == AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
+        unorm = (int)avifRoundf(v * state->rangeY + state->biasY);
+    } else {
+        unorm = (int)avifRoundf(v * state->yuvMaxChannelF);
+    }
+
     return AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
 }
 
 static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
 {
-    int unorm;
+    int unorm = 0;
 
-    // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
-    // on Y,U,V. So YCgCo with limited range is unsupported.
-    assert((state->mode != AVIF_REFORMAT_MODE_YCGCO) || (state->yuvRange == AVIF_RANGE_FULL));
+    switch (state->mode) {
+        case AVIF_REFORMAT_MODE_YUV_COEFFICIENTS:
+            unorm = (int)avifRoundf(v * state->rangeUV + state->biasUV);
+            break;
 
-    if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
-        unorm = (int)avifRoundf(v * state->rangeY + state->biasY);
-    } else {
-        unorm = (int)avifRoundf(v * state->rangeUV + state->biasUV);
+        case AVIF_REFORMAT_MODE_IDENTITY:
+            unorm = (int)avifRoundf(v * state->yuvMaxChannelF);
+            break;
+
+        case AVIF_REFORMAT_MODE_YCGCO:
+            unorm = (int)avifRoundf(v * state->yuvMaxChannelF + state->biasUV);
+            break;
     }
 
     return AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
@@ -250,21 +269,37 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                     }
 
                     // RGB -> YUV conversion
-                    if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-                        // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
-                        yuvBlock[bI][bJ].y = rgbPixel[1]; // G
-                        yuvBlock[bI][bJ].u = rgbPixel[2]; // B
-                        yuvBlock[bI][bJ].v = rgbPixel[0]; // R
-                    } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO) {
-                        // Formulas 44,45,46 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
-                        yuvBlock[bI][bJ].y = 0.5f * rgbPixel[1] + 0.25f * (rgbPixel[0] + rgbPixel[2]);
-                        yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
-                        yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
-                    } else {
+                    if (state.mode == AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
+                        // Formulas 38,39,40 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
                         float Y = (kr * rgbPixel[0]) + (kg * rgbPixel[1]) + (kb * rgbPixel[2]);
                         yuvBlock[bI][bJ].y = Y;
                         yuvBlock[bI][bJ].u = (rgbPixel[2] - Y) / (2 * (1 - kb));
                         yuvBlock[bI][bJ].v = (rgbPixel[0] - Y) / (2 * (1 - kr));
+                    } else {
+                        float r, g, b;
+                        if (state.yuvRange == AVIF_RANGE_FULL) {
+                            // Formulas 26,27,28 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            g = rgbPixel[1];
+                            b = rgbPixel[2];
+                            r = rgbPixel[0];
+                        } else {
+                            // Formulas 20,21,22 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            g = (state.biasY + state.rangeY * rgbPixel[1]) / state.yuvMaxChannelF;
+                            b = (state.biasY + state.rangeY * rgbPixel[2]) / state.yuvMaxChannelF;
+                            r = (state.biasY + state.rangeY * rgbPixel[0]) / state.yuvMaxChannelF;
+                        }
+
+                        if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
+                            // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            yuvBlock[bI][bJ].y = g;
+                            yuvBlock[bI][bJ].u = b;
+                            yuvBlock[bI][bJ].v = r;
+                        } else {
+                            // Formulas 44,45,46 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            yuvBlock[bI][bJ].y = 0.5f * g + 0.25f * (r + b);
+                            yuvBlock[bI][bJ].u = 0.5f * g - 0.25f * (r + b);
+                            yuvBlock[bI][bJ].v = 0.5f * (r - b);
+                        }
                     }
 
                     if (state.yuvChannelBytes > 1) {
@@ -562,24 +597,33 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 }
             }
 
-            float R, G, B;
+            float R = 0, G = 0, B = 0;
             if (hasColor) {
-                if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
-                    // Identity (GBR): Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
-                    G = Y;
-                    B = Cb;
-                    R = Cr;
-                } else if (state->mode == AVIF_REFORMAT_MODE_YCGCO) {
-                    // YCgCo: Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
-                    const float t = Y - Cb;
-                    G = Y + Cb;
-                    B = t - Cr;
-                    R = t + Cr;
-                } else {
-                    // Normal YUV
+                if (state->mode == AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
+                    // Normal YUV: Formulas 38,39,40 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
                     R = Y + (2 * (1 - kr)) * Cr;
                     B = Y + (2 * (1 - kb)) * Cb;
                     G = Y - ((2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb))) / kg);
+                } else {
+                    if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
+                        // Identity (GBR): Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                        G = Y;
+                        B = Cb;
+                        R = Cr;
+                    } else {
+                        // YCgCo: Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                        const float t = Y - Cb;
+                        G = Y + Cb;
+                        B = t - Cr;
+                        R = t + Cr;
+                    }
+
+                    if (state->yuvRange == AVIF_RANGE_LIMITED) {
+                        // Formulas 20,21,22 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                        R = (R * state->yuvMaxChannelF - state->biasY) / state->rangeY;
+                        G = (G * state->yuvMaxChannelF - state->biasY) / state->rangeY;
+                        B = (B * state->yuvMaxChannelF - state->biasY) / state->rangeY;
+                    }
                 }
             } else {
                 // Monochrome: just populate all channels with luma (identity mode is irrelevant)
