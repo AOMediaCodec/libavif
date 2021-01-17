@@ -22,14 +22,19 @@ if (PKG_CONFIG_FOUND)
     pkg_check_modules(_RAV1E rav1e)
 endif (PKG_CONFIG_FOUND)
 
+if (NOT RAV1E_INCLUDE_DIR)
 find_path(RAV1E_INCLUDE_DIR
-          NAMES rav1e/rav1e.h
+          NAMES rav1e.h
           PATHS ${_RAV1E_INCLUDEDIR}
+          PATH_SUFFIXES rav1e
 )
+endif()
 
+if (NOT RAV1E_LIBRARY)
 find_library(RAV1E_LIBRARY
              NAMES rav1e
              PATHS ${_RAV1E_LIBDIR})
+endif()
 
 if (RAV1E_LIBRARY)
     set(RAV1E_LIBRARIES
