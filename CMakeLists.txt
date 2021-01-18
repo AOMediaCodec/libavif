@@ -303,13 +303,13 @@ if(AVIF_CODEC_RAV1E)
     )
 
     if(AVIF_LOCAL_RAV1E)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/${CMAKE_STATIC_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/target/release/rav1e/${CMAKE_STATIC_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/target/release), bailing out")
+            message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/target/release/rav1e), bailing out")
         endif()
 
         set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/target/release/rav1e/include"
         )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
     else()
