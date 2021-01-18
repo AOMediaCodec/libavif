@@ -309,7 +309,7 @@ if(AVIF_CODEC_RAV1E)
         endif()
 
         set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release"
         )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
     else()
