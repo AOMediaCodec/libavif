@@ -3,7 +3,7 @@
 
 #include "avif/internal.h"
 
-#include "rav1e/rav1e.h"
+#include "rav1e.h"
 
 #include <string.h>
 
