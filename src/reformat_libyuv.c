@@ -12,12 +12,12 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
-avifResult avifRGBImagePremultiplyLibYUV(avifRGBImage * rgb)
+avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb)
 {
     (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
-avifResult avifRGBImageUnpremultiplyLibYUV(avifRGBImage * rgb)
+avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
 {
     (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;

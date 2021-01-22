@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 // Yes, clamp macros are nasty. Do not use them.
-#define AVIF_CLAMP(x, low, high) (((x) < (low))) ? (low) : (((high) < (x)) ? (high) : (x))
+#define AVIF_CLAMP(x, low, high) ((((x) < (low))) ? (low) : (((high) < (x)) ? (high) : (x)))
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
 

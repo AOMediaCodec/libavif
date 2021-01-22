@@ -461,8 +461,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
         // Prepare all AV1 items
 
-        const char ** pColorIrefType;
-        uint16_t * pColorIrefToID;
+        const char ** pColorIrefType = NULL;
+        uint16_t * pColorIrefToID = NULL;
 
         uint16_t gridColorID = 0;
         if (cellCount > 1) {

@@ -148,6 +148,7 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
     avifRGBImage rgb;
     avifRGBImage rgbPremultiplied;
     avifRGBImageSetDefaults(&rgb, avif);
+    avifRGBImageSetDefaults(&rgbPremultiplied, avif);
     rgb.format = avif->alphaPremultiplied ? AVIF_RGB_FORMAT_RGB : AVIF_RGB_FORMAT_RGBA;
     rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
