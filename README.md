@@ -10,6 +10,15 @@ For now, it is recommended that you checkout/use [tagged releases](https://githu
 
 ## Usage
 
+    avifenc [options] input.[jpg|jpeg|png|y4m] output.avif
+
+Examples:
+
+    avifenc input.png ---lossless output.avif                           # lossless compression 
+    avifenc input.png --jobs 8 --min 20 --max 22 --speed 0 output.avif  # use 8 cores, the best compression (slowest) with an acceptable medium quality
+    
+See `avifenc --help` for all options
+
 Please see the examples in the examples directory. If you're already building `libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and run the examples too.
 
 ## Build Notes
