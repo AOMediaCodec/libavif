@@ -12,6 +12,16 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
+avifResult avifRGBImagePremultiplyLibYUV(avifRGBImage * rgb)
+{
+    (void)rgb;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+avifResult avifRGBImageUnpremultiplyLibYUV(avifRGBImage * rgb)
+{
+    (void)rgb;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
 unsigned int avifLibYUVVersion(void)
 {
     return 0;
@@ -419,6 +429,49 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     }
 
     // This function didn't do anything; use the built-in YUV conversion
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+
+avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb)
+{
+    // See if the current settings can be accomplished with libyuv, and use it (if possible).
+
+    if (rgb->depth != 8) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
+    // similar to PNG. libyuv orders in word-order, so libavif's RGBA would be referred to in libyuv as ABGR.
+
+    // order of RGB doesn't matter here.
+    if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
+        if (ARGBAttenuate(rgb->pixels, rgb->rowBytes, rgb->pixels, rgb->rowBytes, rgb->width, rgb->height) != 0) {
+            return AVIF_RESULT_REFORMAT_FAILED;
+        }
+        return AVIF_RESULT_OK;
+    }
+
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+
+avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
+{
+    // See if the current settings can be accomplished with libyuv, and use it (if possible).
+
+    if (rgb->depth != 8) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
+    // similar to PNG. libyuv orders in word-order, so libavif's RGBA would be referred to in libyuv as ABGR.
+
+    if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
+        if (ARGBUnattenuate(rgb->pixels, rgb->rowBytes, rgb->pixels, rgb->rowBytes, rgb->width, rgb->height) != 0) {
+            return AVIF_RESULT_REFORMAT_FAILED;
+        }
+        return AVIF_RESULT_OK;
+    }
+
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 

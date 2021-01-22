@@ -54,6 +54,7 @@ static void syntax(void)
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
     printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420, 400]. (JPEG/PNG only; For y4m or stdin, format is retained)\n");
+    printf("    -p,--premultiply                  : Premultiply color with alpha channel\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = enum avifColorPrimaries\n");
@@ -391,6 +392,7 @@ int main(int argc, char * argv[])
     int timescale = 1; // 1 fps by default
     int keyframeInterval = 0;
     avifBool cicpExplicitlySet = AVIF_FALSE;
+    avifBool premultiplyAlpha = AVIF_FALSE;
 
     int gridDimsCount = 0;
     uint32_t gridDims[8]; // only the first two are used
@@ -669,6 +671,8 @@ int main(int argc, char * argv[])
                                                               // https://github.com/xiph/rav1e/issues/151
             requestedRange = AVIF_RANGE_FULL;                 // avoid limited range
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
+        } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
+            premultiplyAlpha = AVIF_TRUE;
         } else {
             // Positional argument
             input.files[input.filesCount].filename = arg;
@@ -708,6 +712,7 @@ int main(int argc, char * argv[])
     image->transferCharacteristics = transferCharacteristics;
     image->matrixCoefficients = matrixCoefficients;
     image->yuvRange = requestedRange;
+    image->alphaPremultiplied = premultiplyAlpha;
 
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
@@ -880,6 +885,7 @@ int main(int argc, char * argv[])
             cellImage->transferCharacteristics = image->transferCharacteristics;
             cellImage->matrixCoefficients = image->matrixCoefficients;
             cellImage->yuvRange = image->yuvRange;
+            cellImage->alphaPremultiplied = image->alphaPremultiplied;
             gridCells[gridCellIndex] = cellImage;
 
             avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL);
@@ -1010,6 +1016,7 @@ int main(int argc, char * argv[])
             nextImage->transferCharacteristics = image->transferCharacteristics;
             nextImage->matrixCoefficients = image->matrixCoefficients;
             nextImage->yuvRange = image->yuvRange;
+            nextImage->alphaPremultiplied = image->alphaPremultiplied;
 
             avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {

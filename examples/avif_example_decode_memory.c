@@ -88,6 +88,9 @@ int main(int argc, char * argv[])
 
         // Now available:
         // * RGB(A) pixel data (rgb.pixels, rgb.rowBytes)
+        //   note that if alpha is present, RGB may or may not be premultiplied by alpha.
+        //   call avifRGBImagePremultiplyAlpha() or avifRGBImageUnpremultiplyAlpha()
+        //   to convert pixel data into your desired format.
 
         if (rgb.depth > 8) {
             uint16_t * firstPixel = (uint16_t *)rgb.pixels;

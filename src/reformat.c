@@ -159,6 +159,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
+    if (image->alphaPremultiplied != rgb->alphaPremultiplied) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+
     avifReformatState state;
     if (!avifPrepareReformatState(image, rgb, &state)) {
         return AVIF_RESULT_REFORMAT_FAILED;
@@ -962,6 +966,10 @@ static avifResult avifImageYUV8ToRGB8Mono(const avifImage * image, avifRGBImage 
 avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 {
     if (!image->yuvPlanes[AVIF_CHAN_Y]) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+
+    if (image->alphaPremultiplied != rgb->alphaPremultiplied) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 

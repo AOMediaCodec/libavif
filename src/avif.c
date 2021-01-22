@@ -139,6 +139,7 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t pl
     dstImage->yuvRange = srcImage->yuvRange;
     dstImage->yuvChromaSamplePosition = srcImage->yuvChromaSamplePosition;
     dstImage->alphaRange = srcImage->alphaRange;
+    dstImage->alphaPremultiplied = srcImage->alphaPremultiplied;
 
     dstImage->colorPrimaries = srcImage->colorPrimaries;
     dstImage->transferCharacteristics = srcImage->transferCharacteristics;
@@ -360,6 +361,7 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
     rgb->ignoreAlpha = AVIF_FALSE;
     rgb->pixels = NULL;
     rgb->rowBytes = 0;
+    rgb->alphaPremultiplied = image->alphaPremultiplied;
 }
 
 void avifRGBImageAllocatePixels(avifRGBImage * rgb)

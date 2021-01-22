@@ -140,6 +140,7 @@ typedef struct avifDecoderItem
     uint32_t auxForID;             // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;            // if non-zero, this item is a content description for Item #{descForID}
     uint32_t dimgForID;            // if non-zero, this item is a derived image for Item #{dimgForID}
+    uint32_t premByID;             // if non-zero, this item is premultiplied by Item #{premByID}
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
     avifBool ipmaSeen; // if true, this item already received a property association
 } avifDecoderItem;
@@ -295,6 +296,7 @@ typedef struct avifTrack
 {
     uint32_t id;
     uint32_t auxForID; // if non-zero, this item is an auxC plane for Track #{auxForID}
+    uint32_t premByID; // if non-zero, this item is premultiplied by Item #{premByID}
     uint32_t mediaTimescale;
     uint64_t mediaDuration;
     uint32_t width;
@@ -1699,6 +1701,9 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
 
                     dimg->dimgForID = fromID;
                 }
+                if (!memcmp(irefHeader.type, "prem", 4)) {
+                    item->premByID = toID;
+                }
             }
         }
     }
@@ -2031,6 +2036,10 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
             CHECK(avifROStreamReadU32(&s, &toID));                       // unsigned int(32) track_IDs[]
             CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
             track->auxForID = toID;
+        } else if (!memcmp(header.type, "prem", 4)) {
+            uint32_t byID;
+            CHECK(avifROStreamReadU32(&s, &byID));                       // unsigned int(32) to_item_ID
+            track->premByID = byID;
         } else {
             CHECK(avifROStreamSkip(&s, header.size));
         }
@@ -2604,6 +2613,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->width = colorTrack->width;
         decoder->image->height = colorTrack->height;
         decoder->alphaPresent = (alphaTrack != NULL);
+        decoder->image->alphaPremultiplied = decoder->alphaPresent && colorTrack->premByID == alphaTrack->id;
     } else {
         // Create from items
 
@@ -2760,6 +2770,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->image->height = 0;
         }
         decoder->alphaPresent = (alphaItem != NULL);
+        decoder->image->alphaPremultiplied = decoder->alphaPresent && colorItem->premByID == alphaItem->id;
     }
 
     // Sanity check tiles

@@ -35,6 +35,7 @@ int main(int argc, char * argv[])
     // * avifImageSetMetadataXMP()
     // * yuvRange
     // * alphaRange
+    // * alphaPremultiply
     // * transforms (transformFlags, pasp, clap, irot, imir)
 
     if (encodeYUVDirectly) {
@@ -61,6 +62,11 @@ int main(int argc, char * argv[])
 
         // Fill your RGB(A) data here
         memset(rgb.pixels, 255, rgb.rowBytes * image->height);
+
+        // If your data is not premultiplied but you want to encode avif as
+        // premultiplied, set rgb.alphaPremultiplied to false, then call
+        // avifRGBImagePremultiplyAlpha() to convert your RGBA data
+        // into premultiplied format.
 
         avifResult convertResult = avifImageRGBToYUV(image, &rgb);
         if (convertResult != AVIF_RESULT_OK) {

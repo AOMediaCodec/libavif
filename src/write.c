@@ -417,7 +417,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
         if ((cellImage->depth != firstCell->depth) || (cellImage->width != firstCell->width) ||
-            (cellImage->height != firstCell->height) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane)) {
+            (cellImage->height != firstCell->height) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane) ||
+            (cellImage->alphaPremultiplied != firstCell->alphaPremultiplied)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
 
@@ -460,6 +461,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
         // Prepare all AV1 items
 
+        const char ** pColorIrefType;
+        uint16_t * pColorIrefToID;
+
         uint16_t gridColorID = 0;
         if (cellCount > 1) {
             avifEncoderItem * gridColorItem = avifEncoderDataCreateItem(encoder->data, "grid", "Color", 6, 0);
@@ -469,6 +473,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
             gridColorID = gridColorItem->id;
             encoder->data->primaryItemID = gridColorID;
+            pColorIrefType = &gridColorItem->irefType;
+            pColorIrefToID = &gridColorItem->irefToID;
         }
 
         for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
@@ -484,6 +490,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 item->dimgFromID = gridColorID;
             } else {
                 encoder->data->primaryItemID = item->id;
+                pColorIrefType = &item->irefType;
+                pColorIrefToID = &item->irefToID;
             }
         }
 
@@ -519,6 +527,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 gridAlphaItem->gridCols = gridCols;
                 gridAlphaItem->gridRows = gridRows;
                 gridAlphaID = gridAlphaItem->id;
+
+                if (encoder->data->imageMetadata->alphaPremultiplied) {
+                    *pColorIrefType = "prem";
+                    *pColorIrefToID = gridAlphaID;
+                }
             }
 
             for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
@@ -535,6 +548,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 } else {
                     item->irefToID = encoder->data->primaryItemID;
                     item->irefType = "auxl";
+
+                    if (encoder->data->imageMetadata->alphaPremultiplied) {
+                        *pColorIrefType = "prem";
+                        *pColorIrefToID = item->id;
+                    }
                 }
             }
         }
