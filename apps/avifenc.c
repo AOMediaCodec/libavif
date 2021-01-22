@@ -61,11 +61,11 @@ static void syntax(void)
     printf("                                        M = enum avifMatrixCoefficients\n");
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
-    printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
+    printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless; the difference to max Q may not be larger than 10)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    --max Q                           : Set max quantizer for color (%d-%d, where %d is lossless)\n",
+    printf("    --max Q                           : Set max quantizer for color (%d-%d, where %d is lossless; the difference to min Q may not be larger than 10)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
