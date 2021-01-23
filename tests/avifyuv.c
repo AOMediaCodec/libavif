@@ -65,6 +65,8 @@ int main(int argc, char * argv[])
                 mode = 1;
             } else if (!strcmp(arg, "rgb")) {
                 mode = 2;
+            } else if (!strcmp(arg, "premultiply")) {
+                mode = 3;
             } else {
                 mode = atoi(arg);
             }
@@ -388,6 +390,108 @@ int main(int argc, char * argv[])
             avifRGBImageFreePixels(&srcRGB);
         }
         avifImageDestroy(image);
+    } else if (mode == 3) {
+        // alpha premultiply roundtrip test
+        uint32_t depths[4] = { 8, 10, 12, 16 };
+        uint64_t driftPixelCounts[MAX_DRIFT];
+        int maxDrift;
+        for (int depthIndex = 0; depthIndex < 4; ++depthIndex) {
+            uint32_t rgbDepth = depths[depthIndex];
+            uint32_t size = 1 << rgbDepth;
+
+            avifRGBImage rgb;
+            rgb.alphaPremultiplied = AVIF_TRUE;
+            rgb.pixels = NULL;
+            rgb.format = AVIF_RGB_FORMAT_RGBA;
+            rgb.width = size;
+            rgb.height = 1;
+            rgb.depth = rgbDepth;
+
+            maxDrift = 0;
+            for (int i = 0; i < MAX_DRIFT; ++i) {
+                driftPixelCounts[i] = 0;
+            }
+            avifRGBImageAllocatePixels(&rgb);
+
+            for (uint32_t a = 0; a < size; ++a) {
+                // meaningful premultiplied RGB value can't exceed A value, so stop at R = A
+                for (uint32_t r = 0; r <= a; ++r) {
+                    if (rgbDepth == 8) {
+                        uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
+                        pixel[0] = (uint8_t)r;
+                        pixel[1] = 0;
+                        pixel[2] = 0;
+                        pixel[3] = (uint8_t)a;
+                    } else {
+                        uint16_t * pixel = (uint16_t *)&rgb.pixels[r * sizeof(uint16_t) * 4];
+                        pixel[0] = (uint16_t)r;
+                        pixel[1] = 0;
+                        pixel[2] = 0;
+                        pixel[3] = (uint16_t)a;
+                    }
+                }
+
+                avifRGBImageUnpremultiplyAlpha(&rgb);
+                avifRGBImagePremultiplyAlpha(&rgb);
+
+                for (uint32_t r = 0; r <= a; ++r) {
+                    if (rgbDepth == 8) {
+                        uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
+                        int drift = abs((int)pixel[0] - (int)r);
+                        if (drift > MAX_DRIFT) {
+                            printf("ERROR: Premultiply round-trip difference exceed MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                   MAX_DRIFT,
+                                   rgbDepth,
+                                   pixel[0],
+                                   r,
+                                   a);
+                            exit(1);
+                        }
+                        if (maxDrift < drift) {
+                            maxDrift = drift;
+                        }
+                        ++driftPixelCounts[drift];
+                    } else {
+                        uint16_t * pixel = (uint16_t *)&rgb.pixels[r * sizeof(uint16_t) * 4];
+                        int drift = abs((int)pixel[0] - (int)r);
+                        if (drift > MAX_DRIFT) {
+                            printf("ERROR: Premultiply round-trip difference exceed MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                   MAX_DRIFT,
+                                   rgbDepth,
+                                   pixel[0],
+                                   r,
+                                   a);
+                            exit(1);
+                        }
+                        if (maxDrift < drift) {
+                            maxDrift = drift;
+                        }
+                        ++driftPixelCounts[drift];
+                    }
+                }
+                if (verbose) {
+                    printf("[%5d/%5d] RGB depth: %d\r", a + 1, size, rgbDepth);
+                }
+            }
+
+            if (verbose) {
+                printf("\n");
+            }
+
+            printf(" * RGB depth: %d, maxDrift: %2d\n", rgbDepth, maxDrift);
+
+            avifRGBImageFreePixels(&rgb);
+            const uint64_t totalPixelCount = (uint64_t)(size + 1) * size / 2;
+            for (int i = 0; i < MAX_DRIFT; ++i) {
+                if (verbose && (driftPixelCounts[i] > 0)) {
+                    printf("   * drift: %2d -> %12" PRIu64 " / %12" PRIu64 " pixels (%.2f %%)\n",
+                           i,
+                           driftPixelCounts[i],
+                           totalPixelCount,
+                           (double)driftPixelCounts[i] * 100.0 / (double)totalPixelCount);
+                }
+            }
+        }
     }
     return 0;
 }
