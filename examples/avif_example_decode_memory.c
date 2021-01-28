@@ -75,7 +75,7 @@ int main(int argc, char * argv[])
         // * this frame's sequence timing
 
         avifRGBImageSetDefaults(&rgb, decoder->image);
-        // Override YUV(A)->RGB(A) defaults here: depth, format, chromaUpsampling, ignoreAlpha, libYUVUsage, etc
+        // Override YUV(A)->RGB(A) defaults here: depth, format, chromaUpsampling, ignoreAlpha, alphaPremultiplied, libYUVUsage, etc
 
         // Alternative: set rgb.pixels and rgb.rowBytes yourself, which should match your chosen rgb.format
         // Be sure to use uint16_t* instead of uint8_t* for rgb.pixels/rgb.rowBytes if (rgb.depth > 8)
@@ -88,9 +88,6 @@ int main(int argc, char * argv[])
 
         // Now available:
         // * RGB(A) pixel data (rgb.pixels, rgb.rowBytes)
-        //   note that if alpha is present, RGB may or may not be premultiplied by alpha.
-        //   call avifRGBImagePremultiplyAlpha() or avifRGBImageUnpremultiplyAlpha()
-        //   to convert pixel data into your desired format.
 
         if (rgb.depth > 8) {
             uint16_t * firstPixel = (uint16_t *)rgb.pixels;

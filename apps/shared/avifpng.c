@@ -136,9 +136,6 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
     png_read_image(png, rowPointers);
-    if (avif->alphaPremultiplied) {
-        avifRGBImagePremultiplyAlpha(&rgb);
-    }
     if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
         goto cleanup;
@@ -182,13 +179,11 @@ avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t re
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.depth = rgbDepth;
     rgb.chromaUpsampling = chromaUpsampling;
+    rgb.alphaPremultiplied = AVIF_FALSE;
     avifRGBImageAllocatePixels(&rgb);
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
         goto cleanup;
-    }
-    if (rgb.alphaPremultiplied) {
-        avifRGBImageUnpremultiplyAlpha(&rgb);
     }
 
     f = fopen(outputFilename, "wb");

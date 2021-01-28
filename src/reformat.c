@@ -159,10 +159,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
-    if (image->alphaPremultiplied != rgb->alphaPremultiplied) {
-        return AVIF_RESULT_REFORMAT_FAILED;
-    }
-
     avifReformatState state;
     if (!avifPrepareReformatState(image, rgb, &state)) {
         return AVIF_RESULT_REFORMAT_FAILED;
@@ -213,6 +209,44 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         rgbPixel[0] = rgb->pixels[state.rgbOffsetBytesR + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
                         rgbPixel[1] = rgb->pixels[state.rgbOffsetBytesG + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
                         rgbPixel[2] = rgb->pixels[state.rgbOffsetBytesB + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
+                    }
+
+                    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
+                        float a;
+                        if (state.rgbChannelBytes > 1) {
+                            a = *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
+                                rgbMaxChannelF;
+                        } else {
+                            a = rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
+                        }
+
+                        if (!rgb->alphaPremultiplied && image->alphaPremultiplied) {
+                            // multiply
+                            if (a == 0) {
+                                rgbPixel[0] = 0;
+                                rgbPixel[1] = 0;
+                                rgbPixel[2] = 0;
+                            } else if (a < 1.0f) {
+                                rgbPixel[0] = rgbPixel[0] * a;
+                                rgbPixel[1] = rgbPixel[1] * a;
+                                rgbPixel[2] = rgbPixel[2] * a;
+                            }
+
+                        } else if (rgb->alphaPremultiplied && !image->alphaPremultiplied) {
+                            // unmultiply
+                            if (a == 0) {
+                                rgbPixel[0] = 0;
+                                rgbPixel[1] = 0;
+                                rgbPixel[2] = 0;
+                            } else if (a < 1.0f) {
+                                float r = rgbPixel[0] / a;
+                                float g = rgbPixel[1] / a;
+                                float b = rgbPixel[2] / a;
+                                rgbPixel[0] = AVIF_CLAMP(r, 0.0f, 1.0f);
+                                rgbPixel[1] = AVIF_CLAMP(g, 0.0f, 1.0f);
+                                rgbPixel[2] = AVIF_CLAMP(b, 0.0f, 1.0f);
+                            }
+                        }
                     }
 
                     // RGB -> YUV conversion
@@ -969,10 +1003,6 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
-    if (image->alphaPremultiplied != rgb->alphaPremultiplied) {
-        return AVIF_RESULT_REFORMAT_FAILED;
-    }
-
     avifReformatState state;
     if (!avifPrepareReformatState(image, rgb, &state)) {
         return AVIF_RESULT_REFORMAT_FAILED;
@@ -1039,6 +1069,8 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     const avifBool hasColor =
         (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
 
+    avifResult convertResult = AVIF_RESULT_NOT_IMPLEMENTED;
+
     if (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
         // None of these fast paths currently support bilinear upsampling, so avoid all of them
         // unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
@@ -1046,7 +1078,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
             if ((image->depth == 8) && (rgb->depth == 8) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
                 (image->yuvRange == AVIF_RANGE_FULL)) {
-                return avifImageIdentity8ToRGB8ColorFullRange(image, rgb, &state);
+                convertResult = avifImageIdentity8ToRGB8ColorFullRange(image, rgb, &state);
             }
 
             // TODO: Add more fast paths for identity
@@ -1058,16 +1090,18 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
                     // yuv:u16, rgb:u16
 
                     if (hasColor) {
-                        return avifImageYUV16ToRGB16Color(image, rgb, &state);
+                        convertResult = avifImageYUV16ToRGB16Color(image, rgb, &state);
+                    } else {
+                        convertResult = avifImageYUV16ToRGB16Mono(image, rgb, &state);
                     }
-                    return avifImageYUV16ToRGB16Mono(image, rgb, &state);
                 } else {
                     // yuv:u16, rgb:u8
 
                     if (hasColor) {
-                        return avifImageYUV16ToRGB8Color(image, rgb, &state);
+                        convertResult = avifImageYUV16ToRGB8Color(image, rgb, &state);
+                    } else {
+                        convertResult = avifImageYUV16ToRGB8Mono(image, rgb, &state);
                     }
-                    return avifImageYUV16ToRGB8Mono(image, rgb, &state);
                 }
             } else {
                 // yuv:u8
@@ -1076,23 +1110,41 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
                     // yuv:u8, rgb:u16
 
                     if (hasColor) {
-                        return avifImageYUV8ToRGB16Color(image, rgb, &state);
+                        convertResult = avifImageYUV8ToRGB16Color(image, rgb, &state);
+                    } else {
+                        convertResult = avifImageYUV8ToRGB16Mono(image, rgb, &state);
                     }
-                    return avifImageYUV8ToRGB16Mono(image, rgb, &state);
                 } else {
                     // yuv:u8, rgb:u8
 
                     if (hasColor) {
-                        return avifImageYUV8ToRGB8Color(image, rgb, &state);
+                        convertResult = avifImageYUV8ToRGB8Color(image, rgb, &state);
+                    } else {
+                        convertResult = avifImageYUV8ToRGB8Mono(image, rgb, &state);
                     }
-                    return avifImageYUV8ToRGB8Mono(image, rgb, &state);
                 }
             }
         }
     }
 
-    // If we get here, there is no fast path for this combination. Time to be slow!
-    return avifImageYUVAnyToRGBAnySlow(image, rgb, &state, chromaUpsampling);
+    if (convertResult == AVIF_RESULT_NOT_IMPLEMENTED) {
+        // If we get here, there is no fast path for this combination. Time to be slow!
+        convertResult = avifImageYUVAnyToRGBAnySlow(image, rgb, &state, chromaUpsampling);
+    }
+
+    if (convertResult != AVIF_RESULT_OK) {
+        return convertResult;
+    }
+
+    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
+        if (image->alphaPremultiplied && !rgb->alphaPremultiplied) {
+            return avifRGBImageUnpremultiplyAlpha(rgb);
+        } else if (!image->alphaPremultiplied && rgb->alphaPremultiplied) {
+            return avifRGBImagePremultiplyAlpha(rgb);
+        }
+    }
+
+    return convertResult;
 }
 
 // Limited -> Full

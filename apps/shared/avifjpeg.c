@@ -114,6 +114,7 @@ cleanup:
     return ret;
 }
 
+#if !defined(JCS_ALPHA_EXTENSIONS)
 // this is only for removing alpha when processing non-premultiplied image.
 static void avifRGBAToRGB(const avifRGBImage * src, avifRGBImage * dst) {
     dst->width = src->width;
@@ -133,6 +134,7 @@ static void avifRGBAToRGB(const avifRGBImage * src, avifRGBImage * dst) {
         }
     }
 }
+#endif
 
 avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQuality, avifChromaUpsampling chromaUpsampling)
 {
@@ -152,12 +154,17 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
     rgb.format = avif->alphaPremultiplied ? AVIF_RGB_FORMAT_RGB : AVIF_RGB_FORMAT_RGBA;
     rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
+    // always get premultiplied result.
+    // This will give natural appearance to output JPG image.
+    rgb.alphaPremultiplied = AVIF_TRUE;
     avifRGBImageAllocatePixels(&rgb);
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
         goto cleanup;
     }
 
+    // libjpeg-turbo accepts RGBA input, so do less if possible
+#if !defined(JCS_ALPHA_EXTENSIONS)
     if (!avif->alphaPremultiplied) {
         if (avifRGBImagePremultiplyAlpha(&rgb) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
@@ -166,6 +173,7 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
         avifRGBAToRGB(&rgb, &rgbPremultiplied);
         avifRGBImageFreePixels(&rgb);
     }
+#endif
 
     f = fopen(outputFilename, "wb");
     if (!f) {
@@ -176,8 +184,13 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
     jpeg_stdio_dest(&cinfo, f);
     cinfo.image_width = avif->width;
     cinfo.image_height = avif->height;
+#if defined(JCS_ALPHA_EXTENSIONS)
+    cinfo.input_components = 3;
+    cinfo.in_color_space = JCS_EXT_RGBX;
+#else
     cinfo.input_components = 3;
     cinfo.in_color_space = JCS_RGB;
+#endif
     jpeg_set_defaults(&cinfo);
     jpeg_set_quality(&cinfo, jpegQuality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
@@ -186,6 +199,12 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
         write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
     }
 
+#if defined(JCS_ALPHA_EXTENSIONS)
+    while (cinfo.next_scanline < cinfo.image_height) {
+        row_pointer[0] = &rgb.pixels[cinfo.next_scanline * rgb.rowBytes];
+        (void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+#else
     if (avif->alphaPremultiplied) {
         while (cinfo.next_scanline < cinfo.image_height) {
             row_pointer[0] = &rgb.pixels[cinfo.next_scanline * rgb.rowBytes];
@@ -197,6 +216,7 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
             (void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
         }
     }
+#endif
 
     jpeg_finish_compress(&cinfo);
     ret = AVIF_TRUE;

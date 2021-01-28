@@ -473,9 +473,7 @@ typedef struct avifRGBImage
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
     avifBool ignoreAlpha; // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                           // RGB, treating the alpha bits as if they were all 1.
-    avifBool alphaPremultiplied; // indicates if RGB value has been pre-multiplied by alpha
-                                 // this should always indicate the real state of RGB data
-                                 // To convert, use avifRGBImagePremultiplyAlpha() or avifRGBImageUnpremultiplyAlpha().
+    avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha
 
     uint8_t * pixels;
     uint32_t rowBytes;
@@ -493,6 +491,8 @@ AVIF_API avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rg
 AVIF_API avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb);
 
 // Premultiply handling functions.
+// (Un)premultiply is automatically done by the main conversion functions above,
+// so usually you don't need to call these. They are there for convenience.
 AVIF_API avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb);
 AVIF_API avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb);
 
