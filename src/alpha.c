@@ -3,8 +3,8 @@
 
 #include "avif/internal.h"
 
-#include <string.h>
 #include <assert.h>
+#include <string.h>
 
 static int calcMaxChannel(uint32_t depth, avifRange range)
 {
@@ -382,7 +382,8 @@ avifBool avifReformatAlpha(const avifAlphaParams * const params)
     return AVIF_TRUE;
 }
 
-avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb) {
+avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
+{
     // no data
     if (!rgb->pixels || !rgb->rowBytes) {
         return AVIF_RESULT_REFORMAT_FAILED;

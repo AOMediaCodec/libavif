@@ -2033,12 +2033,13 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
 
         if (!memcmp(header.type, "auxl", 4)) {
             uint32_t toID;
-            CHECK(avifROStreamReadU32(&s, &toID));                       // unsigned int(32) track_IDs[]
+            CHECK(avifROStreamReadU32(&s, &toID));                       // unsigned int(32) track_IDs[];
             CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
             track->auxForID = toID;
         } else if (!memcmp(header.type, "prem", 4)) {
             uint32_t byID;
-            CHECK(avifROStreamReadU32(&s, &byID));                       // unsigned int(32) to_item_ID
+            CHECK(avifROStreamReadU32(&s, &byID));                       // unsigned int(32) track_IDs[];
+            CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
             track->premByID = byID;
         } else {
             CHECK(avifROStreamSkip(&s, header.size));
@@ -2613,7 +2614,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->width = colorTrack->width;
         decoder->image->height = colorTrack->height;
         decoder->alphaPresent = (alphaTrack != NULL);
-        decoder->image->alphaPremultiplied = decoder->alphaPresent && colorTrack->premByID == alphaTrack->id;
+        decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorTrack->premByID == alphaTrack->id);
     } else {
         // Create from items
 
@@ -2770,7 +2771,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->image->height = 0;
         }
         decoder->alphaPresent = (alphaItem != NULL);
-        decoder->image->alphaPremultiplied = decoder->alphaPresent && colorItem->premByID == alphaItem->id;
+        decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorItem->premByID == alphaItem->id);
     }
 
     // Sanity check tiles

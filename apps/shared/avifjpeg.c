@@ -116,7 +116,8 @@ cleanup:
 
 #if !defined(JCS_ALPHA_EXTENSIONS)
 // this is only for removing alpha when processing non-premultiplied image.
-static void avifRGBAToRGB(const avifRGBImage * src, avifRGBImage * dst) {
+static void avifRGBAToRGB(const avifRGBImage * src, avifRGBImage * dst)
+{
     dst->width = src->width;
     dst->height = src->height;
     dst->format = AVIF_RGB_FORMAT_RGB;

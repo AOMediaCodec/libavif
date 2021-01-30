@@ -1138,9 +1138,9 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
     if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
         if (image->alphaPremultiplied && !rgb->alphaPremultiplied) {
-            return avifRGBImageUnpremultiplyAlpha(rgb);
+            convertResult = avifRGBImageUnpremultiplyAlpha(rgb);
         } else if (!image->alphaPremultiplied && rgb->alphaPremultiplied) {
-            return avifRGBImagePremultiplyAlpha(rgb);
+            convertResult = avifRGBImagePremultiplyAlpha(rgb);
         }
     }
 
