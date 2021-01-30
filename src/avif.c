@@ -149,7 +149,7 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t pl
     memcpy(&dstImage->pasp, &srcImage->pasp, sizeof(dstImage->pasp));
     memcpy(&dstImage->clap, &srcImage->clap, sizeof(dstImage->clap));
     memcpy(&dstImage->irot, &srcImage->irot, sizeof(dstImage->irot));
-    memcpy(&dstImage->imir, &srcImage->imir, sizeof(dstImage->pasp));
+    memcpy(&dstImage->imir, &srcImage->imir, sizeof(dstImage->imir));
 
     avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
 
