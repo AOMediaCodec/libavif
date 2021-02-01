@@ -280,9 +280,9 @@ typedef struct avifSequenceHeader
     uint32_t bitDepth;
     avifPixelFormat yuvFormat;
     avifChromaSamplePosition chromaSamplePosition;
-    uint16_t colorPrimaries;
-    uint16_t transferCharacteristics;
-    uint16_t matrixCoefficients;
+    avifColorPrimaries colorPrimaries;
+    avifTransferCharacteristics transferCharacteristics;
+    avifMatrixCoefficients matrixCoefficients;
     avifRange range;
     avifCodecConfigurationBox av1C;
 } avifSequenceHeader;

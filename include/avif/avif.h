@@ -236,10 +236,11 @@ enum
     AVIF_COLOR_PRIMARIES_SMPTE432 = 12, // DCI P3
     AVIF_COLOR_PRIMARIES_EBU3213 = 22
 };
+typedef uint16_t avifColorPrimaries; // AVIF_COLOR_PRIMARIES_*
 
 // outPrimaries: rX, rY, gX, gY, bX, bY, wX, wY
-AVIF_API void avifColorPrimariesGetValues(uint16_t acp, float outPrimaries[8]);
-AVIF_API uint16_t avifColorPrimariesFind(const float inPrimaries[8], const char ** outName);
+AVIF_API void avifColorPrimariesGetValues(avifColorPrimaries acp, float outPrimaries[8]);
+AVIF_API avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char ** outName);
 
 enum
 {
@@ -264,6 +265,7 @@ enum
     AVIF_TRANSFER_CHARACTERISTICS_SMPTE428 = 17,
     AVIF_TRANSFER_CHARACTERISTICS_HLG = 18
 };
+typedef uint16_t avifTransferCharacteristics; // AVIF_TRANSFER_CHARACTERISTICS_*
 
 enum
 {
@@ -282,6 +284,7 @@ enum
     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL = 13,
     AVIF_MATRIX_COEFFICIENTS_ICTCP = 14
 };
+typedef uint16_t avifMatrixCoefficients; // AVIF_MATRIX_COEFFICIENTS_*
 
 // ---------------------------------------------------------------------------
 // Optional transformation structs
@@ -377,14 +380,9 @@ typedef struct avifImage
     // ICC profile is not specified, these will be stored in the AVIF container's `colr` box with
     // a type of `nclx`. If your system supports ICC profiles, be sure to check for the existence
     // of one (avifImage.icc) before relying on the values listed here!
-    //
-    // Note: These are type uint16_t instead of their associated enums as additional CICP values
-    // are likely to be added to H.273 in the future, and there might exist a legal CICP value
-    // in one of these members that is not labeled by the above enums in this version of libavif.
-    // See the discussion here: https://github.com/AOMediaCodec/libavif/issues/461
-    uint16_t colorPrimaries;          // AVIF_COLOR_PRIMARIES_*
-    uint16_t transferCharacteristics; // AVIF_TRANSFER_CHARACTERISTICS_*
-    uint16_t matrixCoefficients;      // AVIF_MATRIX_COEFFICIENTS_*
+    avifColorPrimaries colorPrimaries;
+    avifTransferCharacteristics transferCharacteristics;
+    avifMatrixCoefficients matrixCoefficients;
 
     // Transformations - These metadata values are encoded/decoded when transformFlags are set
     // appropriately, but do not impact/adjust the actual pixel buffers used (images won't be

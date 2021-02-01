@@ -405,9 +405,9 @@ int main(int argc, char * argv[])
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
     // coefficients anyway (as MC:2 falls back to MC:5/6), so we might as well signal it explicitly.
     // See: ISO/IEC 23000-22:2019 Amendment 2, or the comment in avifCalcYUVCoefficients()
-    uint16_t colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-    uint16_t transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    uint16_t matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+    avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+    avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -530,9 +530,9 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            colorPrimaries = (uint16_t)cicp[0];
-            transferCharacteristics = (uint16_t)cicp[1];
-            matrixCoefficients = (uint16_t)cicp[2];
+            colorPrimaries = (avifColorPrimaries)cicp[0];
+            transferCharacteristics = (avifTransferCharacteristics)cicp[1];
+            matrixCoefficients = (avifMatrixCoefficients)cicp[2];
             cicpExplicitlySet = AVIF_TRUE;
         } else if (!strcmp(arg, "-r") || !strcmp(arg, "--range")) {
             NEXTARG();

@@ -72,9 +72,9 @@ typedef struct avifColourInformationBox
     size_t iccSize;
 
     avifBool hasNCLX;
-    uint16_t colorPrimaries;
-    uint16_t transferCharacteristics;
-    uint16_t matrixCoefficients;
+    avifColorPrimaries colorPrimaries;
+    avifTransferCharacteristics transferCharacteristics;
+    avifMatrixCoefficients matrixCoefficients;
     avifRange range;
 } avifColourInformationBox;
 
@@ -1257,7 +1257,6 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, const uint8_t
         CHECK(avifROStreamReadU16(&s, &colr->colorPrimaries));          // unsigned int(16) colour_primaries;
         CHECK(avifROStreamReadU16(&s, &colr->transferCharacteristics)); // unsigned int(16) transfer_characteristics;
         CHECK(avifROStreamReadU16(&s, &colr->matrixCoefficients));      // unsigned int(16) matrix_coefficients;
-
         // unsigned int(1) full_range_flag;
         // unsigned int(7) reserved = 0;
         uint8_t tmp8;
