@@ -167,9 +167,9 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec, const avifDecodeS
         image->yuvRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
         image->yuvChromaSamplePosition = (avifChromaSamplePosition)codec->internal->image->csp;
 
-        image->colorPrimaries = (avifColorPrimaries)codec->internal->image->cp;
-        image->transferCharacteristics = (avifTransferCharacteristics)codec->internal->image->tc;
-        image->matrixCoefficients = (avifMatrixCoefficients)codec->internal->image->mc;
+        image->colorPrimaries = (uint16_t)codec->internal->image->cp;
+        image->transferCharacteristics = (uint16_t)codec->internal->image->tc;
+        image->matrixCoefficients = (uint16_t)codec->internal->image->mc;
 
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);

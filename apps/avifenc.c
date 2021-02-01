@@ -57,9 +57,9 @@ static void syntax(void)
     printf("    -p,--premultiply                  : Premultiply color with alpha channel and signal this in the AVIF\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
-    printf("                                        P = enum avifColorPrimaries\n");
-    printf("                                        T = enum avifTransferCharacteristics\n");
-    printf("                                        M = enum avifMatrixCoefficients\n");
+    printf("                                        P = color primaries\n");
+    printf("                                        T = transfer characteristics\n");
+    printf("                                        M = matrix coefficients\n");
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
@@ -405,9 +405,9 @@ int main(int argc, char * argv[])
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
     // coefficients anyway (as MC:2 falls back to MC:5/6), so we might as well signal it explicitly.
     // See: ISO/IEC 23000-22:2019 Amendment 2, or the comment in avifCalcYUVCoefficients()
-    avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-    avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+    uint16_t colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+    uint16_t transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+    uint16_t matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -530,9 +530,9 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            colorPrimaries = (avifColorPrimaries)cicp[0];
-            transferCharacteristics = (avifTransferCharacteristics)cicp[1];
-            matrixCoefficients = (avifMatrixCoefficients)cicp[2];
+            colorPrimaries = (uint16_t)cicp[0];
+            transferCharacteristics = (uint16_t)cicp[1];
+            matrixCoefficients = (uint16_t)cicp[2];
             cicpExplicitlySet = AVIF_TRUE;
         } else if (!strcmp(arg, "-r") || !strcmp(arg, "--range")) {
             NEXTARG();

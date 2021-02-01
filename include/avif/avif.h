@@ -217,7 +217,7 @@ typedef enum avifRange
 // ---------------------------------------------------------------------------
 // CICP enums - https://www.itu.int/rec/T-REC-H.273-201612-I/en
 
-typedef enum avifColorPrimaries
+enum
 {
     // This is actually reserved, but libavif uses it as a sentinel value.
     AVIF_COLOR_PRIMARIES_UNKNOWN = 0,
@@ -235,13 +235,13 @@ typedef enum avifColorPrimaries
     AVIF_COLOR_PRIMARIES_SMPTE431 = 11,
     AVIF_COLOR_PRIMARIES_SMPTE432 = 12, // DCI P3
     AVIF_COLOR_PRIMARIES_EBU3213 = 22
-} avifColorPrimaries;
+};
 
 // outPrimaries: rX, rY, gX, gY, bX, bY, wX, wY
-AVIF_API void avifColorPrimariesGetValues(avifColorPrimaries acp, float outPrimaries[8]);
-AVIF_API avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char ** outName);
+AVIF_API void avifColorPrimariesGetValues(uint16_t acp, float outPrimaries[8]);
+AVIF_API uint16_t avifColorPrimariesFind(const float inPrimaries[8], const char ** outName);
 
-typedef enum avifTransferCharacteristics
+enum
 {
     // This is actually reserved, but libavif uses it as a sentinel value.
     AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN = 0,
@@ -263,9 +263,9 @@ typedef enum avifTransferCharacteristics
     AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 = 16, // PQ
     AVIF_TRANSFER_CHARACTERISTICS_SMPTE428 = 17,
     AVIF_TRANSFER_CHARACTERISTICS_HLG = 18
-} avifTransferCharacteristics;
+};
 
-typedef enum avifMatrixCoefficients
+enum
 {
     AVIF_MATRIX_COEFFICIENTS_IDENTITY = 0,
     AVIF_MATRIX_COEFFICIENTS_BT709 = 1,
@@ -281,7 +281,7 @@ typedef enum avifMatrixCoefficients
     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL = 12,
     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL = 13,
     AVIF_MATRIX_COEFFICIENTS_ICTCP = 14
-} avifMatrixCoefficients;
+};
 
 // ---------------------------------------------------------------------------
 // Optional transformation structs
@@ -382,9 +382,9 @@ typedef struct avifImage
     // are likely to be added to H.273 in the future, and there might exist a legal CICP value
     // in one of these members that is not labeled by the above enums in this version of libavif.
     // See the discussion here: https://github.com/AOMediaCodec/libavif/issues/461
-    uint16_t colorPrimaries;          // corresponds to enum avifColorPrimaries
-    uint16_t transferCharacteristics; // corresponds to enum avifTransferCharacteristics
-    uint16_t matrixCoefficients;      // corresponds to enum avifMatrixCoefficients
+    uint16_t colorPrimaries;          // AVIF_COLOR_PRIMARIES_*
+    uint16_t transferCharacteristics; // AVIF_TRANSFER_CHARACTERISTICS_*
+    uint16_t matrixCoefficients;      // AVIF_MATRIX_COEFFICIENTS_*
 
     // Transformations - These metadata values are encoded/decoded when transformFlags are set
     // appropriately, but do not impact/adjust the actual pixel buffers used (images won't be

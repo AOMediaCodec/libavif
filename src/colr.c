@@ -8,7 +8,7 @@
 
 struct avifColorPrimariesTable
 {
-    avifColorPrimaries colorPrimariesEnum;
+    uint16_t colorPrimariesEnum;
     const char * name;
     float primaries[8]; // rX, rY, gX, gY, bX, bY, wX, wY
 };
@@ -27,7 +27,7 @@ static const struct avifColorPrimariesTable avifColorPrimariesTables[] = {
 };
 static const int avifColorPrimariesTableSize = sizeof(avifColorPrimariesTables) / sizeof(avifColorPrimariesTables[0]);
 
-void avifColorPrimariesGetValues(avifColorPrimaries acp, float outPrimaries[8])
+void avifColorPrimariesGetValues(uint16_t acp, float outPrimaries[8])
 {
     for (int i = 0; i < avifColorPrimariesTableSize; ++i) {
         if (avifColorPrimariesTables[i].colorPrimariesEnum == acp) {
@@ -52,7 +52,7 @@ static avifBool primariesMatch(const float p1[8], const float p2[8])
            matchesTo3RoundedPlaces(p1[5], p2[5]) && matchesTo3RoundedPlaces(p1[6], p2[6]) && matchesTo3RoundedPlaces(p1[7], p2[7]);
 }
 
-avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char ** outName)
+uint16_t avifColorPrimariesFind(const float inPrimaries[8], const char ** outName)
 {
     if (outName) {
         *outName = NULL;
@@ -71,7 +71,7 @@ avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char
 
 struct avifMatrixCoefficientsTable
 {
-    avifMatrixCoefficients matrixCoefficientsEnum;
+    uint16_t matrixCoefficientsEnum;
     const char * name;
     const float kr;
     const float kb;
