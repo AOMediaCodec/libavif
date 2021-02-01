@@ -377,9 +377,14 @@ typedef struct avifImage
     // ICC profile is not specified, these will be stored in the AVIF container's `colr` box with
     // a type of `nclx`. If your system supports ICC profiles, be sure to check for the existence
     // of one (avifImage.icc) before relying on the values listed here!
-    avifColorPrimaries colorPrimaries;
-    avifTransferCharacteristics transferCharacteristics;
-    avifMatrixCoefficients matrixCoefficients;
+    //
+    // Note: These are type uint16_t instead of their associated enums as additional CICP values
+    // are likely to be added to H.273 in the future, and there might exist a legal CICP value
+    // in one of these members that is not labeled by the above enums in this version of libavif.
+    // See the discussion here: https://github.com/AOMediaCodec/libavif/issues/461
+    uint16_t colorPrimaries;          // corresponds to enum avifColorPrimaries
+    uint16_t transferCharacteristics; // corresponds to enum avifTransferCharacteristics
+    uint16_t matrixCoefficients;      // corresponds to enum avifMatrixCoefficients
 
     // Transformations - These metadata values are encoded/decoded when transformFlags are set
     // appropriately, but do not impact/adjust the actual pixel buffers used (images won't be

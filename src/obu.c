@@ -261,9 +261,9 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     header->av1C.monochrome = (uint8_t)mono_chrome;
     uint32_t color_description_present_flag = avifBitsRead(bits, 1);
     if (color_description_present_flag) {
-        header->colorPrimaries = (avifColorPrimaries)avifBitsRead(bits, 8);                   // color_primaries
-        header->transferCharacteristics = (avifTransferCharacteristics)avifBitsRead(bits, 8); // transfer_characteristics
-        header->matrixCoefficients = (avifMatrixCoefficients)avifBitsRead(bits, 8);           // matrix_coefficients
+        header->colorPrimaries = (uint16_t)avifBitsRead(bits, 8);          // color_primaries
+        header->transferCharacteristics = (uint16_t)avifBitsRead(bits, 8); // transfer_characteristics
+        header->matrixCoefficients = (uint16_t)avifBitsRead(bits, 8);      // matrix_coefficients
     } else {
         header->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
         header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
