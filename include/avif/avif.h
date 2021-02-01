@@ -473,7 +473,7 @@ typedef struct avifRGBImage
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
     avifBool ignoreAlpha;        // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                                  // RGB, treating the alpha bits as if they were all 1.
-    avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha
+    avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false
 
     uint8_t * pixels;
     uint32_t rowBytes;

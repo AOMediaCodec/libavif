@@ -361,7 +361,9 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
     rgb->ignoreAlpha = AVIF_FALSE;
     rgb->pixels = NULL;
     rgb->rowBytes = 0;
-    rgb->alphaPremultiplied = image->alphaPremultiplied;
+    rgb->alphaPremultiplied = AVIF_FALSE; // Most expect RGBA output to *not* be premultiplied. Those that do can opt-in by
+                                          // or setting this to match image->alphaPremultiplied or forcing this to true
+                                          // after calling avifRGBImageSetDefaults(),
 }
 
 void avifRGBImageAllocatePixels(avifRGBImage * rgb)
