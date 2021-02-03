@@ -88,6 +88,7 @@ int main(int argc, char * argv[])
     const int yuvDepthsCount = (int)(sizeof(yuvDepths) / sizeof(yuvDepths[0]));
     const uint32_t rgbDepths[] = { 8, 10, 12 };
     const int rgbDepthsCount = (int)(sizeof(rgbDepths) / sizeof(rgbDepths[0]));
+    const avifRange ranges[] = { AVIF_RANGE_FULL, AVIF_RANGE_LIMITED };
 
     if (mode == 0) {
         // Limited to full conversion roundtripping test
@@ -105,6 +106,15 @@ int main(int argc, char * argv[])
         }
     } else if (mode == 1) {
         // Calculate maximum codepoint drift on different combinations of depth and CICPs
+        const avifCICP cicpList[] = {
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT709 },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT601 },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT2020_NCL },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_IDENTITY },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_YCGCO },
+            { AVIF_COLOR_PRIMARIES_SMPTE432, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL },
+        };
+        const int cicpCount = (int)(sizeof(cicpList) / sizeof(cicpList[0]));
 
         for (int rgbDepthIndex = 0; rgbDepthIndex < rgbDepthsCount; ++rgbDepthIndex) {
             uint32_t rgbDepth = rgbDepths[rgbDepthIndex];
@@ -115,32 +125,20 @@ int main(int argc, char * argv[])
                     continue;
                 }
 
-                const avifCICP CICPsList[] = {
-                    { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT709 },
-                    { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT601 },
-                    { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT2020_NCL },
-                    { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_IDENTITY },
-                    { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_YCGCO },
-                    { AVIF_COLOR_PRIMARIES_SMPTE432, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL },
-                };
-                const int CICPsCount = (int)(sizeof(CICPsList) / sizeof(CICPsList[0]));
-
-                for (int CICPsIndex = 0; CICPsIndex < CICPsCount; ++CICPsIndex) {
-                    avifCICP cicp = CICPsList[CICPsIndex];
-
-                    const avifRange ranges[] = { AVIF_RANGE_FULL, AVIF_RANGE_LIMITED };
+                for (int cicpIndex = 0; cicpIndex < cicpCount; ++cicpIndex) {
+                    const avifCICP* cicp = &cicpList[cicpIndex];
                     for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
                         avifRange range = ranges[rangeIndex];
 
                         // YCgCo with limited range is not implemented now
-                        if (range == AVIF_RANGE_LIMITED && cicp.mc == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
+                        if (range == AVIF_RANGE_LIMITED && cicp->mc == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
                             printf(" * RGB depth: %d, YUV depth: %d, colorPrimaries: %d, transferCharas: %d, matrixCoeffs: %d, range: Limited\n"
-                                   "   * Passed: currently not supported.\n",
+                                   "   * Skipped: currently not supported.\n",
                                    rgbDepth,
                                    yuvDepth,
-                                   cicp.cp,
-                                   cicp.tc,
-                                   cicp.mc);
+                                   cicp->cp,
+                                   cicp->tc,
+                                   cicp->mc);
                             continue;
                         }
 
@@ -148,9 +146,9 @@ int main(int argc, char * argv[])
                         int maxDrift = 0;
 
                         avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
-                        image->colorPrimaries = cicp.cp;
-                        image->transferCharacteristics = cicp.tc;
-                        image->matrixCoefficients = cicp.mc;
+                        image->colorPrimaries = cicp->cp;
+                        image->transferCharacteristics = cicp->tc;
+                        image->matrixCoefficients = cicp->mc;
                         image->yuvRange = range;
                         avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 
@@ -178,9 +176,9 @@ int main(int argc, char * argv[])
                                        dim,
                                        rgbDepth,
                                        yuvDepth,
-                                       cicp.cp,
-                                       cicp.tc,
-                                       cicp.mc,
+                                       cicp->cp,
+                                       cicp->tc,
+                                       cicp->mc,
                                        range == AVIF_RANGE_FULL ? "Full" : "Limited");
                             }
 
@@ -263,9 +261,9 @@ int main(int argc, char * argv[])
                         printf(" * RGB depth: %d, YUV depth: %d, colorPrimaries: %d, transferCharas: %d, matrixCoeffs: %d, range: %s, maxDrift: %2d\n",
                                rgbDepth,
                                yuvDepth,
-                               cicp.cp,
-                               cicp.tc,
-                               cicp.mc,
+                               cicp->cp,
+                               cicp->tc,
+                               cicp->mc,
                                range == AVIF_RANGE_FULL ? "Full" : "Limited",
                                maxDrift);
 
@@ -290,6 +288,8 @@ int main(int argc, char * argv[])
 
     } else if (mode == 2) {
         // Stress test all RGB depths
+        avifRGBFormat rgbFormats[6] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
+                                        AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
 
         uint32_t originalWidth = 32;
         uint32_t originalHeight = 32;
@@ -330,13 +330,8 @@ int main(int argc, char * argv[])
             uint32_t depths[4] = { 8, 10, 12, 16 };
             for (int depthIndex = 0; depthIndex < 4; ++depthIndex) {
                 uint32_t rgbDepth = depths[depthIndex];
-
-                avifRange ranges[2] = { AVIF_RANGE_FULL, AVIF_RANGE_LIMITED };
                 for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
                     avifRange yuvRange = ranges[rangeIndex];
-
-                    avifRGBFormat rgbFormats[6] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
-                                                    AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
                     for (int rgbFormatIndex = 0; rgbFormatIndex < 6; ++rgbFormatIndex) {
                         avifRGBFormat rgbFormat = rgbFormats[rgbFormatIndex];
 
