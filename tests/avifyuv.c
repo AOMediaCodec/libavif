@@ -88,7 +88,7 @@ int main(int argc, char * argv[])
     const int yuvDepthsCount = (int)(sizeof(yuvDepths) / sizeof(yuvDepths[0]));
     const uint32_t rgbDepths[] = { 8, 10, 12 };
     const int rgbDepthsCount = (int)(sizeof(rgbDepths) / sizeof(rgbDepths[0]));
-    const avifRange ranges[] = { AVIF_RANGE_FULL, AVIF_RANGE_LIMITED };
+    const avifRange ranges[2] = { AVIF_RANGE_FULL, AVIF_RANGE_LIMITED };
 
     if (mode == 0) {
         // Limited to full conversion roundtripping test
@@ -126,7 +126,7 @@ int main(int argc, char * argv[])
                 }
 
                 for (int cicpIndex = 0; cicpIndex < cicpCount; ++cicpIndex) {
-                    const avifCICP* cicp = &cicpList[cicpIndex];
+                    const avifCICP * cicp = &cicpList[cicpIndex];
                     for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
                         avifRange range = ranges[rangeIndex];
 
@@ -288,8 +288,6 @@ int main(int argc, char * argv[])
 
     } else if (mode == 2) {
         // Stress test all RGB depths
-        avifRGBFormat rgbFormats[6] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
-                                        AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
 
         uint32_t originalWidth = 32;
         uint32_t originalHeight = 32;
@@ -327,11 +325,13 @@ int main(int argc, char * argv[])
                 }
             }
 
-            uint32_t depths[4] = { 8, 10, 12, 16 };
+            const uint32_t depths[4] = { 8, 10, 12, 16 };
             for (int depthIndex = 0; depthIndex < 4; ++depthIndex) {
                 uint32_t rgbDepth = depths[depthIndex];
                 for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
                     avifRange yuvRange = ranges[rangeIndex];
+                    const avifRGBFormat rgbFormats[6] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
+                                                          AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
                     for (int rgbFormatIndex = 0; rgbFormatIndex < 6; ++rgbFormatIndex) {
                         avifRGBFormat rgbFormat = rgbFormats[rgbFormatIndex];
 
@@ -429,7 +429,7 @@ int main(int argc, char * argv[])
         avifImageDestroy(image);
     } else if (mode == 3) {
         // alpha premultiply roundtrip test
-        uint32_t depths[4] = { 8, 10, 12, 16 };
+        const uint32_t depths[4] = { 8, 10, 12, 16 };
         uint64_t driftPixelCounts[MAX_DRIFT];
         int maxDrift;
         for (int depthIndex = 0; depthIndex < 4; ++depthIndex) {
