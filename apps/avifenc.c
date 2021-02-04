@@ -859,8 +859,7 @@ int main(int argc, char * argv[])
         gridCellCount = gridDims[0] * gridDims[1];
         printf("Preparing to encode a %ux%u grid (%u cells)...\n", gridDims[0], gridDims[1], gridCellCount);
 
-        gridCells = malloc(gridCellCount * sizeof(avifImage *));
-        memset(gridCells, 0, gridCellCount * sizeof(avifImage *));
+        gridCells = calloc(gridCellCount, sizeof(avifImage *));
         gridCells[0] = image; // take ownership of image
 
         uint32_t gridCellIndex = 0;
@@ -978,7 +977,7 @@ int main(int argc, char * argv[])
         avifResult addImageResult =
             avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
-            fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(addImageResult));
+            fprintf(stderr, "ERROR: Failed to encode image grid: %s\n", avifResultToString(addImageResult));
             returnCode = 1;
             goto cleanup;
         }
