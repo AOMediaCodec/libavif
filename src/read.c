@@ -2838,6 +2838,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // Harvest CICP from the AV1's sequence header, which should be very close to the front
             // of the first sample. Read in successively larger chunks until we successfully parse the sequence.
             static const size_t searchSampleChunkIncrement = 64;
+            static const size_t searchSampleSizeMax = 4096;
             size_t searchSampleSize = 0;
             do {
                 searchSampleSize += searchSampleChunkIncrement;
@@ -2859,7 +2860,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     decoder->image->yuvRange = sequenceHeader.range;
                     break;
                 }
-            } while (searchSampleSize != sample->size);
+            } while (searchSampleSize != sample->size && searchSampleSize < searchSampleSizeMax);
         }
     }
 
