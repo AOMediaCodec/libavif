@@ -44,6 +44,10 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     state->mode = AVIF_REFORMAT_MODE_YUV_COEFFICIENTS;
 
     if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+        if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
+            return AVIF_FALSE;
+        }
+
         state->mode = AVIF_REFORMAT_MODE_IDENTITY;
     } else if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
         state->mode = AVIF_REFORMAT_MODE_YCGCO;
@@ -109,8 +113,10 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
     state->rgbMaxChannelF = (float)state->rgbMaxChannel;
     state->biasY = (state->yuvRange == AVIF_RANGE_LIMITED) ? (float)(16 << (state->yuvDepth - 8)) : 0.0f;
     state->biasUV = (float)(1 << (state->yuvDepth - 1));
+    state->biasA = (image->alphaRange == AVIF_RANGE_LIMITED) ? (float)(16 << (state->yuvDepth - 8)) : 0.0f;
     state->rangeY = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (219 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
     state->rangeUV = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (224 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
+    state->rangeA = (float)((image->alphaRange == AVIF_RANGE_LIMITED) ? (219 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
 
     uint32_t cpCount = 1 << image->depth;
     if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
@@ -125,6 +131,24 @@ avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * 
             state->unormFloatTableUV[cp] = ((float)cp - state->biasUV) / state->rangeUV;
         }
     }
+
+    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
+        state->toYUVPremultiply = image->alphaPremultiplied && !rgb->alphaPremultiplied;
+        state->toYUVUnpremultiply = !image->alphaPremultiplied && rgb->alphaPremultiplied;
+    } else {
+        state->toYUVPremultiply = AVIF_FALSE;
+        state->toYUVUnpremultiply = AVIF_FALSE;
+    }
+
+    if (image->alphaPlane) {
+        avifBool rgbShouldPremultiply = rgb->alphaPremultiplied || !avifRGBFormatHasAlpha(rgb->format) || rgb->ignoreAlpha;
+        state->toRGBPremultiply = !image->alphaPremultiplied && rgbShouldPremultiply;
+        state->toRGBUnpremultiply = image->alphaPremultiplied && !rgbShouldPremultiply;
+    } else {
+        state->toRGBPremultiply = AVIF_FALSE;
+        state->toRGBUnpremultiply = AVIF_FALSE;
+    }
+
 
     return AVIF_TRUE;
 }
@@ -220,7 +244,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             a = rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
                         }
 
-                        if (!rgb->alphaPremultiplied && image->alphaPremultiplied) {
+                        if (state.toYUVPremultiply) {
                             // multiply
                             if (a == 0) {
                                 rgbPixel[0] = 0;
@@ -232,7 +256,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                                 rgbPixel[2] = rgbPixel[2] * a;
                             }
 
-                        } else if (rgb->alphaPremultiplied && !image->alphaPremultiplied) {
+                        } else if (state.toYUVUnpremultiply) {
                             // unmultiply
                             if (a == 0) {
                                 rgbPixel[0] = 0;
@@ -399,9 +423,11 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const uint8_t * yPlane = image->yuvPlanes[AVIF_CHAN_Y];
     const uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
     const uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
+    const uint8_t * aPlane = image->alphaPlane;
     const uint32_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
     const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
     const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+    const uint32_t aRowBytes = image->alphaRowBytes;
 
     // Various observations and limits
     const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
@@ -416,9 +442,11 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
         const uint8_t * ptrU8 = &uPlane[(uvJ * uRowBytes)];
         const uint8_t * ptrV8 = &vPlane[(uvJ * vRowBytes)];
+        const uint8_t * ptrA8 = &aPlane[j * aRowBytes];
         const uint16_t * ptrY16 = (const uint16_t *)ptrY8;
         const uint16_t * ptrU16 = (const uint16_t *)ptrU8;
         const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
+        const uint16_t * ptrA16 = (const uint16_t *)ptrA8;
 
         uint8_t * ptrR = &rgb->pixels[state->rgbOffsetBytesR + (j * rgb->rowBytes)];
         uint8_t * ptrG = &rgb->pixels[state->rgbOffsetBytesG + (j * rgb->rowBytes)];
@@ -586,6 +614,43 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 R = Y;
                 G = Y;
                 B = Y;
+            }
+
+            if (state->toRGBPremultiply || state->toRGBUnpremultiply) {
+                float A;
+                if (state->yuvChannelBytes > 1) {
+                    A = (AVIF_MIN(ptrA16[i], yuvMaxChannel) - state->biasA) / state->rangeA;
+                } else {
+                    A = (AVIF_MIN(ptrA8[i], yuvMaxChannel) - state->biasA) / state->rangeA;
+                }
+
+                A = AVIF_CLAMP(A, 0.0f, 1.0f);
+
+                if (state->toRGBPremultiply) {
+                    // multiply
+                    if (A == 0) {
+                        R = 0;
+                        G = 0;
+                        B = 0;
+                    } else if (A < 1.0f) {
+                        R *= A;
+                        G *= A;
+                        B *= A;
+                    }
+
+                } else if (state->toRGBUnpremultiply) {
+                    // unmultiply
+                    if (A == 0) {
+                        R = 0;
+                        G = 0;
+                        B = 0;
+                    } else if (A < 1.0f) {
+                        R /= A;
+                        G /= A;
+                        B /= A;
+                        // clamp below
+                    }
+                }
             }
 
             const float Rc = AVIF_CLAMP(R, 0.0f, 1.0f);
@@ -889,6 +954,10 @@ static avifResult avifImageYUV8ToRGB16Mono(const avifImage * image, avifRGBImage
 
 static avifResult avifImageIdentity8ToRGB8ColorFullRange(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
 {
+    if (avifImageIdentity8ToRGB8ColorFullRangeLibYUV(image, rgb, state) == AVIF_RESULT_OK) {
+        return AVIF_RESULT_OK;
+    }
+
     const uint32_t rgbPixelBytes = state->rgbPixelBytes;
     for (uint32_t j = 0; j < image->height; ++j) {
         const uint8_t * const ptrY = &image->yuvPlanes[AVIF_CHAN_Y][(j * image->yuvRowBytes[AVIF_CHAN_Y])];
@@ -1008,17 +1077,21 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
-    avifBool convertedWithLibYUV = AVIF_FALSE;
-    avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
-    if (libyuvResult == AVIF_RESULT_OK) {
-        convertedWithLibYUV = AVIF_TRUE;
-    } else {
-        if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
-            return libyuvResult;
-        }
+    // libyuv uses integer math which is less precise.
+    // Avoid libyuv if user is requesting best quality.
+    avifResult convertResult = AVIF_RESULT_NOT_IMPLEMENTED;
+    if (rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_BEST_QUALITY) {
+        convertResult = avifImageYUVToRGBLibYUV(image, rgb);
     }
 
-    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
+    if (convertResult == AVIF_RESULT_OK) {
+        return AVIF_RESULT_OK;
+    } else if (convertResult != AVIF_RESULT_NOT_IMPLEMENTED && convertResult != AVIF_RESULT_NEED_POST_PROCESS) {
+        return convertResult;
+    }
+
+    // XRGB is considered as RGB which need premultiplied pixel, so we still need alpha if we need to do premultiply.
+    if (avifRGBFormatHasAlpha(rgb->format) && !(rgb->ignoreAlpha && image->alphaPremultiplied)) {
         avifAlphaParams params;
 
         params.width = rgb->width;
@@ -1040,15 +1113,13 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
             avifReformatAlpha(&params);
         } else {
-            if (!convertedWithLibYUV) { // libyuv fills alpha for us
-                avifFillAlpha(&params);
-            }
+            avifFillAlpha(&params);
         }
     }
 
-    // Do this after alpha conversion
-    if (convertedWithLibYUV) {
-        return AVIF_RESULT_OK;
+    // Done copy alpha. Do alpha (un)premultiply.
+    if (convertResult == AVIF_RESULT_NEED_POST_PROCESS) {
+        goto PremultiplyHandling;
     }
 
     avifChromaUpsampling chromaUpsampling;
@@ -1069,11 +1140,13 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     const avifBool hasColor =
         (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
 
-    avifResult convertResult = AVIF_RESULT_NOT_IMPLEMENTED;
-
-    if (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) {
+    if ((!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) &&
+        (avifRGBFormatHasAlpha(rgb->format) || !(state.toRGBPremultiply || state.toRGBUnpremultiply))) {
         // None of these fast paths currently support bilinear upsampling, so avoid all of them
         // unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
+
+        // Also these fast paths doesn't support alpha (un)premultiply.
+        // If target format doesn't have alpha, we can't do alpha (un)premultiply later, so avoid them.
 
         if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
             if ((image->depth == 8) && (rgb->depth == 8) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
@@ -1129,22 +1202,24 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
     if (convertResult == AVIF_RESULT_NOT_IMPLEMENTED) {
         // If we get here, there is no fast path for this combination. Time to be slow!
-        convertResult = avifImageYUVAnyToRGBAnySlow(image, rgb, &state, chromaUpsampling);
+        // This function also do (un)premultiply as well.
+        return avifImageYUVAnyToRGBAnySlow(image, rgb, &state, chromaUpsampling);
     }
 
-    if (convertResult != AVIF_RESULT_OK) {
-        return convertResult;
-    }
-
-    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
-        if (image->alphaPremultiplied && !rgb->alphaPremultiplied) {
-            convertResult = avifRGBImageUnpremultiplyAlpha(rgb);
-        } else if (!image->alphaPremultiplied && rgb->alphaPremultiplied) {
-            convertResult = avifRGBImagePremultiplyAlpha(rgb);
+PremultiplyHandling:
+    if (avifRGBFormatHasAlpha(rgb->format)) {
+        if (state.toRGBPremultiply) {
+            // currently data in rgb is not premultiplied
+            rgb->alphaPremultiplied = AVIF_FALSE;
+            return avifRGBImagePremultiplyAlpha(rgb);
+        } else if (state.toRGBUnpremultiply) {
+            // currently data in rgb is premultiplied
+            rgb->alphaPremultiplied = AVIF_TRUE;
+            return avifRGBImageUnpremultiplyAlpha(rgb);
         }
     }
 
-    return convertResult;
+    return AVIF_RESULT_OK;
 }
 
 // Limited -> Full

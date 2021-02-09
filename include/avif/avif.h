@@ -140,7 +140,8 @@ typedef enum avifResult
     AVIF_RESULT_IO_ERROR,
     AVIF_RESULT_WAITING_ON_IO, // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
-    AVIF_RESULT_NOT_IMPLEMENTED   // a requested code path is not (yet) implemented
+    AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
+    AVIF_RESULT_NEED_POST_PROCESS // a requested code path need post process
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -476,7 +477,8 @@ typedef struct avifRGBImage
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
     avifBool ignoreAlpha;        // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                                  // RGB, treating the alpha bits as if they were all 1.
-    avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false
+    avifBool alphaPremultiplied; // Indicates if RGB value is pre-multiplied by alpha. Default: false
+                                 // This field has no effect for RGB formats without alpha.
 
     uint8_t * pixels;
     uint32_t rowBytes;
@@ -537,8 +539,10 @@ typedef struct avifReformatState
     float rgbMaxChannelF;
     float biasY;   // minimum Y value
     float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
+    float biasA;   // minimum A value
     float rangeY;  // difference between max and min Y
     float rangeUV; // difference between max and min UV
+    float rangeA;  // difference between max and min A
 
     avifPixelFormatInfo formatInfo;
 
@@ -547,6 +551,11 @@ typedef struct avifReformatState
     float unormFloatTableUV[1 << 12];
 
     avifReformatMode mode;
+
+    avifBool toRGBPremultiply;
+    avifBool toRGBUnpremultiply;
+    avifBool toYUVPremultiply;
+    avifBool toYUVUnpremultiply;
 } avifReformatState;
 AVIF_API avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state);
 

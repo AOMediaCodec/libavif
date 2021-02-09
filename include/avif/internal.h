@@ -93,17 +93,19 @@ avifBool avifFillAlpha(const avifAlphaParams * const params);
 avifBool avifReformatAlpha(const avifAlphaParams * const params);
 
 // Returns:
-// * AVIF_RESULT_OK              - Converted successfully with libyuv
-// * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
-// * [any other error]           - Return error to caller
+// * AVIF_RESULT_OK                - Converted successfully with libyuv
+// * AVIF_RESULT_NOT_IMPLEMENTED   - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
+// * AVIF_RESULT_NEED_POST_PROCESS - Only color conversion part for this combination is implemented with libyuv, use built-in alpha conversion and premultiply
+// * [any other error]             - Return error to caller
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
 
 // Returns:
-// * AVIF_RESULT_OK              - (Un)Premultiply successfully with libyuv
-// * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in (Un)Premultiply
-// * [any other error]           - Return error to caller
+// * AVIF_RESULT_OK                - (Un)Premultiply successfully with libyuv
+// * AVIF_RESULT_NOT_IMPLEMENTED   - The fast path for this combination is not implemented with libyuv, use built-in (Un)Premultiply
+// * [any other error]             - Return error to caller
 avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
+avifResult avifImageIdentity8ToRGB8ColorFullRangeLibYUV(const avifImage * image, avifRGBImage * rgb, avifReformatState * state);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
