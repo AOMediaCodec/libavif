@@ -2435,14 +2435,6 @@ avifResult avifDecoderParse(avifDecoder * decoder)
         return parseResult;
     }
 
-    // Sanity check items
-    for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &decoder->data->meta->items.item[itemIndex];
-        if (item->hasUnsupportedEssentialProperty) {
-            // An essential property isn't supported by libavif; ignore the item.
-            continue;
-        }
-    }
     return avifDecoderReset(decoder);
 }
 
