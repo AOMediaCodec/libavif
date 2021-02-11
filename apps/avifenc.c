@@ -94,22 +94,6 @@ static void avifSwizzleSTDIN(void) {
     }
 }
 
-#if 0
-#define TOUPPER(x) (((x) <= 'z' && (x) >= 'a') ? ((x) - 'a'+ 'A') : (x))
-static void testme(char *buf){
-#define mymax  8
-    char outbuf[mymax] = {0};
-    for(int i=0; i<mymax;i++) {
-	sprintf(outbuf,"%02x",(unsigned char)buf[i]);
-	for (unsigned long j=0;outbuf[j];j++){
-	    outbuf[j] = TOUPPER(outbuf[j]);
-	}
-	fprintf(stderr,"%s ",outbuf);
-    }
-    fprintf(stderr,"\n");
-}
-#endif
-
 static inline avifBool avifMagicEntryTest(const avifMagicEntry *entry,
 					  char *data)
 {
