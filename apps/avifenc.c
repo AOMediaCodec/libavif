@@ -18,6 +18,114 @@
 #include <io.h>
 #endif
 
+/* Describes a single magic number to identify a file. */
+typedef struct {
+    int64_t length; /* Length of sequence */
+    int64_t offset; /* Offset from start of file in bytes */
+    const char * const sequence; /* the magic sequence */
+} avifMagicNumber;
+
+/* Describes the magic number sequence of a file type. */
+#define avifMagicNumberMax 2
+typedef struct {
+    /* two magic numbers possible in one file */
+    avifMagicNumber magic[avifMagicNumberMax];
+    /* The format associated with these magics */
+    avifAppFileFormat format; 
+} avifMagicEntry;
+
+/* A map of magic numbers to test to come up with a file identification. */
+static avifMagicEntry avifMagicMap[] = {
+    { /* entry */
+	/* magic */ { /*[0]*/  {4,0,"\xFF\xD8\xFF\xDB"}, /*[1]*/ {0}},
+	/* format */ AVIF_APP_FILE_FORMAT_JPEG
+    },
+    {
+	{{4,0,"\xFF\xD8\xFF\xEE"},{0}},
+	AVIF_APP_FILE_FORMAT_JPEG
+    },
+    {
+	{{12,0,"\xFF\xD8\xFF\xE0\x00\x10\x4A\x46\x49\x46\x00\x01"},{0}},
+	AVIF_APP_FILE_FORMAT_JPEG
+    },
+    {
+	{{4,0,"\xFF\xD8\xFF\xE1"},{6,6,"\x45\x78\x69\x66\x00\x00"}},
+	AVIF_APP_FILE_FORMAT_JPEG
+    },
+    {
+	{{8,0,"\x89\x50\x4E\x47\x0D\x0A\x1A\x0A"},{0}},
+	AVIF_APP_FILE_FORMAT_PNG
+    },
+    {0} // flag the end of the map
+};
+
+static inline avifBool avifMagicMapEntryExists(long position) {
+    return avifMagicMap[position].magic[0].length > 0;
+}
+
+static char *avifSTDIN = NULL;
+static void avifSwizzleSTDIN(void) {
+    /* allocate a buffer for stdin... */
+    if (!avifSTDIN) {
+	const int bufferSize = (int)BUFSIZ;
+	avifSTDIN = (char *)calloc(sizeof(char),bufferSize);
+	if (!avifSTDIN) {
+	    fprintf(stderr,"Couldn't allocate buffer for stdin.\n");
+	    exit(1);
+	}
+	if (setvbuf(stdin,avifSTDIN,_IOFBF,bufferSize)){
+	    fprintf(stderr,"Couldn't set buffer for stdin.\n");
+	    exit(1);
+	}
+	unsigned long maxBytes = 0;
+	/* determine max bytes we need to read */
+	for (long i=0; avifMagicMapEntryExists(i); i++) {
+	    for(long j=0; j < avifMagicNumberMax; j++) {
+		avifMagicNumber m = avifMagicMap[i].magic[j];
+		unsigned long len = m.length + m.offset;
+		maxBytes = (len>maxBytes) ? len : maxBytes;
+	    }
+	}
+	if (maxBytes > bufferSize) {
+	    fprintf(stderr,"Header bytes (%ld) are too many for buffer (%d).\n",
+		    maxBytes,bufferSize);
+	    exit(1);
+	}
+    }
+}
+
+#if 0
+#define TOUPPER(x) (((x) <= 'z' && (x) >= 'a') ? ((x) - 'a'+ 'A') : (x))
+static void testme(char *buf){
+#define mymax  8
+    char outbuf[mymax] = {0};
+    for(int i=0; i<mymax;i++) {
+	sprintf(outbuf,"%02x",(unsigned char)buf[i]);
+	for (unsigned long j=0;outbuf[j];j++){
+	    outbuf[j] = TOUPPER(outbuf[j]);
+	}
+	fprintf(stderr,"%s ",outbuf);
+    }
+    fprintf(stderr,"\n");
+}
+#endif
+
+static inline avifBool avifMagicEntryTest(const avifMagicEntry *entry,
+					  char *data)
+{
+    avifBool ok = AVIF_TRUE;
+    for(long i=0; i < avifMagicNumberMax; i++){
+	avifMagicNumber m = entry->magic[i];
+	if (m.length == 0) {
+	    ok &= AVIF_TRUE; /* magic number was empty so we accept */
+	} else {
+	    ok &= (memcmp(data+m.offset,m.sequence,m.length) == 0);
+	}
+    }
+    return ok;
+}
+
+
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
         fprintf(stderr, "%s requires an argument.", arg);             \
@@ -181,11 +289,24 @@ static int parseU32List(uint32_t output[8], const char * arg)
 static avifInputFile * avifInputGetNextFile(avifInput * input)
 {
     if (input->useStdin) {
+	/* swizzle stdin to use our own input buffer so we can look ahead */
+	avifSwizzleSTDIN();
+#if 0
+	// this won't necessarily work because you are getting
+	// an EOF char from the end then putting it back
         ungetc(fgetc(stdin), stdin); // Kick stdin to force EOF
-
         if (feof(stdin)) {
             return NULL;
         }
+#else
+	// this is correct
+	int ch;
+	if (feof(stdin) || ((ch = fgetc(stdin))== EOF)) {
+	    return NULL;
+	} else {
+	    ungetc(ch,stdin);
+	}
+#endif
         return &stdinFile;
     }
 
@@ -194,6 +315,7 @@ static avifInputFile * avifInputGetNextFile(avifInput * input)
     }
     return &input->files[input->fileIndex];
 }
+
 static avifBool avifInputHasRemainingData(avifInput * input)
 {
     if (input->useStdin) {
@@ -202,18 +324,60 @@ static avifBool avifInputHasRemainingData(avifInput * input)
     return (input->fileIndex < input->filesCount);
 }
 
+
+/* Runs on stdin and can be modified to check or assert file types */
+static avifAppFileFormat avifInputDetermineFileType(void)
+{
+    avifAppFileFormat format = AVIF_APP_FILE_FORMAT_UNKNOWN;
+    /* examine against candidates */
+    for (long i=0; avifMagicMapEntryExists(i); i++) {
+	if (avifMagicEntryTest(&avifMagicMap[i],avifSTDIN)){
+	    /* we matched a sequence */
+	    format = avifMagicMap[i].format;
+	    break;
+	}
+    }
+    /* finished */
+    fprintf(stderr,"stdin file type checker determined: %d\n",format);
+    return format;
+}
+
 static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image, uint32_t * outDepth)
 {
+    
     if (input->useStdin) {
         if (feof(stdin)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
-        if (!y4mRead(image, NULL, &input->frameIter)) {
-            return AVIF_APP_FILE_FORMAT_UNKNOWN;
-        }
-        return AVIF_APP_FILE_FORMAT_Y4M;
+	avifAppFileFormat format = avifInputDetermineFileType();
+	switch(format) {
+	case AVIF_APP_FILE_FORMAT_JPEG: {
+	    if (!avifJPEGRead(image, NULL, input->requestedFormat,input->requestedDepth)){
+		format = AVIF_APP_FILE_FORMAT_UNKNOWN;
+	    }
+	    if (outDepth) {
+		*outDepth = 8;
+	    }
+	} break;
+	case AVIF_APP_FILE_FORMAT_PNG: {
+	    if (!avifPNGRead(image, input->files[input->fileIndex].filename, input->requestedFormat, input->requestedDepth, outDepth)) {
+		format = AVIF_APP_FILE_FORMAT_UNKNOWN;
+	    }
+	} break;
+	    /* fallthrough, because clang errors for this are turned on */
+	case AVIF_APP_FILE_FORMAT_UNKNOWN:
+	    /* these could be implemented as further magic numbers */
+	case AVIF_APP_FILE_FORMAT_AVIF: 
+	case AVIF_APP_FILE_FORMAT_Y4M: 
+	default: {
+	    if (!y4mRead(image, NULL, &input->frameIter)) {
+		format = AVIF_APP_FILE_FORMAT_UNKNOWN;
+	    } else {
+		format = AVIF_APP_FILE_FORMAT_Y4M;
+	    }
+	} break;}
+	return format;
     }
-
     if (input->fileIndex >= input->filesCount) {
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }

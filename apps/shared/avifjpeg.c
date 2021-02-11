@@ -47,7 +47,7 @@ avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFor
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
 
-    FILE * f = fopen(inputFilename, "rb");
+    FILE * f = inputFilename ? fopen(inputFilename, "rb") : stdin;
     if (!f) {
         fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
         return ret;

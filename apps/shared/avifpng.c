@@ -33,7 +33,7 @@ avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelForm
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
 
-    FILE * f = fopen(inputFilename, "rb");
+    FILE * f = inputFilename ? fopen(inputFilename, "rb") : stdin;
     if (!f) {
         fprintf(stderr, "Can't open PNG file for read: %s\n", inputFilename);
         goto cleanup;
