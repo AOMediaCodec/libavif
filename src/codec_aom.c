@@ -530,6 +530,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // (from 20 to 2) in libaom's lookahead structure. This reduces
             // memory consumption when encoding a single image.
             cfg.g_lag_in_frames = 1;
+            // Tell libaom that all frames will be key frames.
+            cfg.kf_max_dist = 0;
         }
         if (encoder->maxThreads > 1) {
             cfg.g_threads = encoder->maxThreads;
