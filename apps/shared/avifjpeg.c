@@ -39,7 +39,7 @@ static void my_error_exit(j_common_ptr cinfo)
 // longjmp. But GCC's -Wclobbered warning may have trouble figuring that out, so
 // we preemptively declare it as volatile.
 
-avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, uint32_t requestedDepth)
+avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth)
 {
     volatile avifBool ret = AVIF_FALSE;
     uint8_t * volatile iccData = NULL;
@@ -137,7 +137,7 @@ static void avifRGBAToRGB(const avifRGBImage * src, avifRGBImage * dst)
 }
 #endif
 
-avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQuality, avifChromaUpsampling chromaUpsampling)
+avifBool avifJPEGWrite(const char * outputFilename, avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;

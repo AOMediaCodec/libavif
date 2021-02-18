@@ -36,4 +36,14 @@ typedef enum avifAppFileFormat
 
 avifAppFileFormat avifGuessFileFormat(const char * filename);
 
+// This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
+// into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
+// should be ignored. This structure is used to override the timing defaults in avifenc when the
+// enduser doesn't provide timing on the commandline and the source content provides a framerate.
+typedef struct avifAppSourceTiming
+{
+    uint64_t duration;  // duration in time units (based on the timescale below)
+    uint64_t timescale; // timescale of the media (Hz)
+} avifAppSourceTiming;
+
 #endif // ifndef LIBAVIF_APPS_SHARED_AVIFUTIL_H
