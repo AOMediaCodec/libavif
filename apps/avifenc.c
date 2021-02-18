@@ -399,13 +399,18 @@ int main(int argc, char * argv[])
     int keyframeInterval = 0;
     avifBool cicpExplicitlySet = AVIF_FALSE;
     avifBool premultiplyAlpha = AVIF_FALSE;
-    avifAppSourceTiming sourceTiming = { 0, 0 }; // See declaration of avifAppSourceTiming for documentation
     int gridDimsCount = 0;
     uint32_t gridDims[8]; // only the first two are used
     uint32_t gridCellCount = 0;
     avifImage ** gridCells = NULL;
     avifImage * gridSplitImage = NULL; // used for cleanup tracking
     memset(gridDims, 0, sizeof(gridDims));
+
+    // This holds the output timing for image sequences. The timescale member in this struct will
+    // become the timescale set on avifEncoder, and the duration member will be the default duration
+    // for any frame that doesn't have a specific duration set on the commandline. See the
+    // declaration of avifAppSourceTiming for more documentation.
+    avifAppSourceTiming outputTiming = { 0, 0 };
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
@@ -593,7 +598,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            sourceTiming.duration = (uint64_t)durationInt;
+            outputTiming.duration = (uint64_t)durationInt;
         } else if (!strcmp(arg, "--timescale") || !strcmp(arg, "--fps")) {
             NEXTARG();
             int timescaleInt = atoi(arg);
@@ -602,7 +607,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            sourceTiming.timescale = (uint64_t)timescaleInt;
+            outputTiming.timescale = (uint64_t)timescaleInt;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
             codecChoice = avifCodecChoiceFromName(arg);
@@ -684,7 +689,7 @@ int main(int argc, char * argv[])
         } else {
             // Positional argument
             input.files[input.filesCount].filename = arg;
-            input.files[input.filesCount].duration = sourceTiming.duration;
+            input.files[input.filesCount].duration = outputTiming.duration;
             ++input.filesCount;
         }
 
@@ -692,7 +697,7 @@ int main(int argc, char * argv[])
     }
 
     stdinFile.filename = "(stdin)";
-    stdinFile.duration = sourceTiming.duration;
+    stdinFile.duration = outputTiming.duration;
 
     if (!outputFilename) {
         if (((input.useStdin && (input.filesCount == 1)) || (!input.useStdin && (input.filesCount > 1)))) {
@@ -736,17 +741,17 @@ int main(int argc, char * argv[])
     printf("Successfully loaded: %s\n", firstFile->filename);
 
     // Prepare image timings
-    if ((sourceTiming.duration == 0) && (sourceTiming.timescale == 0) && (firstSourceTiming.duration > 0) &&
+    if ((outputTiming.duration == 0) && (outputTiming.timescale == 0) && (firstSourceTiming.duration > 0) &&
         (firstSourceTiming.timescale > 0)) {
         // Set the default duration and timescale to the first image's timing.
-        memcpy(&sourceTiming, &firstSourceTiming, sizeof(avifAppSourceTiming));
+        memcpy(&outputTiming, &firstSourceTiming, sizeof(avifAppSourceTiming));
     } else {
-        // Set source timing defaults to 1 duration per 1 timescale (1 fps)
-        if (sourceTiming.duration == 0) {
-            sourceTiming.duration = 1;
+        // Set output timing defaults to 1 duration per 1 timescale (1 fps)
+        if (outputTiming.duration == 0) {
+            outputTiming.duration = 1;
         }
-        if (sourceTiming.timescale == 0) {
-            sourceTiming.timescale = 1;
+        if (outputTiming.timescale == 0) {
+            outputTiming.timescale = 1;
         }
     }
 
@@ -995,7 +1000,7 @@ int main(int argc, char * argv[])
     encoder->tileColsLog2 = tileColsLog2;
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
-    encoder->timescale = sourceTiming.timescale;
+    encoder->timescale = outputTiming.timescale;
     encoder->keyframeInterval = keyframeInterval;
 
     if (gridDimsCount > 0) {
@@ -1012,11 +1017,11 @@ int main(int argc, char * argv[])
             addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }
 
-        uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : sourceTiming.duration;
+        uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : outputTiming.duration;
         if (input.useStdin || (input.filesCount > 1)) {
             printf(" * Encoding frame 1 [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
                    firstDurationInTimescales,
-                   sourceTiming.timescale,
+                   outputTiming.timescale,
                    firstFile->filename);
         }
         avifResult addImageResult = avifEncoderAddImage(encoder, image, firstDurationInTimescales, addImageFlags);
@@ -1033,12 +1038,12 @@ int main(int argc, char * argv[])
         while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
             ++nextImageIndex;
 
-            uint64_t nextDurationInTimescales = nextFile->duration ? nextFile->duration : sourceTiming.duration;
+            uint64_t nextDurationInTimescales = nextFile->duration ? nextFile->duration : outputTiming.duration;
 
             printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
                    nextImageIndex + 1,
                    nextDurationInTimescales,
-                   sourceTiming.timescale,
+                   outputTiming.timescale,
                    nextFile->filename);
 
             if (nextImage) {
