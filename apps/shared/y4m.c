@@ -20,94 +20,103 @@ struct y4mFrameIterator
     avifBool hasAlpha;
     avifPixelFormat format;
     avifRange range;
+    avifChromaSamplePosition chromaSamplePosition;
 
     FILE * inputFile;
     const char * displayFilename;
 };
 
-static avifBool y4mColorSpaceParse(const char * formatString, avifPixelFormat * format, int * depth, avifBool * hasAlpha)
+// Sets frame->format, frame->depth, frame->hasAlpha, and frame->chromaSamplePosition.
+static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIterator * frame)
 {
-    *hasAlpha = AVIF_FALSE;
+    frame->hasAlpha = AVIF_FALSE;
+    frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
 
     if (!strcmp(formatString, "C420jpeg")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "C420mpeg2")) {
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444alpha")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 8;
-        *hasAlpha = AVIF_TRUE;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 8;
+        frame->hasAlpha = AVIF_TRUE;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
@@ -175,6 +184,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
     frame.hasAlpha = AVIF_FALSE;
     frame.format = AVIF_PIXEL_FORMAT_NONE;
     frame.range = AVIF_RANGE_LIMITED;
+    frame.chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     frame.inputFile = NULL;
     frame.displayFilename = inputFilename;
 
@@ -232,7 +242,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
                         fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
-                    if (!y4mColorSpaceParse(tmpBuffer, &frame.format, &frame.depth, &frame.hasAlpha)) {
+                    if (!y4mColorSpaceParse(tmpBuffer, &frame)) {
                         fprintf(stderr, "Unsupported y4m pixel format: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
@@ -294,6 +304,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
     avif->depth = frame.depth;
     avif->yuvFormat = frame.format;
     avif->yuvRange = frame.range;
+    avif->yuvChromaSamplePosition = frame.chromaSamplePosition;
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     avifPixelFormatInfo info;
