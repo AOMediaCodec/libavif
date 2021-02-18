@@ -8,6 +8,7 @@
 #include "avifutil.h"
 #include "y4m.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,7 @@
 typedef struct avifInputFile
 {
     const char * filename;
-    int duration;
+    uint64_t duration; // If 0, use the default duration
 } avifInputFile;
 static avifInputFile stdinFile;
 
@@ -202,13 +203,17 @@ static avifBool avifInputHasRemainingData(avifInput * input)
     return (input->fileIndex < input->filesCount);
 }
 
-static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image, uint32_t * outDepth)
+static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image, uint32_t * outDepth, avifImageTiming * imageTiming)
 {
+    if (imageTiming) {
+        memset(imageTiming, 0, sizeof(avifImageTiming));
+    }
+
     if (input->useStdin) {
         if (feof(stdin)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
-        if (!y4mRead(image, NULL, &input->frameIter)) {
+        if (!y4mRead(image, NULL, &input->frameIter, imageTiming)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         return AVIF_APP_FILE_FORMAT_Y4M;
@@ -220,7 +225,7 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
 
     avifAppFileFormat nextInputFormat = avifGuessFileFormat(input->files[input->fileIndex].filename);
     if (nextInputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
-        if (!y4mRead(image, input->files[input->fileIndex].filename, &input->frameIter)) {
+        if (!y4mRead(image, input->files[input->fileIndex].filename, &input->frameIter, imageTiming)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
@@ -388,11 +393,20 @@ int main(int argc, char * argv[])
     avifRWData exifOverride = AVIF_DATA_EMPTY;
     avifRWData xmpOverride = AVIF_DATA_EMPTY;
     avifRWData iccOverride = AVIF_DATA_EMPTY;
-    int duration = 1;  // in timescales, stored per-inputFile (see avifInputFile)
-    int timescale = 1; // 1 fps by default
     int keyframeInterval = 0;
     avifBool cicpExplicitlySet = AVIF_FALSE;
     avifBool premultiplyAlpha = AVIF_FALSE;
+
+    // The timescale specifies how many units of time are in a second, and the duration is how many
+    // of those timescales this frame should be displayed for. For example, if they match, it signals
+    // 1 fps. If duration is 1 and timescale is 30, it signals 30 fps.
+    //
+    // These are set to 0 as sentinel values on initialization, and (if unchanged) are set to actual
+    // defaults later (search for "Set timing defaults"). This is done so that if the commandline
+    // doesn't set either of these values and the first source image provides a framerate, avifenc
+    // can use it instead of a 1 fps default.
+    uint64_t duration = 0;
+    uint64_t timescale = 0;
 
     int gridDimsCount = 0;
     uint32_t gridDims[8]; // only the first two are used
@@ -581,20 +595,22 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--duration")) {
             NEXTARG();
-            duration = atoi(arg);
-            if (duration < 1) {
-                fprintf(stderr, "ERROR: Invalid duration: %d\n", duration);
+            int durationInt = atoi(arg);
+            if (durationInt < 1) {
+                fprintf(stderr, "ERROR: Invalid duration: %d\n", durationInt);
                 returnCode = 1;
                 goto cleanup;
             }
+            duration = (uint64_t)durationInt;
         } else if (!strcmp(arg, "--timescale") || !strcmp(arg, "--fps")) {
             NEXTARG();
-            timescale = atoi(arg);
-            if (timescale < 1) {
-                fprintf(stderr, "ERROR: Invalid timescale: %d\n", timescale);
+            int timescaleInt = atoi(arg);
+            if (timescaleInt < 1) {
+                fprintf(stderr, "ERROR: Invalid timescale: %d\n", timescaleInt);
                 returnCode = 1;
                 goto cleanup;
             }
+            timescale = (uint64_t)timescaleInt;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
             codecChoice = avifCodecChoiceFromName(arg);
@@ -684,7 +700,7 @@ int main(int argc, char * argv[])
     }
 
     stdinFile.filename = "(stdin)";
-    stdinFile.duration = duration; // TODO: Allow arbitrary frame durations from stdin?
+    stdinFile.duration = duration;
 
     if (!outputFilename) {
         if (((input.useStdin && (input.filesCount == 1)) || (!input.useStdin && (input.filesCount > 1)))) {
@@ -716,7 +732,8 @@ int main(int argc, char * argv[])
 
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
-    avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth);
+    avifImageTiming firstFileTiming;
+    avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth, &firstFileTiming);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
         returnCode = 1;
@@ -725,6 +742,21 @@ int main(int argc, char * argv[])
     avifBool sourceWasRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
 
     printf("Successfully loaded: %s\n", firstFile->filename);
+
+    // Prepare image timings
+    if ((duration == 0) && (timescale == 0) && (firstFileTiming.durationInTimescales > 0) && (firstFileTiming.timescale > 0)) {
+        // Set the default duration and timescale to the first image's timing.
+        duration = firstFileTiming.durationInTimescales;
+        timescale = firstFileTiming.timescale;
+    } else {
+        // Set timing defaults to 1 duration per 1 timescale (1 fps)
+        if (duration == 0) {
+            duration = 1;
+        }
+        if (timescale == 0) {
+            timescale = 1;
+        }
+    }
 
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
         // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect
@@ -888,7 +920,7 @@ int main(int argc, char * argv[])
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
             gridCells[gridCellIndex] = cellImage;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL);
+            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL, NULL);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
@@ -971,7 +1003,7 @@ int main(int argc, char * argv[])
     encoder->tileColsLog2 = tileColsLog2;
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
-    encoder->timescale = (uint64_t)timescale;
+    encoder->timescale = timescale;
     encoder->keyframeInterval = keyframeInterval;
 
     if (gridDimsCount > 0) {
@@ -988,9 +1020,9 @@ int main(int argc, char * argv[])
             addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }
 
-        uint32_t firstDurationInTimescales = firstFile->duration;
+        uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : duration;
         if (input.useStdin || (input.filesCount > 1)) {
-            printf(" * Encoding frame 1 [%u/%d ts]: %s\n", firstDurationInTimescales, timescale, firstFile->filename);
+            printf(" * Encoding frame 1 [%" PRIu64 "/%" PRIu64 " ts]: %s\n", firstDurationInTimescales, timescale, firstFile->filename);
         }
         avifResult addImageResult = avifEncoderAddImage(encoder, image, firstDurationInTimescales, addImageFlags);
         if (addImageResult != AVIF_RESULT_OK) {
@@ -1006,7 +1038,13 @@ int main(int argc, char * argv[])
         while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
             ++nextImageIndex;
 
-            printf(" * Encoding frame %d [%u/%d ts]: %s\n", nextImageIndex + 1, nextFile->duration, timescale, nextFile->filename);
+            uint64_t nextDurationInTimescales = nextFile->duration ? nextFile->duration : duration;
+
+            printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
+                   nextImageIndex + 1,
+                   nextDurationInTimescales,
+                   timescale,
+                   nextFile->filename);
 
             if (nextImage) {
                 avifImageDestroy(nextImage);
@@ -1018,7 +1056,7 @@ int main(int argc, char * argv[])
             nextImage->yuvRange = image->yuvRange;
             nextImage->alphaPremultiplied = image->alphaPremultiplied;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL);
+            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL, NULL);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
@@ -1070,7 +1108,7 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
 
-            avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextFile->duration, AVIF_ADD_IMAGE_FLAG_NONE);
+            avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
             if (nextImageResult != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
                 returnCode = 1;

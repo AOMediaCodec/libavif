@@ -12,7 +12,7 @@
 // The structure will always be freed upon failure or reaching EOF.
 struct y4mFrameIterator;
 
-avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIterator ** iter);
+avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIterator ** iter, avifImageTiming * imageTiming);
 avifBool y4mWrite(avifImage * avif, const char * outputFilename);
 
 #endif // ifndef LIBAVIF_APPS_SHARED_Y4M_H
