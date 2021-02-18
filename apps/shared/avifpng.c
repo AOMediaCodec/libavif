@@ -23,7 +23,7 @@
 // modified between setjmp and longjmp. But GCC's -Wclobbered warning may have
 // trouble figuring that out, so we preemptively declare them as volatile.
 
-avifBool avifPNGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, uint32_t requestedDepth, uint32_t * outPNGDepth)
+avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth, uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -155,7 +155,7 @@ cleanup:
     return readResult;
 }
 
-avifBool avifPNGWrite(avifImage * avif, const char * outputFilename, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling)
+avifBool avifPNGWrite(const char * outputFilename, avifImage * avif, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling)
 {
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;

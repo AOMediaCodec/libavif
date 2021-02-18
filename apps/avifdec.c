@@ -221,15 +221,15 @@ int main(int argc, char * argv[])
             fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
             returnCode = 1;
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
-            if (!y4mWrite(avif, outputFilename)) {
+            if (!y4mWrite(outputFilename, avif)) {
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-            if (!avifJPEGWrite(avif, outputFilename, jpegQuality, chromaUpsampling)) {
+            if (!avifJPEGWrite(outputFilename, avif, jpegQuality, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-            if (!avifPNGWrite(avif, outputFilename, requestedDepth, chromaUpsampling)) {
+            if (!avifPNGWrite(outputFilename, avif, requestedDepth, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else {

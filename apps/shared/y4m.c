@@ -21,7 +21,7 @@ struct y4mFrameIterator
     avifPixelFormat format;
     avifRange range;
     avifChromaSamplePosition chromaSamplePosition;
-    avifImageTiming timing;
+    avifAppSourceTiming sourceTiming;
 
     FILE * inputFile;
     const char * displayFilename;
@@ -124,7 +124,7 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
 }
 
 // Note: this modifies framerateString
-static avifBool y4mFramerateParse(char * framerateString, avifImageTiming * imageTiming)
+static avifBool y4mFramerateParse(char * framerateString, avifAppSourceTiming * sourceTiming)
 {
     if (framerateString[0] != 'F') {
         return AVIF_FALSE;
@@ -144,8 +144,8 @@ static avifBool y4mFramerateParse(char * framerateString, avifImageTiming * imag
         return AVIF_FALSE;
     }
 
-    imageTiming->timescale = (uint64_t)numerator;
-    imageTiming->durationInTimescales = (uint64_t)denominator;
+    sourceTiming->timescale = (uint64_t)numerator;
+    sourceTiming->duration = (uint64_t)denominator;
     return AVIF_TRUE;
 }
 
@@ -200,7 +200,7 @@ static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayF
             goto cleanup; \
     } while (0)
 
-avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIterator ** iter, avifImageTiming * imageTiming)
+avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter)
 {
     avifBool result = AVIF_FALSE;
 
@@ -212,7 +212,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
     frame.format = AVIF_PIXEL_FORMAT_NONE;
     frame.range = AVIF_RANGE_LIMITED;
     frame.chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-    memset(&frame.timing, 0, sizeof(avifImageTiming));
+    memset(&frame.sourceTiming, 0, sizeof(avifAppSourceTiming));
     frame.inputFile = NULL;
     frame.displayFilename = inputFilename;
 
@@ -280,7 +280,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
                         fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
-                    if (!y4mFramerateParse(tmpBuffer, &frame.timing)) {
+                    if (!y4mFramerateParse(tmpBuffer, &frame.sourceTiming)) {
                         fprintf(stderr, "Unsupported framerate: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
@@ -336,8 +336,8 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
         goto cleanup;
     }
 
-    if (imageTiming) {
-        memcpy(imageTiming, &frame.timing, sizeof(avifImageTiming));
+    if (sourceTiming) {
+        memcpy(sourceTiming, &frame.sourceTiming, sizeof(avifAppSourceTiming));
     }
 
     avifImageFreePlanes(avif, AVIF_PLANES_YUV | AVIF_PLANES_A);
@@ -403,7 +403,7 @@ cleanup:
     return result;
 }
 
-avifBool y4mWrite(avifImage * avif, const char * outputFilename)
+avifBool y4mWrite(const char * outputFilename, avifImage * avif)
 {
     avifBool hasAlpha = (avif->alphaPlane != NULL) && (avif->alphaRowBytes > 0);
     avifBool writeAlpha = AVIF_FALSE;
