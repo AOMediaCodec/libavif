@@ -626,7 +626,7 @@ typedef struct avifIO
     avifIODestroyFunc destroy;
     avifIOReadFunc read;
 
-    // This is reserved for further use - but currently ignored. Set it to a null pointer.
+    // This is reserved for future use - but currently ignored. Set it to a null pointer.
     avifIOWriteFunc write;
 
     // If non-zero, this is a hint to internal structures of the max size offered by the content
