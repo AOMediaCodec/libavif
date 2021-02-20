@@ -247,7 +247,7 @@ int main(int argc, char * argv[])
                                             maxDrift = drift;
                                         }
                                     } else {
-                                        printf("ERROR: Encountered a drift greater than MAX_DRIFT(%d): %d\n", MAX_DRIFT, drift);
+                                        printf("ERROR: Encountered a drift greater than or equal to MAX_DRIFT(%d): %d\n", MAX_DRIFT, drift);
                                         return 1;
                                     }
                                 }
@@ -431,12 +431,12 @@ int main(int argc, char * argv[])
         // alpha premultiply roundtrip test
         const uint32_t depths[4] = { 8, 10, 12, 16 };
         uint64_t driftPixelCounts[MAX_DRIFT];
-        int maxDrift;
         for (int depthIndex = 0; depthIndex < 4; ++depthIndex) {
             uint32_t rgbDepth = depths[depthIndex];
             uint32_t size = 1 << rgbDepth;
 
             avifRGBImage rgb;
+            memset(&rgb, 0, sizeof(rgb));
             rgb.alphaPremultiplied = AVIF_TRUE;
             rgb.pixels = NULL;
             rgb.format = AVIF_RGB_FORMAT_RGBA;
@@ -444,7 +444,7 @@ int main(int argc, char * argv[])
             rgb.height = 1;
             rgb.depth = rgbDepth;
 
-            maxDrift = 0;
+            int maxDrift = 0;
             for (int i = 0; i < MAX_DRIFT; ++i) {
                 driftPixelCounts[i] = 0;
             }
@@ -468,6 +468,7 @@ int main(int argc, char * argv[])
                     }
                 }
 
+                rgb.width = a + 1;
                 avifRGBImageUnpremultiplyAlpha(&rgb);
                 avifRGBImagePremultiplyAlpha(&rgb);
 
@@ -475,14 +476,14 @@ int main(int argc, char * argv[])
                     if (rgbDepth == 8) {
                         uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
                         int drift = abs((int)pixel[0] - (int)r);
-                        if (drift > MAX_DRIFT) {
-                            printf("ERROR: Premultiply round-trip difference exceed MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                        if (drift >= MAX_DRIFT) {
+                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
                                    MAX_DRIFT,
                                    rgbDepth,
                                    pixel[0],
                                    r,
                                    a);
-                            exit(1);
+                            return 1;
                         }
                         if (maxDrift < drift) {
                             maxDrift = drift;
@@ -491,14 +492,14 @@ int main(int argc, char * argv[])
                     } else {
                         uint16_t * pixel = (uint16_t *)&rgb.pixels[r * sizeof(uint16_t) * 4];
                         int drift = abs((int)pixel[0] - (int)r);
-                        if (drift > MAX_DRIFT) {
-                            printf("ERROR: Premultiply round-trip difference exceed MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                        if (drift >= MAX_DRIFT) {
+                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
                                    MAX_DRIFT,
                                    rgbDepth,
                                    pixel[0],
                                    r,
                                    a);
-                            exit(1);
+                            return 1;
                         }
                         if (maxDrift < drift) {
                             maxDrift = drift;
