@@ -448,7 +448,7 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, u
 typedef enum avifRGBFormat
 {
     AVIF_RGB_FORMAT_RGB = 0,
-    AVIF_RGB_FORMAT_RGBA,     // This is the default format set in avifRGBImageSetDefaults()
+    AVIF_RGB_FORMAT_RGBA,     // This is the default format set in avifRGBImageSetDefaults().
     AVIF_RGB_FORMAT_ARGB,
     AVIF_RGB_FORMAT_BGR,
     AVIF_RGB_FORMAT_BGRA,
