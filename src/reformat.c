@@ -14,7 +14,7 @@ struct YUVBlock
     float v;
 };
 
-avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
+static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
     if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
         return AVIF_FALSE;

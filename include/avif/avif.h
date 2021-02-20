@@ -507,49 +507,6 @@ AVIF_API int avifFullToLimitedUV(int depth, int v);
 AVIF_API int avifLimitedToFullY(int depth, int v);
 AVIF_API int avifLimitedToFullUV(int depth, int v);
 
-typedef enum avifReformatMode
-{
-    AVIF_REFORMAT_MODE_YUV_COEFFICIENTS = 0, // Normal YUV conversion using coefficients
-    AVIF_REFORMAT_MODE_IDENTITY,             // Pack GBR directly into YUV planes (AVIF_MATRIX_COEFFICIENTS_IDENTITY)
-    AVIF_REFORMAT_MODE_YCGCO                 // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
-} avifReformatMode;
-
-typedef struct avifReformatState
-{
-    // YUV coefficients
-    float kr;
-    float kg;
-    float kb;
-
-    uint32_t yuvChannelBytes;
-    uint32_t rgbChannelBytes;
-    uint32_t rgbChannelCount;
-    uint32_t rgbPixelBytes;
-    uint32_t rgbOffsetBytesR;
-    uint32_t rgbOffsetBytesG;
-    uint32_t rgbOffsetBytesB;
-    uint32_t rgbOffsetBytesA;
-
-    uint32_t yuvDepth;
-    avifRange yuvRange;
-    int yuvMaxChannel;
-    int rgbMaxChannel;
-    float rgbMaxChannelF;
-    float biasY;   // minimum Y value
-    float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
-    float rangeY;  // difference between max and min Y
-    float rangeUV; // difference between max and min UV
-
-    avifPixelFormatInfo formatInfo;
-
-    // LUTs for going from YUV limited/full unorm -> full range RGB FP32
-    float unormFloatTableY[1 << 12];
-    float unormFloatTableUV[1 << 12];
-
-    avifReformatMode mode;
-} avifReformatState;
-AVIF_API avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state);
-
 // ---------------------------------------------------------------------------
 // Codec selection
 
