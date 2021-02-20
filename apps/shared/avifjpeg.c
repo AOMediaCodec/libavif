@@ -128,7 +128,6 @@ avifBool avifJPEGWrite(const char * outputFilename, avifImage * avif, int jpegQu
     rgb.format = AVIF_RGB_FORMAT_RGB;
     rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
-    rgb.alphaPremultiplied = AVIF_TRUE;
     avifRGBImageAllocatePixels(&rgb);
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
