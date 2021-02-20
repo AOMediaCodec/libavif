@@ -89,8 +89,7 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                         matrixYVU = &kYvuF709Constants;
                         break;
 
-                    case AVIF_COLOR_PRIMARIES_BT470BG:
-                    case AVIF_COLOR_PRIMARIES_BT601:
+                    case AVIF_COLOR_PRIMARIES_BT470M:
                         matrixYUV = &kYuvJPEGConstants;
                         matrixYVU = &kYvuJPEGConstants;
                         break;
@@ -101,7 +100,8 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                         break;
 
                     case AVIF_COLOR_PRIMARIES_UNKNOWN:
-                    case AVIF_COLOR_PRIMARIES_BT470M:
+                    case AVIF_COLOR_PRIMARIES_BT470BG:
+                    case AVIF_COLOR_PRIMARIES_BT601:
                     case AVIF_COLOR_PRIMARIES_SMPTE240:
                     case AVIF_COLOR_PRIMARIES_GENERIC_FILM:
                     case AVIF_COLOR_PRIMARIES_XYZ:
@@ -145,8 +145,8 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                         matrixYUV = &kYuvH709Constants;
                         matrixYVU = &kYvuH709Constants;
                         break;
-                    case AVIF_COLOR_PRIMARIES_BT470BG:
-                    case AVIF_COLOR_PRIMARIES_BT601:
+
+                    case AVIF_COLOR_PRIMARIES_BT470M:
                         matrixYUV = &kYuvI601Constants;
                         matrixYVU = &kYvuI601Constants;
                         break;
@@ -156,7 +156,8 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                         break;
 
                     case AVIF_COLOR_PRIMARIES_UNKNOWN:
-                    case AVIF_COLOR_PRIMARIES_BT470M:
+                    case AVIF_COLOR_PRIMARIES_BT470BG:
+                    case AVIF_COLOR_PRIMARIES_BT601:
                     case AVIF_COLOR_PRIMARIES_SMPTE240:
                     case AVIF_COLOR_PRIMARIES_GENERIC_FILM:
                     case AVIF_COLOR_PRIMARIES_XYZ:
