@@ -482,6 +482,9 @@ typedef struct avifRGBImage
     uint32_t rowBytes;
 } avifRGBImage;
 
+// Sets rgb->width, rgb->height, and rgb->depth to image->width, image->height, and image->depth.
+// Sets rgb->pixels to NULL and rgb->rowBytes to 0. Sets the other fields of 'rgb' to default
+// values.
 AVIF_API void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image);
 AVIF_API uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb);
 
