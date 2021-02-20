@@ -112,7 +112,7 @@ cleanup:
     return ret;
 }
 
-avifBool avifJPEGWrite(const char * outputFilename, avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling)
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;

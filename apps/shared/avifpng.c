@@ -155,7 +155,7 @@ cleanup:
     return readResult;
 }
 
-avifBool avifPNGWrite(const char * outputFilename, avifImage * avif, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling)
+avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling)
 {
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
