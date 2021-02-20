@@ -1678,14 +1678,11 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
 
                 if (!memcmp(irefHeader.type, "thmb", 4)) {
                     item->thumbnailForID = toID;
-                }
-                if (!memcmp(irefHeader.type, "auxl", 4)) {
+                } else if (!memcmp(irefHeader.type, "auxl", 4)) {
                     item->auxForID = toID;
-                }
-                if (!memcmp(irefHeader.type, "cdsc", 4)) {
+                } else if (!memcmp(irefHeader.type, "cdsc", 4)) {
                     item->descForID = toID;
-                }
-                if (!memcmp(irefHeader.type, "dimg", 4)) {
+                } else if (!memcmp(irefHeader.type, "dimg", 4)) {
                     // derived images refer in the opposite direction
                     avifDecoderItem * dimg = avifMetaFindItem(meta, toID);
                     if (!dimg) {
@@ -1693,8 +1690,7 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
                     }
 
                     dimg->dimgForID = fromID;
-                }
-                if (!memcmp(irefHeader.type, "prem", 4)) {
+                } else if (!memcmp(irefHeader.type, "prem", 4)) {
                     item->premByID = toID;
                 }
             }
@@ -2145,7 +2141,7 @@ static avifResult avifParse(avifDecoder * decoder)
         avifROData boxContents = AVIF_DATA_EMPTY;
 
         // TODO: reorg this code to only do these memcmps once each
-        if (!memcmp(header.type, "ftyp", 4) || (!memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4))) {
+        if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4)) {
             readResult = decoder->io->read(decoder->io, 0, parseOffset, header.size, &boxContents);
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
