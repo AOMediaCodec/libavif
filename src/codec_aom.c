@@ -720,10 +720,12 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
 
 #endif // defined(AVIF_CODEC_AOM_ENCODE)
 
+#if defined(AVIF_CODEC_AOM_DECODE) || defined(AVIF_CODEC_AOM_ENCODE)
 const char * avifCodecVersionAOM(void)
 {
     return aom_codec_version_str();
 }
+#endif
 
 avifCodec * avifCodecCreateAOM(void)
 {
