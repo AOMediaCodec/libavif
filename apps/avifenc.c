@@ -55,7 +55,7 @@ static void syntax(void)
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
     printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420, 400]. (JPEG/PNG only; For y4m or stdin, format is retained)\n");
-    printf("    -p,--premultiply                  : Premultiply color with alpha channel and signal this in the AVIF\n");
+    printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = color primaries\n");

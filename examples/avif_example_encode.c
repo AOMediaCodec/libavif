@@ -35,7 +35,7 @@ int main(int argc, char * argv[])
     // * avifImageSetMetadataXMP()
     // * yuvRange
     // * alphaRange
-    // * alphaPremultiply
+    // * alphaPremultiplied
     // * transforms (transformFlags, pasp, clap, irot, imir)
 
     if (encodeYUVDirectly) {

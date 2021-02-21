@@ -295,8 +295,8 @@ static const avifPropertyArray * avifSampleTableGetProperties(const avifSampleTa
 typedef struct avifTrack
 {
     uint32_t id;
-    uint32_t auxForID; // if non-zero, this item is an auxC plane for Track #{auxForID}
-    uint32_t premByID; // if non-zero, this item is premultiplied by Item #{premByID}
+    uint32_t auxForID; // if non-zero, this track is an auxC plane for Track #{auxForID}
+    uint32_t premByID; // if non-zero, this track is premultiplied by Track #{premByID}
     uint32_t mediaTimescale;
     uint64_t mediaDuration;
     uint32_t width;
