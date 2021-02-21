@@ -7,6 +7,6 @@
 #include "avif/avif.h"
 
 avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth);
-avifBool avifJPEGWrite(const char * outputFilename, avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling);
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling);
 
 #endif // ifndef LIBAVIF_APPS_SHARED_AVIFJPEG_H
