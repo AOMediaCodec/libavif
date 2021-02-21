@@ -514,7 +514,8 @@ typedef enum avifReformatMode
 {
     AVIF_REFORMAT_MODE_YUV_COEFFICIENTS = 0, // Normal YUV conversion using coefficients
     AVIF_REFORMAT_MODE_IDENTITY,             // Pack GBR directly into YUV planes (AVIF_MATRIX_COEFFICIENTS_IDENTITY)
-    AVIF_REFORMAT_MODE_YCGCO                 // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
+    AVIF_REFORMAT_MODE_YCGCO,                // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
+    AVIF_REFORMAT_MODE_SMPTE2085,            // YUV conversion using AVIF_MATRIX_COEFFICIENTS_SMPTE2085
 } avifReformatMode;
 
 typedef struct avifReformatState
@@ -538,6 +539,7 @@ typedef struct avifReformatState
     int yuvMaxChannel;
     int rgbMaxChannel;
     float rgbMaxChannelF;
+    float yuvMaxChannelF;
     float biasY;   // minimum Y value
     float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
     float rangeY;  // difference between max and min Y

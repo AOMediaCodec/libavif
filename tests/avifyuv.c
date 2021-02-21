@@ -112,6 +112,7 @@ int main(int argc, char * argv[])
             { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT2020_NCL },
             { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_IDENTITY },
             { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_YCGCO },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_SMPTE2085 },
             { AVIF_COLOR_PRIMARIES_SMPTE432, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL },
         };
         const int cicpCount = (int)(sizeof(cicpList) / sizeof(cicpList[0]));
@@ -129,18 +130,6 @@ int main(int argc, char * argv[])
                     const avifCICP * cicp = &cicpList[cicpIndex];
                     for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
                         avifRange range = ranges[rangeIndex];
-
-                        // YCgCo with limited range is not implemented now
-                        if (range == AVIF_RANGE_LIMITED && cicp->mc == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
-                            printf(" * RGB depth: %d, YUV depth: %d, colorPrimaries: %d, transferCharas: %d, matrixCoeffs: %d, range: Limited\n"
-                                   "   * Skipped: currently not supported.\n",
-                                   rgbDepth,
-                                   yuvDepth,
-                                   cicp->cp,
-                                   cicp->tc,
-                                   cicp->mc);
-                            continue;
-                        }
 
                         int dim = 1 << rgbDepth;
                         int maxDrift = 0;
