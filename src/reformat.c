@@ -36,9 +36,14 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
         return AVIF_FALSE;
     }
 
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
+        return AVIF_FALSE;
+    }
+
     if (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
         return AVIF_FALSE;
     }
+
     avifGetPixelFormatInfo(image->yuvFormat, &state->formatInfo);
     avifCalcYUVCoefficients(image, &state->kr, &state->kg, &state->kb);
     state->mode = AVIF_REFORMAT_MODE_YUV_COEFFICIENTS;
