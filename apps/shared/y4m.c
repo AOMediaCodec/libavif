@@ -403,7 +403,7 @@ cleanup:
     return result;
 }
 
-avifBool y4mWrite(const char * outputFilename, avifImage * avif)
+avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
 {
     avifBool hasAlpha = (avif->alphaPlane != NULL) && (avif->alphaRowBytes > 0);
     avifBool writeAlpha = AVIF_FALSE;

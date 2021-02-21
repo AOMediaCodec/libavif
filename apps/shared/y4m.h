@@ -15,6 +15,6 @@
 struct y4mFrameIterator;
 
 avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter);
-avifBool y4mWrite(const char * outputFilename, avifImage * avif);
+avifBool y4mWrite(const char * outputFilename, const avifImage * avif);
 
 #endif // ifndef LIBAVIF_APPS_SHARED_Y4M_H
