@@ -211,7 +211,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         rgbPixel[2] = rgb->pixels[state.rgbOffsetBytesB + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
                     }
 
-                    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
+                    if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha &&
+                        (rgb->alphaPremultiplied != image->alphaPremultiplied)) {
                         float a;
                         if (state.rgbChannelBytes > 1) {
                             a = *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
@@ -220,31 +221,30 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             a = rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
                         }
 
-                        if (!rgb->alphaPremultiplied && image->alphaPremultiplied) {
+                        if (image->alphaPremultiplied) {
                             // multiply
                             if (a == 0) {
                                 rgbPixel[0] = 0;
                                 rgbPixel[1] = 0;
                                 rgbPixel[2] = 0;
                             } else if (a < 1.0f) {
-                                rgbPixel[0] = rgbPixel[0] * a;
-                                rgbPixel[1] = rgbPixel[1] * a;
-                                rgbPixel[2] = rgbPixel[2] * a;
+                                rgbPixel[0] *= a;
+                                rgbPixel[1] *= a;
+                                rgbPixel[2] *= a;
                             }
-
-                        } else if (rgb->alphaPremultiplied && !image->alphaPremultiplied) {
+                        } else {
                             // unmultiply
                             if (a == 0) {
                                 rgbPixel[0] = 0;
                                 rgbPixel[1] = 0;
                                 rgbPixel[2] = 0;
                             } else if (a < 1.0f) {
-                                float r = rgbPixel[0] / a;
-                                float g = rgbPixel[1] / a;
-                                float b = rgbPixel[2] / a;
-                                rgbPixel[0] = AVIF_CLAMP(r, 0.0f, 1.0f);
-                                rgbPixel[1] = AVIF_CLAMP(g, 0.0f, 1.0f);
-                                rgbPixel[2] = AVIF_CLAMP(b, 0.0f, 1.0f);
+                                rgbPixel[0] /= a;
+                                rgbPixel[1] /= a;
+                                rgbPixel[2] /= a;
+                                rgbPixel[0] = AVIF_MIN(rgbPixel[0], 1.0f);
+                                rgbPixel[1] = AVIF_MIN(rgbPixel[1], 1.0f);
+                                rgbPixel[2] = AVIF_MIN(rgbPixel[2], 1.0f);
                             }
                         }
                     }
