@@ -56,9 +56,9 @@ extern "C" {
 // downstream projects to do greater-than preprocessor checks on AVIF_VERSION
 // to leverage in-development code without breaking their stable builds.
 #define AVIF_VERSION_MAJOR 0
-#define AVIF_VERSION_MINOR 8
-#define AVIF_VERSION_PATCH 4
-#define AVIF_VERSION_DEVEL 1
+#define AVIF_VERSION_MINOR 9
+#define AVIF_VERSION_PATCH 0
+#define AVIF_VERSION_DEVEL 0
 #define AVIF_VERSION \
     ((AVIF_VERSION_MAJOR * 1000000) + (AVIF_VERSION_MINOR * 10000) + (AVIF_VERSION_PATCH * 100) + AVIF_VERSION_DEVEL)
 
