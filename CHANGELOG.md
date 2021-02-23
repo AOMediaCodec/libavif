@@ -7,10 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+* Image grid encoding
+* Premultiplied alpha support (tongyuantongyu)
+* avifenc: Image grid encoding (`-g`, `--grid`)
+* avifenc: Recognize the Y4M format string "C420mpeg2"
+* avifenc: Harvest framerate from y4m headers as the "default", if present
+* Basic deduplication when writing mdat chunks
 
 ### Changed
-* Update dav1d.cmd to point at the 0.8.2 tag
-* Update rav1e.cmd to point at the 0.4 tag
+* avifenc: Adjusted min/max/speed defaults
+* Better handling for export headers (tongyuantongyu)
+* Use procedure specified in H.273 to quantize YUV (tongyuantongyu)
+* Impose a maximum of 4096 bytes on searchSampleSize (wantehchang, fixes oss-fuzz perf issue / timeout)
+* Update aom.cmd: v2.0.2
+* Update dav1d.cmd: 0.8.2
+* Update libgav1.cmd: 4a89dc3 / lts_2020_09_23
+* Update rav1e.cmd: 0.4
+* Update svt.cmd/svt.sh: v0.8.6
+* Force libjpeg to output in RGB Colorspace (bugfix)
+* Minor other compilation/linking/formatting/comment fixes
 
 ## [0.8.4] - 2020-11-23
 
