@@ -453,25 +453,42 @@ if(AVIF_BUILD_APPS)
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)
 
+    set(AVIF_APP_LIBRARIES ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    set(AVIF_APP_DEFINITIONS "")
+
+    if(WIN32)
+        include(CheckIncludeFiles)
+        check_include_files("windows.h;wincodec.h" AVIF_HAVE_WINCODEC)
+        if(AVIF_HAVE_WINCODEC)
+            message(STATUS "libavif: wincodec found, reading from wincodec enabled.")
+            set(AVIF_APP_DEFINITIONS ${AVIF_APP_DEFINITIONS} -DAVIF_WINCODEC_ENABLED=1)
+            set(AVIF_APP_LIBRARIES ${AVIF_APP_LIBRARIES} windowscodecs)
+        else()
+            message(STATUS "libavif: wincodec not found, reading from wincodec disabled.")
+        endif()
+    endif()
+
     add_executable(avifenc
         apps/avifenc.c
 
         apps/shared/avifjpeg.c
         apps/shared/iccjpeg.c
         apps/shared/avifpng.c
+        apps/shared/avifwic.c
         apps/shared/avifutil.c
         apps/shared/y4m.c
     )
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${AVIF_APP_LIBRARIES})
     target_include_directories(avifenc
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
                                    ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
                                    ${PNG_PNG_INCLUDE_DIR}
                                    ${JPEG_INCLUDE_DIR})
+    target_compile_definitions(avifenc PRIVATE ${AVIF_APP_DEFINITIONS})
     add_executable(avifdec
         apps/avifdec.c
 
@@ -484,13 +501,14 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${AVIF_APP_LIBRARIES})
     target_include_directories(avifdec
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
                                    ${CMAKE_CURRENT_SOURCE_DIR}/apps/shared
                                    ${PNG_PNG_INCLUDE_DIR}
                                    ${JPEG_INCLUDE_DIR})
+    target_compile_definitions(avifdec PRIVATE ${AVIF_APP_DEFINITIONS})
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
