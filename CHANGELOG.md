@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Image grid encoding
 * Premultiplied alpha support (tongyuantongyu)
 * avifenc: Image grid encoding (`-g`, `--grid`)
-* avifenc: Recognize the Y4M format string "C420mpeg2"
 * avifenc: Harvest framerate from y4m headers as the "default", if present
+* avifenc: Recognize the Y4M format string "C420mpeg2" (wantehchang)
 * Basic deduplication when writing mdat chunks
 
 ### Changed
-* avifenc: Adjusted min/max/speed defaults
+* avifenc: Adjusted min/max/speed/fps defaults
 * Better handling for export headers (tongyuantongyu)
 * Use procedure specified in H.273 to quantize YUV (tongyuantongyu)
 * Impose a maximum of 4096 bytes on searchSampleSize (wantehchang, fixes oss-fuzz perf issue / timeout)
