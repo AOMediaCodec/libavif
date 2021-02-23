@@ -93,7 +93,8 @@ static void syntax(void)
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
-    printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second\n");
+    printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
+    printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
     printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
@@ -746,12 +747,12 @@ int main(int argc, char * argv[])
         // Set the default duration and timescale to the first image's timing.
         memcpy(&outputTiming, &firstSourceTiming, sizeof(avifAppSourceTiming));
     } else {
-        // Set output timing defaults to 1 duration per 1 timescale (1 fps)
+        // Set output timing defaults to 30 fps
         if (outputTiming.duration == 0) {
             outputTiming.duration = 1;
         }
         if (outputTiming.timescale == 0) {
-            outputTiming.timescale = 1;
+            outputTiming.timescale = 30;
         }
     }
 
