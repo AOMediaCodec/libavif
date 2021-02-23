@@ -512,7 +512,7 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
-    // already premultiplied. No-op.
+    // already not premultiplied. No-op.
     if (!rgb->alphaPremultiplied) {
         return AVIF_RESULT_OK;
     }
@@ -540,7 +540,7 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                         // opaque is no-op
                         continue;
                     } else if (a == 0) {
-                        // prevent divide by zero
+                        // prevent division by zero
                         pixel[0] = 0;
                         pixel[1] = 0;
                         pixel[2] = 0;
@@ -548,9 +548,9 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                         float c1 = avifRoundf((float)pixel[0] * maxF / (float)a);
                         float c2 = avifRoundf((float)pixel[1] * maxF / (float)a);
                         float c3 = avifRoundf((float)pixel[2] * maxF / (float)a);
-                        pixel[0] = (uint16_t)AVIF_CLAMP(c1, 0, maxF);
-                        pixel[1] = (uint16_t)AVIF_CLAMP(c2, 0, maxF);
-                        pixel[2] = (uint16_t)AVIF_CLAMP(c3, 0, maxF);
+                        pixel[0] = (uint16_t)AVIF_MIN(c1, maxF);
+                        pixel[1] = (uint16_t)AVIF_MIN(c2, maxF);
+                        pixel[2] = (uint16_t)AVIF_MIN(c3, maxF);
                     }
                 }
             }
@@ -570,9 +570,9 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                         float c1 = avifRoundf((float)pixel[1] * maxF / (float)a);
                         float c2 = avifRoundf((float)pixel[2] * maxF / (float)a);
                         float c3 = avifRoundf((float)pixel[3] * maxF / (float)a);
-                        pixel[1] = (uint16_t)AVIF_CLAMP(c1, 0, maxF);
-                        pixel[2] = (uint16_t)AVIF_CLAMP(c2, 0, maxF);
-                        pixel[3] = (uint16_t)AVIF_CLAMP(c3, 0, maxF);
+                        pixel[1] = (uint16_t)AVIF_MIN(c1, maxF);
+                        pixel[2] = (uint16_t)AVIF_MIN(c2, maxF);
+                        pixel[3] = (uint16_t)AVIF_MIN(c3, maxF);
                     }
                 }
             }
@@ -594,9 +594,9 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                         float c1 = avifRoundf((float)pixel[0] * maxF / (float)a);
                         float c2 = avifRoundf((float)pixel[1] * maxF / (float)a);
                         float c3 = avifRoundf((float)pixel[2] * maxF / (float)a);
-                        pixel[0] = (uint8_t)AVIF_CLAMP(c1, 0, maxF);
-                        pixel[1] = (uint8_t)AVIF_CLAMP(c2, 0, maxF);
-                        pixel[2] = (uint8_t)AVIF_CLAMP(c3, 0, maxF);
+                        pixel[0] = (uint8_t)AVIF_MIN(c1, maxF);
+                        pixel[1] = (uint8_t)AVIF_MIN(c2, maxF);
+                        pixel[2] = (uint8_t)AVIF_MIN(c3, maxF);
                     }
                 }
             }
@@ -616,9 +616,9 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                         float c1 = avifRoundf((float)pixel[1] * maxF / (float)a);
                         float c2 = avifRoundf((float)pixel[2] * maxF / (float)a);
                         float c3 = avifRoundf((float)pixel[3] * maxF / (float)a);
-                        pixel[1] = (uint8_t)AVIF_CLAMP(c1, 0, maxF);
-                        pixel[2] = (uint8_t)AVIF_CLAMP(c2, 0, maxF);
-                        pixel[3] = (uint8_t)AVIF_CLAMP(c3, 0, maxF);
+                        pixel[1] = (uint8_t)AVIF_MIN(c1, maxF);
+                        pixel[2] = (uint8_t)AVIF_MIN(c2, maxF);
+                        pixel[3] = (uint8_t)AVIF_MIN(c3, maxF);
                     }
                 }
             }
