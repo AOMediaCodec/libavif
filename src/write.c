@@ -748,7 +748,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifRWStreamWriteChars(&s, "mif1", 4);                                 // ... compatible_brands[]
     avifRWStreamWriteChars(&s, "miaf", 4);                                 // ... compatible_brands[]
     if ((imageMetadata->depth == 8) || (imageMetadata->depth == 10)) {     //
-        if (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {        //
+        if ((imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ||      //
+            (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {      //
             avifRWStreamWriteChars(&s, "MA1B", 4);                         // ... compatible_brands[]
         } else if (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) { //
             avifRWStreamWriteChars(&s, "MA1A", 4);                         // ... compatible_brands[]
