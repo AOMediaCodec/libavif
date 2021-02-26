@@ -43,9 +43,7 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
     avif->width = cinfo->image_width;
     avif->height = cinfo->image_height;
 
-    int workComponents = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? 1 : cinfo->num_components;
-
-    JSAMPIMAGE buffer = (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_IMAGE, sizeof(JSAMPARRAY) * workComponents);
+    JSAMPIMAGE buffer = (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_IMAGE, sizeof(JSAMPARRAY) * cinfo->num_components);
 
     // lines of output image attempt to read per jpeg_read_raw_data call
     int readLines = 0;
@@ -57,7 +55,7 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
     int alreadyRead[3] = { 0, 0, 0 };
     // which avif channel to write to for each jpeg channel
     enum avifChannelIndex targetChannel[3] = { AVIF_CHAN_R, AVIF_CHAN_R, AVIF_CHAN_R };
-    for (int i = 0; i < workComponents; ++i) {
+    for (int i = 0; i < cinfo->num_components; ++i) {
         jpeg_component_info * comp = &cinfo->comp_info[i];
 
         linesPerCall[i] = comp->v_samp_factor * comp->AVIF_LIBJPEG_DCT_v_scaled_size;
@@ -82,6 +80,8 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
         targetChannel[1] = AVIF_CHAN_Y;
         targetChannel[2] = AVIF_CHAN_U;
     }
+
+    int workComponents = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? 1 : cinfo->num_components;
 
     while (cinfo->output_scanline < cinfo->output_height) {
         jpeg_read_raw_data(cinfo, buffer, readLines);
