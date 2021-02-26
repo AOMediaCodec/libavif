@@ -55,6 +55,7 @@ static avifBool dav1dCodecOpen(avifCodec * codec, avifDecoder * decoder)
         // Give all available threads to decode a single frame as fast as possible
         codec->internal->dav1dSettings.n_frame_threads = 1;
         codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
+        codec->internal->dav1dSettings.frame_size_limit = decoder->imageSizeLimit;
 
         if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
             return AVIF_FALSE;
@@ -208,9 +209,6 @@ avifCodec * avifCodecCreateDav1d(void)
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     dav1d_default_settings(&codec->internal->dav1dSettings);
-
-    // Set a maximum frame size limit to avoid OOM'ing fuzzers.
-    codec->internal->dav1dSettings.frame_size_limit = AVIF_MAX_IMAGE_SIZE;
 
     // Ensure that we only get the "highest spatial layer" as a single frame
     // for each input sample, instead of getting each spatial layer as its own
