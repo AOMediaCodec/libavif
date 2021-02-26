@@ -344,6 +344,9 @@ struct aomOptionDef
 static const struct aomOptionEnumList tuningEnum[] = { //
     { "psnr", AOM_TUNE_PSNR },                         //
     { "ssim", AOM_TUNE_SSIM },                         //
+#if CONFIG_TUNE_BUTTERAUGLI
+    { "butteraugli", AOM_TUNE_BUTTERAUGLI },           //
+#endif
     { NULL, 0 }
 };
 
