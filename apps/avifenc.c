@@ -751,7 +751,7 @@ int main(int argc, char * argv[])
     }
     avifBool sourceWasRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
 
-    // check again for y4m input (y4m input decide yuv format by file but not command arguments)
+    // Check again for y4m input (y4m input ignores input.requestedFormat and retains the format in file).
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
         fprintf(stderr, "matrixCoefficients may not be set to identity (0) when subsampling.\n");
         returnCode = 1;
