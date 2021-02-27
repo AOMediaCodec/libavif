@@ -175,13 +175,13 @@ static avifBool avifSetRGBImageFormat(avifRGBImage * rgb, WICPixelFormatGUID * f
         rgb->alphaPremultiplied = AVIF_TRUE;
         return AVIF_FALSE;
     } else if (preferDepth == 8) {
-        rgb->format = AVIF_RGB_FORMAT_RGBA;
+        rgb->format = AVIF_RGB_FORMAT_BGRA;
         rgb->depth = 8;
         rgb->ignoreAlpha = AVIF_FALSE;
         rgb->alphaPremultiplied = AVIF_FALSE;
         return AVIF_TRUE;
     } else {
-        rgb->format = AVIF_RGB_FORMAT_RGBA;
+        rgb->format = AVIF_RGB_FORMAT_BGRA;
         rgb->depth = 16;
         rgb->ignoreAlpha = AVIF_FALSE;
         rgb->alphaPremultiplied = AVIF_FALSE;
@@ -297,12 +297,13 @@ avifBool avifWICRead(const char * inputFilename, avifImage * avif, avifPixelForm
         avifBool canConvert = AVIF_FALSE;
         const WICPixelFormatGUID * dstFormat = NULL;
         if (rgb.depth == 16) {
-            dstFormat = &AVIF_GUID_WICPixelFormat64bppRGBA;
+            dstFormat = &AVIF_GUID_WICPixelFormat64bppBGRA;
             CHECK_HR(IWICFormatConverter_CanConvert(pConverter, &srcFormat, dstFormat, &canConvert));
         }
 
         if (!canConvert) {
-            dstFormat = &AVIF_GUID_WICPixelFormat32bppRGBA;
+            rgb.depth = 8;
+            dstFormat = &AVIF_GUID_WICPixelFormat32bppBGRA;
             CHECK_HR(IWICFormatConverter_CanConvert(pConverter, &srcFormat, dstFormat, &canConvert));
         }
 
@@ -342,6 +343,9 @@ cleanup:
     }
     if (pFactory != NULL) {
         IUnknown_Release(pFactory);
+    }
+    if (f != INVALID_HANDLE_VALUE) {
+        CloseHandle(f);
     }
     return ret;
 }
