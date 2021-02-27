@@ -753,12 +753,9 @@ int main(int argc, char * argv[])
 
     // check again for y4m input (y4m input decide yuv format by file but not command arguments)
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
-        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
-
-        if (cicpExplicitlySet) {
-            printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
-                   image->matrixCoefficients);
-        }
+        fprintf(stderr, "matrixCoefficients may not be set to identity (0) when subsampling.\n");
+        returnCode = 1;
+        goto cleanup;
     }
 
     printf("Successfully loaded: %s\n", firstFile->filename);
