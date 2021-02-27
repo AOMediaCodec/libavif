@@ -728,6 +728,18 @@ int main(int argc, char * argv[])
     image->yuvRange = requestedRange;
     image->alphaPremultiplied = premultiplyAlpha;
 
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444)) {
+        // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect
+        // of --lossless, and Identity is only valid with YUV444. Set this back to the default.
+        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+
+        if (cicpExplicitlySet) {
+            // Only warn if someone explicitly asked for identity.
+            printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
+                   image->matrixCoefficients);
+        }
+    }
+
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
     avifAppSourceTiming firstSourceTiming;
@@ -738,6 +750,13 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
     avifBool sourceWasRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
+
+    // Check again for y4m input (y4m input ignores input.requestedFormat and retains the format in file).
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
+        fprintf(stderr, "matrixCoefficients may not be set to identity (0) when subsampling.\n");
+        returnCode = 1;
+        goto cleanup;
+    }
 
     printf("Successfully loaded: %s\n", firstFile->filename);
 
@@ -753,18 +772,6 @@ int main(int argc, char * argv[])
         }
         if (outputTiming.timescale == 0) {
             outputTiming.timescale = 30;
-        }
-    }
-
-    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
-        // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect
-        // of --lossless, and Identity is only valid with YUV444. Set this back to the default.
-        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
-
-        if (cicpExplicitlySet) {
-            // Only warn if someone explicitly asked for identity.
-            printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
-                   image->matrixCoefficients);
         }
     }
 
