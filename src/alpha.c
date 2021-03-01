@@ -394,13 +394,6 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
 
-    // already premultiplied. No-op.
-    if (rgb->alphaPremultiplied) {
-        return AVIF_RESULT_OK;
-    }
-
-    rgb->alphaPremultiplied = AVIF_TRUE;
-
     avifResult libyuvResult = avifRGBImagePremultiplyAlphaLibYUV(rgb);
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
         return libyuvResult;
@@ -511,13 +504,6 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
     if (!avifRGBFormatHasAlpha(rgb->format)) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
-
-    // already not premultiplied. No-op.
-    if (!rgb->alphaPremultiplied) {
-        return AVIF_RESULT_OK;
-    }
-
-    rgb->alphaPremultiplied = AVIF_FALSE;
 
     avifResult libyuvResult = avifRGBImageUnpremultiplyAlphaLibYUV(rgb);
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
