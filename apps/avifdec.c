@@ -34,6 +34,7 @@ static void syntax(void)
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
+    printf("    -r,--raw-color    : Output original color data for opaque output (JPEG only; always true for y4m)\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("\n");
@@ -91,6 +92,7 @@ int main(int argc, char * argv[])
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     avifBool ignoreICC = AVIF_FALSE;
+    avifBool rawColor = AVIF_FALSE;
 
     if (argc < 2) {
         syntax();
@@ -157,6 +159,8 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: invalid upsampling: %s\n", arg);
                 return 1;
             }
+        } else if (!strcmp(arg, "-r") || !strcmp(arg, "--raw-color")) {
+            rawColor = AVIF_TRUE;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
@@ -225,6 +229,10 @@ int main(int argc, char * argv[])
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
+            // Bypass alpha multiply step during conversion
+            if (rawColor) {
+                avif->alphaPremultiplied = AVIF_TRUE;
+            }
             if (!avifJPEGWrite(outputFilename, avif, jpegQuality, chromaUpsampling)) {
                 returnCode = 1;
             }

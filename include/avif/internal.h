@@ -99,6 +99,12 @@ typedef enum avifReformatMode
     AVIF_REFORMAT_MODE_YCGCO                 // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
 } avifReformatMode;
 
+typedef enum avifAlphaMultiplyMode {
+    AVIF_ALPHA_MULTIPLY_MODE_NO_OP = 0,
+    AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY,
+    AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
+} avifAlphaMultiplyMode;
+
 typedef struct avifReformatState
 {
     // YUV coefficients
@@ -122,8 +128,10 @@ typedef struct avifReformatState
     float rgbMaxChannelF;
     float biasY;   // minimum Y value
     float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
+    float biasA;   // minimum A value
     float rangeY;  // difference between max and min Y
     float rangeUV; // difference between max and min UV
+    float rangeA;  // difference between max and min A
 
     avifPixelFormatInfo formatInfo;
 
@@ -132,6 +140,7 @@ typedef struct avifReformatState
     float unormFloatTableUV[1 << 12];
 
     avifReformatMode mode;
+    avifAlphaMultiplyMode toRGBAlphaMode;
 } avifReformatState;
 
 // Returns:
