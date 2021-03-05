@@ -591,6 +591,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (aomCpuUsed != -1) {
             aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed);
         }
+        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+            // Disable temporal filtering on key frames.
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_ENABLE_KEYFRAME_FILTERING, 0);
+        }
         if (!avifProcessAOMOptionsPostInit(codec)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
