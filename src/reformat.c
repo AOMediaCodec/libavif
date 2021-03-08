@@ -180,7 +180,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     uint32_t * yuvRowBytes = image->yuvRowBytes;
     for (uint32_t outerJ = 0; outerJ < image->height; outerJ += 2) {
         for (uint32_t outerI = 0; outerI < image->width; outerI += 2) {
-            int blockW = 2, blockH = 2;
+            uint32_t blockW = 2, blockH = 2;
             if ((outerI + 1) >= image->width) {
                 blockW = 1;
             }
@@ -189,10 +189,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
             }
 
             // Convert an entire 2x2 block to YUV, and populate any fully sampled channels as we go
-            for (int bJ = 0; bJ < blockH; ++bJ) {
-                for (int bI = 0; bI < blockW; ++bI) {
-                    int i = outerI + bI;
-                    int j = outerJ + bJ;
+            for (uint32_t bJ = 0; bJ < blockH; ++bJ) {
+                for (uint32_t bI = 0; bI < blockW; ++bI) {
+                    uint32_t i = outerI + bI;
+                    uint32_t j = outerJ + bJ;
 
                     // Unpack RGB into normalized float
                     if (state.rgbChannelBytes > 1) {
@@ -297,8 +297,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
                 float sumU = 0.0f;
                 float sumV = 0.0f;
-                for (int bJ = 0; bJ < blockH; ++bJ) {
-                    for (int bI = 0; bI < blockW; ++bI) {
+                for (uint32_t bJ = 0; bJ < blockH; ++bJ) {
+                    for (uint32_t bI = 0; bI < blockW; ++bI) {
                         sumU += yuvBlock[bI][bJ].u;
                         sumV += yuvBlock[bI][bJ].v;
                     }
@@ -307,10 +307,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                 float avgU = sumU / totalSamples;
                 float avgV = sumV / totalSamples;
 
-                const int chromaShiftX = 1;
-                const int chromaShiftY = 1;
-                int uvI = outerI >> chromaShiftX;
-                int uvJ = outerJ >> chromaShiftY;
+                const uint32_t chromaShiftX = 1;
+                const uint32_t chromaShiftY = 1;
+                uint32_t uvI = outerI >> chromaShiftX;
+                uint32_t uvJ = outerJ >> chromaShiftY;
                 if (state.yuvChannelBytes > 1) {
                     uint16_t * pU = (uint16_t *)&yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * yuvRowBytes[AVIF_CHAN_U])];
                     *pU = (uint16_t)avifReformatStateUVToUNorm(&state, avgU);
@@ -323,10 +323,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
             } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
                 // YUV422, average 2 samples (1x2), twice
 
-                for (int bJ = 0; bJ < blockH; ++bJ) {
+                for (uint32_t bJ = 0; bJ < blockH; ++bJ) {
                     float sumU = 0.0f;
                     float sumV = 0.0f;
-                    for (int bI = 0; bI < blockW; ++bI) {
+                    for (uint32_t bI = 0; bI < blockW; ++bI) {
                         sumU += yuvBlock[bI][bJ].u;
                         sumV += yuvBlock[bI][bJ].v;
                     }
@@ -334,9 +334,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                     float avgU = sumU / totalSamples;
                     float avgV = sumV / totalSamples;
 
-                    const int chromaShiftX = 1;
-                    int uvI = outerI >> chromaShiftX;
-                    int uvJ = outerJ + bJ;
+                    const uint32_t chromaShiftX = 1;
+                    uint32_t uvI = outerI >> chromaShiftX;
+                    uint32_t uvJ = outerJ + bJ;
                     if (state.yuvChannelBytes > 1) {
                         uint16_t * pU = (uint16_t *)&yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * yuvRowBytes[AVIF_CHAN_U])];
                         *pU = (uint16_t)avifReformatStateUVToUNorm(&state, avgU);
@@ -488,7 +488,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     uint16_t unormU[2][2], unormV[2][2];
 
                     // How many bytes to add to a uint8_t pointer index to get to the adjacent (lesser) sample in a given direction
-                    int uAdjCol, vAdjCol, uAdjRow, vAdjRow;
+                    uint32_t uAdjCol, vAdjCol, uAdjRow, vAdjRow;
                     if ((i == 0) || ((i == (image->width - 1)) && ((i % 2) != 0))) {
                         uAdjCol = 0;
                         vAdjCol = 0;
@@ -538,8 +538,8 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                         unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
-                        for (int bJ = 0; bJ < 2; ++bJ) {
-                            for (int bI = 0; bI < 2; ++bI) {
+                        for (uint32_t bJ = 0; bJ < 2; ++bJ) {
+                            for (uint32_t bI = 0; bI < 2; ++bI) {
                                 unormU[bI][bJ] = AVIF_MIN(unormU[bI][bJ], yuvMaxChannel);
                                 unormV[bI][bJ] = AVIF_MIN(unormV[bI][bJ], yuvMaxChannel);
                             }

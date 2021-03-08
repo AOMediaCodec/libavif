@@ -76,9 +76,9 @@ typedef int avifBool;
 #define AVIF_SPEED_SLOWEST 0
 #define AVIF_SPEED_FASTEST 10
 
-// A maximum image size to avoid out-of-memory errors or integer overflow in
+// A reasonable default for maximum image size to avoid out-of-memory errors or integer overflow in
 // (32-bit) int or unsigned int arithmetic operations.
-#define AVIF_MAX_IMAGE_SIZE (16384 * 16384)
+#define AVIF_DEFAULT_MAX_IMAGE_SIZE (16384 * 16384)
 
 enum avifPlanesFlags
 {
@@ -144,7 +144,8 @@ typedef enum avifResult
     AVIF_RESULT_IO_ERROR,
     AVIF_RESULT_WAITING_ON_IO, // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
-    AVIF_RESULT_NOT_IMPLEMENTED   // a requested code path is not (yet) implemented
+    AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
+    AVIF_RESULT_IMAGE_TOO_LARGE   // The image exceeds the configured imageSizeLimit
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -705,9 +706,10 @@ typedef struct avifDecoder
     avifBool ignoreExif;
     avifBool ignoreXMP;
 
-    // This represents the maximum size of a image (in pixel count) that the underlying AV1 decoder
-    // should attempt to decode. It defaults to AVIF_MAX_IMAGE_SIZE, and can be set to 0 to disable
-    // the limit. Currently supported codecs: dav1d.
+    // This represents the maximum size of a image (in pixel count) that libavif and the underlying
+    // AV1 decoder should attempt to decode. It defaults to AVIF_DEFAULT_MAX_IMAGE_SIZE, and can be
+    // set to 0 to disable the limit.
+    // Note: Only some underlying AV1 codecs support a configurable size limit (such as dav1d).
     uint32_t imageSizeLimit;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
