@@ -1471,7 +1471,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
             // Copy property to item
             avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap", "irot", "imir", "pixi" };
+            static const char * const supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap", "irot", "imir", "pixi" };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
             avifBool supportedType = AVIF_FALSE;
             for (size_t i = 0; i < supportedTypesCount; ++i) {
@@ -1485,8 +1485,19 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                     // Verify that it is legal for this property to not be flagged as essential. Any
                     // types in this list are *required* in the spec to be flagged as essential when
                     // associated with an item.
-                    static const char * essentialTypes[] = {
-                        "av1C" // AVIF: Section 2.2.1: "This property shall be marked as essential."
+                    static const char * const essentialTypes[] = {
+                        // AVIF: Section 2.2.1: "This property shall be marked as essential."
+                        "av1C",
+
+                        // HEIF: Section 6.5.11.1: "essential shall be equal to 1 for an 'lsel' item property."
+                        "lsel",
+
+                        // MIAF: Section 7.3.9: "All transformative properties associated with coded
+                        // and derived images required or conditionally required by this document
+                        // shall be marked as essential"
+                        "clap",
+                        "irot",
+                        "imir"
                     };
                     size_t essentialTypesCount = sizeof(essentialTypes) / sizeof(essentialTypes[0]);
                     for (size_t i = 0; i < essentialTypesCount; ++i) {
