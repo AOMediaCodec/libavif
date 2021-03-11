@@ -1481,6 +1481,23 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                 }
             }
             if (supportedType) {
+                if (!essential) {
+                    // Verify that it is legal for this property to not be flagged as essential. Any
+                    // types in this list are *required* in the spec to be flagged as essential when
+                    // associated with an item.
+                    static const char * essentialTypes[] = {
+                        "av1C" // AVIF: Section 2.2.1: "This property shall be marked as essential."
+                    };
+                    size_t essentialTypesCount = sizeof(essentialTypes) / sizeof(essentialTypes[0]);
+                    for (size_t i = 0; i < essentialTypesCount; ++i) {
+                        if (!memcmp(srcProp->type, essentialTypes[i], 4)) {
+                            // An essential-required property is not flagged as essential, bail out
+                            return AVIF_FALSE;
+                        }
+                    }
+                }
+
+                // Supported and valid; associate it with this item.
                 avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&item->properties);
                 memcpy(dstProp, srcProp, sizeof(avifProperty));
             } else {
