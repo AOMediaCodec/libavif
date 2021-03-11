@@ -458,10 +458,16 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         // Speed  9: RealTime    CpuUsed 7
         // Speed 10: RealTime    CpuUsed 8
         unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
+        // Use the new AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still
+        // image encoding if it is available.
+#if defined(AOM_USAGE_ALL_INTRA)
+        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+            aomUsage = AOM_USAGE_ALL_INTRA;
+        }
+#endif
         int aomCpuUsed = -1;
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             if (encoder->speed < 8) {
-                aomUsage = AOM_USAGE_GOOD_QUALITY;
                 aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 6);
             } else {
                 aomUsage = AOM_USAGE_REALTIME;
@@ -547,10 +553,18 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
             cfg.g_limit = 1;
-            // Set g_lag_in_frames to 1 to reduce the number of frame buffers
+
+            // Use the default settings of the new AOM_USAGE_ALL_INTRA (added in
+            // https://crbug.com/aomedia/2959). Note that AOM_USAGE_ALL_INTRA
+            // also sets cfg.rc_end_usage to AOM_Q by default, which we do not
+            // set here.
+            //
+            // Set g_lag_in_frames to 0 to reduce the number of frame buffers
             // (from 20 to 2) in libaom's lookahead structure. This reduces
             // memory consumption when encoding a single image.
-            cfg.g_lag_in_frames = 1;
+            cfg.g_lag_in_frames = 0;
+            // Disable automatic placement of key frames by the encoder.
+            cfg.kf_mode = AOM_KF_DISABLED;
             // Tell libaom that all frames will be key frames.
             cfg.kf_max_dist = 0;
         }
