@@ -1848,11 +1848,23 @@ static avifBool avifParseSampleToChunkBox(avifSampleTable * sampleTable, const u
 
     uint32_t entryCount;
     CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+    uint32_t prevFirstChunk;
     for (uint32_t i = 0; i < entryCount; ++i) {
         avifSampleTableSampleToChunk * sampleToChunk = (avifSampleTableSampleToChunk *)avifArrayPushPtr(&sampleTable->sampleToChunks);
         CHECK(avifROStreamReadU32(&s, &sampleToChunk->firstChunk));             // unsigned int(32) first_chunk;
         CHECK(avifROStreamReadU32(&s, &sampleToChunk->samplesPerChunk));        // unsigned int(32) samples_per_chunk;
         CHECK(avifROStreamReadU32(&s, &sampleToChunk->sampleDescriptionIndex)); // unsigned int(32) sample_description_index;
+        // The first_chunk fields should start with 1 and be strictly increasing.
+        if (i == 0) {
+            if (sampleToChunk->firstChunk != 1) {
+                return AVIF_FALSE;
+            }
+        } else {
+            if (sampleToChunk->firstChunk <= prevFirstChunk) {
+                return AVIF_FALSE;
+            }
+        }
+        prevFirstChunk = sampleToChunk->firstChunk;
     }
     return AVIF_TRUE;
 }
