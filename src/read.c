@@ -1486,11 +1486,9 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                     // types in this list are *required* in the spec to be flagged as essential when
                     // associated with an item.
                     static const char * const essentialTypes[] = {
+
                         // AVIF: Section 2.2.1: "This property shall be marked as essential."
                         "av1C",
-
-                        // HEIF: Section 6.5.11.1: "essential shall be equal to 1 for an 'lsel' item property."
-                        "lsel",
 
                         // MIAF: Section 7.3.9: "All transformative properties associated with coded
                         // and derived images required or conditionally required by this document
@@ -1498,6 +1496,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                         "clap",
                         "irot",
                         "imir"
+
                     };
                     size_t essentialTypesCount = sizeof(essentialTypes) / sizeof(essentialTypes[0]);
                     for (size_t i = 0; i < essentialTypesCount; ++i) {
