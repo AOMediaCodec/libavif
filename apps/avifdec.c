@@ -36,6 +36,8 @@ static void syntax(void)
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
+    printf("    --size-limit C    : Specifies the image size limit (in total pixels) that should be tolerated.\n");
+    printf("                        Default: %u, set to 0 to disable.\n", AVIF_DEFAULT_MAX_IMAGE_SIZE);
     printf("\n");
     avifPrintVersions();
 }
@@ -91,6 +93,7 @@ int main(int argc, char * argv[])
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     avifBool ignoreICC = AVIF_FALSE;
+    uint32_t imageSizeLimit = AVIF_DEFAULT_MAX_IMAGE_SIZE;
 
     if (argc < 2) {
         syntax();
@@ -161,6 +164,9 @@ int main(int argc, char * argv[])
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
+        } else if (!strcmp(arg, "--size-limit")) {
+            NEXTARG();
+            imageSizeLimit = strtoul(arg, NULL, 10);
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -205,6 +211,7 @@ int main(int argc, char * argv[])
     avifDecoder * decoder = avifDecoderCreate();
     decoder->maxThreads = jobs;
     decoder->codecChoice = codecChoice;
+    decoder->imageSizeLimit = imageSizeLimit;
     avifResult decodeResult = avifDecoderReadFile(decoder, avif, inputFilename);
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);

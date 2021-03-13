@@ -93,6 +93,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_WAITING_ON_IO:                 return "Waiting on IO";
         case AVIF_RESULT_INVALID_ARGUMENT:              return "Invalid argument";
         case AVIF_RESULT_NOT_IMPLEMENTED:               return "Not implemented";
+        case AVIF_RESULT_IMAGE_TOO_LARGE:               return "Image too large";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;

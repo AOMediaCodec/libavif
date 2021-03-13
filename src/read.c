@@ -1182,14 +1182,14 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
-static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw, size_t rawLen)
+static avifResult avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit)
 {
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version, flags;
     CHECK(avifROStreamRead(&s, &version, 1)); // unsigned int(8) version = 0;
     if (version != 0) {
-        return AVIF_FALSE;
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
     uint8_t rowsMinusOne, columnsMinusOne;
     CHECK(avifROStreamRead(&s, &flags, 1));           // unsigned int(8) flags;
@@ -1208,15 +1208,18 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
     } else {
         if (fieldLength != 32) {
             // This should be impossible
-            return AVIF_FALSE;
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
         CHECK(avifROStreamReadU32(&s, &grid->outputWidth));  // unsigned int(FieldLength) output_width;
         CHECK(avifROStreamReadU32(&s, &grid->outputHeight)); // unsigned int(FieldLength) output_height;
     }
-    if ((grid->outputWidth == 0) || (grid->outputHeight == 0) || (grid->outputWidth > (AVIF_MAX_IMAGE_SIZE / grid->outputHeight))) {
-        return AVIF_FALSE;
+    if ((grid->outputWidth == 0) || (grid->outputHeight == 0) || (avifROStreamRemainingBytes(&s) != 0)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
-    return avifROStreamRemainingBytes(&s) == 0;
+    if (imageSizeLimit && (grid->outputWidth > (imageSizeLimit / grid->outputHeight))) {
+        return AVIF_RESULT_IMAGE_TOO_LARGE;
+    }
+    return AVIF_RESULT_OK;
 }
 
 static avifBool avifParseImageSpatialExtentsProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen)
@@ -2245,6 +2248,7 @@ avifDecoder * avifDecoderCreate(void)
     avifDecoder * decoder = (avifDecoder *)avifAlloc(sizeof(avifDecoder));
     memset(decoder, 0, sizeof(avifDecoder));
     decoder->maxThreads = 1;
+    decoder->imageSizeLimit = AVIF_DEFAULT_MAX_IMAGE_SIZE;
     return decoder;
 }
 
@@ -2644,8 +2648,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 if (readResult != AVIF_RESULT_OK) {
                     return readResult;
                 }
-                if (!avifParseImageGridBox(&data->colorGrid, readData.data, readData.size)) {
-                    return AVIF_RESULT_INVALID_IMAGE_GRID;
+                avifResult parseResult = avifParseImageGridBox(&data->colorGrid, readData.data, readData.size, decoder->imageSizeLimit);
+                if (parseResult != AVIF_RESULT_OK) {
+                    return parseResult;
                 }
             }
 
@@ -2683,8 +2688,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     if (readResult != AVIF_RESULT_OK) {
                         return readResult;
                     }
-                    if (!avifParseImageGridBox(&data->alphaGrid, readData.data, readData.size)) {
-                        return AVIF_RESULT_INVALID_IMAGE_GRID;
+                    avifResult parseResult =
+                        avifParseImageGridBox(&data->alphaGrid, readData.data, readData.size, decoder->imageSizeLimit);
+                    if (parseResult != AVIF_RESULT_OK) {
+                        return parseResult;
                     }
                 }
 
@@ -2759,6 +2766,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         if (ispeProp) {
             decoder->image->width = ispeProp->u.ispe.width;
             decoder->image->height = ispeProp->u.ispe.height;
+            if (!decoder->image->width || !decoder->image->height) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            if (decoder->imageSizeLimit && (decoder->image->width > (decoder->imageSizeLimit / decoder->image->height))) {
+                return AVIF_RESULT_IMAGE_TOO_LARGE;
+            }
         } else {
             decoder->image->width = 0;
             decoder->image->height = 0;
