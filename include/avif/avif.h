@@ -66,6 +66,9 @@ typedef int avifBool;
 #define AVIF_TRUE 1
 #define AVIF_FALSE 0
 
+// a 12 hour AVIF image sequence, running at 60 fps (a basic sanity check as this is quite ridiculous)
+#define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
+
 #define AVIF_QUANTIZER_LOSSLESS 0
 #define AVIF_QUANTIZER_BEST_QUALITY 0
 #define AVIF_QUANTIZER_WORST_QUALITY 63
@@ -700,6 +703,12 @@ typedef struct avifDecoder
     // If you don't actually leverage this data, it is best to ignore it here.
     avifBool ignoreExif;
     avifBool ignoreXMP;
+
+    // This provides an upper bound on how many images the decoder is willing to attempt to decode,
+    // to provide a bit of protection from malicious or malformed AVIFs citing millions upon
+    // millions of frames, only to be invalid later. The default is AVIF_DEFAULT_IMAGE_COUNT_LIMIT
+    // (see comment above), and setting this to 0 disables the limit.
+    uint32_t imageCountLimit;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;

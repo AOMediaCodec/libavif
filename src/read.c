@@ -329,8 +329,38 @@ void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
     avifFree(decodeInput);
 }
 
-static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput, avifSampleTable * sampleTable, uint64_t sizeHint)
+static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput,
+                                               avifSampleTable * sampleTable,
+                                               const uint64_t imageCountLimit,
+                                               const uint64_t sizeHint)
 {
+    if (imageCountLimit) {
+        // Verify that the we're not about to exceed the frame count limit.
+
+        uint64_t imageCount = 0;
+        for (uint32_t chunkIndex = 0; chunkIndex < sampleTable->chunks.count; ++chunkIndex) {
+            // First, figure out how many samples are in this chunk
+            uint32_t sampleCount = 0;
+            for (int sampleToChunkIndex = sampleTable->sampleToChunks.count - 1; sampleToChunkIndex >= 0; --sampleToChunkIndex) {
+                avifSampleTableSampleToChunk * sampleToChunk = &sampleTable->sampleToChunks.sampleToChunk[sampleToChunkIndex];
+                if (sampleToChunk->firstChunk <= (chunkIndex + 1)) {
+                    sampleCount = sampleToChunk->samplesPerChunk;
+                    break;
+                }
+            }
+            if (sampleCount == 0) {
+                // chunks with 0 samples are invalid
+                return AVIF_FALSE;
+            }
+
+            imageCount += sampleCount;
+            if (imageCount > imageCountLimit) {
+                // This file exceeds the imageCountLimit, bail out
+                return AVIF_FALSE;
+            }
+        }
+    }
+
     uint32_t sampleSizeIndex = 0;
     for (uint32_t chunkIndex = 0; chunkIndex < sampleTable->chunks.count; ++chunkIndex) {
         avifSampleTableChunk * chunk = &sampleTable->chunks.chunk[chunkIndex];
@@ -2245,6 +2275,7 @@ avifDecoder * avifDecoderCreate(void)
     avifDecoder * decoder = (avifDecoder *)avifAlloc(sizeof(avifDecoder));
     memset(decoder, 0, sizeof(avifDecoder));
     decoder->maxThreads = 1;
+    decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
     return decoder;
 }
 
@@ -2575,14 +2606,14 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         avifTile * colorTile = avifDecoderDataCreateTile(data);
-        if (!avifCodecDecodeInputGetSamples(colorTile->input, colorTrack->sampleTable, decoder->io->sizeHint)) {
+        if (!avifCodecDecodeInputGetSamples(colorTile->input, colorTrack->sampleTable, decoder->imageCountLimit, decoder->io->sizeHint)) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
         data->colorTileCount = 1;
 
         if (alphaTrack) {
             avifTile * alphaTile = avifDecoderDataCreateTile(data);
-            if (!avifCodecDecodeInputGetSamples(alphaTile->input, alphaTrack->sampleTable, decoder->io->sizeHint)) {
+            if (!avifCodecDecodeInputGetSamples(alphaTile->input, alphaTrack->sampleTable, decoder->imageCountLimit, decoder->io->sizeHint)) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             alphaTile->input->alpha = AVIF_TRUE;
