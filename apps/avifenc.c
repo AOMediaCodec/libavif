@@ -115,6 +115,8 @@ static void syntax(void)
         printf("    cq-level=Q                        : Constant/Constrained Quality level (0-63, end-usage must be set to cq or q)\n");
         printf("    enable-chroma-deltaq=B            : Enable delta quantization in chroma planes (0: disable (default), 1: enable)\n");
         printf("    end-usage=MODE                    : Rate control mode (vbr, cbr, cq, or q)\n");
+        printf("                                        WARNING: Because of https://crbug.com/aomedia/2725, do not use end-usage=q\n");
+        printf("                                        with libaom 2.0.2 or older.\n");
         printf("    sharpness=S                       : Loop filter sharpness (0-7, default: 0)\n");
         printf("    tune=METRIC                       : Tune the encoder for distortion metric (psnr or ssim, default: psnr)\n");
         printf("    film-grain-test=TEST              : Film grain test vectors (0: none (default), 1: test-1  2: test-2, ... 16: test-16)\n");
