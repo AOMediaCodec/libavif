@@ -803,6 +803,8 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifR
             memcpy(&item->mergedExtents, &offsetBuffer, sizeof(avifRWData));
             item->mergedExtents.size = bytesToRead;
         } else {
+            assert(item->ownsMergedExtents);
+            assert(front);
             memcpy(front, offsetBuffer.data, bytesToRead);
             front += bytesToRead;
         }
@@ -996,8 +998,8 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             }
 
             // Y and A channels
-            size_t yaColOffset = colIndex * firstTile->image->width;
-            size_t yaRowOffset = rowIndex * firstTile->image->height;
+            size_t yaColOffset = (size_t)colIndex * firstTile->image->width;
+            size_t yaRowOffset = (size_t)rowIndex * firstTile->image->height;
             size_t yaRowBytes = widthToCopy * pixelBytes;
 
             if (alpha) {

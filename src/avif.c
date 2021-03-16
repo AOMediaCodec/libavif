@@ -373,7 +373,7 @@ void avifRGBImageAllocatePixels(avifRGBImage * rgb)
     }
 
     rgb->rowBytes = rgb->width * avifRGBImagePixelSize(rgb);
-    rgb->pixels = avifAlloc(rgb->rowBytes * rgb->height);
+    rgb->pixels = avifAlloc((size_t)rgb->rowBytes * rgb->height);
 }
 
 void avifRGBImageFreePixels(avifRGBImage * rgb)
@@ -435,7 +435,7 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
                 avifFree(entry->value);
                 --csOptions->count;
                 if (csOptions->count > 0) {
-                    memmove(&csOptions->entries[i], &csOptions->entries[i + 1], (csOptions->count - i) * csOptions->elementSize);
+                    memmove(&csOptions->entries[i], &csOptions->entries[i + 1], (csOptions->count - i) * (size_t)csOptions->elementSize);
                 }
             }
             return;

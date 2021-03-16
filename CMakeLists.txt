@@ -159,6 +159,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
         /wd4820 # Disable: bytes padding added after data member
         /wd4996 # Disable: potentially unsafe stdlib methods
         /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+
         # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
         # libavif uses ANSI API to print to console, which is not portable between systems using different
         # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
@@ -166,6 +167,11 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
         # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
         # Warnings can be suppressed but there will still be random characters printed to the console.
         /source-charset:utf-8 /execution-charset:us-ascii
+
+        # The default of 16384 is a bit restrictive. If this increased size ever fires due to
+        # avifReformatState growing too large, consider allocating avifReformatState on the heap
+        # where it is used.
+        /analyze:stacksize 65536
     )
 else()
     MESSAGE(FATAL_ERROR "libavif: Unknown compiler, bailing out")
