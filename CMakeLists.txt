@@ -167,11 +167,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
         # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
         # Warnings can be suppressed but there will still be random characters printed to the console.
         /source-charset:utf-8 /execution-charset:us-ascii
-
-        # The default of 16384 is a bit restrictive. If this increased size ever fires due to
-        # avifReformatState growing too large, consider allocating avifReformatState on the heap
-        # where it is used.
-        /analyze:stacksize 65536
     )
 else()
     MESSAGE(FATAL_ERROR "libavif: Unknown compiler, bailing out")
