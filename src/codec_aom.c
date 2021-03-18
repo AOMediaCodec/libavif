@@ -52,6 +52,8 @@ struct avifCodecInternal
 #endif
 };
 
+static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
+
 static void aomCodecDestroyInternal(avifCodec * codec)
 {
 #if defined(AVIF_CODEC_AOM_DECODE)
@@ -723,11 +725,24 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     }
 
     aom_img_free(aomImage);
+
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+        // Flush and clean up encoder resources early to save on overhead when encoding alpha or grid images
+
+        if (!aomCodecEncodeFinish(codec, output)) {
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
+        aom_codec_destroy(&codec->internal->encoder);
+        codec->internal->encoderInitialized = AVIF_FALSE;
+    }
     return AVIF_RESULT_OK;
 }
 
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output)
 {
+    if (!codec->internal->encoderInitialized) {
+        return AVIF_TRUE;
+    }
     for (;;) {
         // flush encoder
         aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0);
