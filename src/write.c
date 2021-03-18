@@ -690,11 +690,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeFinish(item->codec, item->encodeOutput)) {
-                return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
-            }
-
-            if (item->encodeOutput->samples.count != encoder->data->frames.count) {
+            if (!item->codec->encodeFinish(item->codec, item->encodeOutput) ||
+                (item->encodeOutput->samples.count != encoder->data->frames.count)) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
         }
