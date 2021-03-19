@@ -422,6 +422,30 @@ AVIF_API void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ig
 AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t planes);
 
 // ---------------------------------------------------------------------------
+// Understanding maxThreads
+//
+// libavif's structures and API use the setting 'maxThreads' in a few places. The intent of this
+// setting is to limit concurrent thread activity/usage, not necessarily to put a hard ceiling on
+// how many sleeping threads happen to exist behind the scenes. The goal of this setting is to
+// ensure that at any given point during libavif's encoding or decoding, no more than *maxThreads*
+// threads are simultaneously **active and taking CPU time**.
+//
+// As an important example, when encoding an image sequence that has an alpha channel, two
+// long-lived underlying AV1 encoders must simultaneously exist (one for color, one for alpha). For
+// each additional frame fed into libavif, its YUV planes are fed into one instance of the AV1
+// encoder, and its alpha plane is fed into another. These operations happen serially, so only one
+// of these AV1 encoders is ever active at a time. However, the AV1 encoders might pre-create a
+// pool of worker threads upon initialization, so during this process, twice the amount of worker
+// threads actually simultaneously exist on the machine, but half of them are guaranteed to be
+// sleeping.
+//
+// This design ensures that AV1 implementations are given as many threads as possible to ensure a
+// speedy encode or decode, despite the complexities of occasionally needing two AV1 codec instances
+// (due to alpha payloads being separate from color payloads). If your system has a hard ceiling on
+// the number of threads that can ever be in flight at a given time, please account for this
+// accordingly.
+
+// ---------------------------------------------------------------------------
 // Optional YUV<->RGB support
 
 // To convert to/from RGB, create an avifRGBImage on the stack, call avifRGBImageSetDefaults() on
@@ -661,7 +685,7 @@ typedef struct avifDecoder
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
-    // Defaults to 1.
+    // Defaults to 1. -- NOTE: Please see the "Understanding maxThreads" comment block above
     int maxThreads;
 
     // avifs can have multiple sets of images in them. This specifies which to decode.
@@ -809,6 +833,7 @@ struct avifCodecSpecificOptions;
 // Notes:
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
+//   * NOTE: Please see the "Understanding maxThreads" comment block above
 // * Quality range: [AVIF_QUANTIZER_BEST_QUALITY - AVIF_QUANTIZER_WORST_QUALITY]
 // * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
 //   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
