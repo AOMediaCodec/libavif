@@ -66,8 +66,9 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     if (codec->internal->encoderInitialized) {
         aom_codec_destroy(&codec->internal->encoder);
     }
-    avifFree(codec->internal);
 #endif
+
+    avifFree(codec->internal);
 }
 
 #if defined(AVIF_CODEC_AOM_DECODE)
