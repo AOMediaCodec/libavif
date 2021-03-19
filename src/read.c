@@ -329,35 +329,42 @@ void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
     avifFree(decodeInput);
 }
 
+// Returns how many samples are in the chunk.
+static uint32_t avifGetSampleCountOfChunk(const avifSampleTableSampleToChunkArray * sampleToChunks, uint32_t chunkIndex)
+{
+    uint32_t sampleCount = 0;
+    for (int sampleToChunkIndex = sampleToChunks->count - 1; sampleToChunkIndex >= 0; --sampleToChunkIndex) {
+        const avifSampleTableSampleToChunk * sampleToChunk = &sampleToChunks->sampleToChunk[sampleToChunkIndex];
+        if (sampleToChunk->firstChunk <= (chunkIndex + 1)) {
+            sampleCount = sampleToChunk->samplesPerChunk;
+            break;
+        }
+    }
+    return sampleCount;
+}
+
 static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInput,
                                                avifSampleTable * sampleTable,
-                                               const uint64_t imageCountLimit,
+                                               const uint32_t imageCountLimit,
                                                const uint64_t sizeHint)
 {
     if (imageCountLimit) {
         // Verify that the we're not about to exceed the frame count limit.
 
-        uint64_t imageCount = 0;
+        uint32_t imageCountLeft = imageCountLimit;
         for (uint32_t chunkIndex = 0; chunkIndex < sampleTable->chunks.count; ++chunkIndex) {
             // First, figure out how many samples are in this chunk
-            uint32_t sampleCount = 0;
-            for (int sampleToChunkIndex = sampleTable->sampleToChunks.count - 1; sampleToChunkIndex >= 0; --sampleToChunkIndex) {
-                avifSampleTableSampleToChunk * sampleToChunk = &sampleTable->sampleToChunks.sampleToChunk[sampleToChunkIndex];
-                if (sampleToChunk->firstChunk <= (chunkIndex + 1)) {
-                    sampleCount = sampleToChunk->samplesPerChunk;
-                    break;
-                }
-            }
+            uint32_t sampleCount = avifGetSampleCountOfChunk(&sampleTable->sampleToChunks, chunkIndex);
             if (sampleCount == 0) {
                 // chunks with 0 samples are invalid
                 return AVIF_FALSE;
             }
 
-            imageCount += sampleCount;
-            if (imageCount > imageCountLimit) {
+            if (sampleCount > imageCountLeft) {
                 // This file exceeds the imageCountLimit, bail out
                 return AVIF_FALSE;
             }
+            imageCountLeft -= sampleCount;
         }
     }
 
@@ -366,14 +373,7 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
         avifSampleTableChunk * chunk = &sampleTable->chunks.chunk[chunkIndex];
 
         // First, figure out how many samples are in this chunk
-        uint32_t sampleCount = 0;
-        for (int sampleToChunkIndex = sampleTable->sampleToChunks.count - 1; sampleToChunkIndex >= 0; --sampleToChunkIndex) {
-            avifSampleTableSampleToChunk * sampleToChunk = &sampleTable->sampleToChunks.sampleToChunk[sampleToChunkIndex];
-            if (sampleToChunk->firstChunk <= (chunkIndex + 1)) {
-                sampleCount = sampleToChunk->samplesPerChunk;
-                break;
-            }
-        }
+        uint32_t sampleCount = avifGetSampleCountOfChunk(&sampleTable->sampleToChunks, chunkIndex);
         if (sampleCount == 0) {
             // chunks with 0 samples are invalid
             return AVIF_FALSE;
