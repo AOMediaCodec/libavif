@@ -30,6 +30,7 @@
 #pragma clang diagnostic ignored "-Wassign-enum"
 #endif
 
+#include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,6 +50,12 @@ struct avifCodecInternal
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
     avifBool monochromeEnabled;
+    // Whether cfg.rc_end_usage was set with an
+    // avifEncoderSetCodecSpecificOption(encoder, "end-usage", value) call.
+    avifBool endUsageSet;
+    // Whether cq-level was set with an
+    // avifEncoderSetCodecSpecificOption(encoder, "cq-level", value) call.
+    avifBool cqLevelSet;
 #endif
 };
 
@@ -333,6 +340,7 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, 
                 return AVIF_FALSE;
             }
             cfg->rc_end_usage = val;
+            codec->internal->endUsageSet = AVIF_TRUE;
         }
     }
     return AVIF_TRUE;
@@ -429,6 +437,9 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
                 }
                 if (!success) {
                     return AVIF_FALSE;
+                }
+                if (aomOptionDefs[j].controlId == AOME_SET_CQ_LEVEL) {
+                    codec->internal->cqLevelSet = AVIF_TRUE;
                 }
                 break;
             }
@@ -632,6 +643,18 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
+#if defined(AOM_USAGE_ALL_INTRA)
+        if (aomUsage == AOM_USAGE_ALL_INTRA && !codec->internal->endUsageSet && !codec->internal->cqLevelSet) {
+            // The default rc_end_usage in all intra mode is AOM_Q, which requires cq-level to
+            // function. A libavif user may not know this internal detail and therefore may only
+            // set the min and max quantizers in the avifEncoder struct. If this is the case, set
+            // cq-level to a reasonable value for the user, otherwise the default cq-level
+            // (currently 10) will be unknowingly used.
+            assert(cfg.rc_end_usage == AOM_Q);
+            unsigned int cqLevel = (cfg.rc_min_quantizer + cfg.rc_max_quantizer) / 2;
+            aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, cqLevel);
+        }
+#endif
     }
 
     int yShift = codec->internal->formatInfo.chromaShiftY;
