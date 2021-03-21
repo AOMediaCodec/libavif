@@ -13,6 +13,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(AVIF_CODEC_AOM_ENCODE) || defined(AVIF_CODEC_AOM_DECODE)
+#include "config/aom_config.h"
+#endif 
+
 #if defined(_WIN32)
 // for setmode()
 #include <fcntl.h>
@@ -109,7 +113,11 @@ static void syntax(void)
         printf("    enable-chroma-deltaq=B            : Enable delta quantization in chroma planes (0: disable (default), 1: enable)\n");
         printf("    end-usage=MODE                    : Rate control mode (vbr, cbr, cq, or q)\n");
         printf("    sharpness=S                       : Loop filter sharpness (0-7, default: 0)\n");
+#if CONFIG_TUNE_BUTTERAUGLI
         printf("    tune=METRIC                       : Tune the encoder for distortion metric (butteraugli, psnr or ssim, default: psnr)\n");
+#else
+        printf("    tune=METRIC                       : Tune the encoder for distortion metric (psnr or ssim, default: psnr)\n");
+#endif
         printf("    film-grain-test=TEST              : Film grain test vectors (0: none (default), 1: test-1  2: test-2, ... 16: test-16)\n");
         printf("    film-grain-table=FILENAME         : Path to file containing film grain parameters\n");
         printf("\n");
