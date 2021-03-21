@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
+#if defined(AVIF_CODEC_AOM_ENCODE) || defined(AVIF_CODEC_AOM_DECODE)
+#include "config/aom_config.h"
+#endif
 
-#if !defined(AVIF_LIBYUV_ENABLED)
+#if !defined(AVIF_LIBYUV_ENABLED) || !CONFIG_TUNE_BUTTERAUGLI
 
 // No libyuv!
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
