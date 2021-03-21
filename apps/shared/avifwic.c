@@ -350,12 +350,13 @@ cleanup:
     return ret;
 }
 #else
-avifBool avifWICRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth)
+avifBool avifWICRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth, uint32_t * outDepth)
 {
     (void)inputFilename;
     (void)avif;
     (void)requestedFormat;
     (void)requestedDepth;
+    (void)outDepth;
     return AVIF_FALSE;
 }
 #endif

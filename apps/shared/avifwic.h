@@ -1,6 +1,5 @@
-//
-// Created by TYTY on 2021-02-22 022.
-//
+// Copyright 2021 Yuan Tong. All rights reserved.
+// SPDX-License-Identifier: BSD-2-Clause
 
 #ifndef LIBAVIF_APPS_SHARED_AVIFWIC_H
 #define LIBAVIF_APPS_SHARED_AVIFWIC_H
