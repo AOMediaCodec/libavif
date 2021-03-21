@@ -14,7 +14,7 @@
 #include <string.h>
 
 #if defined(AVIF_CODEC_AOM_ENCODE) || defined(AVIF_CODEC_AOM_DECODE)
-#include "config/aom_config.h"
+#include "aom_ports/system_state.h"
 #endif 
 
 #if defined(_WIN32)
