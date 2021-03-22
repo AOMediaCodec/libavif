@@ -52,8 +52,6 @@ struct avifCodecInternal
 #endif
 };
 
-static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
-
 static void aomCodecDestroyInternal(avifCodec * codec)
 {
 #if defined(AVIF_CODEC_AOM_DECODE)
@@ -439,6 +437,8 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
     }
     return AVIF_TRUE;
 }
+
+static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
 
 static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
