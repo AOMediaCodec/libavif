@@ -142,7 +142,7 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
         }
     } else {
         if (!image->alphaPremultiplied && rgb->alphaPremultiplied) {
-           state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY;
+            state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY;
         } else if (image->alphaPremultiplied && !rgb->alphaPremultiplied) {
             state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY;
         }
@@ -443,7 +443,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
         const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
         const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
-        const uint8_t * ptrA8 = &aPlane[j * aRowBytes];
+        const uint8_t * ptrA8 = aPlane ? &aPlane[j * aRowBytes] : NULL;
         const uint16_t * ptrY16 = (const uint16_t *)ptrY8;
         const uint16_t * ptrU16 = (const uint16_t *)ptrU8;
         const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
@@ -1078,7 +1078,6 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
     avifBool convertedWithLibYUV = AVIF_FALSE;
     avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
-    avifResult convertResult = AVIF_RESULT_NOT_IMPLEMENTED;
     if (libyuvResult == AVIF_RESULT_OK) {
         convertedWithLibYUV = AVIF_TRUE;
     } else {
@@ -1087,8 +1086,9 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         }
     }
 
-    // Reformat alpha, if user asks for it, or (un)multiply processing need it.
-    if (avifRGBFormatHasAlpha(rgb->format) && (!rgb->ignoreAlpha || state.toRGBAlphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
+    // Reformat alpha, if user asks for it, or (un)multiply processing needs it.
+    avifAlphaMultiplyMode alphaMultiplyMode = state.toRGBAlphaMode;
+    if (avifRGBFormatHasAlpha(rgb->format) && (!rgb->ignoreAlpha || (alphaMultiplyMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP))) {
         avifAlphaParams params;
 
         params.width = rgb->width;
@@ -1116,112 +1116,113 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         }
     }
 
-    // Do this after alpha conversion
-    if (convertedWithLibYUV) {
-        if (state.toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
-            return AVIF_RESULT_OK;
-        } else {
-            // Need to do alpha (un)multiply
-            goto AlphaPremultiply;
+    if (!convertedWithLibYUV) {
+        // libyuv is either unavailable or unable to perform the specific conversion required here.
+        // Look over the available built-in "fast" routines for YUV->RGB conversion and see if one
+        // fits the current combination, or as a last resort, call avifImageYUVAnyToRGBAnySlow(),
+        // which handles every possibly YUV->RGB combination, but very slowly (in comparison).
+
+        avifResult convertResult = AVIF_RESULT_NOT_IMPLEMENTED;
+
+        avifChromaUpsampling chromaUpsampling;
+        switch (rgb->chromaUpsampling) {
+            case AVIF_CHROMA_UPSAMPLING_AUTOMATIC:
+            case AVIF_CHROMA_UPSAMPLING_BEST_QUALITY:
+            case AVIF_CHROMA_UPSAMPLING_BILINEAR:
+            default:
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
+                break;
+
+            case AVIF_CHROMA_UPSAMPLING_FASTEST:
+            case AVIF_CHROMA_UPSAMPLING_NEAREST:
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_NEAREST;
+                break;
+        }
+
+        const avifBool hasColor =
+            (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
+
+        if ((!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) &&
+            (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP || avifRGBFormatHasAlpha(rgb->format))) {
+            // Explanations on the above conditional:
+            // * None of these fast paths currently support bilinear upsampling, so avoid all of them
+            //   unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
+            // * None of these fast paths currently handle alpha (un)multiply, so avoid all of them
+            //   if we can't do alpha (un)multiply as a separated post step (destination format doesn't have alpha).
+
+            if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
+                if ((image->depth == 8) && (rgb->depth == 8) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
+                    (image->yuvRange == AVIF_RANGE_FULL)) {
+                    convertResult = avifImageIdentity8ToRGB8ColorFullRange(image, rgb, &state);
+                }
+
+                // TODO: Add more fast paths for identity
+            } else if (state.mode == AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
+                if (image->depth > 8) {
+                    // yuv:u16
+
+                    if (rgb->depth > 8) {
+                        // yuv:u16, rgb:u16
+
+                        if (hasColor) {
+                            convertResult = avifImageYUV16ToRGB16Color(image, rgb, &state);
+                        } else {
+                            convertResult = avifImageYUV16ToRGB16Mono(image, rgb, &state);
+                        }
+                    } else {
+                        // yuv:u16, rgb:u8
+
+                        if (hasColor) {
+                            convertResult = avifImageYUV16ToRGB8Color(image, rgb, &state);
+                        } else {
+                            convertResult = avifImageYUV16ToRGB8Mono(image, rgb, &state);
+                        }
+                    }
+                } else {
+                    // yuv:u8
+
+                    if (rgb->depth > 8) {
+                        // yuv:u8, rgb:u16
+
+                        if (hasColor) {
+                            convertResult = avifImageYUV8ToRGB16Color(image, rgb, &state);
+                        } else {
+                            convertResult = avifImageYUV8ToRGB16Mono(image, rgb, &state);
+                        }
+                    } else {
+                        // yuv:u8, rgb:u8
+
+                        if (hasColor) {
+                            convertResult = avifImageYUV8ToRGB8Color(image, rgb, &state);
+                        } else {
+                            convertResult = avifImageYUV8ToRGB8Mono(image, rgb, &state);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (convertResult == AVIF_RESULT_NOT_IMPLEMENTED) {
+            // If we get here, there is no fast path for this combination. Time to be slow!
+            convertResult = avifImageYUVAnyToRGBAnySlow(image, rgb, &state, chromaUpsampling);
+
+            // The slow path also handles alpha (un)multiply, so forget the operation here.
+            alphaMultiplyMode = AVIF_ALPHA_MULTIPLY_MODE_NO_OP;
+        }
+
+        if (convertResult != AVIF_RESULT_OK) {
+            return convertResult;
         }
     }
 
-    avifChromaUpsampling chromaUpsampling;
-    switch (rgb->chromaUpsampling) {
-        case AVIF_CHROMA_UPSAMPLING_AUTOMATIC:
-        case AVIF_CHROMA_UPSAMPLING_BEST_QUALITY:
-        case AVIF_CHROMA_UPSAMPLING_BILINEAR:
-        default:
-            chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
-            break;
-
-        case AVIF_CHROMA_UPSAMPLING_FASTEST:
-        case AVIF_CHROMA_UPSAMPLING_NEAREST:
-            chromaUpsampling = AVIF_CHROMA_UPSAMPLING_NEAREST;
-            break;
+    // Process alpha premultiplication, if necessary
+    if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
+        return avifRGBImagePremultiplyAlpha(rgb);
+    } else if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY) {
+        return avifRGBImageUnpremultiplyAlpha(rgb);
     }
 
-    const avifBool hasColor =
-        (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
-
-    if ((!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST)) &&
-        (state.toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP || avifRGBFormatHasAlpha(rgb->format))) {
-        // None of these fast paths currently support bilinear upsampling, so avoid all of them
-        // unless the YUV data isn't subsampled or they explicitly requested AVIF_CHROMA_UPSAMPLING_NEAREST.
-
-        // None of these fast paths currently handle alpha (un)multiply, so avoid all of them
-        // if we can't do alpha (un)multiply as a separated post step (destination format doesn't have alpha).
-
-        if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-            if ((image->depth == 8) && (rgb->depth == 8) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
-                (image->yuvRange == AVIF_RANGE_FULL)) {
-                convertResult = avifImageIdentity8ToRGB8ColorFullRange(image, rgb, &state);
-            }
-
-            // TODO: Add more fast paths for identity
-        } else if (state.mode == AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
-            if (image->depth > 8) {
-                // yuv:u16
-
-                if (rgb->depth > 8) {
-                    // yuv:u16, rgb:u16
-
-                    if (hasColor) {
-                        convertResult = avifImageYUV16ToRGB16Color(image, rgb, &state);
-                    } else {
-                        convertResult = avifImageYUV16ToRGB16Mono(image, rgb, &state);
-                    }
-                } else {
-                    // yuv:u16, rgb:u8
-
-                    if (hasColor) {
-                        convertResult = avifImageYUV16ToRGB8Color(image, rgb, &state);
-                    } else {
-                        convertResult = avifImageYUV16ToRGB8Mono(image, rgb, &state);
-                    }
-                }
-            } else {
-                // yuv:u8
-
-                if (rgb->depth > 8) {
-                    // yuv:u8, rgb:u16
-
-                    if (hasColor) {
-                        convertResult = avifImageYUV8ToRGB16Color(image, rgb, &state);
-                    } else {
-                        convertResult = avifImageYUV8ToRGB16Mono(image, rgb, &state);
-                    }
-                } else {
-                    // yuv:u8, rgb:u8
-
-                    if (hasColor) {
-                        convertResult = avifImageYUV8ToRGB8Color(image, rgb, &state);
-                    } else {
-                        convertResult = avifImageYUV8ToRGB8Mono(image, rgb, &state);
-                    }
-                }
-            }
-        }
-    }
-
-    if (convertResult == AVIF_RESULT_NOT_IMPLEMENTED) {
-        // If we get here, there is no fast path for this combination. Time to be slow!
-        // This slow path also handles alpha (un)multiply so we can return.
-        return avifImageYUVAnyToRGBAnySlow(image, rgb, &state, chromaUpsampling);
-    }
-
-    if (convertResult != AVIF_RESULT_OK) {
-        return convertResult;
-    }
-
-AlphaPremultiply:
-    if (state.toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
-        convertResult = avifRGBImagePremultiplyAlpha(rgb);
-    } else if (state.toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY) {
-        convertResult = avifRGBImageUnpremultiplyAlpha(rgb);
-    }
-
-    return convertResult;
+    return AVIF_RESULT_OK;
 }
 
 // Limited -> Full
