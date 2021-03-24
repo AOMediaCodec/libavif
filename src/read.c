@@ -2956,15 +2956,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
 
         if (!tile->codec->getNextImage(tile->codec, sample, tile->input->alpha, tile->image)) {
-            if (tile->input->alpha) {
-                return AVIF_RESULT_DECODE_ALPHA_FAILED;
-            } else {
-                if (tile->image->width) {
-                    // We've sent at least one image, but we've run out now.
-                    return AVIF_RESULT_NO_IMAGES_REMAINING;
-                }
-                return AVIF_RESULT_DECODE_COLOR_FAILED;
-            }
+            return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
         }
     }
 
