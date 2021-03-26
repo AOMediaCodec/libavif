@@ -1503,7 +1503,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
             // Copy property to item
             avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap", "irot", "imir", "pixi" };
+            static const char * const supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap", "irot", "imir", "pixi" };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
             avifBool supportedType = AVIF_FALSE;
             for (size_t i = 0; i < supportedTypesCount; ++i) {
@@ -1513,6 +1513,33 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                 }
             }
             if (supportedType) {
+                if (!essential) {
+                    // Verify that it is legal for this property to not be flagged as essential. Any
+                    // types in this list are *required* in the spec to be flagged as essential when
+                    // associated with an item.
+                    static const char * const essentialTypes[] = {
+
+                        // AVIF: Section 2.2.1: "This property shall be marked as essential."
+                        "av1C",
+
+                        // MIAF: Section 7.3.9: "All transformative properties associated with coded
+                        // and derived images required or conditionally required by this document
+                        // shall be marked as essential"
+                        "clap",
+                        "irot",
+                        "imir"
+
+                    };
+                    size_t essentialTypesCount = sizeof(essentialTypes) / sizeof(essentialTypes[0]);
+                    for (size_t i = 0; i < essentialTypesCount; ++i) {
+                        if (!memcmp(srcProp->type, essentialTypes[i], 4)) {
+                            // An essential-required property is not flagged as essential, bail out
+                            return AVIF_FALSE;
+                        }
+                    }
+                }
+
+                // Supported and valid; associate it with this item.
                 avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&item->properties);
                 memcpy(dstProp, srcProp, sizeof(avifProperty));
             } else {
