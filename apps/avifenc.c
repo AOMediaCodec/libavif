@@ -111,6 +111,9 @@ static void syntax(void)
         printf("       enable-chroma-deltaq=B, should not be used with the alpha sub-image. In addition, the film grain options\n");
         printf("       are unlikely to make sense for the alpha sub-image.\n");
         printf("\n");
+        printf("    When used with libaom 3.0.0 or later, any key-value pairs supported by the aom_codec_set_option() function\n");
+        printf("    can be used. When used with libaom 2.0.x or older, the following key-value pairs can be used:\n");
+        printf("\n");
         printf("    aq-mode=M                         : Adaptive quantization mode (0: off (default), 1: variance, 2: complexity, 3: cyclic refresh)\n");
         printf("    cq-level=Q                        : Constant/Constrained Quality level (0-63, end-usage must be set to cq or q)\n");
         printf("    enable-chroma-deltaq=B            : Enable delta quantization in chroma planes (0: disable (default), 1: enable)\n");
