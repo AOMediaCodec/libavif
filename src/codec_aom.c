@@ -35,6 +35,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Detect whether the aom_codec_set_option() function is available. See aom/aom_codec.h
+// in https://aomedia-review.googlesource.com/c/aom/+/126302.
+#if AOM_CODEC_ABI_VERSION >= (6 + AOM_IMAGE_ABI_VERSION)
+#define HAVE_AOM_CODEC_SET_OPTION 1
+#endif
+
 struct avifCodecInternal
 {
 #if defined(AVIF_CODEC_AOM_DECODE)
@@ -248,6 +254,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
+#if !defined(HAVE_AOM_CODEC_SET_OPTION)
 static avifBool aomOptionParseInt(const char * str, int * val)
 {
     char * endptr;
@@ -273,6 +280,7 @@ static avifBool aomOptionParseUInt(const char * str, unsigned int * val)
 
     return AVIF_FALSE;
 }
+#endif // !defined(HAVE_AOM_CODEC_SET_OPTION)
 
 struct aomOptionEnumList
 {
@@ -344,6 +352,7 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, 
     return AVIF_TRUE;
 }
 
+#if !defined(HAVE_AOM_CODEC_SET_OPTION)
 typedef enum
 {
     AVIF_AOM_OPTION_NUL = 0,
@@ -387,6 +396,7 @@ static const struct aomOptionDef aomOptionDefs[] = {
     // Sentinel
     { NULL, 0, AVIF_AOM_OPTION_NUL, NULL }
 };
+#endif // !defined(HAVE_AOM_CODEC_SET_OPTION)
 
 static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
 {
@@ -406,6 +416,21 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
             continue;
         }
 
+#if defined(HAVE_AOM_CODEC_SET_OPTION)
+        const char * prefix = alpha ? "alpha:" : "color:";
+        size_t prefixLen = 6;
+        const char * shortPrefix = alpha ? "a:" : "c:";
+        size_t shortPrefixLen = 2;
+        const char * key = entry->key;
+        if (!strncmp(key, prefix, prefixLen)) {
+            key += prefixLen;
+        } else if (!strncmp(key, shortPrefix, shortPrefixLen)) {
+            key += shortPrefixLen;
+        }
+        if (aom_codec_set_option(&codec->internal->encoder, key, entry->value) != AOM_CODEC_OK) {
+            return AVIF_FALSE;
+        }
+#else  // !defined(HAVE_AOM_CODEC_SET_OPTION)
         avifBool match = AVIF_FALSE;
         for (int j = 0; aomOptionDefs[j].name; ++j) {
             if (avifKeyEqualsName(entry->key, aomOptionDefs[j].name, alpha)) {
@@ -445,6 +470,7 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
         if (!match) {
             return AVIF_FALSE;
         }
+#endif // defined(HAVE_AOM_CODEC_SET_OPTION)
     }
     return AVIF_TRUE;
 }
