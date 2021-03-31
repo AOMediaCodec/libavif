@@ -708,6 +708,30 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
     return AVIF_RESULT_OK;
 }
 
+static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item)
+{
+    const avifProperty * av1CProp = avifPropertyArrayFind(&item->properties, "av1C");
+    if (!av1CProp) {
+        // An av1C box is mandatory in all valid AVIF configurations. Bail out.
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+    const uint32_t av1CDepth = avifCodecConfigurationBoxGetDepth(&av1CProp->u.av1C);
+
+    const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
+    if (!pixiProp) {
+        // A pixi box is mandatory in all valid AVIF configurations. Bail out.
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+
+    for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
+        if (pixiProp->u.pixi.planeDepths[i] != av1CDepth) {
+            // pixi depth must match av1C depth
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+    }
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifROData * outData, size_t partialByteCount)
 {
     if (item->mergedExtents.data && !item->partialMergedExtents) {
@@ -2798,6 +2822,17 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
         decoder->alphaPresent = (alphaItem != NULL);
         decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorItem->premByID == alphaItem->id);
+
+        avifResult colorItemValidationResult = avifDecoderItemValidateAV1(colorItem);
+        if (colorItemValidationResult != AVIF_RESULT_OK) {
+            return colorItemValidationResult;
+        }
+        if (alphaItem) {
+            avifResult alphaItemValidationResult = avifDecoderItemValidateAV1(alphaItem);
+            if (alphaItemValidationResult != AVIF_RESULT_OK) {
+                return alphaItemValidationResult;
+            }
+        }
     }
 
     // Sanity check tiles
