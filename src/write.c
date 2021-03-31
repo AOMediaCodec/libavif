@@ -1235,11 +1235,12 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+            const avifBool isGrid = (item->gridCols > 0);
             if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
                 // this item has nothing for the mdat box
                 continue;
             }
-            if (metadataPass != (item->metadataPayload.size > 0)) {
+            if (!isGrid && (metadataPass != (item->metadataPayload.size > 0))) {
                 // only process metadata payloads when metadataPass is true
                 continue;
             }
