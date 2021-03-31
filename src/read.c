@@ -2647,6 +2647,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         avifDecoderItem * colorItem = NULL;
         avifDecoderItem * alphaItem = NULL;
 
+        if (data->meta->primaryItemID == 0) {
+            // A primary item is required
+            return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
+        }
+
         // Find the colorOBU (primary) item
         for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
             avifDecoderItem * item = &data->meta->items.item[itemIndex];
