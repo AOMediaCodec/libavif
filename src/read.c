@@ -32,6 +32,10 @@ static const size_t VISUALSAMPLEENTRY_SIZE = 78;
 static const char xmpContentType[] = CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
+// The only supported ipma box values for both version and flags are [0,1], so there technically
+// can't be more than 4 unique tuples right now.
+#define MAX_IPMA_VERSION_AND_FLAGS_SEEN 4
+
 // ---------------------------------------------------------------------------
 // Box data structures
 
@@ -1436,14 +1440,18 @@ static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t * raw, size_t rawLen)
+static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t * raw, size_t rawLen, uint32_t * outVersionAndFlags)
 {
+    // NOTE: If this function ever adds support for versions other than [0,1] or flags other than
+    //       [0,1], please increase the value of MAX_IPMA_VERSION_AND_FLAGS_SEEN accordingly.
+
     BEGIN_STREAM(s, raw, rawLen);
 
     uint8_t version;
     uint32_t flags;
     CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
     avifBool propertyIndexIsU16 = ((flags & 0x1) != 0);
+    *outVersionAndFlags = (version << 24) | flags;
 
     uint32_t entryCount;
     CHECK(avifROStreamReadU32(&s, &entryCount));
@@ -1580,13 +1588,30 @@ static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw,
     CHECK(avifParseItemPropertyContainerBox(&meta->properties, avifROStreamCurrent(&s), ipcoHeader.size));
     CHECK(avifROStreamSkip(&s, ipcoHeader.size));
 
+    uint32_t versionAndFlagsSeen[MAX_IPMA_VERSION_AND_FLAGS_SEEN];
+    uint32_t versionAndFlagsSeenCount = 0;
+
     // Now read all ItemPropertyAssociation until the end of the box, and make associations
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader ipmaHeader;
         CHECK(avifROStreamReadBoxHeader(&s, &ipmaHeader));
 
         if (!memcmp(ipmaHeader.type, "ipma", 4)) {
-            CHECK(avifParseItemPropertyAssociation(meta, avifROStreamCurrent(&s), ipmaHeader.size));
+            uint32_t versionAndFlags;
+            CHECK(avifParseItemPropertyAssociation(meta, avifROStreamCurrent(&s), ipmaHeader.size, &versionAndFlags));
+            for (uint32_t i = 0; i < versionAndFlagsSeenCount; ++i) {
+                if (versionAndFlagsSeen[i] == versionAndFlags) {
+                    // HEIF (ISO 23008-12:2017) 9.3.1 - There shall be at most one
+                    // ItemPropertyAssociation box with a given pair of values of version and
+                    // flags.
+                    return AVIF_FALSE;
+                }
+            }
+            if (versionAndFlagsSeenCount == MAX_IPMA_VERSION_AND_FLAGS_SEEN) {
+                return AVIF_FALSE;
+            }
+            versionAndFlagsSeen[versionAndFlagsSeenCount] = versionAndFlags;
+            ++versionAndFlagsSeenCount;
         } else {
             // These must all be type ipma
             return AVIF_FALSE;
