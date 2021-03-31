@@ -1108,6 +1108,34 @@ static avifBool isAlphaURN(const char * urn)
 // ---------------------------------------------------------------------------
 // BMFF Parsing
 
+static avifBool avifParseHandlerBox(const uint8_t * raw, size_t rawLen)
+{
+    BEGIN_STREAM(s, raw, rawLen);
+
+    CHECK(avifROStreamReadAndEnforceVersion(&s, 0));
+
+    uint32_t predefined;
+    CHECK(avifROStreamReadU32(&s, &predefined)); // unsigned int(32) pre_defined = 0;
+    if (predefined != 0) {
+        return AVIF_FALSE;
+    }
+
+    uint8_t handlerType[4];
+    CHECK(avifROStreamRead(&s, handlerType, 4)); // unsigned int(32) handler_type;
+    if (memcmp(handlerType, "pict", 4) != 0) {
+        return AVIF_FALSE;
+    }
+
+    for (int i = 0; i < 3; ++i) {
+        uint32_t reserved;
+        CHECK(avifROStreamReadU32(&s, &reserved)); // const unsigned int(32)[3] reserved = 0;
+    }
+
+    // Verify that a valid string is here, but don't bother to store it
+    CHECK(avifROStreamReadString(&s, NULL, 0)); // string name;
+    return AVIF_TRUE;
+}
+
 static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, size_t rawLen)
 {
     BEGIN_STREAM(s, raw, rawLen);
@@ -1740,32 +1768,46 @@ static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t ra
 
     ++meta->idatID; // for tracking idat
 
+    avifBool firstBox = AVIF_TRUE;
     uint32_t uniqueBoxFlags = 0;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         CHECK(avifROStreamReadBoxHeader(&s, &header));
 
-        if (!memcmp(header.type, "iloc", 4)) {
-            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 0));
+        if (firstBox) {
+            if (!memcmp(header.type, "hdlr", 4)) {
+                CHECK(uniqueBoxSeen(&uniqueBoxFlags, 0));
+                CHECK(avifParseHandlerBox(avifROStreamCurrent(&s), header.size));
+                firstBox = AVIF_FALSE;
+            } else {
+                // hdlr must be the first box!
+                return AVIF_FALSE;
+            }
+        } else if (!memcmp(header.type, "iloc", 4)) {
+            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 1));
             CHECK(avifParseItemLocationBox(meta, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "pitm", 4)) {
-            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 1));
+            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 2));
             CHECK(avifParsePrimaryItemBox(meta, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "idat", 4)) {
-            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 2));
+            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 3));
             CHECK(avifParseItemDataBox(meta, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "iprp", 4)) {
-            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 3));
+            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 4));
             CHECK(avifParseItemPropertiesBox(meta, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "iinf", 4)) {
-            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 4));
+            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 5));
             CHECK(avifParseItemInfoBox(meta, avifROStreamCurrent(&s), header.size));
         } else if (!memcmp(header.type, "iref", 4)) {
-            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 5));
+            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 6));
             CHECK(avifParseItemReferenceBox(meta, avifROStreamCurrent(&s), header.size));
         }
 
         CHECK(avifROStreamSkip(&s, header.size));
+    }
+    if (firstBox) {
+        // The meta box must not be empty (it must contain at least a hdlr box)
+        return AVIF_FALSE;
     }
     return AVIF_TRUE;
 }
