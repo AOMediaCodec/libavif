@@ -1235,13 +1235,13 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-            const avifBool isGrid = (item->gridCols > 0);
+            const avifBool isGrid = (item->gridCols > 0); // Grids store their payload in metadataPayload, so use this to distinguish grid payloads from XMP/Exif
             if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
                 // this item has nothing for the mdat box
                 continue;
             }
             if (!isGrid && (metadataPass != (item->metadataPayload.size > 0))) {
-                // only process metadata payloads when metadataPass is true
+                // only process metadata (XMP/Exif) payloads when metadataPass is true
                 continue;
             }
             if (alphaPass != item->alpha) {
