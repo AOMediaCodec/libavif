@@ -402,7 +402,7 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
         avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
-        // Skip options for the other sub-image.
+        // Skip options for the other kind of plane.
         const char * otherPrefix = alpha ? "color:" : "alpha:";
         size_t otherPrefixLen = 6;
         const char * otherShortPrefix = alpha ? "c:" : "a:";

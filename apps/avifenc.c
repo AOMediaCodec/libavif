@@ -104,12 +104,12 @@ static void syntax(void)
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
-        printf("    1. <key>=<value> applies to both the color sub-image and the alpha sub-image (if present).\n");
-        printf("    2. color:<key>=<value> or c:<key>=<value> applies only to the color sub-image.\n");
-        printf("    3. alpha:<key>=<value> or a:<key>=<value> applies only to the alpha sub-image (if present).\n");
-        printf("       Since the alpha sub-image is a monochrome image, the options that refer to the chrome planes, such as\n");
-        printf("       enable-chroma-deltaq=B, should not be used with the alpha sub-image. In addition, the film grain options\n");
-        printf("       are unlikely to make sense for the alpha sub-image.\n");
+        printf("    1. <key>=<value> applies to both the color (YUV) planes and the alpha plane (if present).\n");
+        printf("    2. color:<key>=<value> or c:<key>=<value> applies only to the color (YUV) planes.\n");
+        printf("    3. alpha:<key>=<value> or a:<key>=<value> applies only to the alpha plane (if present).\n");
+        printf("       Since the alpha plane is encoded as a monochrome image, the options that refer to the chroma planes,\n");
+        printf("       such as enable-chroma-deltaq=B, should not be used with the alpha plane. In addition, the film grain\n");
+        printf("       options are unlikely to make sense for the alpha plane.\n");
         printf("\n");
         printf("    When used with libaom 3.0.0 or later, any key-value pairs supported by the aom_codec_set_option() function\n");
         printf("    can be used. When used with libaom 2.0.x or older, the following key-value pairs can be used:\n");
