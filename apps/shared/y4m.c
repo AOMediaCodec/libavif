@@ -36,12 +36,19 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
     if (!strcmp(formatString, "C420jpeg")) {
         frame->format = AVIF_PIXEL_FORMAT_YUV420;
         frame->depth = 8;
+        // Chroma sample position is center.
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420mpeg2")) {
         frame->format = AVIF_PIXEL_FORMAT_YUV420;
         frame->depth = 8;
         frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "C420paldv")) {
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444p10")) {
@@ -103,6 +110,7 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
     if (!strcmp(formatString, "C420")) {
         frame->format = AVIF_PIXEL_FORMAT_YUV420;
         frame->depth = 8;
+        // Chroma sample position is center.
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono")) {
