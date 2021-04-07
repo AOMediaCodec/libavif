@@ -260,7 +260,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                                 rgbPixel[1] *= a;
                                 rgbPixel[2] *= a;
                             }
-                        } else /* alphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY */ {
+                        } else {
+                            // alphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
                             if (a == 0) {
                                 rgbPixel[0] = 0;
                                 rgbPixel[1] = 0;
@@ -408,6 +409,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     return AVIF_RESULT_OK;
 }
 
+// Note: This function handles alpha (un)multiply.
 static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                                               avifRGBImage * rgb,
                                               avifReformatState * state,
@@ -643,8 +645,8 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                         G *= A;
                         B *= A;
                     }
-
-                } else /* state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY */ {
+                } else {
+                    // state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
                     if (A == 0) {
                         R = 0;
                         G = 0;
