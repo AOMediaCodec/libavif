@@ -99,7 +99,8 @@ typedef enum avifReformatMode
     AVIF_REFORMAT_MODE_YCGCO                 // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
 } avifReformatMode;
 
-typedef enum avifAlphaMultiplyMode {
+typedef enum avifAlphaMultiplyMode
+{
     AVIF_ALPHA_MULTIPLY_MODE_NO_OP = 0,
     AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY,
     AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
@@ -140,6 +141,7 @@ typedef struct avifReformatState
     float unormFloatTableUV[1 << 12];
 
     avifReformatMode mode;
+    // Used by avifImageYUVToRGB() only. avifImageRGBToYUV() uses a local variable (alphaMode) instead.
     avifAlphaMultiplyMode toRGBAlphaMode;
 } avifReformatState;
 
