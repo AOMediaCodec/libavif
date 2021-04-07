@@ -626,13 +626,14 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
             B = AVIF_CLAMP(B, 0.0f, 1.0f);
 
             if (state->toRGBAlphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
-                float A;
-                if (state->yuvChannelBytes > 1) {
-                    A = (AVIF_MIN(ptrA16[i], yuvMaxChannel) - state->biasA) / state->rangeA;
+                // Calculate A
+                uint16_t unormA;
+                if (image->depth == 8) {
+                    unormA = ptrA8[i];
                 } else {
-                    A = (AVIF_MIN(ptrA8[i], yuvMaxChannel) - state->biasA) / state->rangeA;
+                    unormA = AVIF_MIN(ptrA16[i], yuvMaxChannel);
                 }
-
+                float A = (unormA - state->biasA) / state->rangeA;
                 A = AVIF_CLAMP(A, 0.0f, 1.0f);
 
                 if (state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
