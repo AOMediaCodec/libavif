@@ -1503,7 +1503,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
     uint32_t flags;
     CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
     avifBool propertyIndexIsU16 = ((flags & 0x1) != 0);
-    *outVersionAndFlags = (version << 24) | flags;
+    *outVersionAndFlags = ((uint32_t)version << 24) | flags;
 
     uint32_t entryCount;
     CHECK(avifROStreamReadU32(&s, &entryCount));
