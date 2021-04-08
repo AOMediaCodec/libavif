@@ -19,6 +19,10 @@ static void avifImageDumpInternal(avifImage * avif, uint32_t gridCols, uint32_t 
     printf(" * Bit Depth      : %u\n", avif->depth);
     printf(" * Format         : %s\n", avifPixelFormatToString(avif->yuvFormat));
     printf(" * Alpha          : %s\n", alphaPresent ? (avif->alphaPremultiplied ? "Premultiplied" : "Not premultiplied") : "Absent");
+    if (avif->alphaRange == AVIF_RANGE_LIMITED) {
+        printf("                    Limited range\n");
+        printf("                    WARNING: Limited-range alpha is deprecated. Use full-range alpha instead.\n");
+    }
     printf(" * Range          : %s\n", (avif->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited");
 
     printf(" * Color Primaries: %u\n", avif->colorPrimaries);
