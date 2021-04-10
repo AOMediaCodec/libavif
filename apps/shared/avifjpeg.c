@@ -37,6 +37,7 @@ static void my_error_exit(j_common_ptr cinfo)
 #endif
 static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct * cinfo)
 {
+    printf("Importing pixel data from JPEG directly.\n");
     cinfo->raw_data_out = TRUE;
     jpeg_start_decompress(cinfo);
 
@@ -96,106 +97,6 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
             alreadyRead[i] += linesPerCall[i];
         }
     }
-
-    jpeg_finish_decompress(cinfo);
-}
-
-static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct * cinfo)
-{
-    if (avif->depth != 8) {
-        return AVIF_FALSE;
-    }
-
-    if (cinfo->jpeg_color_space == JCS_YCbCr) {
-        // Import from YUV: must using compatible matrixCoefficients.
-        if ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) ||
-            (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL &&
-             avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT470M)) {
-            // YUV->YUV: require precise match for pixel format.
-            if (((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
-                 (cinfo->comp_info[0].h_samp_factor == 1 && cinfo->comp_info[0].v_samp_factor == 1 &&
-                  cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
-                  cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1)) ||
-                ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) &&
-                 (cinfo->comp_info[0].h_samp_factor == 2 && cinfo->comp_info[0].v_samp_factor == 1 &&
-                  cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
-                  cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1)) ||
-                ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) &&
-                 (cinfo->comp_info[0].h_samp_factor == 2 && cinfo->comp_info[0].v_samp_factor == 2 &&
-                  cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
-                  cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1))) {
-                cinfo->out_color_space = JCS_YCbCr;
-                avifJPEGCopyPixels(avif, cinfo);
-
-                return AVIF_TRUE;
-            }
-
-            // YUV->Grayscale: subsample Y plane not allowed.
-            if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && (cinfo->comp_info[0].h_samp_factor == cinfo->max_h_samp_factor &&
-                                                                  cinfo->comp_info[0].v_samp_factor == cinfo->max_v_samp_factor)) {
-                cinfo->out_color_space = JCS_YCbCr;
-                avifJPEGCopyPixels(avif, cinfo);
-
-                return AVIF_TRUE;
-            }
-        }
-    } else if (cinfo->jpeg_color_space == JCS_GRAYSCALE) {
-        // Import from Grayscale: subsample not allowed.
-        if ((cinfo->comp_info[0].h_samp_factor == cinfo->max_h_samp_factor &&
-             cinfo->comp_info[0].v_samp_factor == cinfo->max_v_samp_factor)) {
-            // Import to YUV/Grayscale: must using compatible matrixCoefficients.
-            if (((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) ||
-                 (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL &&
-                  avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT470M))) {
-                // Grayscale->Grayscale: direct copy.
-                if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
-                    cinfo->out_color_space = JCS_GRAYSCALE;
-                    avifJPEGCopyPixels(avif, cinfo);
-
-                    return AVIF_TRUE;
-                }
-
-                // Grayscale->YUV: copy Y, fill UV with monochrome value.
-                if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) ||
-                    (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
-                    cinfo->out_color_space = JCS_GRAYSCALE;
-                    avifJPEGCopyPixels(avif, cinfo);
-
-                    avifPixelFormatInfo info;
-                    avifGetPixelFormatInfo(avif->yuvFormat, &info);
-                    uint32_t uvHeight = (avif->height + info.chromaShiftY) >> info.chromaShiftY;
-                    memset(avif->yuvPlanes[AVIF_CHAN_U], 128, avif->yuvRowBytes[AVIF_CHAN_U] * uvHeight);
-                    memset(avif->yuvPlanes[AVIF_CHAN_V], 128, avif->yuvRowBytes[AVIF_CHAN_V] * uvHeight);
-
-                    return AVIF_TRUE;
-                }
-            }
-
-            // Grayscale->RGB: copy Y to G, duplicate to R and B.
-            if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
-                cinfo->out_color_space = JCS_GRAYSCALE;
-                avifJPEGCopyPixels(avif, cinfo);
-
-                memcpy(avif->yuvPlanes[AVIF_CHAN_U], avif->yuvPlanes[AVIF_CHAN_Y], avif->yuvRowBytes[AVIF_CHAN_U] * avif->height);
-                memcpy(avif->yuvPlanes[AVIF_CHAN_V], avif->yuvPlanes[AVIF_CHAN_Y], avif->yuvRowBytes[AVIF_CHAN_V] * avif->height);
-
-                return AVIF_TRUE;
-            }
-        }
-    } else if (cinfo->jpeg_color_space == JCS_RGB) {
-        // RGB->RGB: subsample not allowed.
-        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
-            (cinfo->comp_info[0].h_samp_factor == 1 && cinfo->comp_info[0].v_samp_factor == 1 &&
-             cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
-             cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1)) {
-            cinfo->out_color_space = JCS_RGB;
-            avifJPEGCopyPixels(avif, cinfo);
-
-            return AVIF_TRUE;
-        }
-    }
-
-    return AVIF_FALSE;
 }
 
 // Note on setjmp() and volatile variables:
@@ -252,9 +153,89 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
     // JPEG doesn't have alpha. Prevent confusion.
     avif->alphaPremultiplied = AVIF_FALSE;
 
-    if (avifJPEGReadCopy(avif, &cinfo)) {
-        ret = AVIF_TRUE;
-        goto cleanup;
+    if (avif->depth == 8) {
+        if (cinfo.jpeg_color_space == JCS_YCbCr) {
+            // Import from YUV: must using compatible matrixCoefficients.
+            if ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) ||
+                (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL &&
+                 avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT470M)) {
+                // YUV->YUV: require precise match for pixel format.
+                if (((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
+                     (cinfo.comp_info[0].h_samp_factor == 1 && cinfo.comp_info[0].v_samp_factor == 1 &&
+                      cinfo.comp_info[1].h_samp_factor == 1 && cinfo.comp_info[1].v_samp_factor == 1 &&
+                      cinfo.comp_info[2].h_samp_factor == 1 && cinfo.comp_info[2].v_samp_factor == 1)) ||
+                    ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) &&
+                     (cinfo.comp_info[0].h_samp_factor == 2 && cinfo.comp_info[0].v_samp_factor == 1 &&
+                      cinfo.comp_info[1].h_samp_factor == 1 && cinfo.comp_info[1].v_samp_factor == 1 &&
+                      cinfo.comp_info[2].h_samp_factor == 1 && cinfo.comp_info[2].v_samp_factor == 1)) ||
+                    ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) &&
+                     (cinfo.comp_info[0].h_samp_factor == 2 && cinfo.comp_info[0].v_samp_factor == 2 &&
+                      cinfo.comp_info[1].h_samp_factor == 1 && cinfo.comp_info[1].v_samp_factor == 1 &&
+                      cinfo.comp_info[2].h_samp_factor == 1 && cinfo.comp_info[2].v_samp_factor == 1))) {
+                    cinfo.out_color_space = JCS_YCbCr;
+                    avifJPEGCopyPixels(avif, &cinfo);
+                    goto success;
+                }
+
+                // YUV->Grayscale: subsample Y plane not allowed.
+                if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && (cinfo.comp_info[0].h_samp_factor == cinfo.max_h_samp_factor &&
+                                                                      cinfo.comp_info[0].v_samp_factor == cinfo.max_v_samp_factor)) {
+                    cinfo.out_color_space = JCS_YCbCr;
+                    avifJPEGCopyPixels(avif, &cinfo);
+                    goto success;
+                }
+            }
+        } else if (cinfo.jpeg_color_space == JCS_GRAYSCALE) {
+            // Import from Grayscale: subsample not allowed.
+            if ((cinfo.comp_info[0].h_samp_factor == cinfo.max_h_samp_factor &&
+                 cinfo.comp_info[0].v_samp_factor == cinfo.max_v_samp_factor)) {
+                // Import to YUV/Grayscale: must using compatible matrixCoefficients.
+                if (((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) ||
+                     (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL &&
+                      avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT470M))) {
+                    // Grayscale->Grayscale: direct copy.
+                    if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                        cinfo.out_color_space = JCS_GRAYSCALE;
+                        avifJPEGCopyPixels(avif, &cinfo);
+                        goto success;
+                    }
+
+                    // Grayscale->YUV: copy Y, fill UV with monochrome value.
+                    if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) ||
+                        (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
+                        cinfo.out_color_space = JCS_GRAYSCALE;
+                        avifJPEGCopyPixels(avif, &cinfo);
+
+                        avifPixelFormatInfo info;
+                        avifGetPixelFormatInfo(avif->yuvFormat, &info);
+                        uint32_t uvHeight = (avif->height + info.chromaShiftY) >> info.chromaShiftY;
+                        memset(avif->yuvPlanes[AVIF_CHAN_U], 128, avif->yuvRowBytes[AVIF_CHAN_U] * uvHeight);
+                        memset(avif->yuvPlanes[AVIF_CHAN_V], 128, avif->yuvRowBytes[AVIF_CHAN_V] * uvHeight);
+                        goto success;
+                    }
+                }
+
+                // Grayscale->RGB: copy Y to G, duplicate to R and B.
+                if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+                    cinfo.out_color_space = JCS_GRAYSCALE;
+                    avifJPEGCopyPixels(avif, &cinfo);
+
+                    memcpy(avif->yuvPlanes[AVIF_CHAN_U], avif->yuvPlanes[AVIF_CHAN_Y], avif->yuvRowBytes[AVIF_CHAN_U] * avif->height);
+                    memcpy(avif->yuvPlanes[AVIF_CHAN_V], avif->yuvPlanes[AVIF_CHAN_Y], avif->yuvRowBytes[AVIF_CHAN_V] * avif->height);
+                    goto success;
+                }
+            }
+        } else if (cinfo.jpeg_color_space == JCS_RGB) {
+            // RGB->RGB: subsample not allowed.
+            if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+                (cinfo.comp_info[0].h_samp_factor == 1 && cinfo.comp_info[0].v_samp_factor == 1 &&
+                 cinfo.comp_info[1].h_samp_factor == 1 && cinfo.comp_info[1].v_samp_factor == 1 &&
+                 cinfo.comp_info[2].h_samp_factor == 1 && cinfo.comp_info[2].v_samp_factor == 1)) {
+                cinfo.out_color_space = JCS_RGB;
+                avifJPEGCopyPixels(avif, &cinfo);
+                goto success;
+            }
+        }
     }
 
     cinfo.out_color_space = JCS_RGB;
@@ -286,7 +267,7 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
         fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
         goto cleanup;
     }
-
+success:
     jpeg_finish_decompress(&cinfo);
     ret = AVIF_TRUE;
 cleanup:
