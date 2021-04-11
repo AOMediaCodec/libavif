@@ -3,6 +3,7 @@
 
 #include "avifjpeg.h"
 
+#include <assert.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +36,9 @@ static void my_error_exit(j_common_ptr cinfo)
 #define AVIF_LIBJPEG_DCT_h_scaled_size DCT_scaled_size
 #define AVIF_LIBJPEG_DCT_v_scaled_size DCT_scaled_size
 #endif
+
+// An internal function used by avifJPEGReadCopy(), this is the shared libjpeg decompression code
+// for all paths avifJPEGReadCopy() takes.
 static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct * cinfo)
 {
     cinfo->raw_data_out = TRUE;
@@ -96,10 +100,21 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
             alreadyRead[i] += linesPerCall[i];
         }
     }
-
-    jpeg_finish_decompress(cinfo);
 }
 
+static avifBool avifJPEGHasCompatibleMatrixCoefficients(avifMatrixCoefficients matrixCoefficients)
+{
+    switch (matrixCoefficients) {
+        case AVIF_MATRIX_COEFFICIENTS_BT470BG:
+        case AVIF_MATRIX_COEFFICIENTS_BT601:
+            // JPEG always uses [Kr:0.299, Kb:0.114], which matches these MCs.
+            return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
+}
+
+// This attempts to copy the internal representation of the JPEG directly into avifImage without
+// YUV->RGB conversion. If it returns AVIF_FALSE, a typical RGB->YUV conversion is required.
 static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct * cinfo)
 {
     if (avif->depth != 8) {
@@ -108,9 +123,7 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
 
     if (cinfo->jpeg_color_space == JCS_YCbCr) {
         // Import from YUV: must using compatible matrixCoefficients.
-        if ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) ||
-            (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL &&
-             avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT470M)) {
+        if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
             // YUV->YUV: require precise match for pixel format.
             if (((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
                  (cinfo->comp_info[0].h_samp_factor == 1 && cinfo->comp_info[0].v_samp_factor == 1 &&
@@ -144,9 +157,7 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
         if ((cinfo->comp_info[0].h_samp_factor == cinfo->max_h_samp_factor &&
              cinfo->comp_info[0].v_samp_factor == cinfo->max_v_samp_factor)) {
             // Import to YUV/Grayscale: must using compatible matrixCoefficients.
-            if (((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) ||
-                 (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL &&
-                  avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT470M))) {
+            if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
                 // Grayscale->Grayscale: direct copy.
                 if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
                     cinfo->out_color_space = JCS_GRAYSCALE;
@@ -195,6 +206,7 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
         }
     }
 
+    // A typical RGB->YUV conversion is required.
     return AVIF_FALSE;
 }
 
@@ -253,38 +265,43 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
     avif->alphaPremultiplied = AVIF_FALSE;
 
     if (avifJPEGReadCopy(avif, &cinfo)) {
-        ret = AVIF_TRUE;
-        goto cleanup;
-    }
+        // JPEG pixels were successfully copied without conversion. Notify the enduser.
 
-    cinfo.out_color_space = JCS_RGB;
-    jpeg_start_decompress(&cinfo);
+        assert(inputFilename); // JPEG read doesn't support stdin
+        printf("Directly copied JPEG pixel data (no YUV conversion): %s\n", inputFilename);
+    } else {
+        // JPEG pixels could not be copied without conversion. Request (converted) RGB pixels from
+        // libjpeg and convert to YUV with libavif instead.
 
-    avif->width = cinfo.output_width;
-    avif->height = cinfo.output_height;
+        cinfo.out_color_space = JCS_RGB;
+        jpeg_start_decompress(&cinfo);
 
-    int row_stride = cinfo.output_width * cinfo.output_components;
-    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
+        avif->width = cinfo.output_width;
+        avif->height = cinfo.output_height;
 
-    avif->width = cinfo.output_width;
-    avif->height = cinfo.output_height;
-    avif->yuvFormat = requestedFormat;
-    avif->depth = requestedDepth ? requestedDepth : 8;
-    avifRGBImageSetDefaults(&rgb, avif);
-    rgb.format = AVIF_RGB_FORMAT_RGB;
-    rgb.depth = 8;
-    avifRGBImageAllocatePixels(&rgb);
+        int row_stride = cinfo.output_width * cinfo.output_components;
+        JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
 
-    int row = 0;
-    while (cinfo.output_scanline < cinfo.output_height) {
-        jpeg_read_scanlines(&cinfo, buffer, 1);
-        uint8_t * pixelRow = &rgb.pixels[row * rgb.rowBytes];
-        memcpy(pixelRow, buffer[0], rgb.rowBytes);
-        ++row;
-    }
-    if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
-        fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
-        goto cleanup;
+        avif->width = cinfo.output_width;
+        avif->height = cinfo.output_height;
+        avif->yuvFormat = requestedFormat;
+        avif->depth = requestedDepth ? requestedDepth : 8;
+        avifRGBImageSetDefaults(&rgb, avif);
+        rgb.format = AVIF_RGB_FORMAT_RGB;
+        rgb.depth = 8;
+        avifRGBImageAllocatePixels(&rgb);
+
+        int row = 0;
+        while (cinfo.output_scanline < cinfo.output_height) {
+            jpeg_read_scanlines(&cinfo, buffer, 1);
+            uint8_t * pixelRow = &rgb.pixels[row * rgb.rowBytes];
+            memcpy(pixelRow, buffer[0], rgb.rowBytes);
+            ++row;
+        }
+        if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
+            goto cleanup;
+        }
     }
 
     jpeg_finish_decompress(&cinfo);
