@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avifpng.h"
+#include "avifutil.h"
 
 #include "png.h"
 
@@ -117,7 +118,7 @@ avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelForm
 
     avif->width = rawWidth;
     avif->height = rawHeight;
-    avif->yuvFormat = requestedFormat;
+    avif->yuvFormat = (requestedFormat == AVIF_PIXEL_FORMAT_NONE) ? AVIF_APP_DEFAULT_PIXEL_FORMAT : requestedFormat;
     avif->depth = requestedDepth;
     if (avif->depth == 0) {
         if (imgBitDepth == 8) {

@@ -8,6 +8,7 @@
 #include "avifutil.h"
 #include "y4m.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +55,8 @@ static void syntax(void)
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
-    printf("    -y,--yuv FORMAT                   : Output format [default=444, 422, 420, 400]. (JPEG/PNG only; For y4m or stdin, format is retained)\n");
+    printf("    -y,--yuv FORMAT                   : Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained)\n");
+    printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
@@ -230,6 +232,7 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
         if (!y4mRead(NULL, image, sourceTiming, &input->frameIter)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
+        assert(image->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
         return AVIF_APP_FILE_FORMAT_Y4M;
     }
 
@@ -264,6 +267,8 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
     if (!input->frameIter) {
         ++input->fileIndex;
     }
+
+    assert(image->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
     return nextInputFormat;
 }
 
@@ -376,7 +381,7 @@ int main(int argc, char * argv[])
     avifInput input;
     memset(&input, 0, sizeof(input));
     input.files = malloc(sizeof(avifInputFile) * argc);
-    input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
+    input.requestedFormat = AVIF_PIXEL_FORMAT_NONE; // AVIF_PIXEL_FORMAT_NONE is used as a sentinel for "auto"
 
     // See here for the discussion on the semi-arbitrary defaults for speed/min/max:
     //     https://github.com/AOMediaCodec/libavif/issues/440

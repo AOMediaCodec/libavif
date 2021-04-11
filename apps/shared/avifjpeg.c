@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avifjpeg.h"
+#include "avifutil.h"
 
 #include <assert.h>
 #include <setjmp.h>
@@ -125,22 +126,31 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
         // Import from YUV: must using compatible matrixCoefficients.
         if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
             // YUV->YUV: require precise match for pixel format.
-            if (((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) &&
-                 (cinfo->comp_info[0].h_samp_factor == 1 && cinfo->comp_info[0].v_samp_factor == 1 &&
-                  cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
-                  cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1)) ||
-                ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) &&
-                 (cinfo->comp_info[0].h_samp_factor == 2 && cinfo->comp_info[0].v_samp_factor == 1 &&
-                  cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
-                  cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1)) ||
-                ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) &&
-                 (cinfo->comp_info[0].h_samp_factor == 2 && cinfo->comp_info[0].v_samp_factor == 2 &&
-                  cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
-                  cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1))) {
-                cinfo->out_color_space = JCS_YCbCr;
-                avifJPEGCopyPixels(avif, cinfo);
+            avifPixelFormat jpegFormat = AVIF_PIXEL_FORMAT_NONE;
+            if (cinfo->comp_info[0].h_samp_factor == 1 && cinfo->comp_info[0].v_samp_factor == 1 &&
+                cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
+                cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1) {
+                jpegFormat = AVIF_PIXEL_FORMAT_YUV444;
+            } else if (cinfo->comp_info[0].h_samp_factor == 2 && cinfo->comp_info[0].v_samp_factor == 1 &&
+                       cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
+                       cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1) {
+                jpegFormat = AVIF_PIXEL_FORMAT_YUV422;
+            } else if (cinfo->comp_info[0].h_samp_factor == 2 && cinfo->comp_info[0].v_samp_factor == 2 &&
+                       cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
+                       cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1) {
+                jpegFormat = AVIF_PIXEL_FORMAT_YUV420;
+            }
+            if (jpegFormat != AVIF_PIXEL_FORMAT_NONE) {
+                if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
+                    // The requested format is "auto": Adopt JPEG's internal format.
+                    avif->yuvFormat = jpegFormat;
+                }
+                if (avif->yuvFormat == jpegFormat) {
+                    cinfo->out_color_space = JCS_YCbCr;
+                    avifJPEGCopyPixels(avif, cinfo);
 
-                return AVIF_TRUE;
+                    return AVIF_TRUE;
+                }
             }
 
             // YUV->Grayscale: subsample Y plane not allowed.
@@ -159,7 +169,8 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
             // Import to YUV/Grayscale: must using compatible matrixCoefficients.
             if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
                 // Grayscale->Grayscale: direct copy.
-                if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE)) {
+                    avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
                     cinfo->out_color_space = JCS_GRAYSCALE;
                     avifJPEGCopyPixels(avif, cinfo);
 
@@ -259,7 +270,7 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
         avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen);
     }
 
-    avif->yuvFormat = requestedFormat;
+    avif->yuvFormat = requestedFormat; // This may be AVIF_PIXEL_FORMAT_NONE, which is "auto" to avifJPEGReadCopy()
     avif->depth = requestedDepth ? requestedDepth : 8;
     // JPEG doesn't have alpha. Prevent confusion.
     avif->alphaPremultiplied = AVIF_FALSE;
@@ -284,7 +295,7 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
 
         avif->width = cinfo.output_width;
         avif->height = cinfo.output_height;
-        avif->yuvFormat = requestedFormat;
+        avif->yuvFormat = (requestedFormat == AVIF_PIXEL_FORMAT_NONE) ? AVIF_APP_DEFAULT_PIXEL_FORMAT : requestedFormat;
         avif->depth = requestedDepth ? requestedDepth : 8;
         avifRGBImageSetDefaults(&rgb, avif);
         rgb.format = AVIF_RGB_FORMAT_RGB;

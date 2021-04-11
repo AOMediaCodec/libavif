@@ -46,4 +46,8 @@ typedef struct avifAppSourceTiming
     uint64_t timescale; // timescale of the media (Hz)
 } avifAppSourceTiming;
 
+// Used by image decoders when the user doesn't explicitly choose a format with --yuv
+// This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.
+#define AVIF_APP_DEFAULT_PIXEL_FORMAT AVIF_PIXEL_FORMAT_YUV444
+
 #endif // ifndef LIBAVIF_APPS_SHARED_AVIFUTIL_H
