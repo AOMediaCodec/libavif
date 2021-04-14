@@ -223,12 +223,17 @@ endif()
 
 find_package(libyuv QUIET) # not required
 if(libyuv_FOUND)
-    message(STATUS "libavif: libyuv found, libyuv-based fast paths enabled.")
-    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
-    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
+    # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
+    if(NOT LIBYUV_VERSION OR (LIBYUV_VERSION LESS 1755))
+        message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found, but is too old; libyuv-based fast paths disabled.")
+    else()
+        message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found; libyuv-based fast paths enabled.")
+        set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
+        set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
+    endif()
 else()
-    message(STATUS "libavif: libyuv not found, libyuv-based fast paths disabled.")
+    message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)
