@@ -93,6 +93,7 @@ if(AVIF_LOCAL_JPEG)
         set(JPEG_LIBRARY jpeg PARENT_SCOPE)
     endif()
 endif()
+option(AVIF_ENABLE_LIBYUV "Enable libyuv support." ON)
 option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBYUV)
     set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${CMAKE_STATIC_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
@@ -221,14 +222,40 @@ if(UNIX)
     set(AVIF_PLATFORM_LIBRARIES m Threads::Threads)
 endif()
 
-find_package(libyuv QUIET) # not required
-if(libyuv_FOUND)
-    message(STATUS "libavif: libyuv found, libyuv-based fast paths enabled.")
-    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
-    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
+include(CMakePushCheckState)
+if (AVIF_ENABLE_LIBYUV)
+    find_package(libyuv QUIET) # not required
+    if(libyuv_FOUND)
+        cmake_push_check_state(RESET)
+            set(CMAKE_REQUIRED_INCLUDES ${LIBYUV_INCLUDE_DIR})
+            set(CMAKE_REQUIRED_LIBRARIES ${LIBYUV_LIBRARY})
+
+            check_c_source_compiles(
+                "
+                #include <libyuv.h>
+
+                int main(int argc, char *argv[]) {
+                    int ret = I444ToARGBMatrix(NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0, 0);
+                    return 0;
+                }
+            "
+            AVIF_COMPATIBLE_LIBYUV
+            )
+        cmake_pop_check_state()
+
+        if (AVIF_COMPATIBLE_LIBYUV)
+            message(STATUS "libavif: libyuv found, libyuv-based fast paths enabled.")
+            set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
+            set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
+            set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
+        else()
+            message(STATUS "libavif: incompatible libyuv found, libyuv-based fast paths disabled.")
+        endif()
+    else()
+        message(STATUS "libavif: libyuv not found, libyuv-based fast paths disabled.")
+    endif()
 else()
-    message(STATUS "libavif: libyuv not found, libyuv-based fast paths disabled.")
+    message(STATUS "libavif: libyuv-based fast paths disabled.")
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)
