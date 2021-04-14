@@ -118,7 +118,7 @@ static avifBool avifJPEGHasCompatibleMatrixCoefficients(avifMatrixCoefficients m
 // YUV->RGB conversion. If it returns AVIF_FALSE, a typical RGB->YUV conversion is required.
 static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct * cinfo)
 {
-    if (avif->depth != 8) {
+    if ((avif->depth != 8) || (avif->yuvRange != AVIF_RANGE_FULL)) {
         return AVIF_FALSE;
     }
 
