@@ -34,7 +34,7 @@ find_library(AOM_LIBRARY
 set(AOM_LIBRARIES
     ${AOM_LIBRARIES}
     ${AOM_LIBRARY}
-    ${_AOM_LIBRARIES})
+    ${_AOM_LDFLAGS})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(aom
