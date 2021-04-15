@@ -395,7 +395,7 @@ if(AVIF_CODEC_AOM)
             find_package(aom REQUIRED)
             set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${AOM_INCLUDE_DIR})
         endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARY})
+        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
     endif()
 endif()
 
@@ -453,6 +453,11 @@ if(NOT SKIP_INSTALL_ALL)
     include(GNUInstallDirs)
 endif()
 
+if(AVIF_CODEC_LIBRARIES MATCHES vmaf)
+    enable_language(CXX)
+endif()
+
+
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 if(AVIF_BUILD_APPS)
     find_package(ZLIB REQUIRED)
@@ -468,10 +473,10 @@ if(AVIF_BUILD_APPS)
         apps/shared/avifutil.c
         apps/shared/y4m.c
     )
-    if(AVIF_LOCAL_LIBGAV1)
+    if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${AVIF_CODEC_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     target_include_directories(avifenc
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
@@ -487,10 +492,10 @@ if(AVIF_BUILD_APPS)
         apps/shared/avifutil.c
         apps/shared/y4m.c
     )
-    if(AVIF_LOCAL_LIBGAV1)
+    if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${AVIF_CODEC_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     target_include_directories(avifdec
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
