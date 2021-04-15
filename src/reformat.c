@@ -621,9 +621,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 B = Y;
             }
 
-            R = AVIF_CLAMP(R, 0.0f, 1.0f);
-            G = AVIF_CLAMP(G, 0.0f, 1.0f);
-            B = AVIF_CLAMP(B, 0.0f, 1.0f);
+            float Rc = AVIF_CLAMP(R, 0.0f, 1.0f);
+            float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
+            float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
             if (state->toRGBAlphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                 // Calculate A
@@ -633,37 +633,35 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 } else {
                     unormA = AVIF_MIN(ptrA16[i], yuvMaxChannel);
                 }
-                float A = (unormA - state->biasA) / state->rangeA;
-                A = AVIF_CLAMP(A, 0.0f, 1.0f);
+                const float A = (unormA - state->biasA) / state->rangeA;
+                const float Ac = AVIF_CLAMP(A, 0.0f, 1.0f);
 
                 if (state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
-                    if (A == 0) {
-                        R = 0;
-                        G = 0;
-                        B = 0;
-                    } else if (A < 1.0f) {
-                        R *= A;
-                        G *= A;
-                        B *= A;
+                    if (Ac == 0.0f) {
+                        Rc = 0.0f;
+                        Gc = 0.0f;
+                        Bc = 0.0f;
+                    } else if (Ac < 1.0f) {
+                        Rc *= Ac;
+                        Gc *= Ac;
+                        Bc *= Ac;
                     }
                 } else {
                     // state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
-                    if (A == 0) {
-                        R = 0;
-                        G = 0;
-                        B = 0;
-                    } else if (A < 1.0f) {
-                        R /= A;
-                        G /= A;
-                        B /= A;
-                        // clamp below
+                    if (Ac == 0.0f) {
+                        Rc = 0.0f;
+                        Gc = 0.0f;
+                        Bc = 0.0f;
+                    } else if (Ac < 1.0f) {
+                        Rc /= Ac;
+                        Gc /= Ac;
+                        Bc /= Ac;
+                        Rc = AVIF_MIN(Rc, 1.0f);
+                        Gc = AVIF_MIN(Gc, 1.0f);
+                        Bc = AVIF_MIN(Bc, 1.0f);
                     }
                 }
             }
-
-            const float Rc = AVIF_MIN(R, 1.0f);
-            const float Gc = AVIF_MIN(G, 1.0f);
-            const float Bc = AVIF_MIN(B, 1.0f);
 
             if (rgb->depth == 8) {
                 *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannelF));
