@@ -224,7 +224,9 @@ endif()
 find_package(libyuv QUIET) # not required
 if(libyuv_FOUND)
     # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
-    if(NOT LIBYUV_VERSION OR (LIBYUV_VERSION LESS 1755))
+    if(NOT LIBYUV_VERSION)
+        message(STATUS "libavif: libyuv found, but version unknown; libyuv-based fast paths disabled.")
+    elseif(LIBYUV_VERSION LESS 1755)
         message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found, but is too old; libyuv-based fast paths disabled.")
     else()
         message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found; libyuv-based fast paths enabled.")
