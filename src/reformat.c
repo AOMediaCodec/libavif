@@ -1081,10 +1081,8 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
     avifAlphaMultiplyMode alphaMultiplyMode = state.toRGBAlphaMode;
     avifBool convertedWithLibYUV = AVIF_FALSE;
-    avifResult libyuvResult = AVIF_RESULT_NOT_IMPLEMENTED;
     if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP || avifRGBFormatHasAlpha(rgb->format)) {
-        libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
-
+        avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
         if (libyuvResult == AVIF_RESULT_OK) {
             convertedWithLibYUV = AVIF_TRUE;
         } else {
