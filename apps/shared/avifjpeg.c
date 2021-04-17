@@ -193,8 +193,10 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
                 }
             }
 
-            // Grayscale->RGB: copy Y to G, duplicate to R and B.
-            if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+            // Grayscale->RGB: copy Y to G, duplicate to B and R.
+            if ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) &&
+                ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE))) {
+                avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
                 cinfo->out_color_space = JCS_GRAYSCALE;
                 avifJPEGCopyPixels(avif, cinfo);
 
@@ -206,10 +208,12 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
         }
     } else if (cinfo->jpeg_color_space == JCS_RGB) {
         // RGB->RGB: subsample not allowed.
-        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+        if ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) &&
+            ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE)) &&
             (cinfo->comp_info[0].h_samp_factor == 1 && cinfo->comp_info[0].v_samp_factor == 1 &&
              cinfo->comp_info[1].h_samp_factor == 1 && cinfo->comp_info[1].v_samp_factor == 1 &&
              cinfo->comp_info[2].h_samp_factor == 1 && cinfo->comp_info[2].v_samp_factor == 1)) {
+            avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
             cinfo->out_color_space = JCS_RGB;
             avifJPEGCopyPixels(avif, cinfo);
 
