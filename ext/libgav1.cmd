@@ -8,11 +8,10 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone --single-branch https://chromium.googlesource.com/codecs/libgav1
+git clone -b v0.16.3 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 
 cd libgav1
-git checkout 4a89dc3
-git clone -b lts_2020_09_23 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
+git clone -b lts_2021_03_24 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
 mkdir build
 cd build
 
