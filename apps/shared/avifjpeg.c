@@ -276,8 +276,6 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
 
     avif->yuvFormat = requestedFormat; // This may be AVIF_PIXEL_FORMAT_NONE, which is "auto" to avifJPEGReadCopy()
     avif->depth = requestedDepth ? requestedDepth : 8;
-    // JPEG doesn't have alpha. Prevent confusion.
-    avif->alphaPremultiplied = AVIF_FALSE;
 
     if (avifJPEGReadCopy(avif, &cinfo)) {
         // JPEG pixels were successfully copied without conversion. Notify the enduser.

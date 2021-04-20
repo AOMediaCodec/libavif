@@ -264,6 +264,11 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
 
+    // The image doesn't have alpha. Prevent confusion.
+    if (!image->alphaPlane) {
+        image->alphaPremultiplied = AVIF_FALSE;
+    }
+
     if (!input->frameIter) {
         ++input->fileIndex;
     }
