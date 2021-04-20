@@ -50,16 +50,12 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
 
     JSAMPIMAGE buffer = (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_IMAGE, sizeof(JSAMPARRAY) * cinfo->num_components);
 
-    // lines of output image attempt to read per jpeg_read_raw_data call
+    // lines of output image to be read per jpeg_read_raw_data call
     int readLines = 0;
-    // lines of sample to read per call for each channel
+    // lines of samples to be read per call (for each channel)
     int linesPerCall[3] = { 0, 0, 0 };
-    // lines of sample expect to get for each channel
+    // expected count of sample lines (for each channel)
     int targetRead[3] = { 0, 0, 0 };
-    // already read lines for each channel
-    int alreadyRead[3] = { 0, 0, 0 };
-    // which avif channel to write to for each jpeg channel
-    enum avifChannelIndex targetChannel[3] = { AVIF_CHAN_R, AVIF_CHAN_R, AVIF_CHAN_R };
     for (int i = 0; i < cinfo->num_components; ++i) {
         jpeg_component_info * comp = &cinfo->comp_info[i];
 
@@ -74,13 +70,16 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
 
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
+    // destination avif channel for each jpeg channel
+    enum avifChannelIndex targetChannel[3] = { AVIF_CHAN_R, AVIF_CHAN_R, AVIF_CHAN_R };
     if (cinfo->jpeg_color_space == JCS_YCbCr) {
         targetChannel[0] = AVIF_CHAN_Y;
         targetChannel[1] = AVIF_CHAN_U;
         targetChannel[2] = AVIF_CHAN_V;
     } else if (cinfo->jpeg_color_space == JCS_GRAYSCALE) {
         targetChannel[0] = AVIF_CHAN_Y;
-    } else /* cinfo->jpeg_color_space == JCS_RGB */ {
+    } else {
+        // cinfo->jpeg_color_space == JCS_RGB
         targetChannel[0] = AVIF_CHAN_V;
         targetChannel[1] = AVIF_CHAN_Y;
         targetChannel[2] = AVIF_CHAN_U;
@@ -88,6 +87,8 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
 
     int workComponents = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? 1 : cinfo->num_components;
 
+    // count of already-read lines (for each channel)
+    int alreadyRead[3] = { 0, 0, 0 };
     while (cinfo->output_scanline < cinfo->output_height) {
         jpeg_read_raw_data(cinfo, buffer, readLines);
 
@@ -123,7 +124,7 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
     }
 
     if (cinfo->jpeg_color_space == JCS_YCbCr) {
-        // Import from YUV: must using compatible matrixCoefficients.
+        // Import from YUV: must use compatible matrixCoefficients.
         if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
             // YUV->YUV: require precise match for pixel format.
             avifPixelFormat jpegFormat = AVIF_PIXEL_FORMAT_NONE;
@@ -166,7 +167,7 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
         // Import from Grayscale: subsample not allowed.
         if ((cinfo->comp_info[0].h_samp_factor == cinfo->max_h_samp_factor &&
              cinfo->comp_info[0].v_samp_factor == cinfo->max_v_samp_factor)) {
-            // Import to YUV/Grayscale: must using compatible matrixCoefficients.
+            // Import to YUV/Grayscale: must use compatible matrixCoefficients.
             if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
                 // Grayscale->Grayscale: direct copy.
                 if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE)) {
