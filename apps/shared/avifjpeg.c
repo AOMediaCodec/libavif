@@ -292,9 +292,6 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
         cinfo.out_color_space = JCS_RGB;
         jpeg_start_decompress(&cinfo);
 
-        avif->width = cinfo.output_width;
-        avif->height = cinfo.output_height;
-
         int row_stride = cinfo.output_width * cinfo.output_components;
         JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
 
