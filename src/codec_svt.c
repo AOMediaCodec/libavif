@@ -69,19 +69,17 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         codec->internal->svt_config = svt_config;
 
         res = svt_av1_enc_init_handle(&codec->internal->svt_encoder, NULL, svt_config);
-        if (res != EB_ErrorNone || codec->internal->svt_encoder == NULL) {
+        if (res != EB_ErrorNone) {
             goto cleanup;
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
-        svt_config->is_16bit_pipeline = image->depth > 8 ? AVIF_TRUE : AVIF_FALSE;
+        svt_config->is_16bit_pipeline = image->depth > 8;
 
         // Follow comment in svt header: set if input is HDR10 BT2020 using SMPTE ST2084.
         svt_config->high_dynamic_range_input = (image->depth == 10 && image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020 &&
                                                 image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 &&
-                                                image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_NCL)
-                                                   ? AVIF_TRUE
-                                                   : AVIF_FALSE;
+                                                image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_NCL);
 
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
@@ -129,7 +127,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    allocate_svt_buffers(&input_buffer);
+    if (!allocate_svt_buffers(&input_buffer)) {
+        goto cleanup;
+    }
     EbSvtIOFormat * input_picture_buffer = (EbSvtIOFormat *)input_buffer->p_buffer;
 
     int bytesPerPixel = image->depth > 8 ? 2 : 1;
@@ -171,7 +171,6 @@ cleanup:
             avifFree(input_buffer->p_buffer);
         }
         avifFree(input_buffer);
-        input_buffer = NULL;
     }
     return result;
 }
