@@ -54,7 +54,26 @@ static avifBool dav1dCodecOpen(avifCodec * codec, avifDecoder * decoder)
     if (codec->internal->dav1dContext == NULL) {
         // Give all available threads to decode a single frame as fast as possible
         codec->internal->dav1dSettings.n_frame_threads = 1;
-        codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
+        int maxThreads = AVIF_MAX(decoder->maxThreads, 1);
+        int tileThreads = AVIF_MIN(maxThreads, DAV1D_MAX_TILE_THREADS);
+#ifdef DAV1D_MAX_POSTFILTER_THREADS
+        // In dav1d 0.8.2 or later (dav1d API version 5.0.1 or later), n_postfilter_threads is
+        // available. The tile threads are way more useful than the postfilter threads, so allocate
+        // a quarter or so of the threads to postfilters and the rest to tiles.
+        int postfilterThreads;
+        if (maxThreads <= 8) {
+            postfilterThreads = (maxThreads + 3) / 4; // ceil(maxThreads / 4.0)
+        } else {
+            postfilterThreads = AVIF_MIN(maxThreads / 4, DAV1D_MAX_POSTFILTER_THREADS);
+        }
+        // If n_postfilter_threads is equal to 1, dav1d won't create any postfilter threads.
+        if ((postfilterThreads > 1) && ((tileThreads + postfilterThreads) > maxThreads)) {
+            int excess = tileThreads + postfilterThreads - maxThreads;
+            tileThreads -= excess;
+        }
+        codec->internal->dav1dSettings.n_postfilter_threads = postfilterThreads;
+#endif
+        codec->internal->dav1dSettings.n_tile_threads = tileThreads;
 
         if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
             return AVIF_FALSE;
