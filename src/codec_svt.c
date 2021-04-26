@@ -65,6 +65,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         EbSvtAv1EncConfiguration * svt_config = avifAlloc(sizeof(EbSvtAv1EncConfiguration));
         if (!svt_config)
             return AVIF_RESULT_UNKNOWN_ERROR;
+        // Zero-initialize svt_config because svt_av1_enc_init_handle() does not set many fields of svt_config.
+        // See https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1697.
         memset(svt_config, 0, sizeof(EbSvtAv1EncConfiguration));
         codec->internal->svt_config = svt_config;
 
