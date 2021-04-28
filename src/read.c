@@ -2317,6 +2317,12 @@ static avifResult avifParse(avifDecoder * decoder)
             return AVIF_RESULT_OK;
         }
     }
+    if (!ftypSeen) {
+        return AVIF_RESULT_INVALID_FTYP;
+    }
+    if ((needsMeta && !metaSeen) || (needsMoov && !moovSeen)) {
+        return AVIF_RESULT_TRUNCATED_DATA;
+    }
     return AVIF_RESULT_OK;
 }
 
