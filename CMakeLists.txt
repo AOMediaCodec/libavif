@@ -198,6 +198,7 @@ set(AVIF_SRCS
     src/alpha.c
     src/avif.c
     src/colr.c
+    src/diag.c
     src/io.c
     src/mem.c
     src/obu.c

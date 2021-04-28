@@ -166,3 +166,13 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
     }
     return AVIF_APP_FILE_FORMAT_UNKNOWN;
 }
+
+void avifDumpDiagnostics(struct avifDiagnostics * diag)
+{
+    if (!*diag->error) {
+        return;
+    }
+
+    printf("Diagnostics:\n");
+    printf(" * %s\n", diag->error);
+}

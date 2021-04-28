@@ -76,6 +76,7 @@ static int info(const char * inputFilename)
         }
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
+        avifDumpDiagnostics(&decoder->diag);
     }
 
     avifDecoderDestroy(decoder);
@@ -247,6 +248,7 @@ int main(int argc, char * argv[])
         }
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
+        avifDumpDiagnostics(&decoder->diag);
         returnCode = 1;
     }
     avifDecoderDestroy(decoder);

@@ -66,6 +66,8 @@ typedef int avifBool;
 #define AVIF_TRUE 1
 #define AVIF_FALSE 0
 
+#define AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE 256
+
 // a 12 hour AVIF image sequence, running at 60 fps (a basic sanity check as this is quite ridiculous)
 #define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
 
@@ -642,6 +644,18 @@ AVIF_API avifIO * avifIOCreateFileReader(const char * filename);
 AVIF_API void avifIODestroy(avifIO * io);
 
 // ---------------------------------------------------------------------------
+// avifDiagnostics
+
+typedef struct avifDiagnostics
+{
+    // Upon receiving an error from any non-const libavif API call, if the toplevel structure used
+    // in the API call (avifDecoder, avifEncoder) contains a diag member, this buffer may be
+    // populated with a NULL-terminated, freeform error string explaining the most recent error in
+    // more detail. It will be cleared at the beginning of every non-const API call.
+    char error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE];
+} avifDiagnostics;
+
+// ---------------------------------------------------------------------------
 // avifDecoder
 
 // Useful stats related to a read/write
@@ -739,6 +753,9 @@ typedef struct avifDecoder
 
     // Use one of the avifDecoderSetIO*() functions to set this
     avifIO * io;
+
+    // Additional diagnostics (such as detailed error state)
+    avifDiagnostics diag;
 
     // Internals used by the decoder
     struct avifDecoderData * data;

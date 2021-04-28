@@ -265,6 +265,12 @@ avifCodec * avifCodecCreateSvt(void);     // requires AVIF_CODEC_SVT (codec_svt.
 const char * avifCodecVersionSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
 
 // ---------------------------------------------------------------------------
+// avifDiagnostics
+
+void avifDiagnosticsClearError(avifDiagnostics * diag);
+void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...);
+
+// ---------------------------------------------------------------------------
 // avifStream
 
 typedef size_t avifBoxMarker;
