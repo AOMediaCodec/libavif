@@ -384,7 +384,7 @@ static const struct aomOptionDef aomOptionDefs[] = {
     { "cq-level", AOME_SET_CQ_LEVEL, AVIF_AOM_OPTION_UINT, NULL },
     // Enable delta quantization in chroma planes
     { "enable-chroma-deltaq", AV1E_SET_ENABLE_CHROMA_DELTAQ, AVIF_AOM_OPTION_INT, NULL },
-    // Loop filter sharpness
+    // Bias towards block sharpness in rate-distortion optimization of transform coefficients
     { "sharpness", AOME_SET_SHARPNESS, AVIF_AOM_OPTION_UINT, NULL },
     // Tune distortion metric
     { "tune", AOME_SET_TUNING, AVIF_AOM_OPTION_ENUM, tuningEnum },
