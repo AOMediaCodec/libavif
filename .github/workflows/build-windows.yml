@@ -156,6 +156,13 @@ jobs:
         copy build\${{ env.CONFIGURATION }}\avif.lib artifact\lib\avif_static.lib
         copy build-dll\${{ env.CONFIGURATION }}\*.dll artifact\lib\.
         copy build-dll\${{ env.CONFIGURATION }}\*.lib artifact\lib\.
+        echo "SUPPORT_AOM = ${{ env.SUPPORT_AOM }}" `
+          "SUPPORT_DAV1D = ${{ env.SUPPORT_DAV1D }}" `
+          "SUPPORT_RAV1E  = ${{ env.SUPPORT_RAV1E  }}" `
+          "SUPPORT_LIBGAV1 = ${{ env.SUPPORT_LIBGAV1 }}" `
+          "SUPPORT_SVT = ${{ env.SUPPORT_SVT }}" `
+          "SUPPORT_YUV = ${{ env.SUPPORT_YUV }}" | Out-File -FilePath artifact\features.txt -Encoding utf-8
+
     - uses: actions/upload-artifact@v2
       with:
          name: libavif_windows_x64_${{ env.CONFIGURATION }}_${{ env.SHORT_SHA }}
