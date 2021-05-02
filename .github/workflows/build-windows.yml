@@ -1,0 +1,161 @@
+name: Build (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      aom:
+        description: "Enable aom (ON or OFF)"
+        required: true
+        default: "ON"
+      dav1d:
+        description: "Enable dav1d (ON or OFF)"
+        required: true
+        default: "ON"
+      rav1e:
+        description: "Enable rav1e (ON or OFF)"
+        required: true
+        default: "ON"
+      libgav1:
+        description: "Enable libgav1 (ON or OFF)"
+        required: true
+        default: "ON"
+      svt:
+        description: "Enable SVT-AV1 (ON or OFF)"
+        required: true
+        default: "ON"
+      libyuv:
+        description: "Enable libyuv (ON or OFF)"
+        required: true
+        default: "ON"
+  
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      CONFIGURATION: Release
+      SUPPORT_AOM: ${{ github.event.inputs.aom }}
+      SUPPORT_DAV1D: ${{ github.event.inputs.dav1d }}
+      SUPPORT_RAV1E: ${{ github.event.inputs.rav1e }}
+      SUPPORT_LIBGAV1: ${{ github.event.inputs.libgav1 }}
+      SUPPORT_SVT: ${{ github.event.inputs.svt }}
+      SUPPORT_YUV: ${{ github.event.inputs.libyuv }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+    - uses: ilammy/msvc-dev-cmd@v1
+    - uses: ilammy/setup-nasm@v1
+    - uses: seanmiddleditch/gha-setup-ninja@v3
+    - name: Short SHA
+      run: |
+        $ssha=$env:GITHUB_SHA.Substring(0, 8)
+        echo "SHORT_SHA=$ssha" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8
+    - name: Setup Rust
+      if: ${{ env.SUPPORT_RAV1E == 'ON' }}
+      run: |
+        rustup default stable-x86_64-pc-windows-msvc
+        rustc -vV
+        cargo -vV
+    - name: Check
+      run: |
+        ninja --version
+        nasm --version
+    - name: Get submodules
+      run: git submodule update --init --recursive
+    - name: Build aom
+      if: ${{ env.SUPPORT_AOM == 'ON' }}
+      run: |
+        cd ext
+        .\aom.cmd
+    - name: Build dav1d
+      if: ${{ env.SUPPORT_DAV1D == 'ON' }}
+      run: |
+        cd ext
+        git clone -b 0.57.2 --depth 1 https://github.com/mesonbuild/meson.git
+        git clone -b 0.8.2 --depth 1 https://code.videolan.org/videolan/dav1d.git
+        cd dav1d
+        mkdir build
+        cd build
+        python ..\..\meson\meson.py --default-library=static --buildtype release ..
+        ninja
+    - name: Build rav1e
+      if: ${{ env.SUPPORT_RAV1E == 'ON' }}
+      run: |
+        cd ext
+        .\rav1e.cmd
+    - name: Build libgav1
+      if: ${{ env.SUPPORT_LIBGAV1 == 'ON' }}
+      run: |
+        cd ext
+        .\libgav1.cmd
+    - name: Build svt
+      if: ${{ env.SUPPORT_SVT == 'ON' }}
+      run: |
+        cd ext
+        .\svt.cmd
+    - name: Build libvyuv
+      if: ${{ env.SUPPORT_YUV == 'ON' }}
+      run: |
+        cd ext
+        git clone --single-branch https://chromium.googlesource.com/libyuv/libyuv
+        cd libyuv
+        git checkout 2871589
+        mkdir build
+        cd build
+        cmake -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=${{ env.CONFIGURATION }} ..
+        msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" YUV.sln
+    - name: Get libjpeg / zlibpng
+      run: |
+        cd ext
+        .\libjpeg.cmd
+        .\zlibpng.cmd
+    - name: CMake Options
+      run: |
+        $value="-DAVIF_CODEC_AOM=${{ env.SUPPORT_AOM }} " + `
+          "-DAVIF_LOCAL_AOM=ON " + `
+          "-DAVIF_CODEC_DAV1D=${{ env.SUPPORT_DAV1D }} " + `
+          "-DAVIF_LOCAL_DAV1D=ON " + `
+          "-DAVIF_CODEC_RAV1E=${{ env.SUPPORT_RAV1E }} " + `
+          "-DAVIF_LOCAL_RAV1E=ON " + `
+          "-DAVIF_CODEC_LIBGAV1=${{ env.SUPPORT_LIBGAV1 }} " + `
+          "-DAVIF_LOCAL_LIBGAV1=ON " + `
+          "-DAVIF_CODEC_SVT=${{ env.SUPPORT_SVT }} " + `
+          "-DAVIF_LOCAL_SVT=ON " + `
+          "-DAVIF_LOCAL_YUV=${{ env.SUPPORT_YUV }} " + `
+          "-DAVIF_LOCAL_JPEG=ON " + `
+          "-DAVIF_LOCAL_ZLIBPNG=ON "
+        echo "CMAKE_OPTIONS=$value" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8
+    - name: Build (static lib / app)
+      run: |
+        mkdir build
+        cd build
+        cmake --version
+        cmake .. `
+           ${{ env.CMAKE_OPTIONS }} `
+          -DBUILD_SHARED_LIBS=OFF `
+          -DAVIF_BUILD_APPS=ON
+        msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" libavif.sln
+    - name: Build (shared lib)
+      run: |
+        mkdir build-dll
+        cd build-dll
+        cmake --version
+        cmake .. `
+           ${{ env.CMAKE_OPTIONS }} `
+          -DBUILD_SHARED_LIBS=ON `
+          -DAVIF_BUILD_APPS=OFF
+        msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" libavif.sln
+    - name: Copy artifact
+      run: |
+        mkdir artifact\include
+        xcopy include artifact\include /s
+        mkdir artifact\examples
+        xcopy examples artifact\examples /s
+        mkdir artifact\lib
+        copy build\${{ env.CONFIGURATION }}\*.exe artifact\.
+        copy build\${{ env.CONFIGURATION }}\avif.lib artifact\lib\avif_static.lib
+        copy build-dll\${{ env.CONFIGURATION }}\*.dll artifact\lib\.
+        copy build-dll\${{ env.CONFIGURATION }}\*.lib artifact\lib\.
+    - uses: actions/upload-artifact@v2
+      with:
+         name: libavif_windows_x64_${{ env.CONFIGURATION }}_${{ env.SHORT_SHA }}
+         path: artifact
