@@ -103,6 +103,7 @@ jobs:
         cd build
         cmake -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=${{ env.CONFIGURATION }} ..
         msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" YUV.sln
+        xcopy /y Release\yuv.lib .
     - name: Get libjpeg / zlibpng
       run: |
         cd ext
@@ -120,7 +121,7 @@ jobs:
           "-DAVIF_LOCAL_LIBGAV1=ON " + `
           "-DAVIF_CODEC_SVT=${{ env.SUPPORT_SVT }} " + `
           "-DAVIF_LOCAL_SVT=ON " + `
-          "-DAVIF_LOCAL_YUV=${{ env.SUPPORT_YUV }} " + `
+          "-DAVIF_LOCAL_LIBYUV=${{ env.SUPPORT_YUV }} " + `
           "-DAVIF_LOCAL_JPEG=ON " + `
           "-DAVIF_LOCAL_ZLIBPNG=ON "
         echo "CMAKE_OPTIONS=$value" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8
