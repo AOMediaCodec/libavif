@@ -124,7 +124,7 @@ jobs:
           "-DAVIF_LOCAL_JPEG=ON " + `
           "-DAVIF_LOCAL_ZLIBPNG=ON "
         echo "CMAKE_OPTIONS=$value" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8
-    - name: Build (static lib / app)
+    - name: Build (static libs / apps)
       run: |
         mkdir build
         cd build
@@ -134,7 +134,7 @@ jobs:
           -DBUILD_SHARED_LIBS=OFF `
           -DAVIF_BUILD_APPS=ON
         msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" libavif.sln
-    - name: Build (shared lib)
+    - name: Build (shared libs)
       run: |
         mkdir build-dll
         cd build-dll
