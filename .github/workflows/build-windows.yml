@@ -42,58 +42,69 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@v2
+      with:
+        path: ext
+        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}-${{ github.event.inputs.aom }}-${{ github.event.inputs.dav1d }}-${{ github.event.inputs.rav1e }}-${{ github.event.inputs.libgav1 }}-${{ github.event.inputs.svt }}-${{ github.event.inputs.libyuv }}
     - uses: ilammy/msvc-dev-cmd@v1
     - uses: ilammy/setup-nasm@v1
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      with:
+        version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
+      if: steps.cache-ext.outputs.cache-hit != 'true'
     - name: Setup meson
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       run: pip install meson
     - name: Short SHA
       run: |
         $ssha=$env:GITHUB_SHA.Substring(0, 8)
         echo "SHORT_SHA=$ssha" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8
     - name: Setup Rust
-      if: ${{ env.SUPPORT_RAV1E == 'ON' }}
+      if: ${{ env.SUPPORT_RAV1E == 'ON' && steps.cache-ext.outputs.cache-hit != 'true' }}
       run: |
         rustup default stable-x86_64-pc-windows-msvc
         rustc -vV
         cargo -vV
     - name: Check
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       run: |
         ninja --version
         nasm --version
-    - name: Get submodules
-      run: git submodule update --init --recursive
     - name: Build aom
-      if: ${{ env.SUPPORT_AOM == 'ON' }}
+      if: ${{ env.SUPPORT_AOM == 'ON' && steps.cache-ext.outputs.cache-hit != 'true' }}
       run: |
         cd ext
         .\aom.cmd
     - name: Build dav1d
-      if: ${{ env.SUPPORT_DAV1D == 'ON' }}
+      if: ${{ env.SUPPORT_DAV1D == 'ON' && steps.cache-ext.outputs.cache-hit != 'true' }}
       run: |
         cd ext
         .\dav1d.cmd
     - name: Build rav1e
-      if: ${{ env.SUPPORT_RAV1E == 'ON' }}
+      if: ${{ env.SUPPORT_RAV1E == 'ON' && steps.cache-ext.outputs.cache-hit != 'true' }}
       run: |
         cd ext
         .\rav1e.cmd
     - name: Build libgav1
-      if: ${{ env.SUPPORT_LIBGAV1 == 'ON' }}
+      if: ${{ env.SUPPORT_LIBGAV1 == 'ON' && steps.cache-ext.outputs.cache-hit != 'true' }}
       run: |
         cd ext
         .\libgav1.cmd
     - name: Build svt
-      if: ${{ env.SUPPORT_SVT == 'ON' }}
+      if: ${{ env.SUPPORT_SVT == 'ON' && steps.cache-ext.outputs.cache-hit != 'true' }}
       run: |
         cd ext
         .\svt.cmd
-    - name: Build libvyuv
-      if: ${{ env.SUPPORT_YUV == 'ON' }}
+    - name: Build libyuv
+      if: ${{ env.SUPPORT_YUV == 'ON' && steps.cache-ext.outputs.cache-hit != 'true' }}
       run: |
         cd ext
         .\libyuv.cmd
     - name: Get libjpeg / zlibpng
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       run: |
         cd ext
         .\libjpeg.cmd
@@ -123,7 +134,7 @@ jobs:
            ${{ env.CMAKE_OPTIONS }} `
           -DBUILD_SHARED_LIBS=OFF `
           -DAVIF_BUILD_APPS=ON
-        msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" libavif.sln
+        cmake --build . --config "${{ env.CONFIGURATION }}"
     - name: Build (shared libs)
       run: |
         mkdir build-dll
@@ -133,7 +144,7 @@ jobs:
            ${{ env.CMAKE_OPTIONS }} `
           -DBUILD_SHARED_LIBS=ON `
           -DAVIF_BUILD_APPS=OFF
-        msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" libavif.sln
+        cmake --build . --config "${{ env.CONFIGURATION }}"
     - name: Copy artifact
       run: |
         mkdir artifact\include
