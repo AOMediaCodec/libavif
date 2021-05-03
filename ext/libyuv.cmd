@@ -4,6 +4,10 @@
 
 : # cmake and ninja must be in your PATH.
 
+: # Switch to a sh-like command if not running in windows
+: ; $SHELL libyuv.sh
+: ; exit $?
+
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
@@ -15,6 +19,7 @@ git checkout 2871589
 mkdir build
 cd build
 
-cmake -G Ninja -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=Release ..
-ninja yuv
+cmake -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release --target yuv
+copy Release\yuv.lib yuv.lib
 cd ../..
