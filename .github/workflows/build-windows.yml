@@ -45,6 +45,8 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1
     - uses: ilammy/setup-nasm@v1
     - uses: seanmiddleditch/gha-setup-ninja@v3
+    - name: Setup meson
+      run: pip install meson
     - name: Short SHA
       run: |
         $ssha=$env:GITHUB_SHA.Substring(0, 8)
@@ -70,13 +72,7 @@ jobs:
       if: ${{ env.SUPPORT_DAV1D == 'ON' }}
       run: |
         cd ext
-        git clone -b 0.57.2 --depth 1 https://github.com/mesonbuild/meson.git
-        git clone -b 0.8.2 --depth 1 https://code.videolan.org/videolan/dav1d.git
-        cd dav1d
-        mkdir build
-        cd build
-        python ..\..\meson\meson.py --default-library=static --buildtype release ..
-        ninja
+        .\dav1d.cmd
     - name: Build rav1e
       if: ${{ env.SUPPORT_RAV1E == 'ON' }}
       run: |
@@ -96,14 +92,7 @@ jobs:
       if: ${{ env.SUPPORT_YUV == 'ON' }}
       run: |
         cd ext
-        git clone --single-branch https://chromium.googlesource.com/libyuv/libyuv
-        cd libyuv
-        git checkout 2871589
-        mkdir build
-        cd build
-        cmake -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=${{ env.CONFIGURATION }} ..
-        msbuild /m /p:Configuration="${{ env.CONFIGURATION }}" YUV.sln
-        xcopy /y Release\yuv.lib .
+        .\libyuv.cmd
     - name: Get libjpeg / zlibpng
       run: |
         cd ext
