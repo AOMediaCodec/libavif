@@ -12,6 +12,9 @@ void avifDiagnosticsClearError(avifDiagnostics * diag)
     memset(diag->error, 0, AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE);
 }
 
+#ifdef __clang__
+__attribute__((__format__(__printf__, 2, 3)))
+#endif
 void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...)
 {
     if (!diag) {

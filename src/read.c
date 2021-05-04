@@ -408,7 +408,7 @@ static avifBool avifCodecDecodeInputGetSamples(avifCodecDecodeInput * decodeInpu
 
             if (sampleSize > UINT64_MAX - sampleOffset) {
                 avifDiagnosticsPrintf(diag,
-                                      "Sample table contains an offset/size pair which overflows: [%" PRIu64 " / %" PRIu64 "]",
+                                      "Sample table contains an offset/size pair which overflows: [%" PRIu64 " / %u]",
                                       sampleOffset,
                                       sampleSize);
                 return AVIF_FALSE;
@@ -851,6 +851,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifR
             if (bytesToRead != offsetBuffer.size) {
                 avifDiagnosticsPrintf(diag,
                                       "Item ID %u tried to read %zu bytes, but only received %zu bytes",
+                                      item->id,
                                       bytesToRead,
                                       offsetBuffer.size);
                 return AVIF_RESULT_TRUNCATED_DATA;
@@ -1334,7 +1335,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             extent->size = (size_t)extentLength;
             if (extent->size > SIZE_MAX - item->size) {
                 avifDiagnosticsPrintf(diag,
-                                      "Item ID [%u] contains an extent length which overflows the item size: [%" PRIu64 ", %" PRIu64 "]",
+                                      "Item ID [%u] contains an extent length which overflows the item size: [%zu, %zu]",
                                       itemID,
                                       extent->size,
                                       item->size);
@@ -2333,7 +2334,7 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
 
     size_t compatibleBrandsBytes = avifROStreamRemainingBytes(&s);
     if ((compatibleBrandsBytes % 4) != 0) {
-        avifDiagnosticsPrintf(diag, "Box[ftyp] contains a compatible brands section that isn't divisible by 4 [%u]", compatibleBrandsBytes);
+        avifDiagnosticsPrintf(diag, "Box[ftyp] contains a compatible brands section that isn't divisible by 4 [%zu]", compatibleBrandsBytes);
         return AVIF_FALSE;
     }
     ftyp->compatibleBrands = avifROStreamCurrent(&s);
