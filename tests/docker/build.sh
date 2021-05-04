@@ -34,7 +34,7 @@ nasm --version
 
 # aom
 cd
-git clone -b v3.0.0 --depth 1 https://aomedia.googlesource.com/aom
+git clone -b v3.1.0 --depth 1 https://aomedia.googlesource.com/aom
 cd aom
 mkdir build.avif
 cd build.avif
@@ -52,10 +52,9 @@ ninja install
 
 # libgav1
 cd
-git clone --single-branch https://chromium.googlesource.com/codecs/libgav1
+git clone -b v0.16.3 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 cd libgav1
-git checkout 4a89dc3
-git clone -b lts_2020_09_23 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
+git clone -b lts_2021_03_24 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release -DLIBGAV1_THREADPOOL_USE_STD_MUTEX=1 ..
