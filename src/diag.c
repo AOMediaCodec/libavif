@@ -12,26 +12,20 @@ void avifDiagnosticsClearError(avifDiagnostics * diag)
     memset(diag->error, 0, AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE);
 }
 
-static void avifDiagnosticsPrintv(avifDiagnostics * diag, const char * format, va_list args)
-{
-    if (*diag->error) {
-        // There is already a detailed error set.
-        return;
-    }
-
-    vsnprintf(diag->error, AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE, format, args);
-    diag->error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE - 1] = '\0';
-}
-
 void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...)
 {
     if (!diag) {
         // It is possible this is NULL (e.g. calls to avifFileTypeIsCompatible())
         return;
     }
+    if (*diag->error) {
+        // There is already a detailed error set.
+        return;
+    }
 
     va_list args;
     va_start(args, format);
-    avifDiagnosticsPrintv(diag, format, args);
+    vsnprintf(diag->error, AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE, format, args);
+    diag->error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE - 1] = '\0';
     va_end(args);
 }

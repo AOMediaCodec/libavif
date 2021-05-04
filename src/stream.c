@@ -53,9 +53,7 @@ void avifROStreamSetOffset(avifROStream * stream, size_t offset)
 avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount)
 {
     if (!avifROStreamHasBytesLeft(stream, byteCount)) {
-        if (stream->diag) {
-            avifDiagnosticsPrintf(stream->diag, "%s: Failed to skip %zu bytes, truncated data?", stream->diagContext, byteCount);
-        }
+        avifDiagnosticsPrintf(stream->diag, "%s: Failed to skip %zu bytes, truncated data?", stream->diagContext, byteCount);
         return AVIF_FALSE;
     }
     stream->offset += byteCount;
@@ -65,9 +63,7 @@ avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount)
 avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size)
 {
     if (!avifROStreamHasBytesLeft(stream, size)) {
-        if (stream->diag) {
-            avifDiagnosticsPrintf(stream->diag, "%s: Failed to read %zu bytes, truncated data?", stream->diagContext, size);
-        }
+        avifDiagnosticsPrintf(stream->diag, "%s: Failed to read %zu bytes, truncated data?", stream->diagContext, size);
         return AVIF_FALSE;
     }
 
@@ -99,9 +95,7 @@ avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t facto
         *v = tmp;
     } else {
         // Unsupported factor
-        if (stream->diag) {
-            avifDiagnosticsPrintf(stream->diag, "%s: Failed to read UX8 value; Unsupported UX8 factor [%" PRIu64 "]", stream->diagContext, factor);
-        }
+        avifDiagnosticsPrintf(stream->diag, "%s: Failed to read UX8 value; Unsupported UX8 factor [%" PRIu64 "]", stream->diagContext, factor);
         return AVIF_FALSE;
     }
     return AVIF_TRUE;
@@ -141,9 +135,7 @@ avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t out
         }
     }
     if (!foundNullTerminator) {
-        if (stream->diag) {
-            avifDiagnosticsPrintf(stream->diag, "%s: Failed to find a NULL terminator when reading a string", stream->diagContext);
-        }
+        avifDiagnosticsPrintf(stream->diag, "%s: Failed to find a NULL terminator when reading a string", stream->diagContext);
         return AVIF_FALSE;
     }
 
@@ -181,9 +173,7 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
 
     size_t bytesRead = stream->offset - startOffset;
     if ((size < bytesRead) || ((size - bytesRead) > SIZE_MAX)) {
-        if (stream->diag) {
-            avifDiagnosticsPrintf(stream->diag, "%s: Header size overflow check failure", stream->diagContext);
-        }
+        avifDiagnosticsPrintf(stream->diag, "%s: Header size overflow check failure", stream->diagContext);
         return AVIF_FALSE;
     }
     header->size = (size_t)(size - bytesRead);
@@ -193,7 +183,11 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
 avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header)
 {
     CHECK(avifROStreamReadBoxHeaderPartial(stream, header));
-    return (header->size <= avifROStreamRemainingBytes(stream));
+    if (header->size > avifROStreamRemainingBytes(stream)) {
+        avifDiagnosticsPrintf(stream->diag, "%s: Child box too large, possibly truncated data", stream->diagContext);
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
 }
 
 avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags)
@@ -214,9 +208,7 @@ avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforc
     uint8_t version;
     CHECK(avifROStreamReadVersionAndFlags(stream, &version, NULL));
     if (version != enforcedVersion) {
-        if (stream->diag) {
-            avifDiagnosticsPrintf(stream->diag, "%s: Expecting box version %u, got version %u", stream->diagContext, enforcedVersion, version);
-        }
+        avifDiagnosticsPrintf(stream->diag, "%s: Expecting box version %u, got version %u", stream->diagContext, enforcedVersion, version);
         return AVIF_FALSE;
     }
     return AVIF_TRUE;
