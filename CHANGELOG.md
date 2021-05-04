@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
-* Update aom.cmd: v3.0.0
+* Update aom.cmd: v3.1.0
+* Update libgav1: v0.16.3
+* Update libyuv.cmd: 2f0cbb9
 
 ## [0.9.0] - 2021-02-22
 
