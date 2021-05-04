@@ -1353,6 +1353,7 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
     uint8_t version, flags;
     CHECK(avifROStreamRead(&s, &version, 1)); // unsigned int(8) version = 0;
     if (version != 0) {
+        avifDiagnosticsPrintf(diag, "Box[grid] has unsupported version [%u]", version);
         return AVIF_FALSE;
     }
     uint8_t rowsMinusOne, columnsMinusOne;
@@ -1725,6 +1726,7 @@ static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw,
     avifBoxHeader ipcoHeader;
     CHECK(avifROStreamReadBoxHeader(&s, &ipcoHeader));
     if (memcmp(ipcoHeader.type, "ipco", 4)) {
+        avifDiagnosticsPrintf(diag, "Failed to find Box[ipco] as the first box in Box[iprp]");
         return AVIF_FALSE;
     }
 
@@ -1815,6 +1817,7 @@ static avifBool avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, size_
     } else if (version == 1) {
         CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
     } else {
+        avifDiagnosticsPrintf(diag, "Box[iinf] has an unsupported version %u", version);
         return AVIF_FALSE;
     }
 
@@ -1929,6 +1932,7 @@ static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t ra
                 firstBox = AVIF_FALSE;
             } else {
                 // hdlr must be the first box!
+                avifDiagnosticsPrintf(diag, "Box[meta] does not have a Box[hdlr] as its first child box");
                 return AVIF_FALSE;
             }
         } else if (!memcmp(header.type, "iloc", 4)) {
@@ -1955,6 +1959,7 @@ static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t ra
     }
     if (firstBox) {
         // The meta box must not be empty (it must contain at least a hdlr box)
+        avifDiagnosticsPrintf(diag, "Box[meta] has no child boxes");
         return AVIF_FALSE;
     }
     return AVIF_TRUE;
@@ -2184,6 +2189,7 @@ static avifBool avifParseSampleTableBox(avifTrack * track, const uint8_t * raw, 
 {
     if (track->sampleTable) {
         // A TrackBox may only have one SampleTable
+        avifDiagnosticsPrintf(diag, "Duplicate Box[stbl] for a single track detected");
         return AVIF_FALSE;
     }
     track->sampleTable = avifSampleTableCreate();
