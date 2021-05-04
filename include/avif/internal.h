@@ -285,10 +285,12 @@ typedef struct avifROStream
 {
     avifROData * raw;
     size_t offset;
+    avifDiagnostics * diag;
+    const char * diagContext;
 } avifROStream;
 
 const uint8_t * avifROStreamCurrent(avifROStream * stream);
-void avifROStreamStart(avifROStream * stream, avifROData * raw);
+void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics * diag, const char * diagContext);
 size_t avifROStreamOffset(const avifROStream * stream);
 void avifROStreamSetOffset(avifROStream * stream, size_t offset);
 
