@@ -734,6 +734,14 @@ typedef struct avifDecoder
     // (see comment above), and setting this to 0 disables the limit.
     uint32_t imageCountLimit;
 
+    // Allow the PixelInformationProperty ('pixi') to be missing in AV1 image items. Default to
+    // false.
+    //
+    // libheif v1.11.0 or older does not add the 'pixi' item property to AV1 image items. If you
+    // need to decode AVIF images encoded by libheif v1.11.0 or older, set allowMissingPixi to
+    // true. (This issue has been corrected in libheif v1.12.0.)
+    avifBool allowMissingPixi;
+
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
 

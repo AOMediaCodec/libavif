@@ -712,7 +712,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item)
+static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifBool allowMissingPixi)
 {
     const avifProperty * av1CProp = avifPropertyArrayFind(&item->properties, "av1C");
     if (!av1CProp) {
@@ -724,7 +724,7 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item)
     const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
     if (!pixiProp) {
         // A pixi box is mandatory in all valid AVIF configurations. Bail out.
-        return AVIF_RESULT_BMFF_PARSE_FAILED;
+        return allowMissingPixi ? AVIF_RESULT_OK : AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
     for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
@@ -2901,12 +2901,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->alphaPresent = (alphaItem != NULL);
         decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorItem->premByID == alphaItem->id);
 
-        avifResult colorItemValidationResult = avifDecoderItemValidateAV1(colorItem);
+        avifResult colorItemValidationResult = avifDecoderItemValidateAV1(colorItem, decoder->allowMissingPixi);
         if (colorItemValidationResult != AVIF_RESULT_OK) {
             return colorItemValidationResult;
         }
         if (alphaItem) {
-            avifResult alphaItemValidationResult = avifDecoderItemValidateAV1(alphaItem);
+            avifResult alphaItemValidationResult = avifDecoderItemValidateAV1(alphaItem, decoder->allowMissingPixi);
             if (alphaItemValidationResult != AVIF_RESULT_OK) {
                 return alphaItemValidationResult;
             }
