@@ -231,7 +231,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,
                                                avifBool alpha,
-                                               uint32_t addImageFlags,
+                                               avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
@@ -250,7 +250,7 @@ typedef struct avifCodec
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags);
+avifCodec * avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags);
 void avifCodecDestroy(avifCodec * codec);
 
 avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM (codec_aom.c)

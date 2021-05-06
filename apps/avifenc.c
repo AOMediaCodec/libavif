@@ -1034,7 +1034,7 @@ int main(int argc, char * argv[])
             goto cleanup;
         }
     } else {
-        uint32_t addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
+        avifAddImageFlags addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
         if (!avifInputHasRemainingData(&input)) {
             addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }

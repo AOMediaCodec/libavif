@@ -396,7 +396,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridRows,
                                               const avifImage * const * cellImages,
                                               uint64_t durationInTimescales,
-                                              uint32_t addImageFlags)
+                                              avifAddImageFlags addImageFlags)
 {
     // -----------------------------------------------------------------------
     // Verify encoding is possible
@@ -649,12 +649,16 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
-avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, uint32_t addImageFlags)
+avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags)
 {
     return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
 }
 
-avifResult avifEncoderAddImageGrid(avifEncoder * encoder, uint32_t gridCols, uint32_t gridRows, const avifImage * const * cellImages, uint32_t addImageFlags)
+avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
+                                   uint32_t gridCols,
+                                   uint32_t gridRows,
+                                   const avifImage * const * cellImages,
+                                   avifAddImageFlags addImageFlags)
 {
     if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;

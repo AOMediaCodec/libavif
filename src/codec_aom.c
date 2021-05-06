@@ -481,7 +481,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
-                                      uint32_t addImageFlags,
+                                      avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
     if (!codec->internal->encoderInitialized) {

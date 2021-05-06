@@ -128,7 +128,7 @@ avifImage * avifImageCreateEmpty(void)
     return avifImageCreate(0, 0, 0, AVIF_PIXEL_FORMAT_NONE);
 }
 
-void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, uint32_t planes)
+void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
 
@@ -216,7 +216,7 @@ void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpS
     avifRWDataSet(&image->xmp, xmp, xmpSize);
 }
 
-void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
+void avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
 {
     int channelSize = avifImageUsesU16(image) ? 2 : 1;
     int fullRowBytes = channelSize * image->width;
@@ -257,7 +257,7 @@ void avifImageAllocatePlanes(avifImage * image, uint32_t planes)
     }
 }
 
-void avifImageFreePlanes(avifImage * image, uint32_t planes)
+void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes)
 {
     if ((planes & AVIF_PLANES_YUV) && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
         if (image->imageOwnsYUVPlanes) {
@@ -283,7 +283,7 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes)
     }
 }
 
-void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t planes)
+void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes)
 {
     avifImageFreePlanes(dstImage, planes);
 
@@ -501,7 +501,7 @@ static struct AvailableCodec availableCodecs[] = {
 
 static const int availableCodecsCount = (sizeof(availableCodecs) / sizeof(availableCodecs[0])) - 1;
 
-static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, uint32_t requiredFlags)
+static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, avifCodecFlags requiredFlags)
 {
     for (int i = 0; i < availableCodecsCount; ++i) {
         if ((choice != AVIF_CODEC_CHOICE_AUTO) && (availableCodecs[i].choice != choice)) {
@@ -515,7 +515,7 @@ static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, uint32
     return NULL;
 }
 
-const char * avifCodecName(avifCodecChoice choice, uint32_t requiredFlags)
+const char * avifCodecName(avifCodecChoice choice, avifCodecFlags requiredFlags)
 {
     struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
     if (availableCodec) {
@@ -534,7 +534,7 @@ avifCodecChoice avifCodecChoiceFromName(const char * name)
     return AVIF_CODEC_CHOICE_AUTO;
 }
 
-avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags)
+avifCodec * avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags)
 {
     struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
     if (availableCodec) {
