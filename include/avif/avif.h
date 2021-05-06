@@ -293,6 +293,20 @@ enum
 typedef uint16_t avifMatrixCoefficients; // AVIF_MATRIX_COEFFICIENTS_*
 
 // ---------------------------------------------------------------------------
+// avifDiagnostics
+
+typedef struct avifDiagnostics
+{
+    // Upon receiving an error from any non-const libavif API call, if the toplevel structure used
+    // in the API call (avifDecoder, avifEncoder) contains a diag member, this buffer may be
+    // populated with a NULL-terminated, freeform error string explaining the most recent error in
+    // more detail. It will be cleared at the beginning of every non-const API call.
+    char error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE];
+} avifDiagnostics;
+
+void avifDiagnosticsClearError(avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
 // Optional transformation structs
 
 typedef enum avifTransformFlag
@@ -355,6 +369,32 @@ typedef struct avifImageMirror
     // 1: Mirror about a horizontal axis ("top-to-bottom")
     uint8_t axis;
 } avifImageMirror;
+
+// ---------------------------------------------------------------------------
+// avifCropRect - Helper struct/functions to work with avifCleanApertureBox
+
+typedef struct avifCropRect
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
+} avifCropRect;
+
+// These will return AVIF_FALSE if the resultant values violate any standards, and if so, the output
+// values are not guaranteed to be complete or correct and should not be used.
+avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
+                                             const avifCleanApertureBox * clap,
+                                             const uint32_t imageW,
+                                             const uint32_t imageH,
+                                             const avifPixelFormat yuvFormat,
+                                             avifDiagnostics * diag);
+avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
+                                             const avifCropRect * cropRect,
+                                             const uint32_t imageW,
+                                             const uint32_t imageH,
+                                             const avifPixelFormat yuvFormat,
+                                             avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // avifImage
@@ -645,18 +685,6 @@ typedef struct avifIO
 AVIF_API avifIO * avifIOCreateMemoryReader(const uint8_t * data, size_t size);
 AVIF_API avifIO * avifIOCreateFileReader(const char * filename);
 AVIF_API void avifIODestroy(avifIO * io);
-
-// ---------------------------------------------------------------------------
-// avifDiagnostics
-
-typedef struct avifDiagnostics
-{
-    // Upon receiving an error from any non-const libavif API call, if the toplevel structure used
-    // in the API call (avifDecoder, avifEncoder) contains a diag member, this buffer may be
-    // populated with a NULL-terminated, freeform error string explaining the most recent error in
-    // more detail. It will be cleared at the beginning of every non-const API call.
-    char error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE];
-} avifDiagnostics;
 
 // ---------------------------------------------------------------------------
 // avifDecoder

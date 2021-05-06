@@ -387,6 +387,207 @@ void avifRGBImageFreePixels(avifRGBImage * rgb)
 }
 
 // ---------------------------------------------------------------------------
+// avifCropRect
+
+typedef struct clapFraction
+{
+    uint32_t n;
+    uint32_t d;
+} clapFraction;
+
+static clapFraction calcCenter(uint32_t dim)
+{
+    clapFraction f;
+    f.n = dim >> 1;
+    f.d = 1;
+    if ((dim % 2) == 1) {
+        f.n = (f.n * 2) + 1;
+        f.d = 2;
+    }
+    return f;
+}
+
+static int32_t calcGCD(int32_t a, int32_t b)
+{
+    if (a < 0) {
+        a *= -1;
+    }
+    if (b < 0) {
+        b *= -1;
+    }
+    while (a > 0) {
+        if (a < b) {
+            int32_t t = a;
+            a = b;
+            b = t;
+        }
+        a = a - b;
+    }
+    return b;
+}
+
+static void clapFractionSimplify(clapFraction * f)
+{
+    int32_t gcd = calcGCD((int32_t)f->n, (int32_t)f->d);
+    if (gcd > 1) {
+        f->n /= gcd;
+        f->d /= gcd;
+    }
+}
+
+// Make the fractions have a common denominator
+static void clapFractionCD(clapFraction * a, clapFraction * b)
+{
+    if ((a->d != b->d)) {
+        const uint32_t ad = a->d;
+        const uint32_t bd = b->d;
+        a->n = (uint32_t)((int32_t)a->n * (int32_t)bd);
+        a->d *= bd;
+        b->n = (uint32_t)((int32_t)b->n * (int32_t)ad);
+        b->d *= ad;
+    }
+}
+
+static clapFraction clapFractionAdd(clapFraction a, clapFraction b)
+{
+    clapFractionCD(&a, &b);
+
+    clapFraction result;
+    result.n = (uint32_t)((int32_t)a.n + (int32_t)b.n);
+    result.d = a.d;
+
+    clapFractionSimplify(&result);
+    return result;
+}
+
+static clapFraction clapFractionSub(clapFraction a, clapFraction b)
+{
+    clapFractionCD(&a, &b);
+
+    clapFraction result;
+    result.n = (uint32_t)((int32_t)a.n - (int32_t)b.n);
+    result.d = a.d;
+
+    clapFractionSimplify(&result);
+    return result;
+}
+
+static clapFraction clapFractionMul(clapFraction a, clapFraction b)
+{
+    clapFraction result;
+    result.n = (uint32_t)((int32_t)a.n * (int32_t)b.n);
+    result.d = (uint32_t)((int32_t)a.d * (int32_t)b.d);
+    clapFractionSimplify(&result);
+    return result;
+}
+
+static avifBool avifCropRectIsValid(const avifCropRect * cropRect,
+                                    const uint32_t imageW,
+                                    const uint32_t imageH,
+                                    const avifPixelFormat yuvFormat,
+                                    avifDiagnostics * diag)
+
+{
+    (void)yuvFormat;
+
+    if ((cropRect->width == 0) || (cropRect->height == 0)) {
+        avifDiagnosticsPrintf(diag, "crop rect width and height must be nonzero");
+        return AVIF_FALSE;
+    }
+    if (((cropRect->x + cropRect->width) > imageW) || ((cropRect->y + cropRect->height) > imageH)) {
+        avifDiagnosticsPrintf(diag, "crop rect is out of the image's bounds");
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
+avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
+                                             const avifCleanApertureBox * clap,
+                                             const uint32_t imageW,
+                                             const uint32_t imageH,
+                                             const avifPixelFormat yuvFormat,
+                                             avifDiagnostics * diag)
+{
+    if (((int32_t)clap->widthN % (int32_t)clap->widthD) != 0) {
+        avifDiagnosticsPrintf(diag, "clap width is not an integer");
+        return AVIF_FALSE;
+    }
+    if ((clap->heightN % clap->heightD) != 0) {
+        avifDiagnosticsPrintf(diag, "clap height is not an integer");
+        return AVIF_FALSE;
+    }
+
+    clapFraction horizOff;
+    horizOff.n = clap->horizOffN;
+    horizOff.d = clap->horizOffD;
+    clapFraction vertOff;
+    vertOff.n = clap->vertOffN;
+    vertOff.d = clap->vertOffD;
+
+    clapFraction uncroppedCenterX = calcCenter(imageW);
+    clapFraction uncroppedCenterY = calcCenter(imageH);
+    clapFraction croppedCenterX = clapFractionAdd(uncroppedCenterX, horizOff);
+    clapFraction croppedCenterY = clapFractionAdd(uncroppedCenterY, vertOff);
+
+    clapFraction halfW;
+    halfW.n = clap->widthN;
+    halfW.d = clap->widthD * 2;
+    clapFraction cropX = clapFractionSub(croppedCenterX, halfW);
+    if (((int32_t)cropX.n % (int32_t)cropX.d) != 0) {
+        avifDiagnosticsPrintf(diag, "crop X offset is not an integer");
+        return AVIF_FALSE;
+    }
+
+    clapFraction halfH;
+    halfH.n = clap->heightN;
+    halfH.d = clap->heightD * 2;
+    clapFraction cropY = clapFractionSub(croppedCenterY, halfH);
+    if (((int32_t)cropY.n % (int32_t)cropY.d) != 0) {
+        avifDiagnosticsPrintf(diag, "crop Y offset is not an integer");
+        return AVIF_FALSE;
+    }
+
+    cropRect->x = cropX.n / cropX.d;
+    cropRect->y = cropY.n / cropY.d;
+    cropRect->width = clap->widthN / clap->widthD;
+    cropRect->height = clap->heightN / clap->heightD;
+    return avifCropRectIsValid(cropRect, imageW, imageH, yuvFormat, diag);
+}
+
+avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
+                                             const avifCropRect * cropRect,
+                                             const uint32_t imageW,
+                                             const uint32_t imageH,
+                                             const avifPixelFormat yuvFormat,
+                                             avifDiagnostics * diag)
+{
+    if (!avifCropRectIsValid(cropRect, imageW, imageH, yuvFormat, diag)) {
+        return AVIF_FALSE;
+    }
+
+    clapFraction uncroppedCenterX = calcCenter(imageW);
+    clapFraction uncroppedCenterY = calcCenter(imageH);
+
+    clapFraction croppedCenterX = calcCenter(cropRect->width);
+    croppedCenterX.n += cropRect->x * croppedCenterX.d;
+    clapFraction croppedCenterY = calcCenter(cropRect->height);
+    croppedCenterY.n += cropRect->y * croppedCenterY.d;
+
+    clapFraction horizOff = clapFractionSub(croppedCenterX, uncroppedCenterX);
+    clapFraction vertOff = clapFractionSub(croppedCenterY, uncroppedCenterY);
+
+    clap->widthN = cropRect->width;
+    clap->widthD = 1;
+    clap->heightN = cropRect->height;
+    clap->heightD = 1;
+    clap->horizOffN = horizOff.n;
+    clap->horizOffD = horizOff.d;
+    clap->vertOffN = vertOff.n;
+    clap->vertOffD = vertOff.d;
+    return AVIF_TRUE;
+}
+
+// ---------------------------------------------------------------------------
 // avifCodecSpecificOption
 
 static char * avifStrdup(const char * str)

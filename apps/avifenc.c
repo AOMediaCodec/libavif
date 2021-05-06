@@ -193,79 +193,40 @@ static int parseU32List(uint32_t output[8], const char * arg)
     return index;
 }
 
-typedef struct clapFraction
+static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat yuvFormat, uint32_t clapValues[8])
 {
-    uint32_t n;
-    uint32_t d;
-} clapFraction;
+    avifCleanApertureBox clap;
+    avifCropRect cropRect;
+    cropRect.x = clapValues[0];
+    cropRect.y = clapValues[1];
+    cropRect.width = clapValues[2];
+    cropRect.height = clapValues[3];
 
-static clapFraction calcCenter(uint32_t dim)
-{
-    clapFraction f;
-    f.n = dim >> 1;
-    f.d = 1;
-    if ((dim % 2) == 1) {
-        f.n = (f.n * 2) + 1;
-        f.d = 2;
-    }
-    return f;
-}
-
-static clapFraction clapFractionSub(clapFraction a, clapFraction b)
-{
-    if ((a.d == 2) || (b.d == 2)) {
-        if (a.d != 2) {
-            a.n *= 2;
-            a.d = 2;
-        }
-        if (b.d != 2) {
-            b.n *= 2;
-            b.d = 2;
-        }
-    }
-    clapFraction result;
-    result.n = (uint32_t)((int32_t)a.n - (int32_t)b.n); // Yes, this insanity is correct.
-    result.d = a.d;
-
-    if ((result.d == 2) && ((result.n % 2) == 0)) {
-        // Simplify the fraction
-        result.n >>= 1;
-        result.d = 1;
-    }
-    return result;
-}
-
-static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, uint32_t clapValues[8])
-{
-    const uint32_t cropX = clapValues[0];
-    const uint32_t cropY = clapValues[1];
-    const uint32_t cropW = clapValues[2];
-    const uint32_t cropH = clapValues[3];
-
-    if ((cropW == 0) || (cropH == 0) || ((cropX + cropW) > srcW) || ((cropY + cropH) > srcH)) {
-        fprintf(stderr, "ERROR: Impossible crop rect: imageSize:[%ux%u], cropRect:[%u,%u, %ux%u]", srcW, srcH, cropX, cropY, cropW, cropH);
-        return AVIF_FALSE;
+    avifDiagnostics diag;
+    avifDiagnosticsClearError(&diag);
+    avifBool convertResult = avifCleanApertureBoxConvertCropRect(&clap, &cropRect, srcW, srcH, yuvFormat, &diag);
+    if (!convertResult) {
+        fprintf(stderr,
+                "ERROR: Impossible crop rect: imageSize:[%ux%u], pixelFormat:%s, cropRect:[%u,%u, %ux%u] - %s\n",
+                srcW,
+                srcH,
+                avifPixelFormatToString(yuvFormat),
+                cropRect.x,
+                cropRect.y,
+                cropRect.width,
+                cropRect.height,
+                diag.error);
+        return convertResult;
     }
 
-    clapFraction uncroppedCenterX = calcCenter(srcW);
-    clapFraction uncroppedCenterY = calcCenter(srcH);
-
-    clapFraction croppedCenterX = calcCenter(cropW);
-    croppedCenterX.n += cropX * croppedCenterX.d;
-    clapFraction croppedCenterY = calcCenter(cropH);
-    croppedCenterY.n += cropY * croppedCenterY.d;
-
-    clapFraction horizOff = clapFractionSub(croppedCenterX, uncroppedCenterX);
-    clapFraction vertOff = clapFractionSub(croppedCenterY, uncroppedCenterY);
-
-    clapValues[0] = cropW;
-    clapValues[1] = 1;
-    clapValues[2] = cropH;
-    clapValues[3] = 1;
-    clapValues[4] = horizOff.n;
-    clapValues[5] = horizOff.d;
-    clapValues[6] = vertOff.n;
-    clapValues[7] = vertOff.d;
+    clapValues[0] = clap.widthN;
+    clapValues[1] = clap.widthD;
+    clapValues[2] = clap.heightN;
+    clapValues[3] = clap.heightD;
+    clapValues[4] = clap.horizOffN;
+    clapValues[5] = clap.horizOffD;
+    clapValues[6] = clap.vertOffN;
+    clapValues[7] = clap.vertOffD;
     return AVIF_TRUE;
 }
 
@@ -905,7 +866,7 @@ int main(int argc, char * argv[])
         image->pasp.vSpacing = paspValues[1];
     }
     if (cropConversionRequired) {
-        if (!convertCropToClap(image->width, image->height, clapValues)) {
+        if (!convertCropToClap(image->width, image->height, image->yuvFormat, clapValues)) {
             returnCode = 1;
             goto cleanup;
         }
@@ -921,6 +882,26 @@ int main(int argc, char * argv[])
         image->clap.horizOffD = clapValues[5];
         image->clap.vertOffN = clapValues[6];
         image->clap.vertOffD = clapValues[7];
+
+        // Validate clap
+        avifCropRect cropRect;
+        avifDiagnostics diag;
+        avifDiagnosticsClearError(&diag);
+        if (!avifCropRectConvertCleanApertureBox(&cropRect, &image->clap, image->width, image->height, image->yuvFormat, &diag)) {
+            fprintf(stderr,
+                    "ERROR: Invalid clap: width:[%d / %d], height:[%d / %d], horizOff:[%d / %d], vertOff:[%d / %d] - %s\n",
+                    (int32_t)image->clap.widthN,
+                    (int32_t)image->clap.widthD,
+                    (int32_t)image->clap.heightN,
+                    (int32_t)image->clap.heightD,
+                    (int32_t)image->clap.horizOffN,
+                    (int32_t)image->clap.horizOffD,
+                    (int32_t)image->clap.vertOffN,
+                    (int32_t)image->clap.vertOffD,
+                    diag.error);
+            returnCode = 1;
+            goto cleanup;
+        }
     }
     if (irotAngle != 0xff) {
         image->transformFlags |= AVIF_TRANSFORM_IROT;

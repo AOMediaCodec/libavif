@@ -267,7 +267,6 @@ const char * avifCodecVersionSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.
 // ---------------------------------------------------------------------------
 // avifDiagnostics
 
-void avifDiagnosticsClearError(avifDiagnostics * diag);
 #ifdef __clang__
 __attribute__((__format__(__printf__, 2, 3)))
 #endif
