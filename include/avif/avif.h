@@ -658,6 +658,24 @@ typedef struct avifDiagnostics
 // ---------------------------------------------------------------------------
 // avifDecoder
 
+// Some encoders (including very old versions of avifenc) do not implement the AVIF standard
+// perfectly, and thus create invalid files. However, these files are likely still recoverable /
+// decodable, if it wasn't for the strict requirements imposed by libavif's decoder. These flags
+// allow a user of avifDecoder to decide what level of strictness they want in their project.
+typedef enum avifStrictFlag
+{
+    AVIF_STRICT_DISABLED = 0, // Default
+
+    // Allow the PixelInformationProperty ('pixi') to be missing in AV1 image items. libheif v1.11.0
+    // or older does not add the 'pixi' item property to AV1 image items. If you need to decode AVIF
+    // images encoded by libheif v1.11.0 or older, be sure to disable this bit. (This issue has been
+    // corrected in libheif v1.12.0.)
+    AVIF_STRICT_PIXI_REQUIRED = (1 << 0),
+
+    AVIF_STRICT_ENABLED = AVIF_STRICT_PIXI_REQUIRED // Maximum strictness; enables all bits above
+} avifStrictFlag;
+typedef uint32_t avifStrictFlags;
+
 // Useful stats related to a read/write
 typedef struct avifIOStats
 {
@@ -747,6 +765,9 @@ typedef struct avifDecoder
     // millions of frames, only to be invalid later. The default is AVIF_DEFAULT_IMAGE_COUNT_LIMIT
     // (see comment above), and setting this to 0 disables the limit.
     uint32_t imageCountLimit;
+
+    // Strict flags. Defaults to AVIF_STRICT_DISABLED. See avifStrictFlag definitions above.
+    avifStrictFlags strictFlags;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;

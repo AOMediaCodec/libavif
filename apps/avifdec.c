@@ -36,51 +36,11 @@ static void syntax(void)
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
     printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
     printf("                        (JPEG only; not applicable to y4m)\n");
+    printf("    -s,--strict       : Enable strict decoding, which engages additional validation checks and errors\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("\n");
     avifPrintVersions();
-}
-
-static int info(const char * inputFilename)
-{
-    avifDecoder * decoder = avifDecoderCreate();
-    avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
-    if (result != AVIF_RESULT_OK) {
-        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
-        avifDecoderDestroy(decoder);
-        return 1;
-    }
-    result = avifDecoderParse(decoder);
-    if (result == AVIF_RESULT_OK) {
-        printf("Image decoded: %s\n", inputFilename);
-        avifContainerDump(decoder);
-
-        printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
-               decoder->timescale,
-               decoder->duration,
-               decoder->durationInTimescales,
-               decoder->imageCount,
-               (decoder->imageCount == 1) ? "" : "s");
-        printf(" * Frames:\n");
-
-        int frameIndex = 0;
-        while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-            printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
-                   frameIndex,
-                   decoder->imageTiming.pts,
-                   decoder->imageTiming.ptsInTimescales,
-                   decoder->imageTiming.duration,
-                   decoder->imageTiming.durationInTimescales);
-            ++frameIndex;
-        }
-    } else {
-        printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
-        avifDumpDiagnostics(&decoder->diag);
-    }
-
-    avifDecoderDestroy(decoder);
-    return 0;
 }
 
 int main(int argc, char * argv[])
@@ -95,6 +55,7 @@ int main(int argc, char * argv[])
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
+    avifStrictFlags strictFlags = AVIF_STRICT_DISABLED;
 
     if (argc < 2) {
         syntax();
@@ -163,6 +124,8 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "-r") || !strcmp(arg, "--raw-color")) {
             rawColor = AVIF_TRUE;
+        } else if (!strcmp(arg, "-s") || !strcmp(arg, "--strict")) {
+            strictFlags = AVIF_STRICT_ENABLED;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
@@ -193,7 +156,47 @@ int main(int argc, char * argv[])
             syntax();
             return 1;
         }
-        return info(inputFilename);
+
+        avifDecoder * decoder = avifDecoderCreate();
+        decoder->maxThreads = jobs;
+        decoder->codecChoice = codecChoice;
+        decoder->strictFlags = strictFlags;
+        avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+            avifDecoderDestroy(decoder);
+            return 1;
+        }
+        result = avifDecoderParse(decoder);
+        if (result == AVIF_RESULT_OK) {
+            printf("Image decoded: %s\n", inputFilename);
+            avifContainerDump(decoder);
+
+            printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
+                   decoder->timescale,
+                   decoder->duration,
+                   decoder->durationInTimescales,
+                   decoder->imageCount,
+                   (decoder->imageCount == 1) ? "" : "s");
+            printf(" * Frames:\n");
+
+            int frameIndex = 0;
+            while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
+                printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
+                       frameIndex,
+                       decoder->imageTiming.pts,
+                       decoder->imageTiming.ptsInTimescales,
+                       decoder->imageTiming.duration,
+                       decoder->imageTiming.durationInTimescales);
+                ++frameIndex;
+            }
+        } else {
+            printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
+            avifDumpDiagnostics(&decoder->diag);
+        }
+
+        avifDecoderDestroy(decoder);
+        return 0;
     } else {
         if (!inputFilename || !outputFilename) {
             syntax();
@@ -211,6 +214,7 @@ int main(int argc, char * argv[])
     avifDecoder * decoder = avifDecoderCreate();
     decoder->maxThreads = jobs;
     decoder->codecChoice = codecChoice;
+    decoder->strictFlags = strictFlags;
     avifResult decodeResult = avifDecoderReadFile(decoder, avif, inputFilename);
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);

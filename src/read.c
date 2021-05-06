@@ -725,7 +725,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifDiagnostics * diag)
+static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifDiagnostics * diag, const avifStrictFlags strictFlags)
 {
     const avifProperty * av1CProp = avifPropertyArrayFind(&item->properties, "av1C");
     if (!av1CProp) {
@@ -736,21 +736,23 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
     const uint32_t av1CDepth = avifCodecConfigurationBoxGetDepth(&av1CProp->u.av1C);
 
     const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
-    if (!pixiProp) {
+    if (!pixiProp && (strictFlags & AVIF_STRICT_PIXI_REQUIRED)) {
         // A pixi box is mandatory in all valid AVIF configurations. Bail out.
         avifDiagnosticsPrintf(diag, "Item ID %u is missing mandatory pixi property", item->id);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
-    for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
-        if (pixiProp->u.pixi.planeDepths[i] != av1CDepth) {
-            // pixi depth must match av1C depth
-            avifDiagnosticsPrintf(diag,
-                                  "Item ID %u depth specified by pixi property [%u] does not match av1C property depth [%u]",
-                                  item->id,
-                                  pixiProp->u.pixi.planeDepths[i],
-                                  av1CDepth);
-            return AVIF_RESULT_BMFF_PARSE_FAILED;
+    if (pixiProp) {
+        for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
+            if (pixiProp->u.pixi.planeDepths[i] != av1CDepth) {
+                // pixi depth must match av1C depth
+                avifDiagnosticsPrintf(diag,
+                                      "Item ID %u depth specified by pixi property [%u] does not match av1C property depth [%u]",
+                                      item->id,
+                                      pixiProp->u.pixi.planeDepths[i],
+                                      av1CDepth);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
         }
     }
     return AVIF_RESULT_OK;
@@ -3028,12 +3030,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->alphaPresent = (alphaItem != NULL);
         decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorItem->premByID == alphaItem->id);
 
-        avifResult colorItemValidationResult = avifDecoderItemValidateAV1(colorItem, &decoder->diag);
+        avifResult colorItemValidationResult = avifDecoderItemValidateAV1(colorItem, &decoder->diag, decoder->strictFlags);
         if (colorItemValidationResult != AVIF_RESULT_OK) {
             return colorItemValidationResult;
         }
         if (alphaItem) {
-            avifResult alphaItemValidationResult = avifDecoderItemValidateAV1(alphaItem, &decoder->diag);
+            avifResult alphaItemValidationResult = avifDecoderItemValidateAV1(alphaItem, &decoder->diag, decoder->strictFlags);
             if (alphaItemValidationResult != AVIF_RESULT_OK) {
                 return alphaItemValidationResult;
             }
