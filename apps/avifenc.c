@@ -100,6 +100,7 @@ static void syntax(void)
     printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
+    printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir AXIS                       : Add imir property (mirroring). 0=vertical axis (\"left-to-right\"), 1=horizontal axis (\"top-to-bottom\")\n");
@@ -190,6 +191,82 @@ static int parseU32List(uint32_t output[8], const char * arg)
         token = strtok(NULL, ",x");
     }
     return index;
+}
+
+typedef struct clapFraction
+{
+    uint32_t n;
+    uint32_t d;
+} clapFraction;
+
+static clapFraction calcCenter(uint32_t dim)
+{
+    clapFraction f;
+    f.n = dim >> 1;
+    f.d = 1;
+    if ((dim % 2) == 1) {
+        f.n = (f.n * 2) + 1;
+        f.d = 2;
+    }
+    return f;
+}
+
+static clapFraction clapFractionSub(clapFraction a, clapFraction b)
+{
+    if ((a.d == 2) || (b.d == 2)) {
+        if (a.d != 2) {
+            a.n *= 2;
+            a.d = 2;
+        }
+        if (b.d != 2) {
+            b.n *= 2;
+            b.d = 2;
+        }
+    }
+    clapFraction result;
+    result.n = (uint32_t)((int32_t)a.n - (int32_t)b.n); // Yes, this insanity is correct.
+    result.d = a.d;
+
+    if ((result.d == 2) && ((result.n % 2) == 0)) {
+        // Simplify the fraction
+        result.n >>= 1;
+        result.d = 1;
+    }
+    return result;
+}
+
+static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, uint32_t clapValues[8])
+{
+    const uint32_t cropX = clapValues[0];
+    const uint32_t cropY = clapValues[1];
+    const uint32_t cropW = clapValues[2];
+    const uint32_t cropH = clapValues[3];
+
+    if ((cropW == 0) || (cropH == 0) || ((cropX + cropW) > srcW) || ((cropY + cropH) > srcH)) {
+        fprintf(stderr, "ERROR: Impossible crop rect: imageSize:[%ux%u], cropRect:[%u,%u, %ux%u]", srcW, srcH, cropX, cropY, cropW, cropH);
+        return AVIF_FALSE;
+    }
+
+    clapFraction uncroppedCenterX = calcCenter(srcW);
+    clapFraction uncroppedCenterY = calcCenter(srcH);
+
+    clapFraction croppedCenterX = calcCenter(cropW);
+    croppedCenterX.n += cropX * croppedCenterX.d;
+    clapFraction croppedCenterY = calcCenter(cropH);
+    croppedCenterY.n += cropY * croppedCenterY.d;
+
+    clapFraction horizOff = clapFractionSub(croppedCenterX, uncroppedCenterX);
+    clapFraction vertOff = clapFractionSub(croppedCenterY, uncroppedCenterY);
+
+    clapValues[0] = cropW;
+    clapValues[1] = 1;
+    clapValues[2] = cropH;
+    clapValues[3] = 1;
+    clapValues[4] = horizOff.n;
+    clapValues[5] = horizOff.d;
+    clapValues[6] = vertOff.n;
+    clapValues[7] = vertOff.d;
+    return AVIF_TRUE;
 }
 
 static avifInputFile * avifInputGetNextFile(avifInput * input)
@@ -399,6 +476,7 @@ int main(int argc, char * argv[])
     uint32_t paspValues[8]; // only the first two are used
     int clapCount = 0;
     uint32_t clapValues[8];
+    avifBool cropConversionRequired = AVIF_FALSE;
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
     uint8_t imirAxis = 0xff;  // sentinel value indicating "unused"
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
@@ -663,6 +741,15 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+        } else if (!strcmp(arg, "--crop")) {
+            NEXTARG();
+            clapCount = parseU32List(clapValues, arg);
+            if (clapCount != 4) {
+                fprintf(stderr, "ERROR: Invalid crop values: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
+            cropConversionRequired = AVIF_TRUE;
         } else if (!strcmp(arg, "--clap")) {
             NEXTARG();
             clapCount = parseU32List(clapValues, arg);
@@ -816,6 +903,13 @@ int main(int argc, char * argv[])
         image->transformFlags |= AVIF_TRANSFORM_PASP;
         image->pasp.hSpacing = paspValues[0];
         image->pasp.vSpacing = paspValues[1];
+    }
+    if (cropConversionRequired) {
+        if (!convertCropToClap(image->width, image->height, clapValues)) {
+            returnCode = 1;
+            goto cleanup;
+        }
+        clapCount = 8;
     }
     if (clapCount == 8) {
         image->transformFlags |= AVIF_TRANSFORM_CLAP;
