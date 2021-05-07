@@ -2522,6 +2522,7 @@ avifDecoder * avifDecoderCreate(void)
     memset(decoder, 0, sizeof(avifDecoder));
     decoder->maxThreads = 1;
     decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
+    decoder->strictFlags = AVIF_STRICT_ENABLED;
     avifDiagnosticsClearError(&decoder->diag);
     return decoder;
 }
