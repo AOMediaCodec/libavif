@@ -472,15 +472,6 @@ static clapFraction clapFractionSub(clapFraction a, clapFraction b)
     return result;
 }
 
-static clapFraction clapFractionMul(clapFraction a, clapFraction b)
-{
-    clapFraction result;
-    result.n = a.n * b.n;
-    result.d = a.d * b.d;
-    clapFractionSimplify(&result);
-    return result;
-}
-
 static avifBool avifCropRectIsValid(const avifCropRect * cropRect,
                                     const uint32_t imageW,
                                     const uint32_t imageH,
