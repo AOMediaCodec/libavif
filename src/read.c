@@ -285,6 +285,19 @@ static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBo
     return 8;
 }
 
+// This is used as a hint to validating the clap box in avifDecoderItemValidateAV1.
+static avifPixelFormat avifCodecConfigurationBoxGetFormat(const avifCodecConfigurationBox * av1C)
+{
+    if (av1C->monochrome) {
+        return AVIF_PIXEL_FORMAT_YUV400;
+    } else if ((av1C->chromaSubsamplingX == 1) && (av1C->chromaSubsamplingY == 1)) {
+        return AVIF_PIXEL_FORMAT_YUV420;
+    } else if ((av1C->chromaSubsamplingX == 1) && (av1C->chromaSubsamplingY == 0)) {
+        return AVIF_PIXEL_FORMAT_YUV422;
+    }
+    return AVIF_PIXEL_FORMAT_YUV444;
+}
+
 static const avifPropertyArray * avifSampleTableGetProperties(const avifSampleTable * sampleTable)
 {
     for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
@@ -733,7 +746,6 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
         avifDiagnosticsPrintf(diag, "Item ID %u is missing mandatory av1C property", item->id);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-    const uint32_t av1CDepth = avifCodecConfigurationBoxGetDepth(&av1CProp->u.av1C);
 
     const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
     if (!pixiProp && (strictFlags & AVIF_STRICT_PIXI_REQUIRED)) {
@@ -743,6 +755,7 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
     }
 
     if (pixiProp) {
+        const uint32_t av1CDepth = avifCodecConfigurationBoxGetDepth(&av1CProp->u.av1C);
         for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
             if (pixiProp->u.pixi.planeDepths[i] != av1CDepth) {
                 // pixi depth must match av1C depth
@@ -751,6 +764,26 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
                                       item->id,
                                       pixiProp->u.pixi.planeDepths[i],
                                       av1CDepth);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+        }
+    }
+
+    if (strictFlags & AVIF_STRICT_CLAP_VALID) {
+        const avifProperty * clapProp = avifPropertyArrayFind(&item->properties, "clap");
+        if (clapProp) {
+            const avifProperty * ispeProp = avifPropertyArrayFind(&item->properties, "ispe");
+            if (!ispeProp) {
+                avifDiagnosticsPrintf(diag, "Item ID %u is missing an ispe property, so its clap property cannot be validated", item->id);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            avifCropRect cropRect;
+            const uint32_t imageW = ispeProp->u.ispe.width;
+            const uint32_t imageH = ispeProp->u.ispe.height;
+            const avifPixelFormat av1CFormat = avifCodecConfigurationBoxGetFormat(&av1CProp->u.av1C);
+            avifBool validClap = avifCropRectConvertCleanApertureBox(&cropRect, &clapProp->u.clap, imageW, imageH, av1CFormat, diag);
+            if (!validClap) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
         }

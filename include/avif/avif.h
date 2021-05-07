@@ -703,7 +703,13 @@ typedef enum avifStrictFlag
     // corrected in libheif v1.12.0.)
     AVIF_STRICT_PIXI_REQUIRED = (1 << 0),
 
-    AVIF_STRICT_ENABLED = AVIF_STRICT_PIXI_REQUIRED // Maximum strictness; enables all bits above
+    // This demands that the values surfaced in the clap box are valid, determined by attempting to
+    // convert the clap box to a crop rect using avifCropRectConvertCleanApertureBox(). If this
+    // function returns AVIF_FALSE and this strict flag is set, the decode will fail.
+    AVIF_STRICT_CLAP_VALID = (1 << 1),
+
+    // Maximum strictness; enables all bits above
+    AVIF_STRICT_ENABLED = AVIF_STRICT_PIXI_REQUIRED | AVIF_STRICT_CLAP_VALID
 } avifStrictFlag;
 typedef uint32_t avifStrictFlags;
 
