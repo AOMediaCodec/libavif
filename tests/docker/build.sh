@@ -17,7 +17,7 @@
 
 # build env
 apt update
-apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl python3-pip
+DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl python3-pip
 pip3 install meson
 
 # Rust env
