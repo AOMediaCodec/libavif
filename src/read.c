@@ -750,7 +750,7 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
     const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
     if (!pixiProp && (strictFlags & AVIF_STRICT_PIXI_REQUIRED)) {
         // A pixi box is mandatory in all valid AVIF configurations. Bail out.
-        avifDiagnosticsPrintf(diag, "Item ID %u is missing mandatory pixi property", item->id);
+        avifDiagnosticsPrintf(diag, "[Strict] Item ID %u is missing mandatory pixi property", item->id);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
@@ -774,7 +774,9 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
         if (clapProp) {
             const avifProperty * ispeProp = avifPropertyArrayFind(&item->properties, "ispe");
             if (!ispeProp) {
-                avifDiagnosticsPrintf(diag, "Item ID %u is missing an ispe property, so its clap property cannot be validated", item->id);
+                avifDiagnosticsPrintf(diag,
+                                      "[Strict] Item ID %u is missing an ispe property, so its clap property cannot be validated",
+                                      item->id);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
 

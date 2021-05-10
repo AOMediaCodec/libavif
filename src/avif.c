@@ -535,16 +535,16 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
     const int32_t vertOffN = (int32_t)clap->vertOffN;
     const int32_t vertOffD = (int32_t)clap->vertOffD;
     if ((widthD <= 0) || (heightD <= 0) || (horizOffD <= 0) || (vertOffD <= 0)) {
-        avifDiagnosticsPrintf(diag, "clap contains a denominator that is not strictly positive");
+        avifDiagnosticsPrintf(diag, "[Strict] clap contains a denominator that is not strictly positive");
         return AVIF_FALSE;
     }
 
     if ((widthN % widthD) != 0) {
-        avifDiagnosticsPrintf(diag, "clap width is not an integer");
+        avifDiagnosticsPrintf(diag, "[Strict] clap width is not an integer");
         return AVIF_FALSE;
     }
     if ((heightN % heightD) != 0) {
-        avifDiagnosticsPrintf(diag, "clap height is not an integer");
+        avifDiagnosticsPrintf(diag, "[Strict] clap height is not an integer");
         return AVIF_FALSE;
     }
 
@@ -566,7 +566,7 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
     halfW.d = widthD * 2;
     clapFraction cropX = clapFractionSub(croppedCenterX, halfW);
     if ((cropX.n % cropX.d) != 0) {
-        avifDiagnosticsPrintf(diag, "calculated crop X offset is not an integer");
+        avifDiagnosticsPrintf(diag, "[Strict] calculated crop X offset is not an integer");
         return AVIF_FALSE;
     }
 
@@ -575,12 +575,12 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
     halfH.d = heightD * 2;
     clapFraction cropY = clapFractionSub(croppedCenterY, halfH);
     if (((int32_t)cropY.n % (int32_t)cropY.d) != 0) {
-        avifDiagnosticsPrintf(diag, "calculated crop Y offset is not an integer");
+        avifDiagnosticsPrintf(diag, "[Strict] calculated crop Y offset is not an integer");
         return AVIF_FALSE;
     }
 
     if ((cropX.n < 0) || (cropY.n < 0)) {
-        avifDiagnosticsPrintf(diag, "at least one crop offset is not positive");
+        avifDiagnosticsPrintf(diag, "[Strict] at least one crop offset is not positive");
         return AVIF_FALSE;
     }
 

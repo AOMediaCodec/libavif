@@ -36,7 +36,7 @@ static void syntax(void)
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
     printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
     printf("                        (JPEG only; not applicable to y4m)\n");
-    printf("    -s,--strict       : Enable strict decoding, which engages additional validation checks and errors\n");
+    printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("\n");
@@ -55,7 +55,7 @@ int main(int argc, char * argv[])
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
-    avifStrictFlags strictFlags = AVIF_STRICT_DISABLED;
+    avifStrictFlags strictFlags = AVIF_STRICT_ENABLED;
 
     if (argc < 2) {
         syntax();
@@ -124,8 +124,8 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "-r") || !strcmp(arg, "--raw-color")) {
             rawColor = AVIF_TRUE;
-        } else if (!strcmp(arg, "-s") || !strcmp(arg, "--strict")) {
-            strictFlags = AVIF_STRICT_ENABLED;
+        } else if (!strcmp(arg, "--no-strict")) {
+            strictFlags = AVIF_STRICT_DISABLED;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
