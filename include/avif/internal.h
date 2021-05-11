@@ -65,9 +65,6 @@ void * avifArrayPushPtr(void * arrayStruct);
 void avifArrayPush(void * arrayStruct, void * element);
 void avifArrayDestroy(void * arrayStruct);
 
-AVIF_ARRAY_DECLARE(avifRODataArray, avifROData, raw);
-AVIF_ARRAY_DECLARE(avifRWDataArray, avifRWData, raw);
-
 typedef struct avifAlphaParams
 {
     uint32_t width;
