@@ -438,6 +438,8 @@ static void clapFractionSimplify(clapFraction * f)
 // Make the fractions have a common denominator
 static void clapFractionCD(clapFraction * a, clapFraction * b)
 {
+    clapFractionSimplify(a);
+    clapFractionSimplify(b);
     if ((a->d != b->d)) {
         const int32_t ad = a->d;
         const int32_t bd = b->d;
