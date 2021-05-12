@@ -7,6 +7,37 @@
 #include <stdio.h>
 #include <string.h>
 
+static int32_t calcGCD(int32_t a, int32_t b)
+{
+    if (a < 0) {
+        a *= -1;
+    }
+    if (b < 0) {
+        b *= -1;
+    }
+    while (a > 0) {
+        if (a < b) {
+            int32_t t = a;
+            a = b;
+            b = t;
+        }
+        a = a - b;
+    }
+    return b;
+}
+
+static void printClapFraction(const char * name, int32_t n, int32_t d)
+{
+    printf("%s: %d/%d", name, n, d);
+    int32_t gcd = calcGCD(n, d);
+    if (gcd > 1) {
+        int32_t rn = n / gcd;
+        int32_t rd = d / gcd;
+        printf(" (%d/%d)", rn, rd);
+    }
+    printf(", ");
+}
+
 static void avifImageDumpInternal(avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent)
 {
     uint32_t width = avif->width;
@@ -42,15 +73,27 @@ static void avifImageDumpInternal(avifImage * avif, uint32_t gridCols, uint32_t 
             printf("    * pasp (Aspect Ratio)  : %d/%d\n", (int)avif->pasp.hSpacing, (int)avif->pasp.vSpacing);
         }
         if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
-            printf("    * clap (Clean Aperture): W: %d/%d, H: %d/%d, hOff: %d/%d, vOff: %d/%d\n",
-                   (int)avif->clap.widthN,
-                   (int)avif->clap.widthD,
-                   (int)avif->clap.heightN,
-                   (int)avif->clap.heightD,
-                   (int)avif->clap.horizOffN,
-                   (int)avif->clap.horizOffD,
-                   (int)avif->clap.vertOffN,
-                   (int)avif->clap.vertOffD);
+            printf("    * clap (Clean Aperture): ");
+            printClapFraction("W", (int32_t)avif->clap.widthN, (int32_t)avif->clap.widthD);
+            printClapFraction("H", (int32_t)avif->clap.heightN, (int32_t)avif->clap.heightD);
+            printClapFraction("hOff", (int32_t)avif->clap.horizOffN, (int32_t)avif->clap.horizOffD);
+            printClapFraction("vOff", (int32_t)avif->clap.vertOffN, (int32_t)avif->clap.vertOffD);
+            printf("\n");
+
+            avifCropRect cropRect;
+            avifDiagnostics diag;
+            avifDiagnosticsClearError(&diag);
+            avifBool validClap =
+                avifCropRectConvertCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag);
+            if (validClap) {
+                printf("      * Valid, derived crop rect: X: %d, Y: %d, W: %d, H: %d\n",
+                       cropRect.x,
+                       cropRect.y,
+                       cropRect.width,
+                       cropRect.height);
+            } else {
+                printf("      * Invalid: %s\n", diag.error);
+            }
         }
         if (avif->transformFlags & AVIF_TRANSFORM_IROT) {
             printf("    * irot (Rotation)      : %u\n", avif->irot.angle);
