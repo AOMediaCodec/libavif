@@ -493,23 +493,23 @@ static avifBool avifCropRectIsValid(const avifCropRect * cropRect,
     //     offsets and widths shall be even numbers.
 
     if ((cropRect->width == 0) || (cropRect->height == 0)) {
-        avifDiagnosticsPrintf(diag, "crop rect width and height must be nonzero");
+        avifDiagnosticsPrintf(diag, "[Strict] crop rect width and height must be nonzero");
         return AVIF_FALSE;
     }
     if (((cropRect->x + cropRect->width) > imageW) || ((cropRect->y + cropRect->height) > imageH)) {
-        avifDiagnosticsPrintf(diag, "crop rect is out of the image's bounds");
+        avifDiagnosticsPrintf(diag, "[Strict] crop rect is out of the image's bounds");
         return AVIF_FALSE;
     }
 
     if ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
         if (((cropRect->x % 2) != 0) || ((cropRect->width % 2) != 0)) {
-            avifDiagnosticsPrintf(diag, "crop rect X offset and width must both be even due to this image's YUV subsampling");
+            avifDiagnosticsPrintf(diag, "[Strict] crop rect X offset and width must both be even due to this image's YUV subsampling");
             return AVIF_FALSE;
         }
     }
     if (yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
         if (((cropRect->y % 2) != 0) || ((cropRect->height % 2) != 0)) {
-            avifDiagnosticsPrintf(diag, "crop rect Y offset and height must both be even due to this image's YUV subsampling");
+            avifDiagnosticsPrintf(diag, "[Strict] crop rect Y offset and height must both be even due to this image's YUV subsampling");
             return AVIF_FALSE;
         }
     }
