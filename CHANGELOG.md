@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * Update aom.cmd: v3.1.0
+* Update dav1d.cmd: 0.9.0
 * Update libgav1: v0.16.3
 * Update libyuv.cmd: 2f0cbb9
 
