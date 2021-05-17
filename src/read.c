@@ -2525,7 +2525,6 @@ avifDecoder * avifDecoderCreate(void)
     decoder->maxThreads = 1;
     decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
     decoder->strictFlags = AVIF_STRICT_ENABLED;
-    avifDiagnosticsClearError(&decoder->diag);
     return decoder;
 }
 
@@ -2746,6 +2745,7 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
         if (!tile->codec) {
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
         }
+        tile->codec->diag = &decoder->diag;
         if (!tile->codec->open(tile->codec, decoder)) {
             return AVIF_RESULT_DECODE_COLOR_FAILED;
         }

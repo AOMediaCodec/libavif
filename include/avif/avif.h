@@ -936,6 +936,9 @@ typedef struct avifEncoder
     // stats from the most recent write
     avifIOStats ioStats;
 
+    // Additional diagnostics (such as detailed error state)
+    avifDiagnostics diag;
+
     // Internals used by the encoder
     struct avifEncoderData * data;
     struct avifCodecSpecificOptions * csOptions;

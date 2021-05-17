@@ -1244,6 +1244,9 @@ int main(int argc, char * argv[])
 
 cleanup:
     if (encoder) {
+        if (returnCode != 0) {
+            avifDumpDiagnostics(&encoder->diag);
+        }
         avifEncoderDestroy(encoder);
     }
     if (gridCells) {

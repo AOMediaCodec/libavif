@@ -239,6 +239,8 @@ typedef struct avifCodec
                                           // If a codec uses a value, it must mark it as used.
                                           // This array is NOT owned by avifCodec.
     struct avifCodecInternal * internal;  // up to each codec to use how it wants
+                                          //
+    avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
 
     avifCodecOpenFunc open;
     avifCodecGetNextImageFunc getNextImage;

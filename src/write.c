@@ -210,6 +210,7 @@ void avifEncoderDestroy(avifEncoder * encoder)
 
 void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
+    avifDiagnosticsClearError(&encoder->diag);
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
 }
 
@@ -492,6 +493,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 return AVIF_RESULT_NO_CODEC_AVAILABLE;
             }
             item->codec->csOptions = encoder->csOptions;
+            item->codec->diag = &encoder->diag;
 
             if (cellCount > 1) {
                 item->dimgFromID = gridColorID;
@@ -548,6 +550,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                     return AVIF_RESULT_NO_CODEC_AVAILABLE;
                 }
                 item->codec->csOptions = encoder->csOptions;
+                item->codec->diag = &encoder->diag;
                 item->alpha = AVIF_TRUE;
 
                 if (cellCount > 1) {
@@ -651,6 +654,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags)
 {
+    avifDiagnosticsClearError(&encoder->diag);
     return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
 }
 
@@ -660,6 +664,7 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                    const avifImage * const * cellImages,
                                    avifAddImageFlags addImageFlags)
 {
+    avifDiagnosticsClearError(&encoder->diag);
     if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
@@ -684,6 +689,7 @@ static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOff
 
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
+    avifDiagnosticsClearError(&encoder->diag);
     if (encoder->data->items.count == 0) {
         return AVIF_RESULT_NO_CONTENT;
     }
