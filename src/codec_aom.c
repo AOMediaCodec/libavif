@@ -547,7 +547,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
         aom_codec_iface_t * encoderInterface = aom_codec_av1_cx();
         struct aom_codec_enc_cfg cfg;
-        aom_codec_enc_config_default(encoderInterface, &cfg, aomUsage);
+        if (aom_codec_enc_config_default(encoderInterface, &cfg, aomUsage) != AOM_CODEC_OK) {
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
 
         // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
         // Profile 1.  8-bit and 10-bit 4:4:4
@@ -646,7 +648,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (image->depth > 8) {
             encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
         }
-        aom_codec_enc_init(&codec->internal->encoder, encoderInterface, &cfg, encoderFlags);
+        if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, &cfg, encoderFlags) != AOM_CODEC_OK) {
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
         codec->internal->encoderInitialized = AVIF_TRUE;
 
         if (lossless) {
@@ -763,7 +767,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
         encodeFlags |= AOM_EFLAG_FORCE_KF;
     }
-    aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, encodeFlags);
+    if (aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, encodeFlags) != AOM_CODEC_OK) {
+        return AVIF_RESULT_UNKNOWN_ERROR;
+    }
 
     aom_codec_iter_t iter = NULL;
     for (;;) {
@@ -797,7 +803,9 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
     }
     for (;;) {
         // flush encoder
-        aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0);
+        if (aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0) != AOM_CODEC_OK) {
+            return AVIF_FALSE;
+        }
 
         avifBool gotPacket = AVIF_FALSE;
         aom_codec_iter_t iter = NULL;
