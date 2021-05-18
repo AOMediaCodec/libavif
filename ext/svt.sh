@@ -2,7 +2,7 @@
 # then enable CMake's AVIF_CODEC_SVT and AVIF_LOCAL_SVT options.
 # cmake and ninja must be in your PATH.
 
-git clone -b v0.8.6 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v0.8.7 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 
 cd SVT-AV1
 cd Build/linux
