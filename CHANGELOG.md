@@ -6,12 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-* Added strict mode/flags (enabled by default): AVIF_STRICT_PIXI_REQUIRED, AVIF_STRICT_CLAP_VALID
-* avifdec: Added --no-strict to disable all strict flags
-* avifdec: Added -r (--raw-color), which avoids multiplying against AVIF alpha channel before packing into non-alpha formats (JPEG)
+* Added strict mode/flags (enabled by default): `AVIF_STRICT_PIXI_REQUIRED`, `AVIF_STRICT_CLAP_VALID`
+* avifdec: Added `--no-strict` to disable all strict flags
+* avifdec: Added `-r` (`--raw-color`), which avoids multiplying against AVIF alpha channel before packing into non-alpha formats (JPEG)
 * avifenc: Recognize the Y4M format string "C420mpeg2"
-* avifenc: Add --crop convenient alternative arg to the difficult-to-use --clap arg
-* avifenc: New default for --yuv: "auto", which will use a source JPEG's internal YUV format instead of YUV444, if detected
+* avifenc: Add `--crop` convenient alternative arg to the difficult-to-use `--clap` arg
+* avifenc: New default for `--yuv`: `"auto"`, which will use a source JPEG's internal YUV format instead of YUV444, if detected
   * Uses: Prevent colorspace conversion when reading from JPEG if possible (tongyuantongyu)
 * avifenc/avifdec: Add helpful values/calculations when dumping clap box
 * Added avifDiagnostics, which allows for a detailed, freeform error string upon decode error
