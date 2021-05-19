@@ -695,7 +695,8 @@ AVIF_API void avifIODestroy(avifIO * io);
 // allow a user of avifDecoder to decide what level of strictness they want in their project.
 typedef enum avifStrictFlag
 {
-    AVIF_STRICT_DISABLED = 0, // Default
+    // Disables all strict checks.
+    AVIF_STRICT_DISABLED = 0,
 
     // Allow the PixelInformationProperty ('pixi') to be missing in AV1 image items. libheif v1.11.0
     // or older does not add the 'pixi' item property to AV1 image items. If you need to decode AVIF
@@ -708,7 +709,7 @@ typedef enum avifStrictFlag
     // function returns AVIF_FALSE and this strict flag is set, the decode will fail.
     AVIF_STRICT_CLAP_VALID = (1 << 1),
 
-    // Maximum strictness; enables all bits above
+    // Maximum strictness; enables all bits above. This is avifDecoder's default.
     AVIF_STRICT_ENABLED = AVIF_STRICT_PIXI_REQUIRED | AVIF_STRICT_CLAP_VALID
 } avifStrictFlag;
 typedef uint32_t avifStrictFlags;
