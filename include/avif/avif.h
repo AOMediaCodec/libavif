@@ -804,7 +804,7 @@ typedef struct avifDecoder
     // (see comment above), and setting this to 0 disables the limit.
     uint32_t imageCountLimit;
 
-    // Strict flags. Defaults to AVIF_STRICT_DISABLED. See avifStrictFlag definitions above.
+    // Strict flags. Defaults to AVIF_STRICT_ENABLED. See avifStrictFlag definitions above.
     avifStrictFlags strictFlags;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
