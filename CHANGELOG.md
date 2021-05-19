@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.9.1] - 2021-05-19
+
 ### Added
 * Added strict mode/flags (enabled by default): `AVIF_STRICT_PIXI_REQUIRED`, `AVIF_STRICT_CLAP_VALID`
 * avifdec: Added `--no-strict` to disable all strict flags
@@ -30,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add some strictness around ipma box parsing (version/flags tuples must be unique across ipma boxes in a file)
 * Fix alpha grids by properly writing alpha grid metadata payload
 * A HandlerBox (hdlr) of type 'pict' must be the first box within the MetaBox (meta)
+* Add some typedefs for various flag decls in avif.h to self-document which flags should be used in which function arguments
 * When encoding single-frame images using libaom, clean up the encoder immediately after encoding the frame to cut down on resources high watermarks
 * Fail on reformat Identity (MC=0) with subsampling (not using YUV444)
 * Warn if alpha is limited range (deprecated)
@@ -621,7 +625,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/AOMediaCodec/libavif/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/AOMediaCodec/libavif/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/AOMediaCodec/libavif/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/AOMediaCodec/libavif/compare/v0.8.2...v0.8.3
