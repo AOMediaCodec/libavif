@@ -304,7 +304,7 @@ typedef struct avifDiagnostics
     char error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE];
 } avifDiagnostics;
 
-void avifDiagnosticsClearError(avifDiagnostics * diag);
+AVIF_API void avifDiagnosticsClearError(avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // Optional transformation structs
@@ -383,18 +383,18 @@ typedef struct avifCropRect
 
 // These will return AVIF_FALSE if the resultant values violate any standards, and if so, the output
 // values are not guaranteed to be complete or correct and should not be used.
-avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
-                                             const avifCleanApertureBox * clap,
-                                             const uint32_t imageW,
-                                             const uint32_t imageH,
-                                             const avifPixelFormat yuvFormat,
-                                             avifDiagnostics * diag);
-avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
-                                             const avifCropRect * cropRect,
-                                             const uint32_t imageW,
-                                             const uint32_t imageH,
-                                             const avifPixelFormat yuvFormat,
-                                             avifDiagnostics * diag);
+AVIF_API avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
+                                                      const avifCleanApertureBox * clap,
+                                                      const uint32_t imageW,
+                                                      const uint32_t imageH,
+                                                      const avifPixelFormat yuvFormat,
+                                                      avifDiagnostics * diag);
+AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
+                                                      const avifCropRect * cropRect,
+                                                      const uint32_t imageW,
+                                                      const uint32_t imageH,
+                                                      const avifPixelFormat yuvFormat,
+                                                      avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // avifImage
