@@ -210,7 +210,7 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
     return AVIF_APP_FILE_FORMAT_UNKNOWN;
 }
 
-void avifDumpDiagnostics(struct avifDiagnostics * diag)
+void avifDumpDiagnostics(const avifDiagnostics * diag)
 {
     if (!*diag->error) {
         return;
