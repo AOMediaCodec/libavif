@@ -385,15 +385,15 @@ typedef struct avifCropRect
 // values are not guaranteed to be complete or correct and should not be used.
 avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
                                              const avifCleanApertureBox * clap,
-                                             const uint32_t imageW,
-                                             const uint32_t imageH,
-                                             const avifPixelFormat yuvFormat,
+                                             uint32_t imageW,
+                                             uint32_t imageH,
+                                             avifPixelFormat yuvFormat,
                                              avifDiagnostics * diag);
 avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
                                              const avifCropRect * cropRect,
-                                             const uint32_t imageW,
-                                             const uint32_t imageH,
-                                             const avifPixelFormat yuvFormat,
+                                             uint32_t imageW,
+                                             uint32_t imageH,
+                                             avifPixelFormat yuvFormat,
                                              avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
