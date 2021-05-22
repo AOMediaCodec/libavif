@@ -474,11 +474,7 @@ static clapFraction clapFractionSub(clapFraction a, clapFraction b)
     return result;
 }
 
-static avifBool avifCropRectIsValid(const avifCropRect * cropRect,
-                                    const uint32_t imageW,
-                                    const uint32_t imageH,
-                                    const avifPixelFormat yuvFormat,
-                                    avifDiagnostics * diag)
+static avifBool avifCropRectIsValid(const avifCropRect * cropRect, uint32_t imageW, uint32_t imageH, avifPixelFormat yuvFormat, avifDiagnostics * diag)
 
 {
     // ISO/IEC 23000-22:2019/DAM 2:2021, Section 7.3.6.7:
@@ -518,9 +514,9 @@ static avifBool avifCropRectIsValid(const avifCropRect * cropRect,
 
 avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
                                              const avifCleanApertureBox * clap,
-                                             const uint32_t imageW,
-                                             const uint32_t imageH,
-                                             const avifPixelFormat yuvFormat,
+                                             uint32_t imageW,
+                                             uint32_t imageH,
+                                             avifPixelFormat yuvFormat,
                                              avifDiagnostics * diag)
 {
     // ISO/IEC 14496-12:2020, Section 12.1.4.1:
@@ -595,9 +591,9 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
 
 avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
                                              const avifCropRect * cropRect,
-                                             const uint32_t imageW,
-                                             const uint32_t imageH,
-                                             const avifPixelFormat yuvFormat,
+                                             uint32_t imageW,
+                                             uint32_t imageH,
+                                             avifPixelFormat yuvFormat,
                                              avifDiagnostics * diag)
 {
     if (!avifCropRectIsValid(cropRect, imageW, imageH, yuvFormat, diag)) {
