@@ -547,7 +547,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
         aom_codec_iface_t * encoderInterface = aom_codec_av1_cx();
         struct aom_codec_enc_cfg cfg;
-        if (aom_codec_enc_config_default(encoderInterface, &cfg, aomUsage) != AOM_CODEC_OK) {
+        aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, &cfg, aomUsage);
+        if (err != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag, "aom_codec_enc_config_default() failed: %s", aom_codec_err_to_string(err));
             return AVIF_RESULT_UNKNOWN_ERROR;
         }
 
@@ -649,6 +651,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
         }
         if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, &cfg, encoderFlags) != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag,
+                                  "aom_codec_enc_init() failed: %s: %s",
+                                  aom_codec_error(&codec->internal->encoder),
+                                  aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_RESULT_UNKNOWN_ERROR;
         }
         codec->internal->encoderInitialized = AVIF_TRUE;
@@ -768,6 +774,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         encodeFlags |= AOM_EFLAG_FORCE_KF;
     }
     if (aom_codec_encode(&codec->internal->encoder, aomImage, 0, 1, encodeFlags) != AOM_CODEC_OK) {
+        avifDiagnosticsPrintf(codec->diag,
+                              "aom_codec_encode() failed: %s: %s",
+                              aom_codec_error(&codec->internal->encoder),
+                              aom_codec_error_detail(&codec->internal->encoder));
         return AVIF_RESULT_UNKNOWN_ERROR;
     }
 
@@ -804,6 +814,10 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
     for (;;) {
         // flush encoder
         if (aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0) != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag,
+                                  "aom_codec_encode() with img=NULL failed: %s: %s",
+                                  aom_codec_error(&codec->internal->encoder),
+                                  aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_FALSE;
         }
 

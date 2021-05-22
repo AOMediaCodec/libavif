@@ -57,7 +57,7 @@ extern "C" {
 // to leverage in-development code without breaking their stable builds.
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 9
-#define AVIF_VERSION_PATCH 0
+#define AVIF_VERSION_PATCH 1
 #define AVIF_VERSION_DEVEL 1
 #define AVIF_VERSION \
     ((AVIF_VERSION_MAJOR * 1000000) + (AVIF_VERSION_MINOR * 10000) + (AVIF_VERSION_PATCH * 100) + AVIF_VERSION_DEVEL)
@@ -304,7 +304,7 @@ typedef struct avifDiagnostics
     char error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE];
 } avifDiagnostics;
 
-void avifDiagnosticsClearError(avifDiagnostics * diag);
+AVIF_API void avifDiagnosticsClearError(avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // Optional transformation structs
@@ -383,18 +383,18 @@ typedef struct avifCropRect
 
 // These will return AVIF_FALSE if the resultant values violate any standards, and if so, the output
 // values are not guaranteed to be complete or correct and should not be used.
-avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
-                                             const avifCleanApertureBox * clap,
-                                             uint32_t imageW,
-                                             uint32_t imageH,
-                                             avifPixelFormat yuvFormat,
-                                             avifDiagnostics * diag);
-avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
-                                             const avifCropRect * cropRect,
-                                             uint32_t imageW,
-                                             uint32_t imageH,
-                                             avifPixelFormat yuvFormat,
-                                             avifDiagnostics * diag);
+AVIF_API avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
+                                                      const avifCleanApertureBox * clap,
+                                                      uint32_t imageW,
+                                                      uint32_t imageH,
+                                                      avifPixelFormat yuvFormat,
+                                                      avifDiagnostics * diag);
+AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
+                                                      const avifCropRect * cropRect,
+                                                      uint32_t imageW,
+                                                      uint32_t imageH,
+                                                      avifPixelFormat yuvFormat,
+                                                      avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // avifImage
@@ -695,7 +695,8 @@ AVIF_API void avifIODestroy(avifIO * io);
 // allow a user of avifDecoder to decide what level of strictness they want in their project.
 typedef enum avifStrictFlag
 {
-    AVIF_STRICT_DISABLED = 0, // Default
+    // Disables all strict checks.
+    AVIF_STRICT_DISABLED = 0,
 
     // Allow the PixelInformationProperty ('pixi') to be missing in AV1 image items. libheif v1.11.0
     // or older does not add the 'pixi' item property to AV1 image items. If you need to decode AVIF
@@ -708,7 +709,7 @@ typedef enum avifStrictFlag
     // function returns AVIF_FALSE and this strict flag is set, the decode will fail.
     AVIF_STRICT_CLAP_VALID = (1 << 1),
 
-    // Maximum strictness; enables all bits above
+    // Maximum strictness; enables all bits above. This is avifDecoder's default.
     AVIF_STRICT_ENABLED = AVIF_STRICT_PIXI_REQUIRED | AVIF_STRICT_CLAP_VALID
 } avifStrictFlag;
 typedef uint32_t avifStrictFlags;
@@ -803,7 +804,7 @@ typedef struct avifDecoder
     // (see comment above), and setting this to 0 disables the limit.
     uint32_t imageCountLimit;
 
-    // Strict flags. Defaults to AVIF_STRICT_DISABLED. See avifStrictFlag definitions above.
+    // Strict flags. Defaults to AVIF_STRICT_ENABLED. See avifStrictFlag definitions above.
     avifStrictFlags strictFlags;
 
     // stats from the most recent read, possibly 0s if reading an image sequence

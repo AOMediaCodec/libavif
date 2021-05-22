@@ -795,7 +795,6 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
 
 static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifROData * outData, size_t partialByteCount, avifDiagnostics * diag)
 {
-    (void)diag;
     if (item->mergedExtents.data && !item->partialMergedExtents) {
         // Multiple extents have already been concatenated for this item, just return it
         memcpy(outData, &item->mergedExtents, sizeof(avifROData));
