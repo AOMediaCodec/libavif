@@ -2745,9 +2745,6 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
         }
         tile->codec->diag = &decoder->diag;
-        if (!tile->codec->open(tile->codec, decoder)) {
-            return AVIF_RESULT_DECODE_COLOR_FAILED;
-        }
     }
     return AVIF_RESULT_OK;
 }
@@ -3234,7 +3231,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
 
         const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
 
-        if (!tile->codec->getNextImage(tile->codec, sample, tile->input->alpha, tile->image)) {
+        if (!tile->codec->getNextImage(decoder, tile->codec, sample, tile->input->alpha, tile->image)) {
             return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
         }
     }
