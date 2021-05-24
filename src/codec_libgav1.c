@@ -23,8 +23,8 @@ static void gav1CodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool gav1CodecGetNextImage(struct avifDecoder * decoder,
-                                      struct avifCodec * codec,
+static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
+                                      struct avifDecoder * decoder,
                                       const avifDecodeSample * sample,
                                       avifBool alpha,
                                       avifImage * image)

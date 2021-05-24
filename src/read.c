@@ -3231,7 +3231,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
 
         const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
 
-        if (!tile->codec->getNextImage(decoder, tile->codec, sample, tile->input->alpha, tile->image)) {
+        if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->alpha, tile->image)) {
             return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
         }
     }

@@ -84,8 +84,8 @@ static void aomCodecDestroyInternal(avifCodec * codec)
 
 #if defined(AVIF_CODEC_AOM_DECODE)
 
-static avifBool aomCodecGetNextImage(struct avifDecoder * decoder,
-                                     struct avifCodec * codec,
+static avifBool aomCodecGetNextImage(struct avifCodec * codec,
+                                     struct avifDecoder * decoder,
                                      const avifDecodeSample * sample,
                                      avifBool alpha,
                                      avifImage * image)

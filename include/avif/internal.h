@@ -218,8 +218,8 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
 struct avifCodec;
 struct avifCodecInternal;
 
-typedef avifBool (*avifCodecGetNextImageFunc)(struct avifDecoder * decoder,
-                                              struct avifCodec * codec,
+typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
+                                              struct avifDecoder * decoder,
                                               const avifDecodeSample * sample,
                                               avifBool alpha,
                                               avifImage * image);
