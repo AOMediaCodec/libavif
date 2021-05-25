@@ -21,6 +21,7 @@ if(AVIF_BUILD_GDK_PIXBUF)
             target_include_directories(pixbufloader-avif PUBLIC ${GDK_PIXBUF_INCLUDE_DIRS})
 
             pkg_get_variable(GDK_PIXBUF_MODULEDIR gdk-pixbuf-2.0 gdk_pixbuf_moduledir)
+            string(REPLACE ${GDK_PIXBUF_PREFIX} ${CMAKE_INSTALL_PREFIX} GDK_PIXBUF_MODULEDIR ${GDK_PIXBUF_MODULEDIR})
             install(TARGETS pixbufloader-avif DESTINATION ${GDK_PIXBUF_MODULEDIR})
         else()
             message(WARNING "gdk-pixbuf loader: disabled due to missing gdk-pixbuf-2.0")
