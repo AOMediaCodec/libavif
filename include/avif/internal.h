@@ -218,8 +218,11 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
 struct avifCodec;
 struct avifCodecInternal;
 
-typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, avifDecoder * decoder); // decode only
-typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image);
+typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
+                                              struct avifDecoder * decoder,
+                                              const avifDecodeSample * sample,
+                                              avifBool alpha,
+                                              avifImage * image);
 // EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
 // encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.
 // avifCodecEncodeImageFunc may return AVIF_RESULT_UNKNOWN_ERROR to automatically emit the appropriate
@@ -242,7 +245,6 @@ typedef struct avifCodec
                                           //
     avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
 
-    avifCodecOpenFunc open;
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;
     avifCodecEncodeFinishFunc encodeFinish;

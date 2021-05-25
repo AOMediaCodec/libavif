@@ -23,7 +23,11 @@ static void gav1CodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool gav1CodecOpen(avifCodec * codec, avifDecoder * decoder)
+static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
+                                      struct avifDecoder * decoder,
+                                      const avifDecodeSample * sample,
+                                      avifBool alpha,
+                                      avifImage * image)
 {
     if (codec->internal->gav1Decoder == NULL) {
         codec->internal->gav1Settings.threads = decoder->maxThreads;
@@ -32,11 +36,7 @@ static avifBool gav1CodecOpen(avifCodec * codec, avifDecoder * decoder)
             return AVIF_FALSE;
         }
     }
-    return AVIF_TRUE;
-}
 
-static avifBool gav1CodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
-{
     if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
                                    sample->data.data,
                                    sample->data.size,
@@ -150,7 +150,6 @@ avifCodec * avifCodecCreateGav1(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
-    codec->open = gav1CodecOpen;
     codec->getNextImage = gav1CodecGetNextImage;
     codec->destroyInternal = gav1CodecDestroyInternal;
 

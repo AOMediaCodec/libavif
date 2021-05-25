@@ -83,32 +83,35 @@ static void aomCodecDestroyInternal(avifCodec * codec)
 }
 
 #if defined(AVIF_CODEC_AOM_DECODE)
-static avifBool aomCodecOpen(struct avifCodec * codec, avifDecoder * decoder)
+
+static avifBool aomCodecGetNextImage(struct avifCodec * codec,
+                                     struct avifDecoder * decoder,
+                                     const avifDecodeSample * sample,
+                                     avifBool alpha,
+                                     avifImage * image)
 {
-    aom_codec_dec_cfg_t cfg;
-    memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
-    cfg.threads = decoder->maxThreads;
-    cfg.allow_lowbitdepth = 1;
+    if (!codec->internal->decoderInitialized) {
+        aom_codec_dec_cfg_t cfg;
+        memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
+        cfg.threads = decoder->maxThreads;
+        cfg.allow_lowbitdepth = 1;
 
-    aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
-    if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, &cfg, 0)) {
-        return AVIF_FALSE;
+        aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
+        if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, &cfg, 0)) {
+            return AVIF_FALSE;
+        }
+        codec->internal->decoderInitialized = AVIF_TRUE;
+
+        // Ensure that we only get the "highest spatial layer" as a single frame
+        // for each input sample, instead of getting each spatial layer as its own
+        // frame one at a time ("all layers").
+        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 0)) {
+            return AVIF_FALSE;
+        }
+
+        codec->internal->iter = NULL;
     }
-    codec->internal->decoderInitialized = AVIF_TRUE;
 
-    // Ensure that we only get the "highest spatial layer" as a single frame
-    // for each input sample, instead of getting each spatial layer as its own
-    // frame one at a time ("all layers").
-    if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 0)) {
-        return AVIF_FALSE;
-    }
-
-    codec->internal->iter = NULL;
-    return AVIF_TRUE;
-}
-
-static avifBool aomCodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
-{
     aom_image_t * nextFrame = NULL;
     for (;;) {
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
@@ -854,7 +857,6 @@ avifCodec * avifCodecCreateAOM(void)
     memset(codec, 0, sizeof(struct avifCodec));
 
 #if defined(AVIF_CODEC_AOM_DECODE)
-    codec->open = aomCodecOpen;
     codec->getNextImage = aomCodecGetNextImage;
 #endif
 
