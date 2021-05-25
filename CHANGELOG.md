@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+* Update svt-av1: v0.8.7
+
 ## [0.9.1] - 2021-05-19
 
 ### Added
@@ -46,7 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Use libyuv BT.709 & 2020 full range YuvConstants (wantehchang)
 * Multiply color with alpha for opaque RGB format during conversion (see #520)
 * switch docker to ubuntu 20.04, fix tzdata install (paskal)
-
 * Added an "Understanding maxThreads" explanatory comment block in avif.h
 * Minor fixes to support AVIF_CODEC_AOM_ENCODE
 * Various minor code/comments cleanup
@@ -55,7 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update dav1d.cmd: 0.9.0
 * Update libgav1: v0.16.3
 * Update libyuv.cmd: 2f0cbb9
-* Update svt-av1: v0.8.7
 
 ## [0.9.0] - 2021-02-22
 
