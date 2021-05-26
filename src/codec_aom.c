@@ -104,22 +104,27 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         }
         codec->internal->decoderInitialized = AVIF_TRUE;
 
-        // Ensure that we only get the "highest spatial layer" as a single frame
-        // for each input sample, instead of getting each spatial layer as its own
-        // frame one at a time ("all layers").
-        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 0)) {
+        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, codec->allLayers)) {
+            return AVIF_FALSE;
+        }
+        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OPERATING_POINT, codec->operatingPointIndex)) {
             return AVIF_FALSE;
         }
 
         codec->internal->iter = NULL;
     }
 
+    uint8_t skipRemaining = sample->skip;
     aom_image_t * nextFrame = NULL;
     for (;;) {
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
-            // Got an image!
-            break;
+            if (skipRemaining) {
+                --skipRemaining;
+            } else {
+                // Got an image!
+                break;
+            }
         } else if (sample) {
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {

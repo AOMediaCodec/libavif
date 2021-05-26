@@ -31,6 +31,8 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
 {
     if (codec->internal->gav1Decoder == NULL) {
         codec->internal->gav1Settings.threads = decoder->maxThreads;
+        codec->internal->gav1Settings.operating_point = codec->operatingPointIndex;
+        codec->internal->gav1Settings.output_all_layers = codec->allLayers;
 
         if (Libgav1DecoderCreate(&codec->internal->gav1Settings, &codec->internal->gav1Decoder) != kLibgav1StatusOk) {
             return AVIF_FALSE;
@@ -48,9 +50,19 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
     // returned by the previous Libgav1DecoderDequeueFrame() call. Clear
     // our pointer to the previous output frame.
     codec->internal->gav1Image = NULL;
+
     const Libgav1DecoderBuffer * nextFrame = NULL;
-    if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
-        return AVIF_FALSE;
+    uint8_t skipRemaining = sample->skip;
+    for (;;) {
+        if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
+            return AVIF_FALSE;
+        }
+        if (nextFrame && skipRemaining) {
+            nextFrame = NULL;
+            --skipRemaining;
+        } else {
+            break;
+        }
     }
     // Got an image!
 
