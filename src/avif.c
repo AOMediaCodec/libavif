@@ -538,11 +538,11 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
     }
 
     if ((widthN % widthD) != 0) {
-        avifDiagnosticsPrintf(diag, "[Strict] clap width is not an integer");
+        avifDiagnosticsPrintf(diag, "[Strict] clap width %d/%d is not an integer", widthN, widthD);
         return AVIF_FALSE;
     }
     if ((heightN % heightD) != 0) {
-        avifDiagnosticsPrintf(diag, "[Strict] clap height is not an integer");
+        avifDiagnosticsPrintf(diag, "[Strict] clap height %d/%d is not an integer", heightN, heightD);
         return AVIF_FALSE;
     }
 
@@ -564,7 +564,7 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
     halfW.d = widthD * 2;
     clapFraction cropX = clapFractionSub(croppedCenterX, halfW);
     if ((cropX.n % cropX.d) != 0) {
-        avifDiagnosticsPrintf(diag, "[Strict] calculated crop X offset is not an integer");
+        avifDiagnosticsPrintf(diag, "[Strict] calculated crop X offset %d/%d is not an integer", cropX.n, cropX.d);
         return AVIF_FALSE;
     }
 
@@ -572,8 +572,8 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
     halfH.n = heightN;
     halfH.d = heightD * 2;
     clapFraction cropY = clapFractionSub(croppedCenterY, halfH);
-    if (((int32_t)cropY.n % (int32_t)cropY.d) != 0) {
-        avifDiagnosticsPrintf(diag, "[Strict] calculated crop Y offset is not an integer");
+    if ((cropY.n % cropY.d) != 0) {
+        avifDiagnosticsPrintf(diag, "[Strict] calculated crop Y offset %d/%d is not an integer", cropY.n, cropY.d);
         return AVIF_FALSE;
     }
 
