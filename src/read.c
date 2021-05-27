@@ -1578,8 +1578,9 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
 
 static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
-    BEGIN_STREAM(s, raw, rawLen, diag, "Box[iprp]");
+    BEGIN_STREAM(s, raw, rawLen, diag, "Box[ipco]");
 
+    uint32_t uniqueBoxFlags = 0;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         CHECK(avifROStreamReadBoxHeader(&s, &header));
@@ -1588,6 +1589,7 @@ static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties
         avifProperty * prop = &properties->prop[propertyIndex];
         memcpy(prop->type, header.type, 4);
         if (!memcmp(header.type, "ispe", 4)) {
+            CHECK(uniqueBoxSeen(&uniqueBoxFlags, 0, "ipco", "ispe", diag));
             CHECK(avifParseImageSpatialExtentsProperty(prop, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "auxC", 4)) {
             CHECK(avifParseAuxiliaryTypeProperty(prop, avifROStreamCurrent(&s), header.size, diag));
