@@ -738,7 +738,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifDiagnostics * diag, const avifStrictFlags strictFlags)
+static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifDiagnostics * diag, avifStrictFlags strictFlags, avifBool alpha)
 {
     const avifProperty * av1CProp = avifPropertyArrayFind(&item->properties, "av1C");
     if (!av1CProp) {
@@ -755,6 +755,28 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
     }
 
     if (pixiProp) {
+        const int av1CPlaneCount = av1CProp->u.av1C.monochrome ? 1 : 3;
+        if (alpha) {
+            // Older versions of libaom could not encode monochrome images, so some alpha
+            // auxilliary images may have been encoded in the YUV 4:2:0 format rather than
+            // monochrome. Do not compare with av1CPlaneCount in this case.
+            if (pixiProp->u.pixi.planeCount != 1) {
+                avifDiagnosticsPrintf(diag,
+                                      "Item ID %u number of channels specified by pixi property [%u] is not 1",
+                                      item->id,
+                                      pixiProp->u.pixi.planeCount);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+        } else {
+            if (pixiProp->u.pixi.planeCount != av1CPlaneCount) {
+                avifDiagnosticsPrintf(diag,
+                                      "Item ID %u number of channels specified by pixi property [%u] does not match av1C property number of channels [%d]",
+                                      item->id,
+                                      pixiProp->u.pixi.planeCount,
+                                      av1CPlaneCount);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+        }
         const uint32_t av1CDepth = avifCodecConfigurationBoxGetDepth(&av1CProp->u.av1C);
         for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
             if (pixiProp->u.pixi.planeDepths[i] != av1CDepth) {
@@ -3062,12 +3084,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->alphaPresent = (alphaItem != NULL);
         decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorItem->premByID == alphaItem->id);
 
-        avifResult colorItemValidationResult = avifDecoderItemValidateAV1(colorItem, &decoder->diag, decoder->strictFlags);
+        avifResult colorItemValidationResult = avifDecoderItemValidateAV1(colorItem, &decoder->diag, decoder->strictFlags, AVIF_FALSE);
         if (colorItemValidationResult != AVIF_RESULT_OK) {
             return colorItemValidationResult;
         }
         if (alphaItem) {
-            avifResult alphaItemValidationResult = avifDecoderItemValidateAV1(alphaItem, &decoder->diag, decoder->strictFlags);
+            avifResult alphaItemValidationResult = avifDecoderItemValidateAV1(alphaItem, &decoder->diag, decoder->strictFlags, AVIF_TRUE);
             if (alphaItemValidationResult != AVIF_RESULT_OK) {
                 return alphaItemValidationResult;
             }
