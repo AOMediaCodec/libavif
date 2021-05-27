@@ -1578,7 +1578,7 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
 
 static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
-    BEGIN_STREAM(s, raw, rawLen, diag, "Box[iprp]");
+    BEGIN_STREAM(s, raw, rawLen, diag, "Box[ipco]");
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
