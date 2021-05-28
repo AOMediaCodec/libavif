@@ -155,6 +155,8 @@ typedef struct avifDecoderItem
     uint8_t type[4];
     size_t size;
     uint32_t idatID; // If non-zero, offset is relative to this idat box (iloc construction_method==1)
+    uint32_t width;  // Set from this item's ispe property, if present
+    uint32_t height; // Set from this item's ispe property, if present
     avifContentType contentType;
     avifPropertyArray properties;
     avifExtentArray extents;       // All extent offsets/sizes
@@ -622,6 +624,8 @@ typedef struct avifTile
     avifCodecDecodeInput * input;
     struct avifCodec * codec;
     avifImage * image;
+    uint32_t width;  // Either avifTrack.width or avifDecoderItem.width
+    uint32_t height; // Either avifTrack.height or avifDecoderItem.height
     uint8_t operatingPointIndex;
 } avifTile;
 AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
@@ -763,11 +767,13 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
     }
 }
 
-static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint8_t operatingPointIndex)
+static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint32_t width, uint32_t height, uint8_t operatingPointIndex)
 {
     avifTile * tile = (avifTile *)avifArrayPushPtr(&data->tiles);
     tile->image = avifImageCreateEmpty();
     tile->input = avifCodecDecodeInputCreate();
+    tile->width = width;
+    tile->height = height;
     tile->operatingPointIndex = operatingPointIndex;
     return tile;
 }
@@ -1125,7 +1131,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
                 continue;
             }
 
-            avifTile * tile = avifDecoderDataCreateTile(decoder->data, avifDecoderItemOperatingPoint(item));
+            avifTile * tile = avifDecoderDataCreateTile(decoder->data, item->width, item->height, avifDecoderItemOperatingPoint(item));
             if (!avifCodecDecodeInputFillFromDecoderItem(tile->input,
                                                          item,
                                                          decoder->allowProgressive,
@@ -2305,6 +2311,11 @@ static avifBool avifParseTrackHeaderBox(avifTrack * track, const uint8_t * raw, 
     track->width = width >> 16;
     track->height = height >> 16;
 
+    if ((track->width == 0) || (track->height == 0) || (track->width > (AVIF_MAX_IMAGE_SIZE / track->height))) {
+        avifDiagnosticsPrintf(diag, "Track ID [%u] has an invalid size [%ux%u]", track->id, track->width, track->height);
+        return AVIF_FALSE;
+    }
+
     // TODO: support scaling based on width/height track header info?
 
     track->id = trackID;
@@ -2986,6 +2997,37 @@ avifResult avifDecoderParse(avifDecoder * decoder)
         return parseResult;
     }
 
+    // Walk the decoded items (if any) and harvest ispe
+    avifDecoderData * data = decoder->data;
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        if (!item->size) {
+            continue;
+        }
+        if (item->hasUnsupportedEssentialProperty) {
+            // An essential property isn't supported by libavif; ignore the item.
+            continue;
+        }
+        avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
+        if (memcmp(item->type, "av01", 4) && !isGrid) {
+            // probably exif or some other data
+            continue;
+        }
+
+        const avifProperty * ispeProp = avifPropertyArrayFind(&item->properties, "ispe");
+        if (ispeProp) {
+            item->width = ispeProp->u.ispe.width;
+            item->height = ispeProp->u.ispe.height;
+
+            if ((item->width == 0) || (item->height == 0) || (item->width > (AVIF_MAX_IMAGE_SIZE / item->height))) {
+                avifDiagnosticsPrintf(data->diag, "Item ID [%u] has an invalid size [%ux%u]", item->id, item->width, item->height);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+        } else {
+            avifDiagnosticsPrintf(data->diag, "Item ID [%u] is missing a mandatory ispe property", item->id);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+    }
     return avifDecoderReset(decoder);
 }
 
@@ -3122,7 +3164,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             alphaTrack = &data->tracks.track[alphaTrackIndex];
         }
 
-        avifTile * colorTile = avifDecoderDataCreateTile(data, 0); // No way to set operating point via tracks
+        avifTile * colorTile = avifDecoderDataCreateTile(data, colorTrack->width, colorTrack->height, 0); // No way to set operating point via tracks
         if (!avifCodecDecodeInputFillFromSampleTable(colorTile->input,
                                                      colorTrack->sampleTable,
                                                      decoder->imageCountLimit,
@@ -3133,7 +3175,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         data->colorTileCount = 1;
 
         if (alphaTrack) {
-            avifTile * alphaTile = avifDecoderDataCreateTile(data, 0); // No way to set operating point via tracks
+            avifTile * alphaTile = avifDecoderDataCreateTile(data, alphaTrack->width, alphaTrack->height, 0); // No way to set operating point via tracks
             if (!avifCodecDecodeInputFillFromSampleTable(alphaTile->input,
                                                          alphaTrack->sampleTable,
                                                          decoder->imageCountLimit,
@@ -3284,7 +3326,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
             }
 
-            avifTile * colorTile = avifDecoderDataCreateTile(data, avifDecoderItemOperatingPoint(colorItem));
+            avifTile * colorTile =
+                avifDecoderDataCreateTile(data, colorItem->width, colorItem->height, avifDecoderItemOperatingPoint(colorItem));
             if (!avifCodecDecodeInputFillFromDecoderItem(colorTile->input,
                                                          colorItem,
                                                          decoder->allowProgressive,
@@ -3315,7 +3358,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
                 }
 
-                avifTile * alphaTile = avifDecoderDataCreateTile(data, avifDecoderItemOperatingPoint(alphaItem));
+                avifTile * alphaTile =
+                    avifDecoderDataCreateTile(data, alphaItem->width, alphaItem->height, avifDecoderItemOperatingPoint(alphaItem));
                 if (!avifCodecDecodeInputFillFromDecoderItem(alphaTile->input,
                                                              alphaItem,
                                                              decoder->allowProgressive,
@@ -3332,14 +3376,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->ioStats.colorOBUSize = colorItem->size;
         decoder->ioStats.alphaOBUSize = alphaItem ? alphaItem->size : 0;
 
-        const avifProperty * ispeProp = avifPropertyArrayFind(colorProperties, "ispe");
-        if (ispeProp) {
-            decoder->image->width = ispeProp->u.ispe.width;
-            decoder->image->height = ispeProp->u.ispe.height;
-        } else {
-            decoder->image->width = 0;
-            decoder->image->height = 0;
-        }
+        decoder->image->width = colorItem->width;
+        decoder->image->height = colorItem->height;
         decoder->alphaPresent = (alphaItem != NULL);
         decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorItem->premByID == alphaItem->id);
 
@@ -3514,6 +3552,13 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
 
         if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->alpha, tile->image)) {
             return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
+        }
+
+        // Scale the decoded image so that it corresponds to this tile's output dimensions
+        if ((tile->width != tile->image->width) || (tile->height != tile->image->height)) {
+            if (!avifImageScale(tile->image, tile->width, tile->height, &decoder->diag)) {
+                return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
+            }
         }
     }
 
