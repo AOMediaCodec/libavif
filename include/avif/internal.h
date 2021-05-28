@@ -156,6 +156,12 @@ avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
 // ---------------------------------------------------------------------------
+// Scaling
+
+// This scales the YUV/A planes in-place.
+avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
 typedef struct avifDecodeSample
