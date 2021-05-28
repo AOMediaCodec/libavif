@@ -290,9 +290,9 @@ static avifPixelFormat avifCodecConfigurationBoxGetFormat(const avifCodecConfigu
 {
     if (av1C->monochrome) {
         return AVIF_PIXEL_FORMAT_YUV400;
-    } else if ((av1C->chromaSubsamplingX == 1) && (av1C->chromaSubsamplingY == 1)) {
+    } else if (av1C->chromaSubsamplingY == 1) {
         return AVIF_PIXEL_FORMAT_YUV420;
-    } else if ((av1C->chromaSubsamplingX == 1) && (av1C->chromaSubsamplingY == 0)) {
+    } else if (av1C->chromaSubsamplingX == 1) {
         return AVIF_PIXEL_FORMAT_YUV422;
     }
     return AVIF_PIXEL_FORMAT_YUV444;
