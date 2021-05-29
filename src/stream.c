@@ -24,7 +24,7 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics 
     stream->diagContext = diagContext;
 
     // If diag is non-NULL, diagContext must also be non-NULL
-    assert(!stream->diag || (stream->diag && stream->diagContext));
+    assert(!stream->diag || stream->diagContext);
 }
 
 avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount)
