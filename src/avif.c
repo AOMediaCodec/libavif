@@ -400,8 +400,8 @@ static clapFraction calcCenter(int32_t dim)
     clapFraction f;
     f.n = dim >> 1;
     f.d = 1;
-    if ((dim % 2) == 1) {
-        f.n = (f.n * 2) + 1;
+    if ((dim % 2) != 0) {
+        f.n = dim;
         f.d = 2;
     }
     return f;
@@ -443,9 +443,9 @@ static void clapFractionCD(clapFraction * a, clapFraction * b)
     if ((a->d != b->d)) {
         const int32_t ad = a->d;
         const int32_t bd = b->d;
-        a->n = a->n * bd;
+        a->n *= bd;
         a->d *= bd;
-        b->n = b->n * ad;
+        b->n *= ad;
         b->d *= ad;
     }
 }
