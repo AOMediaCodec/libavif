@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * avifenc: New default for `--yuv`: `"auto"`, which will use a source JPEG's internal YUV format instead of YUV444, if detected
   * Uses: Prevent colorspace conversion when reading from JPEG if possible (tongyuantongyu)
 * avifenc/avifdec: Add helpful values/calculations when dumping clap box
-* Added avifDiagnostics, which allows for a detailed, freeform error string upon decode error
+* Added avifDiagnostics, which allows for a detailed, freeform error string upon decode or encode error
 * Create helper avifCropRect struct and methods for helping to manipulate/populate/validate avifCleanApertureBox
 * Added ability to set codec-specific options for color or alpha only
 * Support for libaom's ALL_INTRA mode (if available)
@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Tweaks to compiler flags (analyze related)
 * Use libyuv BT.709 & 2020 full range YuvConstants (wantehchang)
 * Multiply color with alpha for opaque RGB format during conversion (see #520)
-* switch docker to ubuntu 20.04, fix tzdata install (paskal)
+* Switch docker to ubuntu 20.04, fix tzdata install (paskal)
 * Added an "Understanding maxThreads" explanatory comment block in avif.h
 * Minor fixes to support AVIF_CODEC_AOM_ENCODE
 * Various minor code/comments cleanup
