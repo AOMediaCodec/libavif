@@ -2319,9 +2319,9 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
     return AVIF_TRUE;
 }
 
-static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen)
 {
-    BEGIN_STREAM(s, raw, rawLen, diag, "Box[trak]");
+    BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[trak]");
 
     avifTrack * track = avifDecoderDataCreateTrack(data);
 
@@ -2344,16 +2344,16 @@ static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMoovBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseMoovBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen)
 {
-    BEGIN_STREAM(s, raw, rawLen, diag, "Box[moov]");
+    BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[moov]");
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "trak", 4)) {
-            CHECK(avifParseTrackBox(data, avifROStreamCurrent(&s), header.size, diag));
+            CHECK(avifParseTrackBox(data, avifROStreamCurrent(&s), header.size));
         }
 
         CHECK(avifROStreamSkip(&s, header.size));
@@ -2454,7 +2454,7 @@ static avifResult avifParse(avifDecoder * decoder)
             metaSeen = AVIF_TRUE;
         } else if (!memcmp(header.type, "moov", 4)) {
             CHECKERR(!moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
-            CHECKERR(avifParseMoovBox(data, boxContents.data, boxContents.size, data->diag), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(avifParseMoovBox(data, boxContents.data, boxContents.size), AVIF_RESULT_BMFF_PARSE_FAILED);
             moovSeen = AVIF_TRUE;
         }
 
