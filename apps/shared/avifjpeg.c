@@ -297,7 +297,10 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
 
         avif->width = cinfo.output_width;
         avif->height = cinfo.output_height;
-        avif->yuvFormat = (requestedFormat == AVIF_PIXEL_FORMAT_NONE) ? AVIF_APP_DEFAULT_PIXEL_FORMAT : requestedFormat;
+        if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
+            // Identity is only valid with YUV444.
+            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ? AVIF_PIXEL_FORMAT_YUV444 : AVIF_APP_DEFAULT_PIXEL_FORMAT;
+        }
         avif->depth = requestedDepth ? requestedDepth : 8;
         avifRGBImageSetDefaults(&rgb, avif);
         rgb.format = AVIF_RGB_FORMAT_RGB;

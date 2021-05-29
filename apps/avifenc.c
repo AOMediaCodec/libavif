@@ -793,11 +793,9 @@ int main(int argc, char * argv[])
 
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (input.requestedFormat != AVIF_PIXEL_FORMAT_NONE) &&
         (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444)) {
-        // This protects against this code misbehaving if AVIF_APP_DEFAULT_PIXEL_FORMAT is ever changed from AVIF_PIXEL_FORMAT_YUV444
-        assert((input.requestedFormat != AVIF_PIXEL_FORMAT_NONE) || (AVIF_APP_DEFAULT_PIXEL_FORMAT == AVIF_PIXEL_FORMAT_YUV444));
-
-        // matrixCoefficients was likely set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect
-        // of --lossless, and Identity is only valid with YUV444. Set this back to the default.
+        // User explicitly asked for non YUV444 yuvFormat, while matrixCoefficients was likely
+        // set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect of --lossless,
+        // and Identity is only valid with YUV444. Set matrixCoefficients back to the default.
         image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
         if (cicpExplicitlySet) {
