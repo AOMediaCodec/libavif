@@ -210,7 +210,6 @@ void avifEncoderDestroy(avifEncoder * encoder)
 
 void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
-    avifDiagnosticsClearError(&encoder->diag);
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
 }
 
