@@ -440,7 +440,7 @@ static void clapFractionCD(clapFraction * a, clapFraction * b)
 {
     clapFractionSimplify(a);
     clapFractionSimplify(b);
-    if ((a->d != b->d)) {
+    if (a->d != b->d) {
         const int32_t ad = a->d;
         const int32_t bd = b->d;
         a->n *= bd;
@@ -492,7 +492,8 @@ static avifBool avifCropRectIsValid(const avifCropRect * cropRect, uint32_t imag
         avifDiagnosticsPrintf(diag, "[Strict] crop rect width and height must be nonzero");
         return AVIF_FALSE;
     }
-    if (((cropRect->x + cropRect->width) > imageW) || ((cropRect->y + cropRect->height) > imageH)) {
+    if ((cropRect->x > (UINT32_MAX - cropRect->width)) || ((cropRect->x + cropRect->width) > imageW) ||
+        (cropRect->y > (UINT32_MAX - cropRect->height)) || ((cropRect->y + cropRect->height) > imageH)) {
         avifDiagnosticsPrintf(diag, "[Strict] crop rect is out of the image's bounds");
         return AVIF_FALSE;
     }
@@ -550,6 +551,10 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
         return AVIF_FALSE;
     }
 
+    if ((imageW > INT32_MAX) || (imageH > INT32_MAX)) {
+        avifDiagnosticsPrintf(diag, "[Strict] image width %u or height %u is greater than INT32_MAX", imageW, imageH);
+        return AVIF_FALSE;
+    }
     clapFraction uncroppedCenterX = calcCenter((int32_t)imageW);
     clapFraction uncroppedCenterY = calcCenter((int32_t)imageH);
 
