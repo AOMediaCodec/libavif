@@ -536,6 +536,10 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
         avifDiagnosticsPrintf(diag, "[Strict] clap contains a denominator that is not strictly positive");
         return AVIF_FALSE;
     }
+    if ((widthN < 0) || (heightN < 0)) {
+        avifDiagnosticsPrintf(diag, "[Strict] clap width or height is negative");
+        return AVIF_FALSE;
+    }
 
     if ((widthN % widthD) != 0) {
         avifDiagnosticsPrintf(diag, "[Strict] clap width %d/%d is not an integer", widthN, widthD);
@@ -584,8 +588,8 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
 
     cropRect->x = (uint32_t)(cropX.n / cropX.d);
     cropRect->y = (uint32_t)(cropY.n / cropY.d);
-    cropRect->width = (uint32_t)(clap->widthN / clap->widthD);
-    cropRect->height = (uint32_t)(clap->heightN / clap->heightD);
+    cropRect->width = (uint32_t)(widthN / widthD);
+    cropRect->height = (uint32_t)(heightN / heightD);
     return avifCropRectIsValid(cropRect, imageW, imageH, yuvFormat, diag);
 }
 
