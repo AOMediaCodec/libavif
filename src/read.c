@@ -867,12 +867,15 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item, avifIO * io, avifR
                 avifDiagnosticsPrintf(diag, "Item ID %u has impossible extent offset in idat buffer", item->id);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            if (extent->size > idatBuffer->size - extent->offset) {
+            // Since extent->offset (a uint64_t) is not bigger than idatBuffer->size (a size_t),
+            // it is safe to cast extent->offset to size_t.
+            const size_t extentOffset = (size_t)extent->offset;
+            if (extent->size > idatBuffer->size - extentOffset) {
                 avifDiagnosticsPrintf(diag, "Item ID %u has impossible extent size in idat buffer", item->id);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            offsetBuffer.data = idatBuffer->data + extent->offset;
-            offsetBuffer.size = idatBuffer->size - extent->offset;
+            offsetBuffer.data = idatBuffer->data + extentOffset;
+            offsetBuffer.size = idatBuffer->size - extentOffset;
         } else {
             // construction_method: file(0)
 
