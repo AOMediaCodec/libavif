@@ -73,11 +73,19 @@ static void syntax(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
+    printf("    -q Q                              : Set both min and max quantizer for color (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
     printf("    --minalpha Q                      : Set min quantizer for alpha (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
     printf("    --maxalpha Q                      : Set max quantizer for alpha (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
+    printf("    -alphaq Q                         : Set both min and max quantizer for alpha (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
@@ -146,6 +154,16 @@ static const char * quantizerString(int quantizer)
         return "Worst";
     }
     return "Low";
+}
+
+// Clamp the supplied quantizer value to an admissible range.
+static int clampQuantizer(int quantizer) {
+    if (quantizer < AVIF_QUANTIZER_BEST_QUALITY) {
+        quantizer = AVIF_QUANTIZER_BEST_QUALITY;
+    } else if (quantizer > AVIF_QUANTIZER_WORST_QUALITY) {
+        quantizer = AVIF_QUANTIZER_WORST_QUALITY;
+    }
+    return quantizer;
 }
 
 static avifBool parseCICP(int cicp[3], const char * arg)
@@ -524,40 +542,22 @@ int main(int argc, char * argv[])
             keyframeInterval = atoi(arg);
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
-            minQuantizer = atoi(arg);
-            if (minQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
-                minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
-            }
-            if (minQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
-                minQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
-            }
+            minQuantizer = clampQuantizer(atoi(arg));
         } else if (!strcmp(arg, "--max")) {
             NEXTARG();
-            maxQuantizer = atoi(arg);
-            if (maxQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
-                maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
-            }
-            if (maxQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
-                maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
-            }
+            maxQuantizer = clampQuantizer(atoi(arg));
+        } else if (!strcmp(arg, "-q")) {
+            NEXTARG();
+            minQuantizer = maxQuantizer = clampQuantizer(atoi(arg));
         } else if (!strcmp(arg, "--minalpha")) {
             NEXTARG();
-            minQuantizerAlpha = atoi(arg);
-            if (minQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
-                minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
-            }
-            if (minQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
-                minQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
-            }
+            minQuantizerAlpha = clampQuantizer(atoi(arg));
         } else if (!strcmp(arg, "--maxalpha")) {
             NEXTARG();
-            maxQuantizerAlpha = atoi(arg);
-            if (maxQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
-                maxQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
-            }
-            if (maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
-                maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
-            }
+            maxQuantizerAlpha = clampQuantizer(atoi(arg));
+        } else if (!strcmp(arg, "-alphaq")) {
+            NEXTARG();
+            minQuantizerAlpha = maxQuantizerAlpha = clampQuantizer(atoi(arg));
         } else if (!strcmp(arg, "--tilerowslog2")) {
             NEXTARG();
             tileRowsLog2 = atoi(arg);
