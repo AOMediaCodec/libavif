@@ -38,7 +38,7 @@ static void printClapFraction(const char * name, int32_t n, int32_t d)
     printf(", ");
 }
 
-static void avifImageDumpInternal(avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent)
+static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent)
 {
     uint32_t width = avif->width;
     uint32_t height = avif->height;
@@ -49,6 +49,9 @@ static void avifImageDumpInternal(avifImage * avif, uint32_t gridCols, uint32_t 
     printf(" * Resolution     : %ux%u\n", width, height);
     printf(" * Bit Depth      : %u\n", avif->depth);
     printf(" * Format         : %s\n", avifPixelFormatToString(avif->yuvFormat));
+    if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        printf(" * Chroma Sam. Pos: %u\n", avif->yuvChromaSamplePosition);
+    }
     printf(" * Alpha          : %s\n", alphaPresent ? (avif->alphaPremultiplied ? "Premultiplied" : "Not premultiplied") : "Absent");
     if (avif->alphaRange == AVIF_RANGE_LIMITED) {
         printf("                    Limited range\n");
