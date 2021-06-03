@@ -99,9 +99,7 @@ static void avifImageDumpInternal(avifImage * avif, uint32_t gridCols, uint32_t 
             printf("    * irot (Rotation)      : %u\n", avif->irot.angle);
         }
         if (avif->transformFlags & AVIF_TRANSFORM_IMIR) {
-            printf("    * imir (Mirror)        : %u (%s)\n",
-                   avif->imir.axis,
-                   (avif->imir.axis == 0) ? "Vertical axis, \"left-to-right\"" : "Horizontal axis, \"top-to-bottom\"");
+            printf("    * imir (Mirror)        : Mode %u (%s)\n", avif->imir.mode, (avif->imir.mode == 0) ? "top-to-bottom" : "left-to-right");
         }
     }
 }
