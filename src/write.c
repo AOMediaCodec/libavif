@@ -275,8 +275,8 @@ static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * 
     }
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_IMIR) {
         avifBoxMarker imir = avifRWStreamWriteBox(s, "imir", AVIF_BOX_SIZE_TBD);
-        uint8_t axis = imageMetadata->imir.axis & 0x1;
-        avifRWStreamWrite(s, &axis, 1); // unsigned int (7) reserved = 0; unsigned int (1) axis;
+        uint8_t mode = imageMetadata->imir.mode & 0x1;
+        avifRWStreamWrite(s, &mode, 1); // unsigned int (7) reserved = 0; unsigned int (1) mode;
         avifRWStreamFinishBox(s, imir);
         if (ipma && itemPropertyIndex) {
             ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_TRUE);

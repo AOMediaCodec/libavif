@@ -103,7 +103,7 @@ static void syntax(void)
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
-    printf("    --imir AXIS                       : Add imir property (mirroring). 0=vertical axis (\"left-to-right\"), 1=horizontal axis (\"top-to-bottom\")\n");
+    printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
@@ -439,7 +439,7 @@ int main(int argc, char * argv[])
     uint32_t clapValues[8];
     avifBool cropConversionRequired = AVIF_FALSE;
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
-    uint8_t imirAxis = 0xff;  // sentinel value indicating "unused"
+    uint8_t imirMode = 0xff;  // sentinel value indicating "unused"
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool lossless = AVIF_FALSE;
@@ -729,9 +729,9 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--imir")) {
             NEXTARG();
-            imirAxis = (uint8_t)atoi(arg);
-            if (imirAxis > 1) {
-                fprintf(stderr, "ERROR: Invalid imir axis: %s\n", arg);
+            imirMode = (uint8_t)atoi(arg);
+            if (imirMode > 1) {
+                fprintf(stderr, "ERROR: Invalid imir mode: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
@@ -909,9 +909,9 @@ int main(int argc, char * argv[])
         image->transformFlags |= AVIF_TRANSFORM_IROT;
         image->irot.angle = irotAngle;
     }
-    if (imirAxis != 0xff) {
+    if (imirMode != 0xff) {
         image->transformFlags |= AVIF_TRANSFORM_IMIR;
-        image->imir.axis = imirAxis;
+        image->imir.mode = imirMode;
     }
 
     avifBool usingAOM = AVIF_FALSE;
