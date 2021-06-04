@@ -208,7 +208,7 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
         GdkPixbuf *output_mirrored = NULL;
 
-        switch (image->imir.axis) {
+        switch (image->imir.mode) {
         case 0:
             output_mirrored = gdk_pixbuf_flip(output, FALSE);
             break;
