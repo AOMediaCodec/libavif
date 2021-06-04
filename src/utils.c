@@ -84,8 +84,9 @@ void avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialC
     arr->elementSize = elementSize ? elementSize : 1;
     arr->count = 0;
     arr->capacity = initialCapacity;
-    arr->ptr = (uint8_t *)avifAlloc(arr->elementSize * arr->capacity);
-    memset(arr->ptr, 0, arr->elementSize * arr->capacity);
+    size_t byteCount = (size_t)arr->elementSize * arr->capacity;
+    arr->ptr = (uint8_t *)avifAlloc(byteCount);
+    memset(arr->ptr, 0, byteCount);
 }
 
 uint32_t avifArrayPushIndex(void * arrayStruct)
@@ -93,7 +94,7 @@ uint32_t avifArrayPushIndex(void * arrayStruct)
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
     if (arr->count == arr->capacity) {
         uint8_t * oldPtr = arr->ptr;
-        uint32_t oldByteCount = arr->elementSize * arr->capacity;
+        size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
         arr->ptr = (uint8_t *)avifAlloc(oldByteCount * 2);
         memset(arr->ptr + oldByteCount, 0, oldByteCount);
         memcpy(arr->ptr, oldPtr, oldByteCount);

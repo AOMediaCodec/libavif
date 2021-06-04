@@ -370,8 +370,8 @@ avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData *
         }
 
         // Skip this OBU
-        obus.data += obu_size + init_byte_pos;
-        obus.size -= obu_size + init_byte_pos;
+        obus.data += (size_t)obu_size + init_byte_pos;
+        obus.size -= (size_t)obu_size + init_byte_pos;
     }
     return AVIF_FALSE;
 }

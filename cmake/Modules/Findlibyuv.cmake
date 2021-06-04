@@ -29,6 +29,20 @@ if (NOT LIBYUV_INCLUDE_DIR)
     )
 endif()
 
+if(LIBYUV_INCLUDE_DIR AND NOT LIBYUV_VERSION)
+    set(LIBYUV_VERSION_H "${LIBYUV_INCLUDE_DIR}/libyuv/version.h")
+    if(EXISTS ${LIBYUV_VERSION_H})
+        # message(STATUS "Reading: ${LIBYUV_VERSION_H}")
+        file(READ ${LIBYUV_VERSION_H} LIBYUV_VERSION_H_CONTENTS)
+        string(REGEX MATCH "#define LIBYUV_VERSION ([0-9]+)" _ ${LIBYUV_VERSION_H_CONTENTS})
+        set(LIBYUV_VERSION ${CMAKE_MATCH_1})
+        # message(STATUS "libyuv version detected: ${LIBYUV_VERSION}")
+    endif()
+    if(NOT LIBYUV_VERSION)
+        message(STATUS "libyuv version detection failed.")
+    endif()
+endif()
+
 if (NOT LIBYUV_LIBRARY)
     find_library(LIBYUV_LIBRARY
                  NAMES yuv

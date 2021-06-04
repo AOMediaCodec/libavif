@@ -11,7 +11,7 @@
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
-#define SVT_FULL_VERSION STR(SVT_VERSION_MAJOR) "." STR(SVT_VERSION_MINOR) "." STR(SVT_VERSION_PATCHLEVEL);
+#define SVT_FULL_VERSION STR(SVT_VERSION_MAJOR) "." STR(SVT_VERSION_MINOR) "." STR(SVT_VERSION_PATCHLEVEL)
 
 typedef struct avifCodecInternal
 {
@@ -33,10 +33,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 {
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     EbColorFormat color_format = EB_YUV420;
-
-    if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
-        return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
-    }
+    EbBufferHeaderType * input_buffer = NULL;
+    EbErrorType res = EB_ErrorNone;
 
     int y_shift = 0;
     // EbColorRange svt_range;
@@ -63,63 +61,77 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    EbSvtAv1EncConfiguration * svt_config = avifAlloc(sizeof(EbSvtAv1EncConfiguration));
-    if (!svt_config)
-        return AVIF_RESULT_UNKNOWN_ERROR;
-    codec->internal->svt_config = svt_config;
+    if (codec->internal->svt_encoder == NULL) {
+        EbSvtAv1EncConfiguration * svt_config = avifAlloc(sizeof(EbSvtAv1EncConfiguration));
+        if (!svt_config)
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        // Zero-initialize svt_config because svt_av1_enc_init_handle() does not set many fields of svt_config.
+        // See https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1697.
+        memset(svt_config, 0, sizeof(EbSvtAv1EncConfiguration));
+        codec->internal->svt_config = svt_config;
 
-    svt_av1_enc_init_handle(&codec->internal->svt_encoder, NULL, svt_config);
-    svt_config->encoder_color_format = color_format;
-    svt_config->encoder_bit_depth = (uint8_t)image->depth;
-    svt_config->high_dynamic_range_input = image->depth > 8 ? AVIF_TRUE : AVIF_FALSE;
+        res = svt_av1_enc_init_handle(&codec->internal->svt_encoder, NULL, svt_config);
+        if (res != EB_ErrorNone) {
+            goto cleanup;
+        }
+        svt_config->encoder_color_format = color_format;
+        svt_config->encoder_bit_depth = (uint8_t)image->depth;
+        svt_config->is_16bit_pipeline = image->depth > 8;
 
-    svt_config->source_width = image->width;
-    svt_config->source_height = image->height;
-    svt_config->logical_processors = encoder->maxThreads;
-    svt_config->enable_adaptive_quantization = AVIF_FALSE;
-    // disable 2-pass
-    svt_config->rc_firstpass_stats_out = AVIF_FALSE;
-    svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf) { NULL, 0 };
+        // Follow comment in svt header: set if input is HDR10 BT2020 using SMPTE ST2084.
+        svt_config->high_dynamic_range_input = (image->depth == 10 && image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020 &&
+                                                image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 &&
+                                                image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_NCL);
 
-    if (alpha) {
-        svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
-        svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
-    } else {
-        svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-        svt_config->qp = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
+        svt_config->source_width = image->width;
+        svt_config->source_height = image->height;
+        svt_config->logical_processors = encoder->maxThreads;
+        svt_config->enable_adaptive_quantization = AVIF_FALSE;
+        // disable 2-pass
+        svt_config->rc_firstpass_stats_out = AVIF_FALSE;
+        svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf) { NULL, 0 };
+
+        if (alpha) {
+            svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
+            svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
+        } else {
+            svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
+            svt_config->qp = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
+        }
+
+        if (encoder->tileRowsLog2 != 0) {
+            int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+            svt_config->tile_rows = 1 << tileRowsLog2;
+        }
+        if (encoder->tileColsLog2 != 0) {
+            int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+            svt_config->tile_columns = 1 << tileColsLog2;
+        }
+        if (encoder->speed != AVIF_SPEED_DEFAULT) {
+            int speed = AVIF_CLAMP(encoder->speed, 0, 8);
+            svt_config->enc_mode = (int8_t)speed;
+        }
+
+        if (color_format == EB_YUV422 || image->depth > 10) {
+            svt_config->profile = PROFESSIONAL_PROFILE;
+        } else if (color_format == EB_YUV444) {
+            svt_config->profile = HIGH_PROFILE;
+        }
+
+        res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
+        if (res == EB_ErrorBadParameter) {
+            goto cleanup;
+        }
+
+        res = svt_av1_enc_init(codec->internal->svt_encoder);
+        if (res != EB_ErrorNone) {
+            goto cleanup;
+        }
     }
 
-    if (encoder->tileRowsLog2 != 0) {
-        int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
-        svt_config->tile_rows = 1 << tileRowsLog2;
-    }
-    if (encoder->tileColsLog2 != 0) {
-        int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
-        svt_config->tile_columns = 1 << tileColsLog2;
-    }
-    if (encoder->speed != AVIF_SPEED_DEFAULT) {
-        int speed = AVIF_CLAMP(encoder->speed, 0, 8);
-        svt_config->enc_mode = (int8_t)speed;
-    }
-
-    if (color_format == EB_YUV422 || image->depth > 10) {
-        svt_config->profile = PROFESSIONAL_PROFILE;
-    } else if (color_format == EB_YUV444) {
-        svt_config->profile = HIGH_PROFILE;
-    }
-
-    EbErrorType res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
-    EbBufferHeaderType * input_buffer = NULL;
-    if (res == EB_ErrorBadParameter) {
+    if (!allocate_svt_buffers(&input_buffer)) {
         goto cleanup;
     }
-
-    res = svt_av1_enc_init(codec->internal->svt_encoder);
-    if (res != EB_ErrorNone) {
-        goto cleanup;
-    }
-
-    allocate_svt_buffers(&input_buffer);
     EbSvtIOFormat * input_picture_buffer = (EbSvtIOFormat *)input_buffer->p_buffer;
 
     int bytesPerPixel = image->depth > 8 ? 2 : 1;
@@ -157,10 +169,10 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     result = dequeue_frame(codec, output, AVIF_FALSE);
 cleanup:
     if (input_buffer) {
-        avifFree(input_buffer->p_buffer);
-        input_buffer->p_buffer = NULL;
+        if (input_buffer->p_buffer) {
+            avifFree(input_buffer->p_buffer);
+        }
         avifFree(input_buffer);
-        input_buffer = NULL;
     }
     return result;
 }
@@ -215,7 +227,6 @@ avifCodec * avifCodecCreateSvt(void)
 
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(avifCodecInternal));
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
-    codec->internal->svt_encoder = (EbComponentType *)avifAlloc(sizeof(EbComponentType));
     return codec;
 }
 
@@ -249,8 +260,10 @@ static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * outpu
         if (output_buf != NULL) {
             encode_at_eos = ((output_buf->flags & EB_BUFFERFLAG_EOS) == EB_BUFFERFLAG_EOS);
             if (output_buf->p_buffer && (output_buf->n_filled_len > 0)) {
-                avifCodecEncodeOutputAddSample(
-                    output, output_buf->p_buffer, output_buf->n_filled_len, (output_buf->pic_type == EB_AV1_KEY_PICTURE));
+                avifCodecEncodeOutputAddSample(output,
+                                               output_buf->p_buffer,
+                                               output_buf->n_filled_len,
+                                               (output_buf->pic_type == EB_AV1_KEY_PICTURE));
             }
             svt_av1_enc_release_out_buffer(&output_buf);
         }

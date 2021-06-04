@@ -7,9 +7,11 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone --depth 1 https://chromium.googlesource.com/libyuv/libyuv
+git clone --single-branch https://chromium.googlesource.com/libyuv/libyuv
 
 cd libyuv
+git checkout 2f0cbb9
+
 mkdir build
 cd build
 

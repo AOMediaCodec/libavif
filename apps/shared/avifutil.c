@@ -1,5 +1,3 @@
-
-
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
@@ -9,18 +7,56 @@
 #include <stdio.h>
 #include <string.h>
 
-static void avifImageDumpInternal(avifImage * avif, uint32_t gridX, uint32_t gridY, avifBool alphaPresent)
+static int32_t calcGCD(int32_t a, int32_t b)
+{
+    if (a < 0) {
+        a *= -1;
+    }
+    if (b < 0) {
+        b *= -1;
+    }
+    while (a > 0) {
+        if (a < b) {
+            int32_t t = a;
+            a = b;
+            b = t;
+        }
+        a = a - b;
+    }
+    return b;
+}
+
+static void printClapFraction(const char * name, int32_t n, int32_t d)
+{
+    printf("%s: %d/%d", name, n, d);
+    int32_t gcd = calcGCD(n, d);
+    if (gcd > 1) {
+        int32_t rn = n / gcd;
+        int32_t rd = d / gcd;
+        printf(" (%d/%d)", rn, rd);
+    }
+    printf(", ");
+}
+
+static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent)
 {
     uint32_t width = avif->width;
     uint32_t height = avif->height;
-    if (gridX && gridY) {
-        width *= gridX;
-        height *= gridY;
+    if (gridCols && gridRows) {
+        width *= gridCols;
+        height *= gridRows;
     }
     printf(" * Resolution     : %ux%u\n", width, height);
     printf(" * Bit Depth      : %u\n", avif->depth);
     printf(" * Format         : %s\n", avifPixelFormatToString(avif->yuvFormat));
-    printf(" * Alpha          : %s\n", alphaPresent ? "Present" : "Absent");
+    if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        printf(" * Chroma Sam. Pos: %u\n", avif->yuvChromaSamplePosition);
+    }
+    printf(" * Alpha          : %s\n", alphaPresent ? (avif->alphaPremultiplied ? "Premultiplied" : "Not premultiplied") : "Absent");
+    if (avif->alphaRange == AVIF_RANGE_LIMITED) {
+        printf("                    Limited range\n");
+        printf("                    WARNING: Limited-range alpha is deprecated. Use full-range alpha instead.\n");
+    }
     printf(" * Range          : %s\n", (avif->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited");
 
     printf(" * Color Primaries: %u\n", avif->colorPrimaries);
@@ -40,31 +76,41 @@ static void avifImageDumpInternal(avifImage * avif, uint32_t gridX, uint32_t gri
             printf("    * pasp (Aspect Ratio)  : %d/%d\n", (int)avif->pasp.hSpacing, (int)avif->pasp.vSpacing);
         }
         if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
-            printf("    * clap (Clean Aperture): W: %d/%d, H: %d/%d, hOff: %d/%d, vOff: %d/%d\n",
-                   (int)avif->clap.widthN,
-                   (int)avif->clap.widthD,
-                   (int)avif->clap.heightN,
-                   (int)avif->clap.heightD,
-                   (int)avif->clap.horizOffN,
-                   (int)avif->clap.horizOffD,
-                   (int)avif->clap.vertOffN,
-                   (int)avif->clap.vertOffD);
+            printf("    * clap (Clean Aperture): ");
+            printClapFraction("W", (int32_t)avif->clap.widthN, (int32_t)avif->clap.widthD);
+            printClapFraction("H", (int32_t)avif->clap.heightN, (int32_t)avif->clap.heightD);
+            printClapFraction("hOff", (int32_t)avif->clap.horizOffN, (int32_t)avif->clap.horizOffD);
+            printClapFraction("vOff", (int32_t)avif->clap.vertOffN, (int32_t)avif->clap.vertOffD);
+            printf("\n");
+
+            avifCropRect cropRect;
+            avifDiagnostics diag;
+            avifDiagnosticsClearError(&diag);
+            avifBool validClap =
+                avifCropRectConvertCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag);
+            if (validClap) {
+                printf("      * Valid, derived crop rect: X: %d, Y: %d, W: %d, H: %d\n",
+                       cropRect.x,
+                       cropRect.y,
+                       cropRect.width,
+                       cropRect.height);
+            } else {
+                printf("      * Invalid: %s\n", diag.error);
+            }
         }
         if (avif->transformFlags & AVIF_TRANSFORM_IROT) {
             printf("    * irot (Rotation)      : %u\n", avif->irot.angle);
         }
         if (avif->transformFlags & AVIF_TRANSFORM_IMIR) {
-            printf("    * imir (Mirror)        : %u (%s)\n",
-                   avif->imir.axis,
-                   (avif->imir.axis == 0) ? "Vertical axis, \"left-to-right\"" : "Horizontal axis, \"top-to-bottom\"");
+            printf("    * imir (Mirror)        : Mode %u (%s)\n", avif->imir.mode, (avif->imir.mode == 0) ? "top-to-bottom" : "left-to-right");
         }
     }
 }
 
-void avifImageDump(avifImage * avif, uint32_t gridX, uint32_t gridY)
+void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows)
 {
     const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
-    avifImageDumpInternal(avif, gridX, gridY, alphaPresent);
+    avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent);
 }
 
 void avifContainerDump(avifDecoder * decoder)
@@ -163,4 +209,14 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
         return AVIF_APP_FILE_FORMAT_PNG;
     }
     return AVIF_APP_FILE_FORMAT_UNKNOWN;
+}
+
+void avifDumpDiagnostics(const avifDiagnostics * diag)
+{
+    if (!*diag->error) {
+        return;
+    }
+
+    printf("Diagnostics:\n");
+    printf(" * %s\n", diag->error);
 }

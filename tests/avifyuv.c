@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_DRIFT 10
+#define MAX_DRIFT 5
 
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
@@ -43,6 +43,13 @@ static const char * rgbFormatToString(avifRGBFormat format)
     return "Unknown";
 }
 
+typedef struct avifCICP
+{
+    avifColorPrimaries cp;
+    avifTransferCharacteristics tc;
+    avifMatrixCoefficients mc;
+} avifCICP;
+
 int main(int argc, char * argv[])
 {
     (void)argc;
@@ -65,6 +72,8 @@ int main(int argc, char * argv[])
                 mode = 1;
             } else if (!strcmp(arg, "rgb")) {
                 mode = 2;
+            } else if (!strcmp(arg, "premultiply")) {
+                mode = 3;
             } else {
                 mode = atoi(arg);
             }
@@ -79,6 +88,7 @@ int main(int argc, char * argv[])
     const int yuvDepthsCount = (int)(sizeof(yuvDepths) / sizeof(yuvDepths[0]));
     const uint32_t rgbDepths[] = { 8, 10, 12 };
     const int rgbDepthsCount = (int)(sizeof(rgbDepths) / sizeof(rgbDepths[0]));
+    const avifRange ranges[2] = { AVIF_RANGE_FULL, AVIF_RANGE_LIMITED };
 
     if (mode == 0) {
         // Limited to full conversion roundtripping test
@@ -95,7 +105,16 @@ int main(int argc, char * argv[])
             printf("%s %d -> %d -> %d\n", prefix, i, li, fi);
         }
     } else if (mode == 1) {
-        // Calculate maximum codepoint drift on different combinations of depth and matrixCoefficients
+        // Calculate maximum codepoint drift on different combinations of depth and CICPs
+        const avifCICP cicpList[] = {
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT709 },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT601 },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_BT2020_NCL },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_IDENTITY },
+            { AVIF_COLOR_PRIMARIES_BT709, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_YCGCO },
+            { AVIF_COLOR_PRIMARIES_SMPTE432, AVIF_TRANSFER_CHARACTERISTICS_SRGB, AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL },
+        };
+        const int cicpCount = (int)(sizeof(cicpList) / sizeof(cicpList[0]));
 
         for (int rgbDepthIndex = 0; rgbDepthIndex < rgbDepthsCount; ++rgbDepthIndex) {
             uint32_t rgbDepth = rgbDepths[rgbDepthIndex];
@@ -106,140 +125,163 @@ int main(int argc, char * argv[])
                     continue;
                 }
 
-                const avifMatrixCoefficients matrixCoeffsList[] = { AVIF_MATRIX_COEFFICIENTS_BT709,
-                                                                    AVIF_MATRIX_COEFFICIENTS_BT601,
-                                                                    AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
-                                                                    AVIF_MATRIX_COEFFICIENTS_IDENTITY,
-                                                                    AVIF_MATRIX_COEFFICIENTS_YCGCO };
-                const int matrixCoeffsCount = (int)(sizeof(matrixCoeffsList) / sizeof(matrixCoeffsList[0]));
+                for (int cicpIndex = 0; cicpIndex < cicpCount; ++cicpIndex) {
+                    const avifCICP * cicp = &cicpList[cicpIndex];
+                    for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
+                        avifRange range = ranges[rangeIndex];
 
-                for (int matrixCoeffsIndex = 0; matrixCoeffsIndex < matrixCoeffsCount; ++matrixCoeffsIndex) {
-                    avifMatrixCoefficients matrixCoeffs = matrixCoeffsList[matrixCoeffsIndex];
+                        // YCgCo with limited range is not implemented now
+                        if (range == AVIF_RANGE_LIMITED && cicp->mc == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
+                            printf(" * RGB depth: %d, YUV depth: %d, colorPrimaries: %d, transferCharas: %d, matrixCoeffs: %d, range: Limited\n"
+                                   "   * Skipped: currently not supported.\n",
+                                   rgbDepth,
+                                   yuvDepth,
+                                   cicp->cp,
+                                   cicp->tc,
+                                   cicp->mc);
+                            continue;
+                        }
 
-                    int dim = 1 << rgbDepth;
-                    int maxDrift = 0;
+                        int dim = 1 << rgbDepth;
+                        int maxDrift = 0;
 
-                    avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
-                    image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
-                    image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-                    image->matrixCoefficients = matrixCoeffs;
-                    image->yuvRange = AVIF_RANGE_FULL;
-                    avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+                        avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
+                        image->colorPrimaries = cicp->cp;
+                        image->transferCharacteristics = cicp->tc;
+                        image->matrixCoefficients = cicp->mc;
+                        image->yuvRange = range;
+                        avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 
-                    avifRGBImage srcRGB;
-                    avifRGBImageSetDefaults(&srcRGB, image);
-                    srcRGB.format = AVIF_RGB_FORMAT_RGB;
-                    srcRGB.depth = rgbDepth;
-                    avifRGBImageAllocatePixels(&srcRGB);
+                        avifRGBImage srcRGB;
+                        avifRGBImageSetDefaults(&srcRGB, image);
+                        srcRGB.format = AVIF_RGB_FORMAT_RGB;
+                        srcRGB.depth = rgbDepth;
+                        avifRGBImageAllocatePixels(&srcRGB);
 
-                    avifRGBImage dstRGB;
-                    avifRGBImageSetDefaults(&dstRGB, image);
-                    dstRGB.format = AVIF_RGB_FORMAT_RGB;
-                    dstRGB.depth = rgbDepth;
-                    avifRGBImageAllocatePixels(&dstRGB);
+                        avifRGBImage dstRGB;
+                        avifRGBImageSetDefaults(&dstRGB, image);
+                        dstRGB.format = AVIF_RGB_FORMAT_RGB;
+                        dstRGB.depth = rgbDepth;
+                        avifRGBImageAllocatePixels(&dstRGB);
 
-                    uint64_t driftPixelCounts[MAX_DRIFT];
-                    for (int i = 0; i < MAX_DRIFT; ++i) {
-                        driftPixelCounts[i] = 0;
-                    }
+                        uint64_t driftPixelCounts[MAX_DRIFT];
+                        for (int i = 0; i < MAX_DRIFT; ++i) {
+                            driftPixelCounts[i] = 0;
+                        }
 
-                    for (int r = 0; r < dim; ++r) {
+                        for (int r = 0; r < dim; ++r) {
+                            if (verbose) {
+                                printf("[%4d/%4d] RGB depth: %d, YUV depth: %d, colorPrimaries: %d, transferCharas: %d, matrixCoeffs: %d, range: %s\r",
+                                       r + 1,
+                                       dim,
+                                       rgbDepth,
+                                       yuvDepth,
+                                       cicp->cp,
+                                       cicp->tc,
+                                       cicp->mc,
+                                       range == AVIF_RANGE_FULL ? "Full" : "Limited");
+                            }
+
+                            for (int g = 0; g < dim; ++g) {
+                                uint8_t * row = &srcRGB.pixels[g * srcRGB.rowBytes];
+                                for (int b = 0; b < dim; ++b) {
+                                    if (rgbDepth == 8) {
+                                        uint8_t * pixel = &row[b * sizeof(uint8_t) * 3];
+                                        pixel[0] = (uint8_t)r;
+                                        pixel[1] = (uint8_t)g;
+                                        pixel[2] = (uint8_t)b;
+                                    } else {
+                                        uint16_t * pixel = (uint16_t *)&row[b * sizeof(uint16_t) * 3];
+                                        pixel[0] = (uint16_t)r;
+                                        pixel[1] = (uint16_t)g;
+                                        pixel[2] = (uint16_t)b;
+                                    }
+                                }
+                            }
+
+                            avifImageRGBToYUV(image, &srcRGB);
+                            avifImageYUVToRGB(image, &dstRGB);
+
+                            for (int y = 0; y < dim; ++y) {
+                                const uint8_t * srcRow = &srcRGB.pixels[y * srcRGB.rowBytes];
+                                const uint8_t * dstRow = &dstRGB.pixels[y * dstRGB.rowBytes];
+                                for (int x = 0; x < dim; ++x) {
+                                    int drift = 0;
+                                    if (rgbDepth == 8) {
+                                        const uint8_t * srcPixel = &srcRow[x * sizeof(uint8_t) * 3];
+                                        const uint8_t * dstPixel = &dstRow[x * sizeof(uint8_t) * 3];
+
+                                        const int driftR = abs((int)srcPixel[0] - (int)dstPixel[0]);
+                                        if (drift < driftR) {
+                                            drift = driftR;
+                                        }
+                                        const int driftG = abs((int)srcPixel[1] - (int)dstPixel[1]);
+                                        if (drift < driftG) {
+                                            drift = driftG;
+                                        }
+                                        const int driftB = abs((int)srcPixel[2] - (int)dstPixel[2]);
+                                        if (drift < driftB) {
+                                            drift = driftB;
+                                        }
+                                    } else {
+                                        const uint16_t * srcPixel = (const uint16_t *)&srcRow[x * sizeof(uint16_t) * 3];
+                                        const uint16_t * dstPixel = (const uint16_t *)&dstRow[x * sizeof(uint16_t) * 3];
+
+                                        const int driftR = abs((int)srcPixel[0] - (int)dstPixel[0]);
+                                        if (drift < driftR) {
+                                            drift = driftR;
+                                        }
+                                        const int driftG = abs((int)srcPixel[1] - (int)dstPixel[1]);
+                                        if (drift < driftG) {
+                                            drift = driftG;
+                                        }
+                                        const int driftB = abs((int)srcPixel[2] - (int)dstPixel[2]);
+                                        if (drift < driftB) {
+                                            drift = driftB;
+                                        }
+                                    }
+
+                                    if (drift < MAX_DRIFT) {
+                                        ++driftPixelCounts[drift];
+                                        if (maxDrift < drift) {
+                                            maxDrift = drift;
+                                        }
+                                    } else {
+                                        printf("ERROR: Encountered a drift greater than or equal to MAX_DRIFT(%d): %d\n", MAX_DRIFT, drift);
+                                        return 1;
+                                    }
+                                }
+                            }
+                        }
+
                         if (verbose) {
-                            printf("[%4d/%4d] RGB depth: %d, YUV depth: %d, matrixCoeffs: %d\r", r + 1, dim, rgbDepth, yuvDepth, matrixCoeffs);
+                            printf("\n");
                         }
 
-                        for (int g = 0; g < dim; ++g) {
-                            uint8_t * row = &srcRGB.pixels[g * srcRGB.rowBytes];
-                            for (int b = 0; b < dim; ++b) {
-                                if (rgbDepth == 8) {
-                                    uint8_t * pixel = &row[b * sizeof(uint8_t) * 3];
-                                    pixel[0] = (uint8_t)r;
-                                    pixel[1] = (uint8_t)g;
-                                    pixel[2] = (uint8_t)b;
-                                } else {
-                                    uint16_t * pixel = (uint16_t *)&row[b * sizeof(uint16_t) * 3];
-                                    pixel[0] = (uint16_t)r;
-                                    pixel[1] = (uint16_t)g;
-                                    pixel[2] = (uint16_t)b;
-                                }
+                        printf(" * RGB depth: %d, YUV depth: %d, colorPrimaries: %d, transferCharas: %d, matrixCoeffs: %d, range: %s, maxDrift: %2d\n",
+                               rgbDepth,
+                               yuvDepth,
+                               cicp->cp,
+                               cicp->tc,
+                               cicp->mc,
+                               range == AVIF_RANGE_FULL ? "Full" : "Limited",
+                               maxDrift);
+
+                        const uint64_t totalPixelCount = (uint64_t)dim * dim * dim;
+                        for (int i = 0; i < MAX_DRIFT; ++i) {
+                            if (verbose && (driftPixelCounts[i] > 0)) {
+                                printf("   * drift: %2d -> %12" PRIu64 " / %12" PRIu64 " pixels (%.2f %%)\n",
+                                       i,
+                                       driftPixelCounts[i],
+                                       totalPixelCount,
+                                       (double)driftPixelCounts[i] * 100.0 / (double)totalPixelCount);
                             }
                         }
 
-                        avifImageRGBToYUV(image, &srcRGB);
-                        avifImageYUVToRGB(image, &dstRGB);
-
-                        for (int y = 0; y < dim; ++y) {
-                            const uint8_t * srcRow = &srcRGB.pixels[y * srcRGB.rowBytes];
-                            const uint8_t * dstRow = &dstRGB.pixels[y * dstRGB.rowBytes];
-                            for (int x = 0; x < dim; ++x) {
-                                int drift = 0;
-                                if (rgbDepth == 8) {
-                                    const uint8_t * srcPixel = &srcRow[x * sizeof(uint8_t) * 3];
-                                    const uint8_t * dstPixel = &dstRow[x * sizeof(uint8_t) * 3];
-
-                                    const int driftR = abs((int)srcPixel[0] - (int)dstPixel[0]);
-                                    if (drift < driftR) {
-                                        drift = driftR;
-                                    }
-                                    const int driftG = abs((int)srcPixel[1] - (int)dstPixel[1]);
-                                    if (drift < driftG) {
-                                        drift = driftG;
-                                    }
-                                    const int driftB = abs((int)srcPixel[2] - (int)dstPixel[2]);
-                                    if (drift < driftB) {
-                                        drift = driftB;
-                                    }
-                                } else {
-                                    const uint16_t * srcPixel = (const uint16_t *)&srcRow[x * sizeof(uint16_t) * 3];
-                                    const uint16_t * dstPixel = (const uint16_t *)&dstRow[x * sizeof(uint16_t) * 3];
-
-                                    const int driftR = abs((int)srcPixel[0] - (int)dstPixel[0]);
-                                    if (drift < driftR) {
-                                        drift = driftR;
-                                    }
-                                    const int driftG = abs((int)srcPixel[1] - (int)dstPixel[1]);
-                                    if (drift < driftG) {
-                                        drift = driftG;
-                                    }
-                                    const int driftB = abs((int)srcPixel[2] - (int)dstPixel[2]);
-                                    if (drift < driftB) {
-                                        drift = driftB;
-                                    }
-                                }
-
-                                if (drift < MAX_DRIFT) {
-                                    ++driftPixelCounts[drift];
-                                    if (maxDrift < drift) {
-                                        maxDrift = drift;
-                                    }
-                                } else {
-                                    printf("ERROR: Encountered a drift greater than MAX_DRIFT(%d): %d\n", MAX_DRIFT, drift);
-                                    return 1;
-                                }
-                            }
-                        }
+                        avifRGBImageFreePixels(&srcRGB);
+                        avifRGBImageFreePixels(&dstRGB);
+                        avifImageDestroy(image);
                     }
-
-                    if (verbose) {
-                        printf("\n");
-                    }
-
-                    printf(" * RGB depth: %d, YUV depth: %d, matrixCoeffs: %d, maxDrift: %2d\n", rgbDepth, yuvDepth, matrixCoeffs, maxDrift);
-
-                    const uint64_t totalPixelCount = (uint64_t)dim * dim * dim;
-                    for (int i = 0; i < MAX_DRIFT; ++i) {
-                        if (verbose && (driftPixelCounts[i] > 0)) {
-                            printf("   * drift: %2d -> %12" PRIu64 " / %12" PRIu64 " pixels (%.2f %%)\n",
-                                   i,
-                                   driftPixelCounts[i],
-                                   totalPixelCount,
-                                   (double)driftPixelCounts[i] * 100.0 / (double)totalPixelCount);
-                        }
-                    }
-
-                    avifRGBImageFreePixels(&srcRGB);
-                    avifRGBImageFreePixels(&dstRGB);
-                    avifImageDestroy(image);
                 }
             }
         }
@@ -283,16 +325,13 @@ int main(int argc, char * argv[])
                 }
             }
 
-            uint32_t depths[4] = { 8, 10, 12, 16 };
+            const uint32_t depths[4] = { 8, 10, 12, 16 };
             for (int depthIndex = 0; depthIndex < 4; ++depthIndex) {
                 uint32_t rgbDepth = depths[depthIndex];
-
-                avifRange ranges[2] = { AVIF_RANGE_FULL, AVIF_RANGE_LIMITED };
                 for (int rangeIndex = 0; rangeIndex < 2; ++rangeIndex) {
                     avifRange yuvRange = ranges[rangeIndex];
-
-                    avifRGBFormat rgbFormats[6] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
-                                                    AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
+                    const avifRGBFormat rgbFormats[6] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
+                                                          AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
                     for (int rgbFormatIndex = 0; rgbFormatIndex < 6; ++rgbFormatIndex) {
                         avifRGBFormat rgbFormat = rgbFormats[rgbFormatIndex];
 
@@ -388,6 +427,109 @@ int main(int argc, char * argv[])
             avifRGBImageFreePixels(&srcRGB);
         }
         avifImageDestroy(image);
+    } else if (mode == 3) {
+        // alpha premultiply roundtrip test
+        const uint32_t depths[4] = { 8, 10, 12, 16 };
+        uint64_t driftPixelCounts[MAX_DRIFT];
+        for (int depthIndex = 0; depthIndex < 4; ++depthIndex) {
+            uint32_t rgbDepth = depths[depthIndex];
+            uint32_t size = 1 << rgbDepth;
+
+            avifRGBImage rgb;
+            memset(&rgb, 0, sizeof(rgb));
+            rgb.alphaPremultiplied = AVIF_TRUE;
+            rgb.pixels = NULL;
+            rgb.format = AVIF_RGB_FORMAT_RGBA;
+            rgb.width = size;
+            rgb.height = 1;
+            rgb.depth = rgbDepth;
+
+            int maxDrift = 0;
+            for (int i = 0; i < MAX_DRIFT; ++i) {
+                driftPixelCounts[i] = 0;
+            }
+            avifRGBImageAllocatePixels(&rgb);
+
+            for (uint32_t a = 0; a < size; ++a) {
+                // meaningful premultiplied RGB value can't exceed A value, so stop at R = A
+                for (uint32_t r = 0; r <= a; ++r) {
+                    if (rgbDepth == 8) {
+                        uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
+                        pixel[0] = (uint8_t)r;
+                        pixel[1] = 0;
+                        pixel[2] = 0;
+                        pixel[3] = (uint8_t)a;
+                    } else {
+                        uint16_t * pixel = (uint16_t *)&rgb.pixels[r * sizeof(uint16_t) * 4];
+                        pixel[0] = (uint16_t)r;
+                        pixel[1] = 0;
+                        pixel[2] = 0;
+                        pixel[3] = (uint16_t)a;
+                    }
+                }
+
+                rgb.width = a + 1;
+                avifRGBImageUnpremultiplyAlpha(&rgb);
+                avifRGBImagePremultiplyAlpha(&rgb);
+
+                for (uint32_t r = 0; r <= a; ++r) {
+                    if (rgbDepth == 8) {
+                        uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
+                        int drift = abs((int)pixel[0] - (int)r);
+                        if (drift >= MAX_DRIFT) {
+                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                   MAX_DRIFT,
+                                   rgbDepth,
+                                   pixel[0],
+                                   r,
+                                   a);
+                            return 1;
+                        }
+                        if (maxDrift < drift) {
+                            maxDrift = drift;
+                        }
+                        ++driftPixelCounts[drift];
+                    } else {
+                        uint16_t * pixel = (uint16_t *)&rgb.pixels[r * sizeof(uint16_t) * 4];
+                        int drift = abs((int)pixel[0] - (int)r);
+                        if (drift >= MAX_DRIFT) {
+                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                   MAX_DRIFT,
+                                   rgbDepth,
+                                   pixel[0],
+                                   r,
+                                   a);
+                            return 1;
+                        }
+                        if (maxDrift < drift) {
+                            maxDrift = drift;
+                        }
+                        ++driftPixelCounts[drift];
+                    }
+                }
+                if (verbose) {
+                    printf("[%5d/%5d] RGB depth: %d\r", a + 1, size, rgbDepth);
+                }
+            }
+
+            if (verbose) {
+                printf("\n");
+            }
+
+            printf(" * RGB depth: %d, maxDrift: %2d\n", rgbDepth, maxDrift);
+
+            avifRGBImageFreePixels(&rgb);
+            const uint64_t totalPixelCount = (uint64_t)(size + 1) * size / 2;
+            for (int i = 0; i < MAX_DRIFT; ++i) {
+                if (verbose && (driftPixelCounts[i] > 0)) {
+                    printf("   * drift: %2d -> %12" PRIu64 " / %12" PRIu64 " pixels (%.2f %%)\n",
+                           i,
+                           driftPixelCounts[i],
+                           totalPixelCount,
+                           (double)driftPixelCounts[i] * 100.0 / (double)totalPixelCount);
+                }
+            }
+        }
     }
     return 0;
 }

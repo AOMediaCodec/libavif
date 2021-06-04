@@ -1,4 +1,4 @@
-FROM ubuntu:19.10
+FROM ubuntu:20.04
 
 ADD build.sh /root/build.sh
 RUN apt update && apt install -y dos2unix

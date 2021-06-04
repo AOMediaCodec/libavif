@@ -31,11 +31,10 @@ find_library(AOM_LIBRARY
              NAMES aom
              PATHS ${_AOM_LIBDIR})
 
-if (AOM_LIBRARY)
-    set(AOM_LIBRARIES
-        ${AOM_LIBRARIES}
-        ${AOM_LIBRARY})
-endif (AOM_LIBRARY)
+set(AOM_LIBRARIES
+    ${AOM_LIBRARIES}
+    ${AOM_LIBRARY}
+    ${_AOM_LDFLAGS})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(aom

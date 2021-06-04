@@ -12,6 +12,16 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
+avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb)
+{
+    (void)rgb;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
+{
+    (void)rgb;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
 unsigned int avifLibYUVVersion(void)
 {
     return 0;
@@ -46,27 +56,53 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     const struct YuvConstants * matrixYVU = NULL;
     if (image->yuvRange == AVIF_RANGE_FULL) {
         switch (image->matrixCoefficients) {
+            // BT.709 full range YuvConstants were added in libyuv version 1772.
+            // See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/2646472.
+            case AVIF_MATRIX_COEFFICIENTS_BT709:
+#if LIBYUV_VERSION >= 1772
+                matrixYUV = &kYuvF709Constants;
+                matrixYVU = &kYvuF709Constants;
+#endif
+                break;
             case AVIF_MATRIX_COEFFICIENTS_BT470BG:
             case AVIF_MATRIX_COEFFICIENTS_BT601:
             case AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED:
                 matrixYUV = &kYuvJPEGConstants;
                 matrixYVU = &kYvuJPEGConstants;
                 break;
+            // BT.2020 full range YuvConstants were added in libyuv version 1775.
+            // See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/2678859.
+            case AVIF_MATRIX_COEFFICIENTS_BT2020_NCL:
+#if LIBYUV_VERSION >= 1775
+                matrixYUV = &kYuvV2020Constants;
+                matrixYVU = &kYvuV2020Constants;
+#endif
+                break;
             case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL:
                 switch (image->colorPrimaries) {
+                    case AVIF_COLOR_PRIMARIES_BT709:
+                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
+#if LIBYUV_VERSION >= 1772
+                        matrixYUV = &kYuvF709Constants;
+                        matrixYVU = &kYvuF709Constants;
+#endif
+                        break;
                     case AVIF_COLOR_PRIMARIES_BT470BG:
                     case AVIF_COLOR_PRIMARIES_BT601:
                         matrixYUV = &kYuvJPEGConstants;
                         matrixYVU = &kYvuJPEGConstants;
                         break;
+                    case AVIF_COLOR_PRIMARIES_BT2020:
+#if LIBYUV_VERSION >= 1775
+                        matrixYUV = &kYuvV2020Constants;
+                        matrixYVU = &kYvuV2020Constants;
+#endif
+                        break;
 
-                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
                     case AVIF_COLOR_PRIMARIES_UNKNOWN:
-                    case AVIF_COLOR_PRIMARIES_BT709:
                     case AVIF_COLOR_PRIMARIES_BT470M:
                     case AVIF_COLOR_PRIMARIES_SMPTE240:
                     case AVIF_COLOR_PRIMARIES_GENERIC_FILM:
-                    case AVIF_COLOR_PRIMARIES_BT2020:
                     case AVIF_COLOR_PRIMARIES_XYZ:
                     case AVIF_COLOR_PRIMARIES_SMPTE431:
                     case AVIF_COLOR_PRIMARIES_SMPTE432:
@@ -76,11 +112,9 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                 break;
 
             case AVIF_MATRIX_COEFFICIENTS_IDENTITY:
-            case AVIF_MATRIX_COEFFICIENTS_BT709:
             case AVIF_MATRIX_COEFFICIENTS_FCC:
             case AVIF_MATRIX_COEFFICIENTS_SMPTE240:
             case AVIF_MATRIX_COEFFICIENTS_YCGCO:
-            case AVIF_MATRIX_COEFFICIENTS_BT2020_NCL:
             case AVIF_MATRIX_COEFFICIENTS_BT2020_CL:
             case AVIF_MATRIX_COEFFICIENTS_SMPTE2085:
             case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL:
@@ -419,6 +453,49 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     }
 
     // This function didn't do anything; use the built-in YUV conversion
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+
+avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb)
+{
+    // See if the current settings can be accomplished with libyuv, and use it (if possible).
+
+    if (rgb->depth != 8) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
+    // similar to PNG. libyuv orders in word-order, so libavif's RGBA would be referred to in libyuv as ABGR.
+
+    // Order of RGB doesn't matter here.
+    if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
+        if (ARGBAttenuate(rgb->pixels, rgb->rowBytes, rgb->pixels, rgb->rowBytes, rgb->width, rgb->height) != 0) {
+            return AVIF_RESULT_REFORMAT_FAILED;
+        }
+        return AVIF_RESULT_OK;
+    }
+
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+
+avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
+{
+    // See if the current settings can be accomplished with libyuv, and use it (if possible).
+
+    if (rgb->depth != 8) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
+    // similar to PNG. libyuv orders in word-order, so libavif's RGBA would be referred to in libyuv as ABGR.
+
+    if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
+        if (ARGBUnattenuate(rgb->pixels, rgb->rowBytes, rgb->pixels, rgb->rowBytes, rgb->width, rgb->height) != 0) {
+            return AVIF_RESULT_REFORMAT_FAILED;
+        }
+        return AVIF_RESULT_OK;
+    }
+
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 

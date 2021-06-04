@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 // Yes, clamp macros are nasty. Do not use them.
-#define AVIF_CLAMP(x, low, high) (((x) < (low))) ? (low) : (((high) < (x)) ? (high) : (x))
+#define AVIF_CLAMP(x, low, high) (((x) < (low)) ? (low) : (((high) < (x)) ? (high) : (x)))
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -65,9 +65,6 @@ void * avifArrayPushPtr(void * arrayStruct);
 void avifArrayPush(void * arrayStruct, void * element);
 void avifArrayDestroy(void * arrayStruct);
 
-AVIF_ARRAY_DECLARE(avifRODataArray, avifROData, raw);
-AVIF_ARRAY_DECLARE(avifRWDataArray, avifRWData, raw);
-
 typedef struct avifAlphaParams
 {
     uint32_t width;
@@ -92,11 +89,71 @@ typedef struct avifAlphaParams
 avifBool avifFillAlpha(const avifAlphaParams * const params);
 avifBool avifReformatAlpha(const avifAlphaParams * const params);
 
+typedef enum avifReformatMode
+{
+    AVIF_REFORMAT_MODE_YUV_COEFFICIENTS = 0, // Normal YUV conversion using coefficients
+    AVIF_REFORMAT_MODE_IDENTITY,             // Pack GBR directly into YUV planes (AVIF_MATRIX_COEFFICIENTS_IDENTITY)
+    AVIF_REFORMAT_MODE_YCGCO                 // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
+} avifReformatMode;
+
+typedef enum avifAlphaMultiplyMode
+{
+    AVIF_ALPHA_MULTIPLY_MODE_NO_OP = 0,
+    AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY,
+    AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
+} avifAlphaMultiplyMode;
+
+typedef struct avifReformatState
+{
+    // YUV coefficients
+    float kr;
+    float kg;
+    float kb;
+
+    uint32_t yuvChannelBytes;
+    uint32_t rgbChannelBytes;
+    uint32_t rgbChannelCount;
+    uint32_t rgbPixelBytes;
+    uint32_t rgbOffsetBytesR;
+    uint32_t rgbOffsetBytesG;
+    uint32_t rgbOffsetBytesB;
+    uint32_t rgbOffsetBytesA;
+
+    uint32_t yuvDepth;
+    avifRange yuvRange;
+    int yuvMaxChannel;
+    int rgbMaxChannel;
+    float rgbMaxChannelF;
+    float biasY;   // minimum Y value
+    float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
+    float biasA;   // minimum A value
+    float rangeY;  // difference between max and min Y
+    float rangeUV; // difference between max and min UV
+    float rangeA;  // difference between max and min A
+
+    avifPixelFormatInfo formatInfo;
+
+    // LUTs for going from YUV limited/full unorm -> full range RGB FP32
+    float unormFloatTableY[1 << 12];
+    float unormFloatTableUV[1 << 12];
+
+    avifReformatMode mode;
+    // Used by avifImageYUVToRGB() only. avifImageRGBToYUV() uses a local variable (alphaMode) instead.
+    avifAlphaMultiplyMode toRGBAlphaMode;
+} avifReformatState;
+
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libyuv
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
 // * [any other error]           - Return error to caller
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
+
+// Returns:
+// * AVIF_RESULT_OK              - (Un)Premultiply successfully with libyuv
+// * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in (Un)Premultiply
+// * [any other error]           - Return error to caller
+avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
+avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
@@ -161,8 +218,11 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
 struct avifCodec;
 struct avifCodecInternal;
 
-typedef avifBool (*avifCodecOpenFunc)(struct avifCodec * codec, avifDecoder * decoder); // decode only
-typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image);
+typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
+                                              struct avifDecoder * decoder,
+                                              const avifDecodeSample * sample,
+                                              avifBool alpha,
+                                              avifImage * image);
 // EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
 // encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.
 // avifCodecEncodeImageFunc may return AVIF_RESULT_UNKNOWN_ERROR to automatically emit the appropriate
@@ -171,7 +231,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,
                                                avifBool alpha,
-                                               uint32_t addImageFlags,
+                                               avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);
 typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
@@ -182,15 +242,16 @@ typedef struct avifCodec
                                           // If a codec uses a value, it must mark it as used.
                                           // This array is NOT owned by avifCodec.
     struct avifCodecInternal * internal;  // up to each codec to use how it wants
+                                          //
+    avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
 
-    avifCodecOpenFunc open;
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;
     avifCodecEncodeFinishFunc encodeFinish;
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-avifCodec * avifCodecCreate(avifCodecChoice choice, uint32_t requiredFlags);
+avifCodec * avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags);
 void avifCodecDestroy(avifCodec * codec);
 
 avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM (codec_aom.c)
@@ -203,6 +264,14 @@ avifCodec * avifCodecCreateRav1e(void);   // requires AVIF_CODEC_RAV1E (codec_ra
 const char * avifCodecVersionRav1e(void); // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
 avifCodec * avifCodecCreateSvt(void);     // requires AVIF_CODEC_SVT (codec_svt.c)
 const char * avifCodecVersionSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
+
+// ---------------------------------------------------------------------------
+// avifDiagnostics
+
+#ifdef __clang__
+__attribute__((__format__(__printf__, 2, 3)))
+#endif
+void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...);
 
 // ---------------------------------------------------------------------------
 // avifStream
@@ -219,10 +288,12 @@ typedef struct avifROStream
 {
     avifROData * raw;
     size_t offset;
+    avifDiagnostics * diag;
+    const char * diagContext;
 } avifROStream;
 
 const uint8_t * avifROStreamCurrent(avifROStream * stream);
-void avifROStreamStart(avifROStream * stream, avifROData * raw);
+void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics * diag, const char * diagContext);
 size_t avifROStreamOffset(const avifROStream * stream);
 void avifROStreamSetOffset(avifROStream * stream, size_t offset);
 

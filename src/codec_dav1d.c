@@ -49,7 +49,11 @@ static void dav1dCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool dav1dCodecOpen(avifCodec * codec, avifDecoder * decoder)
+static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
+                                       struct avifDecoder * decoder,
+                                       const avifDecodeSample * sample,
+                                       avifBool alpha,
+                                       avifImage * image)
 {
     if (codec->internal->dav1dContext == NULL) {
         // Give all available threads to decode a single frame as fast as possible
@@ -60,11 +64,7 @@ static avifBool dav1dCodecOpen(avifCodec * codec, avifDecoder * decoder)
             return AVIF_FALSE;
         }
     }
-    return AVIF_TRUE;
-}
 
-static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
-{
     avifBool gotPicture = AVIF_FALSE;
     Dav1dPicture nextFrame;
     memset(&nextFrame, 0, sizeof(Dav1dPicture));
@@ -201,7 +201,6 @@ avifCodec * avifCodecCreateDav1d(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
-    codec->open = dav1dCodecOpen;
     codec->getNextImage = dav1dCodecGetNextImage;
     codec->destroyInternal = dav1dCodecDestroyInternal;
 

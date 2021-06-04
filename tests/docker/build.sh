@@ -17,7 +17,7 @@
 
 # build env
 apt update
-apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl python3-pip
+DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl python3-pip
 pip3 install meson
 
 # Rust env
@@ -27,14 +27,14 @@ cargo install cargo-c
 
 # NASM
 cd
-curl -L https://download.videolan.org/contrib/nasm/nasm-2.14.tar.gz | tar xvz
-cd nasm-2.14
+curl -L https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar xvz
+cd nasm-2.15.05
 ./configure --prefix=/usr && make -j2 && make install
 nasm --version
 
 # aom
 cd
-git clone -b v1.0.0-errata1-avif --depth 1 https://aomedia.googlesource.com/aom
+git clone -b v3.1.0 --depth 1 https://aomedia.googlesource.com/aom
 cd aom
 mkdir build.avif
 cd build.avif
@@ -43,7 +43,7 @@ ninja install
 
 # dav1d
 cd
-git clone -b 0.6.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
+git clone -b 0.9.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
 cd dav1d
 mkdir build
 cd build
@@ -52,10 +52,9 @@ ninja install
 
 # libgav1
 cd
-git clone --single-branch https://chromium.googlesource.com/codecs/libgav1
+git clone -b v0.16.3 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 cd libgav1
-git checkout 45a1d76
-git clone https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
+git clone -b lts_2021_03_24 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release -DLIBGAV1_THREADPOOL_USE_STD_MUTEX=1 ..
@@ -63,7 +62,7 @@ ninja install
 
 # rav1e
 cd
-git clone -b v0.3.1 --depth 1 https://github.com/xiph/rav1e.git
+git clone -b 0.4 --depth 1 https://github.com/xiph/rav1e.git
 cd rav1e
 cargo cinstall --prefix=/usr --release
 

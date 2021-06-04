@@ -20,97 +20,141 @@ struct y4mFrameIterator
     avifBool hasAlpha;
     avifPixelFormat format;
     avifRange range;
+    avifChromaSamplePosition chromaSamplePosition;
+    avifAppSourceTiming sourceTiming;
 
     FILE * inputFile;
     const char * displayFilename;
 };
 
-static avifBool y4mColorSpaceParse(const char * formatString, avifPixelFormat * format, int * depth, avifBool * hasAlpha)
+// Sets frame->format, frame->depth, frame->hasAlpha, and frame->chromaSamplePosition.
+static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIterator * frame)
 {
-    *hasAlpha = AVIF_FALSE;
+    frame->hasAlpha = AVIF_FALSE;
+    frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
 
     if (!strcmp(formatString, "C420jpeg")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        // Chroma sample position is center.
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "C420mpeg2")) {
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "C420paldv")) {
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444alpha")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 8;
-        *hasAlpha = AVIF_TRUE;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 8;
+        frame->hasAlpha = AVIF_TRUE;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        // Chroma sample position is center.
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
+}
+
+// Note: this modifies framerateString
+static avifBool y4mFramerateParse(char * framerateString, avifAppSourceTiming * sourceTiming)
+{
+    if (framerateString[0] != 'F') {
+        return AVIF_FALSE;
+    }
+    ++framerateString; // skip past 'F'
+
+    char * colonLocation = strchr(framerateString, ':');
+    if (!colonLocation) {
+        return AVIF_FALSE;
+    }
+    *colonLocation = 0;
+    ++colonLocation;
+
+    int numerator = atoi(framerateString);
+    int denominator = atoi(colonLocation);
+    if ((numerator < 1) || (denominator < 1)) {
+        return AVIF_FALSE;
+    }
+
+    sourceTiming->timescale = (uint64_t)numerator;
+    sourceTiming->duration = (uint64_t)denominator;
+    return AVIF_TRUE;
 }
 
 static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars)
@@ -164,7 +208,7 @@ static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayF
             goto cleanup; \
     } while (0)
 
-avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIterator ** iter)
+avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter)
 {
     avifBool result = AVIF_FALSE;
 
@@ -175,6 +219,8 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
     frame.hasAlpha = AVIF_FALSE;
     frame.format = AVIF_PIXEL_FORMAT_NONE;
     frame.range = AVIF_RANGE_LIMITED;
+    frame.chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    memset(&frame.sourceTiming, 0, sizeof(avifAppSourceTiming));
     frame.inputFile = NULL;
     frame.displayFilename = inputFilename;
 
@@ -232,8 +278,18 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
                         fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
-                    if (!y4mColorSpaceParse(tmpBuffer, &frame.format, &frame.depth, &frame.hasAlpha)) {
+                    if (!y4mColorSpaceParse(tmpBuffer, &frame)) {
                         fprintf(stderr, "Unsupported y4m pixel format: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    break;
+                case 'F': // framerate
+                    if (!getHeaderString(p, end, tmpBuffer, 31)) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    if (!y4mFramerateParse(tmpBuffer, &frame.sourceTiming)) {
+                        fprintf(stderr, "Unsupported framerate: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
                     break;
@@ -288,12 +344,17 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
         goto cleanup;
     }
 
+    if (sourceTiming) {
+        memcpy(sourceTiming, &frame.sourceTiming, sizeof(avifAppSourceTiming));
+    }
+
     avifImageFreePlanes(avif, AVIF_PLANES_YUV | AVIF_PLANES_A);
     avif->width = frame.width;
     avif->height = frame.height;
     avif->depth = frame.depth;
     avif->yuvFormat = frame.format;
     avif->yuvRange = frame.range;
+    avif->yuvChromaSamplePosition = frame.chromaSamplePosition;
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     avifPixelFormatInfo info;
@@ -350,7 +411,7 @@ cleanup:
     return result;
 }
 
-avifBool y4mWrite(avifImage * avif, const char * outputFilename)
+avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
 {
     avifBool hasAlpha = (avif->alphaPlane != NULL) && (avif->alphaRowBytes > 0);
     avifBool writeAlpha = AVIF_FALSE;

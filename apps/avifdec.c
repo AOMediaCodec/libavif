@@ -34,50 +34,13 @@ static void syntax(void)
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
+    printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
+    printf("                        (JPEG only; not applicable to y4m)\n");
+    printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("\n");
     avifPrintVersions();
-}
-
-static int info(const char * inputFilename)
-{
-    avifDecoder * decoder = avifDecoderCreate();
-    avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
-    if (result != AVIF_RESULT_OK) {
-        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
-        avifDecoderDestroy(decoder);
-        return 1;
-    }
-    result = avifDecoderParse(decoder);
-    if (result == AVIF_RESULT_OK) {
-        printf("Image decoded: %s\n", inputFilename);
-        avifContainerDump(decoder);
-
-        printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
-               decoder->timescale,
-               decoder->duration,
-               decoder->durationInTimescales,
-               decoder->imageCount,
-               (decoder->imageCount == 1) ? "" : "s");
-        printf(" * Frames:\n");
-
-        int frameIndex = 0;
-        while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-            printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
-                   frameIndex,
-                   decoder->imageTiming.pts,
-                   decoder->imageTiming.ptsInTimescales,
-                   decoder->imageTiming.duration,
-                   decoder->imageTiming.durationInTimescales);
-            ++frameIndex;
-        }
-    } else {
-        printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
-    }
-
-    avifDecoderDestroy(decoder);
-    return 0;
 }
 
 int main(int argc, char * argv[])
@@ -91,6 +54,8 @@ int main(int argc, char * argv[])
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     avifBool ignoreICC = AVIF_FALSE;
+    avifBool rawColor = AVIF_FALSE;
+    avifStrictFlags strictFlags = AVIF_STRICT_ENABLED;
 
     if (argc < 2) {
         syntax();
@@ -157,6 +122,10 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: invalid upsampling: %s\n", arg);
                 return 1;
             }
+        } else if (!strcmp(arg, "-r") || !strcmp(arg, "--raw-color")) {
+            rawColor = AVIF_TRUE;
+        } else if (!strcmp(arg, "--no-strict")) {
+            strictFlags = AVIF_STRICT_DISABLED;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
@@ -187,7 +156,47 @@ int main(int argc, char * argv[])
             syntax();
             return 1;
         }
-        return info(inputFilename);
+
+        avifDecoder * decoder = avifDecoderCreate();
+        decoder->maxThreads = jobs;
+        decoder->codecChoice = codecChoice;
+        decoder->strictFlags = strictFlags;
+        avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+            avifDecoderDestroy(decoder);
+            return 1;
+        }
+        result = avifDecoderParse(decoder);
+        if (result == AVIF_RESULT_OK) {
+            printf("Image decoded: %s\n", inputFilename);
+            avifContainerDump(decoder);
+
+            printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
+                   decoder->timescale,
+                   decoder->duration,
+                   decoder->durationInTimescales,
+                   decoder->imageCount,
+                   (decoder->imageCount == 1) ? "" : "s");
+            printf(" * Frames:\n");
+
+            int frameIndex = 0;
+            while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
+                printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)]\n",
+                       frameIndex,
+                       decoder->imageTiming.pts,
+                       decoder->imageTiming.ptsInTimescales,
+                       decoder->imageTiming.duration,
+                       decoder->imageTiming.durationInTimescales);
+                ++frameIndex;
+            }
+        } else {
+            printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
+            avifDumpDiagnostics(&decoder->diag);
+        }
+
+        avifDecoderDestroy(decoder);
+        return 0;
     } else {
         if (!inputFilename || !outputFilename) {
             syntax();
@@ -205,6 +214,7 @@ int main(int argc, char * argv[])
     avifDecoder * decoder = avifDecoderCreate();
     decoder->maxThreads = jobs;
     decoder->codecChoice = codecChoice;
+    decoder->strictFlags = strictFlags;
     avifResult decodeResult = avifDecoderReadFile(decoder, avif, inputFilename);
     if (decodeResult == AVIF_RESULT_OK) {
         printf("Image decoded: %s\n", inputFilename);
@@ -221,15 +231,19 @@ int main(int argc, char * argv[])
             fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
             returnCode = 1;
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
-            if (!y4mWrite(avif, outputFilename)) {
+            if (!y4mWrite(outputFilename, avif)) {
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-            if (!avifJPEGWrite(avif, outputFilename, jpegQuality, chromaUpsampling)) {
+            // Bypass alpha multiply step during conversion
+            if (rawColor) {
+                avif->alphaPremultiplied = AVIF_TRUE;
+            }
+            if (!avifJPEGWrite(outputFilename, avif, jpegQuality, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-            if (!avifPNGWrite(avif, outputFilename, requestedDepth, chromaUpsampling)) {
+            if (!avifPNGWrite(outputFilename, avif, requestedDepth, chromaUpsampling)) {
                 returnCode = 1;
             }
         } else {
@@ -238,6 +252,7 @@ int main(int argc, char * argv[])
         }
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
+        avifDumpDiagnostics(&decoder->diag);
         returnCode = 1;
     }
     avifDecoderDestroy(decoder);

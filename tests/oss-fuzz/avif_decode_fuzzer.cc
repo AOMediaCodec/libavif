@@ -40,8 +40,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                             if (rgbResult == AVIF_RESULT_OK) {
                                 for (size_t yuvDepthsIndex = 0; yuvDepthsIndex < yuvDepthsCount; ++yuvDepthsIndex) {
                                     // ... and back to YUV
-                                    avifImage * tempImage = avifImageCreate(
-                                        decoder->image->width, decoder->image->height, yuvDepths[yuvDepthsIndex], decoder->image->yuvFormat);
+                                    avifImage * tempImage = avifImageCreate(decoder->image->width,
+                                                                            decoder->image->height,
+                                                                            yuvDepths[yuvDepthsIndex],
+                                                                            decoder->image->yuvFormat);
                                     avifResult yuvResult = avifImageRGBToYUV(tempImage, &rgb);
                                     if (yuvResult != AVIF_RESULT_OK) {
                                     }

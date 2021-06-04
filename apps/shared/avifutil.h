@@ -20,9 +20,10 @@
 #define AVIF_FMT_ZU "%zu"
 #endif
 
-void avifImageDump(avifImage * avif, uint32_t gridX, uint32_t gridY);
+void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows);
 void avifContainerDump(avifDecoder * decoder);
 void avifPrintVersions(void);
+void avifDumpDiagnostics(const avifDiagnostics * diag);
 
 typedef enum avifAppFileFormat
 {
@@ -35,5 +36,19 @@ typedef enum avifAppFileFormat
 } avifAppFileFormat;
 
 avifAppFileFormat avifGuessFileFormat(const char * filename);
+
+// This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
+// into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
+// should be ignored. This structure is used to override the timing defaults in avifenc when the
+// enduser doesn't provide timing on the commandline and the source content provides a framerate.
+typedef struct avifAppSourceTiming
+{
+    uint64_t duration;  // duration in time units (based on the timescale below)
+    uint64_t timescale; // timescale of the media (Hz)
+} avifAppSourceTiming;
+
+// Used by image decoders when the user doesn't explicitly choose a format with --yuv
+// This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.
+#define AVIF_APP_DEFAULT_PIXEL_FORMAT AVIF_PIXEL_FORMAT_YUV444
 
 #endif // ifndef LIBAVIF_APPS_SHARED_AVIFUTIL_H
