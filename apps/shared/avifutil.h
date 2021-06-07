@@ -23,6 +23,7 @@ void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows);
 void avifContainerDump(avifDecoder * decoder);
 void avifPrintVersions(void);
 void avifDumpDiagnostics(const avifDiagnostics * diag);
+int avifQueryMaxThreads(void);
 
 typedef enum avifAppFileFormat
 {

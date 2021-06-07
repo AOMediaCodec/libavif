@@ -29,7 +29,7 @@ static void syntax(void)
     printf("Options:\n");
     printf("    -h,--help         : Show syntax help\n");
     printf("    -V,--version      : Show the version number\n");
-    printf("    -j,--jobs J       : Number of jobs (worker threads, default: 1)\n");
+    printf("    -j,--jobs J       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
@@ -74,9 +74,13 @@ int main(int argc, char * argv[])
             return 0;
         } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
             NEXTARG();
-            jobs = atoi(arg);
-            if (jobs < 1) {
-                jobs = 1;
+            if (!strcmp(arg, "all")) {
+                jobs = avifQueryMaxThreads();
+            } else {
+                jobs = atoi(arg);
+                if (jobs < 1) {
+                    jobs = 1;
+                }
             }
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();

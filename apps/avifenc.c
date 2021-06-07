@@ -51,7 +51,7 @@ static void syntax(void)
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -V,--version                      : Show the version number\n");
-    printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
+    printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
@@ -487,9 +487,13 @@ int main(int argc, char * argv[])
             goto cleanup;
         } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
             NEXTARG();
-            jobs = atoi(arg);
-            if (jobs < 1) {
-                jobs = 1;
+            if (!strcmp(arg, "all")) {
+                jobs = avifQueryMaxThreads();
+            } else {
+                jobs = atoi(arg);
+                if (jobs < 1) {
+                    jobs = 1;
+                }
             }
         } else if (!strcmp(arg, "--stdin")) {
             input.useStdin = AVIF_TRUE;
