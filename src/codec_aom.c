@@ -35,10 +35,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(AVIF_CODEC_AOM_ENCODE)
 // Detect whether the aom_codec_set_option() function is available. See aom/aom_codec.h
 // in https://aomedia-review.googlesource.com/c/aom/+/126302.
 #if AOM_CODEC_ABI_VERSION >= (6 + AOM_IMAGE_ABI_VERSION)
 #define HAVE_AOM_CODEC_SET_OPTION 1
+#endif
 #endif
 
 struct avifCodecInternal
