@@ -9,7 +9,7 @@
 
 void avifDiagnosticsClearError(avifDiagnostics * diag)
 {
-    memset(diag->error, 0, AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE);
+    *diag->error = '\0';
 }
 
 #ifdef __clang__
