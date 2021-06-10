@@ -255,7 +255,7 @@ typedef struct avifCodec
                                           //
     avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
                                           //
-    uint8_t operatingPointIndex;          // Operating point Index, defaults to 0.
+    uint8_t operatingPoint;               // Operating point, defaults to 0.
     avifBool allLayers;                   // if true, the underlying codec must decode all layers, not just the best layer
 
     avifCodecGetNextImageFunc getNextImage;

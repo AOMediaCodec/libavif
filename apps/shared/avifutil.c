@@ -105,7 +105,6 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
             printf("    * imir (Mirror)        : Mode %u (%s)\n", avif->imir.mode, (avif->imir.mode == 0) ? "top-to-bottom" : "left-to-right");
         }
     }
-    printf(" * Alpha          : %s\n", alphaPresent ? (avif->alphaPremultiplied ? "Premultiplied" : "Not premultiplied") : "Absent");
     printf(" * Progressive    : %s\n", avifProgressiveStateToString(progressiveState));
 }
 

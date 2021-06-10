@@ -626,7 +626,7 @@ typedef struct avifTile
     avifImage * image;
     uint32_t width;  // Either avifTrack.width or avifDecoderItem.width
     uint32_t height; // Either avifTrack.height or avifDecoderItem.height
-    uint8_t operatingPointIndex;
+    uint8_t operatingPoint;
 } avifTile;
 AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
 
@@ -767,14 +767,14 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
     }
 }
 
-static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint32_t width, uint32_t height, uint8_t operatingPointIndex)
+static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint32_t width, uint32_t height, uint8_t operatingPoint)
 {
     avifTile * tile = (avifTile *)avifArrayPushPtr(&data->tiles);
     tile->image = avifImageCreateEmpty();
     tile->input = avifCodecDecodeInputCreate();
     tile->width = width;
     tile->height = height;
-    tile->operatingPointIndex = operatingPointIndex;
+    tile->operatingPoint = operatingPoint;
     return tile;
 }
 
@@ -3047,7 +3047,7 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
         }
         tile->codec->diag = &decoder->diag;
-        tile->codec->operatingPointIndex = tile->operatingPointIndex;
+        tile->codec->operatingPoint = tile->operatingPoint;
         tile->codec->allLayers = tile->input->allLayers;
     }
     return AVIF_RESULT_OK;

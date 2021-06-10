@@ -795,12 +795,29 @@ typedef struct avifDecoder
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;
 
-    // If this is true and a progressive AVIF is decoded, avifDecoder will behave as if the AVIF
-    // is an image sequence, in that it will set imageCount to the available number of progressive
-    // frames available, and avifDecoderNextImage()/avifDecoderNthImage() will all for specific
-    // variants of a progressive image to be decoded. To distinguish between a progressive AVIF
-    // and an AVIF image sequence, inspect avifDecoder.progressiveState.
+    // If this is true and a progressive AVIF is decoded, avifDecoder will behave as if the AVIF is
+    // an image sequence, in that it will set imageCount to the number of progressive frames
+    // available, and avifDecoderNextImage()/avifDecoderNthImage() will allow for specific layers
+    // of a progressive image to be decoded. To distinguish between a progressive AVIF and an AVIF
+    // image sequence, inspect avifDecoder.progressiveState.
     avifBool allowProgressive;
+
+    // Enable any of these to avoid reading and surfacing specific data to the decoded avifImage.
+    // These can be useful if your avifIO implementation heavily uses AVIF_RESULT_WAITING_ON_IO for
+    // streaming data, as some of these payloads are (unfortunately) packed at the end of the file,
+    // which will cause avifDecoderParse() to return AVIF_RESULT_WAITING_ON_IO until it finds them.
+    // If you don't actually leverage this data, it is best to ignore it here.
+    avifBool ignoreExif;
+    avifBool ignoreXMP;
+
+    // This provides an upper bound on how many images the decoder is willing to attempt to decode,
+    // to provide a bit of protection from malicious or malformed AVIFs citing millions upon
+    // millions of frames, only to be invalid later. The default is AVIF_DEFAULT_IMAGE_COUNT_LIMIT
+    // (see comment above), and setting this to 0 disables the limit.
+    uint32_t imageCountLimit;
+
+    // Strict flags. Defaults to AVIF_STRICT_ENABLED. See avifStrictFlag definitions above.
+    avifStrictFlags strictFlags;
 
     // --------------------------------------------------------------------------------------------
     // Outputs
@@ -834,34 +851,17 @@ typedef struct avifDecoder
     // avifDecoderNextImage() or avifDecoderNthImage(), as decoder->image->alphaPlane won't exist yet.
     avifBool alphaPresent;
 
-    // Enable any of these to avoid reading and surfacing specific data to the decoded avifImage.
-    // These can be useful if your avifIO implementation heavily uses AVIF_RESULT_WAITING_ON_IO for
-    // streaming data, as some of these payloads are (unfortunately) packed at the end of the file,
-    // which will cause avifDecoderParse() to return AVIF_RESULT_WAITING_ON_IO until it finds them.
-    // If you don't actually leverage this data, it is best to ignore it here.
-    avifBool ignoreExif;
-    avifBool ignoreXMP;
-
-    // This provides an upper bound on how many images the decoder is willing to attempt to decode,
-    // to provide a bit of protection from malicious or malformed AVIFs citing millions upon
-    // millions of frames, only to be invalid later. The default is AVIF_DEFAULT_IMAGE_COUNT_LIMIT
-    // (see comment above), and setting this to 0 disables the limit.
-    uint32_t imageCountLimit;
-
-    // Strict flags. Defaults to AVIF_STRICT_ENABLED. See avifStrictFlag definitions above.
-    avifStrictFlags strictFlags;
-
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
+
+    // Additional diagnostics (such as detailed error state)
+    avifDiagnostics diag;
 
     // --------------------------------------------------------------------------------------------
     // Internals
 
     // Use one of the avifDecoderSetIO*() functions to set this
     avifIO * io;
-
-    // Additional diagnostics (such as detailed error state)
-    avifDiagnostics diag;
 
     // Internals used by the decoder
     struct avifDecoderData * data;

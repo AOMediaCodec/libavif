@@ -59,7 +59,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         // Give all available threads to decode a single frame as fast as possible
         codec->internal->dav1dSettings.n_frame_threads = 1;
         codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
-        codec->internal->dav1dSettings.operating_point = codec->operatingPointIndex;
+        codec->internal->dav1dSettings.operating_point = codec->operatingPoint;
         codec->internal->dav1dSettings.all_layers = codec->allLayers;
 
         if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
