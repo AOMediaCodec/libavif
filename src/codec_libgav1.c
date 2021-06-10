@@ -31,7 +31,7 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
 {
     if (codec->internal->gav1Decoder == NULL) {
         codec->internal->gav1Settings.threads = decoder->maxThreads;
-        codec->internal->gav1Settings.operating_point = codec->operatingPointIndex;
+        codec->internal->gav1Settings.operating_point = codec->operatingPoint;
         codec->internal->gav1Settings.output_all_layers = codec->allLayers;
 
         if (Libgav1DecoderCreate(&codec->internal->gav1Settings, &codec->internal->gav1Decoder) != kLibgav1StatusOk) {

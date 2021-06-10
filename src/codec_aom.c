@@ -107,7 +107,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, codec->allLayers)) {
             return AVIF_FALSE;
         }
-        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OPERATING_POINT, codec->operatingPointIndex)) {
+        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OPERATING_POINT, codec->operatingPoint)) {
             return AVIF_FALSE;
         }
 
