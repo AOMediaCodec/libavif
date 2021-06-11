@@ -950,7 +950,7 @@ static avifBool avifDecoderDataGenerateImageGridTiles(avifDecoderData * data, av
 
     if (tilesRequested != tilesAvailable) {
         avifDiagnosticsPrintf(data->diag,
-                              "Grid image of dimensions %u/%u requires %u tiles, and only %u were found",
+                              "Grid image of dimensions %ux%u requires %u tiles, and only %u were found",
                               grid->columns,
                               grid->rows,
                               tilesRequested,
@@ -1045,7 +1045,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     // The tile_width shall be greater than or equal to 64, and the tile_height shall be greater than or equal to 64.
     if ((firstTile->image->width < 64) || (firstTile->image->height < 64)) {
         avifDiagnosticsPrintf(data->diag,
-                              "Grid image tiles are smaller than 64x64 (%u/%u). See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
+                              "Grid image tiles are smaller than 64x64 (%ux%u). See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
                               firstTile->image->width,
                               firstTile->image->height);
         return AVIF_FALSE;
