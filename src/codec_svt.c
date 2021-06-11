@@ -18,7 +18,7 @@ typedef struct avifCodecInternal
     /* SVT-AV1 Encoder Handle */
     EbComponentType * svt_encoder;
 
-    EbSvtAv1EncConfiguration * svt_config;
+    EbSvtAv1EncConfiguration svt_config;
 } avifCodecInternal;
 
 static avifBool allocate_svt_buffers(EbBufferHeaderType ** input_buf);
@@ -62,13 +62,10 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     }
 
     if (codec->internal->svt_encoder == NULL) {
-        EbSvtAv1EncConfiguration * svt_config = avifAlloc(sizeof(EbSvtAv1EncConfiguration));
-        if (!svt_config)
-            return AVIF_RESULT_UNKNOWN_ERROR;
+        EbSvtAv1EncConfiguration * svt_config = &codec->internal->svt_config;
         // Zero-initialize svt_config because svt_av1_enc_init_handle() does not set many fields of svt_config.
         // See https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1697.
         memset(svt_config, 0, sizeof(EbSvtAv1EncConfiguration));
-        codec->internal->svt_config = svt_config;
 
         res = svt_av1_enc_init_handle(&codec->internal->svt_encoder, NULL, svt_config);
         if (res != EB_ErrorNone) {
@@ -209,10 +206,6 @@ static void svtCodecDestroyInternal(avifCodec * codec)
         svt_av1_enc_deinit(codec->internal->svt_encoder);
         svt_av1_enc_deinit_handle(codec->internal->svt_encoder);
         codec->internal->svt_encoder = NULL;
-    }
-    if (codec->internal->svt_config) {
-        avifFree(codec->internal->svt_config);
-        codec->internal->svt_config = NULL;
     }
     avifFree(codec->internal);
 }
