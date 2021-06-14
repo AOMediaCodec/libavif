@@ -114,13 +114,15 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         codec->internal->iter = NULL;
     }
 
-    uint8_t skipRemaining = sample->skip;
     aom_image_t * nextFrame = NULL;
     for (;;) {
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
-            if (skipRemaining) {
-                --skipRemaining;
+            if (sample->spatialID != AVIF_SPATIAL_ID_UNSET) {
+                if (sample->spatialID == nextFrame->spatial_id) {
+                    // Found the correct spatial_id.
+                    break;
+                }
             } else {
                 // Got an image!
                 break;

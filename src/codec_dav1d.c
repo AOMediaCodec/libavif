@@ -76,7 +76,6 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         return AVIF_FALSE;
     }
 
-    uint8_t skipRemaining = sample->skip;
     for (;;) {
         if (dav1dData.data) {
             int res = dav1d_send_data(codec->internal->dav1dContext, &dav1dData);
@@ -101,10 +100,9 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
             return AVIF_FALSE;
         } else {
             // Got a picture!
-            if (skipRemaining) {
+            if ((sample->spatialID != AVIF_SPATIAL_ID_UNSET) && (sample->spatialID != nextFrame.frame_hdr->spatial_id)) {
                 // Layer selection: skip this unwanted layer
                 dav1d_picture_unref(&nextFrame);
-                --skipRemaining;
             } else {
                 gotPicture = AVIF_TRUE;
                 break;
