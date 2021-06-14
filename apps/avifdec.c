@@ -37,8 +37,8 @@ static void syntax(void)
     printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
     printf("                        (JPEG only; not applicable to y4m)\n");
     printf("    --index           : When decoding an image sequence or progressive image, specify which frame index to decode (Default: 0)\n");
-    printf("    --progressive     : Enable progressive AVIF processing. If a progressive image is encountered, avifdec will use\n");
-    printf("                        --index to choose which layer to decode (in progressive order).\n");
+    printf("    --progressive     : Enable progressive AVIF processing. If a progressive image is encountered and --progressive is passed,\n");
+    printf("                        avifdec will use --index to choose which layer to decode (in progressive order).\n");
     printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
