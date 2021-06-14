@@ -554,7 +554,7 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
         sample->size = sampleSize;
         sample->spatialID = (uint8_t)lselProp->u.lsel.layerID;
         sample->sync = AVIF_TRUE;
-    } else if (allowProgressive && a1lxProp) {
+    } else if (allowProgressive && item->progressive) {
         // Progressive image. Decode all layers and expose them all to the user.
 
         if (imageCountLimit && (layerCount > imageCountLimit)) {
@@ -954,7 +954,12 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
 {
     if (item->mergedExtents.data && !item->partialMergedExtents) {
         // Multiple extents have already been concatenated for this item, just return it
-        memcpy(outData, &item->mergedExtents, sizeof(avifROData));
+        if (offset >= item->mergedExtents.size) {
+            avifDiagnosticsPrintf(diag, "Item ID %u read has overflowing offset", item->id);
+            return AVIF_RESULT_TRUNCATED_DATA;
+        }
+        outData->data = item->mergedExtents.data + offset;
+        outData->size = item->mergedExtents.size - offset;
         return AVIF_RESULT_OK;
     }
 
