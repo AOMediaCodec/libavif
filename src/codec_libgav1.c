@@ -52,14 +52,12 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
     codec->internal->gav1Image = NULL;
 
     const Libgav1DecoderBuffer * nextFrame = NULL;
-    uint8_t skipRemaining = sample->skip;
     for (;;) {
         if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
             return AVIF_FALSE;
         }
-        if (nextFrame && skipRemaining) {
+        if (nextFrame && (sample->spatialID != AVIF_SPATIAL_ID_UNSET) && (nextFrame->spatial_id != sample->spatialID)) {
             nextFrame = NULL;
-            --skipRemaining;
         } else {
             break;
         }

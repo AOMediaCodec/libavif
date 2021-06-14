@@ -440,8 +440,8 @@ static avifBool avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput * d
             avifDecodeSample * sample = (avifDecodeSample *)avifArrayPushPtr(&decodeInput->samples);
             sample->offset = sampleOffset;
             sample->size = sampleSize;
-            sample->skip = 0;          // Never skip frames when decoding tracks (skip is for layer selection)
-            sample->sync = AVIF_FALSE; // to potentially be set to true following the outer loop
+            sample->spatialID = AVIF_SPATIAL_ID_UNSET; // Not filtering by spatial_id
+            sample->sync = AVIF_FALSE;                 // to potentially be set to true following the outer loop
 
             if (sampleSize > UINT64_MAX - sampleOffset) {
                 avifDiagnosticsPrintf(diag,
@@ -552,7 +552,7 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
         assert(lselProp->u.lsel.layerID < MAX_AV1_LAYER_COUNT);
         sample->offset = 0;
         sample->size = sampleSize;
-        sample->skip = (uint8_t)lselProp->u.lsel.layerID;
+        sample->spatialID = (uint8_t)lselProp->u.lsel.layerID;
         sample->sync = AVIF_TRUE;
     } else if (allowProgressive && a1lxProp) {
         // Progressive image. Decode all layers and expose them all to the user.
@@ -570,7 +570,7 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
             sample->itemID = item->id;
             sample->offset = offset;
             sample->size = layerSizes[i];
-            sample->skip = 0;
+            sample->spatialID = AVIF_SPATIAL_ID_UNSET;
             sample->sync = (i == 0); // Assume all layers depend on the first layer
 
             offset += layerSizes[i];
@@ -582,7 +582,7 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
         sample->itemID = item->id;
         sample->offset = 0;
         sample->size = item->size;
-        sample->skip = 0;
+        sample->spatialID = AVIF_SPATIAL_ID_UNSET;
         sample->sync = AVIF_TRUE;
     }
     return AVIF_TRUE;
