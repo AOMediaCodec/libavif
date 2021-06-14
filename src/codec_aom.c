@@ -115,11 +115,12 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
     }
 
     aom_image_t * nextFrame = NULL;
+    uint8_t spatialID = AVIF_SPATIAL_ID_UNSET;
     for (;;) {
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
-            if (sample->spatialID != AVIF_SPATIAL_ID_UNSET) {
-                if (sample->spatialID == nextFrame->spatial_id) {
+            if (spatialID != AVIF_SPATIAL_ID_UNSET) {
+                if (spatialID == nextFrame->spatial_id) {
                     // Found the correct spatial_id.
                     break;
                 }
@@ -132,6 +133,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
                 return AVIF_FALSE;
             }
+            spatialID = sample->spatialID;
             sample = NULL;
         } else {
             break;
