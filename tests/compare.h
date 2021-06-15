@@ -6,6 +6,10 @@
 
 #include "avif/avif.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct ImageComparison
 {
     int maxDiff;
@@ -24,4 +28,8 @@ typedef struct ImageComparison
 // Returns AVIF_FALSE if they're not even worth comparing (mismatched sizes / pixel formats / etc)
 avifBool compareYUVA(ImageComparison * ic, const avifImage * image1, const avifImage * image2);
 
+#ifdef __cplusplus
+} // extern "C"
 #endif
+
+#endif // ifndef COMPARE_H
