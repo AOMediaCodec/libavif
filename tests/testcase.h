@@ -8,6 +8,10 @@
 
 #include "cJSON.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct TestCase
 {
     char * name;
@@ -32,4 +36,8 @@ cJSON * testCaseToJSON(TestCase * tc);
 
 int testCaseRun(TestCase * tc, const char * dataDir, avifBool generating); // returns 0 on failure
 
+#ifdef __cplusplus
+} // extern "C"
 #endif
+
+#endif // ifndef TESTCASE_H
