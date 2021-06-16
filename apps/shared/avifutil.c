@@ -222,7 +222,7 @@ void avifDumpDiagnostics(const avifDiagnostics * diag)
 }
 
 // ---------------------------------------------------------------------------
-// avifQueryMaxThreads (separated into OS implementations)
+// avifQueryCPUCount (separated into OS implementations)
 
 #if defined(_WIN32)
 
@@ -232,7 +232,7 @@ void avifDumpDiagnostics(const avifDiagnostics * diag)
 #pragma warning(disable : 5032)
 #include <windows.h>
 
-int avifQueryMaxThreads(void)
+int avifQueryCPUCount(void)
 {
     int numCPU;
     SYSTEM_INFO sysinfo;
@@ -247,7 +247,7 @@ int avifQueryMaxThreads(void)
 
 #include <sys/sysctl.h>
 
-int avifQueryMaxThreads()
+int avifQueryCPUCount()
 {
     int mib[4];
     int numCPU;
@@ -273,7 +273,7 @@ int avifQueryMaxThreads()
 
 // Emscripten
 
-int avifQueryMaxThreads()
+int avifQueryCPUCount()
 {
     return 1;
 }
@@ -284,7 +284,7 @@ int avifQueryMaxThreads()
 
 #include <unistd.h>
 
-int avifQueryMaxThreads()
+int avifQueryCPUCount()
 {
     int numCPU = (int)sysconf(_SC_NPROCESSORS_ONLN);
     return (numCPU > 0) ? numCPU : 1;
