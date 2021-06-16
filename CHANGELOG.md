@@ -6,9 +6,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+* avifenc, avifdec: Allow "-j all" to automatically use all of the cores on the machine (#670)
+
 ### Changed
-* Update aom.cmd: v3.1.1
-* Update svt-av1: v0.8.7
+
+* Refactor imir implementation to match HEIF Draft Amendment 2 (#665)
+* Merge avifCodec's open call with its getNextImage call to avoid codec init during parse, and simplify the codec API (#637)
+* Update aom.cmd: v3.1.1 (#674)
+* Update svt-av1: v0.8.7 (#627)
+* Make tests/compare.h and tests/testcase.h C++ safe (#678)
+* Print width and height as %ux%u instead of %u/%u (#676)
+* Allocate codec->internal->svt_config statically (#675)
+* Cleanup related to avifDiagnosticsClearError() (#673)
+* Cleanup avifutil.h comment to match libavif style (#671)
+* Fix the clang -Wunused-macros warning (#672)
+* Check for int32_t overflows in 'clap' code (#663)
+* Have avifdec print chroma sample position for 420 (#666)
+* Enable CMake configs in VCPKG mode (#659)
+* Avoid multiplying widthN and heightN by 2 (#662)
+* Correct AVIF_PIXEL_FORMAT_NONE handling logic (#654)
+* Cast extent->offset (a uint64_t) to size_t safely (#660)
+* Disallow negative clap width or height (#656)
+* Check for int32_t cast and unsigned add overflows (#655)
+* Some straightforward changes to clapFraction code (#653)
+* Fix box name of avifParseChunkOffsetBox (#652)
+* No need to pass diag to functions that have 'data' (#651)
+* Simplify the assertion in avifROStreamStart() (#650)
+* Don't clear error in avifEncoderSetCodecSpecificOp (#648)
+* Simplify avifCodecConfigurationBoxGetFormat (#646)
+* Print the fraction in "not an integer" messages (#641)
+* Fix a typo in the diagnostic context for 'ipco' (#644)
+* Remove const from non-pointer function parameters (#634)
+* Declare the param of avifDumpDiagnostics as const (#633)
+* Adjust gdk-pixbuf loader for new API change (#668)
+* Fix gdk-pixbuf loader install path (#615)
 
 ## [0.9.1] - 2021-05-19
 
