@@ -75,7 +75,7 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
             NEXTARG();
             if (!strcmp(arg, "all")) {
-                jobs = avifQueryMaxThreads();
+                jobs = avifQueryCPUCount();
             } else {
                 jobs = atoi(arg);
                 if (jobs < 1) {
