@@ -32,8 +32,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 68,
+    "avg": 3.1564085483551025
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_aom_qp4_40_speed10",
@@ -44,8 +44,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 46,
+    "avg": 2.4317193031311035
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_aom_qp24_60_speed-1",
@@ -56,8 +56,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 178,
+    "avg": 5.952488899230957
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_aom_qp24_60_speed10",
@@ -68,8 +68,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 72,
+    "avg": 3.4923276901245117
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_dav1d_qp0_0_speed-1",
@@ -104,8 +104,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 68,
+    "avg": 3.1564085483551025
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_dav1d_qp4_40_speed10",
@@ -116,8 +116,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 46,
+    "avg": 2.4317193031311035
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_dav1d_qp24_60_speed-1",
@@ -128,8 +128,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 178,
+    "avg": 5.952488899230957
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_dav1d_qp24_60_speed10",
@@ -140,8 +140,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 72,
+    "avg": 3.4923276901245117
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_libgav1_qp0_0_speed-1",
@@ -176,8 +176,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 68,
+    "avg": 3.1564085483551025
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_libgav1_qp4_40_speed10",
@@ -188,8 +188,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 46,
+    "avg": 2.4317193031311035
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_libgav1_qp24_60_speed-1",
@@ -200,8 +200,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 178,
+    "avg": 5.952488899230957
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_aom_to_libgav1_qp24_60_speed10",
@@ -212,8 +212,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 72,
+    "avg": 3.4923276901245117
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_aom_qp0_0_speed-1",
@@ -225,7 +225,7 @@
     "speed": -1,
     "active": true,
     "max": 3,
-    "avg": 0.37820690870285034
+    "avg": 0.3782525658607483
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_aom_qp0_0_speed10",
@@ -236,8 +236,8 @@
     "maxQP": 0,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 4,
+    "avg": 0.4540103077888489
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_aom_qp4_40_speed-1",
@@ -248,8 +248,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 157,
+    "avg": 5.5284576416015625
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_aom_qp4_40_speed10",
@@ -260,8 +260,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 141,
+    "avg": 5.612685203552246
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_aom_qp24_60_speed-1",
@@ -272,8 +272,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 420,
+    "avg": 10.41141414642334
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_aom_qp24_60_speed10",
@@ -284,8 +284,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 306,
+    "avg": 10.473468780517578
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_dav1d_qp0_0_speed-1",
@@ -297,7 +297,7 @@
     "speed": -1,
     "active": true,
     "max": 3,
-    "avg": 0.37820690870285034
+    "avg": 0.3782525658607483
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_dav1d_qp0_0_speed10",
@@ -308,8 +308,8 @@
     "maxQP": 0,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 4,
+    "avg": 0.4540103077888489
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_dav1d_qp4_40_speed-1",
@@ -320,8 +320,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 157,
+    "avg": 5.5284576416015625
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_dav1d_qp4_40_speed10",
@@ -332,8 +332,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 141,
+    "avg": 5.612685203552246
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_dav1d_qp24_60_speed-1",
@@ -344,8 +344,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 420,
+    "avg": 10.41141414642334
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_dav1d_qp24_60_speed10",
@@ -356,8 +356,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 306,
+    "avg": 10.473468780517578
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_libgav1_qp0_0_speed-1",
@@ -369,7 +369,7 @@
     "speed": -1,
     "active": true,
     "max": 3,
-    "avg": 0.37820690870285034
+    "avg": 0.3782525658607483
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_libgav1_qp0_0_speed10",
@@ -380,8 +380,8 @@
     "maxQP": 0,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 4,
+    "avg": 0.4540103077888489
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_libgav1_qp4_40_speed-1",
@@ -392,8 +392,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 157,
+    "avg": 5.5284576416015625
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_libgav1_qp4_40_speed10",
@@ -404,8 +404,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 141,
+    "avg": 5.612685203552246
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_libgav1_qp24_60_speed-1",
@@ -416,8 +416,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 420,
+    "avg": 10.41141414642334
   },
   {
     "name": "cosmos1650_yuv444_10bpc_p3pq_rav1e_to_libgav1_qp24_60_speed10",
@@ -428,8 +428,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.37820690870285034
+    "max": 306,
+    "avg": 10.473468780517578
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_aom_qp0_0_speed-1",
@@ -464,8 +464,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 15,
+    "avg": 0.7042407989501953
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_aom_qp4_40_speed10",
@@ -476,8 +476,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 37,
+    "avg": 0.5795129537582397
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_aom_qp24_60_speed-1",
@@ -488,8 +488,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 49,
+    "avg": 1.1289870738983154
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_aom_qp24_60_speed10",
@@ -500,8 +500,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 49,
+    "avg": 0.769229233264923
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_dav1d_qp0_0_speed-1",
@@ -536,8 +536,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 15,
+    "avg": 0.7042407989501953
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_dav1d_qp4_40_speed10",
@@ -548,8 +548,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 37,
+    "avg": 0.5795129537582397
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_dav1d_qp24_60_speed-1",
@@ -560,8 +560,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 49,
+    "avg": 1.1289870738983154
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_dav1d_qp24_60_speed10",
@@ -572,8 +572,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 49,
+    "avg": 0.769229233264923
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_libgav1_qp0_0_speed-1",
@@ -608,8 +608,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 15,
+    "avg": 0.7042407989501953
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_libgav1_qp4_40_speed10",
@@ -620,8 +620,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 37,
+    "avg": 0.5795129537582397
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_libgav1_qp24_60_speed-1",
@@ -632,8 +632,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 49,
+    "avg": 1.1289870738983154
   },
   {
     "name": "kodim03_yuv420_8bpc_aom_to_libgav1_qp24_60_speed10",
@@ -644,8 +644,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 49,
+    "avg": 0.769229233264923
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_aom_qp0_0_speed-1",
@@ -657,7 +657,7 @@
     "speed": -1,
     "active": true,
     "max": 3,
-    "avg": 0.27903494238853455
+    "avg": 0.2789376676082611
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_aom_qp0_0_speed10",
@@ -669,7 +669,7 @@
     "speed": 10,
     "active": true,
     "max": 3,
-    "avg": 0.27903494238853455
+    "avg": 0.316540390253067
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_aom_qp4_40_speed-1",
@@ -680,8 +680,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 49,
+    "avg": 1.02064323425293
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_aom_qp4_40_speed10",
@@ -692,8 +692,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 62,
+    "avg": 1.0844612121582031
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_aom_qp24_60_speed-1",
@@ -704,8 +704,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 111,
+    "avg": 1.82947039604187
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_aom_qp24_60_speed10",
@@ -716,8 +716,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 119,
+    "avg": 1.9037811756134033
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_dav1d_qp0_0_speed-1",
@@ -729,7 +729,7 @@
     "speed": -1,
     "active": true,
     "max": 3,
-    "avg": 0.27903494238853455
+    "avg": 0.2789376676082611
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_dav1d_qp0_0_speed10",
@@ -741,7 +741,7 @@
     "speed": 10,
     "active": true,
     "max": 3,
-    "avg": 0.27903494238853455
+    "avg": 0.316540390253067
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_dav1d_qp4_40_speed-1",
@@ -752,8 +752,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 49,
+    "avg": 1.02064323425293
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_dav1d_qp4_40_speed10",
@@ -764,8 +764,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 62,
+    "avg": 1.0844612121582031
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_dav1d_qp24_60_speed-1",
@@ -776,8 +776,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 111,
+    "avg": 1.82947039604187
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_dav1d_qp24_60_speed10",
@@ -788,8 +788,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 119,
+    "avg": 1.9037811756134033
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_libgav1_qp0_0_speed-1",
@@ -801,7 +801,7 @@
     "speed": -1,
     "active": true,
     "max": 3,
-    "avg": 0.27903494238853455
+    "avg": 0.2789376676082611
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_libgav1_qp0_0_speed10",
@@ -813,7 +813,7 @@
     "speed": 10,
     "active": true,
     "max": 3,
-    "avg": 0.27903494238853455
+    "avg": 0.316540390253067
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_libgav1_qp4_40_speed-1",
@@ -824,8 +824,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 49,
+    "avg": 1.02064323425293
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_libgav1_qp4_40_speed10",
@@ -836,8 +836,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 62,
+    "avg": 1.0844612121582031
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_libgav1_qp24_60_speed-1",
@@ -848,8 +848,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 111,
+    "avg": 1.82947039604187
   },
   {
     "name": "kodim03_yuv420_8bpc_rav1e_to_libgav1_qp24_60_speed10",
@@ -860,8 +860,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 3,
-    "avg": 0.27903494238853455
+    "max": 119,
+    "avg": 1.9037811756134033
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_aom_qp0_0_speed-1",
@@ -896,8 +896,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 19,
+    "avg": 0.7471370697021484
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_aom_qp4_40_speed10",
@@ -908,8 +908,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 20,
+    "avg": 0.6225337982177734
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_aom_qp24_60_speed-1",
@@ -920,8 +920,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 52,
+    "avg": 1.1058056354522705
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_aom_qp24_60_speed10",
@@ -932,8 +932,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 46,
+    "avg": 0.7958602905273438
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_dav1d_qp0_0_speed-1",
@@ -968,8 +968,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 19,
+    "avg": 0.7471370697021484
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_dav1d_qp4_40_speed10",
@@ -980,8 +980,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 20,
+    "avg": 0.6225337982177734
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_dav1d_qp24_60_speed-1",
@@ -992,8 +992,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 52,
+    "avg": 1.1058056354522705
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_dav1d_qp24_60_speed10",
@@ -1004,8 +1004,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 46,
+    "avg": 0.7958602905273438
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_libgav1_qp0_0_speed-1",
@@ -1040,8 +1040,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 19,
+    "avg": 0.7471370697021484
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_libgav1_qp4_40_speed10",
@@ -1052,8 +1052,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 20,
+    "avg": 0.6225337982177734
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_libgav1_qp24_60_speed-1",
@@ -1064,8 +1064,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 52,
+    "avg": 1.1058056354522705
   },
   {
     "name": "kodim23_yuv420_8bpc_aom_to_libgav1_qp24_60_speed10",
@@ -1076,8 +1076,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 0,
-    "avg": 0.25
+    "max": 46,
+    "avg": 0.7958602905273438
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_aom_qp0_0_speed-1",
@@ -1089,7 +1089,7 @@
     "speed": -1,
     "active": true,
     "max": 2,
-    "avg": 0.27959379553794861
+    "avg": 0.279501587152481
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_aom_qp0_0_speed10",
@@ -1100,8 +1100,8 @@
     "maxQP": 0,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 3,
+    "avg": 0.3178424835205078
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_aom_qp4_40_speed-1",
@@ -1112,8 +1112,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 42,
+    "avg": 0.9920762181282043
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_aom_qp4_40_speed10",
@@ -1124,8 +1124,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 89,
+    "avg": 1.0305366516113281
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_aom_qp24_60_speed-1",
@@ -1136,8 +1136,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 113,
+    "avg": 1.7271842956542969
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_aom_qp24_60_speed10",
@@ -1148,8 +1148,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 113,
+    "avg": 1.7759075164794922
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_dav1d_qp0_0_speed-1",
@@ -1161,7 +1161,7 @@
     "speed": -1,
     "active": true,
     "max": 2,
-    "avg": 0.27959379553794861
+    "avg": 0.279501587152481
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_dav1d_qp0_0_speed10",
@@ -1172,8 +1172,8 @@
     "maxQP": 0,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 3,
+    "avg": 0.3178424835205078
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_dav1d_qp4_40_speed-1",
@@ -1184,8 +1184,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 42,
+    "avg": 0.9920762181282043
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_dav1d_qp4_40_speed10",
@@ -1196,8 +1196,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 89,
+    "avg": 1.0305366516113281
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_dav1d_qp24_60_speed-1",
@@ -1208,8 +1208,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 113,
+    "avg": 1.7271842956542969
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_dav1d_qp24_60_speed10",
@@ -1220,8 +1220,8 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 113,
+    "avg": 1.7759075164794922
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_libgav1_qp0_0_speed-1",
@@ -1233,7 +1233,7 @@
     "speed": -1,
     "active": true,
     "max": 2,
-    "avg": 0.27959379553794861
+    "avg": 0.279501587152481
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_libgav1_qp0_0_speed10",
@@ -1244,8 +1244,8 @@
     "maxQP": 0,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 3,
+    "avg": 0.3178424835205078
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_libgav1_qp4_40_speed-1",
@@ -1256,8 +1256,8 @@
     "maxQP": 40,
     "speed": -1,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 42,
+    "avg": 0.9920762181282043
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_libgav1_qp4_40_speed10",
@@ -1268,8 +1268,8 @@
     "maxQP": 40,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 89,
+    "avg": 1.0305366516113281
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_libgav1_qp24_60_speed-1",
@@ -1280,8 +1280,8 @@
     "maxQP": 60,
     "speed": -1,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 113,
+    "avg": 1.7271842956542969
   },
   {
     "name": "kodim23_yuv420_8bpc_rav1e_to_libgav1_qp24_60_speed10",
@@ -1292,7 +1292,7 @@
     "maxQP": 60,
     "speed": 10,
     "active": true,
-    "max": 2,
-    "avg": 0.27959379553794861
+    "max": 113,
+    "avg": 1.7759075164794922
   }
 ]

@@ -220,6 +220,9 @@ int testCaseRun(TestCase * tc, const char * dataDir, avifBool generating)
 
     encoder = avifEncoderCreate();
     encoder->codecChoice = tc->encodeChoice;
+    encoder->minQuantizer = tc->minQuantizer;
+    encoder->maxQuantizer = tc->maxQuantizer;
+    encoder->speed = tc->speed;
     encoder->maxThreads = 4; // TODO: pick something better here
     if (avifEncoderWrite(encoder, image, &encodedData) != AVIF_RESULT_OK) {
         printf("ERROR[%s]: Encode failed\n", tc->name);
