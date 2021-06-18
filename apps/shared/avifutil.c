@@ -228,8 +228,6 @@ void avifDumpDiagnostics(const avifDiagnostics * diag)
 
 // Windows
 
-#pragma warning(disable : 5031)
-#pragma warning(disable : 5032)
 #include <windows.h>
 
 int avifQueryCPUCount(void)
