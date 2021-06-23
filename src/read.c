@@ -828,7 +828,7 @@ static void avifDecoderDataDestroy(avifDecoderData * data)
 // This returns the max extent that has to be read in order to decode this item. If
 // the item is stored in an idat, the data has already been read during Parse() and
 // this function will return AVIF_RESULT_OK with a 0-byte extent.
-static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExtent * outExtent)
+static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifDecodeSample * sample, avifExtent * outExtent)
 {
     if (item->extents.count == 0) {
         return AVIF_RESULT_TRUNCATED_DATA;
@@ -852,17 +852,23 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
 
     // construction_method: file(0)
 
+    if (sample->size == 0) {
+        return AVIF_RESULT_TRUNCATED_DATA;
+    }
+    size_t remainingBytes = sample->size; // This may be smaller than item->size if the item is progressive
+
     // Assert that the for loop below will execute at least one iteration.
     assert(item->extents.count != 0);
     uint64_t minOffset = UINT64_MAX;
     uint64_t maxOffset = 0;
     for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
         avifExtent * extent = &item->extents.extent[extentIter];
+        const size_t usedExtentSize = (extent->size > remainingBytes) ? extent->size : remainingBytes;
 
-        if (extent->size > UINT64_MAX - extent->offset) {
+        if (usedExtentSize > UINT64_MAX - extent->offset) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
-        const uint64_t endOffset = extent->offset + extent->size;
+        const uint64_t endOffset = extent->offset + usedExtentSize;
 
         if (minOffset > extent->offset) {
             minOffset = extent->offset;
@@ -870,6 +876,16 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifExt
         if (maxOffset < endOffset) {
             maxOffset = endOffset;
         }
+
+        remainingBytes -= usedExtentSize;
+        if (remainingBytes == 0) {
+            // We've got enough bytes for this sample.
+            break;
+        }
+    }
+
+    if (remainingBytes != 0) {
+        return AVIF_RESULT_TRUNCATED_DATA;
     }
 
     outExtent->offset = minOffset;
@@ -2904,7 +2920,7 @@ avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t fr
                 // The data comes from an item. Let avifDecoderItemMaxExtent() do the heavy lifting.
 
                 avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID);
-                avifResult maxExtentResult = avifDecoderItemMaxExtent(item, &sampleExtent);
+                avifResult maxExtentResult = avifDecoderItemMaxExtent(item, sample, &sampleExtent);
                 if (maxExtentResult != AVIF_RESULT_OK) {
                     return maxExtentResult;
                 }
