@@ -498,10 +498,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         // Speed  4: GoodQuality CpuUsed 4
         // Speed  5: GoodQuality CpuUsed 5
         // Speed  6: GoodQuality CpuUsed 6
-        // Speed  7: GoodQuality CpuUsed 6
-        // Speed  8: RealTime    CpuUsed 6
-        // Speed  9: RealTime    CpuUsed 7
-        // Speed 10: RealTime    CpuUsed 8
+        // Speed  7: RealTime    CpuUsed 7
+        // Speed  8: RealTime    CpuUsed 8
+        // Speed  9: RealTime    CpuUsed 9
+        // Speed 10: RealTime    CpuUsed 9
         unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
         // Use the new AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still
         // image encoding if it is available.
@@ -512,12 +512,16 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 #endif
         int aomCpuUsed = -1;
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
-            if (encoder->speed < 8) {
-                aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 6);
-            } else {
+            aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
+#if defined(AOM_USAGE_ALL_INTRA)
+            if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) && (aomCpuUsed >= 7)) {
                 aomUsage = AOM_USAGE_REALTIME;
-                aomCpuUsed = AVIF_CLAMP(encoder->speed - 2, 6, 8);
             }
+#else
+            if (aomCpuUsed >= 7) {
+                aomUsage = AOM_USAGE_REALTIME;
+            }
+#endif
         }
 
         // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
