@@ -19,7 +19,7 @@ set(CMAKE_C_STANDARD 99)
 #     Increment MINOR. Set PATCH to 0
 #   If the source code was changed, but there were no interface changes:
 #     Increment PATCH.
-set(LIBRARY_VERSION_MAJOR 11)
+set(LIBRARY_VERSION_MAJOR 12)
 set(LIBRARY_VERSION_MINOR 0)
 set(LIBRARY_VERSION_PATCH 0)
 set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH}")

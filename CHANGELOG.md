@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2021-06-23
+
 ### Added
 
 * avifenc, avifdec: Allow "-j all" to automatically use all of the cores on the machine (#670)
@@ -42,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Declare the param of avifDumpDiagnostics as const (#633)
 * Adjust gdk-pixbuf loader for new API change (#668)
 * Fix gdk-pixbuf loader install path (#615)
+* Don't need to disable MSVC warnings 5031 and 5032 (#681)
 
 ## [0.9.1] - 2021-05-19
 
@@ -661,7 +664,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/AOMediaCodec/libavif/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/AOMediaCodec/libavif/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/AOMediaCodec/libavif/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/AOMediaCodec/libavif/compare/v0.8.3...v0.8.4
