@@ -3556,12 +3556,14 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
 
         if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->alpha, tile->image)) {
+            avifDiagnosticsPrintf(&decoder->diag, "tile->codec->getNextImage() failed");
             return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
         }
 
         // Scale the decoded image so that it corresponds to this tile's output dimensions
         if ((tile->width != tile->image->width) || (tile->height != tile->image->height)) {
             if (!avifImageScale(tile->image, tile->width, tile->height, &decoder->diag)) {
+                avifDiagnosticsPrintf(&decoder->diag, "avifImageScale() failed");
                 return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
             }
         }
@@ -3580,6 +3582,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         // Normal (most common) non-grid path. Just steal the planes from the only "tile".
 
         if (decoder->data->colorTileCount != 1) {
+            avifDiagnosticsPrintf(&decoder->diag, "decoder->data->colorTileCount should be 1 but is %u", decoder->data->colorTileCount);
             return AVIF_RESULT_DECODE_COLOR_FAILED;
         }
 
@@ -3623,12 +3626,14 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             avifImageFreePlanes(decoder->image, AVIF_PLANES_A); // no alpha
         } else {
             if (decoder->data->alphaTileCount != 1) {
+                avifDiagnosticsPrintf(&decoder->diag, "decoder->data->alphaTileCount should be 1 but is %u", decoder->data->alphaTileCount);
                 return AVIF_RESULT_DECODE_ALPHA_FAILED;
             }
 
             avifImage * srcAlpha = decoder->data->tiles.tile[decoder->data->colorTileCount].image;
             if ((decoder->image->width != srcAlpha->width) || (decoder->image->height != srcAlpha->height) ||
                 (decoder->image->depth != srcAlpha->depth)) {
+                avifDiagnosticsPrintf(&decoder->diag, "decoder->image does not match srcAlpha in width, height, or bit depth");
                 return AVIF_RESULT_DECODE_ALPHA_FAILED;
             }
 
