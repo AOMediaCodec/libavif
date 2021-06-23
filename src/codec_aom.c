@@ -357,6 +357,7 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, 
         int val;
         if (avifKeyEqualsName(entry->key, "end-usage", alpha)) { // Rate control mode
             if (!aomOptionParseEnum(entry->value, endUsageEnum, &val)) {
+                avifDiagnosticsPrintf(codec->diag, "Invalid value for end-usage: %s", entry->value);
                 return AVIF_FALSE;
             }
             cfg->rc_end_usage = val;
@@ -442,6 +443,12 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
             key += shortPrefixLen;
         }
         if (aom_codec_set_option(&codec->internal->encoder, key, entry->value) != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag,
+                                  "aom_codec_set_option(\"%s\", \"%s\") failed: %s: %s",
+                                  key,
+                                  entry->value,
+                                  aom_codec_error(&codec->internal->encoder),
+                                  aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_FALSE;
         }
 #else  // !defined(HAVE_AOM_CODEC_SET_OPTION)
