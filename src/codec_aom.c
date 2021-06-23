@@ -513,7 +513,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         int aomCpuUsed = -1;
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
-#if defined(AOM_USAGE_ALL_INTRA)
+#if defined(AOM_USAGE_ALL_INTRA) && \
+    AOM_ENCODER_ABI_VERSION >= (9 + AOM_CODEC_ABI_VERSION + AOM_EXT_PART_ABI_VERSION)
+            // Speeds 7-9 in all intra mode work.
             if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) && (aomCpuUsed >= 7)) {
                 aomUsage = AOM_USAGE_REALTIME;
             }

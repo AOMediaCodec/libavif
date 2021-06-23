@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * avifenc, avifdec: Allow "-j all" to automatically use all of the cores on the machine (#670)
 
 ### Changed
-
+* Re-mapping libavif speed 7-9 to libaom speed 7-9 (#682)
 * Refactor imir implementation to match HEIF Draft Amendment 2 (#665)
 * Merge avifCodec's open call with its getNextImage call to avoid codec init during parse, and simplify the codec API (#637)
 * Update aom.cmd: v3.1.1 (#674)
