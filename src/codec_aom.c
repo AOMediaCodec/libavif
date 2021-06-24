@@ -104,10 +104,10 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         }
         codec->internal->decoderInitialized = AVIF_TRUE;
 
-        // Ensure that we only get the "highest spatial layer" as a single frame
-        // for each input sample, instead of getting each spatial layer as its own
-        // frame one at a time ("all layers").
-        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 0)) {
+        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, codec->allLayers)) {
+            return AVIF_FALSE;
+        }
+        if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OPERATING_POINT, codec->operatingPoint)) {
             return AVIF_FALSE;
         }
 
@@ -115,16 +115,25 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
     }
 
     aom_image_t * nextFrame = NULL;
+    uint8_t spatialID = AVIF_SPATIAL_ID_UNSET;
     for (;;) {
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
-            // Got an image!
-            break;
+            if (spatialID != AVIF_SPATIAL_ID_UNSET) {
+                if (spatialID == nextFrame->spatial_id) {
+                    // Found the correct spatial_id.
+                    break;
+                }
+            } else {
+                // Got an image!
+                break;
+            }
         } else if (sample) {
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
                 return AVIF_FALSE;
             }
+            spatialID = sample->spatialID;
             sample = NULL;
         } else {
             break;
@@ -348,6 +357,7 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, 
         int val;
         if (avifKeyEqualsName(entry->key, "end-usage", alpha)) { // Rate control mode
             if (!aomOptionParseEnum(entry->value, endUsageEnum, &val)) {
+                avifDiagnosticsPrintf(codec->diag, "Invalid value for end-usage: %s", entry->value);
                 return AVIF_FALSE;
             }
             cfg->rc_end_usage = val;
@@ -433,6 +443,12 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
             key += shortPrefixLen;
         }
         if (aom_codec_set_option(&codec->internal->encoder, key, entry->value) != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag,
+                                  "aom_codec_set_option(\"%s\", \"%s\") failed: %s: %s",
+                                  key,
+                                  entry->value,
+                                  aom_codec_error(&codec->internal->encoder),
+                                  aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_FALSE;
         }
 #else  // !defined(HAVE_AOM_CODEC_SET_OPTION)

@@ -57,7 +57,7 @@ extern "C" {
 // to leverage in-development code without breaking their stable builds.
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 9
-#define AVIF_VERSION_PATCH 1
+#define AVIF_VERSION_PATCH 2
 #define AVIF_VERSION_DEVEL 1
 #define AVIF_VERSION \
     ((AVIF_VERSION_MAJOR * 1000000) + (AVIF_VERSION_MINOR * 10000) + (AVIF_VERSION_PATCH * 100) + AVIF_VERSION_DEVEL)
@@ -760,8 +760,31 @@ typedef struct avifImageTiming
     uint64_t durationInTimescales; // duration in "timescales"
 } avifImageTiming;
 
+typedef enum avifProgressiveState
+{
+    // The current AVIF/Source does not offer a progressive image. This will always be the state
+    // for an image sequence.
+    AVIF_PROGRESSIVE_STATE_UNAVAILABLE = 0,
+
+    // The current AVIF/Source offers a progressive image, but avifDecoder.allowProgressive is not
+    // enabled, so it will behave as if the image was not progressive and will simply decode the
+    // best version of this item.
+    AVIF_PROGRESSIVE_STATE_AVAILABLE,
+
+    // The current AVIF/Source offers a progressive image, and avifDecoder.allowProgressive is true.
+    // In this state, avifDecoder.imageCount will be the count of all of the available progressive
+    // layers, and any specific layer can be decoded using avifDecoderNthImage() as if it was an
+    // image sequence, or simply using repeated calls to avifDecoderNextImage() to decode better and
+    // better versions of this image.
+    AVIF_PROGRESSIVE_STATE_ACTIVE
+} avifProgressiveState;
+AVIF_API const char * avifProgressiveStateToString(avifProgressiveState progressiveState);
+
 typedef struct avifDecoder
 {
+    // --------------------------------------------------------------------------------------------
+    // Inputs
+
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
@@ -772,33 +795,12 @@ typedef struct avifDecoder
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;
 
-    // All decoded image data; owned by the decoder. All information in this image is incrementally
-    // added and updated as avifDecoder*() functions are called. After a successful call to
-    // avifDecoderParse(), all values in decoder->image (other than the planes/rowBytes themselves)
-    // will be pre-populated with all information found in the outer AVIF container, prior to any
-    // AV1 decoding. If the contents of the inner AV1 payload disagree with the outer container,
-    // these values may change after calls to avifDecoderRead*(),avifDecoderNextImage(), or
-    // avifDecoderNthImage().
-    //
-    // The YUV and A contents of this image are likely owned by the decoder, so be sure to copy any
-    // data inside of this image before advancing to the next image or reusing the decoder. It is
-    // legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(), but use
-    // avifImageCopy() if you want to make a complete, permanent copy of this image's YUV content or
-    // metadata.
-    avifImage * image;
-
-    // Counts and timing for the current image in an image sequence. Uninteresting for single image files.
-    int imageIndex;                // 0-based
-    int imageCount;                // Always 1 for non-sequences
-    avifImageTiming imageTiming;   //
-    uint64_t timescale;            // timescale of the media (Hz)
-    double duration;               // in seconds (durationInTimescales / timescale)
-    uint64_t durationInTimescales; // duration in "timescales"
-
-    // This is true when avifDecoderParse() detects an alpha plane. Use this to find out if alpha is
-    // present after a successful call to avifDecoderParse(), but prior to any call to
-    // avifDecoderNextImage() or avifDecoderNthImage(), as decoder->image->alphaPlane won't exist yet.
-    avifBool alphaPresent;
+    // If this is true and a progressive AVIF is decoded, avifDecoder will behave as if the AVIF is
+    // an image sequence, in that it will set imageCount to the number of progressive frames
+    // available, and avifDecoderNextImage()/avifDecoderNthImage() will allow for specific layers
+    // of a progressive image to be decoded. To distinguish between a progressive AVIF and an AVIF
+    // image sequence, inspect avifDecoder.progressiveState.
+    avifBool allowProgressive;
 
     // Enable any of these to avoid reading and surfacing specific data to the decoded avifImage.
     // These can be useful if your avifIO implementation heavily uses AVIF_RESULT_WAITING_ON_IO for
@@ -817,14 +819,49 @@ typedef struct avifDecoder
     // Strict flags. Defaults to AVIF_STRICT_ENABLED. See avifStrictFlag definitions above.
     avifStrictFlags strictFlags;
 
+    // --------------------------------------------------------------------------------------------
+    // Outputs
+
+    // All decoded image data; owned by the decoder. All information in this image is incrementally
+    // added and updated as avifDecoder*() functions are called. After a successful call to
+    // avifDecoderParse(), all values in decoder->image (other than the planes/rowBytes themselves)
+    // will be pre-populated with all information found in the outer AVIF container, prior to any
+    // AV1 decoding. If the contents of the inner AV1 payload disagree with the outer container,
+    // these values may change after calls to avifDecoderRead*(),avifDecoderNextImage(), or
+    // avifDecoderNthImage().
+    //
+    // The YUV and A contents of this image are likely owned by the decoder, so be sure to copy any
+    // data inside of this image before advancing to the next image or reusing the decoder. It is
+    // legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(), but use
+    // avifImageCopy() if you want to make a complete, permanent copy of this image's YUV content or
+    // metadata.
+    avifImage * image;
+
+    // Counts and timing for the current image in an image sequence. Uninteresting for single image files.
+    int imageIndex;                        // 0-based
+    int imageCount;                        // Always 1 for non-progressive, non-sequence AVIFs.
+    avifProgressiveState progressiveState; // See avifProgressiveState declaration
+    avifImageTiming imageTiming;           //
+    uint64_t timescale;                    // timescale of the media (Hz)
+    double duration;                       // in seconds (durationInTimescales / timescale)
+    uint64_t durationInTimescales;         // duration in "timescales"
+
+    // This is true when avifDecoderParse() detects an alpha plane. Use this to find out if alpha is
+    // present after a successful call to avifDecoderParse(), but prior to any call to
+    // avifDecoderNextImage() or avifDecoderNthImage(), as decoder->image->alphaPlane won't exist yet.
+    avifBool alphaPresent;
+
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
 
-    // Use one of the avifDecoderSetIO*() functions to set this
-    avifIO * io;
-
     // Additional diagnostics (such as detailed error state)
     avifDiagnostics diag;
+
+    // --------------------------------------------------------------------------------------------
+    // Internals
+
+    // Use one of the avifDecoderSetIO*() functions to set this
+    avifIO * io;
 
     // Internals used by the decoder
     struct avifDecoderData * data;

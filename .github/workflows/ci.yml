@@ -60,4 +60,4 @@ jobs:
     - name: Run AVIF Tests (on Linux)
       if: runner.os == 'Linux'
       working-directory: ./build
-      run: ./aviftest ../tests/data
+      run: ./aviftest ../tests/data --io-only

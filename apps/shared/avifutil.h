@@ -19,7 +19,7 @@
 #define AVIF_FMT_ZU "%zu"
 #endif
 
-void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows);
+void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState);
 void avifContainerDump(avifDecoder * decoder);
 void avifPrintVersions(void);
 void avifDumpDiagnostics(const avifDiagnostics * diag);

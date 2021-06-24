@@ -59,6 +59,8 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         // Give all available threads to decode a single frame as fast as possible
         codec->internal->dav1dSettings.n_frame_threads = 1;
         codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
+        codec->internal->dav1dSettings.operating_point = codec->operatingPoint;
+        codec->internal->dav1dSettings.all_layers = codec->allLayers;
 
         if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
             return AVIF_FALSE;
@@ -98,8 +100,13 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
             return AVIF_FALSE;
         } else {
             // Got a picture!
-            gotPicture = AVIF_TRUE;
-            break;
+            if ((sample->spatialID != AVIF_SPATIAL_ID_UNSET) && (sample->spatialID != nextFrame.frame_hdr->spatial_id)) {
+                // Layer selection: skip this unwanted layer
+                dav1d_picture_unref(&nextFrame);
+            } else {
+                gotPicture = AVIF_TRUE;
+                break;
+            }
         }
     }
     if (dav1dData.data) {

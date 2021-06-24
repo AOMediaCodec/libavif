@@ -156,7 +156,16 @@ avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
 // ---------------------------------------------------------------------------
+// Scaling
+
+// This scales the YUV/A planes in-place.
+avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
 // avifCodecDecodeInput
+
+// Legal spatial_id values are [0,1,2,3], so this serves as a sentinel value for "do not filter by spatial_id"
+#define AVIF_SPATIAL_ID_UNSET 0xff
 
 typedef struct avifDecodeSample
 {
@@ -164,17 +173,20 @@ typedef struct avifDecodeSample
     avifBool ownsData;
     avifBool partialData; // if true, data exists but doesn't have all of the sample in it
 
-    uint32_t itemID; // if non-zero, data comes from a mergedExtents buffer in an avifDecoderItem, not a file offset
-    uint64_t offset; // used only when itemID is zero, ignored and set to 0 when itemID is non-zero
-    size_t size;
-    avifBool sync; // is sync sample (keyframe)
+    uint32_t itemID;   // if non-zero, data comes from a mergedExtents buffer in an avifDecoderItem, not a file offset
+    uint64_t offset;   // additional offset into data. Can be used to offset into an itemID's payload as well.
+    size_t size;       //
+    uint8_t spatialID; // If set to a value other than AVIF_SPATIAL_ID_UNSET, the output frame's spatial_id must match
+                       // this ID, otherwise output frames from this sample should be skipped until it does.
+    avifBool sync;     // is sync sample (keyframe)
 } avifDecodeSample;
 AVIF_ARRAY_DECLARE(avifDecodeSampleArray, avifDecodeSample, sample);
 
 typedef struct avifCodecDecodeInput
 {
     avifDecodeSampleArray samples;
-    avifBool alpha; // if true, this is decoding an alpha plane
+    avifBool allLayers; // if true, the underlying codec must decode all layers, not just the best layer
+    avifBool alpha;     // if true, this is decoding an alpha plane
 } avifCodecDecodeInput;
 
 avifCodecDecodeInput * avifCodecDecodeInputCreate(void);
@@ -244,6 +256,9 @@ typedef struct avifCodec
     struct avifCodecInternal * internal;  // up to each codec to use how it wants
                                           //
     avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
+                                          //
+    uint8_t operatingPoint;               // Operating point, defaults to 0.
+    avifBool allLayers;                   // if true, the underlying codec must decode all layers, not just the best layer
 
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;

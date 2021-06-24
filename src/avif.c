@@ -101,6 +101,20 @@ const char * avifResultToString(avifResult result)
     return "Unknown Error";
 }
 
+const char * avifProgressiveStateToString(avifProgressiveState progressiveState)
+{
+    // clang-format off
+    switch (progressiveState) {
+        case AVIF_PROGRESSIVE_STATE_UNAVAILABLE: return "Unavailable";
+        case AVIF_PROGRESSIVE_STATE_AVAILABLE:   return "Available";
+        case AVIF_PROGRESSIVE_STATE_ACTIVE:      return "Active";
+        default:
+            break;
+    }
+    // clang-format on
+    return "Unknown";
+}
+
 // This function assumes nothing in this struct needs to be freed; use avifImageClear() externally
 static void avifImageSetDefaults(avifImage * image)
 {

@@ -38,7 +38,7 @@ static void printClapFraction(const char * name, int32_t n, int32_t d)
     printf(", ");
 }
 
-static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent)
+static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent, avifProgressiveState progressiveState)
 {
     uint32_t width = avif->width;
     uint32_t height = avif->height;
@@ -105,17 +105,18 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
             printf("    * imir (Mirror)        : Mode %u (%s)\n", avif->imir.mode, (avif->imir.mode == 0) ? "top-to-bottom" : "left-to-right");
         }
     }
+    printf(" * Progressive    : %s\n", avifProgressiveStateToString(progressiveState));
 }
 
-void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows)
+void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)
 {
     const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
-    avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent);
+    avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent, progressiveState);
 }
 
 void avifContainerDump(avifDecoder * decoder)
 {
-    avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent);
+    avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent, decoder->progressiveState);
 }
 
 void avifPrintVersions(void)
