@@ -855,6 +855,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, const a
     if (sample->size == 0) {
         return AVIF_RESULT_TRUNCATED_DATA;
     }
+    size_t remainingOffset = sample->offset;
     size_t remainingBytes = sample->size; // This may be smaller than item->size if the item is progressive
 
     // Assert that the for loop below will execute at least one iteration.
@@ -863,15 +864,31 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, const a
     uint64_t maxOffset = 0;
     for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
         avifExtent * extent = &item->extents.extent[extentIter];
-        const size_t usedExtentSize = (extent->size < remainingBytes) ? extent->size : remainingBytes;
+
+        // Make local copies of extent->offset and extent->size as they might need to be adjusted
+        // due to the sample's offset.
+        uint64_t startOffset = extent->offset;
+        uint64_t extentSize = extent->size;
+        if (remainingOffset) {
+            if (remainingOffset >= extentSize) {
+                remainingOffset -= extentSize;
+                continue;
+            } else {
+                startOffset += remainingOffset;
+                extentSize -= remainingOffset;
+                remainingOffset = 0;
+            }
+        }
+
+        const size_t usedExtentSize = (extentSize < remainingBytes) ? extentSize : remainingBytes;
 
         if (usedExtentSize > UINT64_MAX - extent->offset) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
-        const uint64_t endOffset = extent->offset + usedExtentSize;
+        const uint64_t endOffset = startOffset + usedExtentSize;
 
-        if (minOffset > extent->offset) {
-            minOffset = extent->offset;
+        if (minOffset > startOffset) {
+            minOffset = startOffset;
         }
         if (maxOffset < endOffset) {
             maxOffset = endOffset;
