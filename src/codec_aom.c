@@ -41,12 +41,12 @@
 #if AOM_CODEC_ABI_VERSION >= (6 + AOM_IMAGE_ABI_VERSION)
 #define HAVE_AOM_CODEC_SET_OPTION 1
 #endif
-#endif
 
 // Speeds 7-9 were added to all intra mode in https://aomedia-review.googlesource.com/c/aom/+/140624.
 #if defined(AOM_EXT_PART_ABI_VERSION)
 #if AOM_ENCODER_ABI_VERSION >= (10 + AOM_CODEC_ABI_VERSION + AOM_EXT_PART_ABI_VERSION)
 #define ALL_INTRA_HAS_SPEEDS_7_TO_9 1
+#endif
 #endif
 #endif
 
@@ -538,13 +538,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
             if (aomCpuUsed >= 7) {
 #if defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
-                // Speeds 7-9 in all intra mode work.
-                // https://aomedia-review.googlesource.com/c/aom/+/140624
-                // If you were using libaom with lower encoder ABI version
-                // and using the following avif speed setting:
-                //  - speed 0-6: no change is needed
-                //  - speed 7:   change to speed 6 for the same results
-                //  - speed 8-9: re-test and re-adjust speed according to your app needs
                 if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
                     aomUsage = AOM_USAGE_REALTIME;
                 }

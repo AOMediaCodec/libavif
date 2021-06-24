@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+* Re-map libavif speed 7-10 to libaom speed 7-9 (#682)
+*  Refer to https://aomedia-review.googlesource.com/c/aom/+/140624
+*  If you were using libaom with the following avif speed setting:
+*   - speed 0-6: no change is needed
+*   - speed 7:   change to speed 6 for the same results
+*   - speed 8-9: re-test and re-adjust speed according to your app needs
+
 ## [0.9.2] - 2021-06-23
 
 ### Added
@@ -13,13 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * avifenc, avifdec: Allow "-j all" to automatically use all of the cores on the machine (#670)
 
 ### Changed
-* Re-map libavif speed 7-10 to libaom speed 7-9 (#682)
-*  Refer to https://aomedia-review.googlesource.com/c/aom/+/140624
-*  If you were using libaom with lower encoder ABI version
-*  and using the following avif speed setting:
-*   - speed 0-6: no change is needed
-*   - speed 7:   change to speed 6 for the same results
-*   - speed 8-9: re-test and re-adjust speed according to your app needs
 * Refactor imir implementation to match HEIF Draft Amendment 2 (#665)
 * Merge avifCodec's open call with its getNextImage call to avoid codec init during parse, and simplify the codec API (#637)
 * Update aom.cmd: v3.1.1 (#674)
