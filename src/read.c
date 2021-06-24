@@ -828,7 +828,7 @@ static void avifDecoderDataDestroy(avifDecoderData * data)
 // This returns the max extent that has to be read in order to decode this item. If
 // the item is stored in an idat, the data has already been read during Parse() and
 // this function will return AVIF_RESULT_OK with a 0-byte extent.
-static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifDecodeSample * sample, avifExtent * outExtent)
+static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, const avifDecodeSample * sample, avifExtent * outExtent)
 {
     if (item->extents.count == 0) {
         return AVIF_RESULT_TRUNCATED_DATA;
