@@ -863,7 +863,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, avifDec
     uint64_t maxOffset = 0;
     for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
         avifExtent * extent = &item->extents.extent[extentIter];
-        const size_t usedExtentSize = (extent->size > remainingBytes) ? extent->size : remainingBytes;
+        const size_t usedExtentSize = (extent->size < remainingBytes) ? extent->size : remainingBytes;
 
         if (usedExtentSize > UINT64_MAX - extent->offset) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
