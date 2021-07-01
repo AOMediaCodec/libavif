@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.5)
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C VERSION 0.9.1)
+project(libavif LANGUAGES C VERSION 0.9.2)
 
 # Set C99 as the default
 set(CMAKE_C_STANDARD 99)
