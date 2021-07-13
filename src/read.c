@@ -549,9 +549,9 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
 
         avifDecodeSample * sample = (avifDecodeSample *)avifArrayPushPtr(&decodeInput->samples);
         sample->itemID = item->id;
-        assert(lselProp->u.lsel.layerID < MAX_AV1_LAYER_COUNT);
         sample->offset = 0;
         sample->size = sampleSize;
+        assert(lselProp->u.lsel.layerID < MAX_AV1_LAYER_COUNT);
         sample->spatialID = (uint8_t)lselProp->u.lsel.layerID;
         sample->sync = AVIF_TRUE;
     } else if (allowProgressive && item->progressive) {
