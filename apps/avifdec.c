@@ -300,11 +300,9 @@ int main(int argc, char * argv[])
     }
 
 cleanup:
-    if (decoder) {
-        if (returnCode != 0) {
-            avifDumpDiagnostics(&decoder->diag);
-        }
-        avifDecoderDestroy(decoder);
+    if (returnCode != 0) {
+        avifDumpDiagnostics(&decoder->diag);
     }
+    avifDecoderDestroy(decoder);
     return returnCode;
 }
