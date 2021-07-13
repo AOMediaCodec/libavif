@@ -296,7 +296,7 @@ int main(int argc, char * argv[])
             returnCode = 1;
         }
     } else {
-        fprintf(stderr, "Unrecognized file extension: %s\n", outputFilename);
+        fprintf(stderr, "Unsupported output file extension: %s\n", outputFilename);
         returnCode = 1;
     }
 
