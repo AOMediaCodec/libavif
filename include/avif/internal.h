@@ -176,8 +176,8 @@ typedef struct avifDecodeSample
     uint32_t itemID;   // if non-zero, data comes from a mergedExtents buffer in an avifDecoderItem, not a file offset
     uint64_t offset;   // additional offset into data. Can be used to offset into an itemID's payload as well.
     size_t size;       //
-    uint8_t spatialID; // If set to a value other than AVIF_SPATIAL_ID_UNSET, the output frame's spatial_id must match
-                       // this ID, otherwise output frames from this sample should be skipped until it does.
+    uint8_t spatialID; // If set to a value other than AVIF_SPATIAL_ID_UNSET, output frames from this sample should be
+                       // skipped until the output frame's spatial_id matches this ID.
     avifBool sync;     // is sync sample (keyframe)
 } avifDecodeSample;
 AVIF_ARRAY_DECLARE(avifDecodeSampleArray, avifDecodeSample, sample);
