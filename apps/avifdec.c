@@ -202,8 +202,8 @@ int main(int argc, char * argv[])
             }
 
             int currIndex = 0;
-            avifResult nextImageResult = avifDecoderNextImage(decoder);
-            while (nextImageResult == AVIF_RESULT_OK) {
+            avifResult nextImageResult;
+            while ((nextImageResult = avifDecoderNextImage(decoder)) == AVIF_RESULT_OK) {
                 printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)] [%ux%u]\n",
                        currIndex,
                        decoder->imageTiming.pts,
@@ -213,7 +213,6 @@ int main(int argc, char * argv[])
                        decoder->image->width,
                        decoder->image->height);
                 ++currIndex;
-                nextImageResult = avifDecoderNextImage(decoder);
             }
             if (nextImageResult != AVIF_RESULT_NO_IMAGES_REMAINING) {
                 printf("ERROR: Failed to decode frame: %s\n", avifResultToString(nextImageResult));
