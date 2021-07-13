@@ -1031,18 +1031,13 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
         return AVIF_RESULT_TRUNCATED_DATA;
     }
 
-    const size_t readOutputSize = (partialByteCount && (partialByteCount < item->size)) ? partialByteCount : item->size;
-
-    // Read in everything from the item's offset 0 all the way to the end of the read
-    if (offset > SIZE_MAX - readOutputSize) {
+    if (offset >= item->size) {
         avifDiagnosticsPrintf(diag, "Item ID %u read has overflowing offset", item->id);
         return AVIF_RESULT_TRUNCATED_DATA;
     }
+    const size_t maxOutputSize = item->size - offset;
+    const size_t readOutputSize = (partialByteCount && (partialByteCount < maxOutputSize)) ? partialByteCount : maxOutputSize;
     const size_t totalBytesToRead = offset + readOutputSize;
-    if (totalBytesToRead > item->size) {
-        avifDiagnosticsPrintf(diag, "Item ID %u read has overflowing offset+size", item->id);
-        return AVIF_RESULT_TRUNCATED_DATA;
-    }
 
     // If there is a single extent for this item and the source of the read buffer is going to be
     // persistent for the lifetime of the avifDecoder (whether it comes from its own internal
