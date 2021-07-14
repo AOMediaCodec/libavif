@@ -50,7 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Declare the param of avifDumpDiagnostics as const (#633)
 * Adjust gdk-pixbuf loader for new API change (#668)
 * Fix gdk-pixbuf loader install path (#615)
-* Don't need to disable MSVC warnings 5031 and 5032 (#681)
 
 ## [0.9.1] - 2021-05-19
 
