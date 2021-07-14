@@ -1191,13 +1191,11 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
                 avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&gridItem->properties);
                 memcpy(dstProp, srcProp, sizeof(avifProperty));
 
-                if (!alpha) {
-                    if (item->progressive) {
-                        decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
-                        if (tile->input->samples.count > 1) {
-                            decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
-                            decoder->imageCount = tile->input->samples.count;
-                        }
+                if (!alpha && item->progressive) {
+                    decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
+                    if (tile->input->samples.count > 1) {
+                        decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
+                        decoder->imageCount = tile->input->samples.count;
                     }
                 }
             }
