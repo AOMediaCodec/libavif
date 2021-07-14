@@ -33,6 +33,7 @@ static void syntax(void)
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
+    printf("    --png-compress L  : Set PNG compression level (PNG only; 0-9, 0=none, 9=max). Defaults to libpng's builtin default.\n");
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
     printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
     printf("                        (JPEG only; not applicable to y4m)\n");
@@ -53,6 +54,7 @@ int main(int argc, char * argv[])
     int requestedDepth = 0;
     int jobs = 1;
     int jpegQuality = DEFAULT_JPEG_QUALITY;
+    int pngCompressionLevel = -1; // -1 is a sentinel to avifPNGWrite() to skip calling png_set_compression_level()
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
@@ -114,6 +116,14 @@ int main(int argc, char * argv[])
                 jpegQuality = 0;
             } else if (jpegQuality > 100) {
                 jpegQuality = 100;
+            }
+        } else if (!strcmp(arg, "--png-compress")) {
+            NEXTARG();
+            pngCompressionLevel = atoi(arg);
+            if (pngCompressionLevel < 0) {
+                pngCompressionLevel = 0;
+            } else if (pngCompressionLevel > 9) {
+                pngCompressionLevel = 9;
             }
         } else if (!strcmp(arg, "-u") || !strcmp(arg, "--upsampling")) {
             NEXTARG();
@@ -291,7 +301,7 @@ int main(int argc, char * argv[])
             returnCode = 1;
         }
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGWrite(outputFilename, decoder->image, requestedDepth, chromaUpsampling)) {
+        if (!avifPNGWrite(outputFilename, decoder->image, requestedDepth, chromaUpsampling, pngCompressionLevel)) {
             returnCode = 1;
         }
     } else {
