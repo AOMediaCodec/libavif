@@ -442,6 +442,11 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     // These are the only supported built-ins
     assert((chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR) || (chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST));
 
+    // If toRGBAlphaMode is active (not no-op), assert that the alpha plane is present. The end of
+    // the avifPrepareReformatState() function should ensure this, but this assert makes it clear
+    // to clang's analyzer.
+    assert((state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
+
     for (uint32_t j = 0; j < image->height; ++j) {
         const uint32_t uvJ = j >> state->formatInfo.chromaShiftY;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
