@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+* Mandate ispe and disallow zero width or height (#640).
 * Re-map libavif speed 7-10 to libaom speed 7-9 (#682)
 *  Refer to https://aomedia-review.googlesource.com/c/aom/+/140624
 *  If you were using libaom with the following avif speed setting:

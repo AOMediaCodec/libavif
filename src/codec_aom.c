@@ -127,6 +127,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
             if (spatialID != AVIF_SPATIAL_ID_UNSET) {
+                // This requires a version of libaom with the fix for https://crbug.com/aomedia/2993.
                 if (spatialID == nextFrame->spatial_id) {
                     // Found the correct spatial_id.
                     break;

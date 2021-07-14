@@ -25,7 +25,7 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
 #pragma clang diagnostic pop
 #endif
 
-// This should be configurable and/or smarter
+// This should be configurable and/or smarter. kFilterBox has the highest quality but is the slowest.
 #define AVIF_LIBYUV_FILTER_MODE kFilterBox
 
 avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag)
