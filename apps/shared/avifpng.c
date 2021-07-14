@@ -121,7 +121,8 @@ avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelForm
     avif->yuvFormat = requestedFormat;
     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
         // Identity is only valid with YUV444.
-        avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ? AVIF_PIXEL_FORMAT_YUV444 : AVIF_APP_DEFAULT_PIXEL_FORMAT;
+        avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ? AVIF_PIXEL_FORMAT_YUV444
+                                                                                          : AVIF_APP_DEFAULT_PIXEL_FORMAT;
     }
     avif->depth = requestedDepth;
     if (avif->depth == 0) {
@@ -160,7 +161,7 @@ cleanup:
     return readResult;
 }
 
-avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling)
+avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling, int compressionLevel)
 {
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -216,6 +217,10 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     // Don't bother complaining about ICC profile's contents when transferring from AVIF to PNG.
     // It is up to the enduser to decide if they want to keep their ICC profiles or not.
     png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, 1);
+
+    if (compressionLevel >= 0) {
+        png_set_compression_level(png, compressionLevel);
+    }
 
     png_set_IHDR(png, info, avif->width, avif->height, rgb.depth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
