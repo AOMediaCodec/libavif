@@ -1976,7 +1976,27 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
                 }
             }
             if (supportedType) {
-                if (!essential) {
+                if (essential) {
+                    // Verify that it is legal for this property to be flagged as essential. Any
+                    // types in this list are *required* in the spec to not be flagged as essential
+                    // when associated with an item.
+                    static const char * const nonessentialTypes[] = {
+
+                        // AVIF: Section 2.3.2.3.2: "If associated, it shall not be marked as essential."
+                        "a1lx"
+
+                    };
+                    size_t nonessentialTypesCount = sizeof(nonessentialTypes) / sizeof(nonessentialTypes[0]);
+                    for (size_t i = 0; i < nonessentialTypesCount; ++i) {
+                        if (!memcmp(srcProp->type, nonessentialTypes[i], 4)) {
+                            avifDiagnosticsPrintf(diag,
+                                                  "Item ID [%u] has a %s property association which must not be marked essential, but is",
+                                                  itemID,
+                                                  nonessentialTypes[i]);
+                            return AVIF_FALSE;
+                        }
+                    }
+                } else {
                     // Verify that it is legal for this property to not be flagged as essential. Any
                     // types in this list are *required* in the spec to be flagged as essential when
                     // associated with an item.
