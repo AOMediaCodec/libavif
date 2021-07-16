@@ -40,6 +40,7 @@ static void syntax(void)
     printf("    --progressive     : Enable progressive AVIF processing. If a progressive image is encountered and --progressive is passed,\n");
     printf("                        avifdec will use --index to choose which layer to decode (in progressive order).\n");
     printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
+    printf("    --no-strict-pixi  : Allow the PixelInformationProperty ('pixi') to be missing in AV1 image items\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("\n");
@@ -140,6 +141,8 @@ int main(int argc, char * argv[])
             frameIndex = (uint32_t)atoi(arg);
         } else if (!strcmp(arg, "--no-strict")) {
             strictFlags = AVIF_STRICT_DISABLED;
+        } else if (!strcmp(arg, "--no-strict-pixi")) {
+            strictFlags &= ~AVIF_STRICT_PIXI_REQUIRED;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
