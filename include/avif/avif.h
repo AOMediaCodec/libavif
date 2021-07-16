@@ -708,7 +708,7 @@ typedef enum avifStrictFlag
     // Disables all strict checks.
     AVIF_STRICT_DISABLED = 0,
 
-    // Allow the PixelInformationProperty ('pixi') to be missing in AV1 image items. libheif v1.11.0
+    // Requires the PixelInformationProperty ('pixi') be present in AV1 image items. libheif v1.11.0
     // or older does not add the 'pixi' item property to AV1 image items. If you need to decode AVIF
     // images encoded by libheif v1.11.0 or older, be sure to disable this bit. (This issue has been
     // corrected in libheif v1.12.0.)
