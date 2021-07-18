@@ -10,9 +10,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set GCC & G++ 10 compiler (on Linux)
+    - name: Set GCC & G++ 11 compiler (on Linux)
       if: runner.os == 'Linux'
-      run: echo "CC=gcc-10" >> $GITHUB_ENV && echo "CXX=g++-10" >> $GITHUB_ENV
+      run: echo "CC=gcc-11" >> $GITHUB_ENV && echo "CXX=g++-11" >> $GITHUB_ENV
     - uses: actions/setup-python@v2
 
     - name: Cache external dependencies
