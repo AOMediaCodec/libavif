@@ -48,7 +48,7 @@ jobs:
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libyuv.cmd
+      run: bash libyuv.sh
 
     - name: Prepare libavif (cmake)
       run: |
