@@ -5,6 +5,7 @@
 
 #include "avifjpeg.h"
 #include "avifpng.h"
+#include "avifwic.h"
 #include "avifutil.h"
 #include "y4m.h"
 
@@ -298,8 +299,12 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {
-        fprintf(stderr, "Unrecognized file format: %s\n", input->files[input->fileIndex].filename);
-        return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        if (avifWICRead(input->files[input->fileIndex].filename, image, input->requestedFormat, input->requestedDepth, outDepth)) {
+            nextInputFormat = AVIF_APP_FILE_FORMAT_ANY;
+        } else {
+            fprintf(stderr, "Unrecognized file format: %s\n", input->files[input->fileIndex].filename);
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        }
     }
 
     if (!input->frameIter) {

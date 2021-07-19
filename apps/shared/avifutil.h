@@ -32,7 +32,9 @@ typedef enum avifAppFileFormat
     AVIF_APP_FILE_FORMAT_AVIF,
     AVIF_APP_FILE_FORMAT_JPEG,
     AVIF_APP_FILE_FORMAT_PNG,
-    AVIF_APP_FILE_FORMAT_Y4M
+    AVIF_APP_FILE_FORMAT_Y4M,
+
+    AVIF_APP_FILE_FORMAT_ANY = 1000 // an arbitrary format for decoders that support many formats
 } avifAppFileFormat;
 
 avifAppFileFormat avifGuessFileFormat(const char * filename);
