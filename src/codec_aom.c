@@ -127,7 +127,8 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
             if (spatialID != AVIF_SPATIAL_ID_UNSET) {
-                // This requires a version of libaom with the fix for https://crbug.com/aomedia/2993.
+                // This requires libaom v3.1.2 or later, which has the fix for
+                // https://crbug.com/aomedia/2993.
                 if (spatialID == nextFrame->spatial_id) {
                     // Found the correct spatial_id.
                     break;
@@ -552,7 +553,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         static const int aomVersion_2_0_0 = (2 << 16);
         const int aomVersion = aom_codec_version();
         if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
-            // Due to a known issue with libavif v1.0.0-errata1-avif, 10bpc and
+            // Due to a known issue with libaom v1.0.0-errata1-avif, 10bpc and
             // 12bpc image encodes will call the wrong variant of
             // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
             // a new tagged release from libaom with the fix and can verify we're
