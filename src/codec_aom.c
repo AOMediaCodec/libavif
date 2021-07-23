@@ -736,24 +736,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     aomImage.h = image->height;
     aomImage.d_w = image->width;
     aomImage.d_h = image->height;
-    // Get sample size for this format.
-    unsigned int bps;
-    if (codec->internal->aomFormat == AOM_IMG_FMT_I420) {
-        bps = 12;
-    } else if (codec->internal->aomFormat == AOM_IMG_FMT_I422) {
-        bps = 16;
-    } else if (codec->internal->aomFormat == AOM_IMG_FMT_I444) {
-        bps = 24;
-    } else if (codec->internal->aomFormat == AOM_IMG_FMT_I42016) {
-        bps = 24;
-    } else if (codec->internal->aomFormat == AOM_IMG_FMT_I42216) {
-        bps = 32;
-    } else if (codec->internal->aomFormat == AOM_IMG_FMT_I44416) {
-        bps = 48;
-    } else {
-        bps = 16;
-    }
-    aomImage.bps = bps;
 
     avifBool monochromeRequested = AVIF_FALSE;
 
@@ -765,6 +747,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         monochromeRequested = AVIF_TRUE;
         aomImage.planes[0] = image->alphaPlane;
         aomImage.stride[0] = image->alphaRowBytes;
+        aomImage.bps = aomImage.bit_depth;
 
         // Ignore UV planes when monochrome
     } else {
@@ -777,9 +760,15 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             yuvPlaneCount = 1; // Ignore UV planes when monochrome
             monochromeRequested = AVIF_TRUE;
         }
+        // Calculate aomImage.bps (bits per sample) by summing the bits of each plane, taking chroma
+        // subsampling into account.
+        aomImage.bps = 0;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             aomImage.planes[yuvPlane] = image->yuvPlanes[yuvPlane];
             aomImage.stride[yuvPlane] = image->yuvRowBytes[yuvPlane];
+            int subX = (yuvPlane > 0) ? aomImage.x_chroma_shift : 0;
+            int subY = (yuvPlane > 0) ? aomImage.y_chroma_shift : 0;
+            aomImage.bps += aomImage.bit_depth >> (subX + subY);
         }
 
         aomImage.cp = (aom_color_primaries_t)image->colorPrimaries;
