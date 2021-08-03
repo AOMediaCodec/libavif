@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 *   - speed 0-6: no change is needed
 *   - speed 7:   change to speed 6 for the same results
 *   - speed 8-9: re-test and re-adjust speed according to your app needs
+* Update dav1d.cmd: 0.9.1
 
 ## [0.9.2] - 2021-06-23
 
