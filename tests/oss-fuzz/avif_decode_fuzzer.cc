@@ -25,6 +25,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
     if (result == AVIF_RESULT_OK) {
         for (int loop = 0; loop < 2; ++loop) {
             while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
+                if ((loop != 0) || (decoder->imageIndex != 0)) {
+                    // Skip the YUV<->RGB conversion tests, which are time-consuming for large
+                    // images. It suffices to run these tests only for loop == 0 and only for the
+                    // first image of an image sequence.
+                    continue;
+                }
                 avifRGBImage rgb;
                 avifRGBImageSetDefaults(&rgb, decoder->image);
 
