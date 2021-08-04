@@ -43,6 +43,8 @@ static void syntax(void)
     printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
+    printf("    --size-limit C    : Specifies the image size limit (in total pixels) that should be tolerated.\n");
+    printf("                        Default: %u, set to a smaller value to further restrict.\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
     printf("\n");
     avifPrintVersions();
 }
@@ -63,6 +65,7 @@ int main(int argc, char * argv[])
     avifBool allowProgressive = AVIF_FALSE;
     avifStrictFlags strictFlags = AVIF_STRICT_ENABLED;
     uint32_t frameIndex = 0;
+    uint32_t imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
 
     if (argc < 2) {
         syntax();
@@ -154,6 +157,13 @@ int main(int argc, char * argv[])
             infoOnly = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
+        } else if (!strcmp(arg, "--size-limit")) {
+            NEXTARG();
+            imageSizeLimit = strtoul(arg, NULL, 10);
+            if ((imageSizeLimit > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) || (imageSizeLimit == 0)) {
+                fprintf(stderr, "ERROR: invalid image size limit: %s\n", arg);
+                return 1;
+            }
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -184,6 +194,7 @@ int main(int argc, char * argv[])
         avifDecoder * decoder = avifDecoderCreate();
         decoder->maxThreads = jobs;
         decoder->codecChoice = codecChoice;
+        decoder->imageSizeLimit = imageSizeLimit;
         decoder->strictFlags = strictFlags;
         decoder->allowProgressive = allowProgressive;
         avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
@@ -251,6 +262,7 @@ int main(int argc, char * argv[])
     avifDecoder * decoder = avifDecoderCreate();
     decoder->maxThreads = jobs;
     decoder->codecChoice = codecChoice;
+    decoder->imageSizeLimit = imageSizeLimit;
     decoder->strictFlags = strictFlags;
     decoder->allowProgressive = allowProgressive;
 

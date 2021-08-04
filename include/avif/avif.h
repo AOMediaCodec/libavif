@@ -68,6 +68,10 @@ typedef int avifBool;
 
 #define AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE 256
 
+// A reasonable default for maximum image size to avoid out-of-memory errors or integer overflow in
+// (32-bit) int or unsigned int arithmetic operations.
+#define AVIF_DEFAULT_IMAGE_SIZE_LIMIT (16384 * 16384)
+
 // a 12 hour AVIF image sequence, running at 60 fps (a basic sanity check as this is quite ridiculous)
 #define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
 
@@ -809,6 +813,12 @@ typedef struct avifDecoder
     // If you don't actually leverage this data, it is best to ignore it here.
     avifBool ignoreExif;
     avifBool ignoreXMP;
+
+    // This represents the maximum size of a image (in pixel count) that libavif and the underlying
+    // AV1 decoder should attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_SIZE_LIMIT, and can be
+    // set to a smaller value. The value 0 is reserved.
+    // Note: Only some underlying AV1 codecs support a configurable size limit (such as dav1d).
+    uint32_t imageSizeLimit;
 
     // This provides an upper bound on how many images the decoder is willing to attempt to decode,
     // to provide a bit of protection from malicious or malformed AVIFs citing millions upon
