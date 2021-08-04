@@ -43,7 +43,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                             rgb.chromaUpsampling = upsamplings[upsamplingsIndex];
                             avifRGBImageAllocatePixels(&rgb);
                             avifResult rgbResult = avifImageYUVToRGB(decoder->image, &rgb);
-                            if (rgbResult == AVIF_RESULT_OK) {
+                            // Since avifImageRGBToYUV() ignores rgb.chromaUpsampling, we only need
+                            // to test avifImageRGBToYUV() with a single upsamplingsIndex.
+                            if ((rgbResult == AVIF_RESULT_OK) && (upsamplingsIndex == 0)) {
                                 for (size_t yuvDepthsIndex = 0; yuvDepthsIndex < yuvDepthsCount; ++yuvDepthsIndex) {
                                     // ... and back to YUV
                                     avifImage * tempImage = avifImageCreate(decoder->image->width,
