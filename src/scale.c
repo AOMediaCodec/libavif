@@ -5,11 +5,12 @@
 
 #if !defined(AVIF_LIBYUV_ENABLED)
 
-avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag)
+avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag)
 {
     (void)image;
     (void)dstWidth;
     (void)dstHeight;
+    (void)imageSizeLimit;
     avifDiagnosticsPrintf(diag, "avifImageScale() called, but is unimplemented without libyuv!");
     return AVIF_FALSE;
 }
@@ -28,14 +29,14 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
 // This should be configurable and/or smarter. kFilterBox has the highest quality but is the slowest.
 #define AVIF_LIBYUV_FILTER_MODE kFilterBox
 
-avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag)
+avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag)
 {
     if ((image->width == dstWidth) && (image->height == dstHeight)) {
         // Nothing to do
         return AVIF_TRUE;
     }
 
-    if ((dstWidth == 0) || (dstHeight == 0) || (dstWidth > (AVIF_MAX_IMAGE_SIZE / dstHeight))) {
+    if ((dstWidth == 0) || (dstHeight == 0) || (dstWidth > (imageSizeLimit / dstHeight))) {
         avifDiagnosticsPrintf(diag, "avifImageScale requested invalid dst dimensions [%ux%u]", dstWidth, dstHeight);
         return AVIF_FALSE;
     }

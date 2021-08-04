@@ -59,6 +59,12 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         // Give all available threads to decode a single frame as fast as possible
         codec->internal->dav1dSettings.n_frame_threads = 1;
         codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
+        // Set a maximum frame size limit to avoid OOM'ing fuzzers. In 32-bit builds, if
+        // frame_size_limit > 8192 * 8192, dav1d reduces frame_size_limit to 8192 * 8192 and logs
+        // a message, so we set frame_size_limit to at most 8192 * 8192 to avoid the dav1d_log
+        // message.
+        codec->internal->dav1dSettings.frame_size_limit = (sizeof(size_t) < 8) ? AVIF_MIN(decoder->imageSizeLimit, 8192 * 8192)
+                                                                               : decoder->imageSizeLimit;
         codec->internal->dav1dSettings.operating_point = codec->operatingPoint;
         codec->internal->dav1dSettings.all_layers = codec->allLayers;
 
@@ -214,11 +220,6 @@ avifCodec * avifCodecCreateDav1d(void)
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     dav1d_default_settings(&codec->internal->dav1dSettings);
-
-    // Set a maximum frame size limit to avoid OOM'ing fuzzers. In 32-bit builds, if
-    // frame_size_limit > 8192 * 8192, dav1d reduces frame_size_limit to 8192 * 8192 and logs a
-    // message, so we set frame_size_limit to 8192 * 8192 to avoid the dav1d_log message.
-    codec->internal->dav1dSettings.frame_size_limit = (sizeof(size_t) < 8) ? (8192 * 8192) : AVIF_MAX_IMAGE_SIZE;
 
     // Ensure that we only get the "highest spatial layer" as a single frame
     // for each input sample, instead of getting each spatial layer as its own

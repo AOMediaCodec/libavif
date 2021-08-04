@@ -159,7 +159,7 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 // Scaling
 
 // This scales the YUV/A planes in-place.
-avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag);
+avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
@@ -366,10 +366,6 @@ typedef struct avifSequenceHeader
     avifCodecConfigurationBox av1C;
 } avifSequenceHeader;
 avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
-
-// A maximum image size to avoid out-of-memory errors or integer overflow in
-// (32-bit) int or unsigned int arithmetic operations.
-#define AVIF_MAX_IMAGE_SIZE (16384 * 16384)
 
 #ifdef __cplusplus
 } // extern "C"
