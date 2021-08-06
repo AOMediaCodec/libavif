@@ -36,8 +36,12 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
         return AVIF_TRUE;
     }
 
-    if ((dstWidth == 0) || (dstHeight == 0) || (dstWidth > (imageSizeLimit / dstHeight))) {
+    if ((dstWidth == 0) || (dstHeight == 0)) {
         avifDiagnosticsPrintf(diag, "avifImageScale requested invalid dst dimensions [%ux%u]", dstWidth, dstHeight);
+        return AVIF_FALSE;
+    }
+    if (dstWidth > (imageSizeLimit / dstHeight)) {
+        avifDiagnosticsPrintf(diag, "avifImageScale requested dst dimensions that are too large [%ux%u]", dstWidth, dstHeight);
         return AVIF_FALSE;
     }
 
