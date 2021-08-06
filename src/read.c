@@ -1631,8 +1631,12 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
         CHECK(avifROStreamReadU32(&s, &grid->outputWidth));  // unsigned int(FieldLength) output_width;
         CHECK(avifROStreamReadU32(&s, &grid->outputHeight)); // unsigned int(FieldLength) output_height;
     }
-    if ((grid->outputWidth == 0) || (grid->outputHeight == 0) || (grid->outputWidth > (imageSizeLimit / grid->outputHeight))) {
+    if ((grid->outputWidth == 0) || (grid->outputHeight == 0)) {
         avifDiagnosticsPrintf(diag, "Grid box contains illegal dimensions: [%u x %u]", grid->outputWidth, grid->outputHeight);
+        return AVIF_FALSE;
+    }
+    if (grid->outputWidth > (imageSizeLimit / grid->outputHeight)) {
+        avifDiagnosticsPrintf(diag, "Grid box dimensions are too large: [%u x %u]", grid->outputWidth, grid->outputHeight);
         return AVIF_FALSE;
     }
     return avifROStreamRemainingBytes(&s) == 0;
@@ -2365,8 +2369,12 @@ static avifBool avifParseTrackHeaderBox(avifTrack * track, const uint8_t * raw, 
     track->width = width >> 16;
     track->height = height >> 16;
 
-    if ((track->width == 0) || (track->height == 0) || (track->width > (imageSizeLimit / track->height))) {
+    if ((track->width == 0) || (track->height == 0)) {
         avifDiagnosticsPrintf(diag, "Track ID [%u] has an invalid size [%ux%u]", track->id, track->width, track->height);
+        return AVIF_FALSE;
+    }
+    if (track->width > (imageSizeLimit / track->height)) {
+        avifDiagnosticsPrintf(diag, "Track ID [%u] size is too large [%ux%u]", track->id, track->width, track->height);
         return AVIF_FALSE;
     }
 
@@ -3079,8 +3087,12 @@ avifResult avifDecoderParse(avifDecoder * decoder)
             item->width = ispeProp->u.ispe.width;
             item->height = ispeProp->u.ispe.height;
 
-            if ((item->width == 0) || (item->height == 0) || (item->width > (decoder->imageSizeLimit / item->height))) {
+            if ((item->width == 0) || (item->height == 0)) {
                 avifDiagnosticsPrintf(data->diag, "Item ID [%u] has an invalid size [%ux%u]", item->id, item->width, item->height);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            if (item->width > (decoder->imageSizeLimit / item->height)) {
+                avifDiagnosticsPrintf(data->diag, "Item ID [%u] size is too large [%ux%u]", item->id, item->width, item->height);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
         } else {
