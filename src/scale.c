@@ -64,6 +64,12 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     image->height = dstHeight;
 
     if (srcYUVPlanes[0]) {
+        const int fixed_point_div = (int)(((int64_t)(srcWidth) << 16) / dstWidth);
+        const int64_t max_fixed_value = fixed_point_div * (dstWidth - 1);
+        if (max_fixed_value > 0x7fffffff) {
+            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
+            return AVIF_FALSE;
+        }
         avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 
         avifPixelFormatInfo formatInfo;
@@ -103,6 +109,12 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     }
 
     if (srcAlphaPlane) {
+        const int fixed_point_div = (int)(((int64_t)(srcWidth) << 16) / dstWidth);
+        const int64_t max_fixed_value = fixed_point_div * (dstWidth - 1);
+        if (max_fixed_value > 0x7fffffff) {
+            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
+            return AVIF_FALSE;
+        }
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
 
         if (image->depth > 8) {
