@@ -69,6 +69,18 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     image->height = dstHeight;
 
     if (srcYUVPlanes[0]) {
+        const int fixedPointDivWidth = (int)(((int64_t)(srcWidth) << 16) / dstWidth);
+        const int64_t maxFixedValueWidth = fixedPointDivWidth * (dstWidth - 1);
+        if (maxFixedValueWidth > 0x7fffffff) {
+            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
+            return AVIF_FALSE;
+        }
+        const int fixedPointDivHeight = (int)(((int64_t)(srcHeight) << 16) / dstHeight);
+        const int64_t maxFixedValueHeight = fixedPointDivHeight * (dstHeight - 1);
+        if (maxFixedValueHeight > 0x7fffffff) {
+            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
+            return AVIF_FALSE;
+        }
         avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 
         avifPixelFormatInfo formatInfo;
@@ -108,6 +120,18 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     }
 
     if (srcAlphaPlane) {
+        const int fixedPointDivWidth = (int)(((int64_t)(srcWidth) << 16) / dstWidth);
+        const int64_t maxFixedValueWidth = fixedPointDivWidth * (dstWidth - 1);
+        if (maxFixedValueWidth > 0x7fffffff) {
+            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
+            return AVIF_FALSE;
+        }
+        const int fixedPointDivHeight = (int)(((int64_t)(srcHeight) << 16) / dstHeight);
+        const int64_t maxFixedValueHeight = fixedPointDivHeight * (dstHeight - 1);
+        if (maxFixedValueHeight > 0x7fffffff) {
+            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
+            return AVIF_FALSE;
+        }
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
 
         if (image->depth > 8) {
