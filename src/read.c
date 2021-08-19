@@ -1045,7 +1045,13 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
     // preexisting buffer.
     avifBool singlePersistentBuffer = ((item->extents.count == 1) && (idatBuffer || io->persistent));
     if (!singlePersistentBuffer) {
-        avifRWDataRealloc(&item->mergedExtents, totalBytesToRead);
+        // Always allocate the item's full size here, as progressive image decodes will do partial
+        // reads into this buffer and begin feeding the buffer to the underlying AV1 decoder, but
+        // will then write more into this buffer without flushing the AV1 decoder (which is still
+        // holding the address of the previous allocation of this buffer). This strategy avoids
+        // use-after-free issues in the AV1 decoder and unnecessary reallocs as a typical
+        // progressive decode use case will eventually decode the final layer anyway.
+        avifRWDataRealloc(&item->mergedExtents, item->size);
         item->ownsMergedExtents = AVIF_TRUE;
     }
 
