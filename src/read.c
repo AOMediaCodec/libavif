@@ -3095,7 +3095,7 @@ avifResult avifDecoderParse(avifDecoder * decoder)
                 avifDiagnosticsPrintf(data->diag, "Item ID [%u] size is too large [%ux%u]", item->id, item->width, item->height);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-        } else {
+        } else if (!item->auxForID) { // NON-STANDARD: Allow auxiliary images to not have an ispe property. See: https://crbug.com/1245673
             avifDiagnosticsPrintf(data->diag, "Item ID [%u] is missing a mandatory ispe property", item->id);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
@@ -3420,6 +3420,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         if (alphaItem) {
+            if (!alphaItem->width && !alphaItem->height) {
+                // NON-STANDARD: Alpha subimage does not have an ispe property; adopt width/height from color item
+                // See: https://crbug.com/1245673
+                alphaItem->width = colorItem->width;
+                alphaItem->height = colorItem->height;
+            }
+
             if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0)) {
                 if (!avifDecoderGenerateImageGridTiles(decoder, &data->alphaGrid, alphaItem, AVIF_TRUE)) {
                     return AVIF_RESULT_INVALID_IMAGE_GRID;
