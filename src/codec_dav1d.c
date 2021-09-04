@@ -59,7 +59,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         // Give all available threads to decode a single frame as fast as possible
 #if defined(DAV1D_API_VERSION_MAJOR) && DAV1D_API_VERSION_MAJOR >= 6
         codec->internal->dav1dSettings.n_threads = 1;
-        codec->internal->dav1dSettings.max_frame_delay = AVIF_CLAMP(decoder->maxThreads, 1, 256);
+        codec->internal->dav1dSettings.max_frame_delay = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_FRAME_DELAY);
 #else
         codec->internal->dav1dSettings.n_frame_threads = 1;
         codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
