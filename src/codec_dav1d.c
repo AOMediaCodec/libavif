@@ -57,8 +57,8 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
 {
     if (codec->internal->dav1dContext == NULL) {
         // Give all available threads to decode a single frame as fast as possible
-        codec->internal->dav1dSettings.n_frame_threads = 1;
-        codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
+        codec->internal->dav1dSettings.n_threads = 1;
+        codec->internal->dav1dSettings.max_frame_delay = AVIF_CLAMP(decoder->maxThreads, 1, 256);
         // Set a maximum frame size limit to avoid OOM'ing fuzzers. In 32-bit builds, if
         // frame_size_limit > 8192 * 8192, dav1d reduces frame_size_limit to 8192 * 8192 and logs
         // a message, so we set frame_size_limit to at most 8192 * 8192 to avoid the dav1d_log
