@@ -181,6 +181,79 @@ static void avifEncoderItemAddMdatFixup(avifEncoderItem * item, const avifRWStre
 }
 
 // ---------------------------------------------------------------------------
+// avifItemPropertyDedup - Provides ipco deduplication
+
+typedef struct avifItemProperty
+{
+    uint8_t index;
+    size_t offset;
+    size_t size;
+} avifItemProperty;
+AVIF_ARRAY_DECLARE(avifItemPropertyArray, avifItemProperty, property);
+
+typedef struct avifItemPropertyDedup
+{
+    avifItemPropertyArray properties;
+    avifRWStream s;    // Temporary stream for each new property, checked against already-written boxes for deduplications
+    avifRWData buffer; // Temporary storage for 's'
+    uint8_t nextIndex; // 1-indexed, incremented every time another unique property is finished
+} avifItemPropertyDedup;
+
+static avifItemPropertyDedup * avifItemPropertyDedupCreate(void)
+{
+    avifItemPropertyDedup * dedup = (avifItemPropertyDedup *)avifAlloc(sizeof(avifItemPropertyDedup));
+    memset(dedup, 0, sizeof(avifItemPropertyDedup));
+    avifArrayCreate(&dedup->properties, sizeof(avifItemProperty), 8);
+    avifRWDataRealloc(&dedup->buffer, 2048); // This will resize automatically (if necessary)
+    return dedup;
+}
+
+static void avifItemPropertyDedupDestroy(avifItemPropertyDedup * dedup)
+{
+    avifArrayDestroy(&dedup->properties);
+    avifRWDataFree(&dedup->buffer);
+    avifFree(dedup);
+}
+
+// Resets the dedup's temporary write stream in preparation for a single item property's worth of writing
+static void avifItemPropertyDedupStart(avifItemPropertyDedup * dedup)
+{
+    avifRWStreamStart(&dedup->s, &dedup->buffer);
+}
+
+// This compares the newly written item property (in the dedup's temporary storage buffer) to
+// already-written properties (whose offsets/sizes in outputStream are recorded in the dedup). If a
+// match is found, the previous item's index is used. If this new property is unique, it is
+// assigned the next available property index, written to the output stream, and its offset/size in
+// the output stream is recorded in the dedup for future comparisons.
+//
+// This function always returns a valid 1-indexed property index for usage in a property association
+// (ipma) box later. If the most recent property was a duplicate of a previous property, the return
+// value will be the index of the original property, otherwise it will be the index of the newly
+// created property.
+static uint8_t avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avifRWStream * outputStream)
+{
+    const size_t newPropertySize = avifRWStreamOffset(&dedup->s);
+
+    for (size_t i = 0; i < dedup->properties.count; ++i) {
+        avifItemProperty * property = &dedup->properties.property[i];
+        if ((property->size == newPropertySize) &&
+            !memcmp(&outputStream->raw->data[property->offset], dedup->buffer.data, newPropertySize)) {
+            // We've already written this exact property, reuse it
+            return property->index;
+        }
+    }
+
+    // Write a new property, and remember its location in the output stream for future deduplication
+    avifItemProperty * property = (avifItemProperty *)avifArrayPushPtr(&dedup->properties);
+    property->index = ++dedup->nextIndex; // preincrement so the first new index is 1 (as ipma is 1-indexed)
+    property->size = newPropertySize;
+    property->offset = avifRWStreamOffset(outputStream);
+    avifRWStreamWrite(outputStream, dedup->buffer.data, newPropertySize);
+    return property->index;
+}
+
+// ---------------------------------------------------------------------------
 
 avifEncoder * avifEncoderCreate(void)
 {
@@ -213,20 +286,48 @@ void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, 
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
 }
 
-static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * imageMetadata, struct ipmaArray * ipma, uint8_t * itemPropertyIndex)
+// This function is used in two codepaths:
+// * writing color *item* properties
+// * writing color *track* properties
+//
+// Item properties must have property associations with them and can be deduplicated (by reusing
+// these associations), so this function leverages the ipma and dedup arguments to do this.
+//
+// Track properties, however, are implicitly associated by the track in which they are contained, so
+// there is no need to build a property association box (ipma), and no way to deduplicate/reuse a
+// property. In this case, the ipma and dedup properties should/will be set to NULL, and this
+// function will avoid using them.
+static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
+                                            const avifImage * imageMetadata,
+                                            struct ipmaArray * ipma,
+                                            avifItemPropertyDedup * dedup)
 {
+    avifRWStream * s = outputStream;
+    if (dedup) {
+        assert(ipma);
+
+        // Use the dedup's temporary stream for box writes
+        s = &dedup->s;
+    }
+
     if (imageMetadata->icc.size > 0) {
+        if (dedup) {
+            avifItemPropertyDedupStart(dedup);
+        }
         avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
         avifRWStreamWriteChars(s, "prof", 4); // unsigned int(32) colour_type;
         avifRWStreamWrite(s, imageMetadata->icc.data, imageMetadata->icc.size);
         avifRWStreamFinishBox(s, colr);
-        if (ipma && itemPropertyIndex) {
-            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
+        if (dedup) {
+            ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
         }
     }
 
     // HEIF 6.5.5.1, from Amendment 3 allows multiple colr boxes: "at most one for a given value of colour type"
     // Therefore, *always* writing an nclx box, even if an a prof box was already written above.
+    if (dedup) {
+        avifItemPropertyDedupStart(dedup);
+    }
     avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
     avifRWStreamWriteChars(s, "nclx", 4);                                            // unsigned int(32) colour_type;
     avifRWStreamWriteU16(s, imageMetadata->colorPrimaries);                          // unsigned int(16) colour_primaries;
@@ -235,21 +336,27 @@ static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * 
     avifRWStreamWriteU8(s, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
                                                                                      // unsigned int(7) reserved = 0;
     avifRWStreamFinishBox(s, colr);
-    if (ipma && itemPropertyIndex) {
-        ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
+    if (dedup) {
+        ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
     }
 
     // Write (Optional) Transformations
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
+        if (dedup) {
+            avifItemPropertyDedupStart(dedup);
+        }
         avifBoxMarker pasp = avifRWStreamWriteBox(s, "pasp", AVIF_BOX_SIZE_TBD);
         avifRWStreamWriteU32(s, imageMetadata->pasp.hSpacing); // unsigned int(32) hSpacing;
         avifRWStreamWriteU32(s, imageMetadata->pasp.vSpacing); // unsigned int(32) vSpacing;
         avifRWStreamFinishBox(s, pasp);
-        if (ipma && itemPropertyIndex) {
-            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_FALSE);
+        if (dedup) {
+            ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
         }
     }
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
+        if (dedup) {
+            avifItemPropertyDedupStart(dedup);
+        }
         avifBoxMarker clap = avifRWStreamWriteBox(s, "clap", AVIF_BOX_SIZE_TBD);
         avifRWStreamWriteU32(s, imageMetadata->clap.widthN);    // unsigned int(32) cleanApertureWidthN;
         avifRWStreamWriteU32(s, imageMetadata->clap.widthD);    // unsigned int(32) cleanApertureWidthD;
@@ -260,26 +367,32 @@ static void avifEncoderWriteColorProperties(avifRWStream * s, const avifImage * 
         avifRWStreamWriteU32(s, imageMetadata->clap.vertOffN);  // unsigned int(32) vertOffN;
         avifRWStreamWriteU32(s, imageMetadata->clap.vertOffD);  // unsigned int(32) vertOffD;
         avifRWStreamFinishBox(s, clap);
-        if (ipma && itemPropertyIndex) {
-            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_TRUE);
+        if (dedup) {
+            ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_TRUE);
         }
     }
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_IROT) {
+        if (dedup) {
+            avifItemPropertyDedupStart(dedup);
+        }
         avifBoxMarker irot = avifRWStreamWriteBox(s, "irot", AVIF_BOX_SIZE_TBD);
         uint8_t angle = imageMetadata->irot.angle & 0x3;
         avifRWStreamWrite(s, &angle, 1); // unsigned int (6) reserved = 0; unsigned int (2) angle;
         avifRWStreamFinishBox(s, irot);
-        if (ipma && itemPropertyIndex) {
-            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_TRUE);
+        if (dedup) {
+            ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_TRUE);
         }
     }
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_IMIR) {
+        if (dedup) {
+            avifItemPropertyDedupStart(dedup);
+        }
         avifBoxMarker imir = avifRWStreamWriteBox(s, "imir", AVIF_BOX_SIZE_TBD);
         uint8_t mode = imageMetadata->imir.mode & 0x1;
         avifRWStreamWrite(s, &mode, 1); // unsigned int (7) reserved = 0; unsigned int (1) mode;
         avifRWStreamFinishBox(s, imir);
-        if (ipma && itemPropertyIndex) {
-            ipmaPush(ipma, ++(*itemPropertyIndex), AVIF_TRUE);
+        if (dedup) {
+            ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_TRUE);
         }
     }
 }
@@ -900,7 +1013,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifBoxMarker iprp = avifRWStreamWriteBox(&s, "iprp", AVIF_BOX_SIZE_TBD);
 
-    uint8_t itemPropertyIndex = 0;
+    avifItemPropertyDedup * dedup = avifItemPropertyDedupCreate();
     avifBoxMarker ipco = avifRWStreamWriteBox(&s, "ipco", AVIF_BOX_SIZE_TBD);
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
@@ -940,40 +1053,46 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         // Properties all av01 items need
 
-        avifBoxMarker ispe = avifRWStreamWriteFullBox(&s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0);
-        avifRWStreamWriteU32(&s, imageWidth);  // unsigned int(32) image_width;
-        avifRWStreamWriteU32(&s, imageHeight); // unsigned int(32) image_height;
-        avifRWStreamFinishBox(&s, ispe);
-        ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE); // ipma is 1-indexed, doing this afterwards is correct
+        avifItemPropertyDedupStart(dedup);
+        avifBoxMarker ispe = avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0);
+        avifRWStreamWriteU32(&dedup->s, imageWidth);  // unsigned int(32) image_width;
+        avifRWStreamWriteU32(&dedup->s, imageHeight); // unsigned int(32) image_height;
+        avifRWStreamFinishBox(&dedup->s, ispe);
+        ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
 
+        avifItemPropertyDedupStart(dedup);
         uint8_t channelCount = (item->alpha || (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
-        avifBoxMarker pixi = avifRWStreamWriteFullBox(&s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0);
-        avifRWStreamWriteU8(&s, channelCount); // unsigned int (8) num_channels;
+        avifBoxMarker pixi = avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0);
+        avifRWStreamWriteU8(&dedup->s, channelCount); // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
-            avifRWStreamWriteU8(&s, (uint8_t)imageMetadata->depth); // unsigned int (8) bits_per_channel;
+            avifRWStreamWriteU8(&dedup->s, (uint8_t)imageMetadata->depth); // unsigned int (8) bits_per_channel;
         }
-        avifRWStreamFinishBox(&s, pixi);
-        ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
+        avifRWStreamFinishBox(&dedup->s, pixi);
+        ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
 
         if (item->codec) {
-            writeConfigBox(&s, &item->av1C);
-            ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_TRUE);
+            avifItemPropertyDedupStart(dedup);
+            writeConfigBox(&dedup->s, &item->av1C);
+            ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_TRUE);
         }
 
         if (item->alpha) {
             // Alpha specific properties
 
-            avifBoxMarker auxC = avifRWStreamWriteFullBox(&s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteChars(&s, alphaURN, alphaURNSize); //  string aux_type;
-            avifRWStreamFinishBox(&s, auxC);
-            ipmaPush(&item->ipma, ++itemPropertyIndex, AVIF_FALSE);
+            avifItemPropertyDedupStart(dedup);
+            avifBoxMarker auxC = avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize); //  string aux_type;
+            avifRWStreamFinishBox(&dedup->s, auxC);
+            ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
         } else {
             // Color specific properties
 
-            avifEncoderWriteColorProperties(&s, imageMetadata, &item->ipma, &itemPropertyIndex);
+            avifEncoderWriteColorProperties(&s, imageMetadata, &item->ipma, dedup);
         }
     }
     avifRWStreamFinishBox(&s, ipco);
+    avifItemPropertyDedupDestroy(dedup);
+    dedup = NULL;
 
     avifBoxMarker ipma = avifRWStreamWriteFullBox(&s, "ipma", AVIF_BOX_SIZE_TBD, 0, 0);
     {
