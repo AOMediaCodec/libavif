@@ -3101,7 +3101,7 @@ avifResult avifDecoderParse(avifDecoder * decoder)
                 avifDiagnosticsPrintf(data->diag, "Item ID [%u] size is too large [%ux%u]", item->id, item->width, item->height);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-        } else if (!item->auxForID) { // NON-STANDARD: Allow auxiliary images to not have an ispe property. See: https://crbug.com/1245673
+        } else if (!item->auxForID || (decoder->strictFlags & AVIF_STRICT_ALPHA_ISPE_REQUIRED)) {
             avifDiagnosticsPrintf(data->diag, "Item ID [%u] is missing a mandatory ispe property", item->id);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
@@ -3428,7 +3428,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         if (alphaItem) {
             if (!alphaItem->width && !alphaItem->height) {
                 // NON-STANDARD: Alpha subimage does not have an ispe property; adopt width/height from color item
-                // See: https://crbug.com/1245673
+                assert(!(decoder->strictFlags & AVIF_STRICT_ALPHA_ISPE_REQUIRED));
                 alphaItem->width = colorItem->width;
                 alphaItem->height = colorItem->height;
             }
