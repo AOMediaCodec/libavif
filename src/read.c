@@ -2683,7 +2683,7 @@ static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMoovBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit)
+static avifBool avifParseMovieBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit)
 {
     BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[moov]");
 
@@ -2793,7 +2793,7 @@ static avifResult avifParse(avifDecoder * decoder)
             metaSeen = AVIF_TRUE;
         } else if (!memcmp(header.type, "moov", 4)) {
             CHECKERR(!moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
-            CHECKERR(avifParseMoovBox(data, boxContents.data, boxContents.size, decoder->imageSizeLimit), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(avifParseMovieBox(data, boxContents.data, boxContents.size, decoder->imageSizeLimit), AVIF_RESULT_BMFF_PARSE_FAILED);
             moovSeen = AVIF_TRUE;
         }
 
