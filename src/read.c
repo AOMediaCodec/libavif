@@ -154,9 +154,9 @@ typedef struct avifDecoderItem
     struct avifMeta * meta; // Unowned; A back-pointer for convenience
     uint8_t type[4];
     size_t size;
-    uint32_t idatID; // If non-zero, offset is relative to this idat box (iloc construction_method==1)
-    uint32_t width;  // Set from this item's ispe property, if present
-    uint32_t height; // Set from this item's ispe property, if present
+    avifBool idatStored; // If true, offset is relative to the associated meta box's idat box (iloc construction_method==1)
+    uint32_t width;      // Set from this item's ispe property, if present
+    uint32_t height;     // Set from this item's ispe property, if present
     avifContentType contentType;
     avifPropertyArray properties;
     avifExtentArray extents;       // All extent offsets/sizes
@@ -173,14 +173,6 @@ typedef struct avifDecoderItem
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (lsel)
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem, item);
-
-// idat storage
-typedef struct avifDecoderItemData
-{
-    uint32_t id;
-    avifRWData data;
-} avifDecoderItemData;
-AVIF_ARRAY_DECLARE(avifDecoderItemDataArray, avifDecoderItemData, idat);
 
 // grid storage
 typedef struct avifImageGrid
@@ -654,10 +646,11 @@ typedef struct avifMeta
     // (ipma) box.
     avifPropertyArray properties;
 
-    // Filled with the contents of "idat" boxes, which are raw data that an item can directly refer to in its
-    // item location box (iloc) instead of just giving an offset into the overall file. If all items' iloc boxes
-    // simply point at an offset/length in the file itself, this array will likely be empty.
-    avifDecoderItemDataArray idats;
+    // Filled with the contents of this meta box's "idat" box, which is raw data that an item can
+    // directly refer to in its item location box (iloc) instead of just giving an offset into the
+    // overall file. If all items' iloc boxes simply point at an offset/length in the file itself,
+    // this buffer will likely be empty.
+    avifRWData idat;
 
     // Ever-incrementing ID for uniquely identifying which 'meta' box contains an idat (when
     // multiple meta boxes exist as BMFF siblings). Each time avifParseMetaBox() is called on an
@@ -679,7 +672,6 @@ static avifMeta * avifMetaCreate()
     memset(meta, 0, sizeof(avifMeta));
     avifArrayCreate(&meta->items, sizeof(avifDecoderItem), 8);
     avifArrayCreate(&meta->properties, sizeof(avifProperty), 16);
-    avifArrayCreate(&meta->idats, sizeof(avifDecoderItemData), 1);
     return meta;
 }
 
@@ -695,11 +687,7 @@ static void avifMetaDestroy(avifMeta * meta)
     }
     avifArrayDestroy(&meta->items);
     avifArrayDestroy(&meta->properties);
-    for (uint32_t i = 0; i < meta->idats.count; ++i) {
-        avifDecoderItemData * idat = &meta->idats.idat[i];
-        avifRWDataFree(&idat->data);
-    }
-    avifArrayDestroy(&meta->idats);
+    avifRWDataFree(&meta->idat);
     avifFree(meta);
 }
 
@@ -834,16 +822,13 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, const a
         return AVIF_RESULT_TRUNCATED_DATA;
     }
 
-    if (item->idatID != 0) {
+    if (item->idatStored) {
         // construction_method: idat(1)
 
-        // Find associated idat box
-        for (uint32_t i = 0; i < item->meta->idats.count; ++i) {
-            if (item->meta->idats.idat[i].id == item->idatID) {
-                // Already read from a meta box during Parse()
-                memset(outExtent, 0, sizeof(avifExtent));
-                return AVIF_RESULT_OK;
-            }
+        if (item->meta->idat.size > 0) {
+            // Already read from a meta box during Parse()
+            memset(outExtent, 0, sizeof(avifExtent));
+            return AVIF_RESULT_OK;
         }
 
         // no associated idat box was found in the meta box, bail out
@@ -1006,18 +991,12 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
 
     // Find this item's source of all extents' data, based on the construction method
     const avifRWData * idatBuffer = NULL;
-    if (item->idatID != 0) {
+    if (item->idatStored) {
         // construction_method: idat(1)
 
-        // Find associated idat box
-        for (uint32_t i = 0; i < item->meta->idats.count; ++i) {
-            if (item->meta->idats.idat[i].id == item->idatID) {
-                idatBuffer = &item->meta->idats.idat[i].data;
-                break;
-            }
-        }
-
-        if (idatBuffer == NULL) {
+        if (item->meta->idat.size > 0) {
+            idatBuffer = &item->meta->idat;
+        } else {
             // no associated idat box was found in the meta box, bail out
             avifDiagnosticsPrintf(diag, "Item ID %u is stored in an idat, but no associated idat box was found", item->id);
             return AVIF_RESULT_NO_CONTENT;
@@ -1521,7 +1500,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
     }
     for (uint32_t i = 0; i < itemCount; ++i) {
         uint32_t itemID;
-        uint32_t idatID = 0;
+        avifBool idatStored = AVIF_FALSE;
         if (version < 2) {
             CHECK(avifROStreamReadU16(&s, &tmp16)); // unsigned int(16) item_ID;
             itemID = tmp16;
@@ -1541,7 +1520,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
                 return AVIF_FALSE;
             }
             if (constructionMethod == 1) {
-                idatID = meta->idatID;
+                idatStored = AVIF_TRUE;
             }
         }
 
@@ -1555,7 +1534,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             avifDiagnosticsPrintf(diag, "Item ID [%u] contains duplicate sets of extents", itemID);
             return AVIF_FALSE;
         }
-        item->idatID = idatID;
+        item->idatStored = idatStored;
 
         uint16_t dataReferenceIndex;                                 // unsigned int(16) data_ref rence_index;
         CHECK(avifROStreamReadU16(&s, &dataReferenceIndex));         //
@@ -2072,17 +2051,16 @@ static avifBool avifParsePrimaryItemBox(avifMeta * meta, const uint8_t * raw, si
 static avifBool avifParseItemDataBox(avifMeta * meta, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     // Check to see if we've already seen an idat box for this meta box. If so, bail out
-    for (uint32_t i = 0; i < meta->idats.count; ++i) {
-        if (meta->idats.idat[i].id == meta->idatID) {
-            avifDiagnosticsPrintf(diag, "Meta box contains multiple idat boxes");
-            return AVIF_FALSE;
-        }
+    if (meta->idat.size > 0) {
+        avifDiagnosticsPrintf(diag, "Meta box contains multiple idat boxes");
+        return AVIF_FALSE;
+    }
+    if (rawLen == 0) {
+        avifDiagnosticsPrintf(diag, "idat box has a length of 0");
+        return AVIF_FALSE;
     }
 
-    int index = avifArrayPushIndex(&meta->idats);
-    avifDecoderItemData * idat = &meta->idats.idat[index];
-    idat->id = meta->idatID;
-    avifRWDataSet(&idat->data, raw, rawLen);
+    avifRWDataSet(&meta->idat, raw, rawLen);
     return AVIF_TRUE;
 }
 
