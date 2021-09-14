@@ -1500,12 +1500,22 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
     }
     for (uint32_t i = 0; i < itemCount; ++i) {
         uint32_t itemID;
-        avifBool idatStored = AVIF_FALSE;
         if (version < 2) {
             CHECK(avifROStreamReadU16(&s, &tmp16)); // unsigned int(16) item_ID;
             itemID = tmp16;
         } else {
             CHECK(avifROStreamReadU32(&s, &itemID)); // unsigned int(32) item_ID;
+        }
+
+        avifDecoderItem * item = avifMetaFindItem(meta, itemID);
+        if (!item) {
+            avifDiagnosticsPrintf(diag, "Box[iloc] has an invalid item ID [%u]", itemID);
+            return AVIF_FALSE;
+        }
+        if (item->extents.count > 0) {
+            // This item has already been given extents via this iloc box. This is invalid.
+            avifDiagnosticsPrintf(diag, "Item ID [%u] contains duplicate sets of extents", itemID);
+            return AVIF_FALSE;
         }
 
         if ((version == 1) || (version == 2)) {
@@ -1520,21 +1530,9 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
                 return AVIF_FALSE;
             }
             if (constructionMethod == 1) {
-                idatStored = AVIF_TRUE;
+                item->idatStored = AVIF_TRUE;
             }
         }
-
-        avifDecoderItem * item = avifMetaFindItem(meta, itemID);
-        if (!item) {
-            avifDiagnosticsPrintf(diag, "Box[iloc] has an invalid item ID [%u]", itemID);
-            return AVIF_FALSE;
-        }
-        if (item->extents.count > 0) {
-            // This item has already been given extents via this iloc box. This is invalid.
-            avifDiagnosticsPrintf(diag, "Item ID [%u] contains duplicate sets of extents", itemID);
-            return AVIF_FALSE;
-        }
-        item->idatStored = idatStored;
 
         uint16_t dataReferenceIndex;                                 // unsigned int(16) data_ref rence_index;
         CHECK(avifROStreamReadU16(&s, &dataReferenceIndex));         //
