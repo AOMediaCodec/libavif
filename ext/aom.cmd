@@ -13,12 +13,6 @@ git clone -b v3.1.2 --depth 1 https://aomedia.googlesource.com/aom
 cd aom
 mkdir build.libavif
 cd build.libavif
-
-if [[ `uname` == 'Darwin' && `uname -m` == 'arm64' ]]; then
-  cmake -G Ninja -DCONFIG_RUNTIME_CPU_DETECT=0 -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 ..
-else
-  cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 ..
-fi
-
+cmake -G Ninja -DCONFIG_RUNTIME_CPU_DETECT=0 -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 ..
 ninja
 cd ../..
