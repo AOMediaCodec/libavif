@@ -721,6 +721,7 @@ typedef struct avifDecoderData
     avifImageGrid colorGrid;
     avifImageGrid alphaGrid;
     avifDecoderSource source;
+    uint8_t majorBrand[4];                     // From the file's ftyp, used by AVIF_DECODER_SOURCE_AUTO
     avifDiagnostics * diag;                    // Shallow copy; owned by avifDecoder
     const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
     avifBool cicpSet;                          // True if avifDecoder's image has had its CICP set correctly yet.
@@ -2761,6 +2762,7 @@ static avifResult avifParse(avifDecoder * decoder)
                 return AVIF_RESULT_INVALID_FTYP;
             }
             ftypSeen = AVIF_TRUE;
+            memcpy(data->majorBrand, ftyp.majorBrand, 4); // Remember the major brand for future AVIF_DECODER_SOURCE_AUTO decisions
             needsMeta = avifFileTypeHasBrand(&ftyp, "avif");
             needsMoov = avifFileTypeHasBrand(&ftyp, "avis");
         } else if (!memcmp(header.type, "meta", 4)) {
@@ -3146,7 +3148,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     data->sourceSampleTable = NULL; // Reset
     if (decoder->requestedSource == AVIF_DECODER_SOURCE_AUTO) {
-        if (data->tracks.count > 0) {
+        // Honor the major brand (avif or avis) if present, otherwise prefer avis (tracks) if possible.
+        if (!memcmp(data->majorBrand, "avis", 4)) {
+            data->source = AVIF_DECODER_SOURCE_TRACKS;
+        } else if (!memcmp(data->majorBrand, "avif", 4)) {
+            data->source = AVIF_DECODER_SOURCE_PRIMARY_ITEM;
+        } else if (data->tracks.count > 0) {
             data->source = AVIF_DECODER_SOURCE_TRACKS;
         } else {
             data->source = AVIF_DECODER_SOURCE_PRIMARY_ITEM;
