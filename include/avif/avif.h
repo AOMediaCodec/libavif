@@ -85,6 +85,8 @@ typedef int avifBool;
 #define AVIF_SPEED_SLOWEST 0
 #define AVIF_SPEED_FASTEST 10
 
+#define MAX_AV1_LAYER_COUNT 4
+
 typedef enum avifPlanesFlag
 {
     AVIF_PLANES_YUV = (1 << 0),
@@ -778,9 +780,11 @@ typedef enum avifProgressiveState
     // for an image sequence.
     AVIF_PROGRESSIVE_STATE_UNAVAILABLE = 0,
 
-    // The current AVIF/Source offers a progressive image, but avifDecoder.allowProgressive is not
-    // enabled, so it will behave as if the image was not progressive and will simply decode the
-    // best version of this item.
+    // For decoder, this means the current AVIF/Source offers a progressive image, but
+    // avifDecoder.allowProgressive is not enabled, so it will behave as if the image was not
+    // progressive and will simply decode the best version of this item.
+    // For encoder, this means at least one of color and alpha image has multiple layers and
+    // indicates this is a progressive image.
     AVIF_PROGRESSIVE_STATE_AVAILABLE,
 
     // The current AVIF/Source offers a progressive image, and avifDecoder.allowProgressive is true.
@@ -971,6 +975,23 @@ AVIF_API avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, ui
 struct avifEncoderData;
 struct avifCodecSpecificOptions;
 
+typedef enum avifScalingMode {
+    AVIF_SCALING_NORMAL = 0,
+    AVIF_SCALING_FOURFIVE = 1,
+    AVIF_SCALING_THREEFIVE = 2,
+    AVIF_SCALING_THREEFOUR = 3,
+    AVIF_SCALING_ONEFOUR = 4,
+    AVIF_SCALING_ONEEIGHT = 5,
+    AVIF_SCALING_ONETWO = 6
+} avifScalingMode;
+
+typedef struct avifLayerConfig {
+    int minQuantizer;
+    int maxQuantizer;
+    avifScalingMode horizontalMode;
+    avifScalingMode verticalMode;
+} avifLayerConfig;
+
 // Notes:
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
@@ -998,6 +1019,11 @@ typedef struct avifEncoder
     int speed;
     int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
     uint64_t timescale;   // timescale of the media (Hz)
+
+    uint8_t layerCount; // Image layers for color sub image; 0 to disable layer image (default).
+    uint8_t layerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
+    avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
+    avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
 
     // stats from the most recent write
     avifIOStats ioStats;

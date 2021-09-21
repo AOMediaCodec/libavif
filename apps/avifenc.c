@@ -9,6 +9,7 @@
 #include "y4m.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,6 +105,35 @@ static void syntax(void)
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
+    printf("    --progressive LAYER_CONFIG        : Encode progressive AVIF with given layer config\n");
+    printf("\n");
+    printf("progressive layer config format:\n");
+    printf("    LAYER_CONFIG can be one of the two forms:\n");
+    printf("        1. SUB_CONFIG             apply SUB_CONFIG to both color (YUV) planes and alpha plane\n");
+    printf("        2. SUB_CONFIG;SUB_CONFIG  apply first SUB_CONFIG to color planes, second SUB_CONFIG to alpha plane\n");
+    printf("\n");
+    printf("    SUB_CONFIG is 0-4 LAYER_CONFIG joined by colon(:), and LAYER_CONFIG is in this form:\n");
+    printf("        MinQ[,MaxQ][-ScaleH[,ScaleV]]\n");
+    printf("\n");
+    printf("    MinQ and MaxQ are min and max quantizers for this layer, and will overwrite values given by --min and --max.\n");
+    printf("    Specially, when using aom with end-usage set to q or cq, min and max quantizers will use values given by --min and --max,\n");
+    printf("    and cq-level of this layer will set to average of MinQ and MaxQ.\n");
+    printf("    ScaleH and ScaleV are horizontal and vertical scale ratios [default=1, 1/2, 1/4, 1/8, 3/4, 3/5, 4/5].\n");
+    printf("    If MaxQ is eliminated it uses the value of MinQ.\n");
+    printf("    If ScaleH is eliminated it uses default value 1 (no scaling); if ScaleV is eliminated it uses the value of ScaleH.\n");
+    printf("\n");
+    printf("    Examples:\n");
+    printf("        40,62-1/2,1/4:30-1/2:10\n");
+    printf("            Color and alpha planes both have 3 layers and share the same following config:\n");
+    printf("                #0: min quantizer 40, max quantizer 62, 1/2 width, 1/4 height\n");
+    printf("                #1: min quantizer 30, max quantizer 30, 1/2 width, 1/2 height\n");
+    printf("                #2: min quantizer 10, max quantizer 10, full width, full height\n");
+    printf("\n");
+    printf("        30,1/2:10;\n");
+    printf("            Color planes have 2 layers, alpha plane is not layered.\n");
+    printf("\n");
+    printf("        ;30,1/2:10\n");
+    printf("            Color planes is not layered, alpha plane have 2 layers.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
@@ -228,6 +258,271 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat 
     clapValues[6] = clap.vertOffN;
     clapValues[7] = clap.vertOffD;
     return AVIF_TRUE;
+}
+
+struct avifEncoderLayerConfig
+{
+    uint8_t layerCount; // Image layers for color sub image; 0 to disable layer image (default).
+    uint8_t layerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
+    avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
+    avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
+};
+
+struct avifOptionEnumList
+{
+    const char * name;
+    int val;
+};
+
+static const struct avifOptionEnumList scalingModeList[] = { //
+    { "1/2", AVIF_SCALING_ONETWO },    { "1/4", AVIF_SCALING_ONEFOUR },
+    { "1/8", AVIF_SCALING_ONEEIGHT },  { "3/4", AVIF_SCALING_THREEFOUR },
+    { "3/5", AVIF_SCALING_THREEFIVE }, { "4/5", AVIF_SCALING_FOURFIVE },
+    { "1", AVIF_SCALING_NORMAL },      { NULL, 0 }
+};
+
+static avifBool avifParseScalingMode(const char ** pArg, avifScalingMode * mode)
+{
+    const struct avifOptionEnumList * listptr;
+    for (listptr = scalingModeList; listptr->name; ++listptr) {
+        size_t matchLength = strlen(listptr->name);
+        if (!strncmp(*pArg, listptr->name, matchLength)) {
+            *mode = (avifScalingMode)listptr->val;
+            *pArg += matchLength;
+            return AVIF_TRUE;
+        }
+    }
+
+    return AVIF_FALSE;
+}
+
+#define FAIL_IF(condition, reason) \
+    do {                           \
+        if (condition) {           \
+            failReason = reason;   \
+            goto finish;           \
+        }                          \
+    } while (0)
+
+static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * config, const char * arg)
+{
+    uint8_t * currLayerCount = &config->layerCount;
+    avifLayerConfig * currLayers = config->layers;
+    uint8_t currLayer = 0;
+    const char * failReason = NULL;
+
+    enum scanState
+    {
+        VALUE,
+        COMMA,
+        HYPHEN,
+        COLON,
+        SEMICOLON
+    };
+    enum scanState currState = *arg == ';' ? SEMICOLON : VALUE;
+    enum scanState targetState = SEMICOLON;
+
+    enum
+    {
+        NONE,
+        MIN_Q,
+        MAX_Q,
+        H_SCALE,
+        V_SCALE,
+    } prevReadValue = NONE;
+
+    for (;;) {
+        switch (currState) {
+            case VALUE: {
+                int64_t value;
+                avifScalingMode mode;
+                char * end;
+                switch (prevReadValue) {
+                    case NONE:
+                        value = strtoll(arg, &end, 10);
+                        FAIL_IF(errno == ERANGE, "overflowed while reading min quantizer");
+                        FAIL_IF(end == arg, "can't parse min quantizer");
+                        FAIL_IF(value > 63, "min quantizer too big");
+
+                        arg = end;
+                        currLayers[currLayer].minQuantizer = (int)value;
+                        currState = COMMA;
+                        prevReadValue = MIN_Q;
+                        break;
+
+                    case MIN_Q:
+                        value = strtoll(arg, &end, 10);
+                        FAIL_IF(errno == ERANGE, "overflowed while reading max quantizer");
+                        FAIL_IF(end == arg, "can't parse max quantizer");
+                        FAIL_IF(value > 63, "max quantizer too big");
+
+                        arg = end;
+                        currLayers[currLayer].maxQuantizer = (int)value;
+                        currState = HYPHEN;
+                        prevReadValue = MAX_Q;
+                        break;
+
+                    case MAX_Q:
+                        FAIL_IF(!avifParseScalingMode(&arg, &mode), "unknown scaling mode");
+
+                        currLayers[currLayer].horizontalMode = mode;
+                        currState = COMMA;
+                        prevReadValue = H_SCALE;
+                        break;
+
+                    case H_SCALE:
+                        FAIL_IF(!avifParseScalingMode(&arg, &mode), "unknown scaling mode");
+
+                        currLayers[currLayer].verticalMode = mode;
+                        currState = COLON;
+                        prevReadValue = V_SCALE;
+                        break;
+
+                    case V_SCALE:
+                        FAIL_IF(AVIF_TRUE, "too many values in layer config");
+                }
+                break;
+            }
+
+            case COMMA:
+            case HYPHEN:
+            case COLON:
+            case SEMICOLON:
+                switch (*arg) {
+                    case ',':
+                        targetState = COMMA;
+                        break;
+                    case '-':
+                        targetState = HYPHEN;
+                        break;
+                    case ':':
+                        targetState = COLON;
+                        break;
+                    case ';':
+                    case '\0':
+                        targetState = SEMICOLON;
+                        break;
+                    default:
+                        FAIL_IF(AVIF_TRUE, "unexpected separator");
+                }
+
+                FAIL_IF(currState > targetState, "too many config entries");
+
+                avifBool earlyEnd = currState < targetState;
+                switch (targetState) {
+                    case VALUE:
+                        FAIL_IF(AVIF_TRUE, "unknown state");
+                        break;
+
+                    case COMMA:
+                        FAIL_IF(earlyEnd, "unknown state");
+                        break;
+
+                    case HYPHEN:
+                        if (!earlyEnd) {
+                            FAIL_IF(prevReadValue != MAX_Q, "unknown state");
+                            break;
+                        }
+
+                        FAIL_IF(prevReadValue != MIN_Q, "unknown state");
+                        currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
+                        prevReadValue = MAX_Q;
+                        break;
+
+                    case COLON:
+                        if (earlyEnd) {
+                            switch (prevReadValue) {
+                                case MIN_Q:
+                                    currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
+                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
+                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    break;
+
+                                case MAX_Q:
+                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
+                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    break;
+
+                                case H_SCALE:
+                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    break;
+
+                                case V_SCALE:
+                                case NONE:
+                                    FAIL_IF(AVIF_TRUE, "unknown state");
+                            }
+                        }
+
+                        ++currLayer;
+                        FAIL_IF(currLayer >= MAX_AV1_LAYER_COUNT, "too many layers");
+                        prevReadValue = NONE;
+                        break;
+
+                    case SEMICOLON:
+                        if (earlyEnd) {
+                            switch (prevReadValue) {
+                                case MIN_Q:
+                                    currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
+                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
+                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    break;
+
+                                case MAX_Q:
+                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
+                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    break;
+
+                                case H_SCALE:
+                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    break;
+
+                                case V_SCALE:
+                                    break;
+
+                                case NONE:
+                                    FAIL_IF(AVIF_TRUE, "unknown state");
+                            }
+
+                            ++currLayer;
+                        }
+
+                        *currLayerCount = currLayer;
+                        if (*arg == ';') {
+                            FAIL_IF(currLayers != config->layers, "too many sub image configurations");
+                            currLayers = config->layersAlpha;
+                            currLayerCount = &config->layerCountAlpha;
+
+                            if (*(arg + 1) == '\0') {
+                                goto finish;
+                            }
+
+                            prevReadValue = NONE;
+                            currLayer = 0;
+                        } else {
+                            // reached \0
+                            if (currLayers == config->layers) {
+                                memcpy(config->layersAlpha, config->layers, sizeof(config->layers));
+                                config->layerCountAlpha = config->layerCount;
+                            }
+
+                            goto finish;
+                        }
+                        break;
+                }
+
+                ++arg;
+                currState = VALUE;
+                break;
+        }
+    }
+
+finish:
+    if (failReason == NULL) {
+        return AVIF_TRUE;
+    }
+
+    fprintf(stderr, "ERROR: Failed reading progressive config: %s", failReason);
+    return AVIF_FALSE;
 }
 
 static avifInputFile * avifInputGetNextFile(avifInput * input)
@@ -474,6 +769,9 @@ int main(int argc, char * argv[])
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+
+    struct avifEncoderLayerConfig layerConfig;
+    memset(&layerConfig, 0, sizeof(layerConfig));
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -754,6 +1052,12 @@ int main(int argc, char * argv[])
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
+        } else if (!strcmp(arg, "--progressive")) {
+            NEXTARG();
+            if (!avifParseProgressiveConfig(&layerConfig, arg)) {
+                returnCode = 1;
+                goto cleanup;
+            }
         } else {
             // Positional argument
             input.files[input.filesCount].filename = arg;
@@ -807,6 +1111,12 @@ int main(int argc, char * argv[])
             printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
                    image->matrixCoefficients);
         }
+    }
+
+    if (input.filesCount > 1 && (layerConfig.layerCount > 1 || layerConfig.layerCountAlpha > 1)) {
+        fprintf(stderr, "Progressive animated AVIF currently not supported.\n");
+        returnCode = 1;
+        goto cleanup;
     }
 
     avifInputFile * firstFile = avifInputGetNextFile(&input);
@@ -1078,7 +1388,11 @@ int main(int argc, char * argv[])
         lossyHint = " (Lossless)";
     }
     printf("AVIF to be written:%s\n", lossyHint);
-    avifImageDump(gridCells ? gridCells[0] : image, gridDims[0], gridDims[1], AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+    avifBool progressive = layerConfig.layerCount > 1 || layerConfig.layerCountAlpha > 1;
+    avifImageDump(gridCells ? gridCells[0] : image,
+                  gridDims[0],
+                  gridDims[1],
+                  progressive ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
     printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], tileRowsLog2 [%d], tileColsLog2 [%d], %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
@@ -1099,6 +1413,12 @@ int main(int argc, char * argv[])
     encoder->maxQuantizer = maxQuantizer;
     encoder->minQuantizerAlpha = minQuantizerAlpha;
     encoder->maxQuantizerAlpha = maxQuantizerAlpha;
+
+    encoder->layerCount = layerConfig.layerCount;
+    encoder->layerCountAlpha = layerConfig.layerCountAlpha;
+    memcpy(encoder->layers, layerConfig.layers, sizeof(encoder->layers));
+    memcpy(encoder->layersAlpha, layerConfig.layersAlpha, sizeof(encoder->layersAlpha));
+
     encoder->tileRowsLog2 = tileRowsLog2;
     encoder->tileColsLog2 = tileColsLog2;
     encoder->codecChoice = codecChoice;

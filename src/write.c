@@ -93,11 +93,24 @@ typedef struct avifEncoderItem
     uint32_t gridCols; // if non-zero (legal range [1-256]), this is a grid item
     uint32_t gridRows; // if non-zero (legal range [1-256]), this is a grid item
 
+    uint8_t layerCount;
+
     uint16_t dimgFromID; // if non-zero, make an iref from dimgFromID -> this id
 
     struct ipmaArray ipma;
 } avifEncoderItem;
 AVIF_ARRAY_DECLARE(avifEncoderItemArray, avifEncoderItem, item);
+
+// ---------------------------------------------------------------------------
+// avifEncoderItemReference
+
+// pointer to one "item" interested in
+
+typedef struct avifEncoderItemReference
+{
+    avifEncoderItem * item;
+} avifEncoderItemReference;
+AVIF_ARRAY_DECLARE(avifEncoderItemReferenceArray, avifEncoderItemReference, ref);
 
 // ---------------------------------------------------------------------------
 // avifEncoderFrame
@@ -264,6 +277,8 @@ avifEncoder * avifEncoderCreate(void)
     encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
     encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     encoder->maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    encoder->layerCount = 0;
+    encoder->layerCountAlpha = 0;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
     encoder->speed = AVIF_SPEED_DEFAULT;
@@ -518,6 +533,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
     }
 
+
+    // Currently, layered image can only have one frame.
+    if ((encoder->layerCount > 1 || encoder->layerCountAlpha > 1) && encoder->data->frames.count > 0) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     // -----------------------------------------------------------------------
     // Validate images
 
@@ -747,14 +768,18 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
+            item->layerCount = item->alpha ? encoder->layerCountAlpha : encoder->layerCount;
+            item->layerCount = item->layerCount == 0 ? 1 : item->layerCount;
             const avifImage * cellImage = cellImages[item->cellIndex];
-            avifResult encodeResult =
-                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, addImageFlags, item->encodeOutput);
-            if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
-                encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
-            }
-            if (encodeResult != AVIF_RESULT_OK) {
-                return encodeResult;
+            for (int layerIndex = 0; layerIndex < item->layerCount; ++layerIndex) {
+                avifResult encodeResult =
+                    item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, layerIndex, addImageFlags, item->encodeOutput);
+                if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
+                    encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
+                }
+                if (encodeResult != AVIF_RESULT_OK) {
+                    return encodeResult;
+                }
             }
         }
     }
@@ -816,7 +841,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
 
-            if (item->encodeOutput->samples.count != encoder->data->frames.count) {
+            if (item->encodeOutput->samples.count != encoder->data->frames.count * item->layerCount) {
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
         }
@@ -916,6 +941,21 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
 
+        avifRWStreamWriteU16(&s, item->id); // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, 0);        // unsigned int(16) data_reference_index;
+
+        if (item->layerCount > 1) {
+            // Layered Image, write location for all samples
+            avifRWStreamWriteU16(&s, item->layerCount); // unsigned int(16) extent_count;
+            for (int i = 0; i < item->layerCount; ++i) {
+                avifEncoderItemAddMdatFixup(item, &s);       //
+                avifRWStreamWriteU32(&s, 0 /* set later */); // unsigned int(offset_size*8) extent_offset;
+                avifRWStreamWriteU32(&s, (uint32_t)item->encodeOutput->samples.sample[i].data.size); // unsigned int(length_size*8) extent_length;
+            }
+
+            continue;
+        }
+
         uint32_t contentSize = (uint32_t)item->metadataPayload.size;
         if (item->encodeOutput->samples.count > 0) {
             // This is choosing sample 0's size as there are two cases here:
@@ -929,8 +969,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             contentSize = (uint32_t)item->encodeOutput->samples.sample[0].data.size;
         }
 
-        avifRWStreamWriteU16(&s, item->id);              // unsigned int(16) item_ID;
-        avifRWStreamWriteU16(&s, 0);                     // unsigned int(16) data_reference_index;
         avifRWStreamWriteU16(&s, 1);                     // unsigned int(16) extent_count;
         avifEncoderItemAddMdatFixup(item, &s);           //
         avifRWStreamWriteU32(&s, 0 /* set later */);     // unsigned int(offset_size*8) extent_offset;
@@ -1024,15 +1062,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             continue;
         }
 
-        if (item->dimgFromID) {
-            // All image cells from a grid should share the exact same properties, so see if we've
-            // already written properties out for another cell in this grid, and if so, just steal
-            // their ipma and move on. This is a sneaky way to provide iprp deduplication.
+        if (item->dimgFromID && item->layerCount < 2) {
+            // All image cells from a grid should share the exact same properties unless they are
+            // layered image which have different al1x, so see if we've already written properties
+            // out for another cell in this grid, and if so, just steal their ipma and move on.
+            // This is a sneaky way to provide iprp deduplication.
 
             avifBool foundPreviousCell = AVIF_FALSE;
             for (uint32_t dedupIndex = 0; dedupIndex < itemIndex; ++dedupIndex) {
                 avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
-                if (item->dimgFromID == dedupItem->dimgFromID) {
+                if (item->dimgFromID == dedupItem->dimgFromID && dedupItem->layerCount < 2) {
                     // We've already written dedup's items out. Steal their ipma indices and move on!
                     memcpy(&item->ipma, &dedupItem->ipma, sizeof(struct ipmaArray));
                     foundPreviousCell = AVIF_TRUE;
@@ -1088,6 +1127,36 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             // Color specific properties
 
             avifEncoderWriteColorProperties(&s, imageMetadata, &item->ipma, dedup);
+        }
+
+        if (item->layerCount > 1) {
+            // Layered Image Indexing Property
+
+            avifItemPropertyDedupStart(dedup);
+            avifBoxMarker a1lx = avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD);
+            uint32_t layerSize[MAX_AV1_LAYER_COUNT - 1] = { 0 };
+            uint8_t largeSize = 0;
+
+            for (uint8_t validLayer = 0; validLayer < item->layerCount - 1; ++validLayer) {
+                uint32_t size = (uint32_t)item->encodeOutput->samples.sample[validLayer].data.size;
+                layerSize[validLayer] = size;
+                if (size > 65535) {
+                    largeSize = 1;
+                }
+            }
+
+            avifRWStreamWriteU8(&dedup->s, largeSize);
+            if (largeSize) {
+                for (uint32_t layer = 0; layer < MAX_AV1_LAYER_COUNT - 1; ++layer) {
+                    avifRWStreamWriteU32(&dedup->s, layerSize[layer]);
+                }
+            } else {
+                for (uint32_t layer = 0; layer < MAX_AV1_LAYER_COUNT - 1; ++layer) {
+                    avifRWStreamWriteU16(&dedup->s, (uint16_t)layerSize[layer]);
+                }
+            }
+            avifRWStreamFinishBox(&dedup->s, a1lx);
+            ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
         }
     }
     avifRWStreamFinishBox(&s, ipco);
@@ -1345,11 +1414,17 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifBoxMarker mdat = avifRWStreamWriteBox(&s, "mdat", AVIF_BOX_SIZE_TBD);
     const size_t mdatStartOffset = avifRWStreamOffset(&s);
-    for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
+
+    avifEncoderItemReferenceArray layeredAlphaItems;
+    avifEncoderItemReferenceArray layeredColorItems;
+    avifArrayCreate(&layeredAlphaItems, sizeof(avifEncoderItemReference), 1);
+    avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1);
+    avifBool useInterleave = encoder->layerCount > 1 || encoder->layerCountAlpha > 1;
+
+    for (uint32_t itemPasses = 0; itemPasses < 2; ++itemPasses) {
         // Use multiple passes to pack in the following order:
         //   * Pass 0: metadata (Exif/XMP)
-        //   * Pass 1: alpha (AV1)
-        //   * Pass 2: all other item data (AV1 color)
+        //   * Pass 1: item data (AV1 color & alpha)
         //
         // See here for the discussion on alpha coming before color:
         // https://github.com/AOMediaCodec/libavif/issues/287
@@ -1359,7 +1434,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         // and ignoreExif are enabled.
         //
         const avifBool metadataPass = (itemPasses == 0);
-        const avifBool alphaPass = (itemPasses == 1);
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
@@ -1372,12 +1446,23 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 // only process metadata (XMP/Exif) payloads when metadataPass is true
                 continue;
             }
-            if (alphaPass != item->alpha) {
-                // only process alpha payloads when alphaPass is true
-                continue;
-            }
 
             size_t chunkOffset = 0;
+
+            // Interleave - Pick out and record layered image items, interleave them later.
+            // Expect layer image item has same number of samples and fixups.
+            if (useInterleave && item->encodeOutput->samples.count > 0 &&
+                item->encodeOutput->samples.count == item->mdatFixups.count) {
+
+                avifEncoderItemReference * ref;
+                if (item->alpha) {
+                    ref = (avifEncoderItemReference *)avifArrayPushPtr(&layeredAlphaItems);
+                } else {
+                    ref = (avifEncoderItemReference *)avifArrayPushPtr(&layeredColorItems);
+                }
+                ref->item = item;
+                continue;
+            }
 
             // Deduplication - See if an identical chunk to this has already been written
             if (item->encodeOutput->samples.count > 0) {
@@ -1415,6 +1500,53 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
         }
     }
+
+    // Interleave each sample (layer) of each item.
+    //
+    //   * Pass 0: alpha item
+    //   * Pass 1: color item
+    //
+    // See here for the discussion on alpha coming before color:
+    // https://github.com/AOMediaCodec/libavif/issues/287
+
+    if (useInterleave) {
+        avifBool hasMoreSample;
+        uint32_t layerIndex = 0;
+        do {
+            hasMoreSample = AVIF_FALSE;
+            for (int samplePass = 0; samplePass < 2; ++samplePass) {
+                avifEncoderItemReferenceArray * currentItems = (samplePass == 0) ? &layeredAlphaItems : &layeredColorItems;
+                for (uint32_t itemIndex = 0; itemIndex < currentItems->count; ++itemIndex) {
+                    avifEncoderItem * item = currentItems->ref[itemIndex].item;
+                    if (item->encodeOutput->samples.count <= layerIndex) {
+                        // We've already written all samples from this item
+                        continue;
+                    } else if (item->encodeOutput->samples.count > layerIndex + 1) {
+                        hasMoreSample = AVIF_TRUE;
+                    }
+                    avifRWData * data = &item->encodeOutput->samples.sample[layerIndex].data;
+                    size_t chunkOffset = avifEncoderFindExistingChunk(&s, mdatStartOffset, data->data, data->size);
+                    if (!chunkOffset) {
+                        // We've never seen this chunk before; write it out
+                        chunkOffset = avifRWStreamOffset(&s);
+                        avifRWStreamWrite(&s, data->data, data->size);
+                        if (samplePass == 0) {
+                            encoder->ioStats.alphaOBUSize += data->size;
+                        } else {
+                            encoder->ioStats.colorOBUSize += data->size;
+                        }
+
+                        size_t prevOffset = avifRWStreamOffset(&s);
+                        avifRWStreamSetOffset(&s, item->mdatFixups.fixup[layerIndex].offset);
+                        avifRWStreamWriteU32(&s, (uint32_t)chunkOffset);
+                        avifRWStreamSetOffset(&s, prevOffset);
+                    }
+                }
+            }
+            ++layerIndex;
+        } while (hasMoreSample);
+    }
+
     avifRWStreamFinishBox(&s, mdat);
 
     // -----------------------------------------------------------------------
