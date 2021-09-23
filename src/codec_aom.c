@@ -50,6 +50,15 @@
 #endif
 #endif
 
+typedef enum avifAOMScaleConfigMethod
+{
+    // Set using AV1E_SET_SVC_PARAMS
+    AVIF_AOM_SCALE_SVC_PARAMS,
+
+    // Set using AOME_SET_SCALEMODE
+    AVIF_AOM_SCALE_SCALEMODE
+} avifAOMScaleConfigMethod;
+
 struct avifCodecInternal
 {
 #if defined(AVIF_CODEC_AOM_DECODE)
@@ -72,6 +81,7 @@ struct avifCodecInternal
     // Whether cq-level was set with an
     // avifEncoderSetCodecSpecificOption(encoder, "cq-level", value) call.
     avifBool cqLevelSet;
+    avifAOMScaleConfigMethod scaleConfigMethod;
 #endif
 };
 
@@ -278,6 +288,31 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     }
 
     return fmt;
+}
+
+struct aomScalingModeMapList
+{
+    avifScalingMode avifMode;
+    AOM_SCALING_MODE aomMode;
+};
+
+static const struct aomScalingModeMapList scalingModeMap[] = {
+    { { 1, 1 }, AOME_NORMAL },    { { 1, 2 }, AOME_ONETWO },    { { 1, 4 }, AOME_ONEFOUR },  { { 1, 8 }, AOME_ONEEIGHT },
+    { { 3, 4 }, AOME_THREEFOUR }, { { 3, 5 }, AOME_THREEFIVE }, { { 4, 5 }, AOME_FOURFIVE },
+};
+
+static const int scalingModeMapSize = sizeof(scalingModeMap) / sizeof(scalingModeMap[0]);
+
+static avifBool avifFindAOMScalingMode(avifScalingMode * avifMode, AOM_SCALING_MODE * aomMode)
+{
+    for (int i = 0; i < scalingModeMapSize; ++i) {
+        if (scalingModeMap[i].avifMode.numerator == avifMode->numerator && scalingModeMap[i].avifMode.denominator == avifMode->denominator) {
+            *aomMode = scalingModeMap[i].aomMode;
+            return AVIF_TRUE;
+        }
+    }
+
+    return AVIF_FALSE;
 }
 
 #if !defined(HAVE_AOM_CODEC_SET_OPTION)
@@ -518,7 +553,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
-    avifBool layerCount = alpha ? encoder->layerCountAlpha : encoder->layerCount;
+    uint8_t layerCount = alpha ? encoder->layerCountAlpha : encoder->layerCount;
+    avifLayerConfig * layers = alpha ? encoder->layersAlpha : encoder->layers;
     if (layerCount > 1) {
         addImageFlags &= ~AVIF_ADD_IMAGE_FLAG_SINGLE;
     }
@@ -714,8 +750,52 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
 
         if (layerCount > 1) {
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_NUMBER_SPATIAL_LAYERS, layerCount) != AOM_CODEC_OK) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
+#if defined(AVIF_AOM_LAYER_CONFIG_PREFER_SVC_PARAMS)
+            avifBool useSvcParams = AVIF_TRUE;
+            for (uint8_t configIndex = 0; configIndex < layerCount; ++configIndex) {
+                avifLayerConfig * layer = &layers[configIndex];
+                if (layer->horizontalMode.numerator != layer->verticalMode.numerator ||
+                    layer->horizontalMode.denominator != layer->verticalMode.denominator) {
+                    useSvcParams = AVIF_FALSE;
+                    break;
+                }
+            }
+#else
+            avifBool useSvcParams = AVIF_FALSE;
+            for (uint8_t configIndex = 0; configIndex < layerCount; ++configIndex) {
+                avifLayerConfig * layer = &layers[configIndex];
+                AOM_SCALING_MODE mode;
+                if (layer->horizontalMode.numerator == layer->verticalMode.numerator &&
+                    layer->horizontalMode.denominator == layer->verticalMode.denominator &&
+                    !avifFindAOMScalingMode(&layer->horizontalMode, &mode)) {
+                    useSvcParams = AVIF_TRUE;
+                    break;
+                }
+            }
+#endif
+
+            codec->internal->scaleConfigMethod = useSvcParams ? AVIF_AOM_SCALE_SVC_PARAMS : AVIF_AOM_SCALE_SCALEMODE;
+            if (useSvcParams) {
+                aom_svc_params_t svcParams;
+                memset(&svcParams, 0, sizeof(aom_svc_params_t));
+                svcParams.number_temporal_layers = 1;
+                svcParams.number_spatial_layers = layerCount;
+                svcParams.framerate_factor[0] = 1;
+                for (uint8_t configIndex = 0; configIndex < layerCount; ++configIndex) {
+                    avifLayerConfig * layer = &layers[configIndex];
+                    svcParams.min_quantizers[configIndex] = layer->minQuantizer;
+                    svcParams.max_quantizers[configIndex] = layer->maxQuantizer;
+                    svcParams.scaling_factor_num[configIndex] = (int)layer->horizontalMode.numerator;
+                    svcParams.scaling_factor_den[configIndex] = (int)layer->horizontalMode.denominator;
+                }
+
+                if (aom_codec_control(&codec->internal->encoder, AV1E_SET_SVC_PARAMS, &svcParams) != AOM_CODEC_OK) {
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
+            } else {
+                if (aom_codec_control(&codec->internal->encoder, AOME_SET_NUMBER_SPATIAL_LAYERS, layerCount) != AOM_CODEC_OK) {
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
             }
         }
 
@@ -840,19 +920,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             aomImage.stride[0] = image->alphaRowBytes;
         }
 
-        if (encoder->layerCountAlpha > 1) {
-            aom_scaling_mode_t scaling_mode = { (AOM_SCALING_MODE)encoder->layersAlpha[layerIndex].horizontalMode,
-                                                (AOM_SCALING_MODE)encoder->layersAlpha[layerIndex].verticalMode };
-
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_SCALEMODE, &scaling_mode) != AOM_CODEC_OK) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
-
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, layerIndex) != AOM_CODEC_OK) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
-        }
-
         // Ignore UV planes when monochrome
     } else {
         aomImage.range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
@@ -894,18 +961,35 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage.tc);
         aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage.mc);
         aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, aomImage.csp);
+    }
 
-        if (encoder->layerCount > 1) {
-            aom_scaling_mode_t scaling_mode = { (AOM_SCALING_MODE)encoder->layers[layerIndex].horizontalMode,
-                                                (AOM_SCALING_MODE)encoder->layers[layerIndex].verticalMode };
+    if (layerCount > 1) {
+        switch (codec->internal->scaleConfigMethod) {
+            case AVIF_AOM_SCALE_SVC_PARAMS: {
+                aom_svc_layer_id_t layerId = { layerIndex, 0 };
+                if (aom_codec_control(&codec->internal->encoder, AV1E_SET_SVC_LAYER_ID, &layerId) != AOM_CODEC_OK) {
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
+            } break;
 
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_SCALEMODE, &scaling_mode) != AOM_CODEC_OK) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
+            case AVIF_AOM_SCALE_SCALEMODE: {
+                aom_scaling_mode_t scaling_mode;
+                if (!avifFindAOMScalingMode(&layers[layerIndex].horizontalMode, &scaling_mode.h_scaling_mode)) {
+                    return AVIF_RESULT_NOT_IMPLEMENTED;
+                }
 
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, layerIndex) != AOM_CODEC_OK) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
+                if (!avifFindAOMScalingMode(&layers[layerIndex].verticalMode, &scaling_mode.v_scaling_mode)) {
+                    return AVIF_RESULT_NOT_IMPLEMENTED;
+                }
+
+                if (aom_codec_control(&codec->internal->encoder, AOME_SET_SCALEMODE, &scaling_mode) != AOM_CODEC_OK) {
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
+
+                if (aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, layerIndex) != AOM_CODEC_OK) {
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
+            } break;
         }
     }
 

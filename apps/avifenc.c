@@ -118,7 +118,7 @@ static void syntax(void)
     printf("    MinQ and MaxQ are min and max quantizers for this layer, and will overwrite values given by --min and --max.\n");
     printf("    Specially, when using aom with end-usage set to q or cq, min and max quantizers will use values given by --min and --max,\n");
     printf("    and cq-level of this layer will set to average of MinQ and MaxQ.\n");
-    printf("    ScaleH and ScaleV are horizontal and vertical scale ratios [default=1, 1/2, 1/4, 1/8, 3/4, 3/5, 4/5].\n");
+    printf("    ScaleH and ScaleV are horizontal and vertical scale ratios [default=1, or any fraction].\n");
     printf("    If MaxQ is eliminated it uses the value of MinQ.\n");
     printf("    If ScaleH is eliminated it uses default value 1 (no scaling); if ScaleV is eliminated it uses the value of ScaleH.\n");
     printf("\n");
@@ -260,227 +260,228 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat 
     return AVIF_TRUE;
 }
 
+#define CHECK(condition, reason)                                                       \
+    do {                                                                               \
+        if (!(condition)) {                                                            \
+            fprintf(stderr, "ERROR: Failed reading progressive config: %s\n", reason); \
+            return AVIF_FALSE;                                                         \
+        }                                                                              \
+    } while (0)
+
 struct avifEncoderLayerConfig
 {
-    uint8_t layerCount; // Image layers for color sub image; 0 to disable layer image (default).
+    uint8_t layerCount;      // Image layers for color sub image; 0 to disable layer image (default).
     uint8_t layerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
     avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
     avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
 };
 
-struct avifOptionEnumList
-{
-    const char * name;
-    int val;
-};
-
-static const struct avifOptionEnumList scalingModeList[] = { //
-    { "1/2", AVIF_SCALING_ONETWO },    { "1/4", AVIF_SCALING_ONEFOUR },
-    { "1/8", AVIF_SCALING_ONEEIGHT },  { "3/4", AVIF_SCALING_THREEFOUR },
-    { "3/5", AVIF_SCALING_THREEFIVE }, { "4/5", AVIF_SCALING_FOURFIVE },
-    { "1", AVIF_SCALING_NORMAL },      { NULL, 0 }
-};
+static const avifScalingMode avifScalingModeNormal = { 1, 1 };
 
 static avifBool avifParseScalingMode(const char ** pArg, avifScalingMode * mode)
 {
-    const struct avifOptionEnumList * listptr;
-    for (listptr = scalingModeList; listptr->name; ++listptr) {
-        size_t matchLength = strlen(listptr->name);
-        if (!strncmp(*pArg, listptr->name, matchLength)) {
-            *mode = (avifScalingMode)listptr->val;
-            *pArg += matchLength;
+    char * end;
+    uint64_t value = strtoull(*pArg, &end, 10);
+    CHECK(errno != ERANGE, "overflowed while reading scale nominator");
+    CHECK(end != *pArg, "can't parse scale nominator");
+    if (*end != '/') {
+        if (value == 1) {
+            *mode = avifScalingModeNormal;
+            *pArg = end;
             return AVIF_TRUE;
         }
+        return AVIF_FALSE;
     }
-
-    return AVIF_FALSE;
+    mode->numerator = value;
+    *pArg = end + 1;
+    value = strtoull(*pArg, &end, 10);
+    CHECK(errno != ERANGE, "overflowed while reading scale denominator");
+    CHECK(end != *pArg, "can't parse scale denominator");
+    mode->denominator = value;
+    *pArg = end;
+    return AVIF_TRUE;
 }
 
-#define FAIL_IF(condition, reason) \
-    do {                           \
-        if (condition) {           \
-            failReason = reason;   \
-            goto finish;           \
-        }                          \
-    } while (0)
+enum avifProgressiveConfigScannerState
+{
+    AVIF_PROGRESSIVE_SCANNER_STATE_VALUE,
+    AVIF_PROGRESSIVE_SCANNER_STATE_COMMA,
+    AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN,
+    AVIF_PROGRESSIVE_SCANNER_STATE_COLON,
+    AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON
+};
+
+enum avifProgressiveConfigValueType
+{
+    AVIF_PROGRESSIVE_VALUE_TYPE_NONE,
+    AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q,
+    AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q,
+    AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE,
+    AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE,
+};
 
 static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * config, const char * arg)
 {
     uint8_t * currLayerCount = &config->layerCount;
     avifLayerConfig * currLayers = config->layers;
     uint8_t currLayer = 0;
-    const char * failReason = NULL;
 
-    enum scanState
-    {
-        VALUE,
-        COMMA,
-        HYPHEN,
-        COLON,
-        SEMICOLON
-    };
-    enum scanState currState = *arg == ';' ? SEMICOLON : VALUE;
-    enum scanState targetState = SEMICOLON;
+    enum avifProgressiveConfigScannerState currState = *arg == ';' ? AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON
+                                                                   : AVIF_PROGRESSIVE_SCANNER_STATE_VALUE;
+    enum avifProgressiveConfigScannerState targetState = AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON;
 
-    enum
-    {
-        NONE,
-        MIN_Q,
-        MAX_Q,
-        H_SCALE,
-        V_SCALE,
-    } prevReadValue = NONE;
+    enum avifProgressiveConfigValueType prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_NONE;
 
     for (;;) {
         switch (currState) {
-            case VALUE: {
+            case AVIF_PROGRESSIVE_SCANNER_STATE_VALUE: {
                 int64_t value;
                 avifScalingMode mode;
                 char * end;
                 switch (prevReadValue) {
-                    case NONE:
+                    case AVIF_PROGRESSIVE_VALUE_TYPE_NONE:
                         value = strtoll(arg, &end, 10);
-                        FAIL_IF(errno == ERANGE, "overflowed while reading min quantizer");
-                        FAIL_IF(end == arg, "can't parse min quantizer");
-                        FAIL_IF(value > 63, "min quantizer too big");
+                        CHECK(errno != ERANGE, "overflowed while reading min quantizer");
+                        CHECK(end != arg, "can't parse min quantizer");
+                        CHECK(value <= 63, "min quantizer too big");
 
                         arg = end;
                         currLayers[currLayer].minQuantizer = (int)value;
-                        currState = COMMA;
-                        prevReadValue = MIN_Q;
+                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_COMMA;
+                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q;
                         break;
 
-                    case MIN_Q:
+                    case AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q:
                         value = strtoll(arg, &end, 10);
-                        FAIL_IF(errno == ERANGE, "overflowed while reading max quantizer");
-                        FAIL_IF(end == arg, "can't parse max quantizer");
-                        FAIL_IF(value > 63, "max quantizer too big");
+                        CHECK(errno != ERANGE, "overflowed while reading max quantizer");
+                        CHECK(end != arg, "can't parse max quantizer");
+                        CHECK(value <= 63, "max quantizer too big");
 
                         arg = end;
                         currLayers[currLayer].maxQuantizer = (int)value;
-                        currState = HYPHEN;
-                        prevReadValue = MAX_Q;
+                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN;
+                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q;
                         break;
 
-                    case MAX_Q:
-                        FAIL_IF(!avifParseScalingMode(&arg, &mode), "unknown scaling mode");
+                    case AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q:
+                        CHECK(avifParseScalingMode(&arg, &mode), "unknown scaling mode");
 
                         currLayers[currLayer].horizontalMode = mode;
-                        currState = COMMA;
-                        prevReadValue = H_SCALE;
+                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_COMMA;
+                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE;
                         break;
 
-                    case H_SCALE:
-                        FAIL_IF(!avifParseScalingMode(&arg, &mode), "unknown scaling mode");
+                    case AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE:
+                        CHECK(avifParseScalingMode(&arg, &mode), "unknown scaling mode");
 
                         currLayers[currLayer].verticalMode = mode;
-                        currState = COLON;
-                        prevReadValue = V_SCALE;
+                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_COLON;
+                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE;
                         break;
 
-                    case V_SCALE:
-                        FAIL_IF(AVIF_TRUE, "too many values in layer config");
+                    case AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE:
+                        CHECK(AVIF_FALSE, "too many values in layer config");
                 }
                 break;
             }
 
-            case COMMA:
-            case HYPHEN:
-            case COLON:
-            case SEMICOLON:
+            case AVIF_PROGRESSIVE_SCANNER_STATE_COMMA:
+            case AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN:
+            case AVIF_PROGRESSIVE_SCANNER_STATE_COLON:
+            case AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON:
                 switch (*arg) {
                     case ',':
-                        targetState = COMMA;
+                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_COMMA;
                         break;
                     case '-':
-                        targetState = HYPHEN;
+                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN;
                         break;
                     case ':':
-                        targetState = COLON;
+                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_COLON;
                         break;
                     case ';':
                     case '\0':
-                        targetState = SEMICOLON;
+                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON;
                         break;
                     default:
-                        FAIL_IF(AVIF_TRUE, "unexpected separator");
+                        CHECK(AVIF_FALSE, "unexpected separator");
                 }
 
-                FAIL_IF(currState > targetState, "too many config entries");
+                CHECK(currState <= targetState, "too many config entries");
 
                 avifBool earlyEnd = currState < targetState;
                 switch (targetState) {
-                    case VALUE:
-                        FAIL_IF(AVIF_TRUE, "unknown state");
+                    case AVIF_PROGRESSIVE_SCANNER_STATE_VALUE:
+                        CHECK(AVIF_FALSE, "unknown state");
                         break;
 
-                    case COMMA:
-                        FAIL_IF(earlyEnd, "unknown state");
+                    case AVIF_PROGRESSIVE_SCANNER_STATE_COMMA:
+                        CHECK(!earlyEnd, "unknown state");
                         break;
 
-                    case HYPHEN:
+                    case AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN:
                         if (!earlyEnd) {
-                            FAIL_IF(prevReadValue != MAX_Q, "unknown state");
+                            CHECK(prevReadValue == AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q, "unknown state");
                             break;
                         }
 
-                        FAIL_IF(prevReadValue != MIN_Q, "unknown state");
+                        CHECK(prevReadValue == AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q, "unknown state");
                         currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
-                        prevReadValue = MAX_Q;
+                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q;
                         break;
 
-                    case COLON:
+                    case AVIF_PROGRESSIVE_SCANNER_STATE_COLON:
                         if (earlyEnd) {
                             switch (prevReadValue) {
-                                case MIN_Q:
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q:
                                     currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
-                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
-                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
+                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
                                     break;
 
-                                case MAX_Q:
-                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
-                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q:
+                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
+                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
                                     break;
 
-                                case H_SCALE:
-                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE:
+                                    currLayers[currLayer].verticalMode = currLayers[currLayer].horizontalMode;
                                     break;
 
-                                case V_SCALE:
-                                case NONE:
-                                    FAIL_IF(AVIF_TRUE, "unknown state");
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE:
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_NONE:
+                                    CHECK(AVIF_FALSE, "unknown state");
                             }
                         }
 
                         ++currLayer;
-                        FAIL_IF(currLayer >= MAX_AV1_LAYER_COUNT, "too many layers");
-                        prevReadValue = NONE;
+                        CHECK(currLayer < MAX_AV1_LAYER_COUNT, "too many layers");
+                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_NONE;
                         break;
 
-                    case SEMICOLON:
+                    case AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON:
                         if (earlyEnd) {
                             switch (prevReadValue) {
-                                case MIN_Q:
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q:
                                     currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
-                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
-                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
+                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
                                     break;
 
-                                case MAX_Q:
-                                    currLayers[currLayer].horizontalMode = AVIF_SCALING_NORMAL;
-                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q:
+                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
+                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
                                     break;
 
-                                case H_SCALE:
-                                    currLayers[currLayer].verticalMode = AVIF_SCALING_NORMAL;
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE:
+                                    currLayers[currLayer].verticalMode = currLayers[currLayer].horizontalMode;
                                     break;
 
-                                case V_SCALE:
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE:
                                     break;
 
-                                case NONE:
-                                    FAIL_IF(AVIF_TRUE, "unknown state");
+                                case AVIF_PROGRESSIVE_VALUE_TYPE_NONE:
+                                    CHECK(AVIF_FALSE, "unknown state");
                             }
 
                             ++currLayer;
@@ -488,7 +489,7 @@ static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * confi
 
                         *currLayerCount = currLayer;
                         if (*arg == ';') {
-                            FAIL_IF(currLayers != config->layers, "too many sub image configurations");
+                            CHECK(currLayers == config->layers, "too many sub image configurations");
                             currLayers = config->layersAlpha;
                             currLayerCount = &config->layerCountAlpha;
 
@@ -496,7 +497,7 @@ static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * confi
                                 goto finish;
                             }
 
-                            prevReadValue = NONE;
+                            prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_NONE;
                             currLayer = 0;
                         } else {
                             // reached \0
@@ -511,18 +512,13 @@ static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * confi
                 }
 
                 ++arg;
-                currState = VALUE;
+                currState = AVIF_PROGRESSIVE_SCANNER_STATE_VALUE;
                 break;
         }
     }
 
 finish:
-    if (failReason == NULL) {
-        return AVIF_TRUE;
-    }
-
-    fprintf(stderr, "ERROR: Failed reading progressive config: %s", failReason);
-    return AVIF_FALSE;
+    return AVIF_TRUE;
 }
 
 static avifInputFile * avifInputGetNextFile(avifInput * input)

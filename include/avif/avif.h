@@ -975,14 +975,9 @@ AVIF_API avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, ui
 struct avifEncoderData;
 struct avifCodecSpecificOptions;
 
-typedef enum avifScalingMode {
-    AVIF_SCALING_NORMAL = 0,
-    AVIF_SCALING_FOURFIVE = 1,
-    AVIF_SCALING_THREEFIVE = 2,
-    AVIF_SCALING_THREEFOUR = 3,
-    AVIF_SCALING_ONEFOUR = 4,
-    AVIF_SCALING_ONEEIGHT = 5,
-    AVIF_SCALING_ONETWO = 6
+typedef struct avifScalingMode {
+    uint64_t numerator;
+    uint64_t denominator;
 } avifScalingMode;
 
 typedef struct avifLayerConfig {
