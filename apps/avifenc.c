@@ -84,9 +84,9 @@ static void syntax(void)
            AVIF_QUANTIZER_LOSSLESS);
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
-    printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
-    printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
-    printf("                                        the color profile of the first image supplied.\n");
+    printf("    -g,--grid MxN(xL)                 : Encode a single-image grid AVIF with M cols & N rows & L layers. Either supply MxNxL identical W/H/D images,\n");
+    printf("                                        or L identical W/H/D images that each can be evenly split into the MxN grid and follow AVIF grid image restrictions.\n");
+    printf("                                        The grid will adopt the color profile of the first image supplied.\n");
     printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
@@ -628,7 +628,7 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
-static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
+static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, uint32_t layerCount, avifImage ** gridCells)
 {
     if ((gridSplitImage->width % gridCols) != 0) {
         fprintf(stderr, "ERROR: Can't split image width (%u) evenly into %u columns.\n", gridSplitImage->width, gridCols);
@@ -654,7 +654,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
         for (uint32_t gridX = 0; gridX < gridCols; ++gridX) {
             uint32_t gridIndex = gridX + (gridY * gridCols);
             avifImage * cellImage = avifImageCreateEmpty();
-            gridCells[gridIndex] = cellImage;
+            gridCells[gridIndex * layerCount] = cellImage;
 
             avifImageCopy(cellImage, gridSplitImage, 0);
             cellImage->width = cellWidth;
@@ -746,8 +746,9 @@ int main(int argc, char * argv[])
     avifBool cicpExplicitlySet = AVIF_FALSE;
     avifBool premultiplyAlpha = AVIF_FALSE;
     int gridDimsCount = 0;
-    uint32_t gridDims[8]; // only the first two are used
+    uint32_t gridDims[8]; // only the first two or three are used
     uint32_t gridCellCount = 0;
+    uint32_t gridCellLayerCount = 0;
     avifImage ** gridCells = NULL;
     avifImage * gridSplitImage = NULL; // used for cleanup tracking
     memset(gridDims, 0, sizeof(gridDims));
@@ -877,13 +878,20 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
             NEXTARG();
             gridDimsCount = parseU32List(gridDims, arg);
-            if (gridDimsCount != 2) {
+            if (gridDimsCount == 2) {
+                gridDims[2] = 1;
+            } else if (gridDimsCount != 3) {
                 fprintf(stderr, "ERROR: Invalid grid dims: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
             if ((gridDims[0] == 0) || (gridDims[0] > 256) || (gridDims[1] == 0) || (gridDims[1] > 256)) {
                 fprintf(stderr, "ERROR: Invalid grid dims (valid dim range [1-256]): %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if ((gridDims[2] == 0 || gridDims[2] > MAX_AV1_LAYER_COUNT)) {
+                fprintf(stderr, "ERROR: Invalid layer count (valid layer range [1-4]): %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
@@ -1109,7 +1117,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (input.filesCount > 1 && (layerConfig.layerCount > 1 || layerConfig.layerCountAlpha > 1)) {
+    if (gridDimsCount == 0 && input.filesCount > 1 && (layerConfig.layerCount > 1 || layerConfig.layerCountAlpha > 1)) {
         fprintf(stderr, "Progressive animated AVIF currently not supported.\n");
         returnCode = 1;
         goto cleanup;
@@ -1298,17 +1306,18 @@ int main(int argc, char * argv[])
         gridCellCount = gridDims[0] * gridDims[1];
         printf("Preparing to encode a %ux%u grid (%u cells)...\n", gridDims[0], gridDims[1], gridCellCount);
 
-        gridCells = calloc(gridCellCount, sizeof(avifImage *));
+        gridCellLayerCount = gridCellCount * gridDims[2];
+        gridCells = calloc(gridCellLayerCount, sizeof(avifImage *));
         gridCells[0] = image; // take ownership of image
 
-        uint32_t gridCellIndex = 0;
+        uint32_t gridCellLayerIndex = 0;
         avifInputFile * nextFile;
         while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
-            if (!gridCellIndex) {
+            if (!gridCellLayerIndex) {
                 printf("Loading additional cells for grid image (%u cells)...\n", gridCellCount);
             }
-            ++gridCellIndex;
-            if (gridCellIndex >= gridCellCount) {
+            ++gridCellLayerIndex;
+            if (gridCellLayerIndex >= gridCellLayerCount) {
                 // We have enough, warn and continue
                 fprintf(stderr,
                         "WARNING: [--grid] More than %u images were supplied for this %ux%u grid. The rest will be ignored.\n",
@@ -1324,7 +1333,7 @@ int main(int argc, char * argv[])
             cellImage->matrixCoefficients = image->matrixCoefficients;
             cellImage->yuvRange = image->yuvRange;
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
-            gridCells[gridCellIndex] = cellImage;
+            gridCells[gridCellLayerIndex] = cellImage;
 
             avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL, NULL);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
@@ -1360,19 +1369,22 @@ int main(int argc, char * argv[])
             }
         }
 
-        if (gridCellIndex == 0) {
+        if (gridCellLayerIndex == gridDims[2] - 1 && (gridDims[0] != 1 || gridDims[1] != 1)) {
             printf("Single image input for a grid image. Attempting to split into %u cells...\n", gridCellCount);
-            gridSplitImage = image;
-            gridCells[0] = NULL;
 
-            if (!avifImageSplitGrid(gridSplitImage, gridDims[0], gridDims[1], gridCells)) {
-                returnCode = 1;
-                goto cleanup;
+            for (uint32_t layerIndex = 0; layerIndex < gridDims[2]; ++layerIndex) {
+                gridSplitImage = gridCells[layerIndex];
+                gridCells[layerIndex] = NULL;
+                if (!avifImageSplitGrid(gridSplitImage, gridDims[0], gridDims[1], gridDims[2], gridCells + layerIndex)) {
+                    returnCode = 1;
+                    goto cleanup;
+                }
             }
-            gridCellIndex = gridCellCount - 1;
+
+            gridCellLayerIndex = gridCellLayerCount - 1;
         }
 
-        if (gridCellIndex != gridCellCount - 1) {
+        if (gridCellLayerIndex != gridCellLayerCount - 1) {
             fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
             returnCode = 1;
             goto cleanup;
@@ -1423,8 +1435,14 @@ int main(int argc, char * argv[])
     encoder->keyframeInterval = keyframeInterval;
 
     if (gridDimsCount > 0) {
-        avifResult addImageResult =
-            avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+        avifResult addImageResult;
+        if (gridDims[2] > 1) {
+            addImageResult =
+                avifEncoderAddImageProgressiveGrid(encoder, gridDims[0], gridDims[1], gridDims[2], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+        } else {
+            addImageResult =
+                avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
+        }
         if (addImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image grid: %s\n", avifResultToString(addImageResult));
             returnCode = 1;

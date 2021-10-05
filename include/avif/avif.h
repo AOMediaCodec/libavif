@@ -152,7 +152,8 @@ typedef enum avifResult
     AVIF_RESULT_IO_ERROR,
     AVIF_RESULT_WAITING_ON_IO, // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
-    AVIF_RESULT_NOT_IMPLEMENTED   // a requested code path is not (yet) implemented
+    AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
+    AVIF_RESULT_INVALID_LAYERS,
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -1067,6 +1068,16 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             uint32_t gridRows,
                                             const avifImage * const * cellImages,
                                             avifAddImageFlags addImageFlags);
+avifResult avifEncoderAddImageProgressive(avifEncoder * encoder,
+                                          uint32_t layerCount,
+                                          const avifImage * const * layerImages,
+                                          avifAddImageFlags addImageFlags);
+avifResult avifEncoderAddImageProgressiveGrid(avifEncoder * encoder,
+                                              uint32_t gridCols,
+                                              uint32_t gridRows,
+                                              uint32_t layerCount,
+                                              const avifImage * const * layerImages,
+                                              avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs. These

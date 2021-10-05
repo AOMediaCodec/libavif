@@ -522,6 +522,7 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
+                                              uint32_t layerCount,
                                               const avifImage * const * cellImages,
                                               uint64_t durationInTimescales,
                                               avifAddImageFlags addImageFlags)
@@ -543,6 +544,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // Validate images
 
     const uint32_t cellCount = gridCols * gridRows;
+    const uint32_t imageCount = cellCount * layerCount;
     if (cellCount == 0) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
@@ -647,8 +649,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             // when encoding a single image.
 
             encoder->data->alphaPresent = AVIF_FALSE;
-            for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-                const avifImage * cellImage = cellImages[cellIndex];
+            for (uint32_t imageIndex = 0; imageIndex < imageCount; ++imageIndex) {
+                const avifImage * cellImage = cellImages[imageIndex];
                 if (!avifImageIsOpaque(cellImage)) {
                     encoder->data->alphaPresent = AVIF_TRUE;
                     break;
@@ -770,10 +772,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if (item->codec) {
             item->layerCount = item->alpha ? encoder->layerCountAlpha : encoder->layerCount;
             item->layerCount = item->layerCount == 0 ? 1 : item->layerCount;
-            const avifImage * cellImage = cellImages[item->cellIndex];
-            for (int layerIndex = 0; layerIndex < item->layerCount; ++layerIndex) {
+            for (uint32_t layerIndex = 0; layerIndex < item->layerCount; ++layerIndex) {
+                const uint32_t index = (layerIndex > (layerCount - 1)) ? (layerCount - 1) : layerIndex;
+                const avifImage * layerImage = cellImages[item->cellIndex * layerCount + index];
                 avifResult encodeResult =
-                    item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, layerIndex, addImageFlags, item->encodeOutput);
+                    item->codec->encodeImage(item->codec, encoder, layerImage, item->alpha, layerIndex, addImageFlags, item->encodeOutput);
                 if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                     encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
                 }
@@ -792,7 +795,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
+    return avifEncoderAddImageInternal(encoder, 1, 1, 1, &image, durationInTimescales, addImageFlags);
 }
 
 avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
@@ -805,7 +808,36 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
     if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
-    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
+    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, 1, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
+}
+
+
+avifResult avifEncoderAddImageProgressive(avifEncoder * encoder,
+                                          uint32_t layerCount,
+                                          const avifImage * const * layerImages,
+                                          avifAddImageFlags addImageFlags)
+{
+    avifDiagnosticsClearError(&encoder->diag);
+    if ((layerCount == 0) || (layerCount > MAX_AV1_LAYER_COUNT)) {
+        return AVIF_RESULT_INVALID_LAYERS;
+    }
+    return avifEncoderAddImageInternal(encoder, 1, 1, layerCount, layerImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
+}
+
+avifResult avifEncoderAddImageProgressiveGrid(avifEncoder * encoder,
+                                              uint32_t gridCols,
+                                              uint32_t gridRows,
+                                              uint32_t layerCount,
+                                              const avifImage * const * layerImages,
+                                              avifAddImageFlags addImageFlags) {
+    avifDiagnosticsClearError(&encoder->diag);
+    if ((layerCount == 0) || (layerCount > MAX_AV1_LAYER_COUNT)) {
+        return AVIF_RESULT_INVALID_LAYERS;
+    }
+    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, layerCount, layerImages, 1, addImageFlags);
 }
 
 static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)

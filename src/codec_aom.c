@@ -549,7 +549,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
-                                      int layerIndex,
+                                      uint32_t layerIndex,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
