@@ -735,7 +735,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     // do not "align" aomImage.w and aomImage.h. Unfortunately this exposes a bug in libaom
     // (https://crbug.com/aomedia/3113) if chroma is subsampled and image->width or image->height is
     // equal to 1. To work around this libaom bug, we allocate the aomImage.planes[] buffers and
-    // copy the image YUV data if image->width or image->height is equal to 1.
+    // copy the image YUV data if image->width or image->height is equal to 1. This bug has been
+    // fixed in libaom v3.1.3.
     //
     // Note: The exact condition for the bug is
     //   ((image->width == 1) && (chroma is subsampled horizontally)) ||

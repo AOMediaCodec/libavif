@@ -8,7 +8,7 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -b v3.1.2 --depth 1 https://aomedia.googlesource.com/aom
+git clone -b v3.1.3 --depth 1 https://aomedia.googlesource.com/aom
 
 cd aom
 mkdir build.libavif
