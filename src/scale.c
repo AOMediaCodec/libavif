@@ -70,7 +70,7 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     const uint32_t srcHeight = image->height;
     image->height = dstHeight;
 
-    if (srcYUVPlanes[0]) {
+    if (srcYUVPlanes[0] || srcAlphaPlane) {
         // A simple conservative check to avoid integer overflows in libyuv's ScalePlane() and
         // ScalePlane_12() functions.
         if (srcWidth > 16384) {
@@ -81,7 +81,9 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
             avifDiagnosticsPrintf(diag, "avifImageScale requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
             return AVIF_FALSE;
         }
+    }
 
+    if (srcYUVPlanes[0]) {
         avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 
         avifPixelFormatInfo formatInfo;
@@ -121,17 +123,6 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     }
 
     if (srcAlphaPlane) {
-        // A simple conservative check to avoid integer overflows in libyuv's ScalePlane() and
-        // ScalePlane_12() functions.
-        if (srcWidth > 16384) {
-            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
-            return AVIF_FALSE;
-        }
-        if (srcHeight > 16384) {
-            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
-            return AVIF_FALSE;
-        }
-
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
 
         if (image->depth > 8) {
