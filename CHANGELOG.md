@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2021-10-20
+
+### Added
+* Support for progressive AVIFs and operating point selection
+* Add automatic tile scaling to the item's ispe or track's dims
+* Add diagnostic messages for AV1 decode failures
+* avifdec: Add PNG compression level arg
+* Make image size limit configurable, expose to avifdec
+* Add the AVIF_STRICT_ALPHA_ISPE_REQUIRED flag
+
 ### Changed
 * Mandate ispe and disallow zero width or height (#640).
 * Re-map libavif speed 7-10 to libaom speed 7-9 (#682)
@@ -16,6 +26,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 *   - speed 8-9: re-test and re-adjust speed according to your app needs
 * Update aom.cmd: v3.2.0
 * Update dav1d.cmd: 0.9.2
+* Pass TestCase's minQuantizer, maxQuantizer, speed to encoder.
+* Regenerate tests.json
+* Disable JSON-based tests for now, the metrics are inconsistent/unreliable
+* Set diagnostic message for aom_codec_set_option()
+* Re-map libavif-libaom speed settings (#682)
+* Bump of version in CMakeLists.txt was forgotten
+* avifdec: Better message for unsupported file extension
+* Do not copy input image when encoding with libaom unless width or height is 1
+* Fix the comment for AVIF_STRICT_PIXI_REQUIRED
+* Update libavif.pc.cmake (#692)
+* In 32-bit builds set dav1d's frame_size_limit setting to 8192*8192
+* Allocate alpha alongside YUV (if necessary) during y4m decode to avoid incorrect alphaRowBytes math
+* Change avif_decode_fuzzer to be more like Chrome
+* Update codec_dav1d.c for the new threading model
+* Generalized ipco property deduplication
+* Rename avifParseMoovBox to avifParseMovieBox for consistency
+* Simplify idat storage for avifMeta structure (#756)
+* Fix oss-fuzz coverage build failure of dav1d
+* Redesign AVIF_DECODER_SOURCE_AUTO to honor the FileTypeBox's major brand
+* Use "C420" as default Y4M color space parameter
 
 ## [0.9.2] - 2021-06-23
 
@@ -672,7 +702,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/AOMediaCodec/libavif/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/AOMediaCodec/libavif/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/AOMediaCodec/libavif/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/AOMediaCodec/libavif/compare/v0.8.4...v0.9.0
