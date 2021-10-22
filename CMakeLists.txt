@@ -129,6 +129,13 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         -Wno-sign-conversion
         -Wno-error=c11-extensions
     )
+    # Some headers such as glib-2.0 use identifier names that start with '_' followed by a capital letter.
+    # The C standard reserves names beginning with an underscore and various other combinations. 
+    # ISO/IEC 9899:1999 (aka C99 standard) 7.1.3 Reserved identifiers
+    check_c_compiler_flag(-Wreserved-identifier HAVE_RESERVED_IDENTIFIER_WARNING)
+    if(HAVE_RESERVED_IDENTIFIER_WARNING)
+        add_definitions(-Wno-reserved-identifier)
+    endif()
     # The detection of cross compilation by -Wpoison-system-directories has false positives on macOS because
     # --sysroot is implicitly added. Turn the warning off.
     if(NOT DEFINED HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
