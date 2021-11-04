@@ -226,12 +226,16 @@ endif()
 find_package(libyuv QUIET) # not required
 if(libyuv_FOUND)
     # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
+    # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
     if(NOT LIBYUV_VERSION)
         message(STATUS "libavif: libyuv found, but version unknown; libyuv-based fast paths disabled.")
     elseif(LIBYUV_VERSION LESS 1755)
         message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found, but is too old; libyuv-based fast paths disabled.")
     else()
         message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found; libyuv-based fast paths enabled.")
+        if(LIBYUV_VERSION LESS 1774)
+            message(STATUS "libavif: some libyuv optimizations require at least version 1774 to work.")
+        endif()
         set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
         set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})

@@ -107,7 +107,11 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
                 const uint32_t srcStride = srcYUVRowBytes[i] / 2;
                 uint16_t * const dstPlane = (uint16_t *)image->yuvPlanes[i];
                 const uint32_t dstStride = image->yuvRowBytes[i] / 2;
+#if LIBYUV_VERSION >= 1774
                 ScalePlane_12(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
+#else
+                ScalePlane_16(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
+#endif
             } else {
                 uint8_t * const srcPlane = srcYUVPlanes[i];
                 const uint32_t srcStride = srcYUVRowBytes[i];
@@ -130,7 +134,11 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
             const uint32_t srcStride = srcAlphaRowBytes / 2;
             uint16_t * const dstPlane = (uint16_t *)image->alphaPlane;
             const uint32_t dstStride = image->alphaRowBytes / 2;
+#if LIBYUV_VERSION >= 1774
             ScalePlane_12(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
+#else
+            ScalePlane_16(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
+#endif
         } else {
             uint8_t * const srcPlane = srcAlphaPlane;
             const uint32_t srcStride = srcAlphaRowBytes;
