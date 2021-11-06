@@ -10,8 +10,8 @@ addons:
       - python3-pip
 
 before_script:
-  - curl -L https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar xvz
-  - cd nasm-2.15.05
+  - curl -L https://www.nasm.us/pub/nasm/snapshots/20201104/nasm-2.16rc0-20201104.tar.gz | tar xvz
+  - cd nasm-2.16rc0
   - ./configure && make -j2 && sudo make install
   - nasm --version
   - pip3 --disable-pip-version-check install setuptools
