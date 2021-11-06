@@ -27,7 +27,7 @@ cargo install cargo-c
 
 # NASM
 cd
-curl -L https://www.nasm.us/pub/nasm/snapshots/latest/nasm-2.16rc0-20201104.tar.gz | tar xvz
+curl -L https://www.nasm.us/pub/nasm/snapshots/20201104/nasm-2.16rc0-20201104.tar.gz | tar xvz
 cd nasm-2.16rc0
 ./configure --prefix=/usr && make -j2 && make install
 nasm --version
