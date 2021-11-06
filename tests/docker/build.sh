@@ -52,7 +52,7 @@ ninja install
 
 # libgav1
 cd
-git clone -b v0.16.3 --depth 1 https://chromium.googlesource.com/codecs/libgav1
+git clone -b v0.17.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 cd libgav1
 git clone -b lts_2021_03_24 --depth 1 https://github.com/abseil/abseil-cpp.git third_party/abseil-cpp
 mkdir build
