@@ -3112,12 +3112,11 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
     for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
         avifTile * tile = &decoder->data->tiles.tile[i];
         tile->codec = avifCodecCreateInternal(decoder->codecChoice);
-        if (!tile->codec) {
-            return AVIF_RESULT_NO_CODEC_AVAILABLE;
+        if (tile->codec) {
+            tile->codec->diag = &decoder->diag;
+            tile->codec->operatingPoint = tile->operatingPoint;
+            tile->codec->allLayers = tile->input->allLayers;
         }
-        tile->codec->diag = &decoder->diag;
-        tile->codec->operatingPoint = tile->operatingPoint;
-        tile->codec->allLayers = tile->input->allLayers;
     }
     return AVIF_RESULT_OK;
 }
@@ -3614,6 +3613,12 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // with AVIF_RESULT_WAITING_ON_IO harmlessly / idempotently.
     for (unsigned int tileIndex = 0; tileIndex < decoder->data->tiles.count; ++tileIndex) {
         avifTile * tile = &decoder->data->tiles.tile[tileIndex];
+
+        // Ensure there's an AV1 codec available before doing anything else
+        if (!tile->codec) {
+            return AVIF_RESULT_NO_CODEC_AVAILABLE;
+        }
+
         if (nextImageIndex >= tile->input->samples.count) {
             return AVIF_RESULT_NO_IMAGES_REMAINING;
         }
