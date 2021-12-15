@@ -523,15 +523,6 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         goto cleanup;
     }
 
-    uint8_t * planes[3];
-    uint32_t planeBytes[3];
-    planes[0] = avif->yuvPlanes[0];
-    planes[1] = avif->yuvPlanes[1];
-    planes[2] = avif->yuvPlanes[2];
-    planeBytes[0] = avif->yuvRowBytes[0] * avif->height;
-    planeBytes[1] = avif->yuvRowBytes[1] * (avif->height >> info.chromaShiftY);
-    planeBytes[2] = avif->yuvRowBytes[2] * (avif->height >> info.chromaShiftY);
-
     for (int plane = 0; plane < 3; ++plane) {
         uint32_t planeWidth = plane > 0 ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
         uint32_t planeHeight = plane > 0 ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
