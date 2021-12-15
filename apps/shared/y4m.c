@@ -372,7 +372,8 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         for (uint32_t y = 0; y < planeHeight; ++y) {
             uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
             if (bytesRead != rowBytes) {
-                fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %d, got %d): %s\n", rowBytes, bytesRead, frame.displayFilename);
+                fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                        rowBytes, bytesRead, frame.displayFilename);
                 goto cleanup;
             }
             row += avif->yuvRowBytes[plane];
@@ -384,7 +385,8 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         for (uint32_t y = 0; y < avif->height; ++y) {
             uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
             if (bytesRead != rowBytes) {
-                fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %d, got %d): %s\n", rowBytes, bytesRead, frame.displayFilename);
+                fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                        rowBytes, bytesRead, frame.displayFilename);
                 goto cleanup;
             }
             row += avif->alphaRowBytes;
