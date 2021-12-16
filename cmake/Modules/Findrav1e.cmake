@@ -36,11 +36,10 @@ find_library(RAV1E_LIBRARY
              PATHS ${_RAV1E_LIBDIR})
 endif()
 
-if (RAV1E_LIBRARY)
-    set(RAV1E_LIBRARIES
-        ${RAV1E_LIBRARIES}
-        ${RAV1E_LIBRARY})
-endif (RAV1E_LIBRARY)
+set(RAV1E_LIBRARIES
+    ${RAV1E_LIBRARIES}
+    ${RAV1E_LIBRARY}
+    ${_RAV1E_LDFLAGS})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(rav1e
