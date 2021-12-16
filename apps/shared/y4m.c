@@ -364,29 +364,34 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     avifGetPixelFormatInfo(avif->yuvFormat, &info);
 
     for (int plane = 0; plane < 3; ++plane) {
-        uint32_t planeWidth = plane > 0 ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
-        uint32_t planeHeight = plane > 0 ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
-        // The stride may not match the width so read row by row.
-        uint32_t rowBytes = planeWidth << (avif->depth > 8 ? 1 : 0);
-        uint8_t* row = avif->yuvPlanes[plane];
+        uint32_t planeWidth = (plane > 0) ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
+        uint32_t planeHeight = (plane > 0) ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
+        uint32_t rowBytes = planeWidth << (avif->depth > 8);
+        uint8_t * row = avif->yuvPlanes[plane];
         for (uint32_t y = 0; y < planeHeight; ++y) {
             uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
             if (bytesRead != rowBytes) {
-                fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
-                        rowBytes, bytesRead, frame.displayFilename);
+                fprintf(stderr,
+                        "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                        rowBytes,
+                        bytesRead,
+                        frame.displayFilename);
                 goto cleanup;
             }
             row += avif->yuvRowBytes[plane];
         }
     }
     if (frame.hasAlpha) {
-        uint32_t rowBytes = avif->width << (avif->depth > 8 ? 1 : 0);
-        uint8_t* row = avif->alphaPlane;
+        uint32_t rowBytes = avif->width << (avif->depth > 8);
+        uint8_t * row = avif->alphaPlane;
         for (uint32_t y = 0; y < avif->height; ++y) {
             uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
             if (bytesRead != rowBytes) {
-                fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
-                        rowBytes, bytesRead, frame.displayFilename);
+                fprintf(stderr,
+                        "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                        rowBytes,
+                        bytesRead,
+                        frame.displayFilename);
                 goto cleanup;
             }
             row += avif->alphaRowBytes;
@@ -524,11 +529,10 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
     }
 
     for (int plane = 0; plane < 3; ++plane) {
-        uint32_t planeWidth = plane > 0 ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
-        uint32_t planeHeight = plane > 0 ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
-        // The stride may not match the width so write row by row.
-        uint32_t rowBytes = planeWidth << (avif->depth > 8 ? 1 : 0);
-        const uint8_t* row = avif->yuvPlanes[plane];
+        uint32_t planeWidth = (plane > 0) ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
+        uint32_t planeHeight = (plane > 0) ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
+        uint32_t rowBytes = planeWidth << (avif->depth > 8);
+        const uint8_t * row = avif->yuvPlanes[plane];
         for (uint32_t y = 0; y < planeHeight; ++y) {
             if (fwrite(row, 1, rowBytes, f) != rowBytes) {
                 fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", rowBytes, outputFilename);
@@ -539,8 +543,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         }
     }
     if (writeAlpha) {
-        uint32_t rowBytes = avif->width << (avif->depth > 8 ? 1 : 0);
-        const uint8_t* row = avif->alphaPlane;
+        uint32_t rowBytes = avif->width << (avif->depth > 8);
+        const uint8_t * row = avif->alphaPlane;
         for (uint32_t y = 0; y < avif->height; ++y) {
             if (fwrite(row, 1, rowBytes, f) != rowBytes) {
                 fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", rowBytes, outputFilename);
