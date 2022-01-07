@@ -197,15 +197,23 @@ endif()
 set(AVIF_SRCS
     src/alpha.c
     src/avif.c
+    src/box.c
     src/colr.c
+    src/decodeinput.c
+    src/decoderdata.c
+    src/decoderitem.c
     src/diag.c
     src/io.c
+    src/layout.c
     src/mem.c
+    src/meta.c
     src/obu.c
+    src/parse.c
     src/rawdata.c
     src/read.c
     src/reformat.c
     src/reformat_libyuv.c
+    src/sample.c
     src/scale.c
     src/stream.c
     src/utils.c
