@@ -73,7 +73,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
+#if SVT_VERSION_PATCHLEVEL < 8
         svt_config->is_16bit_pipeline = image->depth > 8;
+#endif
 
         // Follow comment in svt header: set if input is HDR10 BT2020 using SMPTE ST2084.
         svt_config->high_dynamic_range_input = (image->depth == 10 && image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020 &&
@@ -85,8 +87,12 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->logical_processors = encoder->maxThreads;
         svt_config->enable_adaptive_quantization = AVIF_FALSE;
         // disable 2-pass
+#if SVT_VERSION_PATCHLEVEL >= 8
+        svt_config->rc_stats_buffer = (SvtAv1FixedBuf) { NULL, 0 };
+#else
         svt_config->rc_firstpass_stats_out = AVIF_FALSE;
         svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf) { NULL, 0 };
+#endif
 
         if (alpha) {
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
