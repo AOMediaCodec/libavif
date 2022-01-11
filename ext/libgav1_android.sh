@@ -11,7 +11,7 @@
 
 if [ $# -ne 1 ]; then
   echo "Usage: ${0} <path_to_android_ndk>"
-  exit
+  exit 1
 fi
 # When updating the libgav1 version, make the same change to libgav1.cmd.
 git clone -b v0.17.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
