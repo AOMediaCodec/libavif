@@ -18,22 +18,29 @@ The following steps will generate the AAR package that contains libavif and the 
 > Note: The instructions in this section will use libgav1 as the AV1 decoder. Any other decoder can be used but the `avifandroidjni/src/main/jni/CMakeLists.txt` file has to be updated accordingly.
 
 Step 1 - Checkout libavif
+
 ```
 $ git clone https://github.com/AOMediaCodec/libavif.git
 $ cd libavif
 ```
+
 Step 2 - Set the SDK and NDK paths in environment variables.
+
 ```
 $ export ANDROID_SDK_ROOT="/path/to/android/sdk"
 $ export ANDROID_NDK_HOME="/path/to/android/ndk"
 ```
+
 Step 3 - Checkout and build libgav1
+
 ```
 $ cd ext
 $ ./libgav1_android.sh "${ANDROID_NDK_HOME}"
 $ cd ..
 ```
+
 Step 4 - Build the JNI Wrapper and generate the AAR package
+
 ```
 $ cd android_jni
 $ ./gradlew build assembleRelease
