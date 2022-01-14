@@ -39,11 +39,26 @@ option(AVIF_CODEC_SVT "Use the SVT-AV1 codec for encoding" OFF)
 option(AVIF_CODEC_AOM_DECODE "if AVIF_CODEC_AOM is on, use/offer libaom's decoder" ON)
 option(AVIF_CODEC_AOM_ENCODE "if AVIF_CODEC_AOM is on, use/offer libaom's encoder" ON)
 
-option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom (see Local Builds in README)" OFF)
-option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d (see Local Builds in README)" OFF)
-option(AVIF_LOCAL_LIBGAV1 "Build the libgav1 codec by providing your own copy of the repo in ext/libgav1 (see Local Builds in README)" OFF)
-option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo in ext/rav1e (see Local Builds in README)" OFF)
-option(AVIF_LOCAL_SVT "Build the SVT-AV1 codec by providing your own copy of the repo in ext/SVT-AV1 (see Local Builds in README)" OFF)
+option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo (see Local Builds in README)" OFF)
+option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo (see Local Builds in README)" OFF)
+option(AVIF_LOCAL_LIBGAV1 "Build the libgav1 codec by providing your own copy of the repo (see Local Builds in README)" OFF)
+option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo (see Local Builds in README)" OFF)
+option(AVIF_LOCAL_SVT "Build the SVT-AV1 codec by providing your own copy of the repo (see Local Builds in README)" OFF)
+
+set(AVIF_LOCAL_AOM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom" CACHE PATH "Source directory of your own copy of AOM codec")
+set(AVIF_LOCAL_AOM_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif" CACHE PATH "Library directory of your own copy of AOM codec")
+set(AVIF_LOCAL_DAV1D_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/usr/include" CACHE PATH "Source directory of your own copy of dav1d codec")
+set(AVIF_LOCAL_DAV1D_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/usr/lib" CACHE PATH "Library directory of your own copy of dav1d codec")
+set(AVIF_LOCAL_LIBGAV1_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/src" CACHE PATH "Source directory of your own copy of libgav1 codec")
+set(AVIF_LOCAL_LIBGAV1_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/build" CACHE PATH "Library directory of your own copy of libgav1 codec")
+set(AVIF_LOCAL_RAV1E_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/include/rav1e" CACHE PATH "Source directory of your own copy of rav1e codec")
+set(AVIF_LOCAL_RAV1E_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib" CACHE PATH "Library directory of your own copy of rav1e codec")
+set(AVIF_LOCAL_SVT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/include" CACHE PATH "Source directory of your own copy of SVT-AV1 codec")
+set(AVIF_LOCAL_SVT_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/Bin/Release" CACHE PATH "Library directory of your own copy of SVT-AV1 codec")
+
+option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
+set(AVIF_LOCAL_LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include" CACHE PATH "Source directory of your own copy of libyuv")
+set(AVIF_LOCAL_LIBYUV_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build" CACHE PATH "Library directory of your own copy of libyuv")
 
 if(AVIF_LOCAL_LIBGAV1)
     enable_language(CXX)
@@ -91,20 +106,6 @@ if(AVIF_LOCAL_JPEG)
     else()
         set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg" PARENT_SCOPE)
         set(JPEG_LIBRARY jpeg PARENT_SCOPE)
-    endif()
-endif()
-option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
-if(AVIF_LOCAL_LIBYUV)
-    set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${CMAKE_STATIC_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    if(NOT EXISTS "${LIB_FILENAME}")
-        message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBYUV): ${LIB_FILENAME} is missing, bailing out")
-    endif()
-    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-        set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include")
-        set(LIBYUV_LIBRARY ${LIB_FILENAME})
-    else()
-        set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include" PARENT_SCOPE)
-        set(LIBYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
 endif()
 # ---------------------------------------------------------------------------------------
@@ -232,6 +233,12 @@ endif()
 
 find_package(libyuv QUIET) # not required
 if(libyuv_FOUND)
+    if(AVIF_LOCAL_LIBYUV)
+        if(NOT "${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+            set(LIBYUV_INCLUDE_DIR ${LIBYUV_INCLUDE_DIR} PARENT_SCOPE)
+            set(LIBYUV_LIBRARY ${LIBYUV_LIBRARY} PARENT_SCOPE)
+        endif()
+    endif()
     # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
     if(NOT LIBYUV_VERSION)
         message(STATUS "libavif: libyuv found, but version unknown; libyuv-based fast paths disabled.")
@@ -252,96 +259,60 @@ set(AVIF_CODEC_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
 if(AVIF_CODEC_DAV1D)
-    message(STATUS "libavif: Codec enabled: dav1d (decode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_DAV1D=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_dav1d.c
     )
 
-    if(AVIF_LOCAL_DAV1D)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include/dav1d"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
-        )
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if dav1d is independently being built by the outer CMake project
-        if(NOT TARGET dav1d)
-            find_package(dav1d REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${DAV1D_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
+    # Check to see if dav1d is independently being built by the outer CMake project
+    if(NOT TARGET dav1d)
+        find_package(dav1d REQUIRED)
+        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${DAV1D_INCLUDE_DIR})
     endif()
+    set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
 
     if(UNIX AND NOT APPLE)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for dlsym
     endif()
+
+    message(STATUS "libavif: Codec enabled: dav1d (decode)")
 endif()
 
 if(AVIF_CODEC_LIBGAV1)
-    message(STATUS "libavif: Codec enabled: libgav1 (decode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_LIBGAV1=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_libgav1.c
     )
 
     if(AVIF_LOCAL_LIBGAV1)
-        set (AVIF_LIBGAV1_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/build")
         # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
         if (DEFINED ANDROID_ABI)
-            set(AVIF_LIBGAV1_BUILD_DIR "${AVIF_LIBGAV1_BUILD_DIR}/${ANDROID_ABI}")
+            set(AVIF_LOCAL_LIBGAV1_LIBRARY_DIR "${AVIF_LIBGAV1_BUILD_DIR}/${ANDROID_ABI}")
         endif()
-        set(LIB_FILENAME "${AVIF_LIBGAV1_BUILD_DIR}/libgav1${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/src"
-        )
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if libgav1 is independently being built by the outer CMake project
-        if(NOT TARGET libgav1)
-            find_package(libgav1 REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${LIBGAV1_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
     endif()
+
+    # Check to see if libgav1 is independently being built by the outer CMake project
+    if(NOT TARGET libgav1)
+        find_package(libgav1 REQUIRED)
+        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${LIBGAV1_INCLUDE_DIR})
+    endif()
+    set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
+
+    message(STATUS "libavif: Codec enabled: libgav1 (decode)")
 endif()
 
 if(AVIF_CODEC_RAV1E)
-    message(STATUS "libavif: Codec enabled: rav1e (encode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_RAV1E=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_rav1e.c
     )
 
-    if(AVIF_LOCAL_RAV1E)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${CMAKE_STATIC_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/build.libavif/usr/lib), bailing out")
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/include/rav1e"
-        )
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if rav1e is independently being built by the outer CMake project
-        if(NOT TARGET rav1e)
-            find_package(rav1e REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${RAV1E_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${RAV1E_LIBRARIES})
+    # Check to see if rav1e is independently being built by the outer CMake project
+    if(NOT TARGET rav1e)
+        find_package(rav1e REQUIRED)
+        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${RAV1E_INCLUDE_DIR})
     endif()
+    set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${RAV1E_LIBRARIES})
 
     # Unfortunately, rav1e requires a few more libraries
     if(WIN32)
@@ -349,45 +320,36 @@ if(AVIF_CODEC_RAV1E)
     elseif(UNIX AND NOT APPLE)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
     endif()
+
+    message(STATUS "libavif: Codec enabled: rav1e (encode)")
 endif()
 
 if(AVIF_CODEC_SVT)
-    message(STATUS "libavif: Codec enabled: svt (encode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_SVT=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_svt.c
     )
 
-    if(AVIF_LOCAL_SVT)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${CMAKE_STATIC_LIBRARY_PREFIX}SvtAv1Enc${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: compiled svt library is missing (in ext/SVT-AV1/Bin/Release), bailing out")
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/include"
-        )
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if svt is independently being built by the outer CMake project
-        if(NOT TARGET svt)
-            find_package(svt REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${SVT_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
+    # Check to see if svt is independently being built by the outer CMake project
+    if(NOT TARGET svt)
+        find_package(svt REQUIRED)
+        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${SVT_INCLUDE_DIR})
     endif()
+    set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
+
+    message(STATUS "libavif: Codec enabled: svt (encode)")
 endif()
 
 if(AVIF_CODEC_AOM)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM=1)
     if(AVIF_CODEC_AOM_ENCODE AND AVIF_CODEC_AOM_DECODE)
-        message(STATUS "libavif: Codec enabled: aom (encode/decode)")
+        set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "encode/decode")
         set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_AOM_DECODE=1)
     elseif(AVIF_CODEC_AOM_ENCODE)
-        message(STATUS "libavif: Codec enabled: aom (encode only)")
+        set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "encode only")
         set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1)
     elseif(AVIF_CODEC_AOM_DECODE)
-        message(STATUS "libavif: Codec enabled: aom (decode only)")
+        set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "decode only")
         set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_DECODE=1)
     else()
         message(FATAL_ERROR "libavif: AVIF_CODEC_AOM is on, but both AVIF_CODEC_AOM_ENCODE and AVIF_CODEC_AOM_DECODE are off. Disable AVIF_CODEC_AOM to disable both parts of the codec.")
@@ -395,24 +357,15 @@ if(AVIF_CODEC_AOM)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_aom.c
     )
-    if(AVIF_LOCAL_AOM)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${CMAKE_STATIC_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
-        endif()
 
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
-        )
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if aom is independently being built by the outer CMake project
-        if(NOT TARGET aom)
-            find_package(aom REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${AOM_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
+    # Check to see if aom is independently being built by the outer CMake project
+    if(NOT TARGET aom)
+        find_package(aom REQUIRED)
+        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${AOM_INCLUDE_DIR})
     endif()
+    set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
+
+    message(STATUS "libavif: Codec enabled: aom (${AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG})")
 endif()
 
 if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)

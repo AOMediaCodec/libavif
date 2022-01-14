@@ -17,19 +17,30 @@
 #=============================================================================
 #
 
-find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_LIBGAV1 libgav1)
-endif (PKG_CONFIG_FOUND)
+if (AVIF_LOCAL_LIBGAV1)
+    find_path(LIBGAV1_INCLUDE_DIR
+              NAMES gav1/decoder.h
+              PATHS ${AVIF_LOCAL_LIBGAV1_INCLUDE_DIR}
+              NO_DEFAULT_PATH)
 
-find_path(LIBGAV1_INCLUDE_DIR
-          NAMES gav1/decoder.h
-          PATHS ${_LIBGAV1_INCLUDEDIR}
-)
+    find_library(LIBGAV1_LIBRARY
+                 NAMES gav1
+                 PATHS ${AVIF_LOCAL_LIBGAV1_LIBRARY_DIR}
+                 NO_DEFAULT_PATH)
+else ()
+    find_package(PkgConfig QUIET)
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(_LIBGAV1 libgav1)
+    endif (PKG_CONFIG_FOUND)
 
-find_library(LIBGAV1_LIBRARY
-             NAMES gav1
-             PATHS ${_LIBGAV1_LIBDIR})
+    find_path(LIBGAV1_INCLUDE_DIR
+              NAMES gav1/decoder.h
+              PATHS ${_LIBGAV1_INCLUDEDIR})
+
+    find_library(LIBGAV1_LIBRARY
+                 NAMES gav1
+                 PATHS ${_LIBGAV1_LIBDIR})
+endif ()
 
 if (LIBGAV1_LIBRARY)
     set(LIBGAV1_LIBRARIES
