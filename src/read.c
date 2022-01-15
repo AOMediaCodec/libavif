@@ -3342,20 +3342,9 @@ static avifCodec * avifCodecCreateInternal(avifCodecChoice choice)
     return avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE);
 }
 
-static avifResult avifDecoderFlush(avifDecoder * decoder)
+static void avifDecoderFlush(avifDecoder * decoder)
 {
     avifDecoderDataResetCodec(decoder->data);
-
-    for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
-        avifTile * tile = &decoder->data->tiles.tile[i];
-        tile->codec = avifCodecCreateInternal(decoder->codecChoice);
-        if (tile->codec) {
-            tile->codec->diag = &decoder->diag;
-            tile->codec->operatingPoint = tile->operatingPoint;
-            tile->codec->allLayers = tile->input->allLayers;
-        }
-    }
-    return AVIF_RESULT_OK;
 }
 
 // If alpha is AVIF_FALSE, searches for the primary color item (parentItemID is ignored in this case).
@@ -3811,7 +3800,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
-    return avifDecoderFlush(decoder);
+    avifDecoderFlush(decoder);
+    return AVIF_RESULT_OK;
 }
 
 static avifResult avifDecoderPrepareTiles(avifDecoder * decoder, uint32_t nextImageIndex, const avifTileInfo * info)
@@ -3821,7 +3811,13 @@ static avifResult avifDecoderPrepareTiles(avifDecoder * decoder, uint32_t nextIm
 
         // Ensure there's an AV1 codec available before doing anything else
         if (!tile->codec) {
-            return AVIF_RESULT_NO_CODEC_AVAILABLE;
+            tile->codec = avifCodecCreateInternal(decoder->codecChoice);
+            if (!tile->codec) {
+                return AVIF_RESULT_NO_CODEC_AVAILABLE;
+            }
+            tile->codec->diag = &decoder->diag;
+            tile->codec->operatingPoint = tile->operatingPoint;
+            tile->codec->allLayers = tile->input->allLayers;
         }
 
         if (nextImageIndex >= tile->input->samples.count) {
