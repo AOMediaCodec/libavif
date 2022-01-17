@@ -14,7 +14,8 @@ avifBool compareYUVA(ImageComparison * ic, const avifImage * image1, const avifI
         return AVIF_FALSE;
     }
     if ((image1->width != image2->width) || (image1->height != image2->height) || (image1->depth != image2->depth) ||
-        (image1->yuvFormat != image2->yuvFormat) || (image1->yuvRange != image2->yuvRange)) {
+        (image1->yuvFormat != image2->yuvFormat) || (image1->yuvRange != image2->yuvRange) ||
+        (image1->width == 0) || (image1->height == 0)) {
         return AVIF_FALSE;
     }
 
