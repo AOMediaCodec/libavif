@@ -562,6 +562,7 @@ typedef struct avifRGBImage
     avifBool ignoreAlpha;        // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                                  // RGB, treating the alpha bits as if they were all 1.
     avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false
+    avifBool isFloat;            // indicates if RGBA values are in half float (f16) format. Valid only when depth == 16. Default: false
 
     uint8_t * pixels;
     uint32_t rowBytes;

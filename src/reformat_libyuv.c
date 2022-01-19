@@ -22,6 +22,11 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
     (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
+avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb)
+{
+    (void)rgb;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
 unsigned int avifLibYUVVersion(void)
 {
     return 0;
@@ -497,6 +502,19 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
     }
 
     return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+
+avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb)
+{
+    const float scale = 1.0f / ((1 << rgb->depth) - 1);
+    const int result = HalfFloatPlane((const uint16_t *)rgb->pixels,
+                                      rgb->rowBytes,
+                                      (uint16_t *)rgb->pixels,
+                                      rgb->rowBytes,
+                                      scale,
+                                      rgb->width * avifRGBFormatChannelCount(rgb->format),
+                                      rgb->height);
+    return (result == 0) ? AVIF_RESULT_OK : AVIF_RESULT_INVALID_ARGUMENT;
 }
 
 unsigned int avifLibYUVVersion(void)

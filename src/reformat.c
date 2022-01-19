@@ -22,6 +22,9 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     if ((rgb->depth != 8) && (rgb->depth != 10) && (rgb->depth != 12) && (rgb->depth != 16)) {
         return AVIF_FALSE;
     }
+    if (rgb->isFloat && rgb->depth != 16) {
+        return AVIF_FALSE;
+    }
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
     //
@@ -186,6 +189,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     avifReformatState state;
     if (!avifPrepareReformatState(image, rgb, &state)) {
         return AVIF_RESULT_REFORMAT_FAILED;
+    }
+
+    if (rgb->isFloat) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     avifAlphaMultiplyMode alphaMode = AVIF_ALPHA_MULTIPLY_MODE_NO_OP;
@@ -1073,6 +1080,34 @@ static avifResult avifImageYUV8ToRGB8Mono(const avifImage * image, avifRGBImage 
     return AVIF_RESULT_OK;
 }
 
+static avifResult avifRGBImageToF16(avifRGBImage * rgb)
+{
+    avifResult libyuvResult = avifRGBImageToF16LibYUV(rgb);
+    if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
+        return libyuvResult;
+    }
+    const uint32_t channelCount = avifRGBFormatChannelCount(rgb->format);
+    const float scale = 1.0f / ((1 << rgb->depth) - 1);
+    // This constant comes from libyuv. For details, see here:
+    // https://chromium.googlesource.com/libyuv/libyuv/+/2f87e9a7/source/row_common.cc#3537
+    const float multiplier = 1.9259299444e-34f * scale;
+    uint16_t * pixelRowBase = (uint16_t *)rgb->pixels;
+    const uint32_t stride = rgb->rowBytes >> 1;
+    for (uint32_t j = 0; j < rgb->height; ++j) {
+        uint16_t * pixel = pixelRowBase;
+        for (uint32_t i = 0; i < rgb->width * channelCount; ++i, ++pixel) {
+            const union
+            {
+                float f;
+                uint32_t u32;
+            } f16 = { .f = *pixel * multiplier };
+            *pixel = (uint16_t)(f16.u32 >> 13);
+        }
+        pixelRowBase += stride;
+    }
+    return AVIF_RESULT_OK;
+}
+
 avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 {
     if (!image->yuvPlanes[AVIF_CHAN_Y]) {
@@ -1227,9 +1262,20 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
     // Process alpha premultiplication, if necessary
     if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
-        return avifRGBImagePremultiplyAlpha(rgb);
+        avifResult result = avifRGBImagePremultiplyAlpha(rgb);
+        if (result != AVIF_RESULT_OK) {
+            return result;
+        }
     } else if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY) {
-        return avifRGBImageUnpremultiplyAlpha(rgb);
+        avifResult result = avifRGBImageUnpremultiplyAlpha(rgb);
+        if (result != AVIF_RESULT_OK) {
+            return result;
+        }
+    }
+
+    // Convert pixels to half floats (F16), if necessary.
+    if (rgb->isFloat) {
+        return avifRGBImageToF16(rgb);
     }
 
     return AVIF_RESULT_OK;
