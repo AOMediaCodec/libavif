@@ -536,9 +536,6 @@ if(AVIF_BUILD_TESTS)
     add_executable(aviftest
         apps/shared/y4m.c
         tests/aviftest.c
-        tests/cJSON.c
-        tests/compare.c
-        tests/testcase.c
     )
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
@@ -561,7 +558,7 @@ if(AVIF_BUILD_TESTS)
 
     if(AVIF_ENABLE_COVERAGE)
         add_custom_target(avif_coverage
-            COMMAND LLVM_PROFILE_FILE=${CMAKE_BINARY_DIR}/aviftest.profraw $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data --io-only
+            COMMAND LLVM_PROFILE_FILE=${CMAKE_BINARY_DIR}/aviftest.profraw $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
             COMMAND ${XCRUN} llvm-profdata merge -sparse ${CMAKE_BINARY_DIR}/aviftest.profraw -o ${CMAKE_BINARY_DIR}/aviftest.profdata
             COMMAND cmake -E make_directory ${CMAKE_BINARY_DIR}/coverage
             COMMAND ${XCRUN} llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_BINARY_DIR}/aviftest.profdata -project-title=libavif --format html -output-dir=${CMAKE_BINARY_DIR}/coverage
