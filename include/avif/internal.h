@@ -149,6 +149,12 @@ typedef struct avifReformatState
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
 
 // Returns:
+// * AVIF_RESULT_OK               - Converted successfully with libyuv.
+// * AVIF_RESULT_NOT_IMPLEMENTED  - The fast path for this conversion is not implemented with libyuv, use built-in conversion.
+// * AVIF_RESULT_INVALID_ARGUMENT - Return error to caller.
+avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb);
+
+// Returns:
 // * AVIF_RESULT_OK              - (Un)Premultiply successfully with libyuv
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in (Un)Premultiply
 // * [any other error]           - Return error to caller
