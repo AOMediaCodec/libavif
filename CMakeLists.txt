@@ -256,7 +256,6 @@ set(AVIF_CODEC_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
 if(AVIF_CODEC_DAV1D)
-    message(STATUS "libavif: Codec enabled: dav1d (decode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_DAV1D=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_dav1d.c
@@ -287,10 +286,11 @@ if(AVIF_CODEC_DAV1D)
     if(UNIX AND NOT APPLE)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for dlsym
     endif()
+
+    message(STATUS "libavif: Codec enabled: dav1d (decode)")
 endif()
 
 if(AVIF_CODEC_LIBGAV1)
-    message(STATUS "libavif: Codec enabled: libgav1 (decode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_LIBGAV1=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_libgav1.c
@@ -319,10 +319,11 @@ if(AVIF_CODEC_LIBGAV1)
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
     endif()
+
+    message(STATUS "libavif: Codec enabled: libgav1 (decode)")
 endif()
 
 if(AVIF_CODEC_RAV1E)
-    message(STATUS "libavif: Codec enabled: rav1e (encode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_RAV1E=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_rav1e.c
@@ -353,10 +354,11 @@ if(AVIF_CODEC_RAV1E)
     elseif(UNIX AND NOT APPLE)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
     endif()
+
+    message(STATUS "libavif: Codec enabled: rav1e (encode)")
 endif()
 
 if(AVIF_CODEC_SVT)
-    message(STATUS "libavif: Codec enabled: svt (encode)")
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_SVT=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_svt.c
@@ -380,18 +382,20 @@ if(AVIF_CODEC_SVT)
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
     endif()
+
+    message(STATUS "libavif: Codec enabled: svt (encode)")
 endif()
 
 if(AVIF_CODEC_AOM)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM=1)
     if(AVIF_CODEC_AOM_ENCODE AND AVIF_CODEC_AOM_DECODE)
-        message(STATUS "libavif: Codec enabled: aom (encode/decode)")
+        set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "encode/decode")
         set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_AOM_DECODE=1)
     elseif(AVIF_CODEC_AOM_ENCODE)
-        message(STATUS "libavif: Codec enabled: aom (encode only)")
+        set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "encode only")
         set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1)
     elseif(AVIF_CODEC_AOM_DECODE)
-        message(STATUS "libavif: Codec enabled: aom (decode only)")
+        set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "decode only")
         set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_DECODE=1)
     else()
         message(FATAL_ERROR "libavif: AVIF_CODEC_AOM is on, but both AVIF_CODEC_AOM_ENCODE and AVIF_CODEC_AOM_DECODE are off. Disable AVIF_CODEC_AOM to disable both parts of the codec.")
@@ -417,6 +421,8 @@ if(AVIF_CODEC_AOM)
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
     endif()
+
+    message(STATUS "libavif: Codec enabled: aom (${AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG})")
 endif()
 
 if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)
