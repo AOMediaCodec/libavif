@@ -17,17 +17,30 @@
 #=============================================================================
 #
 
-find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_LIBYUV libyuv)
-endif (PKG_CONFIG_FOUND)
-
-if (NOT LIBYUV_INCLUDE_DIR)
+if (AVIF_LOCAL_LIBYUV)
     find_path(LIBYUV_INCLUDE_DIR
               NAMES libyuv.h
-              PATHS ${_LIBYUV_INCLUDEDIR}
-    )
-endif()
+              PATHS ${AVIF_LOCAL_LIBYUV_INCLUDE_DIR}
+              NO_DEFAULT_PATH)
+
+    find_library(LIBYUV_LIBRARY
+                 NAMES yuv
+                 PATHS ${AVIF_LOCAL_LIBYUV_LIBRARY_DIR}
+                 NO_DEFAULT_PATH)
+else ()
+    find_package(PkgConfig QUIET)
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(_LIBYUV libyuv)
+    endif (PKG_CONFIG_FOUND)
+
+    find_path(LIBYUV_INCLUDE_DIR
+              NAMES libyuv.h
+              PATHS ${_LIBYUV_INCLUDEDIR})
+
+    find_library(LIBYUV_LIBRARY
+                 NAMES yuv
+                 PATHS ${_LIBYUV_LIBDIR})
+endif ()
 
 if(LIBYUV_INCLUDE_DIR AND NOT LIBYUV_VERSION)
     set(LIBYUV_VERSION_H "${LIBYUV_INCLUDE_DIR}/libyuv/version.h")
@@ -41,12 +54,6 @@ if(LIBYUV_INCLUDE_DIR AND NOT LIBYUV_VERSION)
     if(NOT LIBYUV_VERSION)
         message(STATUS "libyuv version detection failed.")
     endif()
-endif()
-
-if (NOT LIBYUV_LIBRARY)
-    find_library(LIBYUV_LIBRARY
-                 NAMES yuv
-                 PATHS ${_LIBYUV_LIBDIR})
 endif()
 
 if (LIBYUV_LIBRARY)

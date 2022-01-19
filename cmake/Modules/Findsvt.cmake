@@ -17,19 +17,30 @@
 #=============================================================================
 #
 
-find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_SVT SvtAv1Enc)
-endif (PKG_CONFIG_FOUND)
+if (AVIF_LOCAL_SVT)
+    find_path(SVT_INCLUDE_DIR
+              NAMES svt-av1/EbSvtAv1Enc.h
+              PATHS ${AVIF_LOCAL_SVT_INCLUDE_DIR}
+              NO_DEFAULT_PATH)
 
-find_path(SVT_INCLUDE_DIR
-          NAMES svt-av1/EbSvtAv1Enc.h
-          PATHS ${_SVT_INCLUDEDIR}
-)
+    find_library(SVT_LIBRARY
+                 NAMES SvtAv1Enc
+                 PATHS ${AVIF_LOCAL_SVT_LIBRARY_DIR}
+                 NO_DEFAULT_PATH)
+else ()
+    find_package(PkgConfig QUIET)
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(_SVT SvtAv1Enc)
+    endif (PKG_CONFIG_FOUND)
 
-find_library(SVT_LIBRARY
-             NAMES SvtAv1Enc
-             PATHS ${_SVT_LIBDIR})
+    find_path(SVT_INCLUDE_DIR
+              NAMES svt-av1/EbSvtAv1Enc.h
+              PATHS ${_SVT_INCLUDEDIR})
+
+    find_library(SVT_LIBRARY
+                 NAMES SvtAv1Enc
+                 PATHS ${_SVT_LIBDIR})
+endif ()
 
 if (SVT_LIBRARY)
     set(SVT_LIBRARIES

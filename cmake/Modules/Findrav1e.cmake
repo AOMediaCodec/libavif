@@ -17,24 +17,30 @@
 #=============================================================================
 #
 
-find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_RAV1E rav1e)
-endif (PKG_CONFIG_FOUND)
+if (AVIF_LOCAL_RAV1E)
+    find_path(RAV1E_INCLUDE_DIR
+              NAMES rav1e.h
+              PATHS ${AVIF_LOCAL_RAV1E_INCLUDE_DIR}
+              NO_DEFAULT_PATH)
 
-if (NOT RAV1E_INCLUDE_DIR)
-find_path(RAV1E_INCLUDE_DIR
-          NAMES rav1e.h
-          PATHS ${_RAV1E_INCLUDEDIR}
-          PATH_SUFFIXES rav1e
-)
-endif()
+    find_library(RAV1E_LIBRARY
+                 NAMES rav1e
+                 PATHS ${AVIF_LOCAL_RAV1E_LIBRARY_DIR}
+                 NO_DEFAULT_PATH)
+else ()
+    find_package(PkgConfig QUIET)
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(_RAV1E rav1e)
+    endif (PKG_CONFIG_FOUND)
 
-if (NOT RAV1E_LIBRARY)
-find_library(RAV1E_LIBRARY
-             NAMES rav1e
-             PATHS ${_RAV1E_LIBDIR})
-endif()
+    find_path(RAV1E_INCLUDE_DIR
+              NAMES rav1e.h
+              PATHS ${_RAV1E_INCLUDEDIR})
+
+    find_library(RAV1E_LIBRARY
+                 NAMES rav1e
+                 PATHS ${_RAV1E_LIBDIR})
+endif ()
 
 set(RAV1E_LIBRARIES
     ${RAV1E_LIBRARIES}

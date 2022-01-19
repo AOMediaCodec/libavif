@@ -17,19 +17,30 @@
 #=============================================================================
 #
 
-find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
-    pkg_check_modules(_AOM aom)
-endif (PKG_CONFIG_FOUND)
+if (AVIF_LOCAL_AOM)
+    find_path(AOM_INCLUDE_DIR
+              NAMES aom/aom.h
+              PATHS ${AVIF_LOCAL_AOM_INCLUDE_DIR}
+              NO_DEFAULT_PATH)
 
-find_path(AOM_INCLUDE_DIR
-          NAMES aom/aom.h
-          PATHS ${_AOM_INCLUDEDIR}
-)
+    find_library(AOM_LIBRARY
+                 NAMES aom
+                 PATHS ${AVIF_LOCAL_AOM_LIBRARY_DIR}
+                 NO_DEFAULT_PATH)
+else ()
+    find_package(PkgConfig QUIET)
+    if (PKG_CONFIG_FOUND)
+        pkg_check_modules(_AOM aom)
+    endif (PKG_CONFIG_FOUND)
 
-find_library(AOM_LIBRARY
-             NAMES aom
-             PATHS ${_AOM_LIBDIR})
+    find_path(AOM_INCLUDE_DIR
+              NAMES aom/aom.h
+              PATHS ${_AOM_INCLUDEDIR})
+
+    find_library(AOM_LIBRARY
+                 NAMES aom
+                 PATHS ${_AOM_LIBDIR})
+endif ()
 
 set(AOM_LIBRARIES
     ${AOM_LIBRARIES}
