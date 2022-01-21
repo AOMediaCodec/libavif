@@ -783,10 +783,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage.range);
         monochromeRequested = AVIF_TRUE;
         if (aomImageAllocated) {
+            const uint32_t bytesPerRow = ((image->depth > 8) ? 2 : 1) * image->width;
             for (uint32_t j = 0; j < image->height; ++j) {
                 uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
                 uint8_t * dstAlphaRow = &aomImage.planes[0][j * aomImage.stride[0]];
-                memcpy(dstAlphaRow, srcAlphaRow, image->alphaRowBytes);
+                memcpy(dstAlphaRow, srcAlphaRow, bytesPerRow);
             }
         } else {
             aomImage.planes[0] = image->alphaPlane;
