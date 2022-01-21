@@ -23,6 +23,7 @@ namespace {
 
 jfieldID global_info_width;
 jfieldID global_info_height;
+jfieldID global_info_depth;
 
 // RAII wrapper class that properly frees the decoder related objects on
 // destruction.
@@ -75,6 +76,7 @@ jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
       env->FindClass("org/aomedia/avif/android/AvifDecoder$Info");
   global_info_width = env->GetFieldID(info_class, "width", "I");
   global_info_height = env->GetFieldID(info_class, "height", "I");
+  global_info_depth = env->GetFieldID(info_class, "depth", "I");
   return JNI_VERSION_1_6;
 }
 
@@ -94,6 +96,7 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   }
   env->SetIntField(info, global_info_width, decoder.decoder->image->width);
   env->SetIntField(info, global_info_height, decoder.decoder->image->height);
+  env->SetIntField(info, global_info_depth, decoder.decoder->image->depth);
   return true;
 }
 
@@ -124,8 +127,9 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap) {
         decoder.decoder->image->height);
     return false;
   }
-  // Ensure that the bitmap format is RGBA_8888. For now, we only support that.
-  if (bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+  // Ensure that the bitmap format is either RGBA_8888 or RGBA_F16.
+  if (bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 &&
+      bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_F16) {
     LOGE("Bitmap format (%d) is not supported.", bitmap_info.format);
     return false;
   }
@@ -137,8 +141,12 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap) {
   }
   avifRGBImage rgb_image;
   avifRGBImageSetDefaults(&rgb_image, decoder.decoder->image);
-  // For now, we only support 8 bit RGBA output.
-  rgb_image.depth = 8;
+  if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGBA_F16) {
+    rgb_image.depth = 16;
+    rgb_image.isFloat = AVIF_TRUE;
+  } else {
+    rgb_image.depth = 8;
+  }
   rgb_image.pixels = static_cast<uint8_t*>(bitmap_pixels);
   rgb_image.rowBytes = bitmap_info.stride;
   res = avifImageYUVToRGB(decoder.decoder->image, &rgb_image);
