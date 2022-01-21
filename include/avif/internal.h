@@ -59,10 +59,11 @@ void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG
         uint32_t count;                                    \
         uint32_t capacity;                                 \
     } TYPENAME
-void avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
+avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
 uint32_t avifArrayPushIndex(void * arrayStruct);
 void * avifArrayPushPtr(void * arrayStruct);
 void avifArrayPush(void * arrayStruct, void * element);
+void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
 
 typedef struct avifAlphaParams
