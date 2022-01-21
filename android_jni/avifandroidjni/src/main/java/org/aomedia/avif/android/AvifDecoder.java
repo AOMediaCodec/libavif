@@ -20,10 +20,11 @@ public class AvifDecoder {
   // This is a utility class and cannot be instantiated.
   private AvifDecoder() {}
 
-  /** Contains information about the AVIF Image dimensions. */
+  /** Contains information about the AVIF Image. */
   public static class Info {
     public int width;
     public int height;
+    public int depth;
   }
 
   /**
