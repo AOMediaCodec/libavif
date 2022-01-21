@@ -46,8 +46,14 @@ avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void)
 {
     avifCodecEncodeOutput * encodeOutput = (avifCodecEncodeOutput *)avifAlloc(sizeof(avifCodecEncodeOutput));
     memset(encodeOutput, 0, sizeof(avifCodecEncodeOutput));
-    avifArrayCreate(&encodeOutput->samples, sizeof(avifEncodeSample), 1);
+    if (!avifArrayCreate(&encodeOutput->samples, sizeof(avifEncodeSample), 1)) {
+        goto error;
+    }
     return encodeOutput;
+
+error:
+    avifCodecEncodeOutputDestroy(encodeOutput);
+    return NULL;
 }
 
 void avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync)
@@ -122,28 +128,45 @@ typedef struct avifEncoderData
     avifBool alphaPresent;
 } avifEncoderData;
 
+static void avifEncoderDataDestroy(avifEncoderData * data);
+
 static avifEncoderData * avifEncoderDataCreate()
 {
     avifEncoderData * data = (avifEncoderData *)avifAlloc(sizeof(avifEncoderData));
     memset(data, 0, sizeof(avifEncoderData));
     data->imageMetadata = avifImageCreateEmpty();
-    avifArrayCreate(&data->items, sizeof(avifEncoderItem), 8);
-    avifArrayCreate(&data->frames, sizeof(avifEncoderFrame), 1);
+    if (!avifArrayCreate(&data->items, sizeof(avifEncoderItem), 8)) {
+        goto error;
+    }
+    if (!avifArrayCreate(&data->frames, sizeof(avifEncoderFrame), 1)) {
+        goto error;
+    }
     return data;
+
+error:
+    avifEncoderDataDestroy(data);
+    return NULL;
 }
 
 static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const char * type, const char * infeName, size_t infeNameSize, uint32_t cellIndex)
 {
     avifEncoderItem * item = (avifEncoderItem *)avifArrayPushPtr(&data->items);
-    ++data->lastItemID;
     item->id = data->lastItemID;
     memcpy(item->type, type, sizeof(item->type));
     item->infeName = infeName;
     item->infeNameSize = infeNameSize;
     item->encodeOutput = avifCodecEncodeOutputCreate();
     item->cellIndex = cellIndex;
-    avifArrayCreate(&item->mdatFixups, sizeof(avifOffsetFixup), 4);
+    if (!avifArrayCreate(&item->mdatFixups, sizeof(avifOffsetFixup), 4)) {
+        goto error;
+    }
+    ++data->lastItemID;
     return item;
+
+error:
+    avifCodecEncodeOutputDestroy(item->encodeOutput);
+    avifArrayPop(&data->items);
+    return NULL;
 }
 
 static avifEncoderItem * avifEncoderDataFindItemByID(avifEncoderData * data, uint16_t id)
@@ -199,13 +222,21 @@ typedef struct avifItemPropertyDedup
     uint8_t nextIndex; // 1-indexed, incremented every time another unique property is finished
 } avifItemPropertyDedup;
 
+static void avifItemPropertyDedupDestroy(avifItemPropertyDedup * dedup);
+
 static avifItemPropertyDedup * avifItemPropertyDedupCreate(void)
 {
     avifItemPropertyDedup * dedup = (avifItemPropertyDedup *)avifAlloc(sizeof(avifItemPropertyDedup));
     memset(dedup, 0, sizeof(avifItemPropertyDedup));
-    avifArrayCreate(&dedup->properties, sizeof(avifItemProperty), 8);
+    if (!avifArrayCreate(&dedup->properties, sizeof(avifItemProperty), 8)) {
+        goto error;
+    }
     avifRWDataRealloc(&dedup->buffer, 2048); // This will resize automatically (if necessary)
     return dedup;
+
+error:
+    avifItemPropertyDedupDestroy(dedup);
+    return NULL;
 }
 
 static void avifItemPropertyDedupDestroy(avifItemPropertyDedup * dedup)

@@ -150,7 +150,8 @@ typedef enum avifResult
     AVIF_RESULT_IO_ERROR,
     AVIF_RESULT_WAITING_ON_IO, // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
-    AVIF_RESULT_NOT_IMPLEMENTED   // a requested code path is not (yet) implemented
+    AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
+    AVIF_RESULT_OUT_OF_MEMORY
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -562,7 +563,7 @@ typedef struct avifRGBImage
     avifBool ignoreAlpha;        // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                                  // RGB, treating the alpha bits as if they were all 1.
     avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false
-    avifBool isFloat;            // indicates if RGBA values are in half float (f16) format. Valid only when depth == 16. Default: false
+    avifBool isFloat; // indicates if RGBA values are in half float (f16) format. Valid only when depth == 16. Default: false
 
     uint8_t * pixels;
     uint32_t rowBytes;
