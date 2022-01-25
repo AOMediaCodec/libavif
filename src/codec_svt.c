@@ -73,7 +73,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
-#if !SVT_AV1_CHECK_VERSION(0, 8, 8)
+#if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;
 #endif
 
@@ -87,7 +87,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->logical_processors = encoder->maxThreads;
         svt_config->enable_adaptive_quantization = AVIF_FALSE;
         // disable 2-pass
-#if SVT_AV1_CHECK_VERSION(0, 8, 8)
+#if SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->rc_stats_buffer = (SvtAv1FixedBuf) { NULL, 0 };
 #else
         svt_config->rc_firstpass_stats_out = AVIF_FALSE;
