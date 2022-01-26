@@ -4,8 +4,8 @@
 #include "avif/internal.h"
 
 #include "svt-av1/EbSvtAv1.h"
-
 #include "svt-av1/EbSvtAv1Enc.h"
+#include "svt-av1/EbVersion.h"
 
 #include <string.h>
 
@@ -24,10 +24,6 @@
       SVT_AV1_VERSION_PATCHLEVEL >= (patch)))
 // clang-format on
 #endif
-
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-#define SVT_FULL_VERSION STR(SVT_AV1_VERSION_MAJOR) "." STR(SVT_AV1_VERSION_MINOR) "." STR(SVT_AV1_VERSION_PATCHLEVEL)
 
 typedef struct avifCodecInternal
 {
@@ -219,7 +215,7 @@ static avifBool svtCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
 
 const char * avifCodecVersionSvt(void)
 {
-    return SVT_FULL_VERSION;
+    return SVT_AV1_CVS_VERSION;
 }
 
 static void svtCodecDestroyInternal(avifCodec * codec)
