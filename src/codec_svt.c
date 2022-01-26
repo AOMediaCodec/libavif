@@ -9,9 +9,28 @@
 
 #include <string.h>
 
+// The SVT_AV1_VERSION_MAJOR, SVT_AV1_VERSION_MINOR, SVT_AV1_VERSION_PATCHLEVEL, and
+// SVT_AV1_CHECK_VERSION macros were added in SVT-AV1 v0.9.0. Define these macros for older
+// versions of SVT-AV1.
+#ifndef SVT_AV1_VERSION_MAJOR
+#define SVT_AV1_VERSION_MAJOR SVT_VERSION_MAJOR
+#define SVT_AV1_VERSION_MINOR SVT_VERSION_MINOR
+#define SVT_AV1_VERSION_PATCHLEVEL SVT_VERSION_PATCHLEVEL
+#ifdef __GNUC__ // Delete this when we start using the SVT_AV1_CHECK_VERSION macro.
+#pragma GCC diagnostic ignored "-Wunused-macros"
+#endif
+// clang-format off
+#define SVT_AV1_CHECK_VERSION(major, minor, patch)                            \
+    (SVT_AV1_VERSION_MAJOR > (major) ||                                       \
+     (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR > (minor)) || \
+     (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR == (minor) && \
+      SVT_AV1_VERSION_PATCHLEVEL >= (patch)))
+// clang-format on
+#endif
+
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
-#define SVT_FULL_VERSION STR(SVT_VERSION_MAJOR) "." STR(SVT_VERSION_MINOR) "." STR(SVT_VERSION_PATCHLEVEL)
+#define SVT_FULL_VERSION STR(SVT_AV1_VERSION_MAJOR) "." STR(SVT_AV1_VERSION_MINOR) "." STR(SVT_AV1_VERSION_PATCHLEVEL)
 
 typedef struct avifCodecInternal
 {
