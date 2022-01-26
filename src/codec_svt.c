@@ -16,9 +16,6 @@
 #define SVT_AV1_VERSION_MAJOR SVT_VERSION_MAJOR
 #define SVT_AV1_VERSION_MINOR SVT_VERSION_MINOR
 #define SVT_AV1_VERSION_PATCHLEVEL SVT_VERSION_PATCHLEVEL
-#ifdef __GNUC__ // Delete this when we start using the SVT_AV1_CHECK_VERSION macro.
-#pragma GCC diagnostic ignored "-Wunused-macros"
-#endif
 // clang-format off
 #define SVT_AV1_CHECK_VERSION(major, minor, patch)                            \
     (SVT_AV1_VERSION_MAJOR > (major) ||                                       \
