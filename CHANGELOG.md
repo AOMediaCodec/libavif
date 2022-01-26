@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 *   - speed 8-9: re-test and re-adjust speed according to your app needs
 * Update aom.cmd: v3.2.0
 * Update dav1d.cmd: 0.9.2
+* Update svt-av1.cmd: v0.9.0
 * Pass TestCase's minQuantizer, maxQuantizer, speed to encoder.
 * Regenerate tests.json
 * Disable JSON-based tests for now, the metrics are inconsistent/unreliable
