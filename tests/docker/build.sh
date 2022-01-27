@@ -66,13 +66,20 @@ git clone -b 0.5 --depth 1 https://github.com/xiph/rav1e.git
 cd rav1e
 cargo cinstall --prefix=/usr --release
 
+# SVT-AV1
+cd
+git clone -b v0.9.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+cd SVT-AV1
+cd Build/linux
+./build.sh --prefix=/usr release install
+
 # libavif
 cd
 git clone --depth 1 https://github.com/AOMediaCodec/libavif.git
 cd libavif
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DAVIF_CODEC_AOM=1 -DAVIF_CODEC_DAV1D=1 -DAVIF_CODEC_LIBGAV1=1 -DAVIF_CODEC_RAV1E=1 -DAVIF_BUILD_APPS=1 ..
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DAVIF_CODEC_AOM=1 -DAVIF_CODEC_DAV1D=1 -DAVIF_CODEC_LIBGAV1=1 -DAVIF_CODEC_RAV1E=1 -DAVIF_CODEC_SVT=1 -DAVIF_BUILD_APPS=1 ..
 ninja install
 
 # If we made it here, show off the goods!
