@@ -25,9 +25,11 @@
 // clang-format on
 #endif
 
+#if !SVT_AV1_CHECK_VERSION(0, 9, 0)
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
-#define SVT_FULL_VERSION STR(SVT_AV1_VERSION_MAJOR) "." STR(SVT_AV1_VERSION_MINOR) "." STR(SVT_AV1_VERSION_PATCHLEVEL)
+#define SVT_FULL_VERSION "v" STR(SVT_AV1_VERSION_MAJOR) "." STR(SVT_AV1_VERSION_MINOR) "." STR(SVT_AV1_VERSION_PATCHLEVEL)
+#endif
 
 typedef struct avifCodecInternal
 {
@@ -219,7 +221,11 @@ static avifBool svtCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
 
 const char * avifCodecVersionSvt(void)
 {
+#if SVT_AV1_CHECK_VERSION(0, 9, 0)
+    return svt_av1_get_version();
+#else
     return SVT_FULL_VERSION;
+#endif
 }
 
 static void svtCodecDestroyInternal(avifCodec * codec)
