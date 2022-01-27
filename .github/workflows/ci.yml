@@ -22,7 +22,6 @@ jobs:
         path: ext
         key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
     - uses: ilammy/setup-nasm@v1
-      if: steps.cache-ext.outputs.cache-hit != 'true'
       with:
         version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
@@ -41,6 +40,9 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash rav1e.cmd
+    - name: Build SVT-AV1
+      working-directory: ./ext
+      run: bash svt.cmd
     - name: Build libgav1
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -53,7 +55,7 @@ jobs:
     - name: Prepare libavif (cmake)
       run: |
         mkdir build && cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_BUILD_TESTS=1
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_BUILD_TESTS=1
     - name: Build libavif (make)
       working-directory: ./build
       run: make -j $(($(nproc) + 1))
