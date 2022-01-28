@@ -722,6 +722,51 @@ avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
 }
 
 // ---------------------------------------------------------------------------
+
+avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, uint32_t imageH, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag)
+{
+    if ((imageW == 0) || (imageH == 0) || (tileW == 0) || (tileH == 0)) {
+        avifDiagnosticsPrintf(diag, "[Strict] Tile and image width and height must be nonzero");
+        return AVIF_FALSE;
+    }
+
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - the tile_width shall be greater than or equal to 64, and should be a multiple of 64
+    //   - the tile_height shall be greater than or equal to 64, and should be a multiple of 64
+    // The "should" part is ignored here.
+    if ((tileW < 64) || (tileH < 64)) {
+        avifDiagnosticsPrintf(diag,
+                              "[Strict] Grid image tiles are smaller than 64x64 (%ux%u). See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
+                              tileW,
+                              tileH);
+        return AVIF_FALSE;
+    }
+
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - when the images are in the 4:2:2 chroma sampling format the horizontal tile offsets and widths, and the output width, shall be even numbers;
+    //   - when the images are in the 4:2:0 chroma sampling format both the horizontal and vertical tile offsets and widths, and the output width and height, shall be even numbers.
+    if ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
+        if (((imageW % 2) != 0) || ((tileW % 2) != 0)) {
+            avifDiagnosticsPrintf(diag,
+                                  "[Strict] Grid image horizontal tile offsets and widths [%u], and the output width [%u], shall be even numbers.",
+                                  tileW,
+                                  imageW);
+            return AVIF_FALSE;
+        }
+    }
+    if (yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        if (((imageH % 2) != 0) || ((tileH % 2) != 0)) {
+            avifDiagnosticsPrintf(diag,
+                                  "[Strict] Grid image vertical tile offsets and heights [%u], and the output height [%u], shall be even numbers.",
+                                  tileH,
+                                  imageH);
+            return AVIF_FALSE;
+        }
+    }
+    return AVIF_TRUE;
+}
+
+// ---------------------------------------------------------------------------
 // avifCodecSpecificOption
 
 static char * avifStrdup(const char * str)

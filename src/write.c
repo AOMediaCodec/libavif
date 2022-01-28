@@ -562,11 +562,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_UNSUPPORTED_DEPTH;
     }
 
-    if (!firstCell->width || !firstCell->height) {
-        return AVIF_RESULT_NO_CONTENT;
-    }
-
-    if ((cellCount > 1) && ((firstCell->width < 64) || (firstCell->height < 64))) {
+    if ((cellCount > 1) && !avifAreGridDimensionsValid(firstCell->yuvFormat,
+                                                       firstCell->width * gridCols,
+                                                       firstCell->height * gridRows,
+                                                       firstCell->width,
+                                                       firstCell->height,
+                                                       &encoder->diag)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 
@@ -584,6 +585,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
         if (cellImage->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
             return AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
+        }
+
+        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+        //   All input image of a grid image item shall use the same chroma sampling format.
+        if (cellImage->yuvFormat != firstCell->yuvFormat) {
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
     }
 

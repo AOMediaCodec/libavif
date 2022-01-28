@@ -412,6 +412,16 @@ AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * cla
                                                       avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
+
+// Returns false if tiles of tileW*tileH pixels each in an image of imageW*imageH pixels violate any standards.
+AVIF_API avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
+                                             uint32_t imageW,
+                                             uint32_t imageH,
+                                             uint32_t tileW,
+                                             uint32_t tileH,
+                                             avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
 // avifImage
 
 typedef struct avifImage
