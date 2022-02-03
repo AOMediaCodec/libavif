@@ -151,6 +151,7 @@ error:
 static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const char * type, const char * infeName, size_t infeNameSize, uint32_t cellIndex)
 {
     avifEncoderItem * item = (avifEncoderItem *)avifArrayPushPtr(&data->items);
+    ++data->lastItemID;
     item->id = data->lastItemID;
     memcpy(item->type, type, sizeof(item->type));
     item->infeName = infeName;
@@ -160,11 +161,11 @@ static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const
     if (!avifArrayCreate(&item->mdatFixups, sizeof(avifOffsetFixup), 4)) {
         goto error;
     }
-    ++data->lastItemID;
     return item;
 
 error:
     avifCodecEncodeOutputDestroy(item->encodeOutput);
+    --data->lastItemID;
     avifArrayPop(&data->items);
     return NULL;
 }
