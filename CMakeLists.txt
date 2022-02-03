@@ -539,6 +539,7 @@ endif()
 
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 if(AVIF_BUILD_TESTS)
+    enable_testing()
     add_executable(aviftest
         apps/shared/y4m.c
         tests/aviftest.c
@@ -548,6 +549,20 @@ if(AVIF_BUILD_TESTS)
     endif()
     target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
     target_include_directories(aviftest PRIVATE apps/shared)
+    add_custom_target(avif_test_all
+        COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
+        DEPENDS aviftest
+    )
+
+    add_executable(avifgridapitest
+            tests/avifgridapitest.c
+    )
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avifgridapitest PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
+    target_link_libraries(avifgridapitest avif ${AVIF_PLATFORM_LIBRARIES})
+    add_test(NAME avifgridapitest
+        COMMAND ${CMAKE_BINARY_DIR}/avifgridapitest)
 
     add_executable(avifyuv
         tests/avifyuv.c
@@ -556,11 +571,6 @@ if(AVIF_BUILD_TESTS)
         set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
-
-    add_custom_target(avif_test_all
-        COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
-        DEPENDS aviftest
-    )
 
     if(AVIF_ENABLE_COVERAGE)
         add_custom_target(avif_coverage
