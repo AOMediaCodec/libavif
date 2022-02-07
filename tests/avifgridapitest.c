@@ -28,12 +28,6 @@ static avifBool createImage(int width, int height, int depth, avifPixelFormat yu
     avifGetPixelFormatInfo((*image)->yuvFormat, &formatInfo);
     uint32_t uvWidth = ((*image)->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
     uint32_t uvHeight = ((*image)->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
-    if (uvWidth < 1) {
-        uvWidth = 1;
-    }
-    if (uvHeight < 1) {
-        uvHeight = 1;
-    }
 
     for (uint32_t plane = 0; plane < (formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
         const uint32_t widthByteCount = ((plane == AVIF_CHAN_Y) ? (*image)->width : uvWidth) * (((*image)->depth > 8) ? 2 : 1);
@@ -54,11 +48,9 @@ static avifBool encodeGrid(int columns, int rows, int cellWidth, int cellHeight,
     avifEncoder * encoder = NULL;
     avifImage ** cellImages = avifAlloc(sizeof(avifImage *) * columns * rows);
     memset(cellImages, 0, sizeof(avifImage *) * columns * rows);
-    for (int row = 0, iCell = 0; row < rows; ++row) {
-        for (int col = 0; col < columns; ++col, ++iCell) {
-            if (!createImage(cellWidth, cellHeight, depth, yuvFormat, &cellImages[iCell])) {
-                goto cleanup;
-            }
+    for (int iCell = 0; iCell < columns * rows; ++iCell) {
+        if (!createImage(cellWidth, cellHeight, depth, yuvFormat, &cellImages[iCell])) {
+            goto cleanup;
         }
     }
 
@@ -143,9 +135,9 @@ cleanup:
 //------------------------------------------------------------------------------
 
 // For each dimension, for each combination of cell count and size, generates, encodes then decodes a grid image.
-static avifBool encodeDecodeSizes(const int (*columnsCellWidths)[2],
+static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
                                   int horizontalCombinationCount,
-                                  const int (*rowsCellHeights)[2],
+                                  const int rowsCellHeights[][2],
                                   int verticalCombinationCount,
                                   avifPixelFormat yuvFormat,
                                   int expected_success)

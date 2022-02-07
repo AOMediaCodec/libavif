@@ -169,6 +169,18 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
+// Grid AVIF images
+
+// Returns false if the tiles in a grid image violate any standards.
+// There are columns*rows tiles. The tiles are of tileW*tileH pixels each.
+AVIF_API avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
+                                             uint32_t columns,
+                                             uint32_t rows,
+                                             uint32_t tileW,
+                                             uint32_t tileH,
+                                             avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
 // Legal spatial_id values are [0,1,2,3], so this serves as a sentinel value for "do not filter by spatial_id"

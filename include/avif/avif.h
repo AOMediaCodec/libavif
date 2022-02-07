@@ -412,17 +412,6 @@ AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * cla
                                                       avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
-
-// Returns false if the tiles in a grid image violate any standards.
-// There are columns*rows tiles. The tiles are of tileW*tileH pixels each.
-AVIF_API avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
-                                             uint32_t columns,
-                                             uint32_t rows,
-                                             uint32_t tileW,
-                                             uint32_t tileH,
-                                             avifDiagnostics * diag);
-
-// ---------------------------------------------------------------------------
 // avifImage
 
 typedef struct avifImage
