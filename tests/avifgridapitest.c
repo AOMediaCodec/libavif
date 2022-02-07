@@ -116,14 +116,16 @@ cleanup:
 //------------------------------------------------------------------------------
 
 // Generates, encodes then decodes a grid image.
-static avifBool encodeDecode(int columns, int rows, int cellWidth, int cellHeight, avifPixelFormat yuvFormat)
+static avifBool encodeDecode(int columns, int rows, int cellWidth, int cellHeight, avifPixelFormat yuvFormat, int expected_success)
 {
     avifBool success = AVIF_FALSE;
     avifRWData encodedAvif = { 0 };
-    if (!encodeGrid(columns, rows, cellWidth, cellHeight, /*depth=*/8, yuvFormat, &encodedAvif)) {
+    if (encodeGrid(columns, rows, cellWidth, cellHeight, /*depth=*/8, yuvFormat, &encodedAvif) != expected_success) {
         goto cleanup;
     }
-    if (!decode(&encodedAvif)) {
+    // Only decode if the encoding was expected to succeed.
+    // Any successful encoding shall result in a valid decoding.
+    if (expected_success && !decode(&encodedAvif)) {
         goto cleanup;
     }
     success = AVIF_TRUE;
@@ -144,11 +146,11 @@ static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
 {
     for (int i = 0; i < horizontalCombinationCount; ++i) {
         for (int j = 0; j < verticalCombinationCount; ++j) {
-            if (encodeDecode(/*columns=*/columnsCellWidths[i][0],
+            if (!encodeDecode(/*columns=*/columnsCellWidths[i][0],
                              /*rows=*/rowsCellHeights[j][0],
                              /*cellWidth=*/columnsCellWidths[i][1],
                              /*cellHeight=*/rowsCellHeights[j][1],
-                             yuvFormat) != expected_success) {
+                             yuvFormat, expected_success)) {
                 return 0;
             }
         }
@@ -159,11 +161,10 @@ static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
 int main(void)
 {
     // Pairs of cell count and cell size for a single dimension.
-    // A cell cannot be smaller than 64px in any dimension if there are several cells in that dimension.
-    // A cell cannot have an odd size in any dimension if there are several cells in that dimension and chroma subsampling.
+    // A cell cannot be smaller than 64px in any dimension if there are several cells.
+    // A cell cannot have an odd size in any dimension if there are several cells and chroma subsampling.
     // Image size must be a multiple of cell size.
-    const int validCellCountsSizes[][2] = { { 1, 1 },  { 1, 2 },  { 1, 3 },  { 1, 63 }, { 1, 64 },
-                                            { 1, 65 }, { 1, 66 }, { 2, 64 }, { 3, 68 } };
+    const int validCellCountsSizes[][2] = { { 1, 64 }, { 1, 66 }, { 2, 64 }, { 3, 68 } };
     const int validCellCountsSizeCount = sizeof(validCellCountsSizes) / sizeof(validCellCountsSizes[0]);
     const int invalidCellCountsSizes[][2] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 2, 1 }, { 2, 2 }, { 2, 3 }, { 2, 63 } };
     const int invalidCellCountsSizeCount = sizeof(invalidCellCountsSizes) / sizeof(invalidCellCountsSizes[0]);
@@ -198,29 +199,24 @@ int main(void)
                                /*expected_success=*/AVIF_FALSE)) {
             return EXIT_FAILURE;
         }
-    }
 
-    // Special case depending on chroma subsampling.
-    if (encodeDecode(/*columns=*/1,
-                     /*rows=*/2,
-                     /*cellWidth=*/65,
-                     /*cellHeight=*/65,
-                     AVIF_PIXEL_FORMAT_YUV444) != AVIF_TRUE) {
-        return EXIT_FAILURE;
-    }
-    if (encodeDecode(/*columns=*/1,
-                     /*rows=*/2,
-                     /*cellWidth=*/65,
-                     /*cellHeight=*/65,
-                     AVIF_PIXEL_FORMAT_YUV422) != AVIF_TRUE) {
-        return EXIT_FAILURE;
-    }
-    if (encodeDecode(/*columns=*/1,
-                     /*rows=*/2,
-                     /*cellWidth=*/65,
-                     /*cellHeight=*/65,
-                     AVIF_PIXEL_FORMAT_YUV420) != AVIF_FALSE) {
-        return EXIT_FAILURE;
+        // Special case depending on the cell count and the chroma subsampling.
+        for (int rows = 1; rows <= 2; ++rows) {
+            int expected_success = (rows == 1) || (yuvFormat != AVIF_PIXEL_FORMAT_YUV420);
+            if (!encodeDecode(/*columns=*/1, rows, /*cellWidth=*/64, /*cellHeight=*/65, yuvFormat, expected_success)) {
+                return EXIT_FAILURE;
+            }
+        }
+
+        // Special case depending on the cell count and the cell size.
+        for (int columns = 1; columns <= 2; ++columns) {
+            for (int rows = 1; rows <= 2; ++rows) {
+                int expected_success = (columns * rows == 1);
+                if (!encodeDecode(columns, rows, /*cellWidth=*/1, /*cellHeight=*/65, yuvFormat, expected_success)) {
+                    return EXIT_FAILURE;
+                }
+            }
+        }
     }
     return EXIT_SUCCESS;
 }

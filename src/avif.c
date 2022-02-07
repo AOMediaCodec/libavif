@@ -725,16 +725,19 @@ avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
 
 avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t columns, uint32_t rows, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag)
 {
+    // The rules below only apply to grid images. Single-cell images do not have these constraints.
+    if ((columns == 1) && (rows == 1)) {
+        return AVIF_TRUE;
+    }
+
     // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
     //   - the tile_width shall be greater than or equal to 64, and should be a multiple of 64
     //   - the tile_height shall be greater than or equal to 64, and should be a multiple of 64
     // The "should" part is ignored here.
-    // For each dimension, the rule above is considered too strict and ignored if there is only
-    // one column or row in that dimension.
-    if (((columns > 1) && (tileW < 64)) || ((rows > 1) && (tileH < 64))) {
+    if ((tileW < 64) || (tileH < 64)) {
         avifDiagnosticsPrintf(diag,
                               "[Strict] Grid image tile width (%u) or height (%u) cannot be smaller "
-                              "than 64 if there are more than one grid column or row, respectively. "
+                              "than 64 if there is more than one cell. "
                               "See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
                               tileW,
                               tileH);
@@ -747,20 +750,17 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t columns,
     //   - when the images are in the 4:2:0 chroma sampling format both the horizontal and vertical tile
     //     offsets and widths, and the output width and height, shall be even numbers.
     // Only the tile dimensions are enforced since tile offsets and image dimensions depend on them.
-    // For each dimension, the rule above is considered too strict and ignored if there is only
-    // one column or row in that dimension.
-    // If the rules above were not respected at all, the following problematic situation may happen:
+    // If the rules above were not respected, the following problematic situation may happen:
     //   Some 4:2:0 image is Pi pixels wide and has N cell columns.
     //   Each cell is Pc pixels wide, Pc being odd.
     //   The chroma plane of the whole image is Pi/2 or (Pi+1)/2 pixels wide, depending on the rounding.
     //   The chroma plane of the summed cells is (Pc/2)*N or ((Pc+1)/2)*N pixels wide, depending on the rounding.
     //   This leads to either N missing pixels or N extra pixels, compared to the whole image.
-    if ((((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) && (columns > 1) && ((tileW % 2) != 0)) ||
-        ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) && (rows > 1) && ((tileH % 2) != 0))) {
+    if ((((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) && ((tileW % 2) != 0)) ||
+        ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) && ((tileH % 2) != 0))) {
         avifDiagnosticsPrintf(diag,
                               "[Strict] Grid image tile width (%u) or height (%u) shall be even "
-                              "if there are more than one grid column or row, respectively, "
-                              "and if chroma is subsampled in that dimension. "
+                              "if there is more than one cell and if chroma is subsampled in that dimension. "
                               "See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
                               tileW,
                               tileH);
