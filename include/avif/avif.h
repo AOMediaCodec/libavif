@@ -306,6 +306,10 @@ typedef struct avifDiagnostics
     // in the API call (avifDecoder, avifEncoder) contains a diag member, this buffer may be
     // populated with a NULL-terminated, freeform error string explaining the most recent error in
     // more detail. It will be cleared at the beginning of every non-const API call.
+    //
+    // Note: If an error string contains the "[Strict]" prefix, it means that you encountered an
+    // error that only occurs during strict decoding. If you disable strict mode, you will no
+    // longer encounter this error.
     char error[AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE];
 } avifDiagnostics;
 
