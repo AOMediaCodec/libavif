@@ -567,7 +567,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    if (!avifAreGridDimensionsValid(firstCell->yuvFormat, gridCols, gridRows, firstCell->width, firstCell->height, &encoder->diag)) {
+    if ((cellCount > 1) && !avifAreGridDimensionsValid(firstCell->yuvFormat,
+                                                       gridCols * firstCell->width,
+                                                       gridRows * firstCell->height,
+                                                       firstCell->width,
+                                                       firstCell->height,
+                                                       &encoder->diag)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 

@@ -172,10 +172,10 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
 // Grid AVIF images
 
 // Returns false if the tiles in a grid image violate any standards.
-// There are columns*rows tiles. The tiles are of tileW*tileH pixels each.
+// The image contains imageW*imageH pixels. The tiles are of tileW*tileH pixels each.
 AVIF_API avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
-                                             uint32_t columns,
-                                             uint32_t rows,
+                                             uint32_t imageW,
+                                             uint32_t imageH,
                                              uint32_t tileW,
                                              uint32_t tileH,
                                              avifDiagnostics * diag);

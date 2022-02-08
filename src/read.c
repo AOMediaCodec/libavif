@@ -1300,8 +1300,8 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
         assert(firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     }
     if (!avifAreGridDimensionsValid(firstTile->image->yuvFormat,
-                                    grid->columns,
-                                    grid->rows,
+                                    grid->outputWidth,
+                                    grid->outputHeight,
                                     firstTile->image->width,
                                     firstTile->image->height,
                                     data->diag)) {
