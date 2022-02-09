@@ -3874,17 +3874,22 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 
 avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 {
-    if (!decoder->data) {
+    if (!decoder->data || (decoder->data->tiles.count == 0)) {
         // Nothing has been parsed yet
         return AVIF_FALSE;
     }
 
-    if ((decoder->data->tiles.count > 0) && decoder->data->tiles.tile[0].input) {
-        if (frameIndex < decoder->data->tiles.tile[0].input->samples.count) {
-            return decoder->data->tiles.tile[0].input->samples.sample[frameIndex].sync;
+    // *All* tiles for the requested frameIndex must be keyframes in order for
+    //  avifDecoderIsKeyframe() to return true, otherwise we may seek to a frame in which the color
+    //  planes are a keyframe but the alpha plane isn't a keyframe, which will cause an alpha plane
+    //  decode failure.
+    for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
+        const avifTile * tile = &decoder->data->tiles.tile[i];
+        if ((frameIndex >= tile->input->samples.count) || !tile->input->samples.sample[frameIndex].sync) {
+            return AVIF_FALSE;
         }
     }
-    return AVIF_FALSE;
+    return AVIF_TRUE;
 }
 
 uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
