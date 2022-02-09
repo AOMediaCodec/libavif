@@ -578,6 +578,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
+        // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
+        //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
         // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
         //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
         //   same decoder configuration (see 7.3.6.2).

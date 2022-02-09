@@ -746,7 +746,7 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, 
     // If the rules above were not respected, the following problematic situation may happen:
     //   Some 4:2:0 image is 650 pixels wide and has 10 cell columns, each being 65 pixels wide.
     //   The chroma plane of the whole image is 325 pixels wide. The chroma plane of each cell is 33 pixels wide.
-    //   33*10 - 325 gives 5 extra pixels from cells with no specified destination in the reconstructed image.
+    //   33*10 - 325 gives 5 extra pixels with no specified destination in the reconstructed image.
 
     // Tile offsets are not enforced since they depend on tile size (ISO/IEC 23008-12:2017, Section 6.6.2.3.1):
     //   The reconstructed image is formed by tiling the input images into a grid [...] without gap or overlap
