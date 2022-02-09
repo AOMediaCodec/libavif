@@ -1295,37 +1295,17 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                               "Grid image tiles in the rightmost column and bottommost row do not overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2");
         return AVIF_FALSE;
     }
-    // Check the restrictions in MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2.
-    //
-    // The tile_width shall be greater than or equal to 64, and the tile_height shall be greater than or equal to 64.
-    if ((firstTile->image->width < 64) || (firstTile->image->height < 64)) {
-        avifDiagnosticsPrintf(data->diag,
-                              "Grid image tiles are smaller than 64x64 (%ux%u). See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
-                              firstTile->image->width,
-                              firstTile->image->height);
-        return AVIF_FALSE;
+
+    if (alpha) {
+        assert(firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     }
-    if (!alpha) {
-        if ((firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) || (firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
-            // The horizontal tile offsets and widths, and the output width, shall be even numbers.
-            if (((firstTile->image->width & 1) != 0) || ((grid->outputWidth & 1) != 0)) {
-                avifDiagnosticsPrintf(data->diag,
-                                      "Grid image horizontal tile offsets and widths [%u], and the output width [%u], shall be even numbers.",
-                                      firstTile->image->width,
-                                      grid->outputWidth);
-                return AVIF_FALSE;
-            }
-        }
-        if (firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-            // The vertical tile offsets and heights, and the output height, shall be even numbers.
-            if (((firstTile->image->height & 1) != 0) || ((grid->outputHeight & 1) != 0)) {
-                avifDiagnosticsPrintf(data->diag,
-                                      "Grid image vertical tile offsets and heights [%u], and the output height [%u], shall be even numbers.",
-                                      firstTile->image->height,
-                                      grid->outputHeight);
-                return AVIF_FALSE;
-            }
-        }
+    if (!avifAreGridDimensionsValid(firstTile->image->yuvFormat,
+                                    grid->outputWidth,
+                                    grid->outputHeight,
+                                    firstTile->image->width,
+                                    firstTile->image->height,
+                                    data->diag)) {
+        return AVIF_FALSE;
     }
 
     // Lazily populate dstImage with the new frame's properties. If we're decoding alpha,
