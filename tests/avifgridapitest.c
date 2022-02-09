@@ -151,11 +151,11 @@ static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
                              /*cellWidth=*/columnsCellWidths[i][1],
                              /*cellHeight=*/rowsCellHeights[j][1],
                              yuvFormat, expected_success)) {
-                return 0;
+                return AVIF_FALSE;
             }
         }
     }
-    return 1;
+    return AVIF_TRUE;
 }
 
 int main(void)
