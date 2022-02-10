@@ -3444,7 +3444,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                          decoder->imageCountLimit,
                                                          decoder->io->sizeHint,
                                                          &decoder->diag)) {
-                return AVIF_FALSE;
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             data->colorTileCount = 1;
 
@@ -3483,7 +3483,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                              decoder->imageCountLimit,
                                                              decoder->io->sizeHint,
                                                              &decoder->diag)) {
-                    return AVIF_FALSE;
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
                 alphaTile->input->alpha = AVIF_TRUE;
                 data->alphaTileCount = 1;
