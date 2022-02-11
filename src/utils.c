@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
@@ -115,7 +116,7 @@ void * avifArrayPushPtr(void * arrayStruct)
 {
     uint32_t index = avifArrayPushIndex(arrayStruct);
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
-    return &arr->ptr[index * arr->elementSize];
+    return &arr->ptr[index * (size_t)arr->elementSize];
 }
 
 void avifArrayPush(void * arrayStruct, void * element)
@@ -128,7 +129,9 @@ void avifArrayPush(void * arrayStruct, void * element)
 void avifArrayPop(void * arrayStruct)
 {
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
+    assert(arr->count > 0);
     --arr->count;
+    memset(&arr->ptr[arr->count * (size_t)arr->elementSize], 0, arr->elementSize);
 }
 
 void avifArrayDestroy(void * arrayStruct)
