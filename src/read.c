@@ -814,11 +814,27 @@ static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint32_t wid
 {
     avifTile * tile = (avifTile *)avifArrayPushPtr(&data->tiles);
     tile->image = avifImageCreateEmpty();
+    if (!tile->image) {
+        goto error;
+    }
     tile->input = avifCodecDecodeInputCreate();
+    if (!tile->input) {
+        goto error;
+    }
     tile->width = width;
     tile->height = height;
     tile->operatingPoint = operatingPoint;
     return tile;
+
+error:
+    if (tile->input) {
+        avifCodecDecodeInputDestroy(tile->input);
+    }
+    if (tile->image) {
+        avifImageDestroy(tile->image);
+    }
+    avifArrayPop(&data->tiles);
+    return NULL;
 }
 
 static avifTrack * avifDecoderDataCreateTrack(avifDecoderData * data)
@@ -1211,6 +1227,9 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
             }
 
             avifTile * tile = avifDecoderDataCreateTile(decoder->data, item->width, item->height, avifDecoderItemOperatingPoint(item));
+            if (!tile) {
+                return AVIF_FALSE;
+            }
             if (!avifCodecDecodeInputFillFromDecoderItem(tile->input,
                                                          item,
                                                          decoder->allowProgressive,
@@ -3275,6 +3294,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         avifTile * colorTile = avifDecoderDataCreateTile(data, colorTrack->width, colorTrack->height, 0); // No way to set operating point via tracks
+        if (!colorTile) {
+            return AVIF_RESULT_OUT_OF_MEMORY;
+        }
         if (!avifCodecDecodeInputFillFromSampleTable(colorTile->input,
                                                      colorTrack->sampleTable,
                                                      decoder->imageCountLimit,
@@ -3286,6 +3308,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         if (alphaTrack) {
             avifTile * alphaTile = avifDecoderDataCreateTile(data, alphaTrack->width, alphaTrack->height, 0); // No way to set operating point via tracks
+            if (!alphaTile) {
+                return AVIF_RESULT_OUT_OF_MEMORY;
+            }
             if (!avifCodecDecodeInputFillFromSampleTable(alphaTile->input,
                                                          alphaTrack->sampleTable,
                                                          decoder->imageCountLimit,
@@ -3438,6 +3463,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
             avifTile * colorTile =
                 avifDecoderDataCreateTile(data, colorItem->width, colorItem->height, avifDecoderItemOperatingPoint(colorItem));
+            if (!colorTile) {
+                return AVIF_RESULT_OUT_OF_MEMORY;
+            }
             if (!avifCodecDecodeInputFillFromDecoderItem(colorTile->input,
                                                          colorItem,
                                                          decoder->allowProgressive,
@@ -3477,6 +3505,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
                 avifTile * alphaTile =
                     avifDecoderDataCreateTile(data, alphaItem->width, alphaItem->height, avifDecoderItemOperatingPoint(alphaItem));
+                if (!alphaTile) {
+                    return AVIF_RESULT_OUT_OF_MEMORY;
+                }
                 if (!avifCodecDecodeInputFillFromDecoderItem(alphaTile->input,
                                                              alphaItem,
                                                              decoder->allowProgressive,
