@@ -542,7 +542,7 @@ if(AVIF_BUILD_TESTS)
     # Reference tests for CTest to work.
     enable_testing()
     # Using a CMake FIXTURES_SETUP/FIXTURES_CLEANUP to create and delete a
-    # subdirectory would be cleaner but this is way simpler this way.
+    # subdirectory would be cleaner but this is way simpler.
     set(AVIF_TEST_TMP_DIR ${PROJECT_BINARY_DIR})
 
     add_executable(aviftest
