@@ -1,8 +1,9 @@
 // Copyright 2022 Google LLC. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "apps/shared/y4m.h"
 #include "avif/avif.h"
+
+#include "y4m.h"
 
 #include <assert.h>
 #include <inttypes.h>

@@ -539,7 +539,8 @@ endif()
 
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 if(AVIF_BUILD_TESTS)
-    # Reference tests for CTest to work.
+    # With testing enabled, all targets referenced by add_test() can be run
+    # at once with CMake's ctest command line tool from the build folder.
     enable_testing()
     # Using a CMake FIXTURES_SETUP/FIXTURES_CLEANUP to create and delete a
     # subdirectory would be cleaner but this is way simpler.
@@ -573,7 +574,7 @@ if(AVIF_BUILD_TESTS)
         set_target_properties(avify4mtest PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avify4mtest avif ${AVIF_PLATFORM_LIBRARIES})
-    target_include_directories(avify4mtest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(avify4mtest PRIVATE apps/shared)
     add_test(NAME avify4mtest
         COMMAND ${CMAKE_BINARY_DIR}/avify4mtest ${AVIF_TEST_TMP_DIR})
 
