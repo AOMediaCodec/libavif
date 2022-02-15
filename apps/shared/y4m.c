@@ -363,7 +363,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     avifPixelFormatInfo info;
     avifGetPixelFormatInfo(avif->yuvFormat, &info);
 
-    for (int plane = 0; plane < 3; ++plane) {
+    for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
         uint32_t planeWidth = (plane > 0) ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
         uint32_t planeHeight = (plane > 0) ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
         uint32_t rowBytes = planeWidth << (avif->depth > 8);
@@ -528,7 +528,7 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         goto cleanup;
     }
 
-    for (int plane = 0; plane < 3; ++plane) {
+    for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
         uint32_t planeWidth = (plane > 0) ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
         uint32_t planeHeight = (plane > 0) ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
         uint32_t rowBytes = planeWidth << (avif->depth > 8);
