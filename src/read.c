@@ -2175,10 +2175,31 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[infe]");
 
-    CHECK(avifROStreamReadAndEnforceVersion(&s, 2)); // TODO: support version > 2? 2+ is required for item_type
+    uint8_t version;
+    uint32_t flags;
+    CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
+    // Version 2+ is required for item_type
+    if (version != 2 && version != 3) {
+        avifDiagnosticsPrintf(s.diag, "%s: Expecting box version 2 or 3, got version %u", s.diagContext, version);
+        return AVIF_FALSE;
+    }
+    // TODO: check flags. ISO/IEC 14496-12:2022, Section 8.11.6.1 says:
+    // The flags field of ItemInfoEntry with version greater than or equal to 2 is specified as
+    // follows:
+    // -- (flags & 1) equal to 1 indicates that the item is not intended to be a part of the
+    //    presentation. .
+    // -- (flags & 1) equal to 0 indicates that the item is intended to be a part of the
+    //    presentation.
 
-    uint16_t itemID;                                      // unsigned int(16) item_ID;
-    CHECK(avifROStreamReadU16(&s, &itemID));              //
+    uint32_t itemID;
+    if (version == 2) {
+        uint16_t tmp;
+        CHECK(avifROStreamReadU16(&s, &tmp)); // unsigned int(16) item_ID;
+        itemID = tmp;
+    } else {
+        assert(version == 3);
+        CHECK(avifROStreamReadU32(&s, &itemID)); // unsigned int(32) item_ID;
+    }
     uint16_t itemProtectionIndex;                         // unsigned int(16) item_protection_index;
     CHECK(avifROStreamReadU16(&s, &itemProtectionIndex)); //
     uint8_t itemType[4];                                  // unsigned int(32) item_type;
