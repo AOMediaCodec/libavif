@@ -29,7 +29,8 @@ static avifBool createImage(int width, int height, int depth, avifPixelFormat yu
     uint32_t uvWidth = ((*image)->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
     uint32_t uvHeight = ((*image)->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
 
-    for (uint32_t plane = 0; plane < (formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
+    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
+    for (int plane = 0; plane < planeCount; ++plane) {
         const uint32_t widthByteCount = ((plane == AVIF_CHAN_Y) ? (*image)->width : uvWidth) * (((*image)->depth > 8) ? 2 : 1);
         const uint32_t planeHeight = (plane == AVIF_CHAN_Y) ? (*image)->height : uvHeight;
         uint8_t * row = (*image)->yuvPlanes[plane];
@@ -147,10 +148,11 @@ static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
     for (int i = 0; i < horizontalCombinationCount; ++i) {
         for (int j = 0; j < verticalCombinationCount; ++j) {
             if (!encodeDecode(/*columns=*/columnsCellWidths[i][0],
-                             /*rows=*/rowsCellHeights[j][0],
-                             /*cellWidth=*/columnsCellWidths[i][1],
-                             /*cellHeight=*/rowsCellHeights[j][1],
-                             yuvFormat, expected_success)) {
+                              /*rows=*/rowsCellHeights[j][0],
+                              /*cellWidth=*/columnsCellWidths[i][1],
+                              /*cellHeight=*/rowsCellHeights[j][1],
+                              yuvFormat,
+                              expected_success)) {
                 return AVIF_FALSE;
             }
         }

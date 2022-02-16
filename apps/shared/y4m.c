@@ -360,12 +360,13 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         avifImageAllocatePlanes(avif, AVIF_PLANES_A);
     }
 
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(avif->yuvFormat, &info);
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(avif->yuvFormat, &formatInfo);
 
-    for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
-        uint32_t planeWidth = (plane > 0) ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
-        uint32_t planeHeight = (plane > 0) ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
+    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
+    for (int plane = 0; plane < planeCount; ++plane) {
+        uint32_t planeWidth = (plane > 0) ? ((avif->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX) : avif->width;
+        uint32_t planeHeight = (plane > 0) ? ((avif->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY) : avif->height;
         uint32_t rowBytes = planeWidth << (avif->depth > 8);
         uint8_t * row = avif->yuvPlanes[plane];
         for (uint32_t y = 0; y < planeHeight; ++y) {
@@ -512,8 +513,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         rangeString = "XCOLORRANGE=LIMITED";
     }
 
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(avif->yuvFormat, &info);
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(avif->yuvFormat, &formatInfo);
 
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
@@ -528,9 +529,10 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         goto cleanup;
     }
 
-    for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
-        uint32_t planeWidth = (plane > 0) ? ((avif->width + info.chromaShiftX) >> info.chromaShiftX) : avif->width;
-        uint32_t planeHeight = (plane > 0) ? ((avif->height + info.chromaShiftY) >> info.chromaShiftY) : avif->height;
+    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
+    for (int plane = 0; plane < planeCount; ++plane) {
+        uint32_t planeWidth = (plane > 0) ? ((avif->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX) : avif->width;
+        uint32_t planeHeight = (plane > 0) ? ((avif->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY) : avif->height;
         uint32_t rowBytes = planeWidth << (avif->depth > 8);
         const uint8_t * row = avif->yuvPlanes[plane];
         for (uint32_t y = 0; y < planeHeight; ++y) {
