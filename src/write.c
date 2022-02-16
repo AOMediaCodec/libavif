@@ -1180,7 +1180,19 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write tracks (if an image sequence)
 
     if (encoder->data->frames.count > 1) {
-        static const uint32_t unityMatrix[9] = { 0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000 };
+        static const uint8_t unityMatrix[9][4] = {
+            /* clang-format off */
+            { 0x00, 0x01, 0x00, 0x00 },
+            { 0 },
+            { 0 },
+            { 0 },
+            { 0x00, 0x01, 0x00, 0x00 },
+            { 0 },
+            { 0 },
+            { 0 },
+            { 0x40, 0x00, 0x00, 0x00 }
+            /* clang-format on */
+        };
 
         uint64_t durationInTimescales = 0;
         for (uint32_t frameIndex = 0; frameIndex < encoder->data->frames.count; ++frameIndex) {
