@@ -28,7 +28,8 @@ static avifBool compareYUVA(const avifImage * image1, const avifImage * image2)
     const uint32_t uvWidth = (image1->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
     const uint32_t uvHeight = (image1->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
 
-    for (uint32_t plane = 0; plane < (formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
+    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
+    for (int plane = 0; plane < planeCount; ++plane) {
         const uint32_t widthByteCount =
             ((plane == AVIF_CHAN_Y) ? image1->width : uvWidth) * ((image1->depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t));
         const uint32_t height = (plane == AVIF_CHAN_Y) ? image1->height : uvHeight;
@@ -70,15 +71,16 @@ static avifBool compareYUVA(const avifImage * image1, const avifImage * image2)
 // Fills each plane of the image with the maximum allowed value.
 static void fillPlanes(avifImage * image)
 {
-    const uint32_t yuvValue = (image->yuvRange == AVIF_RANGE_LIMITED) ? (235 << (image->depth - 8)) : ((1 << image->depth) - 1);
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(image->yuvFormat, &info);
-    for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
+    const uint16_t yuvValue = (image->yuvRange == AVIF_RANGE_LIMITED) ? (235 << (image->depth - 8)) : ((1 << image->depth) - 1);
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
+    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
+    for (int plane = 0; plane < planeCount; ++plane) {
         if (image->yuvPlanes[plane] != NULL) {
-            const uint32_t planeWidth = (plane == AVIF_CHAN_Y) ? image->width
-                                                               : ((image->width + info.chromaShiftX) >> info.chromaShiftX);
-            const uint32_t planeHeight = (plane == AVIF_CHAN_Y) ? image->height
-                                                                : ((image->height + info.chromaShiftY) >> info.chromaShiftY);
+            const uint32_t planeWidth =
+                (plane == AVIF_CHAN_Y) ? image->width : ((image->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX);
+            const uint32_t planeHeight =
+                (plane == AVIF_CHAN_Y) ? image->height : ((image->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY);
             for (uint32_t y = 0; y < planeHeight; ++y) {
                 uint8_t * const row = image->yuvPlanes[plane] + y * image->yuvRowBytes[plane];
                 if (image->depth == 8) {
@@ -93,7 +95,7 @@ static void fillPlanes(avifImage * image)
     }
     if (image->alphaPlane != NULL) {
         assert(image->alphaRange == AVIF_RANGE_FULL);
-        const uint32_t alphaValue = (1 << image->depth) - 1;
+        const uint16_t alphaValue = (1 << image->depth) - 1;
         for (uint32_t y = 0; y < image->height; ++y) {
             uint8_t * const row = image->alphaPlane + y * image->alphaRowBytes;
             if (image->depth == 8) {
