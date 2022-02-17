@@ -158,14 +158,15 @@ cleanup:
 
 //------------------------------------------------------------------------------
 
-int main(int argc, char * argv[])
+int main(void)
 {
-    if (argc != 2 || !strlen(argv[1])) {
-        fprintf(stderr, "Missing temporary folder path argument\n");
+    const char * testTmpdir = getenv("TEST_TMPDIR");
+    if (testTmpdir == NULL || !strlen(testTmpdir)) {
+        fprintf(stderr, "The environment variable TEST_TMPDIR is missing or is an empty string\n");
         return EXIT_FAILURE;
     }
     char filePath[256];
-    const int result = snprintf(filePath, sizeof(filePath), "%s/avify4mtest.y4m", argv[1]);
+    const int result = snprintf(filePath, sizeof(filePath), "%s/avify4mtest.y4m", testTmpdir);
     if (result < 0 || result >= (int)sizeof(filePath)) {
         fprintf(stderr, "Could not generate a temporary file path\n");
         return EXIT_FAILURE;
