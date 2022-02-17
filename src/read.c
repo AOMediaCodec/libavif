@@ -2183,13 +2183,17 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
         avifDiagnosticsPrintf(s.diag, "%s: Expecting box version 2 or 3, got version %u", s.diagContext, version);
         return AVIF_FALSE;
     }
-    // TODO: check flags. ISO/IEC 14496-12:2022, Section 8.11.6.1 says:
-    // The flags field of ItemInfoEntry with version greater than or equal to 2 is specified as
-    // follows:
-    // -- (flags & 1) equal to 1 indicates that the item is not intended to be a part of the
-    //    presentation. .
-    // -- (flags & 1) equal to 0 indicates that the item is intended to be a part of the
-    //    presentation.
+    // TODO: check flags. ISO/IEC 23008-12:2017, Section 9.2 says:
+    //   The flags field of ItemInfoEntry with version greater than or equal to 2 is specified as
+    //   follows:
+    //
+    //   (flags & 1) equal to 1 indicates that the item is not intended to be a part of the
+    //   presentation. For example, when (flags & 1) is equal to 1 for an image item, the image
+    //   item should not be displayed.
+    //   (flags & 1) equal to 0 indicates that the item is intended to be a part of the
+    //   presentation.
+    //
+    // See also Section 6.4.2.
 
     uint32_t itemID;
     if (version == 2) {
