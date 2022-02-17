@@ -1383,6 +1383,15 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             if (!item->alpha) {
                 avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL);
             }
+
+            avifBoxMarker ccst = avifRWStreamWriteFullBox(&s, "ccst", AVIF_BOX_SIZE_TBD, 0, 0);
+            const uint8_t ccstValue = (0 << 7) | // unsigned int(1) all_ref_pics_intra;
+                                      (1 << 6) | // unsigned int(1) intra_pred_used;
+                                      (15 << 2); // unsigned int(4) max_ref_per_pic;
+            avifRWStreamWriteU8(&s, ccstValue);
+            avifRWStreamWriteZeros(&s, 3); // unsigned int(26) reserved; (two zero bits are written along with ccstValue).
+            avifRWStreamFinishBox(&s, ccst);
+
             avifRWStreamFinishBox(&s, av01);
             avifRWStreamFinishBox(&s, stsd);
 
