@@ -3,6 +3,7 @@
 
 #include "avif/avif.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,16 +11,33 @@
 
 //------------------------------------------------------------------------------
 
+// Fills a plane with a repeating gradient.
+static void fillPlane(int width, int height, int depth, uint8_t * row, uint32_t rowBytes)
+{
+    assert(depth == 8 || depth == 10 || depth == 12); // Values allowed by AV1.
+    const int maxValuePlusOne = 1 << depth;
+    for (int y = 0; y < height; ++y) {
+        if (depth == 8) {
+            memset(row, y % maxValuePlusOne, width);
+        } else {
+            for (int x = 0; x < width; ++x) {
+                ((uint16_t *)row)[x] = (uint16_t)(y % maxValuePlusOne);
+            }
+        }
+        row += rowBytes;
+    }
+}
+
 // Creates an image where the pixel values are defined but do not matter.
 // Returns false in case of memory failure.
-static avifBool createImage(int width, int height, int depth, avifPixelFormat yuvFormat, avifImage ** image)
+static avifBool createImage(int width, int height, int depth, avifPixelFormat yuvFormat, int createAlpha, avifImage ** image)
 {
     *image = avifImageCreate(width, height, depth, yuvFormat);
     if (*image == NULL) {
         printf("ERROR: avifImageCreate() failed\n");
         return AVIF_FALSE;
     }
-    avifImageAllocatePlanes(*image, AVIF_PLANES_YUV);
+    avifImageAllocatePlanes(*image, createAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
     if (width * height == 0) {
         return AVIF_TRUE;
     }
@@ -31,26 +49,28 @@ static avifBool createImage(int width, int height, int depth, avifPixelFormat yu
 
     const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
     for (int plane = 0; plane < planeCount; ++plane) {
-        const uint32_t widthByteCount = ((plane == AVIF_CHAN_Y) ? (*image)->width : uvWidth) * (((*image)->depth > 8) ? 2 : 1);
-        const uint32_t planeHeight = (plane == AVIF_CHAN_Y) ? (*image)->height : uvHeight;
-        uint8_t * row = (*image)->yuvPlanes[plane];
-        for (uint32_t y = 0; y < planeHeight; ++y) {
-            memset(row, (int)(y % 256), widthByteCount); // Fill with a repeating gradient.
-            row += (*image)->yuvRowBytes[plane];
-        }
+        fillPlane((plane == AVIF_CHAN_Y) ? (*image)->width : uvWidth,
+                  (plane == AVIF_CHAN_Y) ? (*image)->height : uvHeight,
+                  (*image)->depth,
+                  (*image)->yuvPlanes[plane],
+                  (*image)->yuvRowBytes[plane]);
+    }
+
+    if (createAlpha) {
+        fillPlane((*image)->width, (*image)->height, (*image)->depth, (*image)->alphaPlane, (*image)->alphaRowBytes);
     }
     return AVIF_TRUE;
 }
 
 // Generates then encodes a grid image. Returns false in case of failure.
-static avifBool encodeGrid(int columns, int rows, int cellWidth, int cellHeight, int depth, avifPixelFormat yuvFormat, avifRWData * output)
+static avifBool encodeGrid(int columns, int rows, int cellWidth, int cellHeight, int depth, avifPixelFormat yuvFormat, int createAlpha, avifRWData * output)
 {
     avifBool success = AVIF_FALSE;
     avifEncoder * encoder = NULL;
     avifImage ** cellImages = avifAlloc(sizeof(avifImage *) * columns * rows);
     memset(cellImages, 0, sizeof(avifImage *) * columns * rows);
     for (int iCell = 0; iCell < columns * rows; ++iCell) {
-        if (!createImage(cellWidth, cellHeight, depth, yuvFormat, &cellImages[iCell])) {
+        if (!createImage(cellWidth, cellHeight, depth, yuvFormat, createAlpha, &cellImages[iCell])) {
             goto cleanup;
         }
     }
@@ -117,11 +137,11 @@ cleanup:
 //------------------------------------------------------------------------------
 
 // Generates, encodes then decodes a grid image.
-static avifBool encodeDecode(int columns, int rows, int cellWidth, int cellHeight, avifPixelFormat yuvFormat, int expected_success)
+static avifBool encodeDecode(int columns, int rows, int cellWidth, int cellHeight, int depth, avifPixelFormat yuvFormat, int createAlpha, int expected_success)
 {
     avifBool success = AVIF_FALSE;
     avifRWData encodedAvif = { 0 };
-    if (encodeGrid(columns, rows, cellWidth, cellHeight, /*depth=*/8, yuvFormat, &encodedAvif) != expected_success) {
+    if (encodeGrid(columns, rows, cellWidth, cellHeight, depth, yuvFormat, createAlpha, &encodedAvif) != expected_success) {
         goto cleanup;
     }
     // Only decode if the encoding was expected to succeed.
@@ -137,7 +157,21 @@ cleanup:
 
 //------------------------------------------------------------------------------
 
-// For each dimension, for each combination of cell count and size, generates, encodes then decodes a grid image.
+// For each bit depth, with and without alpha, generates, encodes then decodes a grid image.
+static avifBool encodeDecodeDepthsAlpha(int columns, int rows, int cellWidth, int cellHeight, avifPixelFormat yuvFormat, int expected_success)
+{
+    const int depths[] = { 8, 10, 12 }; // See avifEncoderAddImageInternal()
+    for (size_t d = 0; d < sizeof(depths) / sizeof(depths[0]); ++d) {
+        for (avifBool createAlpha = AVIF_FALSE; createAlpha <= AVIF_TRUE; ++createAlpha) {
+            if (!encodeDecode(columns, rows, cellWidth, cellHeight, depths[d], yuvFormat, createAlpha, expected_success)) {
+                return AVIF_FALSE;
+            }
+        }
+    }
+    return AVIF_TRUE;
+}
+
+// For each dimension, for each combination of cell count and size, generates, encodes then decodes a grid image for several depths and alpha.
 static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
                                   int horizontalCombinationCount,
                                   const int rowsCellHeights[][2],
@@ -147,12 +181,12 @@ static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
 {
     for (int i = 0; i < horizontalCombinationCount; ++i) {
         for (int j = 0; j < verticalCombinationCount; ++j) {
-            if (!encodeDecode(/*columns=*/columnsCellWidths[i][0],
-                              /*rows=*/rowsCellHeights[j][0],
-                              /*cellWidth=*/columnsCellWidths[i][1],
-                              /*cellHeight=*/rowsCellHeights[j][1],
-                              yuvFormat,
-                              expected_success)) {
+            if (!encodeDecodeDepthsAlpha(/*columns=*/columnsCellWidths[i][0],
+                                         /*rows=*/rowsCellHeights[j][0],
+                                         /*cellWidth=*/columnsCellWidths[i][1],
+                                         /*cellHeight=*/rowsCellHeights[j][1],
+                                         yuvFormat,
+                                         expected_success)) {
                 return AVIF_FALSE;
             }
         }
@@ -205,7 +239,7 @@ int main(void)
         // Special case depending on the cell count and the chroma subsampling.
         for (int rows = 1; rows <= 2; ++rows) {
             int expected_success = (rows == 1) || (yuvFormat != AVIF_PIXEL_FORMAT_YUV420);
-            if (!encodeDecode(/*columns=*/1, rows, /*cellWidth=*/64, /*cellHeight=*/65, yuvFormat, expected_success)) {
+            if (!encodeDecodeDepthsAlpha(/*columns=*/1, rows, /*cellWidth=*/64, /*cellHeight=*/65, yuvFormat, expected_success)) {
                 return EXIT_FAILURE;
             }
         }
@@ -214,7 +248,7 @@ int main(void)
         for (int columns = 1; columns <= 2; ++columns) {
             for (int rows = 1; rows <= 2; ++rows) {
                 int expected_success = (columns * rows == 1);
-                if (!encodeDecode(columns, rows, /*cellWidth=*/1, /*cellHeight=*/65, yuvFormat, expected_success)) {
+                if (!encodeDecodeDepthsAlpha(columns, rows, /*cellWidth=*/1, /*cellHeight=*/65, yuvFormat, expected_success)) {
                     return EXIT_FAILURE;
                 }
             }
