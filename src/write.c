@@ -86,6 +86,7 @@ typedef struct avifEncoderItem
     avifCodecConfigurationBox av1C;       // Harvested in avifEncoderFinish(), if encodeOutput has samples
     uint32_t cellIndex;                   // Which row-major cell index corresponds to this item. ignored on non-av01 types
     avifBool alpha;
+    avifBool hiddenImage; // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
 
     const char * infeName;
     size_t infeNameSize;
@@ -486,6 +487,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
             continue;
         }
 
+        assert(!item->hiddenImage);
         avifBoxMarker infe = avifRWStreamWriteFullBox(s, "infe", AVIF_BOX_SIZE_TBD, 2, 0);
         avifRWStreamWriteU16(s, item->id);                             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(s, 0);                                    // unsigned int(16) item_protection_index;
@@ -654,6 +656,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
             if (cellCount > 1) {
                 item->dimgFromID = gridColorID;
+                item->hiddenImage = AVIF_TRUE;
             } else {
                 encoder->data->primaryItemID = item->id;
             }
@@ -712,6 +715,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
                 if (cellCount > 1) {
                     item->dimgFromID = gridAlphaID;
+                    item->hiddenImage = AVIF_TRUE;
                 } else {
                     item->irefToID = encoder->data->primaryItemID;
                     item->irefType = "auxl";
@@ -993,7 +997,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
 
-        avifBoxMarker infe = avifRWStreamWriteFullBox(&s, "infe", AVIF_BOX_SIZE_TBD, 2, 0);
+        uint32_t flags = item->hiddenImage ? 1 : 0;
+        avifBoxMarker infe = avifRWStreamWriteFullBox(&s, "infe", AVIF_BOX_SIZE_TBD, 2, flags);
         avifRWStreamWriteU16(&s, item->id);                             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(&s, 0);                                    // unsigned int(16) item_protection_index;
         avifRWStreamWrite(&s, item->type, 4);                           // unsigned int(32) item_type;
