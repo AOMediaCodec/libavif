@@ -487,6 +487,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
             continue;
         }
 
+        assert(!item->hiddenImage);
         avifBoxMarker infe = avifRWStreamWriteFullBox(s, "infe", AVIF_BOX_SIZE_TBD, 2, 0);
         avifRWStreamWriteU16(s, item->id);                             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(s, 0);                                    // unsigned int(16) item_protection_index;
