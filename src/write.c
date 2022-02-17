@@ -915,6 +915,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     if (encoder->data->frames.count > 1) {                                 //
         avifRWStreamWriteChars(&s, "avis", 4);                             // ... compatible_brands[]
         avifRWStreamWriteChars(&s, "msf1", 4);                             // ... compatible_brands[]
+        avifRWStreamWriteChars(&s, "iso8", 4);                             // ... compatible_brands[]
     }                                                                      //
     avifRWStreamWriteChars(&s, "mif1", 4);                                 // ... compatible_brands[]
     avifRWStreamWriteChars(&s, "miaf", 4);                                 // ... compatible_brands[]
