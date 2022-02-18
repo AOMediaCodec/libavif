@@ -34,7 +34,7 @@ nasm --version
 
 # aom
 cd
-git clone -b v3.2.0 --depth 1 https://aomedia.googlesource.com/aom
+git clone -b v3.3.0 --depth 1 https://aomedia.googlesource.com/aom
 cd aom
 mkdir build.avif
 cd build.avif
