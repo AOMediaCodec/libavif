@@ -161,7 +161,7 @@ cleanup:
 int main(int argc, char * argv[])
 {
     if (argc != 2 || !strlen(argv[1])) {
-        fprintf(stderr, "Missing temporary directory environment variable name argument\n");
+        fprintf(stderr, "Missing temporary directory path environment variable name argument\n");
         return EXIT_FAILURE;
     }
     const char * testTmpdir = getenv(argv[1]);
