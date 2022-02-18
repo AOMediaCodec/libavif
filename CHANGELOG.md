@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+* Update aom.cmd: v3.3.0
+
 ## [0.9.3] - 2021-10-20
 
 ### Added
