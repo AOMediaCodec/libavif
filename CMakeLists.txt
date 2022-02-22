@@ -576,7 +576,8 @@ if(AVIF_BUILD_TESTS)
     target_link_libraries(avify4mtest avif ${AVIF_PLATFORM_LIBRARIES})
     target_include_directories(avify4mtest PRIVATE apps/shared)
     add_test(NAME avify4mtest
-        COMMAND ${CMAKE_BINARY_DIR}/avify4mtest ${AVIF_TEST_TMP_DIR})
+        COMMAND ${CMAKE_BINARY_DIR}/avify4mtest AVIF_TEST_TMP_DIR)
+    set_tests_properties(avify4mtest PROPERTIES ENVIRONMENT "AVIF_TEST_TMP_DIR=${AVIF_TEST_TMP_DIR}")
 
     add_executable(avifyuv
         tests/avifyuv.c
