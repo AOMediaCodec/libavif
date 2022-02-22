@@ -1316,7 +1316,8 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     }
 
     if (alpha) {
-        assert(firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
+        // An alpha tile does not contain any YUV pixels.
+        assert(firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_NONE);
     }
     if (!avifAreGridDimensionsValid(firstTile->image->yuvFormat,
                                     grid->outputWidth,

@@ -187,7 +187,7 @@ AVIF_API void avifRWDataFree(avifRWData * raw);
 
 typedef enum avifPixelFormat
 {
-    // No pixels are present
+    // No YUV pixels are present. Alpha plane can still be present.
     AVIF_PIXEL_FORMAT_NONE = 0,
 
     AVIF_PIXEL_FORMAT_YUV444,
