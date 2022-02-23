@@ -437,7 +437,7 @@ if(BUILD_SHARED_LIBS)
     endif()
 endif()
 
-option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
+option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     set(AVIF_EXAMPLES avif_example_decode_memory avif_example_decode_file avif_example_decode_streaming avif_example_encode)
 
@@ -464,8 +464,11 @@ endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
+option(AVIF_BUILD_GTESTS
+       "Build avif C++ tests depending on GoogleTest. Requires GoogleTest to be installed and AVIF_BUILD_TESTS to be ON." OFF
+)
 
-if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
+if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_BUILD_GTESTS))
     find_package(ZLIB REQUIRED)
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)

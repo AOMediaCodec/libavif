@@ -36,7 +36,7 @@ These libraries (in their C API form) must be externally available
 a child CMake project, the appropriate CMake target must already exist
 by the time libavif's CMake scripts are executed.
 
-## Local / Static Builds
+### Local / Static Builds
 
 The `ext/` subdirectory contains a handful of basic scripts which each pull
 down a known-good copy of an AV1 codec and make a local static library build.
@@ -48,6 +48,14 @@ libavif, building using one of these scripts and then enabling the associated
 If you want to build/install shared libraries for AV1 codecs, you can still
 peek inside of each script to see where the current known-good SHA is for each
 codec.
+
+### Tests
+
+A few tests can be built by enabling the `AVIF_BUILD_TESTS` CMake option.
+
+The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
+`AVIF_BUILD_GTESTS` CMake options. They require GoogleTest to be built locally
+with ext/googletest.cmd or installed globally.
 
 ## Prebuilt Library (Windows)
 

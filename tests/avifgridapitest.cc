@@ -3,11 +3,20 @@
 
 #include "avif/avif.h"
 
-#include <assert.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <cinttypes>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+#include "gtest/gtest.h"
+
+using testing::Combine;
+using testing::Values;
+using testing::ValuesIn;
+
+namespace
+{
 
 //------------------------------------------------------------------------------
 
@@ -30,16 +39,16 @@ static void fillPlane(int width, int height, int depth, uint8_t * row, uint32_t 
 
 // Creates an image where the pixel values are defined but do not matter.
 // Returns false in case of memory failure.
-static avifBool createImage(int width, int height, int depth, avifPixelFormat yuvFormat, avifBool createAlpha, avifImage ** image)
+bool createImage(int width, int height, int depth, avifPixelFormat yuvFormat, bool createAlpha, avifImage ** image)
 {
     *image = avifImageCreate(width, height, depth, yuvFormat);
     if (*image == NULL) {
         printf("ERROR: avifImageCreate() failed\n");
-        return AVIF_FALSE;
+        return false;
     }
     avifImageAllocatePlanes(*image, createAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
     if (width * height == 0) {
-        return AVIF_TRUE;
+        return true;
     }
 
     avifPixelFormatInfo formatInfo;
@@ -59,15 +68,15 @@ static avifBool createImage(int width, int height, int depth, avifPixelFormat yu
     if (createAlpha) {
         fillPlane((*image)->width, (*image)->height, (*image)->depth, (*image)->alphaPlane, (*image)->alphaRowBytes);
     }
-    return AVIF_TRUE;
+    return true;
 }
 
 // Generates then encodes a grid image. Returns false in case of failure.
-static avifBool encodeGrid(int columns, int rows, int cellWidth, int cellHeight, int depth, avifPixelFormat yuvFormat, avifBool createAlpha, avifRWData * output)
+bool encodeGrid(int columns, int rows, int cellWidth, int cellHeight, int depth, avifPixelFormat yuvFormat, bool createAlpha, avifRWData * output)
 {
-    avifBool success = AVIF_FALSE;
+    bool success = false;
     avifEncoder * encoder = NULL;
-    avifImage ** cellImages = avifAlloc(sizeof(avifImage *) * columns * rows);
+    avifImage ** cellImages = (avifImage **)avifAlloc(sizeof(avifImage *) * columns * rows);
     memset(cellImages, 0, sizeof(avifImage *) * columns * rows);
     for (int iCell = 0; iCell < columns * rows; ++iCell) {
         if (!createImage(cellWidth, cellHeight, depth, yuvFormat, createAlpha, &cellImages[iCell])) {
@@ -91,7 +100,7 @@ static avifBool encodeGrid(int columns, int rows, int cellWidth, int cellHeight,
         goto cleanup;
     }
 
-    success = AVIF_TRUE;
+    success = true;
 cleanup:
     if (encoder != NULL) {
         avifEncoderDestroy(encoder);
@@ -110,9 +119,9 @@ cleanup:
 //------------------------------------------------------------------------------
 
 // Decodes the data. Returns false in case of failure.
-static avifBool decode(const avifRWData * encodedAvif)
+bool decode(const avifRWData * encodedAvif)
 {
-    avifBool success = AVIF_FALSE;
+    bool success = false;
     avifImage * const image = avifImageCreateEmpty();
     avifDecoder * const decoder = avifDecoderCreate();
     if (image == NULL || decoder == NULL) {
@@ -123,7 +132,7 @@ static avifBool decode(const avifRWData * encodedAvif)
         printf("ERROR: avifDecoderReadMemory() failed\n");
         goto cleanup;
     }
-    success = AVIF_TRUE;
+    success = true;
 cleanup:
     if (image != NULL) {
         avifImageDestroy(image);
@@ -137,10 +146,10 @@ cleanup:
 //------------------------------------------------------------------------------
 
 // Generates, encodes then decodes a grid image.
-static avifBool encodeDecode(int columns, int rows, int cellWidth, int cellHeight, int depth, avifPixelFormat yuvFormat, avifBool createAlpha, avifBool expectedSuccess)
+bool encodeDecode(int columns, int rows, int cellWidth, int cellHeight, int depth, avifPixelFormat yuvFormat, bool createAlpha, bool expectedSuccess)
 {
-    avifBool success = AVIF_FALSE;
-    avifRWData encodedAvif = { 0 };
+    bool success = false;
+    avifRWData encodedAvif = { nullptr, 0 };
     if (encodeGrid(columns, rows, cellWidth, cellHeight, depth, yuvFormat, createAlpha, &encodedAvif) != expectedSuccess) {
         goto cleanup;
     }
@@ -149,7 +158,7 @@ static avifBool encodeDecode(int columns, int rows, int cellWidth, int cellHeigh
     if (expectedSuccess && !decode(&encodedAvif)) {
         goto cleanup;
     }
-    success = AVIF_TRUE;
+    success = true;
 cleanup:
     avifRWDataFree(&encodedAvif);
     return success;
@@ -157,102 +166,111 @@ cleanup:
 
 //------------------------------------------------------------------------------
 
-// For each bit depth, with and without alpha, generates, encodes then decodes a grid image.
-static avifBool encodeDecodeDepthsAlpha(int columns, int rows, int cellWidth, int cellHeight, avifPixelFormat yuvFormat, avifBool expectedSuccess)
+// Pair of cell count and cell size for a single dimension.
+struct Cell
 {
-    const int depths[] = { 8, 10, 12 }; // See avifEncoderAddImageInternal()
-    for (size_t d = 0; d < sizeof(depths) / sizeof(depths[0]); ++d) {
-        for (avifBool createAlpha = AVIF_FALSE; createAlpha <= AVIF_TRUE; ++createAlpha) {
-            if (!encodeDecode(columns, rows, cellWidth, cellHeight, depths[d], yuvFormat, createAlpha, expectedSuccess)) {
-                return AVIF_FALSE;
-            }
-        }
-    }
-    return AVIF_TRUE;
+    int count, size;
+};
+
+class GridApiTest : public testing::TestWithParam<std::tuple<Cell, Cell, int, avifPixelFormat, bool, bool>>
+{
+};
+
+TEST_P(GridApiTest, EncodeDecode)
+{
+    const Cell horizontal = std::get<0>(GetParam());
+    const Cell vertical = std::get<1>(GetParam());
+    const int bitDepth = std::get<2>(GetParam());
+    const avifPixelFormat yuvFormat = std::get<3>(GetParam());
+    const bool createAlpha = std::get<4>(GetParam());
+    const bool expectedSuccess = std::get<5>(GetParam());
+
+    EXPECT_TRUE(encodeDecode(/*columns=*/horizontal.count,
+                             /*rows=*/vertical.count,
+                             /*cellWidth=*/horizontal.size,
+                             /*cellHeight=*/vertical.size,
+                             bitDepth,
+                             yuvFormat,
+                             createAlpha,
+                             expectedSuccess));
 }
 
-// For each dimension, for each combination of cell count and size, generates, encodes then decodes a grid image for several depths and alpha.
-static avifBool encodeDecodeSizes(const int columnsCellWidths[][2],
-                                  int horizontalCombinationCount,
-                                  const int rowsCellHeights[][2],
-                                  int verticalCombinationCount,
-                                  avifPixelFormat yuvFormat,
-                                  avifBool expectedSuccess)
-{
-    for (int i = 0; i < horizontalCombinationCount; ++i) {
-        for (int j = 0; j < verticalCombinationCount; ++j) {
-            if (!encodeDecodeDepthsAlpha(/*columns=*/columnsCellWidths[i][0],
-                                         /*rows=*/rowsCellHeights[j][0],
-                                         /*cellWidth=*/columnsCellWidths[i][1],
-                                         /*cellHeight=*/rowsCellHeights[j][1],
-                                         yuvFormat,
-                                         expectedSuccess)) {
-                return AVIF_FALSE;
-            }
-        }
-    }
-    return AVIF_TRUE;
-}
+// A cell cannot be smaller than 64px in any dimension if there are several cells.
+// A cell cannot have an odd size in any dimension if there are several cells and chroma subsampling.
+// Image size must be a multiple of cell size.
+const Cell kValidCells[] = { { 1, 64 }, { 1, 66 }, { 2, 64 }, { 3, 68 } };
+const Cell kInvalidCells[] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 2, 1 }, { 2, 2 }, { 2, 3 }, { 2, 63 } };
+const int kBitDepths[] = { 8, 10, 12 };
+const avifPixelFormat kPixelFormats[] = { AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400 };
 
-int main(void)
-{
-    // Pairs of cell count and cell size for a single dimension.
-    // A cell cannot be smaller than 64px in any dimension if there are several cells.
-    // A cell cannot have an odd size in any dimension if there are several cells and chroma subsampling.
-    // Image size must be a multiple of cell size.
-    const int validCellCountsSizes[][2] = { { 1, 64 }, { 1, 66 }, { 2, 64 }, { 3, 68 } };
-    const int validCellCountsSizeCount = sizeof(validCellCountsSizes) / sizeof(validCellCountsSizes[0]);
-    const int invalidCellCountsSizes[][2] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 2, 1 }, { 2, 2 }, { 2, 3 }, { 2, 63 } };
-    const int invalidCellCountsSizeCount = sizeof(invalidCellCountsSizes) / sizeof(invalidCellCountsSizes[0]);
+INSTANTIATE_TEST_SUITE_P(Valid,
+                         GridApiTest,
+                         Combine(/*horizontal=*/ValuesIn(kValidCells),
+                                 /*vertical=*/ValuesIn(kValidCells),
+                                 ValuesIn(kBitDepths),
+                                 ValuesIn(kPixelFormats),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(true)));
 
-    for (int yuvFormat = AVIF_PIXEL_FORMAT_YUV444; yuvFormat <= AVIF_PIXEL_FORMAT_YUV400; ++yuvFormat) {
-        if (!encodeDecodeSizes(validCellCountsSizes,
-                               validCellCountsSizeCount,
-                               validCellCountsSizes,
-                               validCellCountsSizeCount,
-                               yuvFormat,
-                               /*expectedSuccess=*/AVIF_TRUE)) {
-            return EXIT_FAILURE;
-        }
+INSTANTIATE_TEST_SUITE_P(InvalidVertically,
+                         GridApiTest,
+                         Combine(/*horizontal=*/ValuesIn(kValidCells),
+                                 /*vertical=*/ValuesIn(kInvalidCells),
+                                 ValuesIn(kBitDepths),
+                                 ValuesIn(kPixelFormats),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(false)));
+INSTANTIATE_TEST_SUITE_P(InvalidHorizontally,
+                         GridApiTest,
+                         Combine(/*horizontal=*/ValuesIn(kInvalidCells),
+                                 /*vertical=*/ValuesIn(kValidCells),
+                                 ValuesIn(kBitDepths),
+                                 ValuesIn(kPixelFormats),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(false)));
+INSTANTIATE_TEST_SUITE_P(InvalidBoth,
+                         GridApiTest,
+                         Combine(/*horizontal=*/ValuesIn(kInvalidCells),
+                                 /*vertical=*/ValuesIn(kInvalidCells),
+                                 ValuesIn(kBitDepths),
+                                 ValuesIn(kPixelFormats),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(false)));
 
-        if (!encodeDecodeSizes(validCellCountsSizes,
-                               validCellCountsSizeCount,
-                               invalidCellCountsSizes,
-                               invalidCellCountsSizeCount,
-                               yuvFormat,
-                               /*expectedSuccess=*/AVIF_FALSE) ||
-            !encodeDecodeSizes(invalidCellCountsSizes,
-                               invalidCellCountsSizeCount,
-                               validCellCountsSizes,
-                               validCellCountsSizeCount,
-                               yuvFormat,
-                               /*expectedSuccess=*/AVIF_FALSE) ||
-            !encodeDecodeSizes(invalidCellCountsSizes,
-                               invalidCellCountsSizeCount,
-                               invalidCellCountsSizes,
-                               invalidCellCountsSizeCount,
-                               yuvFormat,
-                               /*expectedSuccess=*/AVIF_FALSE)) {
-            return EXIT_FAILURE;
-        }
+// Special case depending on the cell count and the chroma subsampling.
+INSTANTIATE_TEST_SUITE_P(ValidOddHeight,
+                         GridApiTest,
+                         Combine(/*horizontal=*/Values(Cell{ 1, 64 }),
+                                 /*vertical=*/Values(Cell{ 1, 65 }, Cell{ 2, 65 }),
+                                 ValuesIn(kBitDepths),
+                                 Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV400),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(true)));
+INSTANTIATE_TEST_SUITE_P(InvalidOddHeight,
+                         GridApiTest,
+                         Combine(/*horizontal=*/Values(Cell{ 1, 64 }),
+                                 /*vertical=*/Values(Cell{ 2, 65 }),
+                                 ValuesIn(kBitDepths),
+                                 Values(AVIF_PIXEL_FORMAT_YUV420),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(false)));
 
-        // Special case depending on the cell count and the chroma subsampling.
-        for (int rows = 1; rows <= 2; ++rows) {
-            avifBool expectedSuccess = (rows == 1) || (yuvFormat != AVIF_PIXEL_FORMAT_YUV420);
-            if (!encodeDecodeDepthsAlpha(/*columns=*/1, rows, /*cellWidth=*/64, /*cellHeight=*/65, yuvFormat, expectedSuccess)) {
-                return EXIT_FAILURE;
-            }
-        }
+// Special case depending on the cell count and the cell size.
+INSTANTIATE_TEST_SUITE_P(ValidOddDimensions,
+                         GridApiTest,
+                         Combine(/*horizontal=*/Values(Cell{ 1, 1 }),
+                                 /*vertical=*/Values(Cell{ 1, 65 }),
+                                 ValuesIn(kBitDepths),
+                                 ValuesIn(kPixelFormats),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(true)));
+INSTANTIATE_TEST_SUITE_P(InvalidOddDimensions,
+                         GridApiTest,
+                         Combine(/*horizontal=*/Values(Cell{ 2, 1 }),
+                                 /*vertical=*/Values(Cell{ 1, 65 }, Cell{ 2, 65 }),
+                                 ValuesIn(kBitDepths),
+                                 ValuesIn(kPixelFormats),
+                                 /*createAlpha=*/Values(false, true),
+                                 /*expectedSuccess=*/Values(false)));
 
-        // Special case depending on the cell count and the cell size.
-        for (int columns = 1; columns <= 2; ++columns) {
-            for (int rows = 1; rows <= 2; ++rows) {
-                avifBool expectedSuccess = (columns * rows == 1);
-                if (!encodeDecodeDepthsAlpha(columns, rows, /*cellWidth=*/1, /*cellHeight=*/65, yuvFormat, expectedSuccess)) {
-                    return EXIT_FAILURE;
-                }
-            }
-        }
-    }
-    return EXIT_SUCCESS;
-}
+} // namespace
