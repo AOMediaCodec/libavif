@@ -116,7 +116,6 @@ const char * avifProgressiveStateToString(avifProgressiveState progressiveState)
     return "Unknown";
 }
 
-// This function assumes nothing in this struct needs to be freed; use avifImageClear() externally
 static void avifImageSetDefaults(avifImage * image)
 {
     memset(image, 0, sizeof(avifImage));
