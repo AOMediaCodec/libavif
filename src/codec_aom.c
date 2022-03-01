@@ -43,10 +43,8 @@
 #endif
 
 // Speeds 7-9 were added to all intra mode in https://aomedia-review.googlesource.com/c/aom/+/140624.
-#if defined(AOM_EXT_PART_ABI_VERSION)
-#if AOM_ENCODER_ABI_VERSION >= (10 + AOM_CODEC_ABI_VERSION + AOM_EXT_PART_ABI_VERSION)
+#if AOM_ENCODER_ABI_VERSION >= (10 + AOM_CODEC_ABI_VERSION + /*AOM_EXT_PART_ABI_VERSION=*/1)
 #define ALL_INTRA_HAS_SPEEDS_7_TO_9 1
-#endif
 #endif
 #endif
 
