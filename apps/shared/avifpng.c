@@ -12,9 +12,9 @@
 
 // See libpng-manual.txt, section XI.
 #if PNG_LIBPNG_VER_MAJOR > 1 || (PNG_LIBPNG_VER_MAJOR == 1 && PNG_LIBPNG_VER_MINOR >= 5)
-typedef png_bytep avifIccpDataP;
+typedef png_bytep png_iccp_datap;
 #else
-typedef png_charp avifIccpDataP;
+typedef png_charp png_iccp_datap;
 #endif
 
 // Note on setjmp() and volatile variables:
@@ -82,7 +82,7 @@ avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelForm
     int iccpCompression = 0;
     unsigned char * iccpData = NULL;
     png_uint_32 iccpDataLen = 0;
-    if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, (avifIccpDataP *)&iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+    if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, (png_iccp_datap *)&iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
         avifImageSetProfileICC(avif, iccpData, iccpDataLen);
     }
 
@@ -233,7 +233,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
     png_set_IHDR(png, info, avif->width, avif->height, rgb.depth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
-        png_set_iCCP(png, info, "libavif", 0, (avifIccpDataP)avif->icc.data, (png_uint_32)avif->icc.size);
+        png_set_iCCP(png, info, "libavif", 0, (png_iccp_datap)avif->icc.data, (png_uint_32)avif->icc.size);
     }
     png_write_info(png, info);
 
