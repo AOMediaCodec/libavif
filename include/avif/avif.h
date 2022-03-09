@@ -764,7 +764,7 @@ typedef enum avifDecoderSource
 
     // Use the chunks inside primary/aux tracks in the moov block.
     // This is where avifs image sequences store their images.
-    AVIF_DECODER_SOURCE_TRACKS,
+    AVIF_DECODER_SOURCE_TRACKS
 
     // Decode the thumbnail item. Currently unimplemented.
     // AVIF_DECODER_SOURCE_THUMBNAIL_ITEM
