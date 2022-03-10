@@ -491,7 +491,7 @@ if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)
 
-    add_library(avif_apps STATIC # For internal use only. Not installed.
+    add_library(avif_apps STATIC # Static so it does not have to be installed.
         apps/shared/avifjpeg.c
         apps/shared/iccjpeg.c
         apps/shared/avifpng.c
