@@ -487,23 +487,18 @@ option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 
 if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
-    # Not all targets depending on avifappsshared, such as tests, need png and jpeg.
-    # However it is simpler this way and likely that a test environment provides these.
     find_package(ZLIB REQUIRED)
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)
 
-    add_library(avifappsshared STATIC # Static so it does not have to be installed.
+    add_library(avif_apps STATIC # For internal use only. Not installed.
         apps/shared/avifjpeg.c
         apps/shared/iccjpeg.c
         apps/shared/avifpng.c
         apps/shared/avifutil.c
         apps/shared/y4m.c)
-    if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
-        set_target_properties(avifappsshared PROPERTIES LINKER_LANGUAGE "CXX")
-    endif()
-    target_link_libraries(avifappsshared avif ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
-    target_include_directories(avifappsshared
+    target_link_libraries(avif_apps avif ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_include_directories(avif_apps
                                PRIVATE
                                    $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>
                                    ${PNG_PNG_INCLUDE_DIR}
@@ -517,14 +512,12 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif avifappsshared ${AVIF_PLATFORM_LIBRARIES})
-    target_include_directories(avifenc PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_link_libraries(avifenc avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
     add_executable(avifdec apps/avifdec.c)
     if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif avifappsshared ${AVIF_PLATFORM_LIBRARIES})
-    target_include_directories(avifdec PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_link_libraries(avifdec avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
@@ -561,7 +554,7 @@ if(AVIF_BUILD_TESTS)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avify4mtest PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avify4mtest avif avifappsshared ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(avify4mtest avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
     add_test(NAME avify4mtest
         COMMAND ${CMAKE_BINARY_DIR}/avify4mtest AVIF_TEST_TMP_DIR)
     set_tests_properties(avify4mtest PROPERTIES ENVIRONMENT "AVIF_TEST_TMP_DIR=${AVIF_TEST_TMP_DIR}")
