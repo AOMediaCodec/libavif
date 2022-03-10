@@ -22,6 +22,7 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wstrict-prototypes" // "this function declaration is not a prototype"
+#pragma clang diagnostic ignored "-Wnewline-eof" // "no newline at end of file"
 #endif
 #include <libyuv.h>
 #if defined(__clang__)

@@ -37,6 +37,9 @@ unsigned int avifLibYUVVersion(void)
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wstrict-prototypes" // "this function declaration is not a prototype"
+// The newline at the end of libyuv/version.h was accidentally deleted in version 1792:
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3183182
+#pragma clang diagnostic ignored "-Wnewline-eof" // "no newline at end of file"
 #endif
 #include <libyuv.h>
 #if defined(__clang__)
@@ -52,7 +55,8 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     }
 
     if ((rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_AUTOMATIC) && (rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_FASTEST)) {
-        // libyuv uses its own upsampling filter. If the enduser chose a specific one, avoid using libyuv.
+        // We do not ensure specific filter is used when calling libyuv, so if the end user chose a specific one, avoid using it.
+        // Also libyuv trade a bit of accuracy for speed, so if the end user requested best quality, avoid using it as well.
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
@@ -187,6 +191,14 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
+#if LIBYUV_VERSION >= 1813
+    enum FilterMode filter = kFilterBilinear;
+    if (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_FASTEST) {
+        // 'None' (Nearest neighbor) filter is faster than bilinear.
+        filter = kFilterNone;
+    }
+#endif
+
     // This following section might be a bit complicated to audit without a bit of explanation:
     //
     // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
@@ -222,6 +234,22 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
             }
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+#if LIBYUV_VERSION >= 1813
+            if (I422ToARGBMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
+                                       image->yuvRowBytes[AVIF_CHAN_Y],
+                                       image->yuvPlanes[AVIF_CHAN_U],
+                                       image->yuvRowBytes[AVIF_CHAN_U],
+                                       image->yuvPlanes[AVIF_CHAN_V],
+                                       image->yuvRowBytes[AVIF_CHAN_V],
+                                       rgb->pixels,
+                                       rgb->rowBytes,
+                                       matrixYUV,
+                                       image->width,
+                                       image->height,
+                                       filter) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+#else
             if (I422ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
                                  image->yuvRowBytes[AVIF_CHAN_Y],
                                  image->yuvPlanes[AVIF_CHAN_U],
@@ -235,8 +263,25 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                                  image->height) != 0) {
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
+#endif
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+#if LIBYUV_VERSION >= 1813
+            if (I420ToARGBMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
+                                       image->yuvRowBytes[AVIF_CHAN_Y],
+                                       image->yuvPlanes[AVIF_CHAN_U],
+                                       image->yuvRowBytes[AVIF_CHAN_U],
+                                       image->yuvPlanes[AVIF_CHAN_V],
+                                       image->yuvRowBytes[AVIF_CHAN_V],
+                                       rgb->pixels,
+                                       rgb->rowBytes,
+                                       matrixYUV,
+                                       image->width,
+                                       image->height,
+                                       filter) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+#else
             if (I420ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
                                  image->yuvRowBytes[AVIF_CHAN_Y],
                                  image->yuvPlanes[AVIF_CHAN_U],
@@ -250,6 +295,7 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                                  image->height) != 0) {
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
+#endif
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             if (I400ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
@@ -282,6 +328,22 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
             }
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+#if LIBYUV_VERSION >= 1813
+            if (I422ToARGBMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
+                                       image->yuvRowBytes[AVIF_CHAN_Y],
+                                       image->yuvPlanes[AVIF_CHAN_V],
+                                       image->yuvRowBytes[AVIF_CHAN_V],
+                                       image->yuvPlanes[AVIF_CHAN_U],
+                                       image->yuvRowBytes[AVIF_CHAN_U],
+                                       rgb->pixels,
+                                       rgb->rowBytes,
+                                       matrixYVU,
+                                       image->width,
+                                       image->height,
+                                       filter) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+#else
             if (I422ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
                                  image->yuvRowBytes[AVIF_CHAN_Y],
                                  image->yuvPlanes[AVIF_CHAN_V],
@@ -295,8 +357,25 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                                  image->height) != 0) {
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
+#endif
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+#if LIBYUV_VERSION >= 1813
+            if (I420ToARGBMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
+                                       image->yuvRowBytes[AVIF_CHAN_Y],
+                                       image->yuvPlanes[AVIF_CHAN_V],
+                                       image->yuvRowBytes[AVIF_CHAN_V],
+                                       image->yuvPlanes[AVIF_CHAN_U],
+                                       image->yuvRowBytes[AVIF_CHAN_U],
+                                       rgb->pixels,
+                                       rgb->rowBytes,
+                                       matrixYVU,
+                                       image->width,
+                                       image->height,
+                                       filter) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+#else
             if (I420ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
                                  image->yuvRowBytes[AVIF_CHAN_Y],
                                  image->yuvPlanes[AVIF_CHAN_V],
@@ -310,6 +389,7 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                                  image->height) != 0) {
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
+#endif
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             if (I400ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
