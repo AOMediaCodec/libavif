@@ -835,7 +835,7 @@ int main(int argc, char * argv[])
     if ((outputTiming.duration == 0) && (outputTiming.timescale == 0) && (firstSourceTiming.duration > 0) &&
         (firstSourceTiming.timescale > 0)) {
         // Set the default duration and timescale to the first image's timing.
-        memcpy(&outputTiming, &firstSourceTiming, sizeof(avifAppSourceTiming));
+        outputTiming = firstSourceTiming;
     } else {
         // Set output timing defaults to 30 fps
         if (outputTiming.duration == 0) {
