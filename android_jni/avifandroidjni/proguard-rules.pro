@@ -1,21 +1,14 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Proguard rules for the JNI Bindings.
+# For explanation, see:
+# https://www.guardsquare.com/manual/configuration/examples#native
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep the names of the native methods unobfuscated.
+-keepclasseswithmembernames,includedescriptorclasses class * {
+  native <methods>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Members of this class may be accessed from native methods. Keep them
+# unobfuscated.
+-keep class org.aomedia.avif.android.AvifDecoder$Info {
+  *;
+}
