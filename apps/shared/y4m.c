@@ -230,7 +230,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
 
     if (iter && *iter) {
         // Continue reading FRAMEs from this y4m stream
-        memcpy(&frame, *iter, sizeof(struct y4mFrameIterator));
+        frame = **iter;
     } else {
         // Open a fresh y4m and read its header
 
@@ -345,7 +345,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     }
 
     if (sourceTiming) {
-        memcpy(sourceTiming, &frame.sourceTiming, sizeof(avifAppSourceTiming));
+        *sourceTiming = frame.sourceTiming;
     }
 
     avifImageFreePlanes(avif, AVIF_PLANES_YUV | AVIF_PLANES_A);
@@ -413,7 +413,7 @@ cleanup:
             if (!feof(frame.inputFile)) {
                 // Remember y4m state for next time
                 *iter = malloc(sizeof(struct y4mFrameIterator));
-                memcpy(*iter, &frame, sizeof(struct y4mFrameIterator));
+                **iter = frame;
             }
         }
     }

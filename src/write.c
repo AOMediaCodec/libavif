@@ -880,7 +880,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             const avifEncodeSample * firstSample = &item->encodeOutput->samples.sample[0];
             avifSequenceHeader sequenceHeader;
             if (avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data)) {
-                memcpy(&item->av1C, &sequenceHeader.av1C, sizeof(avifCodecConfigurationBox));
+                item->av1C = sequenceHeader.av1C;
             } else {
                 // This must be an invalid AV1 payload
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
@@ -1085,7 +1085,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
                 if (item->dimgFromID == dedupItem->dimgFromID) {
                     // We've already written dedup's items out. Steal their ipma indices and move on!
-                    memcpy(&item->ipma, &dedupItem->ipma, sizeof(struct ipmaArray));
+                    item->ipma = dedupItem->ipma;
                     foundPreviousCell = AVIF_TRUE;
                     break;
                 }

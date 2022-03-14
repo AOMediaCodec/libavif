@@ -160,10 +160,10 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesF
     dstImage->matrixCoefficients = srcImage->matrixCoefficients;
 
     dstImage->transformFlags = srcImage->transformFlags;
-    memcpy(&dstImage->pasp, &srcImage->pasp, sizeof(dstImage->pasp));
-    memcpy(&dstImage->clap, &srcImage->clap, sizeof(dstImage->clap));
-    memcpy(&dstImage->irot, &srcImage->irot, sizeof(dstImage->irot));
-    memcpy(&dstImage->imir, &srcImage->imir, sizeof(dstImage->imir));
+    dstImage->pasp = srcImage->pasp;
+    dstImage->clap = srcImage->clap;
+    dstImage->irot = srcImage->irot;
+    dstImage->imir = srcImage->imir;
 
     avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
 
