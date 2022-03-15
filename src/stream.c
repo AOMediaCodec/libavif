@@ -313,10 +313,9 @@ void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker)
 
 void avifRWStreamWriteU8(avifRWStream * stream, uint8_t v)
 {
-    size_t size = sizeof(uint8_t);
-    makeRoom(stream, size);
-    memcpy(stream->raw->data + stream->offset, &v, size);
-    stream->offset += size;
+    makeRoom(stream, 1);
+    stream->raw->data[stream->offset] = v;
+    stream->offset += 1;
 }
 
 void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v)
