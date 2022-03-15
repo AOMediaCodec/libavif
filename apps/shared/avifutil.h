@@ -7,12 +7,13 @@
 #include "avif/avif.h"
 
 // The %z format specifier is not available in the old Windows CRT msvcrt,
-// Hence the %I format specifier must be used instead to print out `size_t`.
-// The new Windows CRT UCRT, which is used by Visual Studio from 2015, supports
-// the %z specifier properly.
+// hence the %I format specifier must be used instead to print out `size_t`.
+// The new Windows CRT UCRT, which is used by Visual Studio 2015 or later,
+// supports the %z specifier properly.
+//
 // Additionally, with c99 set as the standard mingw-w64 toolchains built with
 // the commit mentioned can patch format functions to support the %z specifier,
-// even it's using the old msvcrt, and this can be detected by
+// even if it's using the old msvcrt, and this can be detected by
 // the `__USE_MINGW_ANSI_STDIO` macro.
 //
 // Related mingw-w64 commit: bfd33f6c0ec5e652cc9911857dd1492ece8d8383
