@@ -177,6 +177,11 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
                 break;
             case AOM_IMG_FMT_NONE:
+#if defined(AOM_HAVE_IMG_FMT_NV12)
+            // Although the libaom encoder supports the NV12 image format as an input format, the
+            // libaom decoder does not support NV12 as an output format.
+            case AOM_IMG_FMT_NV12:
+#endif
             case AOM_IMG_FMT_YV12:
             case AOM_IMG_FMT_AOMYV12:
             case AOM_IMG_FMT_YV1216:
