@@ -201,8 +201,8 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
                 cinfo->out_color_space = JCS_GRAYSCALE;
                 avifJPEGCopyPixels(avif, cinfo);
 
-                memcpy(avif->yuvPlanes[AVIF_CHAN_U], avif->yuvPlanes[AVIF_CHAN_Y], avif->yuvRowBytes[AVIF_CHAN_U] * avif->height);
-                memcpy(avif->yuvPlanes[AVIF_CHAN_V], avif->yuvPlanes[AVIF_CHAN_Y], avif->yuvRowBytes[AVIF_CHAN_V] * avif->height);
+                memcpy(avif->yuvPlanes[AVIF_CHAN_U], avif->yuvPlanes[AVIF_CHAN_Y], (size_t)avif->yuvRowBytes[AVIF_CHAN_U] * avif->height);
+                memcpy(avif->yuvPlanes[AVIF_CHAN_V], avif->yuvPlanes[AVIF_CHAN_Y], (size_t)avif->yuvRowBytes[AVIF_CHAN_V] * avif->height);
 
                 return AVIF_TRUE;
             }
@@ -299,7 +299,8 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
         avif->height = cinfo.output_height;
         if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
             // Identity is only valid with YUV444.
-            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ? AVIF_PIXEL_FORMAT_YUV444 : AVIF_APP_DEFAULT_PIXEL_FORMAT;
+            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ? AVIF_PIXEL_FORMAT_YUV444
+                                                                                              : AVIF_APP_DEFAULT_PIXEL_FORMAT;
         }
         avif->depth = requestedDepth ? requestedDepth : 8;
         avifRGBImageSetDefaults(&rgb, avif);
