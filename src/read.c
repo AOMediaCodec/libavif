@@ -1367,8 +1367,8 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
 
-    unsigned int tileIndex = firstTileIndex + oldDecodedTileCount;
-    unsigned int tileIndexEnd = firstTileIndex + decodedTileCount;
+    unsigned int tileIndex = oldDecodedTileCount;
+    unsigned int tileIndexEnd = decodedTileCount;
     size_t pixelBytes = avifImageUsesU16(dstImage) ? 2 : 1;
     unsigned int rowIndex = oldDecodedTileCount / grid->columns;
     unsigned int colIndex = oldDecodedTileCount % grid->columns;
@@ -1380,7 +1380,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                 // Tile is not ready yet.
                 return AVIF_TRUE;
             }
-            avifTile * tile = &data->tiles.tile[tileIndex];
+            avifTile * tile = &data->tiles.tile[firstTileIndex + tileIndex];
 
             unsigned int widthToCopy = firstTile->image->width;
             unsigned int maxX = firstTile->image->width * (colIndex + 1);
@@ -3708,9 +3708,9 @@ static avifResult avifDecoderPrepareTiles(avifDecoder * decoder,
                                           uint32_t nextImageIndex,
                                           unsigned int firstTileIndex,
                                           unsigned int tileCount,
-                                          unsigned int oldDecodedTileCount)
+                                          unsigned int decodedTileCount)
 {
-    for (unsigned int tileIndex = oldDecodedTileCount; tileIndex < tileCount; ++tileIndex) {
+    for (unsigned int tileIndex = decodedTileCount; tileIndex < tileCount; ++tileIndex) {
         avifTile * tile = &decoder->data->tiles.tile[firstTileIndex + tileIndex];
 
         // Ensure there's an AV1 codec available before doing anything else
@@ -3742,7 +3742,8 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder,
         avifTile * tile = &decoder->data->tiles.tile[firstTileIndex + tileIndex];
 
         const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
-        if (decoder->allowIncremental && sample->data.data == NULL) {
+        if (!sample->data.data) {
+            assert(decoder->allowIncremental);
             // Data is missing but there is no error yet. Output available pixel rows.
             return AVIF_RESULT_OK;
         }
@@ -3785,9 +3786,12 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         decoder->data->decodedAlphaTileCount = 0;
     }
 
+    if (decoder->data->tiles.count != (decoder->data->colorTileCount + decoder->data->alphaTileCount)) {
+        // TODO: assert here? This should be impossible.
+        return AVIF_RESULT_UNKNOWN_ERROR;
+    }
+
     const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
-    const unsigned int oldDecodedColorTileCount = decoder->data->decodedColorTileCount;
-    const unsigned int oldDecodedAlphaTileCount = decoder->data->decodedAlphaTileCount;
     const unsigned int firstColorTileIndex = 0;
     const unsigned int firstAlphaTileIndex = decoder->data->colorTileCount;
 
@@ -3795,7 +3799,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // read call to bail out with AVIF_RESULT_WAITING_ON_IO harmlessly /
     // idempotently, unless decoder->allowIncremental. Start with color tiles.
     const avifResult prepareColorTileResult =
-        avifDecoderPrepareTiles(decoder, nextImageIndex, firstColorTileIndex, decoder->data->colorTileCount, oldDecodedColorTileCount);
+        avifDecoderPrepareTiles(decoder, nextImageIndex, firstColorTileIndex, decoder->data->colorTileCount, decoder->data->decodedColorTileCount);
     if (prepareColorTileResult != AVIF_RESULT_OK && (!decoder->allowIncremental || prepareColorTileResult != AVIF_RESULT_WAITING_ON_IO)) {
         return prepareColorTileResult;
     }
@@ -3805,26 +3809,23 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // category in parallel is beneficial for incremental decoding, as pixel
     // rows need all channels to be decoded before being accessible to the user.
     const avifResult prepareAlphaTileResult =
-        avifDecoderPrepareTiles(decoder, nextImageIndex, firstAlphaTileIndex, decoder->data->alphaTileCount, oldDecodedAlphaTileCount);
+        avifDecoderPrepareTiles(decoder, nextImageIndex, firstAlphaTileIndex, decoder->data->alphaTileCount, decoder->data->decodedAlphaTileCount);
     if (prepareAlphaTileResult != AVIF_RESULT_OK && (!decoder->allowIncremental || prepareAlphaTileResult != AVIF_RESULT_WAITING_ON_IO)) {
         return prepareAlphaTileResult;
     }
 
     // Decode all available color tiles now, then all available alpha tiles.
+    const unsigned int oldDecodedColorTileCount = decoder->data->decodedColorTileCount;
     const avifResult decodeColorTileResult =
         avifDecoderDecodeTiles(decoder, nextImageIndex, firstColorTileIndex, decoder->data->colorTileCount, &decoder->data->decodedColorTileCount);
     if (decodeColorTileResult != AVIF_RESULT_OK) {
         return decodeColorTileResult;
     }
+    const unsigned int oldDecodedAlphaTileCount = decoder->data->decodedAlphaTileCount;
     const avifResult decodeAlphaTileResult =
         avifDecoderDecodeTiles(decoder, nextImageIndex, firstAlphaTileIndex, decoder->data->alphaTileCount, &decoder->data->decodedAlphaTileCount);
     if (decodeAlphaTileResult != AVIF_RESULT_OK) {
         return decodeAlphaTileResult;
-    }
-
-    if (decoder->data->tiles.count != (decoder->data->colorTileCount + decoder->data->alphaTileCount)) {
-        // TODO: assert here? This should be impossible.
-        return AVIF_RESULT_UNKNOWN_ERROR;
     }
 
     if (decoder->data->decodedColorTileCount > oldDecodedColorTileCount) {
@@ -3919,7 +3920,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // Only advance decoder->imageIndex once the image is completely decoded, so that
     // avifDecoderNthImage(decoder, decoder->imageIndex + 1) is equivalent to avifDecoderNextImage(decoder)
     // if the previous call to avifDecoderNextImage() returned AVIF_RESULT_WAITING_ON_IO.
-    decoder->imageIndex = (int)nextImageIndex;
+    decoder->imageIndex = nextImageIndex;
     // The decoded tile counts will be reset to 0 the next time avifDecoderNextImage() is called,
     // for avifDecoderDecodedRowCount() to work until then.
     assert(decoder->data->decodedColorTileCount == decoder->data->colorTileCount);
@@ -3992,9 +3993,9 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
             // The current fully decoded image (decoder->imageIndex) is requested, nothing to do
             return AVIF_RESULT_OK;
         }
-        // The next image (decoder->imageIndex+1) is partially decoded but
+        // The next image (decoder->imageIndex + 1) is partially decoded but
         // the previous image (decoder->imageIndex) is requested.
-        // Flush and start decoding from the nearest key frame.
+        // Fall through to flush and start decoding from the nearest key frame.
     }
 
     if (requestedIndex == (decoder->imageIndex + 1)) {
@@ -4062,7 +4063,7 @@ uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameI
 }
 
 // Returns the number of available rows in decoder->image given a color or alpha subimage.
-static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifImageGrid * grid, uint32_t firstTile, uint32_t tileCount, uint32_t decodedTileCount)
+static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifImageGrid * grid, uint32_t firstTileIndex, uint32_t tileCount, uint32_t decodedTileCount)
 {
     if (decodedTileCount == tileCount) {
         return decoder->image->height;
@@ -4071,9 +4072,9 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifIm
         return 0;
     }
 
-    const uint32_t tileHeight = decoder->data->tiles.tile[firstTile].height;
     if (grid->rows > 0 && grid->columns > 0) {
         // Grid of AVIF tiles (not to be confused with AV1 tiles).
+        const uint32_t tileHeight = decoder->data->tiles.tile[firstTileIndex].height;
         return AVIF_MIN((decodedTileCount / grid->columns) * tileHeight, decoder->image->height);
     } else {
         // Non-grid image.
@@ -4084,10 +4085,10 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifIm
 uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 {
     const uint32_t colorRowCount =
-        avifGetDecodedRowCount(decoder, &decoder->data->colorGrid, /*firstTile=*/0, decoder->data->colorTileCount, decoder->data->decodedColorTileCount);
+        avifGetDecodedRowCount(decoder, &decoder->data->colorGrid, /*firstTileIndex=*/0, decoder->data->colorTileCount, decoder->data->decodedColorTileCount);
     const uint32_t alphaRowCount = avifGetDecodedRowCount(decoder,
                                                           &decoder->data->alphaGrid,
-                                                          /*firstTile=*/decoder->data->colorTileCount,
+                                                          /*firstTileIndex=*/decoder->data->colorTileCount,
                                                           decoder->data->alphaTileCount,
                                                           decoder->data->decodedAlphaTileCount);
     return AVIF_MIN(colorRowCount, alphaRowCount);

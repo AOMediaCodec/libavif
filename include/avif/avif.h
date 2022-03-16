@@ -825,7 +825,7 @@ typedef struct avifDecoder
 
     // If this is false, avifDecoderNextImage() will start decoding a frame only after there are
     // enough input bytes to decode all of that frame. If this is true, avifDecoder will decode each
-    // subimage or grid cell as soon as possible. The benefits are: grid images may be partly
+    // subimage or grid cell as soon as possible. The benefits are: grid images may be partially
     // displayed before being entirely available, and the overall decoding may finish earlier.
     // WARNING: Experimental feature.
     avifBool allowIncremental;
@@ -962,6 +962,7 @@ AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint3
 // decoder->allowIncremental must be set to true.
 // Returns decoder->image->height when the last call to avifDecoderNextImage() or avifDecoderNthImage()
 // returned AVIF_RESULT_OK. Returns 0 in all other cases.
+// WARNING: Experimental feature.
 AVIF_API uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder);
 
 // ---------------------------------------------------------------------------
