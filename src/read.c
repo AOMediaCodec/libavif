@@ -1368,7 +1368,6 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
 
     unsigned int tileIndex = oldDecodedTileCount;
-    unsigned int tileIndexEnd = decodedTileCount;
     size_t pixelBytes = avifImageUsesU16(dstImage) ? 2 : 1;
     unsigned int rowIndex = oldDecodedTileCount / grid->columns;
     unsigned int colIndex = oldDecodedTileCount % grid->columns;
@@ -1376,7 +1375,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     // Subsequent iterations of the outer for loop initializes colIndex to 0.
     for (; rowIndex < grid->rows; ++rowIndex, colIndex = 0) {
         for (; colIndex < grid->columns; ++colIndex, ++tileIndex) {
-            if (tileIndex >= tileIndexEnd) {
+            if (tileIndex >= decodedTileCount) {
                 // Tile is not ready yet.
                 return AVIF_TRUE;
             }
