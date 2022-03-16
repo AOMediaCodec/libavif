@@ -472,6 +472,7 @@ typedef struct avifImage
 AVIF_API avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
 AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 AVIF_API void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes); // deep copy
+AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect); // shallow copy, no metadata
 AVIF_API void avifImageDestroy(avifImage * image);
 
 AVIF_API void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
@@ -822,6 +823,13 @@ typedef struct avifDecoder
     // image sequence, inspect avifDecoder.progressiveState.
     avifBool allowProgressive;
 
+    // If this is false, avifDecoderNextImage() will start decoding a frame only after there are
+    // enough input bytes to decode all of that frame. If this is true, avifDecoder will decode each
+    // subimage or grid cell as soon as possible. The benefits are: grid images may be partly
+    // displayed before being entirely available, and the overall decoding may finish earlier.
+    // WARNING: Experimental feature.
+    avifBool allowIncremental;
+
     // Enable any of these to avoid reading and surfacing specific data to the decoded avifImage.
     // These can be useful if your avifIO implementation heavily uses AVIF_RESULT_WAITING_ON_IO for
     // streaming data, as some of these payloads are (unfortunately) packed at the end of the file,
@@ -946,6 +954,15 @@ AVIF_API uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32
 // Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
 // This function may be used after a successful call (AVIF_RESULT_OK) to avifDecoderParse().
 AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
+
+// When avifDecoderNextImage() or avifDecoderNthImage() returns AVIF_RESULT_WAITING_ON_IO, this
+// function can be called next to retrieve the number of top rows that can be immediately accessed
+// from the luma plane of decoder->image, and alpha if any. The corresponding rows from the chroma planes,
+// if any, can also be accessed (half rounded up if subsampled, same number of rows otherwise).
+// decoder->allowIncremental must be set to true.
+// Returns decoder->image->height when the last call to avifDecoderNextImage() or avifDecoderNthImage()
+// returned AVIF_RESULT_OK. Returns 0 in all other cases.
+AVIF_API uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder);
 
 // ---------------------------------------------------------------------------
 // avifExtent
