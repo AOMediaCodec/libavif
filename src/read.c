@@ -1257,7 +1257,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
                     return AVIF_FALSE;
                 }
                 avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&gridItem->properties);
-                memcpy(dstProp, srcProp, sizeof(avifProperty));
+                *dstProp = *srcProp;
 
                 if (!alpha && item->progressive) {
                     decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
@@ -2023,7 +2023,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
             }
 
             // Copy property to item
-            avifProperty * srcProp = &meta->properties.prop[propertyIndex];
+            const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
             static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap",
                                                      "irot", "imir", "pixi", "a1op", "lsel", "a1lx" };
@@ -2083,7 +2083,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
 
                 // Supported and valid; associate it with this item.
                 avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&item->properties);
-                memcpy(dstProp, srcProp, sizeof(avifProperty));
+                *dstProp = *srcProp;
             } else {
                 if (essential) {
                     // Discovered an essential item property that libavif doesn't support!
@@ -2240,7 +2240,7 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
     }
 
     memcpy(item->type, itemType, sizeof(itemType));
-    memcpy(&item->contentType, &contentType, sizeof(contentType));
+    item->contentType = contentType;
     return AVIF_TRUE;
 }
 
@@ -3002,7 +3002,7 @@ avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename)
 static avifResult avifExtentMerge(avifExtent * dst, const avifExtent * src)
 {
     if (!dst->size) {
-        memcpy(dst, src, sizeof(avifExtent));
+        *dst = *src;
         return AVIF_RESULT_OK;
     }
     if (!src->size) {
@@ -3092,7 +3092,7 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
 
             // avifDecoderItemRead is guaranteed to already be persisted by either the underlying IO
             // or by mergedExtents; just reuse the buffer here.
-            memcpy(&sample->data, &itemContents, sizeof(avifROData));
+            sample->data = itemContents;
             sample->ownsData = AVIF_FALSE;
             sample->partialData = item->partialMergedExtents;
         } else {
@@ -3113,7 +3113,7 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
             sample->ownsData = !decoder->io->persistent;
             sample->partialData = (bytesToRead != sample->size);
             if (decoder->io->persistent) {
-                memcpy(&sample->data, &sampleContents, sizeof(avifROData));
+                sample->data = sampleContents;
             } else {
                 avifRWDataSet((avifRWData *)&sample->data, sampleContents.data, sampleContents.size);
             }
@@ -3627,22 +3627,22 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     const avifProperty * paspProp = avifPropertyArrayFind(colorProperties, "pasp");
     if (paspProp) {
         decoder->image->transformFlags |= AVIF_TRANSFORM_PASP;
-        memcpy(&decoder->image->pasp, &paspProp->u.pasp, sizeof(avifPixelAspectRatioBox));
+        decoder->image->pasp = paspProp->u.pasp;
     }
     const avifProperty * clapProp = avifPropertyArrayFind(colorProperties, "clap");
     if (clapProp) {
         decoder->image->transformFlags |= AVIF_TRANSFORM_CLAP;
-        memcpy(&decoder->image->clap, &clapProp->u.clap, sizeof(avifCleanApertureBox));
+        decoder->image->clap = clapProp->u.clap;
     }
     const avifProperty * irotProp = avifPropertyArrayFind(colorProperties, "irot");
     if (irotProp) {
         decoder->image->transformFlags |= AVIF_TRANSFORM_IROT;
-        memcpy(&decoder->image->irot, &irotProp->u.irot, sizeof(avifImageRotation));
+        decoder->image->irot = irotProp->u.irot;
     }
     const avifProperty * imirProp = avifPropertyArrayFind(colorProperties, "imir");
     if (imirProp) {
         decoder->image->transformFlags |= AVIF_TRANSFORM_IMIR;
-        memcpy(&decoder->image->imir, &imirProp->u.imir, sizeof(avifImageMirror));
+        decoder->image->imir = imirProp->u.imir;
     }
 
     if (!data->cicpSet && (data->tiles.count > 0)) {
@@ -3950,7 +3950,7 @@ avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frame
     if (!decoder->data->sourceSampleTable) {
         // There isn't any real timing associated with this decode, so
         // just hand back the defaults chosen in avifDecoderReset().
-        memcpy(outTiming, &decoder->imageTiming, sizeof(avifImageTiming));
+        *outTiming = decoder->imageTiming;
         return AVIF_RESULT_OK;
     }
 
