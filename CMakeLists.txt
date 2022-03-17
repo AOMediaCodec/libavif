@@ -136,6 +136,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     if(HAVE_RESERVED_IDENTIFIER_WARNING)
         add_definitions(-Wno-reserved-identifier)
     endif()
+    # Clang >= 14 warns that mixing declarations and code is incompatible with standards before C99, even if
+    # you compile with -std=c99 or -std=gnu99.
+    check_c_compiler_flag(-Wdeclaration-after-statement HAVE_DECLARATION_AFTER_STATEMENT_WARNING)
+    if(HAVE_DECLARATION_AFTER_STATEMENT_WARNING)
+        add_definitions(-Wno-declaration-after-statement)
+    endif()
     # The detection of cross compilation by -Wpoison-system-directories has false positives on macOS because
     # --sysroot is implicitly added. Turn the warning off.
     if(NOT DEFINED HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
