@@ -3778,8 +3778,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         return AVIF_RESULT_IO_NOT_SET;
     }
 
-    if (decoder->data->decodedColorTileCount == decoder->data->colorTileCount &&
-        decoder->data->decodedAlphaTileCount == decoder->data->alphaTileCount) {
+    if ((decoder->data->decodedColorTileCount == decoder->data->colorTileCount) &&
+        (decoder->data->decodedAlphaTileCount == decoder->data->alphaTileCount)) {
         // A frame was decoded during the last avifDecoderNextImage() call.
         decoder->data->decodedColorTileCount = 0;
         decoder->data->decodedAlphaTileCount = 0;
@@ -3799,7 +3799,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // idempotently, unless decoder->allowIncremental. Start with color tiles.
     const avifResult prepareColorTileResult =
         avifDecoderPrepareTiles(decoder, nextImageIndex, firstColorTileIndex, decoder->data->colorTileCount, decoder->data->decodedColorTileCount);
-    if (prepareColorTileResult != AVIF_RESULT_OK && (!decoder->allowIncremental || prepareColorTileResult != AVIF_RESULT_WAITING_ON_IO)) {
+    if ((prepareColorTileResult != AVIF_RESULT_OK) &&
+        (!decoder->allowIncremental || (prepareColorTileResult != AVIF_RESULT_WAITING_ON_IO))) {
         return prepareColorTileResult;
     }
     // Do the same with alpha tiles. They are handled separately because their
@@ -3809,7 +3810,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // rows need all channels to be decoded before being accessible to the user.
     const avifResult prepareAlphaTileResult =
         avifDecoderPrepareTiles(decoder, nextImageIndex, firstAlphaTileIndex, decoder->data->alphaTileCount, decoder->data->decodedAlphaTileCount);
-    if (prepareAlphaTileResult != AVIF_RESULT_OK && (!decoder->allowIncremental || prepareAlphaTileResult != AVIF_RESULT_WAITING_ON_IO)) {
+    if ((prepareAlphaTileResult != AVIF_RESULT_OK) &&
+        (!decoder->allowIncremental || (prepareAlphaTileResult != AVIF_RESULT_WAITING_ON_IO))) {
         return prepareAlphaTileResult;
     }
 
@@ -3908,13 +3910,13 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     if (avifDecoderDecodedRowCount(decoder) < decoder->image->height) {
         assert(decoder->allowIncremental);
         // Rows are missing. There should be no error unrelated to missing bytes, and at least some missing bytes.
-        assert((prepareColorTileResult == AVIF_RESULT_OK || prepareColorTileResult == AVIF_RESULT_WAITING_ON_IO) &&
-               (prepareAlphaTileResult == AVIF_RESULT_OK || prepareAlphaTileResult == AVIF_RESULT_WAITING_ON_IO) &&
-               (prepareColorTileResult != AVIF_RESULT_OK || prepareAlphaTileResult != AVIF_RESULT_OK));
+        assert((prepareColorTileResult == AVIF_RESULT_OK) || (prepareColorTileResult == AVIF_RESULT_WAITING_ON_IO));
+        assert((prepareAlphaTileResult == AVIF_RESULT_OK) || (prepareAlphaTileResult == AVIF_RESULT_WAITING_ON_IO));
+        assert((prepareColorTileResult != AVIF_RESULT_OK) || (prepareAlphaTileResult != AVIF_RESULT_OK));
         // Return the "not enough bytes" status now instead of moving on to the next frame.
         return AVIF_RESULT_WAITING_ON_IO;
     }
-    assert(prepareColorTileResult == AVIF_RESULT_OK && prepareAlphaTileResult == AVIF_RESULT_OK);
+    assert((prepareColorTileResult == AVIF_RESULT_OK) && (prepareAlphaTileResult == AVIF_RESULT_OK));
 
     // Only advance decoder->imageIndex once the image is completely decoded, so that
     // avifDecoderNthImage(decoder, decoder->imageIndex + 1) is equivalent to avifDecoderNextImage(decoder)
@@ -3987,8 +3989,8 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 
     int requestedIndex = (int)frameIndex;
     if (requestedIndex == decoder->imageIndex) {
-        if (decoder->data->decodedColorTileCount == decoder->data->colorTileCount &&
-            decoder->data->decodedAlphaTileCount == decoder->data->alphaTileCount) {
+        if ((decoder->data->decodedColorTileCount == decoder->data->colorTileCount) &&
+            (decoder->data->decodedAlphaTileCount == decoder->data->alphaTileCount)) {
             // The current fully decoded image (decoder->imageIndex) is requested, nothing to do
             return AVIF_RESULT_OK;
         }
@@ -4075,7 +4077,7 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder,
         return 0;
     }
 
-    if (grid->rows > 0 && grid->columns > 0) {
+    if ((grid->rows > 0) && (grid->columns > 0)) {
         // Grid of AVIF tiles (not to be confused with AV1 tiles).
         const uint32_t tileHeight = decoder->data->tiles.tile[firstTileIndex].height;
         return AVIF_MIN((decodedTileCount / grid->columns) * tileHeight, decoder->image->height);
