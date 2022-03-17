@@ -229,7 +229,8 @@ avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage
             if (srcImage->yuvRowBytes[yuvPlane]) {
                 const size_t planeX = (yuvPlane == AVIF_CHAN_Y) ? rect->x : (rect->x >> formatInfo.chromaShiftX);
                 const size_t planeY = (yuvPlane == AVIF_CHAN_Y) ? rect->y : (rect->y >> formatInfo.chromaShiftY);
-                dstImage->yuvPlanes[yuvPlane] = srcImage->yuvPlanes[yuvPlane] + planeY * srcImage->yuvRowBytes[yuvPlane] + planeX * pixelBytes;
+                dstImage->yuvPlanes[yuvPlane] =
+                    srcImage->yuvPlanes[yuvPlane] + planeY * srcImage->yuvRowBytes[yuvPlane] + planeX * pixelBytes;
                 dstImage->yuvRowBytes[yuvPlane] = srcImage->yuvRowBytes[yuvPlane];
             }
         }
