@@ -16,7 +16,7 @@ static avifBool readFile(const char * path, avifRWData * bytes)
     FILE * file;
     avifRWDataFree(bytes);
     file = fopen(path, "rb");
-    if (file == NULL) {
+    if (!file) {
         return AVIF_FALSE;
     }
     if (fseek(file, 0, SEEK_END) != 0) {
@@ -42,12 +42,12 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
     if (rowCount == 0) {
         return AVIF_TRUE;
     }
-    if (image1 == NULL || image2 == NULL || image1->width != image2->width || image1->depth != image2->depth ||
-        image1->yuvFormat != image2->yuvFormat || image1->yuvRange != image2->yuvRange) {
+    if (!image1 || !image2 || (image1->width != image2->width) || (image1->depth != image2->depth) ||
+        (image1->yuvFormat != image2->yuvFormat) || (image1->yuvRange != image2->yuvRange)) {
         printf("ERROR: input mismatch\n");
         return AVIF_FALSE;
     }
-    if (image1->height < rowCount || image2->height < rowCount) {
+    if ((image1->height < rowCount) || (image2->height < rowCount)) {
         printf("ERROR: not enough rows to compare\n");
         return AVIF_FALSE;
     }
@@ -70,7 +70,7 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
         const uint8_t * data1 = image1->yuvPlanes[plane];
         const uint8_t * data2 = image2->yuvPlanes[plane];
         for (uint32_t y = 0; y < height; ++y) {
-            if (memcmp(data1, data2, widthByteCount) != 0) {
+            if (memcmp(data1, data2, widthByteCount)) {
                 printf("ERROR: different px at row %" PRIu32 ", channel %" PRIu32 "\n", y, plane);
                 return AVIF_FALSE;
             }
@@ -79,9 +79,9 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
         }
     }
 
-    if (image1->alphaPlane != NULL) {
-        if (image2->alphaPlane == NULL || image1->alphaRange != image2->alphaRange ||
-            image1->alphaPremultiplied != image2->alphaPremultiplied) {
+    if (image1->alphaPlane) {
+        if (!image2->alphaPlane || (image1->alphaRange != image2->alphaRange) ||
+            (image1->alphaPremultiplied != image2->alphaPremultiplied)) {
             printf("ERROR: input mismatch\n");
             return AVIF_FALSE;
         }
@@ -89,7 +89,7 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
         const uint8_t * data1 = image1->alphaPlane;
         const uint8_t * data2 = image2->alphaPlane;
         for (uint32_t y = 0; y < rowCount; ++y) {
-            if (memcmp(data1, data2, widthByteCount) != 0) {
+            if (memcmp(data1, data2, widthByteCount)) {
                 printf("ERROR: different px at row %" PRIu32 ", alpha\n", y);
                 return AVIF_FALSE;
             }
@@ -109,7 +109,7 @@ static uint32_t getMinDecodedRowCount(uint32_t height, uint32_t cellHeight, avif
         return height;
     }
     // All but one cell should be decoded if at most 10 bytes are missing.
-    if (availableByteCount + 10 >= byteCount) {
+    if ((availableByteCount + 10) >= byteCount) {
         return height - cellHeight;
     }
 
@@ -123,7 +123,7 @@ static uint32_t getMinDecodedRowCount(uint32_t height, uint32_t cellHeight, avif
     // Alpha, if any, is assumed to be located before the other planes and to
     // represent at most 50% of the payload.
     if (hasAlpha) {
-        if (availableByteCount <= byteCount / 2) {
+        if (availableByteCount <= (byteCount / 2)) {
             return 0;
         }
         availableByteCount -= byteCount / 2;
@@ -134,7 +134,7 @@ static uint32_t getMinDecodedRowCount(uint32_t height, uint32_t cellHeight, avif
     const uint32_t minDecodedPxRowCount = minDecodedCellRowCount * cellHeight;
     // One cell is the incremental decoding granularity.
     // It is unlikely that bytes are evenly distributed among cells. Offset two of them.
-    if (minDecodedPxRowCount <= 2 * cellHeight) {
+    if (minDecodedPxRowCount <= (2 * cellHeight)) {
         return 0;
     }
     return minDecodedPxRowCount - 2 * cellHeight;
@@ -153,7 +153,7 @@ static avifResult avifIOPartialRead(struct avifIO * io, uint32_t readFlags, uint
     if (readFlags != 0) {
         return AVIF_RESULT_IO_ERROR;
     }
-    if (availableData == NULL) {
+    if (!availableData) {
         return AVIF_RESULT_IO_ERROR;
     }
     if (allDataSize < offset) {
@@ -165,10 +165,10 @@ static avifResult avifIOPartialRead(struct avifIO * io, uint32_t readFlags, uint
         return AVIF_RESULT_OK;
     }
 
-    if (allDataSize < offset + size) {
+    if (allDataSize < (offset + size)) {
         size = allDataSize - offset;
     }
-    if (availableData->size < offset + size) {
+    if (availableData->size < (offset + size)) {
         return AVIF_RESULT_WAITING_ON_IO;
     }
     out->data = availableData->data + offset;
@@ -187,10 +187,10 @@ static avifBool encodeAsGrid(const avifImage * image, uint32_t gridCols, uint32_
     avifEncoder * encoder = NULL;
     avifImage ** cellImages = NULL;
     // Chroma subsampling requires even dimensions. See ISO 23000-22 - 7.3.11.4.2
-    const avifBool needEvenWidths = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422);
+    const avifBool needEvenWidths = ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422));
     const avifBool needEvenHeights = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420);
 
-    if (gridCols < 1 || gridRows < 1) {
+    if ((gridCols < 1) || (gridRows < 1)) {
         printf("ERROR: Bad grid dimensions\n");
         return AVIF_FALSE;
     }
@@ -200,11 +200,13 @@ static avifBool encodeAsGrid(const avifImage * image, uint32_t gridCols, uint32_
 
     // avifEncoderAddImageGrid() only accepts grids that evenly split the image
     // into cells at least 64 pixels wide and tall.
-    while (gridCols > 1 && (*cellWidth * gridCols != image->width || *cellWidth < 64 || (needEvenWidths && (*cellWidth & 1) != 0))) {
+    while ((gridCols > 1) &&
+           (((*cellWidth * gridCols) != image->width) || (*cellWidth < 64) || (needEvenWidths && ((*cellWidth & 1) != 0)))) {
         --gridCols;
         *cellWidth = image->width / gridCols;
     }
-    while (gridRows > 1 && (*cellHeight * gridRows != image->height || *cellHeight < 64 || (needEvenHeights && (*cellHeight & 1) != 0))) {
+    while ((gridRows > 1) &&
+           (((*cellHeight * gridRows) != image->height) || (*cellHeight < 64) || (needEvenHeights && ((*cellHeight & 1) != 0)))) {
         --gridRows;
         *cellHeight = image->height / gridRows;
     }
@@ -216,10 +218,10 @@ static avifBool encodeAsGrid(const avifImage * image, uint32_t gridCols, uint32_
             avifCropRect cell;
             cell.x = col * *cellWidth;
             cell.y = row * *cellHeight;
-            cell.width = (cell.x + *cellWidth <= image->width) ? *cellWidth : (image->width - cell.x);
-            cell.height = (cell.y + *cellHeight <= image->height) ? *cellHeight : (image->height - cell.y);
+            cell.width = ((cell.x + *cellWidth) <= image->width) ? *cellWidth : (image->width - cell.x);
+            cell.height = ((cell.y + *cellHeight) <= image->height) ? *cellHeight : (image->height - cell.y);
             cellImages[iCell] = avifImageCreateEmpty();
-            if (cellImages[iCell] == NULL || avifImageSetViewRect(cellImages[iCell], image, &cell) != AVIF_RESULT_OK) {
+            if (!cellImages[iCell] || (avifImageSetViewRect(cellImages[iCell], image, &cell) != AVIF_RESULT_OK)) {
                 printf("ERROR: avifImageCreateEmpty() failed\n");
                 goto cleanup;
             }
@@ -227,7 +229,7 @@ static avifBool encodeAsGrid(const avifImage * image, uint32_t gridCols, uint32_
     }
 
     encoder = avifEncoderCreate();
-    if (encoder == NULL) {
+    if (!encoder) {
         printf("ERROR: avifEncoderCreate() failed\n");
         goto cleanup;
     }
@@ -244,12 +246,12 @@ static avifBool encodeAsGrid(const avifImage * image, uint32_t gridCols, uint32_
 
     success = AVIF_TRUE;
 cleanup:
-    if (encoder != NULL) {
+    if (encoder) {
         avifEncoderDestroy(encoder);
     }
-    if (cellImages != NULL) {
-        for (uint32_t i = 0; i < gridCols * gridRows; ++i) {
-            if (cellImages[i] != NULL) {
+    if (cellImages) {
+        for (uint32_t i = 0; i < (gridCols * gridRows); ++i) {
+            if (cellImages[i]) {
                 avifImageDestroy(cellImages[i]);
             }
         }
@@ -278,11 +280,11 @@ static avifBool encodeRectAsIncremental(const avifImage * image,
 {
     avifBool success = AVIF_FALSE;
     avifImage * subImage = avifImageCreateEmpty();
-    if (subImage == NULL) {
+    if (!subImage) {
         printf("ERROR: avifImageCreateEmpty() failed\n");
         goto cleanup;
     }
-    if (width > image->width || height > image->height) {
+    if ((width > image->width) || (height > image->height)) {
         printf("ERROR: Bad dimensions\n");
         goto cleanup;
     }
@@ -297,8 +299,8 @@ static avifBool encodeRectAsIncremental(const avifImage * image,
         printf("ERROR: avifImageSetViewRect() failed\n");
         goto cleanup;
     }
-    if (createAlphaIfNone && subImage->alphaPlane == NULL) {
-        if (image->yuvPlanes[AVIF_CHAN_Y] == NULL) {
+    if (createAlphaIfNone && !subImage->alphaPlane) {
+        if (!image->yuvPlanes[AVIF_CHAN_Y]) {
             printf("ERROR: No luma plane to simulate an alpha plane\n");
             goto cleanup;
         }
@@ -310,7 +312,7 @@ static avifBool encodeRectAsIncremental(const avifImage * image,
     }
     success = encodeAsIncremental(subImage, flatCells, output, cellWidth, cellHeight);
 cleanup:
-    if (subImage != NULL) {
+    if (subImage) {
         avifImageDestroy(subImage);
     }
     return success;
@@ -329,7 +331,7 @@ static avifBool decodeNonIncrementally(const avifRWData * encodedAvif, avifImage
     }
     success = AVIF_TRUE;
 cleanup:
-    if (decoder != NULL) {
+    if (decoder) {
         avifDecoderDestroy(decoder);
     }
     return success;
@@ -342,7 +344,7 @@ static avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifIm
     avifBool success = AVIF_FALSE;
     avifDecoder * decoder = NULL;
     // AVIF cells are at least 64 pixels tall.
-    if (cellHeight == 0 || (cellHeight > reference->height && cellHeight != 64)) {
+    if ((cellHeight == 0) || ((cellHeight > reference->height) && (cellHeight != 64))) {
         printf("ERROR: cell height %" PRIu32 " is invalid\n", cellHeight);
         goto cleanup;
     }
@@ -356,7 +358,7 @@ static avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifIm
     io.data = &availableEncodedAvif;
 
     decoder = avifDecoderCreate();
-    if (decoder == NULL) {
+    if (!decoder) {
         printf("ERROR: avifDecoderCreate() failed\n");
         goto cleanup;
     }
@@ -426,7 +428,7 @@ static avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifIm
     }
     success = AVIF_TRUE;
 cleanup:
-    if (decoder != NULL) {
+    if (decoder) {
         avifDecoderDestroy(decoder);
     }
     return success;
@@ -436,7 +438,7 @@ static avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encode
 {
     avifBool success = AVIF_FALSE;
     avifImage * reference = avifImageCreateEmpty();
-    if (reference == NULL) {
+    if (!reference) {
         goto cleanup;
     }
     if (!decodeNonIncrementally(encodedAvif, reference)) {
@@ -447,7 +449,7 @@ static avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encode
     }
     success = AVIF_TRUE;
 cleanup:
-    if (reference != NULL) {
+    if (reference) {
         avifImageDestroy(reference);
     }
     return success;
@@ -500,7 +502,7 @@ int main(int argc, char * argv[])
 
     // First test: decode the input image incrementally and compare it with a non-incrementally decoded reference.
     avifImage * reference = avifImageCreateEmpty();
-    if (reference == NULL || !decodeNonIncrementally(&encodedAvif, reference)) {
+    if (!reference || !decodeNonIncrementally(&encodedAvif, reference)) {
         goto cleanup;
     }
     // Cell height is hardcoded because there is no API to extract it from an encoded payload.
