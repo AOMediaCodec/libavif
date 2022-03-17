@@ -4062,7 +4062,11 @@ uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameI
 }
 
 // Returns the number of available rows in decoder->image given a color or alpha subimage.
-static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifImageGrid * grid, uint32_t firstTileIndex, uint32_t tileCount, uint32_t decodedTileCount)
+static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder,
+                                       const avifImageGrid * grid,
+                                       uint32_t firstTileIndex,
+                                       uint32_t tileCount,
+                                       uint32_t decodedTileCount)
 {
     if (decodedTileCount == tileCount) {
         return decoder->image->height;
@@ -4083,8 +4087,11 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifIm
 
 uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 {
-    const uint32_t colorRowCount =
-        avifGetDecodedRowCount(decoder, &decoder->data->colorGrid, /*firstTileIndex=*/0, decoder->data->colorTileCount, decoder->data->decodedColorTileCount);
+    const uint32_t colorRowCount = avifGetDecodedRowCount(decoder,
+                                                          &decoder->data->colorGrid,
+                                                          /*firstTileIndex=*/0,
+                                                          decoder->data->colorTileCount,
+                                                          decoder->data->decodedColorTileCount);
     const uint32_t alphaRowCount = avifGetDecodedRowCount(decoder,
                                                           &decoder->data->alphaGrid,
                                                           /*firstTileIndex=*/decoder->data->colorTileCount,
