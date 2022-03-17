@@ -142,10 +142,9 @@ avifImage * avifImageCreateEmpty(void)
     return avifImageCreate(0, 0, 0, AVIF_PIXEL_FORMAT_NONE);
 }
 
-void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+// Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
+static void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
 {
-    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
-
     dstImage->width = srcImage->width;
     dstImage->height = srcImage->height;
     dstImage->depth = srcImage->depth;
@@ -164,6 +163,12 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesF
     dstImage->clap = srcImage->clap;
     dstImage->irot = srcImage->irot;
     dstImage->imir = srcImage->imir;
+}
+
+void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+{
+    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+    avifImageCopyNoAlloc(dstImage, srcImage);
 
     avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
 
@@ -204,6 +209,36 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesF
             memcpy(dstAlphaRow, srcAlphaRow, dstImage->alphaRowBytes);
         }
     }
+}
+
+avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect)
+{
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
+    if (rect->width > srcImage->width || rect->height > srcImage->height || rect->x > srcImage->width - rect->width ||
+        rect->y > srcImage->height - rect->height || (rect->x & formatInfo.chromaShiftX) || (rect->y & formatInfo.chromaShiftY)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL); // dstImage->imageOwnsYUVPlanes and dstImage->imageOwnsAlphaPlane set to AVIF_FALSE.
+    avifImageCopyNoAlloc(dstImage, srcImage);
+    dstImage->width = rect->width;
+    dstImage->height = rect->height;
+    const uint32_t pixelBytes = (srcImage->depth > 8) ? 2 : 1;
+    if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
+        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+            if (srcImage->yuvRowBytes[yuvPlane]) {
+                const size_t planeX = (yuvPlane == AVIF_CHAN_Y) ? rect->x : (rect->x >> formatInfo.chromaShiftX);
+                const size_t planeY = (yuvPlane == AVIF_CHAN_Y) ? rect->y : (rect->y >> formatInfo.chromaShiftY);
+                dstImage->yuvPlanes[yuvPlane] = srcImage->yuvPlanes[yuvPlane] + planeY * srcImage->yuvRowBytes[yuvPlane] + planeX * pixelBytes;
+                dstImage->yuvRowBytes[yuvPlane] = srcImage->yuvRowBytes[yuvPlane];
+            }
+        }
+    }
+    if (srcImage->alphaPlane) {
+        dstImage->alphaPlane = srcImage->alphaPlane + (size_t)rect->y * srcImage->alphaRowBytes + (size_t)rect->x * pixelBytes;
+        dstImage->alphaRowBytes = srcImage->alphaRowBytes;
+    }
+    return AVIF_RESULT_OK;
 }
 
 void avifImageDestroy(avifImage * image)

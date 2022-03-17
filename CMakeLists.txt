@@ -550,6 +550,14 @@ if(AVIF_BUILD_TESTS)
     add_test(NAME avifgridapitest
         COMMAND ${CMAKE_BINARY_DIR}/avifgridapitest)
 
+    add_executable(avifincrtest tests/avifincrtest.c)
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avifincrtest PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
+    target_link_libraries(avifincrtest avif ${AVIF_PLATFORM_LIBRARIES})
+    add_test(NAME avifincrtest
+        COMMAND ${CMAKE_BINARY_DIR}/avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/sofa_grid1x5_420.avif)
+
     add_executable(avify4mtest tests/avify4mtest.c)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avify4mtest PROPERTIES LINKER_LANGUAGE "CXX")
