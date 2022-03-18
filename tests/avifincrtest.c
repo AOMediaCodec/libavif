@@ -19,7 +19,7 @@ static avifBool readFile(const char * path, avifRWData * bytes)
     if (!file) {
         return AVIF_FALSE;
     }
-    if (fseek(file, 0, SEEK_END) != 0) {
+    if (fseek(file, 0, SEEK_END)) {
         fclose(file);
         return AVIF_FALSE;
     }
@@ -54,18 +54,13 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
 
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(image1->yuvFormat, &formatInfo);
-    uint32_t uvWidth = (image1->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
-    uint32_t uvHeight = (rowCount + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
-    if (uvWidth < 1) {
-        uvWidth = 1;
-    }
-    if (uvHeight < 1) {
-        uvHeight = 1;
-    }
+    const uint32_t uvWidth = (image1->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
+    const uint32_t uvHeight = (rowCount + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
+    const uint32_t pixelByteCount = (image1->depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
 
     for (uint32_t plane = 0; plane < AVIF_PLANE_COUNT_YUV; ++plane) {
-        const uint32_t widthByteCount =
-            ((plane == AVIF_CHAN_Y) ? image1->width : uvWidth) * ((image1->depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t));
+        const uint32_t width = (plane == AVIF_CHAN_Y) ? image1->width : uvWidth;
+        const uint32_t widthByteCount = width * pixelByteCount;
         const uint32_t height = (plane == AVIF_CHAN_Y) ? rowCount : uvHeight;
         const uint8_t * data1 = image1->yuvPlanes[plane];
         const uint8_t * data2 = image2->yuvPlanes[plane];
@@ -85,7 +80,7 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
             printf("ERROR: input mismatch\n");
             return AVIF_FALSE;
         }
-        const uint32_t widthByteCount = image1->width * ((image1->depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t));
+        const uint32_t widthByteCount = image1->width * pixelByteCount;
         const uint8_t * data1 = image1->alphaPlane;
         const uint8_t * data2 = image2->alphaPlane;
         for (uint32_t y = 0; y < rowCount; ++y) {
@@ -190,7 +185,7 @@ static avifBool encodeAsGrid(const avifImage * image, uint32_t gridCols, uint32_
     const avifBool needEvenWidths = ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422));
     const avifBool needEvenHeights = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420);
 
-    if ((gridCols < 1) || (gridRows < 1)) {
+    if ((gridCols == 0) || (gridRows == 0)) {
         printf("ERROR: Bad grid dimensions\n");
         return AVIF_FALSE;
     }
