@@ -22,6 +22,10 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wstrict-prototypes" // "this function declaration is not a prototype"
+// The newline at the end of libyuv/version.h was accidentally deleted in version 1792 and restored
+// in version 1813:
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3183182
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3527834
 #pragma clang diagnostic ignored "-Wnewline-eof" // "no newline at end of file"
 #endif
 #include <libyuv.h>
