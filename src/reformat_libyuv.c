@@ -57,8 +57,9 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     }
 
     if ((rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_AUTOMATIC) && (rgb->chromaUpsampling != AVIF_CHROMA_UPSAMPLING_FASTEST)) {
-        // We do not ensure specific filter is used when calling libyuv, so if the end user chose a specific one, avoid using it.
-        // Also libyuv trade a bit of accuracy for speed, so if the end user requested best quality, avoid using it as well.
+        // We do not ensure a specific upsampling filter is used when calling libyuv, so if the end
+        // user chose a specific one, avoid using libyuv. Also libyuv trades a bit of accuracy for
+        // speed, so if the end user requested best quality, avoid using libyuv as well.
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
