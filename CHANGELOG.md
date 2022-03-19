@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * Update aom.cmd: v3.3.0
+* Update dav1d.cmd: 1.0.0
 
 ## [0.9.3] - 2021-10-20
 
