@@ -43,7 +43,7 @@ ninja install
 
 # dav1d
 cd
-git clone -b 0.9.2 --depth 1 https://code.videolan.org/videolan/dav1d.git
+git clone -b 1.0.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
 cd dav1d
 mkdir build
 cd build
