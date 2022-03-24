@@ -3734,9 +3734,9 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder,
                                          uint32_t nextImageIndex,
                                          unsigned int firstTileIndex,
                                          unsigned int tileCount,
-                                         uint32_t * decodedTileCount)
+                                         unsigned int * decodedTileCount)
 {
-    const uint32_t oldDecodedTileCount = *decodedTileCount;
+    const unsigned int oldDecodedTileCount = *decodedTileCount;
     for (unsigned int tileIndex = oldDecodedTileCount; tileIndex < tileCount; ++tileIndex) {
         avifTile * tile = &decoder->data->tiles.tile[firstTileIndex + tileIndex];
 
@@ -3794,9 +3794,9 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     const unsigned int firstColorTileIndex = 0;
     const unsigned int firstAlphaTileIndex = decoder->data->colorTileCount;
 
-    // Acquire all sample data for the current image first, allowing for any
-    // read call to bail out with AVIF_RESULT_WAITING_ON_IO harmlessly /
-    // idempotently, unless decoder->allowIncremental. Start with color tiles.
+    // Acquire all sample data for the current image first, allowing for any read call to bail out
+    // with AVIF_RESULT_WAITING_ON_IO harmlessly / idempotently, unless decoder->allowIncremental.
+    // Start with color tiles.
     const avifResult prepareColorTileResult =
         avifDecoderPrepareTiles(decoder, nextImageIndex, firstColorTileIndex, decoder->data->colorTileCount, decoder->data->decodedColorTileCount);
     if ((prepareColorTileResult != AVIF_RESULT_OK) &&
@@ -4066,9 +4066,9 @@ uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameI
 // Returns the number of available rows in decoder->image given a color or alpha subimage.
 static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder,
                                        const avifImageGrid * grid,
-                                       uint32_t firstTileIndex,
-                                       uint32_t tileCount,
-                                       uint32_t decodedTileCount)
+                                       unsigned int firstTileIndex,
+                                       unsigned int tileCount,
+                                       unsigned int decodedTileCount)
 {
     if (decodedTileCount == tileCount) {
         return decoder->image->height;
