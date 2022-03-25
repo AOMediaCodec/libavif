@@ -3874,9 +3874,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         }
     }
 
-    if (decoder->data->alphaTileCount == 0) {
-        avifImageFreePlanes(decoder->image, AVIF_PLANES_A); // no alpha
-    } else if (decoder->data->decodedAlphaTileCount > oldDecodedAlphaTileCount) {
+    if (decoder->data->decodedAlphaTileCount > oldDecodedAlphaTileCount) {
+        assert(decoder->data->alphaTileCount > 0);
         // There is at least one newly decoded alpha tile.
         if ((decoder->data->alphaGrid.rows > 0) && (decoder->data->alphaGrid.columns > 0)) {
             if (!avifDecoderDataFillImageGrid(decoder->data,
