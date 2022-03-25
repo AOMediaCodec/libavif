@@ -3982,12 +3982,17 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    if (frameIndex > INT_MAX) {
+    if ((frameIndex > INT_MAX) || ((int)frameIndex >= decoder->imageCount)) {
         // Impossible index
         return AVIF_RESULT_NO_IMAGES_REMAINING;
     }
 
     int requestedIndex = (int)frameIndex;
+    if (requestedIndex == (decoder->imageIndex + 1)) {
+        // It's just the next image (already partially decoded or not at all), nothing special here
+        return avifDecoderNextImage(decoder);
+    }
+
     if (requestedIndex == decoder->imageIndex) {
         if ((decoder->data->decodedColorTileCount == decoder->data->colorTileCount) &&
             (decoder->data->decodedAlphaTileCount == decoder->data->alphaTileCount)) {
@@ -3997,16 +4002,6 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
         // The next image (decoder->imageIndex + 1) is partially decoded but
         // the previous image (decoder->imageIndex) is requested.
         // Fall through to flush and start decoding from the nearest key frame.
-    }
-
-    if (requestedIndex == (decoder->imageIndex + 1)) {
-        // It's just the next image (already partially decoded or not at all), nothing special here
-        return avifDecoderNextImage(decoder);
-    }
-
-    if (requestedIndex >= decoder->imageCount) {
-        // Impossible index
-        return AVIF_RESULT_NO_IMAGES_REMAINING;
     }
 
     int nearestKeyFrame = (int)avifDecoderNearestKeyframe(decoder, frameIndex);
