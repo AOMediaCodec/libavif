@@ -3907,9 +3907,11 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         }
     }
 
-    if (avifDecoderDecodedRowCount(decoder) < decoder->image->height) {
+    if ((decoder->data->decodedColorTileCount < decoder->data->colorTileCount) ||
+        (decoder->data->decodedAlphaTileCount < decoder->data->alphaTileCount)) {
         assert(decoder->allowIncremental);
-        // Rows are missing. There should be no error unrelated to missing bytes, and at least some missing bytes.
+        // The image is not completely decoded. There should be no error unrelated to missing bytes,
+        // and at least some missing bytes.
         assert((prepareColorTileResult == AVIF_RESULT_OK) || (prepareColorTileResult == AVIF_RESULT_WAITING_ON_IO));
         assert((prepareAlphaTileResult == AVIF_RESULT_OK) || (prepareAlphaTileResult == AVIF_RESULT_WAITING_ON_IO));
         assert((prepareColorTileResult != AVIF_RESULT_OK) || (prepareAlphaTileResult != AVIF_RESULT_OK));
