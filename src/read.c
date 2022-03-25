@@ -3907,8 +3907,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         }
     }
 
-    if ((decoder->data->decodedColorTileCount < decoder->data->colorTileCount) ||
-        (decoder->data->decodedAlphaTileCount < decoder->data->alphaTileCount)) {
+    if ((decoder->data->decodedColorTileCount != decoder->data->colorTileCount) ||
+        (decoder->data->decodedAlphaTileCount != decoder->data->alphaTileCount)) {
         assert(decoder->allowIncremental);
         // The image is not completely decoded. There should be no error unrelated to missing bytes,
         // and at least some missing bytes.
@@ -3926,8 +3926,6 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     decoder->imageIndex = nextImageIndex;
     // The decoded tile counts will be reset to 0 the next time avifDecoderNextImage() is called,
     // for avifDecoderDecodedRowCount() to work until then.
-    assert(decoder->data->decodedColorTileCount == decoder->data->colorTileCount);
-    assert(decoder->data->decodedAlphaTileCount == decoder->data->alphaTileCount);
     if (decoder->data->sourceSampleTable) {
         // Decoding from a track! Provide timing information.
 
