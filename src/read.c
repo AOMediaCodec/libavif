@@ -3785,11 +3785,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         decoder->data->decodedAlphaTileCount = 0;
     }
 
-    if (decoder->data->tiles.count != (decoder->data->colorTileCount + decoder->data->alphaTileCount)) {
-        // TODO: assert here? This should be impossible.
-        return AVIF_RESULT_UNKNOWN_ERROR;
-    }
-
+    assert(decoder->data->tiles.count == (decoder->data->colorTileCount + decoder->data->alphaTileCount));
     const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
     const unsigned int firstColorTileIndex = 0;
     const unsigned int firstAlphaTileIndex = decoder->data->colorTileCount;
@@ -3832,6 +3828,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     if (decoder->data->decodedColorTileCount > oldDecodedColorTileCount) {
         // There is at least one newly decoded color tile.
         if ((decoder->data->colorGrid.rows > 0) && (decoder->data->colorGrid.columns > 0)) {
+            assert(decoder->data->colorTileCount == (decoder->data->colorGrid.rows * decoder->data->colorGrid.columns));
             if (!avifDecoderDataFillImageGrid(decoder->data,
                                               &decoder->data->colorGrid,
                                               decoder->image,
@@ -3843,14 +3840,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             }
         } else {
             // Normal (most common) non-grid path. Just steal the planes from the only "tile".
-
-            if (decoder->data->colorTileCount != 1) {
-                avifDiagnosticsPrintf(&decoder->diag, "decoder->data->colorTileCount should be 1 but is %u", decoder->data->colorTileCount);
-                return AVIF_RESULT_DECODE_COLOR_FAILED;
-            }
-
+            assert(decoder->data->colorTileCount == 1);
             avifImage * srcColor = decoder->data->tiles.tile[0].image;
-
             if ((decoder->image->width != srcColor->width) || (decoder->image->height != srcColor->height) ||
                 (decoder->image->depth != srcColor->depth)) {
                 avifImageFreePlanes(decoder->image, AVIF_PLANES_ALL);
@@ -3875,9 +3866,9 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     }
 
     if (decoder->data->decodedAlphaTileCount > oldDecodedAlphaTileCount) {
-        assert(decoder->data->alphaTileCount > 0);
         // There is at least one newly decoded alpha tile.
         if ((decoder->data->alphaGrid.rows > 0) && (decoder->data->alphaGrid.columns > 0)) {
+            assert(decoder->data->alphaTileCount == (decoder->data->alphaGrid.rows * decoder->data->alphaGrid.columns));
             if (!avifDecoderDataFillImageGrid(decoder->data,
                                               &decoder->data->alphaGrid,
                                               decoder->image,
@@ -3889,11 +3880,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             }
         } else {
             // Normal (most common) non-grid path. Just steal the planes from the only "tile".
-            if (decoder->data->alphaTileCount != 1) {
-                avifDiagnosticsPrintf(&decoder->diag, "decoder->data->alphaTileCount should be 1 but is %u", decoder->data->alphaTileCount);
-                return AVIF_RESULT_DECODE_ALPHA_FAILED;
-            }
-
+            assert(decoder->data->alphaTileCount == 1);
             avifImage * srcAlpha = decoder->data->tiles.tile[decoder->data->colorTileCount].image;
             if ((decoder->image->width != srcAlpha->width) || (decoder->image->height != srcAlpha->height) ||
                 (decoder->image->depth != srcAlpha->depth)) {
