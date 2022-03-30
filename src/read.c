@@ -3828,7 +3828,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     if (decoder->data->decodedColorTileCount > oldDecodedColorTileCount) {
         // There is at least one newly decoded color tile.
         if ((decoder->data->colorGrid.rows > 0) && (decoder->data->colorGrid.columns > 0)) {
-            assert(decoder->data->colorTileCount == decoder->data->colorGrid.rows * decoder->data->colorGrid.columns);
+            assert(decoder->data->colorTileCount == (decoder->data->colorGrid.rows * decoder->data->colorGrid.columns));
             if (!avifDecoderDataFillImageGrid(decoder->data,
                                               &decoder->data->colorGrid,
                                               decoder->image,
@@ -3868,7 +3868,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     if (decoder->data->decodedAlphaTileCount > oldDecodedAlphaTileCount) {
         // There is at least one newly decoded alpha tile.
         if ((decoder->data->alphaGrid.rows > 0) && (decoder->data->alphaGrid.columns > 0)) {
-            assert(decoder->data->alphaTileCount == decoder->data->alphaGrid.rows * decoder->data->alphaGrid.columns);
+            assert(decoder->data->alphaTileCount == (decoder->data->alphaGrid.rows * decoder->data->alphaGrid.columns));
             if (!avifDecoderDataFillImageGrid(decoder->data,
                                               &decoder->data->alphaGrid,
                                               decoder->image,
