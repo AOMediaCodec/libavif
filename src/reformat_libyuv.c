@@ -489,6 +489,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
 #endif
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+#if LIBYUV_VERSION >= 1756
             if (I400ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
                                  image->yuvRowBytes[AVIF_CHAN_Y],
                                  rgb->pixels,
@@ -499,6 +500,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
             return AVIF_RESULT_OK;
+#endif
         }
     } else if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
         // AVIF_RGB_FORMAT_RGBA  *ToARGBMatrix   matrixYVU
@@ -583,6 +585,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
 #endif
             return AVIF_RESULT_OK;
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+#if LIBYUV_VERSION >= 1756
             if (I400ToARGBMatrix(image->yuvPlanes[AVIF_CHAN_Y],
                                  image->yuvRowBytes[AVIF_CHAN_Y],
                                  rgb->pixels,
@@ -593,6 +596,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
             return AVIF_RESULT_OK;
+#endif
         }
     } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
         // AVIF_RGB_FORMAT_ABGR  *ToRGBAMatrix   matrixYUV
