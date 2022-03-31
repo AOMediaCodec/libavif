@@ -432,7 +432,6 @@ typedef struct avifImage
     uint32_t yuvRowBytes[AVIF_PLANE_COUNT_YUV];
     avifBool imageOwnsYUVPlanes;
 
-    avifRange alphaRange;
     uint8_t * alphaPlane;
     uint32_t alphaRowBytes;
     avifBool imageOwnsAlphaPlane;

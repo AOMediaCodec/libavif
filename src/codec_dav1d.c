@@ -53,6 +53,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
                                        struct avifDecoder * decoder,
                                        const avifDecodeSample * sample,
                                        avifBool alpha,
+                                       avifBool * isLimitedRangeAlpha,
                                        avifImage * image)
 {
     if (codec->internal->dav1dContext == NULL) {
@@ -204,7 +205,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
-        image->alphaRange = codec->internal->colorRange;
+        *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
     return AVIF_TRUE;

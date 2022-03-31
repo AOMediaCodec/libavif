@@ -34,7 +34,6 @@ int main(int argc, char * argv[])
     // * avifImageSetMetadataExif()
     // * avifImageSetMetadataXMP()
     // * yuvRange
-    // * alphaRange
     // * alphaPremultiplied
     // * transforms (transformFlags, pasp, clap, irot, imir)
 

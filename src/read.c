@@ -1297,8 +1297,7 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             (tile->image->yuvRange != firstTile->image->yuvRange) || (uvPresent != firstTileUVPresent) ||
             (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
             (tile->image->transferCharacteristics != firstTile->image->transferCharacteristics) ||
-            (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients) ||
-            (tile->image->alphaRange != firstTile->image->alphaRange)) {
+            (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients)) {
             avifDiagnosticsPrintf(data->diag, "Grid image contains mismatched tiles");
             return AVIF_FALSE;
         }
@@ -1357,9 +1356,6 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             dstImage->transferCharacteristics = firstTile->image->transferCharacteristics;
             dstImage->matrixCoefficients = firstTile->image->matrixCoefficients;
         }
-    }
-    if (alpha) {
-        dstImage->alphaRange = firstTile->image->alphaRange;
     }
 
     avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
@@ -3730,6 +3726,44 @@ static avifResult avifDecoderPrepareTiles(avifDecoder * decoder,
     return AVIF_RESULT_OK;
 }
 
+static avifResult avifImageLimitedToFullAlpha(avifImage * image)
+{
+    uint8_t * alphaPlane = image->alphaPlane;
+    const uint32_t alphaRowBytes = image->alphaRowBytes;
+
+    if (image->imageOwnsAlphaPlane) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    // We cannot do the range conversion in place since it will modify the
+    // codec's internal frame buffers. Allocate memory for the conversion.
+    image->alphaPlane = NULL;
+    avifImageAllocatePlanes(image, AVIF_PLANES_A);
+
+    if (image->depth > 8) {
+        for (uint32_t j = 0; j < image->height; ++j) {
+            uint8_t * srcRow = &alphaPlane[j * alphaRowBytes];
+            uint8_t * dstRow = &image->alphaPlane[j * image->alphaRowBytes];
+            for (uint32_t i = 0; i < image->width; ++i) {
+                int srcAlpha = *((uint16_t *)&srcRow[i * 2]);
+                int dstAlpha = avifLimitedToFullY(image->depth, srcAlpha);
+                *((uint16_t *)&dstRow[i * 2]) = (uint16_t)dstAlpha;
+            }
+        }
+    } else {
+        for (uint32_t j = 0; j < image->height; ++j) {
+            uint8_t * srcRow = &alphaPlane[j * alphaRowBytes];
+            uint8_t * dstRow = &image->alphaPlane[j * image->alphaRowBytes];
+            for (uint32_t i = 0; i < image->width; ++i) {
+                int srcAlpha = srcRow[i];
+                int dstAlpha = avifLimitedToFullY(image->depth, srcAlpha);
+                dstRow[i] = (uint8_t)dstAlpha;
+            }
+        }
+    }
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifDecoderDecodeTiles(avifDecoder * decoder,
                                          uint32_t nextImageIndex,
                                          unsigned int firstTileIndex,
@@ -3747,9 +3781,22 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder,
             return AVIF_RESULT_OK;
         }
 
-        if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->alpha, tile->image)) {
+        avifBool isLimitedRangeAlpha = AVIF_FALSE;
+        if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->alpha, &isLimitedRangeAlpha, tile->image)) {
             avifDiagnosticsPrintf(&decoder->diag, "tile->codec->getNextImage() failed");
             return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
+        }
+
+        // Alpha plane with limited range is not allowed by the latest revision
+        // of the specification. However, it was allowed in version 1.0.0 of the
+        // specification. To allow such files, simply convert the alpha plane to
+        // full range.
+        if (tile->input->alpha && isLimitedRangeAlpha) {
+            avifResult res = avifImageLimitedToFullAlpha(tile->image);
+            if (res != AVIF_RESULT_OK) {
+                avifDiagnosticsPrintf(&decoder->diag, "avifImageLimitedToFullAlpha failed");
+                return res;
+            }
         }
 
         // Scale the decoded image so that it corresponds to this tile's output dimensions
@@ -3889,7 +3936,6 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
             }
 
             avifImageStealPlanes(decoder->image, srcAlpha, AVIF_PLANES_A);
-            decoder->image->alphaRange = srcAlpha->alphaRange;
         }
     }
 
