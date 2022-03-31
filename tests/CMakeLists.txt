@@ -49,7 +49,7 @@ add_custom_target(avif_test_all
 
 if(AVIF_ENABLE_COVERAGE)
     add_custom_target(avif_coverage
-        COMMAND LLVM_PROFILE_FILE=${CMAKE_BINARY_DIR}/aviftest.profraw $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/data
+        COMMAND ${CMAKE_COMMAND} -E env "LLVM_PROFILE_FILE=${CMAKE_BINARY_DIR}/aviftest.profraw" $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/data
         COMMAND ${XCRUN} llvm-profdata merge -sparse ${CMAKE_BINARY_DIR}/aviftest.profraw -o ${CMAKE_BINARY_DIR}/aviftest.profdata
         COMMAND cmake -E make_directory ${CMAKE_BINARY_DIR}/coverage
         COMMAND ${XCRUN} llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_BINARY_DIR}/aviftest.profdata -project-title=libavif --format html -output-dir=${CMAKE_BINARY_DIR}/coverage
