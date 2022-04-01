@@ -43,7 +43,7 @@ unsigned int avifLibYUVVersion(void)
 // in version 1813:
 // https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3183182
 // https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3527834
-#pragma clang diagnostic ignored "-Wnewline-eof"       // "no newline at end of file"
+#pragma clang diagnostic ignored "-Wnewline-eof" // "no newline at end of file"
 #endif
 #include <libyuv.h>
 #if defined(__clang__)
@@ -776,126 +776,6 @@ avifResult avifImageYUVToRGBLibYUV10bpc(const avifImage * image,
             }
 #endif
             return AVIF_RESULT_OK;
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
-            // This doesn't currently exist in libyuv
-        }
-    } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
-        // AVIF_RGB_FORMAT_ABGR  *ToRGBAMatrix   matrixYUV
-
-        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
-            // This doesn't currently exist in libyuv
-#if 0
-            if (I410ToRGBAMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                                 image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_U],
-                                 image->yuvRowBytes[AVIF_CHAN_U] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_V],
-                                 image->yuvRowBytes[AVIF_CHAN_V] / 2,
-                                 rgb->pixels,
-                                 rgb->rowBytes,
-                                 matrixYUV,
-                                 image->width,
-                                 image->height) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
-            }
-            return AVIF_RESULT_OK;
-#endif
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-            // This doesn't currently exist in libyuv
-#if 0
-            if (I210ToRGBAMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                                 image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_U],
-                                 image->yuvRowBytes[AVIF_CHAN_U] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_V],
-                                 image->yuvRowBytes[AVIF_CHAN_V] / 2,
-                                 rgb->pixels,
-                                 rgb->rowBytes,
-                                 matrixYUV,
-                                 image->width,
-                                 image->height) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
-            }
-            return AVIF_RESULT_OK;
-#endif
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-            // This doesn't currently exist in libyuv
-#if 0
-            if (I010ToRGBAMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                                 image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_U],
-                                 image->yuvRowBytes[AVIF_CHAN_U] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_V],
-                                 image->yuvRowBytes[AVIF_CHAN_V] / 2,
-                                 rgb->pixels,
-                                 rgb->rowBytes,
-                                 matrixYUV,
-                                 image->width,
-                                 image->height) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
-            }
-            return AVIF_RESULT_OK;
-#endif
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
-            // This doesn't currently exist in libyuv
-        }
-    } else if (rgb->format == AVIF_RGB_FORMAT_ARGB) {
-        // AVIF_RGB_FORMAT_ARGB  *ToRGBAMatrix   matrixYVU
-
-        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
-            // This doesn't currently exist in libyuv
-#if 0
-            if (I410ToRGBAMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                                 image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_V],
-                                 image->yuvRowBytes[AVIF_CHAN_V] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_U],
-                                 image->yuvRowBytes[AVIF_CHAN_U] / 2,
-                                 rgb->pixels,
-                                 rgb->rowBytes,
-                                 matrixYVU,
-                                 image->width,
-                                 image->height) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
-            }
-            return AVIF_RESULT_OK;
-#endif
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-            // This doesn't currently exist in libyuv
-#if 0
-            if (I210ToRGBAMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                                 image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_V],
-                                 image->yuvRowBytes[AVIF_CHAN_V] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_U],
-                                 image->yuvRowBytes[AVIF_CHAN_U] / 2,
-                                 rgb->pixels,
-                                 rgb->rowBytes,
-                                 matrixYVU,
-                                 image->width,
-                                 image->height) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
-            }
-            return AVIF_RESULT_OK;
-#endif
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-            // This doesn't currently exist in libyuv
-#if 0
-            if (I010ToRGBAMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                                 image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_V],
-                                 image->yuvRowBytes[AVIF_CHAN_V] / 2,
-                                 (const uint16_t *)image->yuvPlanes[AVIF_CHAN_U],
-                                 image->yuvRowBytes[AVIF_CHAN_U] / 2,
-                                 rgb->pixels,
-                                 rgb->rowBytes,
-                                 matrixYVU,
-                                 image->width,
-                                 image->height) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
-            }
-            return AVIF_RESULT_OK;
-#endif
         } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             // This doesn't currently exist in libyuv
         }
