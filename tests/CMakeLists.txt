@@ -1,4 +1,4 @@
-# Copyright 2019 Joe Drago. All rights reserved.
+# Copyright 2022 Joe Drago. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
 # With testing enabled, all targets referenced by add_test() can be run
@@ -49,11 +49,11 @@ add_custom_target(avif_test_all
 
 if(AVIF_ENABLE_COVERAGE)
     add_custom_target(avif_coverage
-        COMMAND ${CMAKE_COMMAND} -E env "LLVM_PROFILE_FILE=${CMAKE_BINARY_DIR}/aviftest.profraw" $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/data
-        COMMAND ${XCRUN} llvm-profdata merge -sparse ${CMAKE_BINARY_DIR}/aviftest.profraw -o ${CMAKE_BINARY_DIR}/aviftest.profdata
-        COMMAND cmake -E make_directory ${CMAKE_BINARY_DIR}/coverage
-        COMMAND ${XCRUN} llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_BINARY_DIR}/aviftest.profdata -project-title=libavif --format html -output-dir=${CMAKE_BINARY_DIR}/coverage
-        COMMAND echo Coverage report here: ${CMAKE_BINARY_DIR}/coverage/index.html
+        COMMAND ${CMAKE_COMMAND} -E env "LLVM_PROFILE_FILE=${CMAKE_CURRENT_BINARY_DIR}/aviftest.profraw" $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/data
+        COMMAND ${XCRUN} llvm-profdata merge -sparse ${CMAKE_CURRENT_BINARY_DIR}/aviftest.profraw -o ${CMAKE_CURRENT_BINARY_DIR}/aviftest.profdata
+        COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/coverage
+        COMMAND ${XCRUN} llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_CURRENT_BINARY_DIR}/aviftest.profdata -project-title=libavif --format html -output-dir=${CMAKE_CURRENT_BINARY_DIR}/coverage
+        COMMAND echo Coverage report here: ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
         DEPENDS aviftest
     )
 endif()

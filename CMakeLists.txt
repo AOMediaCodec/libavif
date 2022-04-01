@@ -535,7 +535,7 @@ if(AVIF_BUILD_APPS)
 endif()
 
 if(AVIF_BUILD_TESTS)
-    enable_testing() # Allow ctest to be called from root directory.
+    enable_testing() # Allow ctest to be called from top-level directory.
     add_subdirectory(tests)
 endif()
 
