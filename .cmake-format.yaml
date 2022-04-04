@@ -1,0 +1,5 @@
+format:
+  line_width: 130
+  tab_size: 4
+markup:
+  enable_markup: false
