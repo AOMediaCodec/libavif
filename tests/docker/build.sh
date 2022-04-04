@@ -70,7 +70,7 @@ cargo cinstall --prefix=/usr --release
 
 # SVT-AV1
 cd
-git clone -b v0.9.1 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v1.0.0-rc1 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 cd SVT-AV1
 cd Build
 cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release ..
