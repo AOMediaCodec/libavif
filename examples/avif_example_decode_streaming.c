@@ -131,7 +131,6 @@ int main(int argc, char * argv[])
 
     int returnCode = 1;
     avifDecoder * decoder = NULL;
-    avifIOStreamingReader * io = NULL;
 
     // Read entire file into fileBuffer
     FILE * f = NULL;
@@ -162,7 +161,7 @@ int main(int argc, char * argv[])
     }
     // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
 
-    io = avifIOCreateStreamingReader(fileBuffer, fileSize);
+    avifIOStreamingReader * io = avifIOCreateStreamingReader(fileBuffer, fileSize);
     if (!io) {
         fprintf(stderr, "Memory allocation failure\n");
         goto cleanup;
