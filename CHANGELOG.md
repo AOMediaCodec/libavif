@@ -8,10 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.10.0] - 2022-04-06
 
+There is an incompatible interface change in this release. New members were
+added to the avifDecoder and avifRGBImage structs. It is necessary to recompile
+your code.
+
 ### Added
-* Support F16 Half Float conversion in avifRGBImage
-* Incremental decoding of AVIF grid tiles
+* Support F16 Half Float conversion in avifRGBImage: new isFloat member
+* Incremental decoding of AVIF grid tiles: new allowIncremental member in
+  avifDecoder and new avifDecoderDecodedRowCount() function
 * Support parsing of version 3 of ItemInfoEntry
+* Add new avifResult code AVIF_RESULT_OUT_OF_MEMORY
 * Document the "[Strict]" prefix in error strings
 * Document that SVT-AV1 doesn't support lossless yet
 * CI: Add CIFuzz integration
