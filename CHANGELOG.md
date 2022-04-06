@@ -24,9 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pixi property
 * Update aom.cmd: v3.3.0
 * Update dav1d.cmd: 1.0.0
-* Upgrade to libgav1 0.17.0
-* Upgrade to rav1e 0.5.0
-* Upgrade to SVT-AV1 v0.9.1
+* Update libgav1.cmd: 0.17.0
+* Update rav1e.cmd: 0.5.0
+* Update svt.cmd/svt.sh: v0.9.1
+* Update zlibpng.cmd: zlib v1.2.12
 * findrav1e: add LDFLAGS to LIBRARIES
 * rav1e: add bcrypt.lib to list of extra libs
 * Fix y4m read/write for images of non-standard dimensions
@@ -57,12 +58,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Write ccst box in Sample Entry for animated images
 * Add iso8 to compatible_brands for animated images
 * Compare with snapshot of AOM_EXT_PART_ABI_VERSION
+* Handle the new AOM_IMG_FMT_NV12 enum conditionally in a switch statement in
+  aomCodecGetNextImage()
 * Fix avifpng.c for libpng 1.4
 * Fix -Wformat / -Wformat-non-iso on MinGW UCRT
+* Replace some memcpy calls with struct assignments
+* Remove unnecessary memcpy() calls in src/utils.c
 * Split CMakeLists.txt into tests/CMakeLists.txt
-* Utilize bilinear chroma upsample in libyuv when possible
-* Call libyuv funcs to convert 10bpc YUV to 8bpc RGB
+* Use bilinear chroma upsampling in libyuv when possible
+* Call libyuv functions to convert 10bpc YUV to 8bpc RGB
 * Prepare avif example for non-aborting avifAlloc()
+* Handle the tileRowsLog2 and tileColsLog2 members of avifEncoder correctly for
+  SVT-AV1.
 
 ## [0.9.3] - 2021-10-20
 
