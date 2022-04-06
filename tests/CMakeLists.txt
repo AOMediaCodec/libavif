@@ -42,10 +42,7 @@ if(AVIF_LOCAL_LIBGAV1)
 endif()
 target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
 
-add_custom_target(
-    avif_test_all
-    COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/data
-    DEPENDS aviftest)
+add_custom_target(avif_test_all COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/data DEPENDS aviftest)
 
 if(AVIF_ENABLE_COVERAGE)
     add_custom_target(

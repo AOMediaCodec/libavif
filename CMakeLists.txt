@@ -6,10 +6,7 @@ cmake_minimum_required(VERSION 3.5)
 # Specify search path for CMake modules to be loaded by include() and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(
-    libavif
-    LANGUAGES C
-    VERSION 0.9.3)
+project(libavif LANGUAGES C VERSION 0.9.3)
 
 # Set C99 as the default
 set(CMAKE_C_STANDARD 99)
@@ -70,24 +67,16 @@ if(AVIF_LOCAL_ZLIBPNG)
     # Put the value of ZLIB_INCLUDE_DIR in the cache. This works around cmake behavior that has been updated by
     # cmake policy CMP0102 in cmake 3.17. Remove the CACHE workaround when we require cmake 3.17 or later. See
     # https://gitlab.kitware.com/cmake/cmake/-/issues/21343.
-    set(ZLIB_INCLUDE_DIR
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib"
-        CACHE PATH "zlib include dir")
+    set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE PATH "zlib include dir")
     include_directories("${CMAKE_CURRENT_BINARY_DIR}/ext/zlib")
     set(CMAKE_DEBUG_POSTFIX "")
 
     # This is the only way I could avoid libpng going crazy if it found awk.exe, seems benign otherwise
     set(PREV_ANDROID ${ANDROID})
     set(ANDROID TRUE)
-    set(PNG_BUILD_ZLIB
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib"
-        CACHE STRING "" FORCE)
-    set(PNG_SHARED
-        OFF
-        CACHE BOOL "")
-    set(PNG_TESTS
-        OFF
-        CACHE BOOL "")
+    set(PNG_BUILD_ZLIB "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE STRING "" FORCE)
+    set(PNG_SHARED OFF CACHE BOOL "")
+    set(PNG_TESTS OFF CACHE BOOL "")
     add_subdirectory(ext/libpng)
     set(PNG_PNG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libpng")
     set(PNG_LIBRARY png_static)
@@ -103,12 +92,8 @@ if(AVIF_LOCAL_JPEG)
         set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg")
         set(JPEG_LIBRARY jpeg)
     else()
-        set(JPEG_INCLUDE_DIR
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg"
-            PARENT_SCOPE)
-        set(JPEG_LIBRARY
-            jpeg
-            PARENT_SCOPE)
+        set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg" PARENT_SCOPE)
+        set(JPEG_LIBRARY jpeg PARENT_SCOPE)
     endif()
 endif()
 option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
@@ -122,12 +107,8 @@ if(AVIF_LOCAL_LIBYUV)
         set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include")
         set(LIBYUV_LIBRARY ${LIB_FILENAME})
     else()
-        set(LIBYUV_INCLUDE_DIR
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include"
-            PARENT_SCOPE)
-        set(LIBYUV_LIBRARY
-            ${LIB_FILENAME}
-            PARENT_SCOPE)
+        set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include" PARENT_SCOPE)
+        set(LIBYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
 endif()
 # ---------------------------------------------------------------------------------------
@@ -439,30 +420,19 @@ if(AVIF_CODEC_AOM)
     message(STATUS "libavif: Codec enabled: aom (${AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG})")
 endif()
 
-if(NOT AVIF_CODEC_AOM
-   AND NOT AVIF_CODEC_DAV1D
-   AND NOT AVIF_CODEC_LIBGAV1)
+if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
 add_library(avif ${AVIF_SRCS})
-set_target_properties(
-    avif
-    PROPERTIES VERSION ${LIBRARY_VERSION}
-               SOVERSION ${LIBRARY_SOVERSION}
-               C_VISIBILITY_PRESET hidden)
+set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-target_include_directories(
-    avif
-    PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
-    PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
+                           PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
 set(AVIF_PKG_CONFIG_EXTRA_CFLAGS "")
 if(BUILD_SHARED_LIBS)
-    target_compile_definitions(
-        avif
-        PUBLIC AVIF_DLL
-        PRIVATE AVIF_BUILDING_SHARED_LIBS)
+    target_compile_definitions(avif PUBLIC AVIF_DLL PRIVATE AVIF_BUILDING_SHARED_LIBS)
     set(AVIF_PKG_CONFIG_EXTRA_CFLAGS " -DAVIF_DLL")
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
@@ -505,10 +475,8 @@ if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
     add_library(avif_apps STATIC # Static so it does not have to be installed.
                 apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c apps/shared/y4m.c)
     target_link_libraries(avif_apps avif ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
-    target_include_directories(
-        avif_apps
-        PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR}
-        INTERFACE apps/shared)
+    target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR}
+                                                 ${JPEG_INCLUDE_DIR} INTERFACE apps/shared)
 endif()
 
 if(AVIF_BUILD_APPS)
@@ -550,10 +518,8 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
         install(EXPORT ${PROJECT_NAME}-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
         include(CMakePackageConfigHelpers)
-        write_basic_package_version_file(
-            ${PROJECT_NAME}-config-version.cmake
-            VERSION ${PROJECT_VERSION}
-            COMPATIBILITY SameMajorVersion)
+        write_basic_package_version_file(${PROJECT_NAME}-config-version.cmake VERSION ${PROJECT_VERSION}
+                                         COMPATIBILITY SameMajorVersion)
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
                 DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
     endif()
