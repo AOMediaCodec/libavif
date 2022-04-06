@@ -8,9 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.10.0] - 2022-04-06
 
-There is an incompatible interface change in this release. New members were
-added to the avifDecoder and avifRGBImage structs. It is necessary to recompile
-your code.
+There is an incompatible ABI change in this release. New members were added to
+the avifDecoder and avifRGBImage structs. It is necessary to recompile your
+code.
 
 ### Added
 * Support F16 Half Float conversion in avifRGBImage: new isFloat member
