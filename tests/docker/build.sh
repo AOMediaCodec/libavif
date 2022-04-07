@@ -15,6 +15,8 @@
 #
 #     bash docker_ubuntu_shared_libs.sh
 
+set -e
+
 # build env
 apt update
 DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl python3-pip
@@ -70,8 +72,9 @@ cargo cinstall --prefix=/usr --release
 cd
 git clone -b v0.9.1 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 cd SVT-AV1
-cd Build/linux
-./build.sh --prefix=/usr release install
+cd Build
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release ..
+ninja install
 
 # libavif
 cd
