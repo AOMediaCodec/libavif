@@ -464,9 +464,19 @@ typedef struct avifImage
     avifImageRotation irot;
     avifImageMirror imir;
 
-    // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
+    // Metadata - deprecated, please use exifItems or xmpItems instead.
+    // Used at encoding only if exifItems or xmpItems is null.
+    // Contains the same data as exifItems[0] or xmpItems[0] upon decoding.
     avifRWData exif;
     avifRWData xmp;
+
+    // Metadata items
+    // null if no element. Otherwise, the last element has a size of 0 to signal the end of the array.
+    // Before encoding, add metadata items with avifImagePushMetadata*().
+    // After decoding, metadata items can be browsed with a loop:
+    //   for (avifRWData * i = srcImage->*Items; i && (i->size != 0); ++i) { /* i->data... */ }
+    avifRWData * exifItems;
+    avifRWData * xmpItems;
 } avifImage;
 
 AVIF_API avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
@@ -477,9 +487,16 @@ AVIF_API void avifImageDestroy(avifImage * image);
 
 AVIF_API void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 
-// Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD
+// Deprecated, please use avifImageClearMetadata*() then avifImagePushMetadata*() instead.
 AVIF_API void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
 AVIF_API void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
+// Appends a metadata item to the image. There can be several EXIF items and several XMP items per image.
+// Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD
+AVIF_API avifResult avifImagePushMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
+AVIF_API avifResult avifImagePushMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
+// Removes all metadata items of the specified type from the image.
+AVIF_API void avifImageClearMetadataExif(avifImage * image);
+AVIF_API void avifImageClearMetadataXMP(avifImage * image);
 
 AVIF_API void avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
 AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);     // Ignores already-freed planes

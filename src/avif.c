@@ -172,8 +172,14 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesF
 
     avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
 
-    avifImageSetMetadataExif(dstImage, srcImage->exif.data, srcImage->exif.size);
-    avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
+    avifImageClearMetadataExif(dstImage);
+    for (const avifRWData * exif = srcImage->exifItems; exif && (exif->size != 0); ++exif) {
+        avifImagePushMetadataExif(dstImage, exif->data, exif->size);
+    }
+    avifImageClearMetadataXMP(dstImage);
+    for (const avifRWData * xmp = srcImage->xmpItems; xmp && (xmp->size != 0); ++xmp) {
+        avifImagePushMetadataXMP(dstImage, xmp->data, xmp->size);
+    }
 
     if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
@@ -246,8 +252,8 @@ void avifImageDestroy(avifImage * image)
 {
     avifImageFreePlanes(image, AVIF_PLANES_ALL);
     avifRWDataFree(&image->icc);
-    avifRWDataFree(&image->exif);
-    avifRWDataFree(&image->xmp);
+    avifImageClearMetadataExif(image);
+    avifImageClearMetadataXMP(image);
     avifFree(image);
 }
 
@@ -258,12 +264,73 @@ void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSi
 
 void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
-    avifRWDataSet(&image->exif, exif, exifSize);
+    avifImageClearMetadataExif(image);
+    avifImagePushMetadataExif(image, exif, exifSize);
 }
 
 void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize)
 {
-    avifRWDataSet(&image->xmp, xmp, xmpSize);
+    avifImageClearMetadataXMP(image);
+    avifImagePushMetadataXMP(image, xmp, xmpSize);
+}
+
+// Appends an item. The items array is avifRWData.size=0 terminated.
+static avifResult avifImagePushMetadataItem(avifRWData ** items, const uint8_t * item, size_t itemSize)
+{
+    if (!item || (itemSize == 0)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    size_t itemCount = 0;
+    while (*items && ((*items)[itemCount].size != 0)) {
+        ++itemCount;
+    }
+    avifRWData * newItems = avifAlloc((itemCount + 2) * sizeof(newItems[0]));
+    if (!newItems) {
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    memcpy(newItems, *items, itemCount * sizeof(newItems[0]));
+    memset(newItems + itemCount, 0, 2 * sizeof(newItems[0]));
+    avifRWDataSet(&newItems[itemCount], item, itemSize);
+    avifFree(*items);
+    *items = newItems;
+    return AVIF_RESULT_OK;
+}
+
+avifResult avifImagePushMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
+{
+    if (image->exif.size == 0) {
+        avifRWDataSet(&image->exif, exif, exifSize); // Retrocompatible.
+    }
+    return avifImagePushMetadataItem(&image->exifItems, exif, exifSize);
+}
+
+avifResult avifImagePushMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize)
+{
+    if (image->xmp.size == 0) {
+        avifRWDataSet(&image->xmp, xmp, xmpSize); // Retrocompatible.
+    }
+    return avifImagePushMetadataItem(&image->xmpItems, xmp, xmpSize);
+}
+
+static void avifImageClearMetadataItems(avifRWData ** items)
+{
+    for (avifRWData * item = *items; item && (item->size != 0); ++item) {
+        avifRWDataFree(item);
+    }
+    avifFree(*items);
+    *items = NULL;
+}
+
+void avifImageClearMetadataExif(avifImage * image)
+{
+    avifRWDataFree(&image->exif);
+    avifImageClearMetadataItems(&image->exifItems);
+}
+
+void avifImageClearMetadataXMP(avifImage * image)
+{
+    avifRWDataFree(&image->xmp);
+    avifImageClearMetadataItems(&image->xmpItems);
 }
 
 void avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)

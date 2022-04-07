@@ -28,6 +28,13 @@ endif()
 target_link_libraries(avifincrtest avif ${AVIF_PLATFORM_LIBRARIES})
 add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/sofa_grid1x5_420.avif)
 
+add_executable(avifmetadatatest avifmetadatatest.c)
+if(AVIF_LOCAL_LIBGAV1)
+    set_target_properties(avifmetadatatest PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
+target_link_libraries(avifmetadatatest avif ${AVIF_PLATFORM_LIBRARIES})
+add_test(NAME avifmetadatatest COMMAND avifmetadatatest)
+
 add_executable(avify4mtest avify4mtest.c)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(avify4mtest PROPERTIES LINKER_LANGUAGE "CXX")

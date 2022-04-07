@@ -1442,8 +1442,8 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
 }
 
 // If colorId == 0 (a sentinel value as item IDs must be nonzero), accept any found EXIF/XMP metadata. Passing in 0
-// is used when finding metadata in a meta box embedded in a trak box, as any items inside of a meta box that is
-// inside of a trak box are implicitly associated to the track.
+// is used when finding metadata in a meta box embedded in a trak box, as any items inside a meta box that is
+// inside a trak box are implicitly associated to the track.
 static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta, avifImage * image, uint32_t colorId)
 {
     if (decoder->ignoreExif && decoder->ignoreXMP) {
@@ -1478,7 +1478,10 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
             uint32_t exifTiffHeaderOffset;
             CHECKERR(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) exif_tiff_header_offset;
 
-            avifImageSetMetadataExif(image, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream));
+            avifResult pushResult = avifImagePushMetadataExif(image, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream));
+            if (pushResult != AVIF_RESULT_OK) {
+                return pushResult;
+            }
         } else if (!decoder->ignoreXMP && !memcmp(item->type, "mime", 4) &&
                    !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
             avifROData xmpContents;
@@ -1487,7 +1490,10 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
                 return readResult;
             }
 
-            avifImageSetMetadataXMP(image, xmpContents.data, xmpContents.size);
+            avifResult pushResult = avifImagePushMetadataXMP(image, xmpContents.data, xmpContents.size);
+            if (pushResult != AVIF_RESULT_OK) {
+                return pushResult;
+            }
         }
     }
     return AVIF_RESULT_OK;

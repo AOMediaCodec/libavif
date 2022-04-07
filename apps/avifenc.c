@@ -90,14 +90,16 @@ static void syntax(void)
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
-    printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item\n");
-    printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item\n");
-    printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item\n");
+    printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item for each --exif specified (implies --ignore-exif)\n");
+    printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item for each --xmp specified (implies --ignore-xmp)\\n");
+    printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
     printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
+    printf("    --ignore-exif                     : If the input file contains an embedded Exif metadata payload, ignore it (no-op if absent)\n");
+    printf("    --ignore-xmp                      : If the input file contains an embedded XMP metadata payload, ignore it (no-op if absent)\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
@@ -337,6 +339,26 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
+// Creates and returns a newItem. The items array is avifRWData.size=0 terminated.
+// Returns false in case of memory error.
+static avifBool pushItem(avifRWData ** items, avifRWData ** newItem)
+{
+    size_t itemCount = 0;
+    while (*items && ((*items)[itemCount].size != 0)) {
+        ++itemCount;
+    }
+    avifRWData * newItems = avifAlloc((itemCount + 2) * sizeof(newItems[0]));
+    if (!newItems) {
+        return AVIF_FALSE;
+    }
+    memcpy(newItems, *items, itemCount * sizeof(newItems[0]));
+    memset(newItems + itemCount, 0, 2 * sizeof(newItems[0]));
+    avifFree(*items);
+    *items = newItems;
+    *newItem = &(*items)[itemCount];
+    return AVIF_TRUE;
+}
+
 static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
 {
     if ((gridSplitImage->width % gridCols) != 0) {
@@ -443,13 +465,15 @@ int main(int argc, char * argv[])
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool lossless = AVIF_FALSE;
+    avifBool ignoreExif = AVIF_FALSE;
+    avifBool ignoreXMP = AVIF_FALSE;
     avifBool ignoreICC = AVIF_FALSE;
     avifEncoder * encoder = avifEncoderCreate();
     avifImage * image = NULL;
     avifImage * nextImage = NULL;
     avifRWData raw = AVIF_DATA_EMPTY;
-    avifRWData exifOverride = AVIF_DATA_EMPTY;
-    avifRWData xmpOverride = AVIF_DATA_EMPTY;
+    avifRWData * exifItemsOverride = NULL; // avifRWData.size=0 terminated
+    avifRWData * xmpItemsOverride = NULL;  // avifRWData.size=0 terminated
     avifRWData iccOverride = AVIF_DATA_EMPTY;
     int keyframeInterval = 0;
     avifBool cicpExplicitlySet = AVIF_FALSE;
@@ -630,14 +654,16 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--exif")) {
             NEXTARG();
-            if (!readEntireFile(arg, &exifOverride)) {
+            avifRWData * item;
+            if (!pushItem(&exifItemsOverride, &item) || !readEntireFile(arg, item)) {
                 fprintf(stderr, "ERROR: Unable to read Exif metadata: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "--xmp")) {
             NEXTARG();
-            if (!readEntireFile(arg, &xmpOverride)) {
+            avifRWData * item;
+            if (!pushItem(&xmpItemsOverride, &item) || !readEntireFile(arg, item)) {
                 fprintf(stderr, "ERROR: Unable to read XMP metadata: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
@@ -696,6 +722,10 @@ int main(int argc, char * argv[])
             }
             avifEncoderSetCodecSpecificOption(encoder, tempBuffer, value);
             free(tempBuffer);
+        } else if (!strcmp(arg, "--ignore-exif")) {
+            ignoreExif = AVIF_TRUE;
+        } else if (!strcmp(arg, "--ignore-xmp")) {
+            ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--pasp")) {
@@ -846,17 +876,30 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (ignoreICC) {
-        avifImageSetProfileICC(image, NULL, 0);
-    }
     if (iccOverride.size) {
         avifImageSetProfileICC(image, iccOverride.data, iccOverride.size);
+    } else if (ignoreICC) {
+        avifImageSetProfileICC(image, NULL, 0);
     }
-    if (exifOverride.size) {
-        avifImageSetMetadataExif(image, exifOverride.data, exifOverride.size);
+    if (ignoreExif || exifItemsOverride) {
+        avifImageClearMetadataExif(image);
+        for (const avifRWData * exif = exifItemsOverride; exif && (exif->size != 0); ++exif) {
+            if (avifImagePushMetadataExif(image, exif->data, exif->size) != AVIF_RESULT_OK) {
+                fprintf(stderr, "Adding Exif metadata failed.\n");
+                returnCode = 1;
+                goto cleanup;
+            }
+        }
     }
-    if (xmpOverride.size) {
-        avifImageSetMetadataXMP(image, xmpOverride.data, xmpOverride.size);
+    if (ignoreXMP || xmpItemsOverride) {
+        avifImageClearMetadataXMP(image);
+        for (const avifRWData * xmp = xmpItemsOverride; xmp && (xmp->size != 0); ++xmp) {
+            if (avifImagePushMetadataXMP(image, xmp->data, xmp->size) != AVIF_RESULT_OK) {
+                fprintf(stderr, "Adding XMP metadata failed.\n");
+                returnCode = 1;
+                goto cleanup;
+            }
+        }
     }
 
     if (!image->icc.size && !cicpExplicitlySet && (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
@@ -1269,6 +1312,14 @@ cleanup:
     if (nextImage) {
         avifImageDestroy(nextImage);
     }
+    for (avifRWData * exif = exifItemsOverride; exif && (exif->size != 0); ++exif) {
+        avifRWDataFree(exif);
+    }
+    avifFree(exifItemsOverride);
+    for (avifRWData * xmp = xmpItemsOverride; xmp && (xmp->size != 0); ++xmp) {
+        avifRWDataFree(xmp);
+    }
+    avifFree(xmpItemsOverride);
     avifRWDataFree(&raw);
     free((void *)input.files);
     return returnCode;

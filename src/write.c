@@ -538,6 +538,60 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
     avifRWStreamFinishWrite(&s);
 }
 
+static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
+{
+    // Validate Exif payload (if any) and find TIFF header offset
+    uint32_t exifTiffHeaderOffset = 0;
+    if (exif->size < 4) {
+        // Can't even fit the TIFF header, something is wrong
+        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+    }
+
+    const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
+    const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
+    for (; exifTiffHeaderOffset < (exif->size - 4); ++exifTiffHeaderOffset) {
+        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
+            break;
+        }
+        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
+            break;
+        }
+    }
+
+    if (exifTiffHeaderOffset >= exif->size - 4) {
+        // Couldn't find the TIFF header
+        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+    }
+
+    avifEncoderItem * exifItem = avifEncoderDataCreateItem(data, "Exif", "Exif", 5, 0);
+    if (!exifItem) {
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    exifItem->irefToID = data->primaryItemID;
+    exifItem->irefType = "cdsc";
+
+    avifRWDataRealloc(&exifItem->metadataPayload, sizeof(uint32_t) + exif->size);
+    exifTiffHeaderOffset = avifHTONL(exifTiffHeaderOffset);
+    memcpy(exifItem->metadataPayload.data, &exifTiffHeaderOffset, sizeof(uint32_t));
+    memcpy(exifItem->metadataPayload.data + sizeof(uint32_t), exif->data, exif->size);
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avifRWData * xmp)
+{
+    avifEncoderItem * xmpItem = avifEncoderDataCreateItem(data, "mime", "XMP", 4, 0);
+    if (!xmpItem) {
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    xmpItem->irefToID = data->primaryItemID;
+    xmpItem->irefType = "cdsc";
+
+    xmpItem->infeContentType = xmpContentType;
+    xmpItem->infeContentTypeSize = xmpContentTypeSize;
+    avifRWDataSet(&xmpItem->metadataPayload, xmp->data, xmp->size);
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -733,48 +787,32 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // -----------------------------------------------------------------------
         // Create metadata items (Exif, XMP)
 
-        if (firstCell->exif.size > 0) {
-            // Validate Exif payload (if any) and find TIFF header offset
-            uint32_t exifTiffHeaderOffset = 0;
-            if (firstCell->exif.size < 4) {
-                // Can't even fit the TIFF header, something is wrong
-                return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+        if (!firstCell->exifItems && (firstCell->exif.size != 0)) {
+            // For retrocompatibility, encode the given single Exif item if the Exif item array is null.
+            const avifResult result = avifEncoderDataCreateExifItem(encoder->data, &firstCell->exif);
+            if (result != AVIF_RESULT_OK) {
+                return result;
             }
-
-            const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
-            const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
-            for (; exifTiffHeaderOffset < (firstCell->exif.size - 4); ++exifTiffHeaderOffset) {
-                if (!memcmp(&firstCell->exif.data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
-                    break;
-                }
-                if (!memcmp(&firstCell->exif.data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
-                    break;
-                }
+        }
+        for (const avifRWData * exif = firstCell->exifItems; exif && (exif->size != 0); ++exif) {
+            const avifResult result = avifEncoderDataCreateExifItem(encoder->data, exif);
+            if (result != AVIF_RESULT_OK) {
+                return result;
             }
-
-            if (exifTiffHeaderOffset >= firstCell->exif.size - 4) {
-                // Couldn't find the TIFF header
-                return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
-            }
-
-            avifEncoderItem * exifItem = avifEncoderDataCreateItem(encoder->data, "Exif", "Exif", 5, 0);
-            exifItem->irefToID = encoder->data->primaryItemID;
-            exifItem->irefType = "cdsc";
-
-            avifRWDataRealloc(&exifItem->metadataPayload, sizeof(uint32_t) + firstCell->exif.size);
-            exifTiffHeaderOffset = avifHTONL(exifTiffHeaderOffset);
-            memcpy(exifItem->metadataPayload.data, &exifTiffHeaderOffset, sizeof(uint32_t));
-            memcpy(exifItem->metadataPayload.data + sizeof(uint32_t), firstCell->exif.data, firstCell->exif.size);
         }
 
-        if (firstCell->xmp.size > 0) {
-            avifEncoderItem * xmpItem = avifEncoderDataCreateItem(encoder->data, "mime", "XMP", 4, 0);
-            xmpItem->irefToID = encoder->data->primaryItemID;
-            xmpItem->irefType = "cdsc";
-
-            xmpItem->infeContentType = xmpContentType;
-            xmpItem->infeContentTypeSize = xmpContentTypeSize;
-            avifRWDataSet(&xmpItem->metadataPayload, firstCell->xmp.data, firstCell->xmp.size);
+        if (!firstCell->xmpItems && (firstCell->xmp.size != 0)) {
+            // For retrocompatibility, encode the given single XMP item if the XMP item array is null.
+            const avifResult result = avifEncoderDataCreateXMPItem(encoder->data, &firstCell->xmp);
+            if (result != AVIF_RESULT_OK) {
+                return result;
+            }
+        }
+        for (const avifRWData * xmp = firstCell->xmpItems; xmp && (xmp->size != 0); ++xmp) {
+            const avifResult result = avifEncoderDataCreateXMPItem(encoder->data, xmp);
+            if (result != AVIF_RESULT_OK) {
+                return result;
+            }
         }
     } else {
         // Another frame in an image sequence
