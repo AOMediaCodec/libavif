@@ -1478,7 +1478,8 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
             uint32_t exifTiffHeaderOffset;
             CHECKERR(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) exif_tiff_header_offset;
 
-            avifResult pushResult = avifImagePushMetadataExif(image, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream));
+            avifResult pushResult =
+                avifImagePushMetadataExif(image, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream));
             if (pushResult != AVIF_RESULT_OK) {
                 return pushResult;
             }
