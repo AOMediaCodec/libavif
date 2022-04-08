@@ -1096,11 +1096,12 @@ static avifResult avifRGBImageToF16(avifRGBImage * rgb)
     for (uint32_t j = 0; j < rgb->height; ++j) {
         uint16_t * pixel = pixelRowBase;
         for (uint32_t i = 0; i < rgb->width * channelCount; ++i, ++pixel) {
-            const union
+            union
             {
                 float f;
                 uint32_t u32;
-            } f16 = { .f = *pixel * multiplier };
+            } f16;
+            f16.f = *pixel * multiplier;
             *pixel = (uint16_t)(f16.u32 >> 13);
         }
         pixelRowBase += stride;
