@@ -58,7 +58,7 @@ Debug and Release are available on
 
 ## Development Notes
 
-libavif is written mainly in C99.
+libavif is written in C99.
 
 ### Formatting
 

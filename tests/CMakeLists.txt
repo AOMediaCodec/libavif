@@ -55,5 +55,6 @@ if(AVIF_ENABLE_COVERAGE)
         COMMAND ${XCRUN} llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_CURRENT_BINARY_DIR}/aviftest.profdata
                 -project-title=libavif --format html -output-dir=${CMAKE_CURRENT_BINARY_DIR}/coverage
         COMMAND echo Coverage report here: ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
-        DEPENDS aviftest)
+        DEPENDS aviftest
+    )
 endif()

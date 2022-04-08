@@ -16,6 +16,10 @@ with section("format"):
   # force it to a vertical layout.
   max_pargs_hwrap = 10
 
+  # If a statement is wrapped to more than one line, than dangle the closing
+  # parenthesis on its own line.
+  dangle_parens = True
+
 # ------------------------------------------------
 # Options affecting comment reflow and formatting.
 # ------------------------------------------------

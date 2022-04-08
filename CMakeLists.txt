@@ -40,13 +40,17 @@ option(AVIF_CODEC_AOM_ENCODE "if AVIF_CODEC_AOM is on, use/offer libaom's encode
 
 option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d (see Local Builds in README)"
-       OFF)
+       OFF
+)
 option(AVIF_LOCAL_LIBGAV1
-       "Build the libgav1 codec by providing your own copy of the repo in ext/libgav1 (see Local Builds in README)" OFF)
+       "Build the libgav1 codec by providing your own copy of the repo in ext/libgav1 (see Local Builds in README)" OFF
+)
 option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo in ext/rav1e (see Local Builds in README)"
-       OFF)
+       OFF
+)
 option(AVIF_LOCAL_SVT
-       "Build the SVT-AV1 codec by providing your own copy of the repo in ext/SVT-AV1 (see Local Builds in README)" OFF)
+       "Build the SVT-AV1 codec by providing your own copy of the repo in ext/SVT-AV1 (see Local Builds in README)" OFF
+)
 
 if(AVIF_LOCAL_LIBGAV1)
     enable_language(CXX)
@@ -99,7 +103,8 @@ endif()
 option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBYUV)
     set(LIB_FILENAME
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${CMAKE_STATIC_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${CMAKE_STATIC_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    )
     if(NOT EXISTS "${LIB_FILENAME}")
         message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBYUV): ${LIB_FILENAME} is missing, bailing out")
     endif()
@@ -131,7 +136,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         -Wno-missing-noreturn
         -Wno-padded
         -Wno-sign-conversion
-        -Wno-error=c11-extensions)
+        -Wno-error=c11-extensions
+    )
     # Some headers such as glib-2.0 use identifier names that start with '_' followed by a capital letter.
     # The C standard reserves names beginning with an underscore and various other combinations.
     # ISO/IEC 9899:1999 (aka C99 standard) 7.1.3 Reserved identifiers
@@ -182,7 +188,8 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
         # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
         # Warnings can be suppressed but there will still be random characters printed to the console.
         /source-charset:utf-8
-        /execution-charset:us-ascii)
+        /execution-charset:us-ascii
+    )
 else()
     message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
 endif()
@@ -224,7 +231,8 @@ set(AVIF_SRCS
     src/scale.c
     src/stream.c
     src/utils.c
-    src/write.c)
+    src/write.c
+)
 
 set(AVIF_PLATFORM_DEFINITIONS)
 set(AVIF_PLATFORM_INCLUDES)
@@ -275,7 +283,8 @@ if(AVIF_CODEC_DAV1D)
         set(AVIF_CODEC_INCLUDES
             ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build"
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include" "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include/dav1d"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include")
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
+        )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
     else()
         # Check to see if dav1d is independently being built by the outer CMake project
@@ -401,7 +410,8 @@ if(AVIF_CODEC_AOM)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_aom.c)
     if(AVIF_LOCAL_AOM)
         set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${CMAKE_STATIC_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}")
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${CMAKE_STATIC_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        )
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
         endif()
@@ -428,8 +438,10 @@ add_library(avif ${AVIF_SRCS})
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
-                           PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+target_include_directories(
+    avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include> PRIVATE ${AVIF_PLATFORM_INCLUDES}
+                                                                                                      ${AVIF_CODEC_INCLUDES}
+)
 set(AVIF_PKG_CONFIG_EXTRA_CFLAGS "")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif PUBLIC AVIF_DLL PRIVATE AVIF_BUILDING_SHARED_LIBS)
@@ -472,11 +484,15 @@ if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)
 
-    add_library(avif_apps STATIC # Static so it does not have to be installed.
-                apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c apps/shared/y4m.c)
+    add_library(
+        avif_apps STATIC # Static so it does not have to be installed.
+        apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c apps/shared/y4m.c
+    )
     target_link_libraries(avif_apps avif ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
-    target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR}
-                                                 ${JPEG_INCLUDE_DIR} INTERFACE apps/shared)
+    target_include_directories(
+        avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR}
+        INTERFACE apps/shared
+    )
 endif()
 
 if(AVIF_BUILD_APPS)
@@ -496,7 +512,8 @@ if(AVIF_BUILD_APPS)
             TARGETS avifenc avifdec
             RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
             ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        )
     endif()
 endif()
 
@@ -511,17 +528,20 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
         EXPORT ${PROJECT_NAME}-config
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    )
 
     # Enable CMake configs in VCPKG mode
     if(BUILD_SHARED_LIBS OR VCPKG_TARGET_TRIPLET)
         install(EXPORT ${PROJECT_NAME}-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
         include(CMakePackageConfigHelpers)
-        write_basic_package_version_file(${PROJECT_NAME}-config-version.cmake VERSION ${PROJECT_VERSION}
-                                         COMPATIBILITY SameMajorVersion)
+        write_basic_package_version_file(
+            ${PROJECT_NAME}-config-version.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion
+        )
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
-                DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+                DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+        )
     endif()
 
     configure_file(libavif.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc @ONLY)
