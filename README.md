@@ -1,16 +1,23 @@
 # libavif [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/louquillio/libavif?branch=master&svg=true)](https://ci.appveyor.com/project/louquillio/libavif) [![Travis Build Status](https://travis-ci.com/AOMediaCodec/libavif.svg?branch=master)](https://travis-ci.com/AOMediaCodec/libavif)
 
-This library aims to be a friendly, portable C implementation of the AV1 Image File Format, as described here:
+This library aims to be a friendly, portable C implementation of the AV1 Image
+File Format, as described here:
 
 <https://aomediacodec.github.io/av1-avif/>
 
-It is a work-in-progress, but can already encode and decode all AOM supported YUV formats and bit depths (with alpha).
+It is a work-in-progress, but can already encode and decode all AOM supported
+YUV formats and bit depths (with alpha).
 
-For now, it is recommended that you checkout/use [tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of just using the master branch. I will regularly create new versions as bugfixes and features are added.
+For now, it is recommended that you check out/use
+[tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of
+just using the master branch. I will regularly create new versions as bugfixes
+and features are added.
 
 ## Usage
 
-Please see the examples in the examples directory. If you're already building `libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and run the examples too.
+Please see the examples in the "examples" directory. If you're already building
+`libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and
+run the examples too.
 
 ## Build Notes
 
@@ -44,7 +51,30 @@ codec.
 
 ## Prebuilt Library (Windows)
 
-If you're building on Windows with Visual Studio 2019 and want to try out libavif without going through the build process, static library builds for both Debug and Release are available on [AppVeyor](https://ci.appveyor.com/project/louquillio/libavif).
+If you're building on Windows with Visual Studio 2019 and want to try out
+libavif without going through the build process, static library builds for both
+Debug and Release are available on
+[AppVeyor](https://ci.appveyor.com/project/louquillio/libavif).
+
+## Development Notes
+
+libavif is written in C99.
+
+### Formatting
+
+Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the C
+sources from the top-level folder:
+
+```sh
+clang-format -i apps/*.c examples/*.c include/avif/*.h src/*.c tests/*.c
+```
+
+Use [cmake-format](https://github.com/cheshirekow/cmake_format) to format the
+CMakeLists.txt files from the top-level folder:
+
+```sh
+cmake-format -i CMakeLists.txt tests/CMakeLists.txt
+```
 
 ---
 
