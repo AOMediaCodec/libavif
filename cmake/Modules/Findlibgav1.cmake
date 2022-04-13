@@ -18,30 +18,25 @@
 #
 
 find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
+if(PKG_CONFIG_FOUND)
     pkg_check_modules(_LIBGAV1 libgav1)
-endif (PKG_CONFIG_FOUND)
+endif(PKG_CONFIG_FOUND)
 
-find_path(LIBGAV1_INCLUDE_DIR
-          NAMES gav1/decoder.h
-          PATHS ${_LIBGAV1_INCLUDEDIR}
-)
+find_path(LIBGAV1_INCLUDE_DIR NAMES gav1/decoder.h PATHS ${_LIBGAV1_INCLUDEDIR})
 
-find_library(LIBGAV1_LIBRARY
-             NAMES gav1
-             PATHS ${_LIBGAV1_LIBDIR})
+find_library(LIBGAV1_LIBRARY NAMES gav1 PATHS ${_LIBGAV1_LIBDIR})
 
-if (LIBGAV1_LIBRARY)
-    set(LIBGAV1_LIBRARIES
-        ${LIBGAV1_LIBRARIES}
-        ${LIBGAV1_LIBRARY})
-endif (LIBGAV1_LIBRARY)
+if(LIBGAV1_LIBRARY)
+    set(LIBGAV1_LIBRARIES ${LIBGAV1_LIBRARIES} ${LIBGAV1_LIBRARY})
+endif(LIBGAV1_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(libgav1
-                                  FOUND_VAR LIBGAV1_FOUND
-                                  REQUIRED_VARS LIBGAV1_LIBRARY LIBGAV1_LIBRARIES LIBGAV1_INCLUDE_DIR
-                                  VERSION_VAR _LIBGAV1_VERSION)
+find_package_handle_standard_args(
+    libgav1
+    FOUND_VAR LIBGAV1_FOUND
+    REQUIRED_VARS LIBGAV1_LIBRARY LIBGAV1_LIBRARIES LIBGAV1_INCLUDE_DIR
+    VERSION_VAR _LIBGAV1_VERSION
+)
 
 # show the LIBGAV1_INCLUDE_DIR, LIBGAV1_LIBRARY and LIBGAV1_LIBRARIES variables
 # only in the advanced view
