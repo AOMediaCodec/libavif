@@ -21,7 +21,7 @@ endif()
 target_link_libraries(avifgridapitest avif ${AVIF_PLATFORM_LIBRARIES})
 add_test(NAME avifgridapitest COMMAND avifgridapitest)
 
-add_executable(avifincrtest avifincrtest.c)
+add_executable(avifincrtest avifincrtest.c avifincrtest_helpers.c)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(avifincrtest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()

@@ -1,38 +1,13 @@
 // Copyright 2022 Google LLC. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include "avifincrtest_helpers.h"
 #include "avif/avif.h"
 
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-//------------------------------------------------------------------------------
-
-// Reads the file at path into bytes or returns false.
-static avifBool readFile(const char * path, avifRWData * bytes)
-{
-    FILE * file;
-    avifRWDataFree(bytes);
-    file = fopen(path, "rb");
-    if (!file) {
-        return AVIF_FALSE;
-    }
-    if (fseek(file, 0, SEEK_END)) {
-        fclose(file);
-        return AVIF_FALSE;
-    }
-    avifRWDataRealloc(bytes, ftell(file));
-    rewind(file);
-    if (fread(bytes->data, bytes->size, 1, file) != 1) {
-        avifRWDataFree(bytes);
-        fclose(file);
-        return AVIF_FALSE;
-    }
-    fclose(file);
-    return AVIF_TRUE;
-}
 
 //------------------------------------------------------------------------------
 
@@ -52,13 +27,13 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
         return AVIF_FALSE;
     }
 
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(image1->yuvFormat, &formatInfo);
-    const uint32_t uvWidth = (image1->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
-    const uint32_t uvHeight = (rowCount + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
+    avifPixelFormatInfo info;
+    avifGetPixelFormatInfo(image1->yuvFormat, &info);
+    const uint32_t uvWidth = (image1->width + info.chromaShiftX) >> info.chromaShiftX;
+    const uint32_t uvHeight = (rowCount + info.chromaShiftY) >> info.chromaShiftY;
     const uint32_t pixelByteCount = (image1->depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
 
-    for (uint32_t plane = 0; plane < AVIF_PLANE_COUNT_YUV; ++plane) {
+    for (uint32_t plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
         const uint32_t width = (plane == AVIF_CHAN_Y) ? image1->width : uvWidth;
         const uint32_t widthByteCount = width * pixelByteCount;
         const uint32_t height = (plane == AVIF_CHAN_Y) ? rowCount : uvHeight;
@@ -263,15 +238,14 @@ static avifBool encodeAsIncremental(const avifImage * image, avifBool flatCells,
     return encodeAsGrid(image, (gridCols > 1) ? gridCols : 1, (gridRows > 1) ? gridRows : 1, output, cellWidth, cellHeight);
 }
 
-// Encodes a portion of the image to be decoded incrementally.
-static avifBool encodeRectAsIncremental(const avifImage * image,
-                                        uint32_t width,
-                                        uint32_t height,
-                                        avifBool createAlphaIfNone,
-                                        avifBool flatCells,
-                                        avifRWData * output,
-                                        uint32_t * cellWidth,
-                                        uint32_t * cellHeight)
+avifBool encodeRectAsIncremental(const avifImage * image,
+                                 uint32_t width,
+                                 uint32_t height,
+                                 avifBool createAlphaIfNone,
+                                 avifBool flatCells,
+                                 avifRWData * output,
+                                 uint32_t * cellWidth,
+                                 uint32_t * cellHeight)
 {
     avifBool success = AVIF_FALSE;
     avifImage * subImage = avifImageCreateEmpty();
@@ -283,11 +257,11 @@ static avifBool encodeRectAsIncremental(const avifImage * image,
         printf("ERROR: Bad dimensions\n");
         goto cleanup;
     }
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
+    avifPixelFormatInfo info;
+    avifGetPixelFormatInfo(image->yuvFormat, &info);
     avifCropRect rect;
-    rect.x = ((image->width - width) / 2) & ~formatInfo.chromaShiftX;
-    rect.y = ((image->height - height) / 2) & ~formatInfo.chromaShiftX;
+    rect.x = ((image->width - width) / 2) & ~info.chromaShiftX;
+    rect.y = ((image->height - height) / 2) & ~info.chromaShiftX;
     rect.width = width;
     rect.height = height;
     if (avifImageSetViewRect(subImage, image, &rect) != AVIF_RESULT_OK) {
@@ -315,12 +289,11 @@ cleanup:
 
 //------------------------------------------------------------------------------
 
-// Decodes the data into an image.
-static avifBool decodeNonIncrementally(const avifRWData * encodedAvif, avifImage * image)
+avifBool decodeNonIncrementally(const avifRWData * encodedAvif, avifImage * image)
 {
     avifBool success = AVIF_FALSE;
     avifDecoder * decoder = avifDecoderCreate();
-    if (avifDecoderReadMemory(decoder, image, encodedAvif->data, encodedAvif->size) != AVIF_RESULT_OK) {
+    if (!decoder || avifDecoderReadMemory(decoder, image, encodedAvif->data, encodedAvif->size) != AVIF_RESULT_OK) {
         printf("ERROR: avifDecoderReadMemory() failed\n");
         goto cleanup;
     }
@@ -332,9 +305,7 @@ cleanup:
     return success;
 }
 
-// Decodes incrementally the encodedAvif and compares the pixels with the given reference.
-// The cellHeight of all planes of the encodedAvif is given to estimate the incremental granularity.
-static avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * reference, uint32_t cellHeight, avifBool useNthImageApi)
+avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * reference, uint32_t cellHeight, avifBool useNthImageApi)
 {
     avifBool success = AVIF_FALSE;
     avifDecoder * decoder = NULL;
@@ -429,7 +400,7 @@ cleanup:
     return success;
 }
 
-static avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif, uint32_t cellHeight, avifBool useNthImageApi)
+avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif, uint32_t cellHeight, avifBool useNthImageApi)
 {
     avifBool success = AVIF_FALSE;
     avifImage * reference = avifImageCreateEmpty();
@@ -451,85 +422,3 @@ cleanup:
 }
 
 //------------------------------------------------------------------------------
-
-// Encodes then decodes a window of width*height pixels at the middle of the image.
-// Check that non-incremental and incremental decodings produce the same pixels.
-static avifBool encodeDecodeNonIncrementallyAndIncrementally(const avifImage * image,
-                                                             uint32_t width,
-                                                             uint32_t height,
-                                                             avifBool createAlphaIfNone,
-                                                             avifBool flatCells,
-                                                             avifBool useNthImageApi)
-{
-    avifBool success = AVIF_FALSE;
-    avifRWData encodedAvif = { 0 };
-    uint32_t cellWidth, cellHeight;
-    if (!encodeRectAsIncremental(image, width, height, createAlphaIfNone, flatCells, &encodedAvif, &cellWidth, &cellHeight)) {
-        goto cleanup;
-    }
-    if (!decodeNonIncrementallyAndIncrementally(&encodedAvif, cellHeight, useNthImageApi)) {
-        goto cleanup;
-    }
-    success = AVIF_TRUE;
-cleanup:
-    avifRWDataFree(&encodedAvif);
-    return success;
-}
-
-//------------------------------------------------------------------------------
-
-int main(int argc, char * argv[])
-{
-    int exitCode = EXIT_FAILURE;
-    avifRWData encodedAvif = { NULL, 0 };
-
-    if (argc != 2) {
-        printf("ERROR: bad arguments\n");
-        printf("Usage: avifincrtest <AVIF>\n");
-        goto cleanup;
-    }
-    const char * const avifFilePath = argv[1];
-
-    if (!readFile(avifFilePath, &encodedAvif)) {
-        printf("ERROR: cannot read AVIF: %s\n", avifFilePath);
-        goto cleanup;
-    }
-
-    // First test: decode the input image incrementally and compare it with a non-incrementally decoded reference.
-    avifImage * reference = avifImageCreateEmpty();
-    if (!reference || !decodeNonIncrementally(&encodedAvif, reference)) {
-        goto cleanup;
-    }
-    // Cell height is hardcoded because there is no API to extract it from an encoded payload.
-    if (!decodeIncrementally(&encodedAvif, reference, /*cellHeight=*/154, /*useNthImageApi=*/AVIF_FALSE)) {
-        goto cleanup;
-    }
-
-    // Second test: encode a bunch of different dimension combinations and decode them incrementally and non-incrementally.
-    // Chroma subsampling requires even dimensions. See ISO 23000-22 section 7.3.11.4.2.
-    const uint32_t widths[] = { 1, 64, 66, reference->width };
-    const uint32_t heights[] = { 1, 64, 66, reference->height };
-    for (uint32_t w = 0; w < sizeof(widths) / sizeof(widths[0]); ++w) {
-        for (uint32_t h = 0; h < sizeof(heights) / sizeof(heights[0]); ++h) {
-            // avifEncoderAddImageInternal() only accepts grids of one unique cell, or grids where width and height are both at least 64.
-            if ((widths[w] >= 64) != (heights[h] >= 64)) {
-                continue;
-            }
-
-            for (avifBool createAlpha = AVIF_FALSE; createAlpha <= AVIF_TRUE; ++createAlpha) {
-                for (avifBool flatCells = AVIF_FALSE; flatCells <= AVIF_TRUE; ++flatCells) {
-                    for (avifBool useNthImageApi = AVIF_FALSE; useNthImageApi <= AVIF_TRUE; ++useNthImageApi) {
-                        if (!encodeDecodeNonIncrementallyAndIncrementally(reference, widths[w], heights[h], createAlpha, flatCells, useNthImageApi)) {
-                            goto cleanup;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    exitCode = EXIT_SUCCESS;
-cleanup:
-    avifRWDataFree(&encodedAvif);
-    return exitCode;
-}
