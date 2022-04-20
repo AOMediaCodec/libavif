@@ -198,10 +198,10 @@ TEST_P(GridApiTest, EncodeDecode)
 // A cell cannot be smaller than 64px in any dimension if there are several cells.
 // A cell cannot have an odd size in any dimension if there are several cells and chroma subsampling.
 // Image size must be a multiple of cell size.
-const Cell kValidCells[] = { { 1, 64 }, { 1, 66 }, { 2, 64 }, { 3, 68 } };
-const Cell kInvalidCells[] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 2, 1 }, { 2, 2 }, { 2, 3 }, { 2, 63 } };
-const int kBitDepths[] = { 8, 10, 12 };
-const avifPixelFormat kPixelFormats[] = { AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400 };
+constexpr Cell kValidCells[] = { { 1, 64 }, { 1, 66 }, { 2, 64 }, { 3, 68 } };
+constexpr Cell kInvalidCells[] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 2, 1 }, { 2, 2 }, { 2, 3 }, { 2, 63 } };
+constexpr int kBitDepths[] = { 8, 10, 12 };
+constexpr avifPixelFormat kPixelFormats[] = { AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400 };
 
 INSTANTIATE_TEST_SUITE_P(Valid,
                          GridApiTest,
@@ -240,16 +240,16 @@ INSTANTIATE_TEST_SUITE_P(InvalidBoth,
 // Special case depending on the cell count and the chroma subsampling.
 INSTANTIATE_TEST_SUITE_P(ValidOddHeight,
                          GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{ 1, 64 }),
-                                 /*vertical=*/Values(Cell{ 1, 65 }, Cell{ 2, 65 }),
+                         Combine(/*horizontal=*/Values(Cell { 1, 64 }),
+                                 /*vertical=*/Values(Cell { 1, 65 }, Cell { 2, 65 }),
                                  ValuesIn(kBitDepths),
                                  Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV400),
                                  /*createAlpha=*/Values(false, true),
                                  /*expectedSuccess=*/Values(true)));
 INSTANTIATE_TEST_SUITE_P(InvalidOddHeight,
                          GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{ 1, 64 }),
-                                 /*vertical=*/Values(Cell{ 2, 65 }),
+                         Combine(/*horizontal=*/Values(Cell { 1, 64 }),
+                                 /*vertical=*/Values(Cell { 2, 65 }),
                                  ValuesIn(kBitDepths),
                                  Values(AVIF_PIXEL_FORMAT_YUV420),
                                  /*createAlpha=*/Values(false, true),
@@ -258,16 +258,16 @@ INSTANTIATE_TEST_SUITE_P(InvalidOddHeight,
 // Special case depending on the cell count and the cell size.
 INSTANTIATE_TEST_SUITE_P(ValidOddDimensions,
                          GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{ 1, 1 }),
-                                 /*vertical=*/Values(Cell{ 1, 65 }),
+                         Combine(/*horizontal=*/Values(Cell { 1, 1 }),
+                                 /*vertical=*/Values(Cell { 1, 65 }),
                                  ValuesIn(kBitDepths),
                                  ValuesIn(kPixelFormats),
                                  /*createAlpha=*/Values(false, true),
                                  /*expectedSuccess=*/Values(true)));
 INSTANTIATE_TEST_SUITE_P(InvalidOddDimensions,
                          GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{ 2, 1 }),
-                                 /*vertical=*/Values(Cell{ 1, 65 }, Cell{ 2, 65 }),
+                         Combine(/*horizontal=*/Values(Cell { 2, 1 }),
+                                 /*vertical=*/Values(Cell { 1, 65 }, Cell { 2, 65 }),
                                  ValuesIn(kBitDepths),
                                  ValuesIn(kPixelFormats),
                                  /*createAlpha=*/Values(false, true),

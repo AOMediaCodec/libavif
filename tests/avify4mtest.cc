@@ -205,4 +205,3 @@ INSTANTIATE_TEST_SUITE_P(AlphaCombinations,
                                  /*createAlpha=*/Values(true)));
 
 } // namespace
-

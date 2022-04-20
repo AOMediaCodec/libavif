@@ -69,7 +69,7 @@ jobs:
           -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON \
           -DAVIF_LOCAL_LIBYUV=ON \
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON \
-          -DAVIF_BUILD_TESTS=1 -DAVIF_BUILD_GTESTS=1
+          -DAVIF_BUILD_TESTS=ON -DAVIF_BUILD_GTESTS=ON
     - name: Build libavif (make)
       working-directory: ./build
       run: make -j $(($(nproc) + 1))
