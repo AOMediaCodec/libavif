@@ -1,3 +1,6 @@
+// Copyright 2022 Google LLC
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef LIBAVIF_TESTS_AVIFINCRTEST_HELPERS_H_
 #define LIBAVIF_TESTS_AVIFINCRTEST_HELPERS_H_
 
