@@ -178,6 +178,7 @@ typedef struct avifRWData
 #define AVIF_DATA_EMPTY { NULL, 0 }
 // clang-format on
 
+// The avifRWData input must be zero-initialized before being manipulated with these functions.
 AVIF_API void avifRWDataRealloc(avifRWData * raw, size_t newSize);
 AVIF_API void avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len);
 AVIF_API void avifRWDataFree(avifRWData * raw);
@@ -432,7 +433,6 @@ typedef struct avifImage
     uint32_t yuvRowBytes[AVIF_PLANE_COUNT_YUV];
     avifBool imageOwnsYUVPlanes;
 
-    avifRange alphaRange;
     uint8_t * alphaPlane;
     uint32_t alphaRowBytes;
     avifBool imageOwnsAlphaPlane;

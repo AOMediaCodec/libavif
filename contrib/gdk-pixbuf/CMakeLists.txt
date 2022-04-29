@@ -7,9 +7,7 @@ if(AVIF_BUILD_GDK_PIXBUF)
     if(PKG_CONFIG_FOUND)
         pkg_search_module(GDK_PIXBUF gdk-pixbuf-2.0)
         if(GDK_PIXBUF_FOUND)
-            set(GDK_PIXBUF_SRCS
-                loader.c
-            )
+            set(GDK_PIXBUF_SRCS loader.c)
             add_library(pixbufloader-avif ${GDK_PIXBUF_SRCS})
 
             # This is required because glib stupidly uses invalid #define names, such as __G_LIB_H__…

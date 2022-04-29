@@ -57,7 +57,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     int y_shift = 0;
     // EbColorRange svt_range;
     if (alpha) {
-        // svt_range = (image->alphaRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
+        // svt_range = EB_CR_FULL_RANGE;
         y_shift = 1;
     } else {
         // svt_range = (image->yuvRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;

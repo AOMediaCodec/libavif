@@ -117,10 +117,8 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     state->rgbMaxChannelF = (float)state->rgbMaxChannel;
     state->biasY = (state->yuvRange == AVIF_RANGE_LIMITED) ? (float)(16 << (state->yuvDepth - 8)) : 0.0f;
     state->biasUV = (float)(1 << (state->yuvDepth - 1));
-    state->biasA = (image->alphaRange == AVIF_RANGE_LIMITED) ? (float)(16 << (state->yuvDepth - 8)) : 0.0f;
     state->rangeY = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (219 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
     state->rangeUV = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (224 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
-    state->rangeA = (float)((image->alphaRange == AVIF_RANGE_LIMITED) ? (219 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
 
     uint32_t cpCount = 1 << image->depth;
     if (state->mode == AVIF_REFORMAT_MODE_IDENTITY) {
@@ -394,7 +392,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         params.width = image->width;
         params.height = image->height;
         params.dstDepth = image->depth;
-        params.dstRange = image->alphaRange;
         params.dstPlane = image->alphaPlane;
         params.dstRowBytes = image->alphaRowBytes;
         params.dstOffsetBytes = 0;
@@ -402,7 +399,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
         if (avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
             params.srcDepth = rgb->depth;
-            params.srcRange = AVIF_RANGE_FULL;
             params.srcPlane = rgb->pixels;
             params.srcRowBytes = rgb->rowBytes;
             params.srcOffsetBytes = state.rgbOffsetBytesA;
@@ -645,7 +641,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 } else {
                     unormA = AVIF_MIN(ptrA16[i], yuvMaxChannel);
                 }
-                const float A = (unormA - state->biasA) / state->rangeA;
+                const float A = unormA / ((float)state->yuvMaxChannel);
                 const float Ac = AVIF_CLAMP(A, 0.0f, 1.0f);
 
                 if (state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
@@ -1140,7 +1136,6 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         params.width = rgb->width;
         params.height = rgb->height;
         params.dstDepth = rgb->depth;
-        params.dstRange = AVIF_RANGE_FULL;
         params.dstPlane = rgb->pixels;
         params.dstRowBytes = rgb->rowBytes;
         params.dstOffsetBytes = state.rgbOffsetBytesA;
@@ -1148,7 +1143,6 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
         if (image->alphaPlane && image->alphaRowBytes) {
             params.srcDepth = image->depth;
-            params.srcRange = image->alphaRange;
             params.srcPlane = image->alphaPlane;
             params.srcRowBytes = image->alphaRowBytes;
             params.srcOffsetBytes = 0;

@@ -71,7 +71,7 @@ int main(int argc, char * argv[])
     while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
         // Now available (for this frame):
         // * All decoder->image YUV pixel data (yuvFormat, yuvPlanes, yuvRange, yuvChromaSamplePosition, yuvRowBytes)
-        // * decoder->image alpha data (alphaRange, alphaPlane, alphaRowBytes)
+        // * decoder->image alpha data (alphaPlane, alphaRowBytes)
         // * this frame's sequence timing
 
         avifRGBImageSetDefaults(&rgb, decoder->image);

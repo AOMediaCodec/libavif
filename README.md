@@ -73,7 +73,13 @@ Use [cmake-format](https://github.com/cheshirekow/cmake_format) to format the
 CMakeLists.txt files from the top-level folder:
 
 ```sh
-cmake-format -i CMakeLists.txt tests/CMakeLists.txt
+cmake-format -i \
+  CMakeLists.txt \
+  tests/CMakeLists.txt \
+  cmake/Modules/Find*.cmake \
+  contrib/CMakeLists.txt \
+  contrib/gdk-pixbuf/CMakeLists.txt \
+  android_jni/avifandroidjni/src/main/jni/CMakeLists.txt
 ```
 
 ---

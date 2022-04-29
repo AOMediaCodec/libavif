@@ -95,6 +95,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                                      struct avifDecoder * decoder,
                                      const avifDecodeSample * sample,
                                      avifBool alpha,
+                                     avifBool * isLimitedRangeAlpha,
                                      avifImage * image)
 {
     if (!codec->internal->decoderInitialized) {
@@ -239,7 +240,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = codec->internal->image->planes[0];
         image->alphaRowBytes = codec->internal->image->stride[0];
-        image->alphaRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
+        *isLimitedRangeAlpha = (codec->internal->image->range == AOM_CR_STUDIO_RANGE);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 
@@ -782,7 +783,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     avifBool monochromeRequested = AVIF_FALSE;
 
     if (alpha) {
-        aomImage.range = (image->alphaRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
+        aomImage.range = AOM_CR_FULL_RANGE;
         aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage.range);
         monochromeRequested = AVIF_TRUE;
         if (aomImageAllocated) {
