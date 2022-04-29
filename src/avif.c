@@ -120,7 +120,6 @@ static void avifImageSetDefaults(avifImage * image)
 {
     memset(image, 0, sizeof(avifImage));
     image->yuvRange = AVIF_RANGE_FULL;
-    image->alphaRange = AVIF_RANGE_FULL;
     image->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
@@ -151,7 +150,6 @@ static void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImag
     dstImage->yuvFormat = srcImage->yuvFormat;
     dstImage->yuvRange = srcImage->yuvRange;
     dstImage->yuvChromaSamplePosition = srcImage->yuvChromaSamplePosition;
-    dstImage->alphaRange = srcImage->alphaRange;
     dstImage->alphaPremultiplied = srcImage->alphaPremultiplied;
 
     dstImage->colorPrimaries = srcImage->colorPrimaries;

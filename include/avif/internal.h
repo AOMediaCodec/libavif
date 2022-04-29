@@ -72,14 +72,12 @@ typedef struct avifAlphaParams
     uint32_t height;
 
     uint32_t srcDepth;
-    avifRange srcRange;
     uint8_t * srcPlane;
     uint32_t srcRowBytes;
     uint32_t srcOffsetBytes;
     uint32_t srcPixelBytes;
 
     uint32_t dstDepth;
-    avifRange dstRange;
     uint8_t * dstPlane;
     uint32_t dstRowBytes;
     uint32_t dstOffsetBytes;
@@ -127,10 +125,8 @@ typedef struct avifReformatState
     float rgbMaxChannelF;
     float biasY;   // minimum Y value
     float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
-    float biasA;   // minimum A value
     float rangeY;  // difference between max and min Y
     float rangeUV; // difference between max and min UV
-    float rangeA;  // difference between max and min A
 
     avifPixelFormatInfo formatInfo;
 
@@ -253,6 +249,7 @@ typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
                                               struct avifDecoder * decoder,
                                               const avifDecodeSample * sample,
                                               avifBool alpha,
+                                              avifBool * isLimitedRangeAlpha,
                                               avifImage * image);
 // EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
 // encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.
