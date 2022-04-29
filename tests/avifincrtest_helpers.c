@@ -49,7 +49,7 @@ static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * i
     }
 
     if (image1->alphaPlane) {
-        if (!image2->alphaPlane || (image1->alphaRange != image2->alphaRange) ||
+        if (!image2->alphaPlane ||
             (image1->alphaPremultiplied != image2->alphaPremultiplied)) {
             printf("ERROR: input mismatch\n");
             return AVIF_FALSE;
@@ -274,7 +274,6 @@ avifBool encodeRectAsIncremental(const avifImage * image,
         }
         subImage->alphaPlane = image->yuvPlanes[AVIF_CHAN_Y];
         subImage->alphaRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
-        subImage->alphaRange = AVIF_RANGE_FULL;
         subImage->alphaPremultiplied = AVIF_FALSE;
         subImage->imageOwnsAlphaPlane = AVIF_FALSE;
     }
