@@ -3728,16 +3728,17 @@ static avifResult avifDecoderPrepareTiles(avifDecoder * decoder,
 
 static avifResult avifImageLimitedToFullAlpha(avifImage * image)
 {
-    uint8_t * alphaPlane = image->alphaPlane;
-    const uint32_t alphaRowBytes = image->alphaRowBytes;
-
     if (image->imageOwnsAlphaPlane) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
+    uint8_t * alphaPlane = image->alphaPlane;
+    const uint32_t alphaRowBytes = image->alphaRowBytes;
+
     // We cannot do the range conversion in place since it will modify the
     // codec's internal frame buffers. Allocate memory for the conversion.
     image->alphaPlane = NULL;
+    image->alphaRowBytes = 0;
     avifImageAllocatePlanes(image, AVIF_PLANES_A);
 
     if (image->depth > 8) {
@@ -3792,10 +3793,10 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder,
         // specification. To allow such files, simply convert the alpha plane to
         // full range.
         if (tile->input->alpha && isLimitedRangeAlpha) {
-            avifResult res = avifImageLimitedToFullAlpha(tile->image);
-            if (res != AVIF_RESULT_OK) {
+            avifResult result = avifImageLimitedToFullAlpha(tile->image);
+            if (result != AVIF_RESULT_OK) {
                 avifDiagnosticsPrintf(&decoder->diag, "avifImageLimitedToFullAlpha failed");
-                return res;
+                return result;
             }
         }
 
