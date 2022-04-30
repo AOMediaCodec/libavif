@@ -1,6 +1,6 @@
 % AVIFDEC(1) | General Commands Manual
 %
-% 2022-04-11
+% 2022-04-30
 
 <!--
 This man page is written in Pandoc's Markdown.
@@ -19,7 +19,7 @@ avifdec - decompress an AVIF file to an image file
 
 # DESCRIPTION
 
-**avifdec** decompress an AVIF file to an image file.
+**avifdec** decompresses an AVIF file to an image file.
 Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 # OPTIONS
@@ -32,7 +32,8 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **-j**, **\--jobs** _J_
 :   Number of jobs (worker threads).
-    Default is 1, and less than 1 is the same as 1.
+    1 or less means single-threaded.
+    Default is 1.
     Use **all** to use all available cores.
 
 **-c**, **\--codec** _C_
@@ -41,37 +42,38 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     or **\--version** for the available codecs).
     Default is auto-selected from the available codecs.
 
-    Possible values:
+    Possible values are:
 
     :   - **aom**
         - **dav1d**
         - **libgav1**
 
 **-d**, **\--depth** _D_
-:   Output depth.
-    This is available if the output format is PNG, and for y4m, depth is
-    retained, and JPEG is always 8bpc.
+:   Output PNG depth.
+    Ignored when the output format is JPEG (always 8 bits per channel) or Y4M
+    (input depth is retained).
 
-    Possible values:
+    Possible values are:
 
     :   - **8**
         - **16**
 
 **-q**, **\--quality** _Q_
-:   Output quality.
-    Possible values are **0**-**100**, and default is 90.
-    This is available if the output format is JPEG.
+:   Output JPEG quality in the range **0**-**100**.
+    Default is 90.
+    Ignored if the output format is not JPEG.
 
 **\--png-compress** _L_
-:   Set PNG compression level.
-    Possible values are **0**-**9** (none-max).
-    Defaults to libpng's builtin default.
-    This is available if the output format is PNG.
+:   Output PNG compression level in the range **0**-**9** (fastest to maximum
+    compression).
+    Default is libpng's built-in default.
+    Ignored if the output format is not PNG.
 
 **-u**, **\--upsampling** _U_
-:   Chroma upsampling (for 420/422).
+:   Chroma upsampling method.
+    Ignored unless the input format is 4:2:0 or 4:2:2.
 
-    Possible values:
+    Possible values are:
 
     :   - **automatic** (default)
         - **fastest**
@@ -108,7 +110,7 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **\--size-limit** _C_
 :   Specifies the image size limit (in total pixels) that should be tolerated.
-    Default is 268435456, and set to a smaller value to further restrict.
+    Default is 268,435,456 pixels (16,384 by 16,384 pixels for a square image).
 
 # EXAMPLES
 

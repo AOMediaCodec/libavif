@@ -1,6 +1,6 @@
 % AVIFENC(1) | General Commands Manual
 %
-% 2022-04-11
+% 2022-04-30
 
 <!--
 This man page is written in Pandoc's Markdown.
@@ -17,7 +17,7 @@ avifenc - compress an image file to an AVIF file
 
 # DESCRIPTION
 
-**avifenc** compress an image file to an AVIF file.
+**avifenc** compresses an image file to an AVIF file.
 Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 # OPTIONS
@@ -30,7 +30,8 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **-j**, **\--jobs** _J_
 :   Number of jobs (worker threads).
-    Default is 1, and less than 1 is the same as 1.
+    1 or less means single-threaded.
+    Default is 1.
     Use **all** to use all available cores.
 
 **-o**, **\--output** _FILENAME_
@@ -45,7 +46,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     This is available if the input format is JPEG/PNG, and for y4m or stdin,
     depth is retained.
 
-    Possible values:
+    Possible values are:
 
     :   - **8**
         - **10**
@@ -57,7 +58,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     For JPEG, auto honors the JPEG's internal format, if possible.
     For all other cases, auto defaults to 444.
 
-    Possible values:
+    Possible values are:
 
     :   - **auto** (default)
         - **444**
@@ -70,12 +71,12 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **\--stdin**
 :   Read y4m frames from stdin instead of files.
-    No input filenames allowed, must set before offering output filename.
+    No input filenames allowed, must be set before specifying the output
+    filename.
 
 **\--cicp**, **\--nclx** *P***/***T***/***M*
-:   Set CICP values (nclx colr box).
-    Possible values are 3 raw numbers, use **-r** to set range flag.
-    Also, use **2** for any you wish to leave unspecified.
+:   Specify CICP values (nclx colr box) by 3 raw numbers.
+    Use **2** for any you wish to leave unspecified.
 
     - _P_ = color primaries
     - _T_ = transfer characteristics
@@ -86,47 +87,50 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     This is available if the input format is JPEG/PNG, and for y4m or stdin,
     range is retained.
 
-    Possible values:
+    Possible values are:
 
-    :   - **limited**, **l**
-        - **full**, **f** (default)
+    :   - **full**, **f** (default)
+        - **limited**, **l**
 
 **\--min** _Q_
 :   Set min quantizer for color.
-    Possible values are **0**-**63**, where 0 is lossless.
+    Possible values are in the range **0**-**63**, where 0 is lossless.
 
 **\--max** _Q_
 :   Set max quantizer for color.
-    Possible values are **0**-**63**, where 0 is lossless.
+    Possible values are in the range **0**-**63**, where 0 is lossless.
 
 **\--minalpha** _Q_
 :   Set min quantizer for alpha.
-    Possible values are **0**-**63**, where 0 is lossless.
+    Possible values are in the range **0**-**63**, where 0 is lossless.
 
 **\--maxalpha** _Q_
 :   Set max quantizer for alpha.
-    Possible values are **0**-**63**, where 0 is lossless.
+    Possible values are in the range **0**-**63**, where 0 is lossless.
 
 **\--tilerowslog2** _R_
 :   Set log2 of number of tile rows.
-    Possible values are **0**-**6**, and default is 0.
+    Possible values are in the range **0**-**6**.
+    Default is 0.
 
 **\--tilecolslog2** _C_
 :   Set log2 of number of tile columns.
-    Possible values are **0**-**6**, and default is 0.
+    Possible values are in the range **0**-**6**.
+    Default is 0.
 
 **-g**, **\--grid** *M***x***N*
 :   Encode a single-image grid AVIF with _M_ cols and _N_ rows.
-    Either supply MxN identical W/H/D images, or a single image that can be
-    evenly split into the MxN grid and follow AVIF grid image restrictions.
+    Either supply MxN images of the same width, height and depth, or a single
+    image that can be evenly split into the MxN grid and follow AVIF grid image
+    restrictions.
     The grid will adopt the color profile of the first image supplied.
-    Possible values for _M_ and _N_ are **1**-**256**.
+    Possible values for _M_ and _N_ are in the range **1**-**256**.
 
 **-s**, **\--speed** _S_
 :   Encoder speed.
     Default is 6.
 
-    Possible values:
+    Possible values are:
 
     :   - **0**-**10** (slowest-fastest)
         - **default**, **d** (codec internal defaults)
@@ -137,7 +141,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     or **\--version** for the available codecs).
     Default is auto-selected from the available codecs.
 
-    Possible values:
+    Possible values are:
 
     :   - **aom**
         - **rav1e**
@@ -155,7 +159,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **-a**, **\--advanced** _KEY_[_=VALUE_]
 :   Pass an advanced, codec-specific key/value string pair directly to the
     codec.
-    **avifenc** will warn on any not used by the codec.
+    **avifenc** will warn on any unused by the codec.
     The aom-specific advanced options can be used if the AOM codec is available
     (see **\--help** for details).
 
@@ -209,13 +213,14 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **\--irot** _ANGLE_
 :   Add irot property (rotation).
-    Possible values are **0**-**3**, and makes (90 * _ANGLE_) degree rotation
-    anti-clockwise.
+    Possible values are in the range **0**-**3**, and makes (90 * _ANGLE_)
+    degree rotation anti-clockwise.
 
 **\--imir** _MODE_
 :   Add imir property (mirroring).
+    It might be useful to specify if it is applied before or after the rotation.
 
-    Possible values:
+    Possible values are:
 
     :   - **0** (top-to-bottom)
         - **1** (left-to-right)
