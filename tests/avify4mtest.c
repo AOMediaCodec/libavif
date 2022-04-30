@@ -46,8 +46,7 @@ static avifBool compareYUVA(const avifImage * image1, const avifImage * image2)
     }
 
     if (image1->alphaPlane != NULL || image2->alphaPlane != NULL) {
-        if (image1->alphaPlane == NULL || image2->alphaPlane == NULL ||
-            image1->alphaPremultiplied != image2->alphaPremultiplied) {
+        if (image1->alphaPlane == NULL || image2->alphaPlane == NULL || image1->alphaPremultiplied != image2->alphaPremultiplied) {
             printf("ERROR: input mismatch\n");
             return AVIF_FALSE;
         }

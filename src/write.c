@@ -589,8 +589,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             (cellImage->depth != firstCell->depth) || (cellImage->yuvFormat != firstCell->yuvFormat) ||
             (cellImage->yuvRange != firstCell->yuvRange) || (cellImage->colorPrimaries != firstCell->colorPrimaries) ||
             (cellImage->transferCharacteristics != firstCell->transferCharacteristics) ||
-            (cellImage->matrixCoefficients != firstCell->matrixCoefficients) ||
-            (!!cellImage->alphaPlane != !!firstCell->alphaPlane) || (cellImage->alphaPremultiplied != firstCell->alphaPremultiplied)) {
+            (cellImage->matrixCoefficients != firstCell->matrixCoefficients) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane) ||
+            (cellImage->alphaPremultiplied != firstCell->alphaPremultiplied)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
 

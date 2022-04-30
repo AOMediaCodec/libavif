@@ -98,7 +98,8 @@ static void avifIOStreamingReaderDestroy(struct avifIO * io)
 static avifIOStreamingReader * avifIOCreateStreamingReader(const uint8_t * data, size_t size)
 {
     avifIOStreamingReader * reader = avifAlloc(sizeof(avifIOStreamingReader));
-    if (!reader) return NULL;
+    if (!reader)
+        return NULL;
     memset(reader, 0, sizeof(avifIOStreamingReader));
 
     // It is legal for io.destroy to be NULL, in which you are responsible for cleaning up
