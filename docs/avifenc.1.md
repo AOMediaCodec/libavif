@@ -218,7 +218,8 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **\--imir** _MODE_
 :   Add imir property (mirroring).
-    It might be useful to specify if it is applied before or after the rotation.
+
+    Note: Rotation is applied before mirroring at rendering.
 
     Possible values are:
 
