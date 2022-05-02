@@ -1270,6 +1270,9 @@ cleanup:
         avifImageDestroy(nextImage);
     }
     avifRWDataFree(&raw);
+    avifRWDataFree(&exifOverride);
+    avifRWDataFree(&xmpOverride);
+    avifRWDataFree(&iccOverride);
     free((void *)input.files);
     return returnCode;
 }
