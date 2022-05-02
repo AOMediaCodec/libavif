@@ -66,7 +66,9 @@ Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the C
 sources from the top-level folder:
 
 ```sh
-clang-format -i apps/*.c examples/*.c include/avif/*.h src/*.c tests/*.c
+clang-format -i apps/*.c apps/shared/avifjpeg.* apps/shared/avifpng.* \
+                apps/shared/avifutil.* apps/shared/y4m.* \
+                examples/*.c include/avif/*.h src/*.c tests/*.h tests/*.c
 ```
 
 Use [cmake-format](https://github.com/cheshirekow/cmake_format) to format the
