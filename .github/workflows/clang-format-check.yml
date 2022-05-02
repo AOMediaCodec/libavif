@@ -1,0 +1,12 @@
+name: Clang Format Checker
+on: [push]
+jobs:
+  clang-format-checking:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: RafikFarhad/clang-format-github-action@v2.1.0
+        with:
+          style: file
+          sources: "apps/**/*.h,apps/**/*.c,examples/*.c,includes/**/*.h,src/**/*.h,src/**/*.c,tests/**/*.h,tests/**/*.c"
+          excludes: "apps/shared/iccjpeg.*"
