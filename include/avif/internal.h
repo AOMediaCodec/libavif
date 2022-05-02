@@ -251,13 +251,13 @@ void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int 
 // ---------------------------------------------------------------------------
 // Scaling
 
-// This scales the YUV/A planes in-place.
-avifBool avifImageScale(avifImage * image,
-                        uint32_t dstWidth,
-                        uint32_t dstHeight,
-                        uint32_t imageSizeLimit,
-                        uint32_t imageDimensionLimit,
-                        avifDiagnostics * diag);
+// Scales the YUV/A planes in-place.
+avifResult avifImageScaleWithLimit(avifImage * image,
+                                   uint32_t dstWidth,
+                                   uint32_t dstHeight,
+                                   uint32_t imageSizeLimit,
+                                   uint32_t imageDimensionLimit,
+                                   avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // AVIF item category

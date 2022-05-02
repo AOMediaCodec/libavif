@@ -4980,13 +4980,13 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
 
         // Scale the decoded image so that it corresponds to this tile's output dimensions
         if ((tile->width != tile->image->width) || (tile->height != tile->image->height)) {
-            if (!avifImageScale(tile->image,
-                                tile->width,
-                                tile->height,
-                                decoder->imageSizeLimit,
-                                decoder->imageDimensionLimit,
-                                &decoder->diag)) {
-                avifDiagnosticsPrintf(&decoder->diag, "avifImageScale() failed");
+            if (avifImageScaleWithLimit(tile->image,
+                                        tile->width,
+                                        tile->height,
+                                        decoder->imageSizeLimit,
+                                        decoder->imageDimensionLimit,
+                                        &decoder->diag) != AVIF_RESULT_OK) {
+                avifDiagnosticsPrintf(&decoder->diag, "avifImageScaleWithLimit() failed");
                 return avifGetErrorForItemCategory(tile->input->itemCategory);
             }
         }
