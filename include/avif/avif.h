@@ -750,6 +750,13 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // accordingly.
 
 // ---------------------------------------------------------------------------
+// Scaling
+
+// Scales the YUV/A planes in-place. dstWidth and dstHeight must both be <= AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT and
+// dstWidth*dstHeight should be <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT.
+AVIF_API avifResult avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
 // Optional YUV<->RGB support
 
 // To convert to/from RGB, create an avifRGBImage on the stack, call avifRGBImageSetDefaults() on

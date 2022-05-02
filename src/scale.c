@@ -21,25 +21,25 @@
 // This should be configurable and/or smarter. kFilterBox has the highest quality but is the slowest.
 #define AVIF_LIBYUV_FILTER_MODE kFilterBox
 
-avifBool avifImageScale(avifImage * image,
-                        uint32_t dstWidth,
-                        uint32_t dstHeight,
-                        uint32_t imageSizeLimit,
-                        uint32_t imageDimensionLimit,
-                        avifDiagnostics * diag)
+avifResult avifImageScaleWithLimit(avifImage * image,
+                                   uint32_t dstWidth,
+                                   uint32_t dstHeight,
+                                   uint32_t imageSizeLimit,
+                                   uint32_t imageDimensionLimit,
+                                   avifDiagnostics * diag)
 {
     if ((image->width == dstWidth) && (image->height == dstHeight)) {
         // Nothing to do
-        return AVIF_TRUE;
+        return AVIF_RESULT_OK;
     }
 
     if ((dstWidth == 0) || (dstHeight == 0)) {
-        avifDiagnosticsPrintf(diag, "avifImageScale requested invalid dst dimensions [%ux%u]", dstWidth, dstHeight);
-        return AVIF_FALSE;
+        avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid dst dimensions [%ux%u]", dstWidth, dstHeight);
+        return AVIF_RESULT_INVALID_ARGUMENT;
     }
     if (avifDimensionsTooLarge(dstWidth, dstHeight, imageSizeLimit, imageDimensionLimit)) {
-        avifDiagnosticsPrintf(diag, "avifImageScale requested dst dimensions that are too large [%ux%u]", dstWidth, dstHeight);
-        return AVIF_FALSE;
+        avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested dst dimensions that are too large [%ux%u]", dstWidth, dstHeight);
+        return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     uint8_t * srcYUVPlanes[AVIF_PLANE_COUNT_YUV];
@@ -71,12 +71,12 @@ avifBool avifImageScale(avifImage * image,
         // A simple conservative check to avoid integer overflows in libyuv's ScalePlane() and
         // ScalePlane_12() functions.
         if (srcWidth > 16384) {
-            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
-            return AVIF_FALSE;
+            avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
         if (srcHeight > 16384) {
-            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
-            return AVIF_FALSE;
+            avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
     }
 
@@ -84,7 +84,7 @@ avifBool avifImageScale(avifImage * image,
         const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
         if (allocationResult != AVIF_RESULT_OK) {
             avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed: %s", avifResultToString(allocationResult));
-            return AVIF_FALSE;
+            return AVIF_RESULT_OUT_OF_MEMORY;
         }
 
         for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
@@ -124,7 +124,7 @@ avifBool avifImageScale(avifImage * image,
         const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_A);
         if (allocationResult != AVIF_RESULT_OK) {
             avifDiagnosticsPrintf(diag, "Allocation of alpha plane failed: %s", avifResultToString(allocationResult));
-            return AVIF_FALSE;
+            return AVIF_RESULT_OUT_OF_MEMORY;
         }
 
         if (image->depth > 8) {
@@ -150,5 +150,11 @@ avifBool avifImageScale(avifImage * image,
         }
     }
 
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
+}
+
+avifResult avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag)
+{
+    avifDiagnosticsClearError(diag);
+    return avifImageScaleWithLimit(image, dstWidth, dstHeight, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT, diag);
 }

@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This part of AV1 encoder is not as thoroughly tested, so there are higher
   possibility encoder may crash when given certain configuration or input.
 * Add imageSequenceTrackPresent flag to the avifDecoder struct.
+* avifImageScale() function was made part of the public ABI.
 
 ### Changed
 * Update aom.cmd: v3.7.0
