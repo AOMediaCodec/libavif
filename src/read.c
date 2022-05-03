@@ -3776,7 +3776,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder,
         avifTile * tile = &decoder->data->tiles.tile[firstTileIndex + tileIndex];
 
         const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
-        if (!sample->data.data) {
+        if (sample->data.size < sample->size) {
             assert(decoder->allowIncremental);
             // Data is missing but there is no error yet. Output available pixel rows.
             return AVIF_RESULT_OK;
