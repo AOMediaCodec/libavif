@@ -24,11 +24,23 @@ avifBool encodeRectAsIncremental(const avifImage * image,
 avifBool decodeNonIncrementally(const avifRWData * encodedAvif, avifImage * image);
 
 // Decodes incrementally the encodedAvif and compares the pixels with the given reference.
+// If isPersistent is true, the input encodedAvif is considered as accessible during the whole decoding.
+// If giveSizeHint is true, the whole encodedAvif size is given as a hint to the decoder.
+// useNthImageApi describes whether the NthImage or NextImage decoder API will be used.
 // The cellHeight of all planes of the encodedAvif is given to estimate the incremental granularity.
-avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * reference, uint32_t cellHeight, avifBool useNthImageApi);
+avifBool decodeIncrementally(const avifRWData * encodedAvif,
+                             avifBool isPersistent,
+                             avifBool giveSizeHint,
+                             avifBool useNthImageApi,
+                             const avifImage * reference,
+                             uint32_t cellHeight);
 
 // Calls decodeIncrementally() with the output of decodeNonIncrementally() as reference.
-avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif, uint32_t cellHeight, avifBool useNthImageApi);
+avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif,
+                                                avifBool isPersistent,
+                                                avifBool giveSizeHint,
+                                                avifBool useNthImageApi,
+                                                uint32_t cellHeight);
 
 #ifdef __cplusplus
 } // extern "C"

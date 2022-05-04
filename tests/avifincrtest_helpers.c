@@ -110,36 +110,41 @@ static uint32_t getMinDecodedRowCount(uint32_t height, uint32_t cellHeight, avif
 
 //------------------------------------------------------------------------------
 
+typedef struct
+{
+    avifROData available;
+    size_t fullSize;
+} avifROPartialData;
+
 // Implementation of avifIOReadFunc simulating a stream from an array.
-// The full array size must be in io->sizeHint and io->data must be the available avifROData.
+// io->data is expected to point to avifROPartialData.
 static avifResult avifIOPartialRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out)
 {
-    const uint64_t allDataSize = io->sizeHint;
-    const avifROData * availableData = (avifROData *)io->data;
+    const avifROPartialData * data = (avifROPartialData *)io->data;
 
     // The behavior below is described in the comment above avifIOReadFunc's declaration.
     if (readFlags != 0) {
         return AVIF_RESULT_IO_ERROR;
     }
-    if (!availableData) {
+    if (!data) {
         return AVIF_RESULT_IO_ERROR;
     }
-    if (allDataSize < offset) {
+    if (data->fullSize < offset) {
         return AVIF_RESULT_IO_ERROR;
     }
-    if (allDataSize == offset) {
-        out->data = availableData->data;
+    if (data->fullSize == offset) {
+        out->data = data->available.data;
         out->size = 0;
         return AVIF_RESULT_OK;
     }
 
-    if (allDataSize < (offset + size)) {
-        size = allDataSize - offset;
+    if (data->fullSize < (offset + size)) {
+        size = data->fullSize - offset;
     }
-    if (availableData->size < (offset + size)) {
+    if (data->available.size < (offset + size)) {
         return AVIF_RESULT_WAITING_ON_IO;
     }
-    out->data = availableData->data + offset;
+    out->data = data->available.data + offset;
     out->size = size;
     return AVIF_RESULT_OK;
 }
@@ -302,7 +307,12 @@ cleanup:
     return success;
 }
 
-avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * reference, uint32_t cellHeight, avifBool useNthImageApi)
+avifBool decodeIncrementally(const avifRWData * encodedAvif,
+                             avifBool isPersistent,
+                             avifBool giveSizeHint,
+                             avifBool useNthImageApi,
+                             const avifImage * reference,
+                             uint32_t cellHeight)
 {
     avifBool success = AVIF_FALSE;
     avifDecoder * decoder = NULL;
@@ -313,12 +323,14 @@ avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * r
     }
 
     // Emulate a byte-by-byte stream.
-    avifROData availableEncodedAvif = { encodedAvif->data, 0 };
+    avifROPartialData data = { /*available=*/ { encodedAvif->data, 0 }, /*fullSize=*/encodedAvif->size };
     avifIO io = { 0 };
     io.read = avifIOPartialRead;
-    io.sizeHint = encodedAvif->size;
-    io.persistent = AVIF_TRUE;
-    io.data = &availableEncodedAvif;
+    if (giveSizeHint) {
+        io.sizeHint = encodedAvif->size;
+    }
+    io.persistent = isPersistent;
+    io.data = &data;
 
     decoder = avifDecoderCreate();
     if (!decoder) {
@@ -331,11 +343,11 @@ avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * r
     // Parsing is not incremental.
     avifResult parseResult = avifDecoderParse(decoder);
     while (parseResult == AVIF_RESULT_WAITING_ON_IO) {
-        if (availableEncodedAvif.size >= encodedAvif->size) {
+        if (data.available.size >= data.fullSize) {
             printf("ERROR: avifDecoderParse() returned WAITING_ON_IO instead of OK\n");
             goto cleanup;
         }
-        availableEncodedAvif.size = availableEncodedAvif.size + 1;
+        data.available.size = data.available.size + 1;
         parseResult = avifDecoderParse(decoder);
     }
     if (parseResult != AVIF_RESULT_OK) {
@@ -347,7 +359,7 @@ avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * r
     uint32_t previouslyDecodedRowCount = 0;
     avifResult nextImageResult = useNthImageApi ? avifDecoderNthImage(decoder, 0) : avifDecoderNextImage(decoder);
     while (nextImageResult == AVIF_RESULT_WAITING_ON_IO) {
-        if (availableEncodedAvif.size >= encodedAvif->size) {
+        if (data.available.size >= data.fullSize) {
             printf("ERROR: avifDecoderNextImage() or avifDecoderNthImage(0) returned WAITING_ON_IO instead of OK\n");
             goto cleanup;
         }
@@ -356,11 +368,8 @@ avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * r
             printf("ERROR: %" PRIu32 " decoded rows decreased to %" PRIu32 "\n", previouslyDecodedRowCount, decodedRowCount);
             goto cleanup;
         }
-        const uint32_t minDecodedRowCount = getMinDecodedRowCount(reference->height,
-                                                                  cellHeight,
-                                                                  reference->alphaPlane != NULL,
-                                                                  availableEncodedAvif.size,
-                                                                  encodedAvif->size);
+        const uint32_t minDecodedRowCount =
+            getMinDecodedRowCount(reference->height, cellHeight, reference->alphaPlane != NULL, data.available.size, data.fullSize);
         if (decodedRowCount < minDecodedRowCount) {
             printf("ERROR: %" PRIu32 " is fewer than %" PRIu32 " decoded rows\n", decodedRowCount, minDecodedRowCount);
             goto cleanup;
@@ -370,14 +379,14 @@ avifBool decodeIncrementally(const avifRWData * encodedAvif, const avifImage * r
         }
 
         previouslyDecodedRowCount = decodedRowCount;
-        availableEncodedAvif.size = availableEncodedAvif.size + 1;
+        data.available.size = data.available.size + 1;
         nextImageResult = useNthImageApi ? avifDecoderNthImage(decoder, 0) : avifDecoderNextImage(decoder);
     }
     if (nextImageResult != AVIF_RESULT_OK) {
         printf("ERROR: avifDecoderNextImage() or avifDecoderNthImage(0) failed (%s)\n", avifResultToString(nextImageResult));
         goto cleanup;
     }
-    if (availableEncodedAvif.size != encodedAvif->size) {
+    if (data.available.size != data.fullSize) {
         printf("ERROR: not all bytes were read\n");
         goto cleanup;
     }
@@ -397,7 +406,11 @@ cleanup:
     return success;
 }
 
-avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif, uint32_t cellHeight, avifBool useNthImageApi)
+avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif,
+                                                avifBool isPersistent,
+                                                avifBool giveSizeHint,
+                                                avifBool useNthImageApi,
+                                                uint32_t cellHeight)
 {
     avifBool success = AVIF_FALSE;
     avifImage * reference = avifImageCreateEmpty();
@@ -407,7 +420,7 @@ avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif, 
     if (!decodeNonIncrementally(encodedAvif, reference)) {
         goto cleanup;
     }
-    if (!decodeIncrementally(encodedAvif, reference, cellHeight, useNthImageApi)) {
+    if (!decodeIncrementally(encodedAvif, isPersistent, giveSizeHint, useNthImageApi, reference, cellHeight)) {
         goto cleanup;
     }
     success = AVIF_TRUE;
