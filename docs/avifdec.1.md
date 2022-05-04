@@ -3,7 +3,7 @@
 % 2022-04-30
 
 <!--
-This man page is written in Pandoc's Markdown.
+This man page is written in pandoc's Markdown.
 See: https://pandoc.org/MANUAL.html#pandocs-markdown
 -->
 
