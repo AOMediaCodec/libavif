@@ -539,8 +539,8 @@ if(AVIF_BUILD_MAN_PAGES)
             add_custom_command(
                 OUTPUT ${MAN_PAGE}
                 COMMAND ${PANDOC_EXE} -s -V "footer=libavif ${PROJECT_VERSION}" -f markdown -t man -o
-                        "${CMAKE_CURRENT_BINARY_DIR}/${MAN_PAGE}" "${CMAKE_CURRENT_SOURCE_DIR}/docs/${MAN_PAGE}.md"
-                DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/docs/${MAN_PAGE}.md"
+                        "${CMAKE_CURRENT_BINARY_DIR}/${MAN_PAGE}" "${CMAKE_CURRENT_SOURCE_DIR}/doc/${MAN_PAGE}.md"
+                DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/doc/${MAN_PAGE}.md"
                 VERBATIM
             )
         endforeach()
@@ -550,7 +550,7 @@ if(AVIF_BUILD_MAN_PAGES)
             install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${MAN_PAGE}" DESTINATION "${CMAKE_INSTALL_MANDIR}/man1")
         endforeach()
     else()
-        message(WARNING "libavif: No man pages is built (AVIF_BUILD_MAN_PAGES); AVIF_BUILD_APPS must be on.")
+        message(WARNING "libavif: No man pages are built (AVIF_BUILD_MAN_PAGES); AVIF_BUILD_APPS must be on.")
     endif()
 endif()
 
