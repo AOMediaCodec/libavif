@@ -43,6 +43,8 @@ static avifBool encodeDecodeNonIncrementallyAndIncrementally(const avifImage * i
                                                              uint32_t height,
                                                              avifBool createAlphaIfNone,
                                                              avifBool flatCells,
+                                                             avifBool encodedAvifIsPersistent,
+                                                             avifBool giveSizeHint,
                                                              avifBool useNthImageApi)
 {
     avifBool success = AVIF_FALSE;
@@ -51,7 +53,7 @@ static avifBool encodeDecodeNonIncrementallyAndIncrementally(const avifImage * i
     if (!encodeRectAsIncremental(image, width, height, createAlphaIfNone, flatCells, &encodedAvif, &cellWidth, &cellHeight)) {
         goto cleanup;
     }
-    if (!decodeNonIncrementallyAndIncrementally(&encodedAvif, cellHeight, useNthImageApi)) {
+    if (!decodeNonIncrementallyAndIncrementally(&encodedAvif, encodedAvifIsPersistent, giveSizeHint, useNthImageApi, cellHeight)) {
         goto cleanup;
     }
     success = AVIF_TRUE;
@@ -85,14 +87,19 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
     // Cell height is hardcoded because there is no API to extract it from an encoded payload.
-    if (!decodeIncrementally(&encodedAvif, reference, /*cellHeight=*/154, /*useNthImageApi=*/AVIF_FALSE)) {
+    if (!decodeIncrementally(&encodedAvif,
+                             /*isPersistent=*/AVIF_TRUE,
+                             /*giveSizeHint=*/AVIF_TRUE,
+                             /*useNthImageApi=*/AVIF_FALSE,
+                             reference,
+                             /*cellHeight=*/154)) {
         goto cleanup;
     }
 
     // Second test: encode a bunch of different dimension combinations and decode them incrementally and non-incrementally.
     // Chroma subsampling requires even dimensions. See ISO 23000-22 section 7.3.11.4.2.
-    const uint32_t widths[] = { 1, 64, 66, reference->width };
-    const uint32_t heights[] = { 1, 64, 66, reference->height };
+    const uint32_t widths[] = { 1, 64, 66 };
+    const uint32_t heights[] = { 1, 64, 66 };
     for (uint32_t w = 0; w < sizeof(widths) / sizeof(widths[0]); ++w) {
         for (uint32_t h = 0; h < sizeof(heights) / sizeof(heights[0]); ++h) {
             // avifEncoderAddImageInternal() only accepts grids of one unique cell, or grids where width and height are both at least 64.
@@ -102,13 +109,38 @@ int main(int argc, char * argv[])
 
             for (avifBool createAlpha = AVIF_FALSE; createAlpha <= AVIF_TRUE; ++createAlpha) {
                 for (avifBool flatCells = AVIF_FALSE; flatCells <= AVIF_TRUE; ++flatCells) {
-                    for (avifBool useNthImageApi = AVIF_FALSE; useNthImageApi <= AVIF_TRUE; ++useNthImageApi) {
-                        if (!encodeDecodeNonIncrementallyAndIncrementally(reference, widths[w], heights[h], createAlpha, flatCells, useNthImageApi)) {
-                            goto cleanup;
+                    for (avifBool encodedAvifIsPersistent = AVIF_FALSE; encodedAvifIsPersistent <= AVIF_TRUE; ++encodedAvifIsPersistent) {
+                        for (avifBool giveSizeHint = AVIF_FALSE; giveSizeHint <= AVIF_TRUE; ++giveSizeHint) {
+                            for (avifBool useNthImageApi = AVIF_FALSE; useNthImageApi <= AVIF_TRUE; ++useNthImageApi) {
+                                if (!encodeDecodeNonIncrementallyAndIncrementally(reference,
+                                                                                  widths[w],
+                                                                                  heights[h],
+                                                                                  createAlpha,
+                                                                                  flatCells,
+                                                                                  encodedAvifIsPersistent,
+                                                                                  giveSizeHint,
+                                                                                  useNthImageApi)) {
+                                    goto cleanup;
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    // Third test: full image.
+    for (avifBool flatCells = AVIF_FALSE; flatCells <= AVIF_TRUE; ++flatCells) {
+        if (!encodeDecodeNonIncrementallyAndIncrementally(reference,
+                                                          reference->width,
+                                                          reference->height,
+                                                          /*createAlpha=*/AVIF_TRUE,
+                                                          flatCells,
+                                                          /*encodedAvifIsPersistent=*/AVIF_TRUE,
+                                                          /*giveSizeHint=*/AVIF_TRUE,
+                                                          /*useNthImageApi=*/AVIF_FALSE)) {
+            goto cleanup;
         }
     }
 
