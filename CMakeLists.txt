@@ -523,6 +523,37 @@ if(AVIF_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+option(AVIF_BUILD_MAN_PAGES "Build avif man pages." OFF)
+if(AVIF_BUILD_MAN_PAGES)
+    if(AVIF_BUILD_APPS)
+        find_program(PANDOC_EXE pandoc)
+        if(PANDOC_EXE)
+            message(STATUS "libavif: Using pandoc: ${PANDOC_EXE}")
+        else()
+            message(FATAL_ERROR "libavif: Pandoc is missing, bailing out")
+        endif()
+
+        set(MAN_PAGES avifenc.1 avifdec.1)
+
+        foreach(MAN_PAGE ${MAN_PAGES})
+            add_custom_command(
+                OUTPUT ${MAN_PAGE}
+                COMMAND ${PANDOC_EXE} -s -V "footer=libavif ${PROJECT_VERSION}" -f markdown -t man -o
+                        "${CMAKE_CURRENT_BINARY_DIR}/${MAN_PAGE}" "${CMAKE_CURRENT_SOURCE_DIR}/docs/${MAN_PAGE}.md"
+                DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/docs/${MAN_PAGE}.md"
+                VERBATIM
+            )
+        endforeach()
+        add_custom_target(man_pages ALL DEPENDS ${MAN_PAGES})
+
+        foreach(MAN_PAGE ${MAN_PAGES})
+            install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${MAN_PAGE}" DESTINATION "${CMAKE_INSTALL_MANDIR}/man1")
+        endforeach()
+    else()
+        message(WARNING "libavif: No man pages is built (AVIF_BUILD_MAN_PAGES); AVIF_BUILD_APPS must be on.")
+    endif()
+endif()
+
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(
         TARGETS avif
