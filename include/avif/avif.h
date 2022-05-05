@@ -1066,6 +1066,7 @@ typedef uint32_t avifAddImageFlags;
 // * avifEncoderDestroy()
 //
 
+// durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags.
 AVIF_API avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             uint32_t gridCols,
