@@ -59,9 +59,21 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     printf(" * Transfer Char. : %u\n", avif->transferCharacteristics);
     printf(" * Matrix Coeffs. : %u\n", avif->matrixCoefficients);
 
-    printf(" * ICC Profile    : %s (" AVIF_FMT_ZU " bytes)\n", (avif->icc.size > 0) ? "Present" : "Absent", avif->icc.size);
-    printf(" * XMP Metadata   : %s (" AVIF_FMT_ZU " bytes)\n", (avif->xmp.size > 0) ? "Present" : "Absent", avif->xmp.size);
-    printf(" * EXIF Metadata  : %s (" AVIF_FMT_ZU " bytes)\n", (avif->exif.size > 0) ? "Present" : "Absent", avif->exif.size);
+    if (avif->icc.size != 0) {
+        printf(" * ICC Profile    : Present (" AVIF_FMT_ZU " bytes)\n", avif->icc.size);
+    } else {
+        printf(" * ICC Profile    : Absent\n");
+    }
+    if (avif->xmp.size != 0) {
+        printf(" * XMP Metadata   : Present (" AVIF_FMT_ZU " bytes)\n", avif->xmp.size);
+    } else {
+        printf(" * XMP Metadata   : Absent\n");
+    }
+    if (avif->exif.size != 0) {
+        printf(" * Exif Metadata  : Present (" AVIF_FMT_ZU " bytes)\n", avif->exif.size);
+    } else {
+        printf(" * Exif Metadata  : Absent\n");
+    }
 
     if (avif->transformFlags == AVIF_TRANSFORM_NONE) {
         printf(" * Transformations: None\n");
