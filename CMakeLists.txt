@@ -123,33 +123,6 @@ include(CheckCCompilerFlag)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
     add_definitions(-Wall -Wextra)
-    # Some headers such as glib-2.0 use identifier names that start with '_' followed by a capital letter.
-    # The C standard reserves names beginning with an underscore and various other combinations.
-    # ISO/IEC 9899:1999 (aka C99 standard) 7.1.3 Reserved identifiers
-    check_c_compiler_flag(-Wreserved-identifier HAVE_RESERVED_IDENTIFIER_WARNING)
-    if(HAVE_RESERVED_IDENTIFIER_WARNING)
-        add_definitions(-Wno-reserved-identifier)
-    endif()
-    # Clang >= 14 warns that mixing declarations and code is incompatible with standards before C99, even if
-    # you compile with -std=c99 or -std=gnu99.
-    check_c_compiler_flag(-Wdeclaration-after-statement HAVE_DECLARATION_AFTER_STATEMENT_WARNING)
-    if(HAVE_DECLARATION_AFTER_STATEMENT_WARNING)
-        add_definitions(-Wno-declaration-after-statement)
-    endif()
-    # The detection of cross compilation by -Wpoison-system-directories has false positives on macOS because
-    # --sysroot is implicitly added. Turn the warning off.
-    if(NOT DEFINED HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
-        check_c_compiler_flag(-Wpoison-system-directories HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
-    endif()
-    if(HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
-        add_definitions(-Wno-poison-system-directories)
-    endif()
-    # MINGW declares printf with __attribute__ ((__unused__)) in stdio.h.
-    # It is out of our control so we just ignore it.
-    # See https://sourceforge.net/p/mingw-w64/bugs/868/
-    if(MINGW)
-        add_definitions(-Wno-used-but-marked-unused)
-    endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
     add_definitions(-Wall -Wextra)
