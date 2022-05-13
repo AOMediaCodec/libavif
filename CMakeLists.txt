@@ -122,22 +122,7 @@ endif()
 include(CheckCCompilerFlag)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    add_definitions(
-        -Weverything
-        -Wno-bad-function-cast
-        -Wno-cast-align
-        -Wno-conversion
-        -Wno-covered-switch-default
-        -Wno-disabled-macro-expansion
-        -Wno-documentation
-        -Wno-documentation-unknown-command
-        -Wno-double-promotion
-        -Wno-float-equal
-        -Wno-missing-noreturn
-        -Wno-padded
-        -Wno-sign-conversion
-        -Wno-error=c11-extensions
-    )
+    add_definitions(-Wall -Wextra)
     # Some headers such as glib-2.0 use identifier names that start with '_' followed by a capital letter.
     # The C standard reserves names beginning with an underscore and various other combinations.
     # ISO/IEC 9899:1999 (aka C99 standard) 7.1.3 Reserved identifiers
