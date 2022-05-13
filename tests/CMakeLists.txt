@@ -13,6 +13,7 @@ if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
 add_executable(avifgridapitest avifgridapitest.c)
 if(AVIF_LOCAL_LIBGAV1)
@@ -41,8 +42,9 @@ if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
-
-add_custom_target(avif_test_all COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/data DEPENDS aviftest)
+foreach(AVIFYUV_MODE 0 2) # Modes 1 and 3 take more than 2 minutes each so they are disabled.
+    add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
+endforeach()
 
 if(AVIF_ENABLE_COVERAGE)
     add_custom_target(
