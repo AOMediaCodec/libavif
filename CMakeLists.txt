@@ -51,6 +51,9 @@ option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the
 option(AVIF_LOCAL_SVT
        "Build the SVT-AV1 codec by providing your own copy of the repo in ext/SVT-AV1 (see Local Builds in README)" OFF
 )
+option(AVIF_LOCAL_GTEST
+       "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)" OFF
+)
 
 if(AVIF_LOCAL_LIBGAV1)
     enable_language(CXX)
@@ -464,11 +467,11 @@ endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
-option(AVIF_BUILD_GTESTS
-       "Build avif C++ tests depending on GoogleTest. Requires GoogleTest to be installed and AVIF_BUILD_TESTS to be ON." OFF
+option(AVIF_ENABLE_GTEST
+       "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." OFF
 )
 
-if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_BUILD_GTESTS))
+if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
     find_package(ZLIB REQUIRED)
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)
@@ -509,6 +512,8 @@ endif()
 if(AVIF_BUILD_TESTS)
     enable_testing() # Allow ctest to be called from top-level directory.
     add_subdirectory(tests)
+elseif(AVIF_ENABLE_GTEST)
+    message(WARNING "AVIF_ENABLE_GTEST is ON but has no effect because AVIF_BUILD_TESTS is OFF.")
 endif()
 
 option(AVIF_BUILD_MAN_PAGES "Build avif man pages." OFF)

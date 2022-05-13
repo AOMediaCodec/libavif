@@ -51,11 +51,12 @@ codec.
 
 ### Tests
 
-A few tests can be built by enabling the `AVIF_BUILD_TESTS` CMake option.
+A few tests written in C can be built by enabling the `AVIF_BUILD_TESTS` CMake
+option.
 
 The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
-`AVIF_BUILD_GTESTS` CMake options. They require GoogleTest to be built locally
-with ext/googletest.cmd or installed globally.
+`AVIF_ENABLE_GTEST` CMake options. They require GoogleTest to be built locally
+with ext/googletest.cmd or installed on the system.
 
 ## Prebuilt Library (Windows)
 

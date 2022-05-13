@@ -7,9 +7,9 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone https://github.com/google/googletest.git -b release-1.11.0
+git clone -b release-1.11.0 --depth 1 https://github.com/google/googletest.git
 cd googletest
 mkdir build
 cd build
-cmake .. -DBUILD_GMOCK=OFF
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF
 cmake --build .

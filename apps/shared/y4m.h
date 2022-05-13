@@ -19,7 +19,6 @@ extern "C" {
 struct y4mFrameIterator;
 
 avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter);
-
 avifBool y4mWrite(const char * outputFilename, const avifImage * avif);
 
 #ifdef __cplusplus

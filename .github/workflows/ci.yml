@@ -52,11 +52,11 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash libyuv.cmd
-    - name: Build googletest
+    - name: Build GoogleTest
       # TODO: if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash googletest.cmd
       # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
+      run: bash googletest.cmd
 
     - name: Prepare libavif (cmake)
       run: |
@@ -69,7 +69,7 @@ jobs:
           -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON \
           -DAVIF_LOCAL_LIBYUV=ON \
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON \
-          -DAVIF_BUILD_TESTS=ON -DAVIF_BUILD_GTESTS=ON
+          -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
     - name: Build libavif (make)
       working-directory: ./build
       run: make -j $(($(nproc) + 1))
