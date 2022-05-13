@@ -536,7 +536,11 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
 
     const avifProperty * lselProp = avifPropertyArrayFind(&item->properties, "lsel");
     // Progressive images offer layers via the a1lxProp, but don't specify a layer selection with lsel.
-    item->progressive = (a1lxProp && lselProp && (lselProp->u.lsel.layerID == 0xFFFF));
+    //
+    // For backward compatibility with earlier drafts of AVIF spec v1.1.0, treat an absent lsel as
+    // equivalent to layer_id == 0xFFFF during the transitional period. Remove !lselProp when the test
+    // images have been updated to the v1.1.0 spec.
+    item->progressive = (a1lxProp && (!lselProp || (lselProp->u.lsel.layerID == 0xFFFF)));
     if (lselProp && (lselProp->u.lsel.layerID != 0xFFFF)) {
         // Layer selection. This requires that the underlying AV1 codec decodes all layers,
         // and then only returns the requested layer as a single frame. To the user of libavif,
