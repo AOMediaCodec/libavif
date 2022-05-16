@@ -34,7 +34,7 @@ static const size_t sampleXMPSize = sizeof(sampleXMP) / sizeof(sampleXMP[0]);
 // Fills a plane with a repeating gradient.
 static void fillPlane(int width, int height, int depth, uint8_t * row, uint32_t rowBytes)
 {
-    assert(depth == 8 || depth == 10 || depth == 12); // Values allowed by AV1.
+    assert((depth == 8) || (depth == 10) || (depth == 12)); // Values allowed by AV1.
     const int maxValuePlusOne = 1 << depth;
     for (int y = 0; y < height; ++y) {
         if (depth == 8) {
@@ -53,7 +53,7 @@ static void fillPlane(int width, int height, int depth, uint8_t * row, uint32_t 
 static avifBool createImage(int width, int height, int depth, avifPixelFormat yuvFormat, avifBool createAlpha, avifImage ** image)
 {
     *image = avifImageCreate(width, height, depth, yuvFormat);
-    if (*image == NULL) {
+    if (!*image) {
         printf("ERROR: avifImageCreate() failed\n");
         return AVIF_FALSE;
     }
@@ -90,10 +90,8 @@ static avifBool createImage1x1(avifImage ** image)
 static avifBool encode(const avifImage * image, avifRWData * output)
 {
     avifBool success = AVIF_FALSE;
-    avifEncoder * encoder = NULL;
-
-    encoder = avifEncoderCreate();
-    if (encoder == NULL) {
+    avifEncoder * encoder = avifEncoderCreate();
+    if (!encoder) {
         printf("ERROR: avifEncoderCreate() failed\n");
         goto cleanup;
     }
@@ -105,7 +103,7 @@ static avifBool encode(const avifImage * image, avifRWData * output)
 
     success = AVIF_TRUE;
 cleanup:
-    if (encoder != NULL) {
+    if (encoder) {
         avifEncoderDestroy(encoder);
     }
     return success;
@@ -117,7 +115,7 @@ static avifBool decode(const avifRWData * encodedAvif, avifImage ** image)
     avifBool success = AVIF_FALSE;
     *image = avifImageCreateEmpty();
     avifDecoder * const decoder = avifDecoderCreate();
-    if (*image == NULL || decoder == NULL) {
+    if (!*image || !decoder) {
         printf("ERROR: memory allocation failed\n");
         goto cleanup;
     }
@@ -127,7 +125,7 @@ static avifBool decode(const avifRWData * encodedAvif, avifImage ** image)
     }
     success = AVIF_TRUE;
 cleanup:
-    if (decoder != NULL) {
+    if (decoder) {
         avifDecoderDestroy(decoder);
     }
     return success;
@@ -182,7 +180,7 @@ cleanup:
 static avifBool encodeDecodeMetadataItems(avifBool useICC, avifBool useExif, avifBool useXMP)
 {
     avifBool success = AVIF_FALSE;
-    avifImage * image;
+    avifImage * image = NULL;
     if (!createImage1x1(&image)) {
         goto cleanup;
     }
@@ -210,12 +208,17 @@ cleanup:
 
 int main(void)
 {
-    if (!encodeDecodeMetadataItems(/*useICC=*/AVIF_TRUE, /*useExif=*/AVIF_FALSE, /*useXMP=*/AVIF_FALSE) ||
-        !encodeDecodeMetadataItems(/*useICC=*/AVIF_FALSE, /*useExif=*/AVIF_TRUE, /*useXMP=*/AVIF_FALSE) ||
-        !encodeDecodeMetadataItems(/*useICC=*/AVIF_FALSE, /*useExif=*/AVIF_FALSE, /*useXMP=*/AVIF_TRUE)) {
+    if (!encodeDecodeMetadataItems(/*useICC=*/AVIF_TRUE, /*useExif=*/AVIF_FALSE, /*useXMP=*/AVIF_FALSE)) {
+        return EXIT_FAILURE;
+    }
+    if (!encodeDecodeMetadataItems(/*useICC=*/AVIF_FALSE, /*useExif=*/AVIF_TRUE, /*useXMP=*/AVIF_FALSE)) {
+        return EXIT_FAILURE;
+    }
+    if (!encodeDecodeMetadataItems(/*useICC=*/AVIF_FALSE, /*useExif=*/AVIF_FALSE, /*useXMP=*/AVIF_TRUE)) {
         return EXIT_FAILURE;
     }
     // TODO: Negative test
     // TODO: Multi xmp test
+    printf("Test passed.\n");
     return EXIT_SUCCESS;
 }
