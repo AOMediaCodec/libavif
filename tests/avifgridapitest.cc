@@ -6,8 +6,8 @@
 #include <cassert>
 #include <cinttypes>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
+#include <tuple>
 
 #include "gtest/gtest.h"
 
@@ -21,7 +21,7 @@ namespace
 //------------------------------------------------------------------------------
 
 // Fills a plane with a repeating gradient.
-static void fillPlane(int width, int height, int depth, uint8_t * row, uint32_t rowBytes)
+void fillPlane(int width, int height, int depth, uint8_t * row, uint32_t rowBytes)
 {
     assert(depth == 8 || depth == 10 || depth == 12); // Values allowed by AV1.
     const int maxValuePlusOne = 1 << depth;

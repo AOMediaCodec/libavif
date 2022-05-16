@@ -468,7 +468,7 @@ endif()
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 option(AVIF_ENABLE_GTEST
-       "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." OFF
+       "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
 )
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
@@ -512,8 +512,6 @@ endif()
 if(AVIF_BUILD_TESTS)
     enable_testing() # Allow ctest to be called from top-level directory.
     add_subdirectory(tests)
-elseif(AVIF_ENABLE_GTEST)
-    message(WARNING "AVIF_ENABLE_GTEST is ON but has no effect because AVIF_BUILD_TESTS is OFF.")
 endif()
 
 option(AVIF_BUILD_MAN_PAGES "Build avif man pages." OFF)
