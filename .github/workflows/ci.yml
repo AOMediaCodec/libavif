@@ -41,6 +41,7 @@ jobs:
       working-directory: ./ext
       run: bash rav1e.cmd
     - name: Build SVT-AV1
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash svt.cmd
     - name: Build libgav1
