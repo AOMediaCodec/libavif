@@ -135,7 +135,7 @@ int main(int argc, char * argv[])
         if (!encodeDecodeNonIncrementallyAndIncrementally(reference,
                                                           reference->width,
                                                           reference->height,
-                                                          /*createAlpha=*/AVIF_TRUE,
+                                                          /*createAlphaIfNone=*/AVIF_TRUE,
                                                           flatCells,
                                                           /*encodedAvifIsPersistent=*/AVIF_TRUE,
                                                           /*giveSizeHint=*/AVIF_TRUE,
