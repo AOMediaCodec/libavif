@@ -42,7 +42,7 @@ void fillPlane(int width, int height, int depth, uint8_t * row, uint32_t rowByte
 bool createImage(int width, int height, int depth, avifPixelFormat yuvFormat, bool createAlpha, avifImage ** image)
 {
     *image = avifImageCreate(width, height, depth, yuvFormat);
-    if (*image == NULL) {
+    if (!*image) {
         printf("ERROR: avifImageCreate() failed\n");
         return false;
     }
@@ -85,7 +85,7 @@ bool encodeGrid(int columns, int rows, int cellWidth, int cellHeight, int depth,
     }
 
     encoder = avifEncoderCreate();
-    if (encoder == NULL) {
+    if (!encoder) {
         printf("ERROR: avifEncoderCreate() failed\n");
         goto cleanup;
     }
@@ -102,12 +102,12 @@ bool encodeGrid(int columns, int rows, int cellWidth, int cellHeight, int depth,
 
     success = true;
 cleanup:
-    if (encoder != NULL) {
+    if (encoder) {
         avifEncoderDestroy(encoder);
     }
-    if (cellImages != NULL) {
+    if (cellImages) {
         for (int i = 0; i < columns * rows; ++i) {
-            if (cellImages[i] != NULL) {
+            if (cellImages[i]) {
                 avifImageDestroy(cellImages[i]);
             }
         }
@@ -124,7 +124,7 @@ bool decode(const avifRWData * encodedAvif)
     bool success = false;
     avifImage * const image = avifImageCreateEmpty();
     avifDecoder * const decoder = avifDecoderCreate();
-    if (image == NULL || decoder == NULL) {
+    if (!image || !decoder) {
         printf("ERROR: memory allocation failed\n");
         goto cleanup;
     }
@@ -134,10 +134,10 @@ bool decode(const avifRWData * encodedAvif)
     }
     success = true;
 cleanup:
-    if (image != NULL) {
+    if (image) {
         avifImageDestroy(image);
     }
-    if (decoder != NULL) {
+    if (decoder) {
         avifDecoderDestroy(decoder);
     }
     return success;
@@ -172,7 +172,7 @@ struct Cell
     int count, size;
 };
 
-class GridApiTest : public testing::TestWithParam<std::tuple<Cell, Cell, int, avifPixelFormat, bool, bool>>
+class GridApiTest : public testing::TestWithParam<std::tuple</*horizontal=*/Cell, /*vertical=*/Cell, /*bitDepth=*/int, /*yuvFormat=*/avifPixelFormat, /*createAlpha=*/bool, /*expectedSuccess=*/bool>>
 {
 };
 

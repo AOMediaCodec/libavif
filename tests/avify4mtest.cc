@@ -54,8 +54,8 @@ bool compareYUVA(const avifImage * image1, const avifImage * image2)
         }
     }
 
-    if (image1->alphaPlane != NULL || image2->alphaPlane != NULL) {
-        if (image1->alphaPlane == NULL || image2->alphaPlane == NULL || image1->alphaPremultiplied != image2->alphaPremultiplied) {
+    if (image1->alphaPlane || image2->alphaPlane) {
+        if (!image1->alphaPlane || !image2->alphaPlane || image1->alphaPremultiplied != image2->alphaPremultiplied) {
             printf("ERROR: input mismatch\n");
             return false;
         }
@@ -84,7 +84,7 @@ void fillPlanes(avifImage * image)
     avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
     const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
     for (int plane = 0; plane < planeCount; ++plane) {
-        if (image->yuvPlanes[plane] != NULL) {
+        if (image->yuvPlanes[plane]) {
             const uint32_t planeWidth =
                 (plane == AVIF_CHAN_Y) ? image->width : ((image->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX);
             const uint32_t planeHeight =
@@ -101,7 +101,7 @@ void fillPlanes(avifImage * image)
             }
         }
     }
-    if (image->alphaPlane != NULL) {
+    if (image->alphaPlane) {
         const uint16_t alphaValue = (1 << image->depth) - 1;
         for (uint32_t y = 0; y < image->height; ++y) {
             uint8_t * const row = image->alphaPlane + y * image->alphaRowBytes;
@@ -128,7 +128,7 @@ bool encodeDecodeY4m(uint32_t width,
     bool success = false;
     avifImage * image = avifImageCreateEmpty();
     avifImage * decoded = avifImageCreateEmpty();
-    if (image == NULL || decoded == NULL) {
+    if (!image || !decoded) {
         printf("ERROR: avifImageCreate() failed\n");
         goto cleanup;
     }
@@ -155,10 +155,10 @@ bool encodeDecodeY4m(uint32_t width,
 
     success = true;
 cleanup:
-    if (image != NULL) {
+    if (image) {
         avifImageDestroy(image);
     }
-    if (decoded != NULL) {
+    if (decoded) {
         avifImageDestroy(decoded);
     }
     return success;
@@ -166,7 +166,7 @@ cleanup:
 
 //------------------------------------------------------------------------------
 
-class Y4mTest : public testing::TestWithParam<std::tuple<int, int, int, avifPixelFormat, avifRange, bool>>
+class Y4mTest : public testing::TestWithParam<std::tuple</*width=*/int, /*height=*/int, /*bitDepth=*/int, /*yuvFormat=*/avifPixelFormat, /*yuvRange=*/avifRange, /*createAlpha=*/bool>>
 {
 };
 
