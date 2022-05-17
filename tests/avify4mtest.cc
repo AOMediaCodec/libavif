@@ -166,7 +166,8 @@ cleanup:
 
 //------------------------------------------------------------------------------
 
-class Y4mTest : public testing::TestWithParam<std::tuple</*width=*/int, /*height=*/int, /*bitDepth=*/int, /*yuvFormat=*/avifPixelFormat, /*yuvRange=*/avifRange, /*createAlpha=*/bool>>
+class Y4mTest
+    : public testing::TestWithParam<std::tuple</*width=*/int, /*height=*/int, /*bitDepth=*/int, /*yuvFormat=*/avifPixelFormat, /*yuvRange=*/avifRange, /*createAlpha=*/bool>>
 {
 };
 

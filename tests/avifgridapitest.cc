@@ -172,7 +172,8 @@ struct Cell
     int count, size;
 };
 
-class GridApiTest : public testing::TestWithParam<std::tuple</*horizontal=*/Cell, /*vertical=*/Cell, /*bitDepth=*/int, /*yuvFormat=*/avifPixelFormat, /*createAlpha=*/bool, /*expectedSuccess=*/bool>>
+class GridApiTest
+    : public testing::TestWithParam<std::tuple</*horizontal=*/Cell, /*vertical=*/Cell, /*bitDepth=*/int, /*yuvFormat=*/avifPixelFormat, /*createAlpha=*/bool, /*expectedSuccess=*/bool>>
 {
 };
 
