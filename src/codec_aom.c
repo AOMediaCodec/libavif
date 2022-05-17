@@ -601,7 +601,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 cfg.rc_end_usage = AOM_Q;
                 break;
             case AOM_USAGE_REALTIME:
-                // For real-time mode we need to use CBR rate control mode. AOM_Q doesn’t fit the
+                // For real-time mode we need to use CBR rate control mode. AOM_Q doesn't fit the
                 // rate control requirements for real-time mode. CBR does.
                 assert(cfg.rc_end_usage == AOM_CBR);
                 break;
