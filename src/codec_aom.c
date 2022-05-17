@@ -591,6 +591,27 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_UNKNOWN_ERROR;
         }
 
+        // Set our own default cfg.rc_end_usage value, which may differ from libaom's default.
+        switch (aomUsage) {
+            case AOM_USAGE_GOOD_QUALITY:
+                // libaom's default is AOM_VBR. Change the default to AOM_Q since we don't need to
+                // hit a certain target bit rate. It's easier to control the worst quality in Q
+                // mode.
+                assert(cfg.rc_end_usage == AOM_VBR);
+                cfg.rc_end_usage = AOM_Q;
+                break;
+            case AOM_USAGE_REALTIME:
+                // For real-time mode we need to use CBR rate control mode. AOM_Q doesn’t fit the
+                // rate control requirements for real-time mode. CBR does.
+                assert(cfg.rc_end_usage == AOM_CBR);
+                break;
+#if defined(AOM_USAGE_ALL_INTRA)
+            case AOM_USAGE_ALL_INTRA:
+                assert(cfg.rc_end_usage == AOM_Q);
+                break;
+#endif
+        }
+
         // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
         // Profile 1.  8-bit and 10-bit 4:4:4
         // Profile 2.  8-bit and 10-bit 4:2:2
@@ -637,9 +658,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg.g_limit = 1;
 
             // Use the default settings of the new AOM_USAGE_ALL_INTRA (added in
-            // https://crbug.com/aomedia/2959). Note that AOM_USAGE_ALL_INTRA
-            // also sets cfg.rc_end_usage to AOM_Q by default, which we do not
-            // set here.
+            // https://crbug.com/aomedia/2959).
             //
             // Set g_lag_in_frames to 0 to reduce the number of frame buffers
             // (from 20 to 2) in libaom's lookahead structure. This reduces
