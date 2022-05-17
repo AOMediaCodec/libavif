@@ -597,17 +597,16 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 // libaom's default is AOM_VBR. Change the default to AOM_Q since we don't need to
                 // hit a certain target bit rate. It's easier to control the worst quality in Q
                 // mode.
-                assert(cfg.rc_end_usage == AOM_VBR);
                 cfg.rc_end_usage = AOM_Q;
                 break;
             case AOM_USAGE_REALTIME:
                 // For real-time mode we need to use CBR rate control mode. AOM_Q doesn't fit the
                 // rate control requirements for real-time mode. CBR does.
-                assert(cfg.rc_end_usage == AOM_CBR);
+                cfg.rc_end_usage = AOM_CBR;
                 break;
 #if defined(AOM_USAGE_ALL_INTRA)
             case AOM_USAGE_ALL_INTRA:
-                assert(cfg.rc_end_usage == AOM_Q);
+                cfg.rc_end_usage = AOM_Q;
                 break;
 #endif
         }
