@@ -6,6 +6,10 @@
 
 #include "avif/avif.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // The %z format specifier is not available in the old Windows CRT msvcrt,
 // hence the %I format specifier must be used instead to print out `size_t`.
 // The new Windows CRT UCRT, which is used by Visual Studio 2015 or later,
@@ -55,5 +59,9 @@ typedef struct avifAppSourceTiming
 // Used by image decoders when the user doesn't explicitly choose a format with --yuv
 // This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.
 #define AVIF_APP_DEFAULT_PIXEL_FORMAT AVIF_PIXEL_FORMAT_YUV444
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif // ifndef LIBAVIF_APPS_SHARED_AVIFUTIL_H

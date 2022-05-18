@@ -51,6 +51,9 @@ option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the
 option(AVIF_LOCAL_SVT
        "Build the SVT-AV1 codec by providing your own copy of the repo in ext/SVT-AV1 (see Local Builds in README)" OFF
 )
+option(AVIF_LOCAL_GTEST
+       "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)" OFF
+)
 
 if(AVIF_LOCAL_LIBGAV1)
     enable_language(CXX)
@@ -410,7 +413,7 @@ if(BUILD_SHARED_LIBS)
     endif()
 endif()
 
-option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
+option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     set(AVIF_EXAMPLES avif_example_decode_memory avif_example_decode_file avif_example_decode_streaming avif_example_encode)
 
@@ -437,8 +440,11 @@ endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
+option(AVIF_ENABLE_GTEST
+       "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
+)
 
-if(AVIF_BUILD_APPS OR AVIF_BUILD_TESTS)
+if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
     find_package(ZLIB REQUIRED)
     find_package(PNG REQUIRED)
     find_package(JPEG REQUIRED)

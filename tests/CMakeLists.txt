@@ -4,9 +4,6 @@
 # With testing enabled, all targets referenced by add_test() can be run
 # at once with CMake's ctest command line tool from the build folder.
 enable_testing()
-# Using a CMake FIXTURES_SETUP/FIXTURES_CLEANUP to create and delete a
-# subdirectory would be cleaner but this is way simpler.
-set(AVIF_TEST_TMP_DIR ${PROJECT_BINARY_DIR})
 
 add_executable(aviftest aviftest.c)
 if(AVIF_LOCAL_LIBGAV1)
@@ -14,13 +11,6 @@ if(AVIF_LOCAL_LIBGAV1)
 endif()
 target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
 add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
-
-add_executable(avifgridapitest avifgridapitest.c)
-if(AVIF_LOCAL_LIBGAV1)
-    set_target_properties(avifgridapitest PROPERTIES LINKER_LANGUAGE "CXX")
-endif()
-target_link_libraries(avifgridapitest avif ${AVIF_PLATFORM_LIBRARIES})
-add_test(NAME avifgridapitest COMMAND avifgridapitest)
 
 add_executable(avifincrtest avifincrtest.c avifincrtest_helpers.c)
 if(AVIF_LOCAL_LIBGAV1)
@@ -36,14 +26,6 @@ endif()
 target_link_libraries(avifmetadatatest avif ${AVIF_PLATFORM_LIBRARIES})
 add_test(NAME avifmetadatatest COMMAND avifmetadatatest)
 
-add_executable(avify4mtest avify4mtest.c)
-if(AVIF_LOCAL_LIBGAV1)
-    set_target_properties(avify4mtest PROPERTIES LINKER_LANGUAGE "CXX")
-endif()
-target_link_libraries(avify4mtest avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
-add_test(NAME avify4mtest COMMAND avify4mtest AVIF_TEST_TMP_DIR)
-set_tests_properties(avify4mtest PROPERTIES ENVIRONMENT "AVIF_TEST_TMP_DIR=${AVIF_TEST_TMP_DIR}")
-
 add_executable(avifyuv avifyuv.c)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
@@ -52,6 +34,40 @@ target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
 foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2 minutes each so they are disabled.
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
+
+if(AVIF_ENABLE_GTEST)
+    enable_language(CXX)
+    set(CMAKE_CXX_STANDARD 11)
+    if(AVIF_LOCAL_GTEST)
+        set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
+        set(GTEST_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/libgtest${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(GTEST_MAIN_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/libgtest_main${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(GTEST_BOTH_LIBRARIES ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES})
+        if(NOT EXISTS ${GTEST_INCLUDE_DIRS}/gtest/gtest.h)
+            message(FATAL_ERROR "googletest(AVIF_LOCAL_GTEST): ${GTEST_INCLUDE_DIRS}/gtest/gtest.h is missing, bailing out")
+        elseif(NOT EXISTS ${GTEST_LIBRARIES})
+            message(FATAL_ERROR "googletest(AVIF_LOCAL_GTEST): ${GTEST_LIBRARIES} is missing, bailing out")
+        elseif(NOT EXISTS ${GTEST_MAIN_LIBRARIES})
+            message(FATAL_ERROR "googletest(AVIF_LOCAL_GTEST): ${GTEST_MAIN_LIBRARIES} is missing, bailing out")
+        else()
+            message(STATUS "Found local ext/googletest")
+        endif()
+    else()
+        find_package(GTest REQUIRED)
+    endif()
+
+    add_executable(avifgridapitest avifgridapitest.cc)
+    target_link_libraries(avifgridapitest avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifgridapitest COMMAND avifgridapitest)
+
+    add_executable(avify4mtest avify4mtest.cc)
+    target_link_libraries(avify4mtest avif avif_apps ${AVIF_PLATFORM_LIBRARIES} ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avify4mtest COMMAND avify4mtest)
+else()
+    message(STATUS "Most tests are disabled because AVIF_ENABLE_GTEST is OFF.")
+endif()
 
 if(AVIF_ENABLE_COVERAGE)
     add_custom_target(
