@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 There is an incompatible ABI change in this release. Members were removed from
 avifImage struct. It is necessary to recompile your code.
 
+### Changed
+* Update svt.cmd/svt.sh: v1.1.0
+
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that
   alpha plane is always full range.
