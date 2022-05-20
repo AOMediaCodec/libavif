@@ -69,6 +69,9 @@ struct avifCodecInternal
     // Whether cq-level was set with an
     // avifEncoderSetCodecSpecificOption(encoder, "cq-level", value) call.
     avifBool cqLevelSet;
+    // Whether 'tuning' (of the specified distortion metric) was set with an
+    // avifEncoderSetCodecSpecificOption(encoder, "tune", value) call.
+    avifBool tuningSet;
 #endif
 };
 
@@ -466,6 +469,8 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
         }
         if (!strcmp(key, "cq-level")) {
             codec->internal->cqLevelSet = AVIF_TRUE;
+        } else if (!strcmp(key, "tune")) {
+            codec->internal->tuningSet = AVIF_TRUE;
         }
 #else  // !defined(HAVE_AOM_CODEC_SET_OPTION)
         avifBool match = AVIF_FALSE;
@@ -500,6 +505,8 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
                 }
                 if (aomOptionDefs[j].controlId == AOME_SET_CQ_LEVEL) {
                     codec->internal->cqLevelSet = AVIF_TRUE;
+                } else if (aomOptionDefs[j].controlId == AOME_SET_TUNING) {
+                    codec->internal->tuningSet = AVIF_TRUE;
                 }
                 break;
             }
@@ -752,6 +759,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, cqLevel);
         }
 #endif
+        if (!codec->internal->tuningSet) {
+            if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
+        }
     }
 
     aom_image_t aomImage;
