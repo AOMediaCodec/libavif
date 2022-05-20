@@ -4,6 +4,7 @@
 #include "avifincrtest_helpers.h"
 #include "avif/avif.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -412,6 +413,8 @@ avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif,
                                                 avifBool useNthImageApi,
                                                 uint32_t cellHeight)
 {
+    // TODO(wtc): Remove this assertion when this file is converted to C++.
+    assert((useNthImageApi == AVIF_FALSE) || (useNthImageApi == AVIF_TRUE));
     avifBool success = AVIF_FALSE;
     avifImage * reference = avifImageCreateEmpty();
     if (!reference) {
