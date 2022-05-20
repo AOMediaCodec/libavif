@@ -464,6 +464,9 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
                                   aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_FALSE;
         }
+        if (!strcmp(key, "cq-level")) {
+            codec->internal->cqLevelSet = AVIF_TRUE;
+        }
 #else  // !defined(HAVE_AOM_CODEC_SET_OPTION)
         avifBool match = AVIF_FALSE;
         for (int j = 0; aomOptionDefs[j].name; ++j) {
