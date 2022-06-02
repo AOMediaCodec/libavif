@@ -117,28 +117,14 @@ typedef struct
     size_t fullSize;
 } avifROPartialData;
 
-// Implementation of avifIOReadFunc simulating a stream from an array.
+// Implementation of avifIOReadFunc simulating a stream from an array. See avifIOReadFunc documentation.
 // io->data is expected to point to avifROPartialData.
 static avifResult avifIOPartialRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out)
 {
     const avifROPartialData * data = (avifROPartialData *)io->data;
-
-    // The behavior below is described in the comment above avifIOReadFunc's declaration.
-    if (readFlags != 0) {
+    if ((readFlags != 0) || !data || (data->fullSize < offset)) {
         return AVIF_RESULT_IO_ERROR;
     }
-    if (!data) {
-        return AVIF_RESULT_IO_ERROR;
-    }
-    if (data->fullSize < offset) {
-        return AVIF_RESULT_IO_ERROR;
-    }
-    if (data->fullSize == offset) {
-        out->data = data->available.data;
-        out->size = 0;
-        return AVIF_RESULT_OK;
-    }
-
     if (data->fullSize < (offset + size)) {
         size = data->fullSize - offset;
     }
