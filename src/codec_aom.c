@@ -152,9 +152,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
             }
         } else if (sample) {
             codec->internal->iter = NULL;
-            aom_codec_err_t ret;
-            ret = aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL);
-            if (ret) {
+            if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
                 return AVIF_FALSE;
             }
             spatialID = sample->spatialID;
@@ -310,7 +308,7 @@ static const struct aomScalingModeMapList scalingModeMap[] = {
 
 static const int scalingModeMapSize = sizeof(scalingModeMap) / sizeof(scalingModeMap[0]);
 
-static avifBool avifFindAOMScalingMode(avifScalingMode * avifMode, AOM_SCALING_MODE * aomMode)
+static avifBool avifFindAOMScalingMode(const avifScalingMode * avifMode, AOM_SCALING_MODE * aomMode)
 {
     for (int i = 0; i < scalingModeMapSize; ++i) {
         if (scalingModeMap[i].avifMode.numerator == avifMode->numerator && scalingModeMap[i].avifMode.denominator == avifMode->denominator) {
@@ -567,9 +565,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
-    uint8_t layerCount = alpha ? encoder->layerCountAlpha : encoder->layerCount;
-    avifLayerConfig * layers = alpha ? encoder->layersAlpha : encoder->layers;
-    if (layerCount > 1) {
+    uint32_t extraLayerCount = alpha ? encoder->extraLayerCountAlpha : encoder->extraLayerCount;
+    const avifLayerConfig * layers = alpha ? encoder->layersAlpha : encoder->layers;
+    // Disable single image flag to allow interlayer compression
+    // todo: we clearly don't want ALL_INTRA, but other tweaks should be reviewed as well.
+    if (extraLayerCount > 0) {
         addImageFlags &= ~AVIF_ADD_IMAGE_FLAG_SINGLE;
     }
 
@@ -653,16 +653,16 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 // libaom's default is AOM_VBR. Change the default to AOM_Q since we don't need to
                 // hit a certain target bit rate. It's easier to control the worst quality in Q
                 // mode.
-                cfg.rc_end_usage = AOM_Q;
+                cfg->rc_end_usage = AOM_Q;
                 break;
             case AOM_USAGE_REALTIME:
                 // For real-time mode we need to use CBR rate control mode. AOM_Q doesn't fit the
                 // rate control requirements for real-time mode. CBR does.
-                cfg.rc_end_usage = AOM_CBR;
+                cfg->rc_end_usage = AOM_CBR;
                 break;
 #if defined(AOM_USAGE_ALL_INTRA)
             case AOM_USAGE_ALL_INTRA:
-                cfg.rc_end_usage = AOM_Q;
+                cfg->rc_end_usage = AOM_Q;
                 break;
 #endif
         }
@@ -724,7 +724,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // Tell libaom that all frames will be key frames.
             cfg->kf_max_dist = 0;
         }
-        if (layerCount > 1) {
+        if (extraLayerCount > 0) {
             cfg->g_lag_in_frames = 0;
         }
         if (encoder->maxThreads > 1) {
@@ -781,7 +781,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        if (layerCount > 1) {
+        if (extraLayerCount > 0) {
+            int layerCount = extraLayerCount + 1;
+
 #if defined(AVIF_AOM_LAYER_CONFIG_PREFER_SVC_PARAMS)
             avifBool useSvcParams = AVIF_TRUE;
             for (uint8_t configIndex = 0; configIndex < layerCount; ++configIndex) {
@@ -794,8 +796,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
 #else
             avifBool useSvcParams = AVIF_FALSE;
-            for (uint8_t configIndex = 0; configIndex < layerCount; ++configIndex) {
-                avifLayerConfig * layer = &layers[configIndex];
+            for (int configIndex = 0; configIndex < layerCount; ++configIndex) {
+                const avifLayerConfig * layer = &layers[configIndex];
                 AOM_SCALING_MODE mode;
                 if (layer->horizontalMode.numerator == layer->verticalMode.numerator &&
                     layer->horizontalMode.denominator == layer->verticalMode.denominator &&
@@ -813,8 +815,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 svcParams.number_temporal_layers = 1;
                 svcParams.number_spatial_layers = layerCount;
                 svcParams.framerate_factor[0] = 1;
-                for (uint8_t configIndex = 0; configIndex < layerCount; ++configIndex) {
-                    avifLayerConfig * layer = &layers[configIndex];
+                for (int configIndex = 0; configIndex < layerCount; ++configIndex) {
+                    const avifLayerConfig * layer = &layers[configIndex];
                     svcParams.min_quantizers[configIndex] = layer->minQuantizer;
                     svcParams.max_quantizers[configIndex] = layer->maxQuantizer;
                     svcParams.scaling_factor_num[configIndex] = (int)layer->horizontalMode.numerator;
@@ -834,6 +836,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
+
+        if (!codec->internal->tuningSet) {
+            if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
+        }
     }
 
     int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
@@ -843,16 +851,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
     }
 
-    if (layerCount > 1) {
-        minQuantizer = AVIF_CLAMP(encoder->layers[layerIndex].minQuantizer, 0, 63);
-        maxQuantizer = AVIF_CLAMP(encoder->layers[layerIndex].maxQuantizer, 0, 63);
-        if (alpha) {
-            minQuantizer = AVIF_CLAMP(encoder->layersAlpha[layerIndex].minQuantizer, 0, 63);
-            maxQuantizer = AVIF_CLAMP(encoder->layersAlpha[layerIndex].maxQuantizer, 0, 63);
-        }
-
-        // It's hard to modify the --advanced option to distinguish each layer, so convert min and max quantizers
-        // to cq-level to allow usage of q and cq mode in layer image.
+    if (extraLayerCount > 0) {
+        // Provide a way to set per-layer cq-level to allow using q and cq mode in layered image.
         if (cfg->rc_end_usage == AOM_Q || cfg->rc_end_usage == AOM_CQ) {
             unsigned int cqLevel;
             if (alpha) {
@@ -861,6 +861,13 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 cqLevel = (encoder->layers[layerIndex].minQuantizer + encoder->layers[layerIndex].maxQuantizer) / 2;
             }
             aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, cqLevel);
+        } else {
+            minQuantizer = AVIF_CLAMP(encoder->layers[layerIndex].minQuantizer, 0, 63);
+            maxQuantizer = AVIF_CLAMP(encoder->layers[layerIndex].maxQuantizer, 0, 63);
+            if (alpha) {
+                minQuantizer = AVIF_CLAMP(encoder->layersAlpha[layerIndex].minQuantizer, 0, 63);
+                maxQuantizer = AVIF_CLAMP(encoder->layersAlpha[layerIndex].maxQuantizer, 0, 63);
+            }
         }
     }
 
@@ -888,12 +895,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, cqLevel);
     }
 #endif
-        if (!codec->internal->tuningSet) {
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
-        }
-    }
 
     aom_image_t aomImage;
     // We prefer to simply set the aomImage.planes[] pointers to the plane buffers in 'image'. When
@@ -1003,7 +1004,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, aomImage.csp);
     }
 
-    if (layerCount > 1) {
+    if (extraLayerCount > 0) {
         switch (codec->internal->scaleConfigMethod) {
             case AVIF_AOM_SCALE_SVC_PARAMS: {
                 aom_svc_layer_id_t layerId = { layerIndex, 0 };
@@ -1075,11 +1076,13 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
         encodeFlags |= AOM_EFLAG_FORCE_KF;
     }
-    if (layerIndex > 0) {
-        encodeFlags |= AOM_EFLAG_NO_REF_LAST2 | AOM_EFLAG_NO_REF_LAST3 | AOM_EFLAG_NO_REF_GF | AOM_EFLAG_NO_REF_ARF |
-                       AOM_EFLAG_NO_REF_BWD | AOM_EFLAG_NO_REF_ARF2 | AOM_EFLAG_NO_UPD_LAST | AOM_EFLAG_NO_UPD_GF |
-                       AOM_EFLAG_NO_UPD_ARF | AOM_EFLAG_NO_UPD_ENTROPY;
+    if (extraLayerCount > 0) {
+        if (layerIndex > 0) {
+            encodeFlags |= AOM_EFLAG_NO_REF_GF | AOM_EFLAG_NO_REF_ARF | AOM_EFLAG_NO_REF_BWD | AOM_EFLAG_NO_REF_ARF2 |
+                           AOM_EFLAG_NO_UPD_GF | AOM_EFLAG_NO_UPD_ARF;
+        }
     }
+
     aom_codec_err_t encodeErr = aom_codec_encode(&codec->internal->encoder, &aomImage, 0, 1, encodeFlags);
     avifFree(monoUVPlane);
     if (aomImageAllocated) {
@@ -1104,8 +1107,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    if ((layerIndex + 1 == layerCount) || (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
-        // Flush and clean up encoder resources early to save on overhead when encoding alpha or grid images
+    if ((addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || ((extraLayerCount > 0) && (layerIndex == extraLayerCount))) {
+        // Flush and clean up encoder resources early to save on overhead when encoding alpha or grid images.
+        // (For layered image, this is when the last layer is encoded.)
 
         if (!aomCodecEncodeFinish(codec, output)) {
             return AVIF_RESULT_UNKNOWN_ERROR;

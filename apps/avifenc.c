@@ -270,8 +270,8 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat 
 
 struct avifEncoderLayerConfig
 {
-    uint8_t layerCount;      // Image layers for color sub image; 0 to disable layer image (default).
-    uint8_t layerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
+    int extraLayerCount;      // Image layers for color sub image; 0 to disable layer image (default).
+    int extraLayerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
     avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
     avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
 };
@@ -322,7 +322,7 @@ enum avifProgressiveConfigValueType
 
 static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * config, const char * arg)
 {
-    uint8_t * currLayerCount = &config->layerCount;
+    int * currLayerCount = &config->extraLayerCount;
     avifLayerConfig * currLayers = config->layers;
     uint8_t currLayer = 0;
 
@@ -487,11 +487,11 @@ static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * confi
                             ++currLayer;
                         }
 
-                        *currLayerCount = currLayer;
+                        *currLayerCount = currLayer - 1;
                         if (*arg == ';') {
                             CHECK(currLayers == config->layers, "too many sub image configurations");
                             currLayers = config->layersAlpha;
-                            currLayerCount = &config->layerCountAlpha;
+                            currLayerCount = &config->extraLayerCountAlpha;
 
                             if (*(arg + 1) == '\0') {
                                 goto finish;
@@ -503,7 +503,7 @@ static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * confi
                             // reached \0
                             if (currLayers == config->layers) {
                                 memcpy(config->layersAlpha, config->layers, sizeof(config->layers));
-                                config->layerCountAlpha = config->layerCount;
+                                config->extraLayerCountAlpha = config->extraLayerCount;
                             }
 
                             goto finish;
@@ -1119,7 +1119,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (gridDimsCount == 0 && input.filesCount > 1 && (layerConfig.layerCount > 1 || layerConfig.layerCountAlpha > 1)) {
+    if (gridDimsCount == 0 && input.filesCount > 1 && (layerConfig.extraLayerCount > 0 || layerConfig.extraLayerCountAlpha > 0)) {
         fprintf(stderr, "Progressive animated AVIF currently not supported.\n");
         returnCode = 1;
         goto cleanup;
@@ -1398,7 +1398,7 @@ int main(int argc, char * argv[])
         lossyHint = " (Lossless)";
     }
     printf("AVIF to be written:%s\n", lossyHint);
-    avifBool progressive = layerConfig.layerCount > 1 || layerConfig.layerCountAlpha > 1;
+    avifBool progressive = layerConfig.extraLayerCount > 0 || layerConfig.extraLayerCountAlpha > 0;
     avifImageDump(gridCells ? gridCells[0] : image,
                   gridDims[0],
                   gridDims[1],
@@ -1424,8 +1424,8 @@ int main(int argc, char * argv[])
     encoder->minQuantizerAlpha = minQuantizerAlpha;
     encoder->maxQuantizerAlpha = maxQuantizerAlpha;
 
-    encoder->layerCount = layerConfig.layerCount;
-    encoder->layerCountAlpha = layerConfig.layerCountAlpha;
+    encoder->extraLayerCount = layerConfig.extraLayerCount;
+    encoder->extraLayerCountAlpha = layerConfig.extraLayerCountAlpha;
     memcpy(encoder->layers, layerConfig.layers, sizeof(encoder->layers));
     memcpy(encoder->layersAlpha, layerConfig.layersAlpha, sizeof(encoder->layersAlpha));
 

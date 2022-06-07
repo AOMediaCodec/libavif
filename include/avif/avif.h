@@ -154,7 +154,7 @@ typedef enum avifResult
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
     AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
     AVIF_RESULT_OUT_OF_MEMORY,
-    AVIF_RESULT_INVALID_LAYERS,
+    AVIF_RESULT_INVALID_LAYERS
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -1042,8 +1042,8 @@ typedef struct avifEncoder
     int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
     uint64_t timescale;   // timescale of the media (Hz)
 
-    uint8_t layerCount; // Image layers for color sub image; 0 to disable layer image (default).
-    uint8_t layerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
+    int extraLayerCount; // Extra layers for color sub image; 0 to disable layer image (default).
+    int extraLayerCountAlpha; // Extra layers for alpha sub image; 0 to disable layer image (default).
     avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
     avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
 
