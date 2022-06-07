@@ -37,7 +37,7 @@ static void syntax(void)
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
     printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
     printf("                        (JPEG only; not applicable to y4m)\n");
-    printf("    --index           : When decoding an image sequence or progressive image, specify which frame index to decode (Default: 0)\n");
+    printf("    --index I         : When decoding an image sequence or progressive image, specify which frame index to decode (Default: 0)\n");
     printf("    --progressive     : Enable progressive AVIF processing. If a progressive image is encountered and --progressive is passed,\n");
     printf("                        avifdec will use --index to choose which layer to decode (in progressive order).\n");
     printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");

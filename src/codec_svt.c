@@ -9,9 +9,27 @@
 
 #include <string.h>
 
+// The SVT_AV1_VERSION_MAJOR, SVT_AV1_VERSION_MINOR, SVT_AV1_VERSION_PATCHLEVEL, and
+// SVT_AV1_CHECK_VERSION macros were added in SVT-AV1 v0.9.0. Define these macros for older
+// versions of SVT-AV1.
+#ifndef SVT_AV1_VERSION_MAJOR
+#define SVT_AV1_VERSION_MAJOR SVT_VERSION_MAJOR
+#define SVT_AV1_VERSION_MINOR SVT_VERSION_MINOR
+#define SVT_AV1_VERSION_PATCHLEVEL SVT_VERSION_PATCHLEVEL
+// clang-format off
+#define SVT_AV1_CHECK_VERSION(major, minor, patch)                            \
+    (SVT_AV1_VERSION_MAJOR > (major) ||                                       \
+     (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR > (minor)) || \
+     (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR == (minor) && \
+      SVT_AV1_VERSION_PATCHLEVEL >= (patch)))
+// clang-format on
+#endif
+
+#if !SVT_AV1_CHECK_VERSION(0, 9, 0)
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
-#define SVT_FULL_VERSION STR(SVT_VERSION_MAJOR) "." STR(SVT_VERSION_MINOR) "." STR(SVT_VERSION_PATCHLEVEL)
+#define SVT_FULL_VERSION "v" STR(SVT_AV1_VERSION_MAJOR) "." STR(SVT_AV1_VERSION_MINOR) "." STR(SVT_AV1_VERSION_PATCHLEVEL)
+#endif
 
 typedef struct avifCodecInternal
 {
@@ -44,7 +62,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     int y_shift = 0;
     // EbColorRange svt_range;
     if (alpha) {
-        // svt_range = (image->alphaRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
+        // svt_range = EB_CR_FULL_RANGE;
         y_shift = 1;
     } else {
         // svt_range = (image->yuvRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
@@ -78,7 +96,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
+#if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;
+#endif
 
         // Follow comment in svt header: set if input is HDR10 BT2020 using SMPTE ST2084.
         svt_config->high_dynamic_range_input = (image->depth == 10 && image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020 &&
@@ -90,8 +110,12 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->logical_processors = encoder->maxThreads;
         svt_config->enable_adaptive_quantization = AVIF_FALSE;
         // disable 2-pass
+#if SVT_AV1_CHECK_VERSION(0, 9, 0)
+        svt_config->rc_stats_buffer = (SvtAv1FixedBuf) { NULL, 0 };
+#else
         svt_config->rc_firstpass_stats_out = AVIF_FALSE;
         svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf) { NULL, 0 };
+#endif
 
         if (alpha) {
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
@@ -102,12 +126,10 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
 
         if (encoder->tileRowsLog2 != 0) {
-            int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
-            svt_config->tile_rows = 1 << tileRowsLog2;
+            svt_config->tile_rows = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
         }
         if (encoder->tileColsLog2 != 0) {
-            int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
-            svt_config->tile_columns = 1 << tileColsLog2;
+            svt_config->tile_columns = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
         }
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             int speed = AVIF_CLAMP(encoder->speed, 0, 8);
@@ -202,7 +224,11 @@ static avifBool svtCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
 
 const char * avifCodecVersionSvt(void)
 {
+#if SVT_AV1_CHECK_VERSION(0, 9, 0)
+    return svt_av1_get_version();
+#else
     return SVT_FULL_VERSION;
+#endif
 }
 
 static void svtCodecDestroyInternal(avifCodec * codec)

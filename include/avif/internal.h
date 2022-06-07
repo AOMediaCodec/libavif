@@ -59,10 +59,11 @@ void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG
         uint32_t count;                                    \
         uint32_t capacity;                                 \
     } TYPENAME
-void avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
+avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
 uint32_t avifArrayPushIndex(void * arrayStruct);
 void * avifArrayPushPtr(void * arrayStruct);
 void avifArrayPush(void * arrayStruct, void * element);
+void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
 
 typedef struct avifAlphaParams
@@ -71,14 +72,12 @@ typedef struct avifAlphaParams
     uint32_t height;
 
     uint32_t srcDepth;
-    avifRange srcRange;
     uint8_t * srcPlane;
     uint32_t srcRowBytes;
     uint32_t srcOffsetBytes;
     uint32_t srcPixelBytes;
 
     uint32_t dstDepth;
-    avifRange dstRange;
     uint8_t * dstPlane;
     uint32_t dstRowBytes;
     uint32_t dstOffsetBytes;
@@ -126,10 +125,8 @@ typedef struct avifReformatState
     float rgbMaxChannelF;
     float biasY;   // minimum Y value
     float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
-    float biasA;   // minimum A value
     float rangeY;  // difference between max and min Y
     float rangeUV; // difference between max and min UV
-    float rangeA;  // difference between max and min A
 
     avifPixelFormatInfo formatInfo;
 
@@ -149,6 +146,12 @@ typedef struct avifReformatState
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
 
 // Returns:
+// * AVIF_RESULT_OK               - Converted successfully with libyuv.
+// * AVIF_RESULT_NOT_IMPLEMENTED  - The fast path for this conversion is not implemented with libyuv, use built-in conversion.
+// * AVIF_RESULT_INVALID_ARGUMENT - Return error to caller.
+avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb);
+
+// Returns:
 // * AVIF_RESULT_OK              - (Un)Premultiply successfully with libyuv
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in (Un)Premultiply
 // * [any other error]           - Return error to caller
@@ -160,6 +163,18 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
 // This scales the YUV/A planes in-place.
 avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
+// Grid AVIF images
+
+// Returns false if the tiles in a grid image violate any standards.
+// The image contains imageW*imageH pixels. The tiles are of tileW*tileH pixels each.
+AVIF_API avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
+                                             uint32_t imageW,
+                                             uint32_t imageH,
+                                             uint32_t tileW,
+                                             uint32_t tileH,
+                                             avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
@@ -234,6 +249,7 @@ typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
                                               struct avifDecoder * decoder,
                                               const avifDecodeSample * sample,
                                               avifBool alpha,
+                                              avifBool * isLimitedRangeAlpha,
                                               avifImage * image);
 // EncodeImage and EncodeFinish are not required to always emit a sample, but when all images are
 // encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.

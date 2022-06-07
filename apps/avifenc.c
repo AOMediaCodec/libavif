@@ -1052,6 +1052,8 @@ int main(int argc, char * argv[])
             maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;      // lossless
             codecChoice = AVIF_CODEC_CHOICE_AOM;              // rav1e doesn't support lossless transform yet:
                                                               // https://github.com/xiph/rav1e/issues/151
+                                                              // SVT-AV1 doesn't support lossless encoding yet:
+                                                              // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
             requestedRange = AVIF_RANGE_FULL;                 // avoid limited range
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
@@ -1147,7 +1149,7 @@ int main(int argc, char * argv[])
     if ((outputTiming.duration == 0) && (outputTiming.timescale == 0) && (firstSourceTiming.duration > 0) &&
         (firstSourceTiming.timescale > 0)) {
         // Set the default duration and timescale to the first image's timing.
-        memcpy(&outputTiming, &firstSourceTiming, sizeof(avifAppSourceTiming));
+        outputTiming = firstSourceTiming;
     } else {
         // Set output timing defaults to 30 fps
         if (outputTiming.duration == 0) {
@@ -1602,6 +1604,9 @@ cleanup:
         avifImageDestroy(nextImage);
     }
     avifRWDataFree(&raw);
+    avifRWDataFree(&exifOverride);
+    avifRWDataFree(&xmpOverride);
+    avifRWDataFree(&iccOverride);
     free((void *)input.files);
     return returnCode;
 }

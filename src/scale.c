@@ -22,6 +22,11 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wstrict-prototypes" // "this function declaration is not a prototype"
+// The newline at the end of libyuv/version.h was accidentally deleted in version 1792 and restored
+// in version 1813:
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3183182
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3527834
+#pragma clang diagnostic ignored "-Wnewline-eof"       // "no newline at end of file"
 #endif
 #include <libyuv.h>
 #if defined(__clang__)
@@ -70,19 +75,20 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     const uint32_t srcHeight = image->height;
     image->height = dstHeight;
 
-    if (srcYUVPlanes[0]) {
-        const int fixedPointDivWidth = (int)(((int64_t)(srcWidth) << 16) / dstWidth);
-        const int64_t maxFixedValueWidth = (int64_t)fixedPointDivWidth * (dstWidth - 1);
-        if (maxFixedValueWidth > INT_MAX) {
+    if (srcYUVPlanes[0] || srcAlphaPlane) {
+        // A simple conservative check to avoid integer overflows in libyuv's ScalePlane() and
+        // ScalePlane_12() functions.
+        if (srcWidth > 16384) {
             avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
             return AVIF_FALSE;
         }
-        const int fixedPointDivHeight = (int)(((int64_t)(srcHeight) << 16) / dstHeight);
-        const int64_t maxFixedValueHeight = (int64_t)fixedPointDivHeight * (dstHeight - 1);
-        if (maxFixedValueHeight > INT_MAX) {
+        if (srcHeight > 16384) {
             avifDiagnosticsPrintf(diag, "avifImageScale requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
             return AVIF_FALSE;
         }
+    }
+
+    if (srcYUVPlanes[0]) {
         avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
 
         avifPixelFormatInfo formatInfo;
@@ -106,7 +112,11 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
                 const uint32_t srcStride = srcYUVRowBytes[i] / 2;
                 uint16_t * const dstPlane = (uint16_t *)image->yuvPlanes[i];
                 const uint32_t dstStride = image->yuvRowBytes[i] / 2;
+#if LIBYUV_VERSION >= 1774
                 ScalePlane_12(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
+#else
+                ScalePlane_16(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
+#endif
             } else {
                 uint8_t * const srcPlane = srcYUVPlanes[i];
                 const uint32_t srcStride = srcYUVRowBytes[i];
@@ -122,18 +132,6 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     }
 
     if (srcAlphaPlane) {
-        const int fixedPointDivWidth = (int)(((int64_t)(srcWidth) << 16) / dstWidth);
-        const int64_t maxFixedValueWidth = (int64_t)fixedPointDivWidth * (dstWidth - 1);
-        if (maxFixedValueWidth > INT_MAX) {
-            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
-            return AVIF_FALSE;
-        }
-        const int fixedPointDivHeight = (int)(((int64_t)(srcHeight) << 16) / dstHeight);
-        const int64_t maxFixedValueHeight = (int64_t)fixedPointDivHeight * (dstHeight - 1);
-        if (maxFixedValueHeight > INT_MAX) {
-            avifDiagnosticsPrintf(diag, "avifImageScale requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
-            return AVIF_FALSE;
-        }
         avifImageAllocatePlanes(image, AVIF_PLANES_A);
 
         if (image->depth > 8) {
@@ -141,7 +139,11 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
             const uint32_t srcStride = srcAlphaRowBytes / 2;
             uint16_t * const dstPlane = (uint16_t *)image->alphaPlane;
             const uint32_t dstStride = image->alphaRowBytes / 2;
+#if LIBYUV_VERSION >= 1774
             ScalePlane_12(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
+#else
+            ScalePlane_16(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
+#endif
         } else {
             uint8_t * const srcPlane = srcAlphaPlane;
             const uint32_t srcStride = srcAlphaRowBytes;

@@ -53,6 +53,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
                                        struct avifDecoder * decoder,
                                        const avifDecodeSample * sample,
                                        avifBool alpha,
+                                       avifBool * isLimitedRangeAlpha,
                                        avifImage * image)
 {
     if (codec->internal->dav1dContext == NULL) {
@@ -63,7 +64,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
 #else
         codec->internal->dav1dSettings.n_frame_threads = 1;
         codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
-#endif  // DAV1D_API_VERSION_MAJOR >= 6
+#endif // DAV1D_API_VERSION_MAJOR >= 6
         // Set a maximum frame size limit to avoid OOM'ing fuzzers. In 32-bit builds, if
         // frame_size_limit > 8192 * 8192, dav1d reduces frame_size_limit to 8192 * 8192 and logs
         // a message, so we set frame_size_limit to at most 8192 * 8192 to avoid the dav1d_log
@@ -204,7 +205,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
-        image->alphaRange = codec->internal->colorRange;
+        *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
     return AVIF_TRUE;

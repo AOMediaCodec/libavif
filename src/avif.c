@@ -93,6 +93,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_WAITING_ON_IO:                 return "Waiting on IO";
         case AVIF_RESULT_INVALID_ARGUMENT:              return "Invalid argument";
         case AVIF_RESULT_NOT_IMPLEMENTED:               return "Not implemented";
+        case AVIF_RESULT_OUT_OF_MEMORY:                 return "Out of memory";
         case AVIF_RESULT_INVALID_LAYERS:                return "Invalid layer image";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
@@ -116,12 +117,10 @@ const char * avifProgressiveStateToString(avifProgressiveState progressiveState)
     return "Unknown";
 }
 
-// This function assumes nothing in this struct needs to be freed; use avifImageClear() externally
 static void avifImageSetDefaults(avifImage * image)
 {
     memset(image, 0, sizeof(avifImage));
     image->yuvRange = AVIF_RANGE_FULL;
-    image->alphaRange = AVIF_RANGE_FULL;
     image->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
@@ -143,17 +142,15 @@ avifImage * avifImageCreateEmpty(void)
     return avifImageCreate(0, 0, 0, AVIF_PIXEL_FORMAT_NONE);
 }
 
-void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+// Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
+static void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
 {
-    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
-
     dstImage->width = srcImage->width;
     dstImage->height = srcImage->height;
     dstImage->depth = srcImage->depth;
     dstImage->yuvFormat = srcImage->yuvFormat;
     dstImage->yuvRange = srcImage->yuvRange;
     dstImage->yuvChromaSamplePosition = srcImage->yuvChromaSamplePosition;
-    dstImage->alphaRange = srcImage->alphaRange;
     dstImage->alphaPremultiplied = srcImage->alphaPremultiplied;
 
     dstImage->colorPrimaries = srcImage->colorPrimaries;
@@ -161,10 +158,16 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesF
     dstImage->matrixCoefficients = srcImage->matrixCoefficients;
 
     dstImage->transformFlags = srcImage->transformFlags;
-    memcpy(&dstImage->pasp, &srcImage->pasp, sizeof(dstImage->pasp));
-    memcpy(&dstImage->clap, &srcImage->clap, sizeof(dstImage->clap));
-    memcpy(&dstImage->irot, &srcImage->irot, sizeof(dstImage->irot));
-    memcpy(&dstImage->imir, &srcImage->imir, sizeof(dstImage->imir));
+    dstImage->pasp = srcImage->pasp;
+    dstImage->clap = srcImage->clap;
+    dstImage->irot = srcImage->irot;
+    dstImage->imir = srcImage->imir;
+}
+
+void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+{
+    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+    avifImageCopyNoAlloc(dstImage, srcImage);
 
     avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
 
@@ -205,6 +208,37 @@ void avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesF
             memcpy(dstAlphaRow, srcAlphaRow, dstImage->alphaRowBytes);
         }
     }
+}
+
+avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect)
+{
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
+    if ((rect->width > srcImage->width) || (rect->height > srcImage->height) || (rect->x > (srcImage->width - rect->width)) ||
+        (rect->y > (srcImage->height - rect->height)) || (rect->x & formatInfo.chromaShiftX) || (rect->y & formatInfo.chromaShiftY)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL); // dstImage->imageOwnsYUVPlanes and dstImage->imageOwnsAlphaPlane set to AVIF_FALSE.
+    avifImageCopyNoAlloc(dstImage, srcImage);
+    dstImage->width = rect->width;
+    dstImage->height = rect->height;
+    const uint32_t pixelBytes = (srcImage->depth > 8) ? 2 : 1;
+    if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
+        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+            if (srcImage->yuvRowBytes[yuvPlane]) {
+                const size_t planeX = (yuvPlane == AVIF_CHAN_Y) ? rect->x : (rect->x >> formatInfo.chromaShiftX);
+                const size_t planeY = (yuvPlane == AVIF_CHAN_Y) ? rect->y : (rect->y >> formatInfo.chromaShiftY);
+                dstImage->yuvPlanes[yuvPlane] =
+                    srcImage->yuvPlanes[yuvPlane] + planeY * srcImage->yuvRowBytes[yuvPlane] + planeX * pixelBytes;
+                dstImage->yuvRowBytes[yuvPlane] = srcImage->yuvRowBytes[yuvPlane];
+            }
+        }
+    }
+    if (srcImage->alphaPlane) {
+        dstImage->alphaPlane = srcImage->alphaPlane + (size_t)rect->y * srcImage->alphaRowBytes + (size_t)rect->x * pixelBytes;
+        dstImage->alphaRowBytes = srcImage->alphaRowBytes;
+    }
+    return AVIF_RESULT_OK;
 }
 
 void avifImageDestroy(avifImage * image)
@@ -379,6 +413,7 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
     rgb->alphaPremultiplied = AVIF_FALSE; // Most expect RGBA output to *not* be premultiplied. Those that do can opt-in by
                                           // setting this to match image->alphaPremultiplied or forcing this to true
                                           // after calling avifRGBImageSetDefaults(),
+    rgb->isFloat = AVIF_FALSE;
 }
 
 void avifRGBImageAllocatePixels(avifRGBImage * rgb)
@@ -721,6 +756,51 @@ avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
 }
 
 // ---------------------------------------------------------------------------
+
+avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, uint32_t imageH, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag)
+{
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - the tile_width shall be greater than or equal to 64, and should be a multiple of 64
+    //   - the tile_height shall be greater than or equal to 64, and should be a multiple of 64
+    // The "should" part is ignored here.
+    if ((tileW < 64) || (tileH < 64)) {
+        avifDiagnosticsPrintf(diag,
+                              "Grid image tile width (%u) or height (%u) cannot be smaller than 64. "
+                              "See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
+                              tileW,
+                              tileH);
+        return AVIF_FALSE;
+    }
+
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - when the images are in the 4:2:2 chroma sampling format the horizontal tile offsets and widths,
+    //     and the output width, shall be even numbers;
+    //   - when the images are in the 4:2:0 chroma sampling format both the horizontal and vertical tile
+    //     offsets and widths, and the output width and height, shall be even numbers.
+    // If the rules above were not respected, the following problematic situation may happen:
+    //   Some 4:2:0 image is 650 pixels wide and has 10 cell columns, each being 65 pixels wide.
+    //   The chroma plane of the whole image is 325 pixels wide. The chroma plane of each cell is 33 pixels wide.
+    //   33*10 - 325 gives 5 extra pixels with no specified destination in the reconstructed image.
+
+    // Tile offsets are not enforced since they depend on tile size (ISO/IEC 23008-12:2017, Section 6.6.2.3.1):
+    //   The reconstructed image is formed by tiling the input images into a grid [...] without gap or overlap
+    if ((((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) &&
+         (((imageW % 2) != 0) || ((tileW % 2) != 0))) ||
+        ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) && (((imageH % 2) != 0) || ((tileH % 2) != 0)))) {
+        avifDiagnosticsPrintf(diag,
+                              "Grid image width (%u) or height (%u) or tile width (%u) or height (%u) "
+                              "shall be even if chroma is subsampled in that dimension. "
+                              "See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2",
+                              imageW,
+                              imageH,
+                              tileW,
+                              tileH);
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
+// ---------------------------------------------------------------------------
 // avifCodecSpecificOption
 
 static char * avifStrdup(const char * str)
@@ -734,8 +814,14 @@ static char * avifStrdup(const char * str)
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void)
 {
     avifCodecSpecificOptions * ava = avifAlloc(sizeof(avifCodecSpecificOptions));
-    avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4);
+    if (!avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4)) {
+        goto error;
+    }
     return ava;
+
+error:
+    avifFree(ava);
+    return NULL;
 }
 
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)

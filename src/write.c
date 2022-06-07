@@ -46,8 +46,14 @@ avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void)
 {
     avifCodecEncodeOutput * encodeOutput = (avifCodecEncodeOutput *)avifAlloc(sizeof(avifCodecEncodeOutput));
     memset(encodeOutput, 0, sizeof(avifCodecEncodeOutput));
-    avifArrayCreate(&encodeOutput->samples, sizeof(avifEncodeSample), 1);
+    if (!avifArrayCreate(&encodeOutput->samples, sizeof(avifEncodeSample), 1)) {
+        goto error;
+    }
     return encodeOutput;
+
+error:
+    avifCodecEncodeOutputDestroy(encodeOutput);
+    return NULL;
 }
 
 void avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync)
@@ -80,6 +86,7 @@ typedef struct avifEncoderItem
     avifCodecConfigurationBox av1C;       // Harvested in avifEncoderFinish(), if encodeOutput has samples
     uint32_t cellIndex;                   // Which row-major cell index corresponds to this item. ignored on non-av01 types
     avifBool alpha;
+    avifBool hiddenImage; // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
 
     const char * infeName;
     size_t infeNameSize;
@@ -135,14 +142,24 @@ typedef struct avifEncoderData
     avifBool alphaPresent;
 } avifEncoderData;
 
+static void avifEncoderDataDestroy(avifEncoderData * data);
+
 static avifEncoderData * avifEncoderDataCreate()
 {
     avifEncoderData * data = (avifEncoderData *)avifAlloc(sizeof(avifEncoderData));
     memset(data, 0, sizeof(avifEncoderData));
     data->imageMetadata = avifImageCreateEmpty();
-    avifArrayCreate(&data->items, sizeof(avifEncoderItem), 8);
-    avifArrayCreate(&data->frames, sizeof(avifEncoderFrame), 1);
+    if (!avifArrayCreate(&data->items, sizeof(avifEncoderItem), 8)) {
+        goto error;
+    }
+    if (!avifArrayCreate(&data->frames, sizeof(avifEncoderFrame), 1)) {
+        goto error;
+    }
     return data;
+
+error:
+    avifEncoderDataDestroy(data);
+    return NULL;
 }
 
 static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const char * type, const char * infeName, size_t infeNameSize, uint32_t cellIndex)
@@ -155,8 +172,16 @@ static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const
     item->infeNameSize = infeNameSize;
     item->encodeOutput = avifCodecEncodeOutputCreate();
     item->cellIndex = cellIndex;
-    avifArrayCreate(&item->mdatFixups, sizeof(avifOffsetFixup), 4);
+    if (!avifArrayCreate(&item->mdatFixups, sizeof(avifOffsetFixup), 4)) {
+        goto error;
+    }
     return item;
+
+error:
+    avifCodecEncodeOutputDestroy(item->encodeOutput);
+    --data->lastItemID;
+    avifArrayPop(&data->items);
+    return NULL;
 }
 
 static avifEncoderItem * avifEncoderDataFindItemByID(avifEncoderData * data, uint16_t id)
@@ -212,13 +237,21 @@ typedef struct avifItemPropertyDedup
     uint8_t nextIndex; // 1-indexed, incremented every time another unique property is finished
 } avifItemPropertyDedup;
 
+static void avifItemPropertyDedupDestroy(avifItemPropertyDedup * dedup);
+
 static avifItemPropertyDedup * avifItemPropertyDedupCreate(void)
 {
     avifItemPropertyDedup * dedup = (avifItemPropertyDedup *)avifAlloc(sizeof(avifItemPropertyDedup));
     memset(dedup, 0, sizeof(avifItemPropertyDedup));
-    avifArrayCreate(&dedup->properties, sizeof(avifItemProperty), 8);
+    if (!avifArrayCreate(&dedup->properties, sizeof(avifItemProperty), 8)) {
+        goto error;
+    }
     avifRWDataRealloc(&dedup->buffer, 2048); // This will resize automatically (if necessary)
     return dedup;
+
+error:
+    avifItemPropertyDedupDestroy(dedup);
+    return NULL;
 }
 
 static void avifItemPropertyDedupDestroy(avifItemPropertyDedup * dedup)
@@ -469,6 +502,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
             continue;
         }
 
+        assert(!item->hiddenImage);
         avifBoxMarker infe = avifRWStreamWriteFullBox(s, "infe", AVIF_BOX_SIZE_TBD, 2, 0);
         avifRWStreamWriteU16(s, item->id);                             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(s, 0);                                    // unsigned int(16) item_protection_index;
@@ -519,6 +553,60 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
     avifRWStreamFinishWrite(&s);
 }
 
+static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
+{
+    // Validate Exif payload (if any) and find TIFF header offset
+    uint32_t exifTiffHeaderOffset = 0;
+    if (exif->size < 4) {
+        // Can't even fit the TIFF header, something is wrong
+        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+    }
+
+    const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
+    const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
+    for (; exifTiffHeaderOffset < (exif->size - 4); ++exifTiffHeaderOffset) {
+        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
+            break;
+        }
+        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
+            break;
+        }
+    }
+
+    if (exifTiffHeaderOffset >= exif->size - 4) {
+        // Couldn't find the TIFF header
+        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+    }
+
+    avifEncoderItem * exifItem = avifEncoderDataCreateItem(data, "Exif", "Exif", 5, 0);
+    if (!exifItem) {
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    exifItem->irefToID = data->primaryItemID;
+    exifItem->irefType = "cdsc";
+
+    avifRWDataRealloc(&exifItem->metadataPayload, sizeof(uint32_t) + exif->size);
+    exifTiffHeaderOffset = avifHTONL(exifTiffHeaderOffset);
+    memcpy(exifItem->metadataPayload.data, &exifTiffHeaderOffset, sizeof(uint32_t));
+    memcpy(exifItem->metadataPayload.data + sizeof(uint32_t), exif->data, exif->size);
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avifRWData * xmp)
+{
+    avifEncoderItem * xmpItem = avifEncoderDataCreateItem(data, "mime", "XMP", 4, 0);
+    if (!xmpItem) {
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    xmpItem->irefToID = data->primaryItemID;
+    xmpItem->irefType = "cdsc";
+
+    xmpItem->infeContentType = xmpContentType;
+    xmpItem->infeContentTypeSize = xmpContentTypeSize;
+    avifRWDataSet(&xmpItem->metadataPayload, xmp->data, xmp->size);
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -558,14 +646,27 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    if ((cellCount > 1) && ((firstCell->width < 64) || (firstCell->height < 64))) {
+    if ((cellCount > 1) && !avifAreGridDimensionsValid(firstCell->yuvFormat,
+                                                       gridCols * firstCell->width,
+                                                       gridRows * firstCell->height,
+                                                       firstCell->width,
+                                                       firstCell->height,
+                                                       &encoder->diag)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
-        if ((cellImage->depth != firstCell->depth) || (cellImage->width != firstCell->width) ||
-            (cellImage->height != firstCell->height) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane) ||
+        // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
+        //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
+        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
+        //   same decoder configuration (see 7.3.6.2).
+        if ((cellImage->width != firstCell->width) || (cellImage->height != firstCell->height) ||
+            (cellImage->depth != firstCell->depth) || (cellImage->yuvFormat != firstCell->yuvFormat) ||
+            (cellImage->yuvRange != firstCell->yuvRange) || (cellImage->colorPrimaries != firstCell->colorPrimaries) ||
+            (cellImage->transferCharacteristics != firstCell->transferCharacteristics) ||
+            (cellImage->matrixCoefficients != firstCell->matrixCoefficients) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane) ||
             (cellImage->alphaPremultiplied != firstCell->alphaPremultiplied)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
@@ -632,6 +733,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
             if (cellCount > 1) {
                 item->dimgFromID = gridColorID;
+                item->hiddenImage = AVIF_TRUE;
             } else {
                 encoder->data->primaryItemID = item->id;
             }
@@ -690,6 +792,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
                 if (cellCount > 1) {
                     item->dimgFromID = gridAlphaID;
+                    item->hiddenImage = AVIF_TRUE;
                 } else {
                     item->irefToID = encoder->data->primaryItemID;
                     item->irefType = "auxl";
@@ -708,47 +811,17 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Create metadata items (Exif, XMP)
 
         if (firstCell->exif.size > 0) {
-            // Validate Exif payload (if any) and find TIFF header offset
-            uint32_t exifTiffHeaderOffset = 0;
-            if (firstCell->exif.size < 4) {
-                // Can't even fit the TIFF header, something is wrong
-                return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+            const avifResult result = avifEncoderDataCreateExifItem(encoder->data, &firstCell->exif);
+            if (result != AVIF_RESULT_OK) {
+                return result;
             }
-
-            const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
-            const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
-            for (; exifTiffHeaderOffset < (firstCell->exif.size - 4); ++exifTiffHeaderOffset) {
-                if (!memcmp(&firstCell->exif.data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
-                    break;
-                }
-                if (!memcmp(&firstCell->exif.data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
-                    break;
-                }
-            }
-
-            if (exifTiffHeaderOffset >= firstCell->exif.size - 4) {
-                // Couldn't find the TIFF header
-                return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
-            }
-
-            avifEncoderItem * exifItem = avifEncoderDataCreateItem(encoder->data, "Exif", "Exif", 5, 0);
-            exifItem->irefToID = encoder->data->primaryItemID;
-            exifItem->irefType = "cdsc";
-
-            avifRWDataRealloc(&exifItem->metadataPayload, sizeof(uint32_t) + firstCell->exif.size);
-            exifTiffHeaderOffset = avifHTONL(exifTiffHeaderOffset);
-            memcpy(exifItem->metadataPayload.data, &exifTiffHeaderOffset, sizeof(uint32_t));
-            memcpy(exifItem->metadataPayload.data + sizeof(uint32_t), firstCell->exif.data, firstCell->exif.size);
         }
 
         if (firstCell->xmp.size > 0) {
-            avifEncoderItem * xmpItem = avifEncoderDataCreateItem(encoder->data, "mime", "XMP", 4, 0);
-            xmpItem->irefToID = encoder->data->primaryItemID;
-            xmpItem->irefType = "cdsc";
-
-            xmpItem->infeContentType = xmpContentType;
-            xmpItem->infeContentTypeSize = xmpContentTypeSize;
-            avifRWDataSet(&xmpItem->metadataPayload, firstCell->xmp.data, firstCell->xmp.size);
+            const avifResult result = avifEncoderDataCreateXMPItem(encoder->data, &firstCell->xmp);
+            if (result != AVIF_RESULT_OK) {
+                return result;
+            }
         }
     } else {
         // Another frame in an image sequence
@@ -888,7 +961,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             const avifEncodeSample * firstSample = &item->encodeOutput->samples.sample[0];
             avifSequenceHeader sequenceHeader;
             if (avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data)) {
-                memcpy(&item->av1C, &sequenceHeader.av1C, sizeof(avifCodecConfigurationBox));
+                item->av1C = sequenceHeader.av1C;
             } else {
                 // This must be an invalid AV1 payload
                 return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
@@ -923,6 +996,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     if (encoder->data->frames.count > 1) {                                 //
         avifRWStreamWriteChars(&s, "avis", 4);                             // ... compatible_brands[]
         avifRWStreamWriteChars(&s, "msf1", 4);                             // ... compatible_brands[]
+        avifRWStreamWriteChars(&s, "iso8", 4);                             // ... compatible_brands[]
     }                                                                      //
     avifRWStreamWriteChars(&s, "mif1", 4);                                 // ... compatible_brands[]
     avifRWStreamWriteChars(&s, "miaf", 4);                                 // ... compatible_brands[]
@@ -1018,7 +1092,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
 
-        avifBoxMarker infe = avifRWStreamWriteFullBox(&s, "infe", AVIF_BOX_SIZE_TBD, 2, 0);
+        uint32_t flags = item->hiddenImage ? 1 : 0;
+        avifBoxMarker infe = avifRWStreamWriteFullBox(&s, "infe", AVIF_BOX_SIZE_TBD, 2, flags);
         avifRWStreamWriteU16(&s, item->id);                             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(&s, 0);                                    // unsigned int(16) item_protection_index;
         avifRWStreamWrite(&s, item->type, 4);                           // unsigned int(32) item_type;
@@ -1105,7 +1180,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
                 if (item->dimgFromID == dedupItem->dimgFromID && dedupItem->layerCount < 2) {
                     // We've already written dedup's items out. Steal their ipma indices and move on!
-                    memcpy(&item->ipma, &dedupItem->ipma, sizeof(struct ipmaArray));
+                    item->ipma = dedupItem->ipma;
                     foundPreviousCell = AVIF_TRUE;
                     break;
                 }
@@ -1236,7 +1311,19 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write tracks (if an image sequence)
 
     if (encoder->data->frames.count > 1) {
-        static const uint32_t unityMatrix[9] = { 0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000 };
+        static const uint8_t unityMatrix[9][4] = {
+            /* clang-format off */
+            { 0x00, 0x01, 0x00, 0x00 },
+            { 0 },
+            { 0 },
+            { 0 },
+            { 0x00, 0x01, 0x00, 0x00 },
+            { 0 },
+            { 0 },
+            { 0 },
+            { 0x40, 0x00, 0x00, 0x00 }
+            /* clang-format on */
+        };
 
         uint64_t durationInTimescales = 0;
         for (uint32_t frameIndex = 0; frameIndex < encoder->data->frames.count; ++frameIndex) {
@@ -1422,6 +1509,15 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             if (!item->alpha) {
                 avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL);
             }
+
+            avifBoxMarker ccst = avifRWStreamWriteFullBox(&s, "ccst", AVIF_BOX_SIZE_TBD, 0, 0);
+            const uint8_t ccstValue = (0 << 7) | // unsigned int(1) all_ref_pics_intra;
+                                      (1 << 6) | // unsigned int(1) intra_pred_used;
+                                      (15 << 2); // unsigned int(4) max_ref_per_pic;
+            avifRWStreamWriteU8(&s, ccstValue);
+            avifRWStreamWriteZeros(&s, 3); // unsigned int(26) reserved; (two zero bits are written along with ccstValue).
+            avifRWStreamFinishBox(&s, ccst);
+
             avifRWStreamFinishBox(&s, av01);
             avifRWStreamFinishBox(&s, stsd);
 

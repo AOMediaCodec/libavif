@@ -340,7 +340,6 @@ int main(int argc, char * argv[])
                         avifImageFreePlanes(image, AVIF_PLANES_ALL);
                         image->depth = yuvDepth;
                         image->yuvRange = yuvRange;
-                        image->alphaRange = AVIF_RANGE_FULL;
                         avifImageRGBToYUV(image, &srcRGB);
 
                         avifRGBImage intermediateRGB;
