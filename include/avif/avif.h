@@ -827,6 +827,7 @@ typedef struct avifDecoder
     // enough input bytes to decode all of that frame. If this is true, avifDecoder will decode each
     // subimage or grid cell as soon as possible. The benefits are: grid images may be partially
     // displayed before being entirely available, and the overall decoding may finish earlier.
+    // Must be set before calling avifDecoderNextImage() or avifDecoderNthImage().
     // WARNING: Experimental feature.
     avifBool allowIncremental;
 
@@ -959,9 +960,9 @@ AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint3
 // function can be called next to retrieve the number of top rows that can be immediately accessed
 // from the luma plane of decoder->image, and alpha if any. The corresponding rows from the chroma planes,
 // if any, can also be accessed (half rounded up if subsampled, same number of rows otherwise).
-// decoder->allowIncremental must be set to true.
-// Returns decoder->image->height when the last call to avifDecoderNextImage() or avifDecoderNthImage()
-// returned AVIF_RESULT_OK. Returns 0 in all other cases.
+// decoder->allowIncremental must be set to true before calling avifDecoderNextImage() or
+// avifDecoderNthImage(). Returns decoder->image->height when the last call to avifDecoderNextImage() or
+// avifDecoderNthImage() returned AVIF_RESULT_OK. Returns 0 in all other cases.
 // WARNING: Experimental feature.
 AVIF_API uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder);
 
