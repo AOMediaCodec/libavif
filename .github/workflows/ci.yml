@@ -53,7 +53,7 @@ jobs:
       working-directory: ./ext
       run: bash libyuv.cmd
     - name: Build GoogleTest
-      # TODO: if: steps.cache-ext.outputs.cache-hit != 'true'
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
       run: bash googletest.cmd
