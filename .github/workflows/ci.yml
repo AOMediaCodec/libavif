@@ -21,6 +21,12 @@ jobs:
       with:
         path: ext
         key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.12
+      with:
+        cmake-version: '3.13.x'
+    - name: Print cmake version
+      run: cmake --version
     - uses: ilammy/setup-nasm@v1
       with:
         version: 2.15.05
