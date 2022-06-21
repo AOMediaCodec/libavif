@@ -5,26 +5,15 @@
 # at once with CMake's ctest command line tool from the build folder.
 enable_testing()
 
+################################################################################
+# General tests and tools
+
 add_executable(aviftest aviftest.c)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
 add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
-
-add_executable(avifincrtest avifincrtest.c avifincrtest_helpers.c)
-if(AVIF_LOCAL_LIBGAV1)
-    set_target_properties(avifincrtest PROPERTIES LINKER_LANGUAGE "CXX")
-endif()
-target_link_libraries(avifincrtest avif ${AVIF_PLATFORM_LIBRARIES})
-add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/sofa_grid1x5_420.avif)
-
-add_executable(avifmetadatatest avifmetadatatest.c)
-if(AVIF_LOCAL_LIBGAV1)
-    set_target_properties(avifmetadatatest PROPERTIES LINKER_LANGUAGE "CXX")
-endif()
-target_link_libraries(avifmetadatatest avif ${AVIF_PLATFORM_LIBRARIES})
-add_test(NAME avifmetadatatest COMMAND avifmetadatatest)
 
 add_executable(avifyuv avifyuv.c)
 if(AVIF_LOCAL_LIBGAV1)
@@ -34,6 +23,23 @@ target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
 foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2 minutes each so they are disabled.
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
+
+################################################################################
+# Unit tests
+
+add_executable(avifincrtest unit/avifincrtest.c unit/avifincrtest_helpers.c)
+if(AVIF_LOCAL_LIBGAV1)
+    set_target_properties(avifincrtest PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
+target_link_libraries(avifincrtest avif ${AVIF_PLATFORM_LIBRARIES})
+add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/sofa_grid1x5_420.avif)
+
+add_executable(avifmetadatatest unit/avifmetadatatest.c)
+if(AVIF_LOCAL_LIBGAV1)
+    set_target_properties(avifmetadatatest PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
+target_link_libraries(avifmetadatatest avif ${AVIF_PLATFORM_LIBRARIES})
+add_test(NAME avifmetadatatest COMMAND avifmetadatatest)
 
 if(AVIF_ENABLE_GTEST)
     enable_language(CXX)
@@ -56,12 +62,12 @@ if(AVIF_ENABLE_GTEST)
         find_package(GTest REQUIRED)
     endif()
 
-    add_executable(avifgridapitest avifgridapitest.cc aviftest_helpers.cc)
+    add_executable(avifgridapitest unit/avifgridapitest.cc unit/aviftest_helpers.cc)
     target_link_libraries(avifgridapitest avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifgridapitest COMMAND avifgridapitest)
 
-    add_executable(avify4mtest avify4mtest.cc aviftest_helpers.cc)
+    add_executable(avify4mtest unit/avify4mtest.cc unit/aviftest_helpers.cc)
     target_link_libraries(avify4mtest avif avif_apps ${AVIF_PLATFORM_LIBRARIES} ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avify4mtest COMMAND avify4mtest)
