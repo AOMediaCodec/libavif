@@ -27,11 +27,14 @@ endforeach()
 ################################################################################
 # Unit tests
 
-add_executable(avifincrtest unit/avifincrtest.c unit/avifincrtest_helpers.c)
+add_library(avifincrtest_helpers OBJECT unit/avifincrtest_helpers.c)
+target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES})
+
+add_executable(avifincrtest unit/avifincrtest.c)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(avifincrtest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(avifincrtest avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(avifincrtest avifincrtest_helpers)
 add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/sofa_grid1x5_420.avif)
 
 add_executable(avifmetadatatest unit/avifmetadatatest.c)
@@ -62,13 +65,16 @@ if(AVIF_ENABLE_GTEST)
         find_package(GTest REQUIRED)
     endif()
 
-    add_executable(avifgridapitest unit/avifgridapitest.cc unit/aviftest_helpers.cc)
-    target_link_libraries(avifgridapitest avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_BOTH_LIBRARIES})
+    add_library(aviftest_helpers OBJECT unit/aviftest_helpers.cc)
+    target_link_libraries(aviftest_helpers avif ${AVIF_PLATFORM_LIBRARIES})
+
+    add_executable(avifgridapitest unit/avifgridapitest.cc)
+    target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifgridapitest COMMAND avifgridapitest)
 
-    add_executable(avify4mtest unit/avify4mtest.cc unit/aviftest_helpers.cc)
-    target_link_libraries(avify4mtest avif avif_apps ${AVIF_PLATFORM_LIBRARIES} ${GTEST_BOTH_LIBRARIES})
+    add_executable(avify4mtest unit/avify4mtest.cc)
+    target_link_libraries(avify4mtest aviftest_helpers avif_apps ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avify4mtest COMMAND avify4mtest)
 else()
