@@ -52,7 +52,7 @@ endif()
 target_link_libraries(avifincrtest avifincrtest_helpers)
 add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/sofa_grid1x5_420.avif)
 
-add_executable(avifmetadatatest gtest/avifmetadatatest.c)
+add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(avifmetadatatest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
