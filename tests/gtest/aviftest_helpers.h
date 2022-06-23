@@ -54,7 +54,8 @@ void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
                       uint32_t value);
 
 // Returns true if both images have the same features and pixel values.
-bool AreImagesEqual(const avifImage& image1, const avifImage& image2);
+bool AreImagesEqual(const avifImage &image1, const avifImage &image2,
+                    bool ignore_alpha = false);
 
 //------------------------------------------------------------------------------
 

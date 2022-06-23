@@ -46,6 +46,12 @@ typedef enum avifAppFileFormat
 
 avifAppFileFormat avifGuessFileFormat(const char * filename);
 
+// Reads an image from a file.
+avifAppFileFormat avifReadImage(const char * filename,
+                                avifPixelFormat requestedFormat, int requestedDepth,
+                                avifImage *image, uint32_t *outDepth);
+
+
 // This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
 // into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
 // should be ignored. This structure is used to override the timing defaults in avifenc when the
