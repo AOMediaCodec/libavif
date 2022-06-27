@@ -78,7 +78,7 @@ sources from the top-level folder:
 clang-format -style=file:.clang-format -i \
   apps/*.c apps/shared/avifjpeg.* apps/shared/avifpng.* \
   apps/shared/avifutil.* apps/shared/y4m.* examples/*.c \
-  include/avif/*.h src/*.c tests/*.h tests/*.c tests/*.cc
+  include/avif/*.h src/*.c tests/*.c tests/gtest/*.h tests/gtest/*.cc
 ```
 
 Use [cmake-format](https://github.com/cheshirekow/cmake_format) to format the
