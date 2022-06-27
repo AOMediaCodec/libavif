@@ -14,10 +14,19 @@ namespace testutil
 namespace
 {
 
-constexpr int AVIF_CHAN_A = AVIF_CHAN_V + 1;
 constexpr int AVIF_CHANS[] = { AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A };
 
 } // namespace
+
+//------------------------------------------------------------------------------
+
+avifRGBImageCleaner::avifRGBImageCleaner(const avifImage * yuv, int rgbDepth, avifRGBFormat rgbFormat)
+{
+    avifRGBImageSetDefaults(this, yuv);
+    depth = rgbDepth;
+    format = rgbFormat;
+    avifRGBImageAllocatePixels(this);
+}
 
 //------------------------------------------------------------------------------
 
@@ -87,6 +96,28 @@ void fillImageGradient(avifImage * image)
             row += rowBytes;
         }
     }
+}
+
+namespace
+{
+template <typename PixelType>
+void fillImageChannel(avifRGBImage * image, avifChannelIndex channel, uint32_t value)
+{
+    const uint32_t channelCount = avifRGBFormatChannelCount(image->format);
+    const uint32_t channelOffset = avifRGBFormatChannelOffset(image->format, channel);
+    for (uint32_t y = 0; y < image->height; ++y) {
+        PixelType * pixel = reinterpret_cast<PixelType *>(image->pixels + image->rowBytes * y);
+        for (uint32_t x = 0; x < image->width; ++x) {
+            pixel[channelOffset] = static_cast<PixelType>(value);
+            pixel += channelCount;
+        }
+    }
+}
+} // namespace
+
+void fillImageChannel(avifRGBImage * image, avifChannelIndex channel, uint32_t value)
+{
+    (image->depth <= 8) ? fillImageChannel<uint8_t>(image, channel, value) : fillImageChannel<uint16_t>(image, channel, value);
 }
 
 //------------------------------------------------------------------------------

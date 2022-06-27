@@ -24,12 +24,20 @@ public:
     ~avifRWDataCleaner() { avifRWDataFree(this); }
 };
 
+class avifRGBImageCleaner : public avifRGBImage
+{
+public:
+    avifRGBImageCleaner(const avifImage * yuv, int rgbDepth, avifRGBFormat rgbFormat);
+    ~avifRGBImageCleaner() { avifRGBImageFreePixels(this); }
+};
+
 // Creates an image. Returns null in case of memory failure.
 avifImagePtr createImage(int width, int height, int depth, avifPixelFormat yuvFormat, avifPlanesFlags planes, avifRange yuvRange = AVIF_RANGE_FULL);
 
 // Set all pixels of each plane of an image.
 void fillImagePlain(avifImage * image, const uint32_t yuva[4]);
 void fillImageGradient(avifImage * image);
+void fillImageChannel(avifRGBImage * image, avifChannelIndex channel, uint32_t value);
 
 // Returns true if both images have the same features and pixel values.
 bool areImagesEqual(const avifImage & image1, const avifImage & image2);

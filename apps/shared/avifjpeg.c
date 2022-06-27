@@ -71,7 +71,7 @@ static void avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_struct *
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     // destination avif channel for each jpeg channel
-    enum avifChannelIndex targetChannel[3] = { AVIF_CHAN_R, AVIF_CHAN_R, AVIF_CHAN_R };
+    avifChannelIndex targetChannel[3] = { AVIF_CHAN_R, AVIF_CHAN_R, AVIF_CHAN_R };
     if (cinfo->jpeg_color_space == JCS_YCbCr) {
         targetChannel[0] = AVIF_CHAN_Y;
         targetChannel[1] = AVIF_CHAN_U;

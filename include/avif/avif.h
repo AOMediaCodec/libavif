@@ -94,7 +94,7 @@ typedef enum avifPlanesFlag
 } avifPlanesFlag;
 typedef uint32_t avifPlanesFlags;
 
-enum avifChannelIndex
+typedef enum avifChannelIndex
 {
     // rgbPlanes
     AVIF_CHAN_R = 0,
@@ -104,8 +104,10 @@ enum avifChannelIndex
     // yuvPlanes
     AVIF_CHAN_Y = 0,
     AVIF_CHAN_U = 1,
-    AVIF_CHAN_V = 2
-};
+    AVIF_CHAN_V = 2,
+
+    AVIF_CHAN_A = 3
+} avifChannelIndex;
 
 // ---------------------------------------------------------------------------
 // Version
@@ -546,6 +548,7 @@ typedef enum avifRGBFormat
     AVIF_RGB_FORMAT_ABGR
 } avifRGBFormat;
 AVIF_API uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
+AVIF_API uint32_t avifRGBFormatChannelOffset(avifRGBFormat format, avifChannelIndex channel); // Maps from avifChannelIndex to byte position in avifRGBFormat.
 AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
 typedef enum avifChromaUpsampling
