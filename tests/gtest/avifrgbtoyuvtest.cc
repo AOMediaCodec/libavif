@@ -113,7 +113,7 @@ TEST_P(YUVToRGBTest, Convert)
     const double maxAbsAverageDiff = std::get<8>(GetParam());
     const double minPsnr = std::get<9>(GetParam());
     // Deduced constants.
-    const bool isMonochrome = yuvFormat == AVIF_PIXEL_FORMAT_YUV400; // If true, only test greyish input.
+    const bool isMonochrome = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400); // If true, only test greyish input.
     const uint32_t rgbMax = (1 << rgbDepth) - 1;
 
     // The YUV upsampling treats the first and last rows and columns differently than the remaining pairs of rows and columns.
@@ -189,7 +189,7 @@ TEST_P(YUVToRGBTest, Convert)
     EXPECT_LE(std::abs(averageDiff), maxAbsAverageDiff);
     EXPECT_GE(psnr, minPsnr);
 
-    // Printing stats for convenience and easier threshold tuning.
+    // Print stats for convenience and easier threshold tuning.
     const char * avifRGBFormatToString[] = { "RGB", "RGBA", "ARGB", "BGR", "BGRA", "ABGR" };
     std::cout << " RGB " << rgbDepth << " bits, YUV " << yuvDepth << " bits, " << avifRGBFormatToString[rgbFormat] << ", "
               << avifPixelFormatToString(yuvFormat) << ", " << (yuvRange ? "full" : "lmtd") << ", MC " << matrixCoefficients
