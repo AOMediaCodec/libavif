@@ -1,77 +1,73 @@
 // Copyright 2022 Google LLC. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "avifincrtest_helpers.h"
 #include "avif/avif.h"
 
-#include <assert.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
+#include <algorithm>
+#include <vector>
+
+#include "avifincrtest_helpers.h"
+#include "aviftest_helpers.h"
+#include "gtest/gtest.h"
+
+namespace libavif
+{
+namespace testutil
+{
+namespace
+{
 
 //------------------------------------------------------------------------------
 
-// Returns true if the first (top) rowCount rows of image1 and image2 are identical.
-static avifBool comparePartialYUVA(const avifImage * image1, const avifImage * image2, uint32_t rowCount)
+// Verifies that the first (top) rowCount rows of image1 and image2 are identical.
+void comparePartialYUVA(const avifImage & image1, const avifImage & image2, uint32_t rowCount)
 {
     if (rowCount == 0) {
-        return AVIF_TRUE;
+        return;
     }
-    if (!image1 || !image2 || (image1->width != image2->width) || (image1->depth != image2->depth) ||
-        (image1->yuvFormat != image2->yuvFormat) || (image1->yuvRange != image2->yuvRange)) {
-        printf("ERROR: input mismatch\n");
-        return AVIF_FALSE;
-    }
-    if ((image1->height < rowCount) || (image2->height < rowCount)) {
-        printf("ERROR: not enough rows to compare\n");
-        return AVIF_FALSE;
-    }
+    ASSERT_EQ(image1.width, image2.width);
+    ASSERT_GE(image1.height, rowCount);
+    ASSERT_GE(image2.height, rowCount);
+    ASSERT_EQ(image1.depth, image2.depth);
+    ASSERT_EQ(image1.yuvFormat, image2.yuvFormat);
+    ASSERT_EQ(image1.yuvRange, image2.yuvRange);
 
     avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(image1->yuvFormat, &info);
-    const uint32_t uvWidth = (image1->width + info.chromaShiftX) >> info.chromaShiftX;
+    avifGetPixelFormatInfo(image1.yuvFormat, &info);
+    const uint32_t uvWidth = (image1.width + info.chromaShiftX) >> info.chromaShiftX;
     const uint32_t uvHeight = (rowCount + info.chromaShiftY) >> info.chromaShiftY;
-    const uint32_t pixelByteCount = (image1->depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
+    const uint32_t pixelByteCount = (image1.depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
 
     for (uint32_t plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV); ++plane) {
-        const uint32_t width = (plane == AVIF_CHAN_Y) ? image1->width : uvWidth;
+        const uint32_t width = (plane == AVIF_CHAN_Y) ? image1.width : uvWidth;
         const uint32_t widthByteCount = width * pixelByteCount;
         const uint32_t height = (plane == AVIF_CHAN_Y) ? rowCount : uvHeight;
-        const uint8_t * data1 = image1->yuvPlanes[plane];
-        const uint8_t * data2 = image2->yuvPlanes[plane];
+        const uint8_t * data1 = image1.yuvPlanes[plane];
+        const uint8_t * data2 = image2.yuvPlanes[plane];
         for (uint32_t y = 0; y < height; ++y) {
-            if (memcmp(data1, data2, widthByteCount)) {
-                printf("ERROR: different px at row %" PRIu32 ", channel %" PRIu32 "\n", y, plane);
-                return AVIF_FALSE;
-            }
-            data1 += image1->yuvRowBytes[plane];
-            data2 += image2->yuvRowBytes[plane];
+            ASSERT_TRUE(std::equal(data1, data1 + widthByteCount, data2));
+            data1 += image1.yuvRowBytes[plane];
+            data2 += image2.yuvRowBytes[plane];
         }
     }
 
-    if (image1->alphaPlane) {
-        if (!image2->alphaPlane || (image1->alphaPremultiplied != image2->alphaPremultiplied)) {
-            printf("ERROR: input mismatch\n");
-            return AVIF_FALSE;
-        }
-        const uint32_t widthByteCount = image1->width * pixelByteCount;
-        const uint8_t * data1 = image1->alphaPlane;
-        const uint8_t * data2 = image2->alphaPlane;
+    if (image1.alphaPlane) {
+        ASSERT_NE(image2.alphaPlane, nullptr);
+        ASSERT_EQ(image1.alphaPremultiplied, image2.alphaPremultiplied);
+        const uint32_t widthByteCount = image1.width * pixelByteCount;
+        const uint8_t * data1 = image1.alphaPlane;
+        const uint8_t * data2 = image2.alphaPlane;
         for (uint32_t y = 0; y < rowCount; ++y) {
-            if (memcmp(data1, data2, widthByteCount)) {
-                printf("ERROR: different px at row %" PRIu32 ", alpha\n", y);
-                return AVIF_FALSE;
-            }
-            data1 += image1->alphaRowBytes;
-            data2 += image2->alphaRowBytes;
+            ASSERT_TRUE(std::equal(data1, data1 + widthByteCount, data2));
+            data1 += image1.alphaRowBytes;
+            data2 += image2.alphaRowBytes;
         }
     }
-    return AVIF_TRUE;
 }
 
 // Returns the expected number of decoded rows when availableByteCount out of byteCount were
 // given to the decoder, for an image of height rows, split into cells of cellHeight rows.
-static uint32_t getMinDecodedRowCount(uint32_t height, uint32_t cellHeight, avifBool hasAlpha, size_t availableByteCount, size_t byteCount)
+uint32_t getMinDecodedRowCount(uint32_t height, uint32_t cellHeight, bool hasAlpha, size_t availableByteCount, size_t byteCount)
 {
     // The whole image should be available when the full input is.
     if (availableByteCount >= byteCount) {
@@ -111,15 +107,15 @@ static uint32_t getMinDecodedRowCount(uint32_t height, uint32_t cellHeight, avif
 
 //------------------------------------------------------------------------------
 
-typedef struct
+struct avifROPartialData
 {
     avifROData available;
     size_t fullSize;
-} avifROPartialData;
+};
 
 // Implementation of avifIOReadFunc simulating a stream from an array. See avifIOReadFunc documentation.
 // io->data is expected to point to avifROPartialData.
-static avifResult avifIOPartialRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out)
+avifResult avifIOPartialRead(struct avifIO * io, uint32_t readFlags, uint64_t offset, size_t size, avifROData * out)
 {
     const avifROPartialData * data = (avifROPartialData *)io->data;
     if ((readFlags != 0) || !data || (data->fullSize < offset)) {
@@ -138,286 +134,170 @@ static avifResult avifIOPartialRead(struct avifIO * io, uint32_t readFlags, uint
 
 //------------------------------------------------------------------------------
 
-// Encodes the image as a grid of at most gridCols*gridRows cells. Returns AVIF_FALSE in case of error.
-// The cell count is reduced to fit libavif or AVIF format constraints. If impossible, AVIF_TRUE is returned with no encoded output.
+// Encodes the image as a grid of at most gridCols*gridRows cells.
+// The cell count is reduced to fit libavif or AVIF format constraints. If impossible, the encoded output is returned empty.
 // The final cellWidth and cellHeight are output.
-static avifBool encodeAsGrid(const avifImage * image, uint32_t gridCols, uint32_t gridRows, avifRWData * output, uint32_t * cellWidth, uint32_t * cellHeight)
+void encodeAsGrid(const avifImage & image, uint32_t gridCols, uint32_t gridRows, avifRWData * output, uint32_t * cellWidth, uint32_t * cellHeight)
 {
-    avifBool success = AVIF_FALSE;
-    avifEncoder * encoder = NULL;
-    avifImage ** cellImages = NULL;
     // Chroma subsampling requires even dimensions. See ISO 23000-22 - 7.3.11.4.2
-    const avifBool needEvenWidths = ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422));
-    const avifBool needEvenHeights = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420);
+    const bool needEvenWidths = ((image.yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (image.yuvFormat == AVIF_PIXEL_FORMAT_YUV422));
+    const bool needEvenHeights = (image.yuvFormat == AVIF_PIXEL_FORMAT_YUV420);
 
-    if ((gridCols == 0) || (gridRows == 0)) {
-        printf("ERROR: Bad grid dimensions\n");
-        return AVIF_FALSE;
-    }
+    ASSERT_GT(gridCols * gridRows, 0u);
+    *cellWidth = image.width / gridCols;
+    *cellHeight = image.height / gridRows;
 
-    *cellWidth = image->width / gridCols;
-    *cellHeight = image->height / gridRows;
-
-    // avifEncoderAddImageGrid() only accepts grids that evenly split the image
-    // into cells at least 64 pixels wide and tall.
+    // avifEncoderAddImageGrid() only accepts grids that evenly split the image into cells at least 64 pixels wide and tall.
     while ((gridCols > 1) &&
-           (((*cellWidth * gridCols) != image->width) || (*cellWidth < 64) || (needEvenWidths && ((*cellWidth & 1) != 0)))) {
+           (((*cellWidth * gridCols) != image.width) || (*cellWidth < 64) || (needEvenWidths && ((*cellWidth & 1) != 0)))) {
         --gridCols;
-        *cellWidth = image->width / gridCols;
+        *cellWidth = image.width / gridCols;
     }
     while ((gridRows > 1) &&
-           (((*cellHeight * gridRows) != image->height) || (*cellHeight < 64) || (needEvenHeights && ((*cellHeight & 1) != 0)))) {
+           (((*cellHeight * gridRows) != image.height) || (*cellHeight < 64) || (needEvenHeights && ((*cellHeight & 1) != 0)))) {
         --gridRows;
-        *cellHeight = image->height / gridRows;
+        *cellHeight = image.height / gridRows;
     }
 
-    cellImages = avifAlloc(sizeof(avifImage *) * gridCols * gridRows);
-    memset(cellImages, 0, sizeof(avifImage *) * gridCols * gridRows);
+    std::vector<testutil::avifImagePtr> cellImages;
+    cellImages.reserve(gridCols * gridRows);
     for (uint32_t row = 0, iCell = 0; row < gridRows; ++row) {
         for (uint32_t col = 0; col < gridCols; ++col, ++iCell) {
             avifCropRect cell;
             cell.x = col * *cellWidth;
             cell.y = row * *cellHeight;
-            cell.width = ((cell.x + *cellWidth) <= image->width) ? *cellWidth : (image->width - cell.x);
-            cell.height = ((cell.y + *cellHeight) <= image->height) ? *cellHeight : (image->height - cell.y);
-            cellImages[iCell] = avifImageCreateEmpty();
-            if (!cellImages[iCell] || (avifImageSetViewRect(cellImages[iCell], image, &cell) != AVIF_RESULT_OK)) {
-                printf("ERROR: avifImageCreateEmpty() failed\n");
-                goto cleanup;
-            }
+            cell.width = ((cell.x + *cellWidth) <= image.width) ? *cellWidth : (image.width - cell.x);
+            cell.height = ((cell.y + *cellHeight) <= image.height) ? *cellHeight : (image.height - cell.y);
+            cellImages.emplace_back(avifImageCreateEmpty(), avifImageDestroy);
+            ASSERT_NE(cellImages.back(), nullptr);
+            ASSERT_EQ(avifImageSetViewRect(cellImages.back().get(), &image, &cell), AVIF_RESULT_OK);
         }
     }
 
-    encoder = avifEncoderCreate();
-    if (!encoder) {
-        printf("ERROR: avifEncoderCreate() failed\n");
-        goto cleanup;
-    }
+    testutil::avifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+    ASSERT_NE(encoder, nullptr);
     encoder->speed = AVIF_SPEED_FASTEST;
-    if (avifEncoderAddImageGrid(encoder, gridCols, gridRows, (const avifImage * const *)cellImages, AVIF_ADD_IMAGE_FLAG_SINGLE) !=
-        AVIF_RESULT_OK) {
-        printf("ERROR: avifEncoderAddImageGrid() failed\n");
-        goto cleanup;
+    std::vector<avifImage *> cellImagePtrs(cellImages.size()); // Just here to match libavif API.
+    for (size_t i = 0; i < cellImages.size(); ++i) {
+        cellImagePtrs[i] = cellImages[i].get();
     }
-    if (avifEncoderFinish(encoder, output) != AVIF_RESULT_OK) {
-        printf("ERROR: avifEncoderFinish() failed\n");
-        goto cleanup;
-    }
-
-    success = AVIF_TRUE;
-cleanup:
-    if (encoder) {
-        avifEncoderDestroy(encoder);
-    }
-    if (cellImages) {
-        for (uint32_t i = 0; i < (gridCols * gridRows); ++i) {
-            if (cellImages[i]) {
-                avifImageDestroy(cellImages[i]);
-            }
-        }
-        avifFree(cellImages);
-    }
-    return success;
+    ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), gridCols, gridRows, cellImagePtrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE), AVIF_RESULT_OK);
+    ASSERT_EQ(avifEncoderFinish(encoder.get(), output), AVIF_RESULT_OK);
 }
 
 // Encodes the image to be decoded incrementally.
-static avifBool encodeAsIncremental(const avifImage * image, avifBool flatCells, avifRWData * output, uint32_t * cellWidth, uint32_t * cellHeight)
+void encodeAsIncremental(const avifImage & image, bool flatCells, avifRWData * output, uint32_t * cellWidth, uint32_t * cellHeight)
 {
-    const uint32_t gridCols = image->width / 64; // 64px is the min cell width.
-    const uint32_t gridRows = flatCells ? 1 : (image->height / 64);
-    return encodeAsGrid(image, (gridCols > 1) ? gridCols : 1, (gridRows > 1) ? gridRows : 1, output, cellWidth, cellHeight);
+    const uint32_t gridCols = image.width / 64; // 64px is the min cell width.
+    const uint32_t gridRows = flatCells ? 1 : (image.height / 64);
+    encodeAsGrid(image, (gridCols > 1) ? gridCols : 1, (gridRows > 1) ? gridRows : 1, output, cellWidth, cellHeight);
 }
 
-avifBool encodeRectAsIncremental(const avifImage * image,
-                                 uint32_t width,
-                                 uint32_t height,
-                                 avifBool createAlphaIfNone,
-                                 avifBool flatCells,
-                                 avifRWData * output,
-                                 uint32_t * cellWidth,
-                                 uint32_t * cellHeight)
+} // namespace
+
+void encodeRectAsIncremental(const avifImage & image,
+                             uint32_t width,
+                             uint32_t height,
+                             bool createAlphaIfNone,
+                             bool flatCells,
+                             avifRWData * output,
+                             uint32_t * cellWidth,
+                             uint32_t * cellHeight)
 {
-    avifBool success = AVIF_FALSE;
-    avifImage * subImage = avifImageCreateEmpty();
-    if (!subImage) {
-        printf("ERROR: avifImageCreateEmpty() failed\n");
-        goto cleanup;
-    }
-    if ((width > image->width) || (height > image->height)) {
-        printf("ERROR: Bad dimensions\n");
-        goto cleanup;
-    }
+    avifImagePtr subImage(avifImageCreateEmpty(), avifImageDestroy);
+    ASSERT_NE(subImage, nullptr);
+    ASSERT_LE(width, image.width);
+    ASSERT_LE(height, image.height);
     avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(image->yuvFormat, &info);
-    avifCropRect rect;
-    rect.x = ((image->width - width) / 2) & ~info.chromaShiftX;
-    rect.y = ((image->height - height) / 2) & ~info.chromaShiftX;
-    rect.width = width;
-    rect.height = height;
-    if (avifImageSetViewRect(subImage, image, &rect) != AVIF_RESULT_OK) {
-        printf("ERROR: avifImageSetViewRect() failed\n");
-        goto cleanup;
-    }
+    avifGetPixelFormatInfo(image.yuvFormat, &info);
+    const avifCropRect rect { .x = ((image.width - width) / 2) & ~info.chromaShiftX,
+                              .y = ((image.height - height) / 2) & ~info.chromaShiftX,
+                              .width = width,
+                              .height = height };
+    ASSERT_EQ(avifImageSetViewRect(subImage.get(), &image, &rect), AVIF_RESULT_OK);
     if (createAlphaIfNone && !subImage->alphaPlane) {
-        if (!image->yuvPlanes[AVIF_CHAN_Y]) {
-            printf("ERROR: No luma plane to simulate an alpha plane\n");
-            goto cleanup;
-        }
-        subImage->alphaPlane = image->yuvPlanes[AVIF_CHAN_Y];
-        subImage->alphaRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+        ASSERT_NE(image.yuvPlanes[AVIF_CHAN_Y], nullptr) << "No luma plane to simulate an alpha plane";
+        subImage->alphaPlane = image.yuvPlanes[AVIF_CHAN_Y];
+        subImage->alphaRowBytes = image.yuvRowBytes[AVIF_CHAN_Y];
         subImage->alphaPremultiplied = AVIF_FALSE;
         subImage->imageOwnsAlphaPlane = AVIF_FALSE;
     }
-    success = encodeAsIncremental(subImage, flatCells, output, cellWidth, cellHeight);
-cleanup:
-    if (subImage) {
-        avifImageDestroy(subImage);
-    }
-    return success;
+    encodeAsIncremental(*subImage, flatCells, output, cellWidth, cellHeight);
 }
 
 //------------------------------------------------------------------------------
 
-avifBool decodeNonIncrementally(const avifRWData * encodedAvif, avifImage * image)
+void decodeIncrementally(const avifRWData & encodedAvif,
+                         bool isPersistent,
+                         bool giveSizeHint,
+                         bool useNthImageApi,
+                         const avifImage & reference,
+                         uint32_t cellHeight)
 {
-    avifBool success = AVIF_FALSE;
-    avifDecoder * decoder = avifDecoderCreate();
-    if (!decoder || avifDecoderReadMemory(decoder, image, encodedAvif->data, encodedAvif->size) != AVIF_RESULT_OK) {
-        printf("ERROR: avifDecoderReadMemory() failed\n");
-        goto cleanup;
-    }
-    success = AVIF_TRUE;
-cleanup:
-    if (decoder) {
-        avifDecoderDestroy(decoder);
-    }
-    return success;
-}
-
-avifBool decodeIncrementally(const avifRWData * encodedAvif,
-                             avifBool isPersistent,
-                             avifBool giveSizeHint,
-                             avifBool useNthImageApi,
-                             const avifImage * reference,
-                             uint32_t cellHeight)
-{
-    avifBool success = AVIF_FALSE;
-    avifDecoder * decoder = NULL;
     // AVIF cells are at least 64 pixels tall.
-    if ((cellHeight == 0) || ((cellHeight > reference->height) && (cellHeight != 64))) {
-        printf("ERROR: cell height %" PRIu32 " is invalid\n", cellHeight);
-        goto cleanup;
+    if (cellHeight != reference.height) {
+        ASSERT_GE(cellHeight, 64u);
     }
 
     // Emulate a byte-by-byte stream.
-    avifROPartialData data = { /*available=*/ { encodedAvif->data, 0 }, /*fullSize=*/encodedAvif->size };
-    avifIO io = { 0 };
-    io.read = avifIOPartialRead;
-    if (giveSizeHint) {
-        io.sizeHint = encodedAvif->size;
-    }
-    io.persistent = isPersistent;
-    io.data = &data;
+    avifROPartialData data = { .available = { encodedAvif.data, 0 }, .fullSize = encodedAvif.size };
+    avifIO io = { .destroy = nullptr,
+                  .read = avifIOPartialRead,
+                  .write = nullptr,
+                  .sizeHint = giveSizeHint ? encodedAvif.size : 0,
+                  .persistent = isPersistent,
+                  .data = &data };
 
-    decoder = avifDecoderCreate();
-    if (!decoder) {
-        printf("ERROR: avifDecoderCreate() failed\n");
-        goto cleanup;
-    }
-    avifDecoderSetIO(decoder, &io);
+    testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+    ASSERT_NE(decoder, nullptr);
+    avifDecoderSetIO(decoder.get(), &io);
     decoder->allowIncremental = AVIF_TRUE;
 
     // Parsing is not incremental.
-    avifResult parseResult = avifDecoderParse(decoder);
+    avifResult parseResult = avifDecoderParse(decoder.get());
     while (parseResult == AVIF_RESULT_WAITING_ON_IO) {
-        if (data.available.size >= data.fullSize) {
-            printf("ERROR: avifDecoderParse() returned WAITING_ON_IO instead of OK\n");
-            goto cleanup;
-        }
+        ASSERT_LT(data.available.size, data.fullSize) << "avifDecoderParse() returned WAITING_ON_IO instead of OK";
         data.available.size = data.available.size + 1;
-        parseResult = avifDecoderParse(decoder);
+        parseResult = avifDecoderParse(decoder.get());
     }
-    if (parseResult != AVIF_RESULT_OK) {
-        printf("ERROR: avifDecoderParse() failed (%s)\n", avifResultToString(parseResult));
-        goto cleanup;
-    }
+    ASSERT_EQ(parseResult, AVIF_RESULT_OK);
 
     // Decoding is incremental.
     uint32_t previouslyDecodedRowCount = 0;
-    avifResult nextImageResult = useNthImageApi ? avifDecoderNthImage(decoder, 0) : avifDecoderNextImage(decoder);
+    avifResult nextImageResult = useNthImageApi ? avifDecoderNthImage(decoder.get(), 0) : avifDecoderNextImage(decoder.get());
     while (nextImageResult == AVIF_RESULT_WAITING_ON_IO) {
-        if (data.available.size >= data.fullSize) {
-            printf("ERROR: avifDecoderNextImage() or avifDecoderNthImage(0) returned WAITING_ON_IO instead of OK\n");
-            goto cleanup;
-        }
-        const uint32_t decodedRowCount = avifDecoderDecodedRowCount(decoder);
-        if (decodedRowCount < previouslyDecodedRowCount) {
-            printf("ERROR: %" PRIu32 " decoded rows decreased to %" PRIu32 "\n", previouslyDecodedRowCount, decodedRowCount);
-            goto cleanup;
-        }
+        ASSERT_LT(data.available.size, data.fullSize)
+            << (useNthImageApi ? "avifDecoderNthImage(0)" : "avifDecoderNextImage()") << " returned WAITING_ON_IO instead of OK";
+        const uint32_t decodedRowCount = avifDecoderDecodedRowCount(decoder.get());
+        ASSERT_GE(decodedRowCount, previouslyDecodedRowCount);
         const uint32_t minDecodedRowCount =
-            getMinDecodedRowCount(reference->height, cellHeight, reference->alphaPlane != NULL, data.available.size, data.fullSize);
-        if (decodedRowCount < minDecodedRowCount) {
-            printf("ERROR: %" PRIu32 " is fewer than %" PRIu32 " decoded rows\n", decodedRowCount, minDecodedRowCount);
-            goto cleanup;
-        }
-        if (!comparePartialYUVA(reference, decoder->image, decodedRowCount)) {
-            goto cleanup;
-        }
+            getMinDecodedRowCount(reference.height, cellHeight, reference.alphaPlane != nullptr, data.available.size, data.fullSize);
+        ASSERT_GE(decodedRowCount, minDecodedRowCount);
+        comparePartialYUVA(reference, *decoder->image, decodedRowCount);
 
         previouslyDecodedRowCount = decodedRowCount;
         data.available.size = data.available.size + 1;
-        nextImageResult = useNthImageApi ? avifDecoderNthImage(decoder, 0) : avifDecoderNextImage(decoder);
+        nextImageResult = useNthImageApi ? avifDecoderNthImage(decoder.get(), 0) : avifDecoderNextImage(decoder.get());
     }
-    if (nextImageResult != AVIF_RESULT_OK) {
-        printf("ERROR: avifDecoderNextImage() or avifDecoderNthImage(0) failed (%s)\n", avifResultToString(nextImageResult));
-        goto cleanup;
-    }
-    if (data.available.size != data.fullSize) {
-        printf("ERROR: not all bytes were read\n");
-        goto cleanup;
-    }
-    if (avifDecoderDecodedRowCount(decoder) != decoder->image->height) {
-        printf("ERROR: avifDecoderDecodedRowCount() should be decoder->image->height after OK\n");
-        goto cleanup;
-    }
+    ASSERT_EQ(nextImageResult, AVIF_RESULT_OK);
+    ASSERT_EQ(data.available.size, data.fullSize);
+    ASSERT_EQ(avifDecoderDecodedRowCount(decoder.get()), decoder->image->height);
 
-    if (!comparePartialYUVA(reference, decoder->image, reference->height)) {
-        goto cleanup;
-    }
-    success = AVIF_TRUE;
-cleanup:
-    if (decoder) {
-        avifDecoderDestroy(decoder);
-    }
-    return success;
+    comparePartialYUVA(reference, *decoder->image, reference.height);
 }
 
-avifBool decodeNonIncrementallyAndIncrementally(const avifRWData * encodedAvif,
-                                                avifBool isPersistent,
-                                                avifBool giveSizeHint,
-                                                avifBool useNthImageApi,
-                                                uint32_t cellHeight)
+void decodeNonIncrementallyAndIncrementally(const avifRWData & encodedAvif, bool isPersistent, bool giveSizeHint, bool useNthImageApi, uint32_t cellHeight)
 {
-    // TODO(wtc): Remove this assertion when this file is converted to C++.
-    assert((useNthImageApi == AVIF_FALSE) || (useNthImageApi == AVIF_TRUE));
-    avifBool success = AVIF_FALSE;
-    avifImage * reference = avifImageCreateEmpty();
-    if (!reference) {
-        goto cleanup;
-    }
-    if (!decodeNonIncrementally(encodedAvif, reference)) {
-        goto cleanup;
-    }
-    if (!decodeIncrementally(encodedAvif, isPersistent, giveSizeHint, useNthImageApi, reference, cellHeight)) {
-        goto cleanup;
-    }
-    success = AVIF_TRUE;
-cleanup:
-    if (reference) {
-        avifImageDestroy(reference);
-    }
-    return success;
+    avifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
+    ASSERT_NE(reference, nullptr);
+    testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+    ASSERT_NE(decoder, nullptr);
+    ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(), encodedAvif.data, encodedAvif.size), AVIF_RESULT_OK);
+
+    decodeIncrementally(encodedAvif, isPersistent, giveSizeHint, useNthImageApi, *reference, cellHeight);
 }
 
 //------------------------------------------------------------------------------
+
+} // namespace testutil
+} // namespace libavif

@@ -2,150 +2,141 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/avif.h"
-#include "avifincrtest_helpers.h"
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <fstream>
+#include <iostream>
+#include <tuple>
+
+#include "avifincrtest_helpers.h"
+#include "aviftest_helpers.h"
+#include "gtest/gtest.h"
+
+using testing::Bool;
+using testing::Combine;
+using testing::Values;
+
+namespace libavif
+{
+namespace
+{
 
 //------------------------------------------------------------------------------
 
-// Reads the file at path into bytes or returns false.
-static avifBool readFile(const char * path, avifRWData * bytes)
+// Used to pass the data folder path to the GoogleTest suites.
+const char * dataPath = nullptr;
+
+// Reads the file with fileName into bytes and returns them.
+testutil::avifRWDataCleaner readFile(const char * fileName)
 {
-    FILE * file;
-    avifRWDataFree(bytes);
-    file = fopen(path, "rb");
-    if (!file) {
-        return AVIF_FALSE;
-    }
-    if (fseek(file, 0, SEEK_END)) {
-        fclose(file);
-        return AVIF_FALSE;
-    }
-    avifRWDataRealloc(bytes, ftell(file));
-    rewind(file);
-    if (fread(bytes->data, bytes->size, 1, file) != 1) {
-        avifRWDataFree(bytes);
-        fclose(file);
-        return AVIF_FALSE;
-    }
-    fclose(file);
-    return AVIF_TRUE;
+    std::ifstream file(std::string(dataPath) + fileName, std::ios::binary | std::ios::ate);
+    testutil::avifRWDataCleaner bytes;
+    avifRWDataRealloc(&bytes, file.good() ? static_cast<size_t>(file.tellg()) : 0);
+    file.seekg(0, std::ios::beg);
+    file.read(reinterpret_cast<char *>(bytes.data), static_cast<std::streamsize>(bytes.size));
+    return bytes;
 }
 
 //------------------------------------------------------------------------------
+
+// Check that non-incremental and incremental decodings of a grid AVIF produce the same pixels.
+TEST(IncrementalTest, Decode)
+{
+    const testutil::avifRWDataCleaner encodedAvif = readFile("sofa_grid1x5_420.avif");
+    ASSERT_NE(encodedAvif.size, 0u);
+    testutil::avifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
+    ASSERT_NE(reference, nullptr);
+    testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+    ASSERT_NE(decoder, nullptr);
+    ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(), encodedAvif.data, encodedAvif.size), AVIF_RESULT_OK);
+
+    // Cell height is hardcoded because there is no API to extract it from an encoded payload.
+    testutil::decodeIncrementally(encodedAvif, /*isPersistent=*/true, /*giveSizeHint=*/true, /*useNthImageApi=*/false, *reference, /*cellHeight=*/154);
+}
+
+//------------------------------------------------------------------------------
+
+class IncrementalTest : public testing::TestWithParam<std::tuple</*width=*/uint32_t,
+                                                                 /*height=*/uint32_t,
+                                                                 /*createAlpha=*/bool,
+                                                                 /*flatCells=*/bool,
+                                                                 /*encodedAvifIsPersistent=*/bool,
+                                                                 /*giveSizeHint=*/bool,
+                                                                 /*useNthImageApi=*/bool>>
+{
+};
 
 // Encodes then decodes a window of width*height pixels at the middle of the image.
 // Check that non-incremental and incremental decodings produce the same pixels.
-static avifBool encodeDecodeNonIncrementallyAndIncrementally(const avifImage * image,
-                                                             uint32_t width,
-                                                             uint32_t height,
-                                                             avifBool createAlphaIfNone,
-                                                             avifBool flatCells,
-                                                             avifBool encodedAvifIsPersistent,
-                                                             avifBool giveSizeHint,
-                                                             avifBool useNthImageApi)
+TEST_P(IncrementalTest, EncodeDecode)
 {
-    avifBool success = AVIF_FALSE;
-    avifRWData encodedAvif = { 0 };
+    const uint32_t width = std::get<0>(GetParam());
+    const uint32_t height = std::get<1>(GetParam());
+    const bool createAlpha = std::get<2>(GetParam());
+    const bool flatCells = std::get<3>(GetParam());
+    const bool encodedAvifIsPersistent = std::get<4>(GetParam());
+    const bool giveSizeHint = std::get<5>(GetParam());
+    const bool useNthImageApi = std::get<6>(GetParam());
+
+    // Load an image. It does not matter that it comes from an AVIF file.
+    testutil::avifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+    ASSERT_NE(image, nullptr);
+    const testutil::avifRWDataCleaner imageBytes = readFile("sofa_grid1x5_420.avif");
+    ASSERT_NE(imageBytes.size, 0u);
+    testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+    ASSERT_NE(decoder, nullptr);
+    ASSERT_EQ(avifDecoderReadMemory(decoder.get(), image.get(), imageBytes.data, imageBytes.size), AVIF_RESULT_OK);
+
+    // Encode then decode it.
+    testutil::avifRWDataCleaner encodedAvif;
     uint32_t cellWidth, cellHeight;
-    if (!encodeRectAsIncremental(image, width, height, createAlphaIfNone, flatCells, &encodedAvif, &cellWidth, &cellHeight)) {
-        goto cleanup;
-    }
-    if (!decodeNonIncrementallyAndIncrementally(&encodedAvif, encodedAvifIsPersistent, giveSizeHint, useNthImageApi, cellHeight)) {
-        goto cleanup;
-    }
-    success = AVIF_TRUE;
-cleanup:
-    avifRWDataFree(&encodedAvif);
-    return success;
+    testutil::encodeRectAsIncremental(*image, width, height, createAlpha, flatCells, &encodedAvif, &cellWidth, &cellHeight);
+    testutil::decodeNonIncrementallyAndIncrementally(encodedAvif, encodedAvifIsPersistent, giveSizeHint, useNthImageApi, cellHeight);
 }
+
+INSTANTIATE_TEST_SUITE_P(WholeImage,
+                         IncrementalTest,
+                         Combine(/*width=*/Values(1024),
+                                 /*height=*/Values(770),
+                                 /*createAlpha=*/Values(true),
+                                 /*flatCells=*/Bool(),
+                                 /*encodedAvifIsPersistent=*/Values(true),
+                                 /*giveSizeHint=*/Values(true),
+                                 /*useNthImageApi=*/Values(false)));
+
+// avifEncoderAddImageInternal() only accepts grids of one unique cell, or grids where width and height are both at least 64.
+INSTANTIATE_TEST_SUITE_P(SingleCell,
+                         IncrementalTest,
+                         Combine(/*width=*/Values(1),
+                                 /*height=*/Values(1),
+                                 /*createAlpha=*/Bool(),
+                                 /*flatCells=*/Bool(),
+                                 /*encodedAvifIsPersistent=*/Bool(),
+                                 /*giveSizeHint=*/Bool(),
+                                 /*useNthImageApi=*/Bool()));
+
+// Chroma subsampling requires even dimensions. See ISO 23000-22 section 7.3.11.4.2.
+INSTANTIATE_TEST_SUITE_P(SinglePixel,
+                         IncrementalTest,
+                         Combine(/*width=*/Values(64, 66),
+                                 /*height=*/Values(64, 66),
+                                 /*createAlpha=*/Bool(),
+                                 /*flatCells=*/Bool(),
+                                 /*encodedAvifIsPersistent=*/Bool(),
+                                 /*giveSizeHint=*/Bool(),
+                                 /*useNthImageApi=*/Bool()));
 
 //------------------------------------------------------------------------------
 
-int main(int argc, char * argv[])
+} // namespace
+} // namespace libavif
+
+int main(int argc, char ** argv)
 {
-    int exitCode = EXIT_FAILURE;
-    avifRWData encodedAvif = { NULL, 0 };
-
-    if (argc != 2) {
-        printf("ERROR: bad arguments\n");
-        printf("Usage: avifincrtest <AVIF>\n");
-        goto cleanup;
+    ::testing::InitGoogleTest(&argc, argv);
+    if (argc < 2) {
+        std::cerr << "The path to the test data folder must be provided as an argument" << std::endl;
+        return 1;
     }
-    const char * const avifFilePath = argv[1];
-
-    if (!readFile(avifFilePath, &encodedAvif)) {
-        printf("ERROR: cannot read AVIF: %s\n", avifFilePath);
-        goto cleanup;
-    }
-
-    // First test: decode the input image incrementally and compare it with a non-incrementally decoded reference.
-    avifImage * reference = avifImageCreateEmpty();
-    if (!reference || !decodeNonIncrementally(&encodedAvif, reference)) {
-        goto cleanup;
-    }
-    // Cell height is hardcoded because there is no API to extract it from an encoded payload.
-    if (!decodeIncrementally(&encodedAvif,
-                             /*isPersistent=*/AVIF_TRUE,
-                             /*giveSizeHint=*/AVIF_TRUE,
-                             /*useNthImageApi=*/AVIF_FALSE,
-                             reference,
-                             /*cellHeight=*/154)) {
-        goto cleanup;
-    }
-
-    // Second test: encode a bunch of different dimension combinations and decode them incrementally and non-incrementally.
-    // Chroma subsampling requires even dimensions. See ISO 23000-22 section 7.3.11.4.2.
-    const uint32_t widths[] = { 1, 64, 66 };
-    const uint32_t heights[] = { 1, 64, 66 };
-    for (uint32_t w = 0; w < sizeof(widths) / sizeof(widths[0]); ++w) {
-        for (uint32_t h = 0; h < sizeof(heights) / sizeof(heights[0]); ++h) {
-            // avifEncoderAddImageInternal() only accepts grids of one unique cell, or grids where width and height are both at least 64.
-            if ((widths[w] >= 64) != (heights[h] >= 64)) {
-                continue;
-            }
-
-            for (avifBool createAlpha = AVIF_FALSE; createAlpha <= AVIF_TRUE; ++createAlpha) {
-                for (avifBool flatCells = AVIF_FALSE; flatCells <= AVIF_TRUE; ++flatCells) {
-                    for (avifBool encodedAvifIsPersistent = AVIF_FALSE; encodedAvifIsPersistent <= AVIF_TRUE; ++encodedAvifIsPersistent) {
-                        for (avifBool giveSizeHint = AVIF_FALSE; giveSizeHint <= AVIF_TRUE; ++giveSizeHint) {
-                            for (avifBool useNthImageApi = AVIF_FALSE; useNthImageApi <= AVIF_TRUE; ++useNthImageApi) {
-                                if (!encodeDecodeNonIncrementallyAndIncrementally(reference,
-                                                                                  widths[w],
-                                                                                  heights[h],
-                                                                                  createAlpha,
-                                                                                  flatCells,
-                                                                                  encodedAvifIsPersistent,
-                                                                                  giveSizeHint,
-                                                                                  useNthImageApi)) {
-                                    goto cleanup;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Third test: full image.
-    for (avifBool flatCells = AVIF_FALSE; flatCells <= AVIF_TRUE; ++flatCells) {
-        if (!encodeDecodeNonIncrementallyAndIncrementally(reference,
-                                                          reference->width,
-                                                          reference->height,
-                                                          /*createAlphaIfNone=*/AVIF_TRUE,
-                                                          flatCells,
-                                                          /*encodedAvifIsPersistent=*/AVIF_TRUE,
-                                                          /*giveSizeHint=*/AVIF_TRUE,
-                                                          /*useNthImageApi=*/AVIF_FALSE)) {
-            goto cleanup;
-        }
-    }
-
-    exitCode = EXIT_SUCCESS;
-cleanup:
-    avifRWDataFree(&encodedAvif);
-    return exitCode;
+    libavif::dataPath = argv[1];
+    return RUN_ALL_TESTS();
 }
