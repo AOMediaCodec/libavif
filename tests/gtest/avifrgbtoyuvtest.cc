@@ -81,8 +81,9 @@ void getDiffSumAndSqDiffSum(const avifRGBImage & a, const avifRGBImage & b, int6
 // Returns the Peak Signal-to-Noise Ratio from accumulated stats.
 double getPsnr(double sqDiffSum, double numDiffs, double maxAbsDiff)
 {
-    if (sqDiffSum == 0.)
+    if (sqDiffSum == 0.) {
         return 99.; // Lossless.
+    }
     const double distortion = sqDiffSum / (numDiffs * maxAbsDiff * maxAbsDiff);
     return (distortion > 0.) ? std::min(-10 * std::log10(distortion), 98.9) : 98.9; // Not lossless.
 }
@@ -91,12 +92,12 @@ double getPsnr(double sqDiffSum, double numDiffs, double maxAbsDiff)
 
 class YUVToRGBTest
     : public testing::TestWithParam<
-          std::tuple</*rgbDepth=*/int, /*yuvDepth=*/int, avifRGBFormat, avifPixelFormat, avifRange, avifMatrixCoefficients, /*plainColor=*/bool, /*rgbStep=*/uint32_t, /*maxAbsAverageDiff=*/double, /*minPsnr=*/double>>
+          std::tuple</*rgbDepth=*/int, /*yuvDepth=*/int, avifRGBFormat, avifPixelFormat, avifRange, avifMatrixCoefficients, /*addNoise=*/bool, /*rgbStep=*/uint32_t, /*maxAbsAverageDiff=*/double, /*minPsnr=*/double>>
 {
 };
 
 // Converts from RGB to YUV and back to RGB for all RGB combinations, separated by a color step for reasonable timing.
-// Unless plainColor is true, also applies some noise to the input samples to exercise chroma subsampling.
+// If addNoise is true, also applies some noise to the input samples to exercise chroma subsampling.
 TEST_P(YUVToRGBTest, Convert)
 {
     const int rgbDepth = std::get<0>(GetParam());
@@ -106,10 +107,10 @@ TEST_P(YUVToRGBTest, Convert)
     const avifRange yuvRange = std::get<4>(GetParam());
     const avifMatrixCoefficients matrixCoefficients = std::get<5>(GetParam());
     // Whether to add noise to the input RGB samples. Should only impact subsampled chroma (4:2:2 and 4:2:0).
-    const bool plainColor = std::get<6>(GetParam());
+    const bool addNoise = std::get<6>(GetParam());
     // Testing each RGB combination would be more accurate but results are similar with faster settings.
     const uint32_t rgbStep = std::get<7>(GetParam());
-    // Thesholds to pass.
+    // Thresholds to pass.
     const double maxAbsAverageDiff = std::get<8>(GetParam());
     const double minPsnr = std::get<9>(GetParam());
     // Deduced constants.
@@ -118,8 +119,8 @@ TEST_P(YUVToRGBTest, Convert)
 
     // The YUV upsampling treats the first and last rows and columns differently than the remaining pairs of rows and columns.
     // An image of 16 pixels is used to test all these possibilities.
-    const int width = 4;
-    const int height = 4;
+    static constexpr int width = 4;
+    static constexpr int height = 4;
     std::unique_ptr<avifImage, decltype(&avifImageDestroy)> yuv(avifImageCreate(width, height, yuvDepth, yuvFormat), avifImageDestroy);
     yuv->matrixCoefficients = matrixCoefficients;
     yuv->yuvRange = yuvRange;
@@ -133,31 +134,31 @@ TEST_P(YUVToRGBTest, Convert)
 
     // To exercise the YUV subsampling loss, the input samples must differ in each of the RGB channels.
     // YUV subsampling expects the input RGB channels to be correlated to minimize the quality loss.
-    const int32_t redModifier[] = { 7,  14, 11, 5,  // Random permutation of 16 values.
-                                    4,  6,  8,  15, //
-                                    2,  9,  13, 3,  //
-                                    12, 1,  10, 0 };
-    const int32_t greenModifier[] = { 3,  2,  12, 15, // Random permutation of 16 values
-                                      14, 10, 7,  13, // that is somewhat close to redModifier.
-                                      5,  1,  9,  0,  //
-                                      8,  4,  11, 6 };
-    const int32_t blueModifier[] = { 0,  8,  14, 9,  // Random permutation of 16 values
-                                     13, 12, 2,  7,  // that is somewhat close to greenModifier.
-                                     3,  1,  11, 10, //
-                                     6,  15, 5,  4 };
-    const int32_t * noModifier = nullptr;
+    static constexpr int32_t redNoise[] = { 7,  14, 11, 5,  // Random permutation of 16 values.
+                                            4,  6,  8,  15, //
+                                            2,  9,  13, 3,  //
+                                            12, 1,  10, 0 };
+    static constexpr int32_t greenNoise[] = { 3,  2,  12, 15, // Random permutation of 16 values
+                                              14, 10, 7,  13, // that is somewhat close to redNoise.
+                                              5,  1,  9,  0,  //
+                                              8,  4,  11, 6 };
+    static constexpr int32_t blueNoise[] = { 0,  8,  14, 9,  // Random permutation of 16 values
+                                             13, 12, 2,  7,  // that is somewhat close to greenNoise.
+                                             3,  1,  11, 10, //
+                                             6,  15, 5,  4 };
+    static constexpr int32_t * plainColor = nullptr;
 
     // Estimate the loss from converting RGB values to YUV and back.
     int64_t diffSum = 0, absDiffSum = 0, sqDiffSum = 0, maxAbsDiff = 0, numDiffs = 0;
-    const uint32_t maxValue = rgbMax - (plainColor ? 0 : 15);
+    const uint32_t maxValue = rgbMax - (addNoise ? 15 : 0);
     for (uint32_t r = 0; r < maxValue + rgbStep; r += rgbStep) {
         r = std::min(r, maxValue); // Test the maximum sample value even if it is not a multiple of rgbStep.
-        setImageChannel(&srcRgb, AVIF_CHAN_R, r, plainColor ? noModifier : redModifier);
+        setImageChannel(&srcRgb, AVIF_CHAN_R, r, addNoise ? redNoise : plainColor);
 
         if (isMonochrome) {
             // Test only greyish input when converting to a single channel.
-            setImageChannel(&srcRgb, AVIF_CHAN_G, r, plainColor ? noModifier : greenModifier);
-            setImageChannel(&srcRgb, AVIF_CHAN_B, r, plainColor ? noModifier : blueModifier);
+            setImageChannel(&srcRgb, AVIF_CHAN_G, r, addNoise ? greenNoise : plainColor);
+            setImageChannel(&srcRgb, AVIF_CHAN_B, r, addNoise ? blueNoise : plainColor);
 
             ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &srcRgb), AVIF_RESULT_OK);
             ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dstRgb), AVIF_RESULT_OK);
@@ -166,10 +167,10 @@ TEST_P(YUVToRGBTest, Convert)
         } else {
             for (uint32_t g = 0; g < maxValue + rgbStep; g += rgbStep) {
                 g = std::min(g, maxValue);
-                setImageChannel(&srcRgb, AVIF_CHAN_G, g, plainColor ? noModifier : greenModifier);
+                setImageChannel(&srcRgb, AVIF_CHAN_G, g, addNoise ? greenNoise : plainColor);
                 for (uint32_t b = 0; b < maxValue + rgbStep; b += rgbStep) {
                     b = std::min(b, maxValue);
-                    setImageChannel(&srcRgb, AVIF_CHAN_B, b, plainColor ? noModifier : blueModifier);
+                    setImageChannel(&srcRgb, AVIF_CHAN_B, b, addNoise ? blueNoise : plainColor);
 
                     ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &srcRgb), AVIF_RESULT_OK);
                     ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dstRgb), AVIF_RESULT_OK);
@@ -190,15 +191,15 @@ TEST_P(YUVToRGBTest, Convert)
     EXPECT_GE(psnr, minPsnr);
 
     // Print stats for convenience and easier threshold tuning.
-    const char * avifRGBFormatToString[] = { "RGB", "RGBA", "ARGB", "BGR", "BGRA", "ABGR" };
+    static constexpr const char * avifRGBFormatToString[] = { "RGB", "RGBA", "ARGB", "BGR", "BGRA", "ABGR" };
     std::cout << " RGB " << rgbDepth << " bits, YUV " << yuvDepth << " bits, " << avifRGBFormatToString[rgbFormat] << ", "
               << avifPixelFormatToString(yuvFormat) << ", " << (yuvRange ? "full" : "lmtd") << ", MC " << matrixCoefficients
-              << ", " << (plainColor ? "plain" : "noisy") << ", avg " << averageDiff << ", abs avg " << averageAbsDiff << ", max "
+              << ", " << (addNoise ? "noisy" : "plain") << ", avg " << averageDiff << ", abs avg " << averageAbsDiff << ", max "
               << maxAbsDiff << ", PSNR " << psnr << "dB" << std::endl;
 }
 
-const avifRGBFormat allRgbFormats[] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
-                                        AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
+constexpr avifRGBFormat allRgbFormats[] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
+                                            AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR };
 
 // This is the default avifenc setup when encoding from 8b PNG files to AVIF.
 INSTANTIATE_TEST_SUITE_P(DefaultFormat,
@@ -209,7 +210,7 @@ INSTANTIATE_TEST_SUITE_P(DefaultFormat,
                                  Values(AVIF_PIXEL_FORMAT_YUV420),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(false),
+                                 /*addNoise=*/Values(true),
                                  /*rgbStep=*/Values(3),
                                  /*maxAbsAverageDiff=*/Values(0.1), // The color drift is almost centered.
                                  /*minPsnr=*/Values(36.)            // Subsampling distortion is acceptable.
@@ -224,7 +225,7 @@ INSTANTIATE_TEST_SUITE_P(Identity8b,
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_IDENTITY),
-                                 /*plainColor=*/Values(false),
+                                 /*addNoise=*/Values(true),
                                  /*rgbStep=*/Values(31),
                                  /*maxAbsAverageDiff=*/Values(0.),
                                  /*minPsnr=*/Values(99.)));
@@ -236,7 +237,7 @@ INSTANTIATE_TEST_SUITE_P(Identity10b,
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_IDENTITY),
-                                 /*plainColor=*/Values(false),
+                                 /*addNoise=*/Values(true),
                                  /*rgbStep=*/Values(101),
                                  /*maxAbsAverageDiff=*/Values(0.),
                                  /*minPsnr=*/Values(99.)));
@@ -248,7 +249,7 @@ INSTANTIATE_TEST_SUITE_P(Identity12b,
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_IDENTITY),
-                                 /*plainColor=*/Values(false),
+                                 /*addNoise=*/Values(true),
                                  /*rgbStep=*/Values(401),
                                  /*maxAbsAverageDiff=*/Values(0.),
                                  /*minPsnr=*/Values(99.)));
@@ -262,7 +263,7 @@ INSTANTIATE_TEST_SUITE_P(PlainAnySubsampling8b,
                                  Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV420),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(true),
+                                 /*addNoise=*/Values(false),
                                  /*rgbStep=*/Values(17),
                                  /*maxAbsAverageDiff=*/Values(0.02), // The color drift is centered.
                                  /*minPsnr=*/Values(52.)             // RGB>YUV>RGB distortion is barely noticeable.
@@ -277,7 +278,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b,
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(true),
+                                 /*addNoise=*/Values(false),
                                  /*rgbStep=*/Values(1),
                                  /*maxAbsAverageDiff=*/Values(0.),
                                  /*minPsnr=*/Values(99.)));
@@ -289,7 +290,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b,
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(true),
+                                 /*addNoise=*/Values(false),
                                  /*rgbStep=*/Values(1),
                                  /*maxAbsAverageDiff=*/Values(0.),
                                  /*minPsnr=*/Values(99.)));
@@ -301,7 +302,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b,
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(true),
+                                 /*addNoise=*/Values(false),
                                  /*rgbStep=*/Values(1),
                                  /*maxAbsAverageDiff=*/Values(0.),
                                  /*minPsnr=*/Values(99.)));
@@ -315,7 +316,7 @@ INSTANTIATE_TEST_SUITE_P(All8b,
                                  Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV420),
                                  Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(true, false),
+                                 /*addNoise=*/Values(false, true),
                                  /*rgbStep=*/Values(31),           // High or it would be too slow.
                                  /*maxAbsAverageDiff=*/Values(1.), // Not very accurate because high rgbStep.
                                  /*minPsnr=*/Values(36.)));
@@ -327,7 +328,7 @@ INSTANTIATE_TEST_SUITE_P(All10b,
                                  Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV420),
                                  Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(true, false),
+                                 /*addNoise=*/Values(false, true),
                                  /*rgbStep=*/Values(101),            // High or it would be too slow.
                                  /*maxAbsAverageDiff=*/Values(0.03), // Not very accurate because high rgbStep.
                                  /*minPsnr=*/Values(47.)));
@@ -339,7 +340,7 @@ INSTANTIATE_TEST_SUITE_P(All12b,
                                  Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422, AVIF_PIXEL_FORMAT_YUV420),
                                  Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
                                  Values(AVIF_MATRIX_COEFFICIENTS_BT601),
-                                 /*plainColor=*/Values(true, false),
+                                 /*addNoise=*/Values(false, true),
                                  /*rgbStep=*/Values(401), // High or it would be too slow.
                                  /*maxAbsAverageDiff=*/Values(0.04),
                                  /*minPsnr=*/Values(52.)));
