@@ -210,10 +210,9 @@ void encodeRectAsIncremental(const avifImage & image,
     ASSERT_LE(height, image.height);
     avifPixelFormatInfo info;
     avifGetPixelFormatInfo(image.yuvFormat, &info);
-    const avifCropRect rect { .x = ((image.width - width) / 2) & ~info.chromaShiftX,
-                              .y = ((image.height - height) / 2) & ~info.chromaShiftX,
-                              .width = width,
-                              .height = height };
+    const avifCropRect rect {
+        /*x=*/((image.width - width) / 2) & ~info.chromaShiftX, /*y=*/((image.height - height) / 2) & ~info.chromaShiftX, width, height
+    };
     ASSERT_EQ(avifImageSetViewRect(subImage.get(), &image, &rect), AVIF_RESULT_OK);
     if (createAlphaIfNone && !subImage->alphaPlane) {
         ASSERT_NE(image.yuvPlanes[AVIF_CHAN_Y], nullptr) << "No luma plane to simulate an alpha plane";
@@ -240,13 +239,10 @@ void decodeIncrementally(const avifRWData & encodedAvif,
     }
 
     // Emulate a byte-by-byte stream.
-    avifROPartialData data = { .available = { encodedAvif.data, 0 }, .fullSize = encodedAvif.size };
-    avifIO io = { .destroy = nullptr,
-                  .read = avifIOPartialRead,
-                  .write = nullptr,
-                  .sizeHint = giveSizeHint ? encodedAvif.size : 0,
-                  .persistent = isPersistent,
-                  .data = &data };
+    avifROPartialData data = { /*available=*/ { encodedAvif.data, 0 }, /*fullSize=*/encodedAvif.size };
+    avifIO io = { /*destroy=*/nullptr, avifIOPartialRead,
+                  /*write=*/nullptr,   giveSizeHint ? encodedAvif.size : 0,
+                  isPersistent,        &data };
 
     testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
     ASSERT_NE(decoder, nullptr);
