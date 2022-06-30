@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <tuple>
 
 #include "avifincrtest_helpers.h"
