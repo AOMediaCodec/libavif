@@ -42,16 +42,6 @@ endforeach()
 ################################################################################
 # GoogleTest
 
-add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.c)
-target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES})
-
-add_executable(avifincrtest gtest/avifincrtest.c)
-if(AVIF_LOCAL_LIBGAV1)
-    set_target_properties(avifincrtest PROPERTIES LINKER_LANGUAGE "CXX")
-endif()
-target_link_libraries(avifincrtest avifincrtest_helpers)
-add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/sofa_grid1x5_420.avif)
-
 if(AVIF_ENABLE_GTEST)
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 11)
@@ -80,6 +70,14 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifgridapitest COMMAND avifgridapitest)
+
+    add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
+    target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
+    target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})
+
+    add_executable(avifincrtest gtest/avifincrtest.cc)
+    target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
+    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
     target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
