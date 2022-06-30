@@ -8,5 +8,5 @@ jobs:
       - uses: RafikFarhad/clang-format-github-action@v2.1.0
         with:
           style: file
-          sources: "apps/**/*.h,apps/**/*.c,examples/*.c,includes/**/*.h,src/**/*.h,src/**/*.c,tests/**/*.h,tests/**/*.c"
+          sources: "apps/**.h,apps/**.c,examples/*.c,include/**.h,src/*.c,tests/**.h,tests/**.c,tests/**.cc"
           excludes: "apps/shared/iccjpeg.*"
