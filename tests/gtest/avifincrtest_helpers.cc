@@ -4,6 +4,7 @@
 #include "avif/avif.h"
 
 #include <algorithm>
+#include <cstring>
 #include <vector>
 
 #include "avifincrtest_helpers.h"
@@ -45,7 +46,7 @@ void comparePartialYUVA(const avifImage & image1, const avifImage & image2, uint
         const uint8_t * data1 = image1.yuvPlanes[plane];
         const uint8_t * data2 = image2.yuvPlanes[plane];
         for (uint32_t y = 0; y < height; ++y) {
-            ASSERT_TRUE(std::equal(data1, data1 + widthByteCount, data2));
+            ASSERT_EQ(std::memcmp(data1, data2, widthByteCount), 0);
             data1 += image1.yuvRowBytes[plane];
             data2 += image2.yuvRowBytes[plane];
         }
@@ -58,7 +59,7 @@ void comparePartialYUVA(const avifImage & image1, const avifImage & image2, uint
         const uint8_t * data1 = image1.alphaPlane;
         const uint8_t * data2 = image2.alphaPlane;
         for (uint32_t y = 0; y < rowCount; ++y) {
-            ASSERT_TRUE(std::equal(data1, data1 + widthByteCount, data2));
+            ASSERT_EQ(std::memcmp(data1, data2, widthByteCount), 0);
             data1 += image1.alphaRowBytes;
             data2 += image2.alphaRowBytes;
         }
@@ -248,12 +249,13 @@ void decodeIncrementally(const avifRWData & encodedAvif,
     ASSERT_NE(decoder, nullptr);
     avifDecoderSetIO(decoder.get(), &io);
     decoder->allowIncremental = AVIF_TRUE;
+    const size_t step = std::max(static_cast<size_t>(1), data.fullSize / 10000);
 
     // Parsing is not incremental.
     avifResult parseResult = avifDecoderParse(decoder.get());
     while (parseResult == AVIF_RESULT_WAITING_ON_IO) {
         ASSERT_LT(data.available.size, data.fullSize) << "avifDecoderParse() returned WAITING_ON_IO instead of OK";
-        data.available.size = data.available.size + 1;
+        data.available.size = std::min(data.available.size + step, data.fullSize);
         parseResult = avifDecoderParse(decoder.get());
     }
     ASSERT_EQ(parseResult, AVIF_RESULT_OK);
@@ -272,7 +274,7 @@ void decodeIncrementally(const avifRWData & encodedAvif,
         comparePartialYUVA(reference, *decoder->image, decodedRowCount);
 
         previouslyDecodedRowCount = decodedRowCount;
-        data.available.size = data.available.size + 1;
+        data.available.size = std::min(data.available.size + step, data.fullSize);
         nextImageResult = useNthImageApi ? avifDecoderNthImage(decoder.get(), 0) : avifDecoderNextImage(decoder.get());
     }
     ASSERT_EQ(nextImageResult, AVIF_RESULT_OK);
