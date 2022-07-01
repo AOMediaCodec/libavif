@@ -21,17 +21,17 @@ namespace {
 //------------------------------------------------------------------------------
 
 // Used to pass the data folder path to the GoogleTest suites.
-const char *dataPath = nullptr;
+const char* dataPath = nullptr;
 
 // Reads the file with fileName into bytes and returns them.
-testutil::avifRWDataCleaner readFile(const char *fileName) {
+testutil::avifRWDataCleaner readFile(const char* fileName) {
   std::ifstream file(std::string(dataPath) + fileName,
                      std::ios::binary | std::ios::ate);
   testutil::avifRWDataCleaner bytes;
   avifRWDataRealloc(&bytes,
                     file.good() ? static_cast<size_t>(file.tellg()) : 0);
   file.seekg(0, std::ios::beg);
-  file.read(reinterpret_cast<char *>(bytes.data),
+  file.read(reinterpret_cast<char*>(bytes.data),
             static_cast<std::streamsize>(bytes.size));
   return bytes;
 }
@@ -141,7 +141,7 @@ INSTANTIATE_TEST_SUITE_P(SinglePixel, IncrementalTest,
 }  // namespace
 }  // namespace libavif
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   if (argc < 2) {
     std::cerr

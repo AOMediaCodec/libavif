@@ -50,7 +50,7 @@ TEST_P(GridApiTest, EncodeDecode) {
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   // Just here to match libavif API.
-  std::vector<avifImage *> cellImagePtrs(cellImages.size());
+  std::vector<avifImage*> cellImagePtrs(cellImages.size());
   for (size_t i = 0; i < cellImages.size(); ++i) {
     cellImagePtrs[i] = cellImages[i].get();
   }

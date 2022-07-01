@@ -19,7 +19,7 @@ namespace {
 
 // Verifies that the first (top) rowCount rows of image1 and image2 are
 // identical.
-void comparePartialYUVA(const avifImage &image1, const avifImage &image2,
+void comparePartialYUVA(const avifImage& image1, const avifImage& image2,
                         uint32_t rowCount) {
   if (rowCount == 0) {
     return;
@@ -44,8 +44,8 @@ void comparePartialYUVA(const avifImage &image1, const avifImage &image2,
     const uint32_t width = (plane == AVIF_CHAN_Y) ? image1.width : uvWidth;
     const uint32_t widthByteCount = width * pixelByteCount;
     const uint32_t height = (plane == AVIF_CHAN_Y) ? rowCount : uvHeight;
-    const uint8_t *data1 = image1.yuvPlanes[plane];
-    const uint8_t *data2 = image2.yuvPlanes[plane];
+    const uint8_t* data1 = image1.yuvPlanes[plane];
+    const uint8_t* data2 = image2.yuvPlanes[plane];
     for (uint32_t y = 0; y < height; ++y) {
       ASSERT_EQ(std::memcmp(data1, data2, widthByteCount), 0);
       data1 += image1.yuvRowBytes[plane];
@@ -57,8 +57,8 @@ void comparePartialYUVA(const avifImage &image1, const avifImage &image2,
     ASSERT_NE(image2.alphaPlane, nullptr);
     ASSERT_EQ(image1.alphaPremultiplied, image2.alphaPremultiplied);
     const uint32_t widthByteCount = image1.width * pixelByteCount;
-    const uint8_t *data1 = image1.alphaPlane;
-    const uint8_t *data2 = image2.alphaPlane;
+    const uint8_t* data1 = image1.alphaPlane;
+    const uint8_t* data2 = image2.alphaPlane;
     for (uint32_t y = 0; y < rowCount; ++y) {
       ASSERT_EQ(std::memcmp(data1, data2, widthByteCount), 0);
       data1 += image1.alphaRowBytes;
@@ -121,9 +121,9 @@ struct avifROPartialData {
 // Implementation of avifIOReadFunc simulating a stream from an array. See
 // avifIOReadFunc documentation. io->data is expected to point to
 // avifROPartialData.
-avifResult avifIOPartialRead(struct avifIO *io, uint32_t readFlags,
-                             uint64_t offset, size_t size, avifROData *out) {
-  const avifROPartialData *data = (avifROPartialData *)io->data;
+avifResult avifIOPartialRead(struct avifIO* io, uint32_t readFlags,
+                             uint64_t offset, size_t size, avifROData* out) {
+  const avifROPartialData* data = (avifROPartialData*)io->data;
   if ((readFlags != 0) || !data || (data->fullSize < offset)) {
     return AVIF_RESULT_IO_ERROR;
   }
@@ -144,9 +144,9 @@ avifResult avifIOPartialRead(struct avifIO *io, uint32_t readFlags,
 // The cell count is reduced to fit libavif or AVIF format constraints. If
 // impossible, the encoded output is returned empty. The final cellWidth and
 // cellHeight are output.
-void encodeAsGrid(const avifImage &image, uint32_t gridCols, uint32_t gridRows,
-                  avifRWData *output, uint32_t *cellWidth,
-                  uint32_t *cellHeight) {
+void encodeAsGrid(const avifImage& image, uint32_t gridCols, uint32_t gridRows,
+                  avifRWData* output, uint32_t* cellWidth,
+                  uint32_t* cellHeight) {
   // Chroma subsampling requires even dimensions. See ISO 23000-22 - 7.3.11.4.2
   const bool needEvenWidths = ((image.yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ||
                                (image.yuvFormat == AVIF_PIXEL_FORMAT_YUV422));
@@ -195,7 +195,7 @@ void encodeAsGrid(const avifImage &image, uint32_t gridCols, uint32_t gridRows,
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   // Just here to match libavif API.
-  std::vector<avifImage *> cellImagePtrs(cellImages.size());
+  std::vector<avifImage*> cellImagePtrs(cellImages.size());
   for (size_t i = 0; i < cellImages.size(); ++i) {
     cellImagePtrs[i] = cellImages[i].get();
   }
@@ -207,9 +207,9 @@ void encodeAsGrid(const avifImage &image, uint32_t gridCols, uint32_t gridRows,
 }
 
 // Encodes the image to be decoded incrementally.
-void encodeAsIncremental(const avifImage &image, bool flatCells,
-                         avifRWData *output, uint32_t *cellWidth,
-                         uint32_t *cellHeight) {
+void encodeAsIncremental(const avifImage& image, bool flatCells,
+                         avifRWData* output, uint32_t* cellWidth,
+                         uint32_t* cellHeight) {
   const uint32_t gridCols = image.width / 64;  // 64px is the min cell width.
   const uint32_t gridRows = flatCells ? 1 : (image.height / 64);
   encodeAsGrid(image, (gridCols > 1) ? gridCols : 1,
@@ -218,10 +218,10 @@ void encodeAsIncremental(const avifImage &image, bool flatCells,
 
 }  // namespace
 
-void encodeRectAsIncremental(const avifImage &image, uint32_t width,
+void encodeRectAsIncremental(const avifImage& image, uint32_t width,
                              uint32_t height, bool createAlphaIfNone,
-                             bool flatCells, avifRWData *output,
-                             uint32_t *cellWidth, uint32_t *cellHeight) {
+                             bool flatCells, avifRWData* output,
+                             uint32_t* cellWidth, uint32_t* cellHeight) {
   avifImagePtr subImage(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(subImage, nullptr);
   ASSERT_LE(width, image.width);
@@ -246,9 +246,9 @@ void encodeRectAsIncremental(const avifImage &image, uint32_t width,
 
 //------------------------------------------------------------------------------
 
-void decodeIncrementally(const avifRWData &encodedAvif, bool isPersistent,
+void decodeIncrementally(const avifRWData& encodedAvif, bool isPersistent,
                          bool giveSizeHint, bool useNthImageApi,
-                         const avifImage &reference, uint32_t cellHeight) {
+                         const avifImage& reference, uint32_t cellHeight) {
   // AVIF cells are at least 64 pixels tall.
   if (cellHeight != reference.height) {
     ASSERT_GE(cellHeight, 64u);
@@ -308,7 +308,7 @@ void decodeIncrementally(const avifRWData &encodedAvif, bool isPersistent,
   comparePartialYUVA(reference, *decoder->image, reference.height);
 }
 
-void decodeNonIncrementallyAndIncrementally(const avifRWData &encodedAvif,
+void decodeNonIncrementallyAndIncrementally(const avifRWData& encodedAvif,
                                             bool isPersistent,
                                             bool giveSizeHint,
                                             bool useNthImageApi,
