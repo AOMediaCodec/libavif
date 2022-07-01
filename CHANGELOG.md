@@ -10,6 +10,7 @@ There is an incompatible ABI change in this release. Members were removed from
 avifImage struct. It is necessary to recompile your code.
 
 ### Changed
+* Update aom.cmd: v3.4.0
 * Update svt.cmd/svt.sh: v1.1.0
 
 ### Removed

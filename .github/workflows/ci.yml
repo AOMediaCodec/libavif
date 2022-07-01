@@ -21,6 +21,12 @@ jobs:
       with:
         path: ext
         key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.12
+      with:
+        cmake-version: '3.13.x'
+    - name: Print cmake version
+      run: cmake --version
     - uses: ilammy/setup-nasm@v1
       with:
         version: 2.15.05
@@ -53,7 +59,7 @@ jobs:
       working-directory: ./ext
       run: bash libyuv.cmd
     - name: Build GoogleTest
-      # TODO: if: steps.cache-ext.outputs.cache-hit != 'true'
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
       run: bash googletest.cmd

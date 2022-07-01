@@ -1,7 +1,7 @@
 # Copyright 2019 Joe Drago. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.13)
 
 # Specify search path for CMake modules to be loaded by include() and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
@@ -450,14 +450,11 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
     find_package(JPEG REQUIRED)
 
     add_library(
-        avif_apps STATIC # Static so it does not have to be installed.
-        apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c apps/shared/y4m.c
+        avif_apps OBJECT apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
+                         apps/shared/y4m.c
     )
-    target_link_libraries(avif_apps avif ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
-    target_include_directories(
-        avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR}
-        INTERFACE apps/shared
-    )
+    target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_include_directories(avif_apps PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} INTERFACE apps/shared)
 endif()
 
 if(AVIF_BUILD_APPS)
@@ -465,12 +462,12 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(avifenc avif_apps)
     add_executable(avifdec apps/avifdec.c)
     if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif avif_apps ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(avifdec avif_apps)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(

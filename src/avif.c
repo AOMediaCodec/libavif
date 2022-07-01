@@ -457,7 +457,9 @@ static clapFraction calcCenter(int32_t dim)
     return f;
 }
 
-static int32_t calcGCD(int32_t a, int32_t b)
+// |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT_MIN without
+// overflowing int32_t.
+static int64_t calcGCD(int64_t a, int64_t b)
 {
     if (a < 0) {
         a *= -1;
@@ -467,7 +469,7 @@ static int32_t calcGCD(int32_t a, int32_t b)
     }
     while (a > 0) {
         if (a < b) {
-            int32_t t = a;
+            int64_t t = a;
             a = b;
             b = t;
         }
@@ -478,7 +480,7 @@ static int32_t calcGCD(int32_t a, int32_t b)
 
 static void clapFractionSimplify(clapFraction * f)
 {
-    int32_t gcd = calcGCD(f->n, f->d);
+    int64_t gcd = calcGCD(f->n, f->d);
     if (gcd > 1) {
         f->n /= gcd;
         f->d /= gcd;
