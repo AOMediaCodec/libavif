@@ -1043,8 +1043,9 @@ typedef struct avifEncoder
     int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
     uint64_t timescale;   // timescale of the media (Hz)
 
-    int extraLayerCount; // Extra layers for color sub image; 0 to disable layer image (default).
-    int extraLayerCountAlpha; // Extra layers for alpha sub image; 0 to disable layer image (default).
+    // Layers (used by progressive rendering)
+    int extraLayerCount; // Extra color layers; 0 for regular single-layer color image (default).
+    int extraLayerCountAlpha; // Extra alpha layers; 0 for regular single-layer alpha image (default).
     avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
     avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
 

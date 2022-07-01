@@ -786,8 +786,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
 #if defined(AVIF_AOM_LAYER_CONFIG_PREFER_SVC_PARAMS)
             avifBool useSvcParams = AVIF_TRUE;
-            for (uint8_t configIndex = 0; configIndex < layerCount; ++configIndex) {
-                avifLayerConfig * layer = &layers[configIndex];
+            for (int configIndex = 0; configIndex < layerCount; ++configIndex) {
+                const avifLayerConfig * layer = &layers[configIndex];
                 if (layer->horizontalMode.numerator != layer->verticalMode.numerator ||
                     layer->horizontalMode.denominator != layer->verticalMode.denominator) {
                     useSvcParams = AVIF_FALSE;
@@ -1076,11 +1076,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
         encodeFlags |= AOM_EFLAG_FORCE_KF;
     }
-    if (extraLayerCount > 0) {
-        if (layerIndex > 0) {
-            encodeFlags |= AOM_EFLAG_NO_REF_GF | AOM_EFLAG_NO_REF_ARF | AOM_EFLAG_NO_REF_BWD | AOM_EFLAG_NO_REF_ARF2 |
-                           AOM_EFLAG_NO_UPD_GF | AOM_EFLAG_NO_UPD_ARF;
-        }
+    if ((extraLayerCount > 0) && (layerIndex > 0)) {
+        encodeFlags |= AOM_EFLAG_NO_REF_GF | AOM_EFLAG_NO_REF_ARF | AOM_EFLAG_NO_REF_BWD | AOM_EFLAG_NO_REF_ARF2 |
+                       AOM_EFLAG_NO_UPD_GF | AOM_EFLAG_NO_UPD_ARF;
     }
 
     aom_codec_err_t encodeErr = aom_codec_encode(&codec->internal->encoder, &aomImage, 0, 1, encodeFlags);

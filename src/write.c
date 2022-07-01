@@ -630,11 +630,16 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // -----------------------------------------------------------------------
     // Validate images
 
+    if ((layerCount == 0) || (layerCount > MAX_AV1_LAYER_COUNT)) {
+        return AVIF_RESULT_INVALID_LAYERS;
+    }
+
+    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+
     const uint32_t cellCount = gridCols * gridRows;
     const uint32_t imageCount = cellCount * layerCount;
-    if (cellCount == 0) {
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
 
     const avifImage * firstCell = cellImages[0];
     if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
@@ -844,7 +849,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if (item->codec) {
             item->extraLayerCount = item->alpha ? encoder->extraLayerCountAlpha : encoder->extraLayerCount;
             for (uint32_t layerIndex = 0; layerIndex < item->extraLayerCount + 1; ++layerIndex) {
-                const uint32_t index = (layerIndex > (layerCount - 1)) ? (layerCount - 1) : layerIndex;
+                const uint32_t index = AVIF_MIN(layerIndex, layerCount - 1);
                 const avifImage * layerImage = cellImages[item->cellIndex * layerCount + index];
                 avifResult encodeResult =
                     item->codec->encodeImage(item->codec, encoder, layerImage, item->alpha, layerIndex, addImageFlags, item->encodeOutput);
@@ -876,9 +881,6 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                    avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
-        return AVIF_RESULT_INVALID_IMAGE_GRID;
-    }
     return avifEncoderAddImageInternal(encoder, gridCols, gridRows, 1, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
 }
 
@@ -889,10 +891,7 @@ avifResult avifEncoderAddImageProgressive(avifEncoder * encoder,
                                           avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    if ((layerCount == 0) || (layerCount > MAX_AV1_LAYER_COUNT)) {
-        return AVIF_RESULT_INVALID_LAYERS;
-    }
-    return avifEncoderAddImageInternal(encoder, 1, 1, layerCount, layerImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
+    return avifEncoderAddImageInternal(encoder, 1, 1, layerCount, layerImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single frame progressive images are supported
 }
 
 avifResult avifEncoderAddImageProgressiveGrid(avifEncoder * encoder,
@@ -902,13 +901,7 @@ avifResult avifEncoderAddImageProgressiveGrid(avifEncoder * encoder,
                                               const avifImage * const * layerImages,
                                               avifAddImageFlags addImageFlags) {
     avifDiagnosticsClearError(&encoder->diag);
-    if ((layerCount == 0) || (layerCount > MAX_AV1_LAYER_COUNT)) {
-        return AVIF_RESULT_INVALID_LAYERS;
-    }
-    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
-        return AVIF_RESULT_INVALID_IMAGE_GRID;
-    }
-    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, layerCount, layerImages, 1, addImageFlags);
+    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, layerCount, layerImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE);
 }
 
 static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
@@ -1540,10 +1533,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1);
     avifBool useInterleave = (encoder->extraLayerCount > 0) || (encoder->extraLayerCountAlpha > 0);
 
-    for (uint32_t itemPasses = 0; itemPasses < 2; ++itemPasses) {
+    for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
         //   * Pass 0: metadata (Exif/XMP)
-        //   * Pass 1: item data (AV1 color & alpha)
+        //   * Pass 1: alpha (AV1)
+        //   * Pass 2: all other item data (AV1 color)
         //
         // See here for the discussion on alpha coming before color:
         // https://github.com/AOMediaCodec/libavif/issues/287
@@ -1553,6 +1547,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         // and ignoreExif are enabled.
         //
         const avifBool metadataPass = (itemPasses == 0);
+        const avifBool alphaPass = (itemPasses == 1);
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
@@ -1565,11 +1560,15 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 // only process metadata (XMP/Exif) payloads when metadataPass is true
                 continue;
             }
+            if (alphaPass != item->alpha) {
+                // only process alpha payloads when alphaPass is true
+                continue;
+            }
 
             size_t chunkOffset = 0;
 
             // Interleave - Pick out and record layered image items, interleave them later.
-            // Expect layer image item has same number of samples and fixups.
+            // Layer image items have same number of samples and fixups.
             if (useInterleave && item->encodeOutput->samples.count > 0 &&
                 item->encodeOutput->samples.count == item->mdatFixups.count) {
 
@@ -1620,33 +1619,23 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         }
     }
 
-    // Interleave each sample (layer) of each item.
-    //
-    //   - for each layer
-    //    - for each grid cell
-    //     - write alpha of this layer of this grid cell
-    //     - write color of this layer of this grid cell
-    //
-    // See here for the discussion on alpha coming before color:
-    // https://github.com/AOMediaCodec/libavif/issues/287
-
     if (useInterleave) {
         avifBool hasMoreSample;
         uint32_t layerIndex = 0;
         do {
             hasMoreSample = AVIF_FALSE;
-            // Assume color and alpha having same number of items (both single image, or both grid of same dimension)
-            for (uint32_t itemIndex = 0; itemIndex < layeredColorItems.count; ++itemIndex) {
+            for (uint32_t itemIndex = 0; itemIndex < AVIF_MAX(layeredColorItems.count, layeredAlphaItems.count); ++itemIndex) {
                 for (int samplePass = 0; samplePass < 2; ++samplePass) {
+                    // Alpha coming before color
                     avifEncoderItemReferenceArray * currentItems = (samplePass == 0) ? &layeredAlphaItems : &layeredColorItems;
                     if (itemIndex >= currentItems->count) {
-                        break;
+                        continue;
                     }
 
                     // TODO: Offer the ability for a user to specify which grid cell should be written first.
                     avifEncoderItem * item = currentItems->ref[itemIndex].item;
                     if (item->encodeOutput->samples.count <= layerIndex) {
-                        // We've already written all samples from this item
+                        // We've already written all samples of this item
                         continue;
                     } else if (item->encodeOutput->samples.count > layerIndex + 1) {
                         hasMoreSample = AVIF_TRUE;
