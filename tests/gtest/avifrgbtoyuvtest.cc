@@ -11,6 +11,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
+using ::libavif::testutil::avifChannel;
 using ::testing::Combine;
 using ::testing::Values;
 using ::testing::ValuesIn;
@@ -24,13 +25,11 @@ namespace
 
 // Offsets the pixel values of the channel in image by modifier[] (row-ordered).
 template <typename PixelType>
-void modifyImageChannel(avifRGBImage * image, avifChannelIndex channel, const int32_t modifier[])
+void modifyImageChannel(avifRGBImage * image, avifChannel channel, const int32_t modifier[])
 {
-    if (channel == AVIF_CHAN_A && !avifRGBFormatHasAlpha(image->format)) {
-        return;
-    }
+    assert(channel != avifChannel::A || avifRGBFormatHasAlpha(image->format));
     const uint32_t channelCount = avifRGBFormatChannelCount(image->format);
-    const uint32_t channelOffset = avifRGBFormatChannelOffset(image->format, channel);
+    const uint32_t channelOffset = avifChannelOffset(image->format, channel);
     for (uint32_t y = 0, i = 0; y < image->height; ++y) {
         PixelType * pixel = reinterpret_cast<PixelType *>(image->pixels + image->rowBytes * y);
         for (uint32_t x = 0; x < image->width; ++x, ++i) {
@@ -40,13 +39,13 @@ void modifyImageChannel(avifRGBImage * image, avifChannelIndex channel, const in
     }
 }
 
-void modifyImageChannel(avifRGBImage * image, avifChannelIndex channel, const int32_t modifier[])
+void modifyImageChannel(avifRGBImage * image, avifChannel channel, const int32_t modifier[])
 {
     (image->depth <= 8) ? modifyImageChannel<uint8_t>(image, channel, modifier) : modifyImageChannel<uint16_t>(image, channel, modifier);
 }
 
 // Fills the image channel with the given value, and offsets the individual pixel values of that channel with the modifier, if not null.
-void setImageChannel(avifRGBImage * image, avifChannelIndex channel, uint32_t value, const int32_t modifier[])
+void setImageChannel(avifRGBImage * image, avifChannel channel, uint32_t value, const int32_t modifier[])
 {
     testutil::fillImageChannel(image, channel, value);
     if (modifier) {
@@ -129,11 +128,11 @@ TEST_P(YUVToRGBTest, Convert)
 
     // Alpha values are not tested here. Keep it opaque.
     if (avifRGBFormatHasAlpha(srcRgb.format)) {
-        testutil::fillImageChannel(&srcRgb, AVIF_CHAN_A, rgbMax);
+        testutil::fillImageChannel(&srcRgb, avifChannel::A, rgbMax);
     }
 
-    // To exercise the YUV subsampling loss, the input samples must differ in each of the RGB channels.
-    // YUV subsampling expects the input RGB channels to be correlated to minimize the quality loss.
+    // To exercise the chroma subsampling loss, the input samples must differ in each of the RGB channels.
+    // Chroma subsampling expects the input RGB channels to be correlated to minimize the quality loss.
     static constexpr int32_t redNoise[] = { 7,  14, 11, 5,  // Random permutation of 16 values.
                                             4,  6,  8,  15, //
                                             2,  9,  13, 3,  //
@@ -153,12 +152,12 @@ TEST_P(YUVToRGBTest, Convert)
     const uint32_t maxValue = rgbMax - (addNoise ? 15 : 0);
     for (uint32_t r = 0; r < maxValue + rgbStep; r += rgbStep) {
         r = std::min(r, maxValue); // Test the maximum sample value even if it is not a multiple of rgbStep.
-        setImageChannel(&srcRgb, AVIF_CHAN_R, r, addNoise ? redNoise : plainColor);
+        setImageChannel(&srcRgb, avifChannel::R, r, addNoise ? redNoise : plainColor);
 
         if (isMonochrome) {
             // Test only greyish input when converting to a single channel.
-            setImageChannel(&srcRgb, AVIF_CHAN_G, r, addNoise ? greenNoise : plainColor);
-            setImageChannel(&srcRgb, AVIF_CHAN_B, r, addNoise ? blueNoise : plainColor);
+            setImageChannel(&srcRgb, avifChannel::G, r, addNoise ? greenNoise : plainColor);
+            setImageChannel(&srcRgb, avifChannel::B, r, addNoise ? blueNoise : plainColor);
 
             ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &srcRgb), AVIF_RESULT_OK);
             ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dstRgb), AVIF_RESULT_OK);
@@ -167,10 +166,10 @@ TEST_P(YUVToRGBTest, Convert)
         } else {
             for (uint32_t g = 0; g < maxValue + rgbStep; g += rgbStep) {
                 g = std::min(g, maxValue);
-                setImageChannel(&srcRgb, AVIF_CHAN_G, g, addNoise ? greenNoise : plainColor);
+                setImageChannel(&srcRgb, avifChannel::G, g, addNoise ? greenNoise : plainColor);
                 for (uint32_t b = 0; b < maxValue + rgbStep; b += rgbStep) {
                     b = std::min(b, maxValue);
-                    setImageChannel(&srcRgb, AVIF_CHAN_B, b, addNoise ? blueNoise : plainColor);
+                    setImageChannel(&srcRgb, avifChannel::B, b, addNoise ? blueNoise : plainColor);
 
                     ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &srcRgb), AVIF_RESULT_OK);
                     ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dstRgb), AVIF_RESULT_OK);

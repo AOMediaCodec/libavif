@@ -14,9 +14,30 @@ namespace testutil
 namespace
 {
 
-constexpr int AVIF_CHANS[] = { AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A };
+constexpr int AVIF_YUV_CHANS[] = { AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, avifChannel::A };
 
 } // namespace
+
+uint32_t avifChannelOffset(avifRGBFormat format, avifChannel channel)
+{
+    if (channel == avifChannel::A) {
+        assert(avifRGBFormatHasAlpha(format));
+        return ((format == AVIF_RGB_FORMAT_ARGB) || (format == AVIF_RGB_FORMAT_ABGR)) ? 0 : 3;
+    }
+    switch (format) {
+        case AVIF_RGB_FORMAT_RGB:
+        case AVIF_RGB_FORMAT_RGBA:
+            return channel;
+        case AVIF_RGB_FORMAT_ARGB:
+            return 1 + channel;
+        case AVIF_RGB_FORMAT_BGR:
+        case AVIF_RGB_FORMAT_BGRA:
+            return 2 - channel;
+        default:
+            assert(format == AVIF_RGB_FORMAT_ABGR);
+            return 3 - channel;
+    }
+}
 
 //------------------------------------------------------------------------------
 
@@ -46,16 +67,16 @@ void fillImagePlain(avifImage * image, const uint32_t yuva[4])
     avifPixelFormatInfo info;
     avifGetPixelFormatInfo(image->yuvFormat, &info);
 
-    for (int c : AVIF_CHANS) {
-        uint8_t * row = (c == AVIF_CHAN_A) ? image->alphaPlane : image->yuvPlanes[c];
+    for (int c : AVIF_YUV_CHANS) {
+        uint8_t * row = (c == avifChannel::A) ? image->alphaPlane : image->yuvPlanes[c];
         if (!row) {
             continue;
         }
-        const uint32_t rowBytes = (c == AVIF_CHAN_A) ? image->alphaRowBytes : image->yuvRowBytes[c];
+        const uint32_t rowBytes = (c == avifChannel::A) ? image->alphaRowBytes : image->yuvRowBytes[c];
         const uint32_t planeWidth =
-            (c == AVIF_CHAN_Y || c == AVIF_CHAN_A) ? image->width : ((image->width + info.chromaShiftX) >> info.chromaShiftX);
+            (c == AVIF_CHAN_Y || c == avifChannel::A) ? image->width : ((image->width + info.chromaShiftX) >> info.chromaShiftX);
         const uint32_t planeHeight =
-            (c == AVIF_CHAN_Y || c == AVIF_CHAN_A) ? image->height : ((image->height + info.chromaShiftY) >> info.chromaShiftY);
+            (c == AVIF_CHAN_Y || c == avifChannel::A) ? image->height : ((image->height + info.chromaShiftY) >> info.chromaShiftY);
         for (uint32_t y = 0; y < planeHeight; ++y) {
             if (avifImageUsesU16(image)) {
                 std::fill(reinterpret_cast<uint16_t *>(row),
@@ -74,16 +95,16 @@ void fillImageGradient(avifImage * image)
     avifPixelFormatInfo info;
     avifGetPixelFormatInfo(image->yuvFormat, &info);
 
-    for (int c : AVIF_CHANS) {
-        uint8_t * row = (c == AVIF_CHAN_A) ? image->alphaPlane : image->yuvPlanes[c];
+    for (int c : AVIF_YUV_CHANS) {
+        uint8_t * row = (c == avifChannel::A) ? image->alphaPlane : image->yuvPlanes[c];
         if (!row) {
             continue;
         }
-        const uint32_t rowBytes = (c == AVIF_CHAN_A) ? image->alphaRowBytes : image->yuvRowBytes[c];
+        const uint32_t rowBytes = (c == avifChannel::A) ? image->alphaRowBytes : image->yuvRowBytes[c];
         const uint32_t planeWidth =
-            (c == AVIF_CHAN_Y || c == AVIF_CHAN_A) ? image->width : ((image->width + info.chromaShiftX) >> info.chromaShiftX);
+            (c == AVIF_CHAN_Y || c == avifChannel::A) ? image->width : ((image->width + info.chromaShiftX) >> info.chromaShiftX);
         const uint32_t planeHeight =
-            (c == AVIF_CHAN_Y || c == AVIF_CHAN_A) ? image->height : ((image->height + info.chromaShiftY) >> info.chromaShiftY);
+            (c == AVIF_CHAN_Y || c == avifChannel::A) ? image->height : ((image->height + info.chromaShiftY) >> info.chromaShiftY);
         for (uint32_t y = 0; y < planeHeight; ++y) {
             for (uint32_t x = 0; x < planeWidth; ++x) {
                 const uint32_t value = (x + y) * ((1u << image->depth) - 1u) / std::max(1u, planeWidth + planeHeight - 2);
@@ -101,10 +122,10 @@ void fillImageGradient(avifImage * image)
 namespace
 {
 template <typename PixelType>
-void fillImageChannel(avifRGBImage * image, avifChannelIndex channel, uint32_t value)
+void fillImageChannel(avifRGBImage * image, avifChannel channel, uint32_t value)
 {
     const uint32_t channelCount = avifRGBFormatChannelCount(image->format);
-    const uint32_t channelOffset = avifRGBFormatChannelOffset(image->format, channel);
+    const uint32_t channelOffset = avifChannelOffset(image->format, channel);
     for (uint32_t y = 0; y < image->height; ++y) {
         PixelType * pixel = reinterpret_cast<PixelType *>(image->pixels + image->rowBytes * y);
         for (uint32_t x = 0; x < image->width; ++x) {
@@ -115,7 +136,7 @@ void fillImageChannel(avifRGBImage * image, avifChannelIndex channel, uint32_t v
 }
 } // namespace
 
-void fillImageChannel(avifRGBImage * image, avifChannelIndex channel, uint32_t value)
+void fillImageChannel(avifRGBImage * image, avifChannel channel, uint32_t value)
 {
     (image->depth <= 8) ? fillImageChannel<uint8_t>(image, channel, value) : fillImageChannel<uint16_t>(image, channel, value);
 }
@@ -134,21 +155,21 @@ bool areImagesEqual(const avifImage & image1, const avifImage & image2)
     avifPixelFormatInfo info;
     avifGetPixelFormatInfo(image1.yuvFormat, &info);
 
-    for (int c : AVIF_CHANS) {
-        uint8_t * row1 = (c == AVIF_CHAN_A) ? image1.alphaPlane : image1.yuvPlanes[c];
-        uint8_t * row2 = (c == AVIF_CHAN_A) ? image2.alphaPlane : image2.yuvPlanes[c];
+    for (int c : AVIF_YUV_CHANS) {
+        uint8_t * row1 = (c == avifChannel::A) ? image1.alphaPlane : image1.yuvPlanes[c];
+        uint8_t * row2 = (c == avifChannel::A) ? image2.alphaPlane : image2.yuvPlanes[c];
         if (!row1 != !row2) {
             return false;
         }
         if (!row1) {
             continue;
         }
-        const uint32_t rowBytes1 = (c == AVIF_CHAN_A) ? image1.alphaRowBytes : image1.yuvRowBytes[c];
-        const uint32_t rowBytes2 = (c == AVIF_CHAN_A) ? image2.alphaRowBytes : image2.yuvRowBytes[c];
+        const uint32_t rowBytes1 = (c == avifChannel::A) ? image1.alphaRowBytes : image1.yuvRowBytes[c];
+        const uint32_t rowBytes2 = (c == avifChannel::A) ? image2.alphaRowBytes : image2.yuvRowBytes[c];
         const uint32_t planeWidth =
-            (c == AVIF_CHAN_Y || c == AVIF_CHAN_A) ? image1.width : ((image1.width + info.chromaShiftX) >> info.chromaShiftX);
+            (c == AVIF_CHAN_Y || c == avifChannel::A) ? image1.width : ((image1.width + info.chromaShiftX) >> info.chromaShiftX);
         const uint32_t planeHeight =
-            (c == AVIF_CHAN_Y || c == AVIF_CHAN_A) ? image1.height : ((image1.height + info.chromaShiftY) >> info.chromaShiftY);
+            (c == AVIF_CHAN_Y || c == avifChannel::A) ? image1.height : ((image1.height + info.chromaShiftY) >> info.chromaShiftY);
         for (uint32_t y = 0; y < planeHeight; ++y) {
             if (avifImageUsesU16(&image1)) {
                 if (!std::equal(reinterpret_cast<uint16_t *>(row1),
