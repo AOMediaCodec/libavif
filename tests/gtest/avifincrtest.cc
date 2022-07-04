@@ -25,7 +25,7 @@ const char* data_path = nullptr;
 
 // Reads the file with file_name into bytes and returns them.
 testutil::AvifRwData ReadFile(const char* file_name) {
-  std::ifstream file(std::string(data_path) + file_name,
+  std::ifstream file(std::string(data_path) + "/" + file_name,
                      std::ios::binary | std::ios::ate);
   testutil::AvifRwData bytes;
   avifRWDataRealloc(&bytes,
