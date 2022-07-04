@@ -29,7 +29,7 @@ const char * dataPath = nullptr;
 // Reads the file with fileName into bytes and returns them.
 testutil::avifRWDataCleaner readFile(const char * fileName)
 {
-    std::ifstream file(std::string(dataPath) + fileName, std::ios::binary | std::ios::ate);
+    std::ifstream file(std::string(dataPath) + "/" + fileName, std::ios::binary | std::ios::ate);
     testutil::avifRWDataCleaner bytes;
     avifRWDataRealloc(&bytes, file.good() ? static_cast<size_t>(file.tellg()) : 0);
     file.seekg(0, std::ios::beg);
