@@ -2,21 +2,19 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "aviftest_helpers.h"
-#include "avif/avif.h"
 
 #include <algorithm>
 #include <cassert>
 
-namespace libavif
-{
-namespace testutil
-{
-namespace
-{
+#include "avif/avif.h"
+
+namespace libavif {
+namespace testutil {
+namespace {
 
 constexpr int AVIF_YUV_CHANS[] = { AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, avifChannel::A };
 
-} // namespace
+}  // namespace
 
 uint32_t avifChannelOffset(avifRGBFormat format, avifChannel channel)
 {
@@ -51,21 +49,22 @@ avifRGBImageCleaner::avifRGBImageCleaner(const avifImage * yuv, int rgbDepth, av
 
 //------------------------------------------------------------------------------
 
-avifImagePtr createImage(int width, int height, int depth, avifPixelFormat yuvFormat, avifPlanesFlags planes, avifRange yuvRange)
-{
-    avifImagePtr image(avifImageCreate(width, height, depth, yuvFormat), avifImageDestroy);
-    if (!image) {
-        return { nullptr, nullptr };
-    }
-    image->yuvRange = yuvRange;
-    avifImageAllocatePlanes(image.get(), planes);
-    return image;
+avifImagePtr createImage(int width, int height, int depth,
+                         avifPixelFormat yuvFormat, avifPlanesFlags planes,
+                         avifRange yuvRange) {
+  avifImagePtr image(avifImageCreate(width, height, depth, yuvFormat),
+                     avifImageDestroy);
+  if (!image) {
+    return {nullptr, nullptr};
+  }
+  image->yuvRange = yuvRange;
+  avifImageAllocatePlanes(image.get(), planes);
+  return image;
 }
 
-void fillImagePlain(avifImage * image, const uint32_t yuva[4])
-{
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(image->yuvFormat, &info);
+void fillImagePlain(avifImage* image, const uint32_t yuva[4]) {
+  avifPixelFormatInfo info;
+  avifGetPixelFormatInfo(image->yuvFormat, &info);
 
     for (int c : AVIF_YUV_CHANS) {
         uint8_t * row = (c == avifChannel::A) ? image->alphaPlane : image->yuvPlanes[c];
@@ -90,10 +89,9 @@ void fillImagePlain(avifImage * image, const uint32_t yuva[4])
     }
 }
 
-void fillImageGradient(avifImage * image)
-{
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(image->yuvFormat, &info);
+void fillImageGradient(avifImage* image) {
+  avifPixelFormatInfo info;
+  avifGetPixelFormatInfo(image->yuvFormat, &info);
 
     for (int c : AVIF_YUV_CHANS) {
         uint8_t * row = (c == avifChannel::A) ? image->alphaPlane : image->yuvPlanes[c];
@@ -144,16 +142,16 @@ void fillImageChannel(avifRGBImage * image, avifChannel channel, uint32_t value)
 //------------------------------------------------------------------------------
 
 // Returns true if image1 and image2 are identical.
-bool areImagesEqual(const avifImage & image1, const avifImage & image2)
-{
-    if (image1.width != image2.width || image1.height != image2.height || image1.depth != image2.depth ||
-        image1.yuvFormat != image2.yuvFormat || image1.yuvRange != image2.yuvRange) {
-        return false;
-    }
-    assert(image1.width * image1.height > 0);
+bool areImagesEqual(const avifImage& image1, const avifImage& image2) {
+  if (image1.width != image2.width || image1.height != image2.height ||
+      image1.depth != image2.depth || image1.yuvFormat != image2.yuvFormat ||
+      image1.yuvRange != image2.yuvRange) {
+    return false;
+  }
+  assert(image1.width * image1.height > 0);
 
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(image1.yuvFormat, &info);
+  avifPixelFormatInfo info;
+  avifGetPixelFormatInfo(image1.yuvFormat, &info);
 
     for (int c : AVIF_YUV_CHANS) {
         uint8_t * row1 = (c == avifChannel::A) ? image1.alphaPlane : image1.yuvPlanes[c];
@@ -191,5 +189,5 @@ bool areImagesEqual(const avifImage & image1, const avifImage & image2)
 
 //------------------------------------------------------------------------------
 
-} // namespace testutil
-} // namespace libavif
+}  // namespace testutil
+}  // namespace libavif
