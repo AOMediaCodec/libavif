@@ -22,10 +22,10 @@ using avifEncoderPtr =
 using avifDecoderPtr =
     std::unique_ptr<avifDecoder, decltype(&avifDecoderDestroy)>;
 
-class avifRWDataCleaner : public avifRWData {
+class AvifRwData : public avifRWData {
  public:
-  avifRWDataCleaner() : avifRWData({}) {}
-  ~avifRWDataCleaner() { avifRWDataFree(this); }
+  AvifRwData() : avifRWData({}) {}
+  ~AvifRwData() { avifRWDataFree(this); }
 };
 
 class avifRGBImageCleaner : public avifRGBImage {
@@ -36,17 +36,17 @@ class avifRGBImageCleaner : public avifRGBImage {
 };
 
 // Creates an image. Returns null in case of memory failure.
-avifImagePtr createImage(int width, int height, int depth,
-                         avifPixelFormat yuvFormat, avifPlanesFlags planes,
-                         avifRange yuvRange = AVIF_RANGE_FULL);
+avifImagePtr CreateImage(int width, int height, int depth,
+                         avifPixelFormat yuv_format, avifPlanesFlags planes,
+                         avifRange yuv_range = AVIF_RANGE_FULL);
 
 // Set all pixels of each plane of an image.
-void fillImagePlain(avifImage* image, const uint32_t yuva[4]);
-void fillImageGradient(avifImage* image);
+void FillImagePlain(avifImage* image, const uint32_t yuva[4]);
+void FillImageGradient(avifImage* image);
 void fillImageChannel(avifRGBImage* image, avifChannel channel, uint32_t value);
 
 // Returns true if both images have the same features and pixel values.
-bool areImagesEqual(const avifImage& image1, const avifImage& image2);
+bool AreImagesEqual(const avifImage& image1, const avifImage& image2);
 
 }  // namespace testutil
 }  // namespace libavif
