@@ -19,7 +19,7 @@ namespace {
 
 //------------------------------------------------------------------------------
 
-// Offsets the pixel values of the channel in image by modifier[] (row-ordered).
+// Modifies the pixel values of a channel in image by modifier[] (row-ordered).
 template <typename PixelType>
 void ModifyImageChannel(avifRGBImage* image, uint32_t channel_offset,
                         const int32_t modifier[]) {
@@ -42,7 +42,7 @@ void ModifyImageChannel(avifRGBImage* image, uint32_t channel_offset,
       : ModifyImageChannel<uint16_t>(image, channel_offset, modifier);
 }
 
-// Fills the image channel with the given value, and offsets the individual
+// Fills the image channel with the given value, and modifies the individual
 // pixel values of that channel with the modifier, if not null.
 void SetImageChannel(avifRGBImage* image, uint32_t channel_offset,
                      uint32_t value, const int32_t modifier[]) {
@@ -164,7 +164,7 @@ TEST_P(YUVToRGBTest, Convert) {
       13, 12, 2,  7,   // that is somewhat close to kGreenNoise.
       3,  1,  11, 10,  //
       6,  15, 5,  4};
-  static constexpr int32_t* plain_color = nullptr;
+  static constexpr int32_t* kPlainColor = nullptr;
 
   // Estimate the loss from converting RGB values to YUV and back.
   int64_t diff_sum = 0, abs_diff_sum = 0, sq_diff_sum = 0, max_abs_diff = 0;
@@ -174,14 +174,14 @@ TEST_P(YUVToRGBTest, Convert) {
     r = std::min(r, max_value);  // Test the maximum sample value even if it is
                                  // not a multiple of rgb_step.
     SetImageChannel(&src_rgb, offsets.r, r,
-                    add_noise ? kRedNoise : plain_color);
+                    add_noise ? kRedNoise : kPlainColor);
 
     if (is_monochrome) {
       // Test only greyish input when converting to a single channel.
       SetImageChannel(&src_rgb, offsets.g, r,
-                      add_noise ? kGreenNoise : plain_color);
+                      add_noise ? kGreenNoise : kPlainColor);
       SetImageChannel(&src_rgb, offsets.b, r,
-                      add_noise ? kBlueNoise : plain_color);
+                      add_noise ? kBlueNoise : kPlainColor);
 
       ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
       ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
@@ -192,11 +192,11 @@ TEST_P(YUVToRGBTest, Convert) {
       for (uint32_t g = 0; g < max_value + rgb_step; g += rgb_step) {
         g = std::min(g, max_value);
         SetImageChannel(&src_rgb, offsets.g, g,
-                        add_noise ? kGreenNoise : plain_color);
+                        add_noise ? kGreenNoise : kPlainColor);
         for (uint32_t b = 0; b < max_value + rgb_step; b += rgb_step) {
           b = std::min(b, max_value);
           SetImageChannel(&src_rgb, offsets.b, b,
-                          add_noise ? kBlueNoise : plain_color);
+                          add_noise ? kBlueNoise : kPlainColor);
 
           ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
           ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
