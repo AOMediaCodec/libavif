@@ -11,10 +11,10 @@
 namespace libavif {
 namespace testutil {
 
-enum avifChannel { R = 0, G = 1, B = 2, A = 3 };
+enum Channel { R = 0, G = 1, B = 2, A = 3 };
 
 // Maps from avifChannel to sample position in avifRGBFormat.
-uint32_t avifChannelOffset(avifRGBFormat format, avifChannel channel);
+uint32_t AvifChannelOffset(avifRGBFormat format, Channel channel);
 
 using avifImagePtr = std::unique_ptr<avifImage, decltype(&avifImageDestroy)>;
 using avifEncoderPtr =
@@ -28,11 +28,10 @@ class AvifRwData : public avifRWData {
   ~AvifRwData() { avifRWDataFree(this); }
 };
 
-class avifRGBImageCleaner : public avifRGBImage {
+class AvifRgbImage : public avifRGBImage {
  public:
-  avifRGBImageCleaner(const avifImage* yuv, int rgbDepth,
-                      avifRGBFormat rgbFormat);
-  ~avifRGBImageCleaner() { avifRGBImageFreePixels(this); }
+  AvifRgbImage(const avifImage* yuv, int rgbDepth, avifRGBFormat rgbFormat);
+  ~AvifRgbImage() { avifRGBImageFreePixels(this); }
 };
 
 // Creates an image. Returns null in case of memory failure.
@@ -43,7 +42,7 @@ avifImagePtr CreateImage(int width, int height, int depth,
 // Set all pixels of each plane of an image.
 void FillImagePlain(avifImage* image, const uint32_t yuva[4]);
 void FillImageGradient(avifImage* image);
-void fillImageChannel(avifRGBImage* image, avifChannel channel, uint32_t value);
+void fillImageChannel(avifRGBImage* image, Channel channel, uint32_t value);
 
 // Returns true if both images have the same features and pixel values.
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2);
