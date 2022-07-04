@@ -350,7 +350,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(AVIF_MATRIX_COEFFICIENTS_BT601),
             /*add_noise=*/Values(false, true),
-            /*rgb_step=*/Values(31),  // High or it would be too slow.
+            /*rgb_step=*/Values(61),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(1.),  // Not very accurate because
                                                   // of high rgb_step.
             /*min_psnr=*/Values(36.)));
@@ -363,9 +363,9 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(AVIF_MATRIX_COEFFICIENTS_BT601),
             /*add_noise=*/Values(false, true),
-            /*rgb_step=*/Values(101),  // High or it would be too slow.
-            /*max_abs_average_diff=*/Values(0.03),  // Not very accurate because
-                                                    // of high rgb_step.
+            /*rgb_step=*/Values(211),  // High or it would be too slow.
+            /*max_abs_average_diff=*/Values(0.2),  // Not very accurate because
+                                                   // of high rgb_step.
             /*min_psnr=*/Values(47.)));
 INSTANTIATE_TEST_SUITE_P(
     All12b, YUVToRGBTest,
@@ -376,8 +376,9 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(AVIF_MATRIX_COEFFICIENTS_BT601),
             /*add_noise=*/Values(false, true),
-            /*rgb_step=*/Values(401),  // High or it would be too slow.
-            /*max_abs_average_diff=*/Values(0.04),
+            /*rgb_step=*/Values(809),  // High or it would be too slow.
+            /*max_abs_average_diff=*/Values(0.3),  // Not very accurate because
+                                                   // of high rgb_step.
             /*min_psnr=*/Values(52.)));
 
 // TODO: Test other matrix coefficients than identity and bt.601.
