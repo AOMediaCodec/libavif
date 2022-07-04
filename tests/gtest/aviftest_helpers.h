@@ -11,10 +11,8 @@
 namespace libavif {
 namespace testutil {
 
-enum Channel { R = 0, G = 1, B = 2, A = 3 };
-
-// Maps from avifChannel to sample position in avifRGBFormat.
-uint32_t AvifChannelOffset(avifRGBFormat format, Channel channel);
+//------------------------------------------------------------------------------
+// Memory management
 
 using avifImagePtr = std::unique_ptr<avifImage, decltype(&avifImageDestroy)>;
 using avifEncoderPtr =
@@ -34,6 +32,14 @@ class AvifRgbImage : public avifRGBImage {
   ~AvifRgbImage() { avifRGBImageFreePixels(this); }
 };
 
+//------------------------------------------------------------------------------
+// Samples and images
+
+struct RgbChannelOffsets {
+  uint8_t r, g, b, a;
+};
+RgbChannelOffsets GetRgbChannelOffsets(avifRGBFormat format);
+
 // Creates an image. Returns null in case of memory failure.
 avifImagePtr CreateImage(int width, int height, int depth,
                          avifPixelFormat yuv_format, avifPlanesFlags planes,
@@ -42,10 +48,13 @@ avifImagePtr CreateImage(int width, int height, int depth,
 // Set all pixels of each plane of an image.
 void FillImagePlain(avifImage* image, const uint32_t yuva[4]);
 void FillImageGradient(avifImage* image);
-void fillImageChannel(avifRGBImage* image, Channel channel, uint32_t value);
+void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
+                      uint32_t value);
 
 // Returns true if both images have the same features and pixel values.
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2);
+
+//------------------------------------------------------------------------------
 
 }  // namespace testutil
 }  // namespace libavif
