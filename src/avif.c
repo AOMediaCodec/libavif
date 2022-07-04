@@ -3,7 +3,6 @@
 
 #include "avif/internal.h"
 
-#include <assert.h>
 #include <string.h>
 
 #define STR_HELPER(x) #x
@@ -385,14 +384,14 @@ void avifCodecDestroy(avifCodec * codec)
 // ---------------------------------------------------------------------------
 // avifRGBImage
 
-uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
-{
-    return avifRGBFormatHasAlpha(format) ? 4 : 3;
-}
-
 avifBool avifRGBFormatHasAlpha(avifRGBFormat format)
 {
     return (format != AVIF_RGB_FORMAT_RGB) && (format != AVIF_RGB_FORMAT_BGR);
+}
+
+uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
+{
+    return avifRGBFormatHasAlpha(format) ? 4 : 3;
 }
 
 uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb)
