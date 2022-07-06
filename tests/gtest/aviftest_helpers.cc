@@ -20,10 +20,10 @@ constexpr int AVIF_CHANS[] = {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V,
 
 //------------------------------------------------------------------------------
 
-avifImagePtr CreateImage(int width, int height, int depth,
+AvifImagePtr CreateImage(int width, int height, int depth,
                          avifPixelFormat yuv_format, avifPlanesFlags planes,
                          avifRange yuv_range) {
-  avifImagePtr image(avifImageCreate(width, height, depth, yuv_format),
+  AvifImagePtr image(avifImageCreate(width, height, depth, yuv_format),
                      avifImageDestroy);
   if (!image) {
     return {nullptr, nullptr};

@@ -173,7 +173,7 @@ void EncodeAsGrid(const avifImage& image, uint32_t grid_cols,
     *cell_height = image.height / grid_rows;
   }
 
-  std::vector<testutil::avifImagePtr> cell_images;
+  std::vector<testutil::AvifImagePtr> cell_images;
   cell_images.reserve(grid_cols * grid_rows);
   for (uint32_t row = 0, i_cell = 0; row < grid_rows; ++row) {
     for (uint32_t col = 0; col < grid_cols; ++col, ++i_cell) {
@@ -193,7 +193,7 @@ void EncodeAsGrid(const avifImage& image, uint32_t grid_cols,
     }
   }
 
-  testutil::avifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   // Just here to match libavif API.
@@ -225,7 +225,7 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
                              uint32_t height, bool create_alpha_if_none,
                              bool flat_cells, avifRWData* output,
                              uint32_t* cell_width, uint32_t* cell_height) {
-  avifImagePtr sub_image(avifImageCreateEmpty(), avifImageDestroy);
+  AvifImagePtr sub_image(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(sub_image, nullptr);
   ASSERT_LE(width, image.width);
   ASSERT_LE(height, image.height);
@@ -265,7 +265,7 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
       /*write=*/nullptr,   give_size_hint ? encoded_avif.size : 0,
       is_persistent,       &data};
 
-  testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
   avifDecoderSetIO(decoder.get(), &io);
   decoder->allowIncremental = AVIF_TRUE;
@@ -318,9 +318,9 @@ void DecodeNonIncrementallyAndIncrementally(const avifRWData& encoded_avif,
                                             bool give_size_hint,
                                             bool use_nth_image_api,
                                             uint32_t cell_height) {
-  avifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
+  AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(reference, nullptr);
-  testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(),
                                   encoded_avif.data, encoded_avif.size),
