@@ -11,10 +11,10 @@
 namespace libavif {
 namespace testutil {
 
-using avifImagePtr = std::unique_ptr<avifImage, decltype(&avifImageDestroy)>;
-using avifEncoderPtr =
+using AvifImagePtr = std::unique_ptr<avifImage, decltype(&avifImageDestroy)>;
+using AvifEncoderPtr =
     std::unique_ptr<avifEncoder, decltype(&avifEncoderDestroy)>;
-using avifDecoderPtr =
+using AvifDecoderPtr =
     std::unique_ptr<avifDecoder, decltype(&avifDecoderDestroy)>;
 
 class AvifRwData : public avifRWData {
@@ -24,7 +24,7 @@ class AvifRwData : public avifRWData {
 };
 
 // Creates an image. Returns null in case of memory failure.
-avifImagePtr CreateImage(int width, int height, int depth,
+AvifImagePtr CreateImage(int width, int height, int depth,
                          avifPixelFormat yuv_format, avifPlanesFlags planes,
                          avifRange yuv_range = AVIF_RANGE_FULL);
 

@@ -33,7 +33,7 @@ TEST_P(Y4mTest, EncodeDecode) {
             << "_" << bit_depth << "_" << yuv_format << "_" << yuv_range << "_"
             << create_alpha;
 
-  testutil::avifImagePtr image = testutil::CreateImage(
+  testutil::AvifImagePtr image = testutil::CreateImage(
       width, height, bit_depth, yuv_format,
       create_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, yuv_range);
   ASSERT_NE(image, nullptr);
@@ -48,7 +48,7 @@ TEST_P(Y4mTest, EncodeDecode) {
   testutil::FillImagePlain(image.get(), yuva);
   ASSERT_TRUE(y4mWrite(file_path.str().c_str(), image.get()));
 
-  testutil::avifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),
                       /*sourceTiming=*/nullptr, /*iter=*/nullptr));

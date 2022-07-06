@@ -47,7 +47,7 @@ TEST_P(MetadataTest, EncodeDecode) {
   const bool use_exif = std::get<1>(GetParam());
   const bool use_xmp = std::get<2>(GetParam());
 
-  testutil::avifImagePtr image =
+  testutil::AvifImagePtr image =
       testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
                             AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
@@ -64,7 +64,7 @@ TEST_P(MetadataTest, EncodeDecode) {
   }
 
   // Encode.
-  testutil::avifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   testutil::AvifRwData encoded_avif;
@@ -72,9 +72,9 @@ TEST_P(MetadataTest, EncodeDecode) {
             AVIF_RESULT_OK);
 
   // Decode.
-  testutil::avifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
-  testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(),
                                   encoded_avif.data, encoded_avif.size),
