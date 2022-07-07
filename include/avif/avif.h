@@ -94,18 +94,13 @@ typedef enum avifPlanesFlag
 } avifPlanesFlag;
 typedef uint32_t avifPlanesFlags;
 
-enum avifChannelIndex
+typedef enum avifChannelIndex
 {
-    // rgbPlanes
-    AVIF_CHAN_R = 0,
-    AVIF_CHAN_G = 1,
-    AVIF_CHAN_B = 2,
-
-    // yuvPlanes
+    // These can be used as the index for the yuvPlanes and yuvRowBytes arrays in avifImage.
     AVIF_CHAN_Y = 0,
     AVIF_CHAN_U = 1,
     AVIF_CHAN_V = 2
-};
+} avifChannelIndex;
 
 // ---------------------------------------------------------------------------
 // Version
