@@ -31,11 +31,13 @@ AvifRgbImage::AvifRgbImage(const avifImage* yuv, int rgbDepth,
 RgbChannelOffsets GetRgbChannelOffsets(avifRGBFormat format) {
   switch (format) {
     case AVIF_RGB_FORMAT_RGB:
+      return {/*r=*/0, /*g=*/1, /*b=*/2, /*a=*/0};
     case AVIF_RGB_FORMAT_RGBA:
       return {/*r=*/0, /*g=*/1, /*b=*/2, /*a=*/3};
     case AVIF_RGB_FORMAT_ARGB:
       return {/*r=*/1, /*g=*/2, /*b=*/3, /*a=*/0};
     case AVIF_RGB_FORMAT_BGR:
+      return {/*r=*/2, /*g=*/1, /*b=*/0, /*a=*/0};
     case AVIF_RGB_FORMAT_BGRA:
       return {/*r=*/2, /*g=*/1, /*b=*/0, /*a=*/3};
     default:

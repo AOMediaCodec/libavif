@@ -35,6 +35,8 @@ class AvifRgbImage : public avifRGBImage {
 //------------------------------------------------------------------------------
 // Samples and images
 
+// Contains the sample position of each channel for a given avifRGBFormat.
+// The alpha sample position is set to 0 for layouts having no alpha channel.
 struct RgbChannelOffsets {
   uint8_t r, g, b, a;
 };
