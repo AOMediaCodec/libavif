@@ -225,34 +225,37 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
 }
 
 avifAppFileFormat avifReadImage(const char * filename,
-                                avifPixelFormat requestedFormat, int requestedDepth,
-                                avifImage *image, uint32_t *outDepth) {
-  const avifAppFileFormat format = avifGuessFileFormat(filename);
-  if (format == AVIF_APP_FILE_FORMAT_Y4M) {
-    if (!y4mRead(filename, image, /*sourceTiming=*/NULL, /*iter=*/NULL)) {
-      return AVIF_APP_FILE_FORMAT_UNKNOWN;
+                                avifPixelFormat requestedFormat,
+                                int requestedDepth,
+                                avifImage * image,
+                                uint32_t * outDepth,
+                                avifAppSourceTiming * sourceTiming,
+                                struct y4mFrameIterator ** frameIter)
+{
+    const avifAppFileFormat format = avifGuessFileFormat(filename);
+    if (format == AVIF_APP_FILE_FORMAT_Y4M) {
+        if (!y4mRead(filename, image, sourceTiming, frameIter)) {
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        }
+        if (outDepth) {
+            *outDepth = image->depth;
+        }
+    } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
+        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth)) {
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        }
+        if (outDepth) {
+            *outDepth = 8;
+        }
+    } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
+        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, outDepth)) {
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        }
+    } else {
+        fprintf(stderr, "Unrecognized file format: %s\n", filename);
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
-    if (outDepth) {
-      *outDepth = image->depth;
-    }
-  } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
-    if (!avifJPEGRead(filename, image, requestedFormat,
-                      requestedDepth)) {
-      return AVIF_APP_FILE_FORMAT_UNKNOWN;
-    }
-    if (outDepth) {
-      *outDepth = 8;
-    }
-  } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
-    if (!avifPNGRead(filename, image, requestedFormat, requestedDepth,
-                     outDepth)) {
-      return AVIF_APP_FILE_FORMAT_UNKNOWN;
-    }
-  } else {
-    fprintf(stderr, "Unrecognized file format: %s\n", filename);
-    return AVIF_APP_FILE_FORMAT_UNKNOWN;
-  }
-  return format;
+    return format;
 }
 
 void avifDumpDiagnostics(const avifDiagnostics * diag)

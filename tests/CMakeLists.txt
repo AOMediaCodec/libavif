@@ -103,7 +103,7 @@ endif()
 # Bash tests
 
 if(AVIF_BUILD_APPS)
-    add_executable(are_images_equal are_images_equal.cc)
+    add_executable(are_images_equal gtest/are_images_equal.cc)
     target_link_libraries(are_images_equal aviftest_helpers avif_apps)
     add_test(
         NAME test_cmd

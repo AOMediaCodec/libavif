@@ -154,7 +154,7 @@ void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
 //------------------------------------------------------------------------------
 
 // Returns true if image1 and image2 are identical.
-bool AreImagesEqual(const avifImage &image1, const avifImage &image2,
+bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha) {
   if (image1.width != image2.width || image1.height != image2.height ||
       image1.depth != image2.depth || image1.yuvFormat != image2.yuvFormat ||

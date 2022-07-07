@@ -1,0 +1,54 @@
+// Copyright 2022 Google LLC. All rights reserved.
+// SPDX-License-Identifier: BSD-2-Clause
+// Compares two files and returns whether they are the same once decoded.
+
+#include <iostream>
+
+#include "aviftest_helpers.h"
+#include "avifutil.h"
+
+using libavif::testutil::AvifImagePtr;
+
+int main(int argc, char** argv) {
+  if (argc != 4) {
+    std::cerr
+        << "Wrong argument: ./are_image_equal file1 file2 ignore_alpha_flag"
+        << std::endl;
+    return 1;
+  }
+  AvifImagePtr decoded[2] = {
+      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy),
+      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy)};
+  if (!decoded[0] || !decoded[1]) {
+    std::cerr << "Cannot create AVIF images." << std::endl;
+    return 2;
+  }
+  uint32_t depth[2];
+  constexpr int kRequestedDepth = 8;
+  constexpr avifPixelFormat requestedFormat = AVIF_PIXEL_FORMAT_NONE;
+  for (int i : {0, 1}) {
+    // Make sure no color conversion happens.
+    decoded[i]->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+    if (avifReadImage(argv[+1], requestedFormat, kRequestedDepth,
+                      decoded[i].get(), &depth[i], NULL,
+                      NULL) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+      std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
+      return 3;
+    }
+  }
+
+  if (depth[0] != depth[1]) {
+    std::cerr << "Images " << argv[1] << " and " << argv[2]
+              << " have different depth." << std::endl;
+    return 4;
+  }
+  if (!libavif::testutil::AreImagesEqual(*decoded[0], *decoded[1],
+                                         std::stoi(argv[3]))) {
+    std::cerr << "Images " << argv[1] << " and " << argv[2] << " are different."
+              << std::endl;
+    return 4;
+  }
+  std::cout << "Images " << argv[1] << " and " << argv[2] << " are identical."
+            << std::endl;
+  return 0;
+}

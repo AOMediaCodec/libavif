@@ -46,12 +46,6 @@ typedef enum avifAppFileFormat
 
 avifAppFileFormat avifGuessFileFormat(const char * filename);
 
-// Reads an image from a file.
-avifAppFileFormat avifReadImage(const char * filename,
-                                avifPixelFormat requestedFormat, int requestedDepth,
-                                avifImage *image, uint32_t *outDepth);
-
-
 // This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
 // into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
 // should be ignored. This structure is used to override the timing defaults in avifenc when the
@@ -61,6 +55,18 @@ typedef struct avifAppSourceTiming
     uint64_t duration;  // duration in time units (based on the timescale below)
     uint64_t timescale; // timescale of the media (Hz)
 } avifAppSourceTiming;
+
+struct y4mFrameIterator;
+// Reads an image from a file with the requested format and deptth.
+// In case of a y4m file, sourceTiming and frameIter can be set.
+// Returns AVIF_APP_FILE_FORMAT_UNKNOWN in case of error.
+avifAppFileFormat avifReadImage(const char * filename,
+                                avifPixelFormat requestedFormat,
+                                int requestedDepth,
+                                avifImage * image,
+                                uint32_t * outDepth,
+                                avifAppSourceTiming * sourceTiming,
+                                struct y4mFrameIterator ** frameIter);
 
 // Used by image decoders when the user doesn't explicitly choose a format with --yuv
 // This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.
