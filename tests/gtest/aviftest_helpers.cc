@@ -48,10 +48,10 @@ RgbChannelOffsets GetRgbChannelOffsets(avifRGBFormat format) {
 
 //------------------------------------------------------------------------------
 
-avifImagePtr CreateImage(int width, int height, int depth,
+AvifImagePtr CreateImage(int width, int height, int depth,
                          avifPixelFormat yuv_format, avifPlanesFlags planes,
                          avifRange yuv_range) {
-  avifImagePtr image(avifImageCreate(width, height, depth, yuv_format),
+  AvifImagePtr image(avifImageCreate(width, height, depth, yuv_format),
                      avifImageDestroy);
   if (!image) {
     return {nullptr, nullptr};

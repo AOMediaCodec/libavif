@@ -77,7 +77,7 @@ if(AVIF_ENABLE_GTEST)
 
     add_executable(avifincrtest gtest/avifincrtest.cc)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
-    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
     target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_BOTH_LIBRARIES})

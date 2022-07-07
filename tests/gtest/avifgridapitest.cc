@@ -35,7 +35,7 @@ TEST_P(GridApiTest, EncodeDecode) {
   const bool expected_success = std::get<5>(GetParam());
 
   // Construct a grid.
-  std::vector<testutil::avifImagePtr> cell_images;
+  std::vector<testutil::AvifImagePtr> cell_images;
   cell_images.reserve(horizontal.count * vertical.count);
   for (int i = 0; i < horizontal.count * vertical.count; ++i) {
     cell_images.emplace_back(testutil::CreateImage(
@@ -46,7 +46,7 @@ TEST_P(GridApiTest, EncodeDecode) {
   }
 
   // Encode the grid image.
-  testutil::avifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   // Just here to match libavif API.
@@ -64,9 +64,9 @@ TEST_P(GridApiTest, EncodeDecode) {
     ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded_avif), AVIF_RESULT_OK);
 
     // Decode the grid image.
-    testutil::avifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+    testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
     ASSERT_NE(image, nullptr);
-    testutil::avifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+    testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
     ASSERT_NE(decoder, nullptr);
     ASSERT_EQ(avifDecoderReadMemory(decoder.get(), image.get(),
                                     encoded_avif.data, encoded_avif.size),
