@@ -1081,27 +1081,24 @@ typedef uint32_t avifAddImageFlags;
 // * avifEncoderAddImage() ... [repeatedly; at least once]
 //   OR
 // * avifEncoderAddImageGrid() [exactly once, AVIF_ADD_IMAGE_FLAG_SINGLE is assumed]
+//   OR
+// * avifEncoderAddImageProgressive() [exactly once, AVIF_ADD_IMAGE_FLAG_SINGLE is assumed]
 // * avifEncoderFinish()
 // * avifEncoderDestroy()
 //
 
 // durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags.
 AVIF_API avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags);
+// cellImages should have gridCols * gridRows * (max(encoder->extraLayerCount, encoder->extraLayerCountAlpha) + 1) elements.
 AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             uint32_t gridCols,
                                             uint32_t gridRows,
                                             const avifImage * const * cellImages,
                                             avifAddImageFlags addImageFlags);
+// cellImages should have max(encoder->extraLayerCount, encoder->extraLayerCountAlpha) + 1 elements.
 avifResult avifEncoderAddImageProgressive(avifEncoder * encoder,
-                                          uint32_t layerCount,
                                           const avifImage * const * layerImages,
                                           avifAddImageFlags addImageFlags);
-avifResult avifEncoderAddImageProgressiveGrid(avifEncoder * encoder,
-                                              uint32_t gridCols,
-                                              uint32_t gridRows,
-                                              uint32_t layerCount,
-                                              const avifImage * const * layerImages,
-                                              avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs. These

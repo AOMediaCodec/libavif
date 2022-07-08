@@ -28,6 +28,8 @@
     }                                                                 \
     arg = argv[++argIndex]
 
+#define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 typedef struct avifInputFile
 {
     const char * filename;
@@ -270,8 +272,8 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat 
 
 struct avifEncoderLayerConfig
 {
-    int extraLayerCount;      // Image layers for color sub image; 0 to disable layer image (default).
-    int extraLayerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
+    uint32_t extraLayerCount;      // Image layers for color sub image; 0 to disable layer image (default).
+    uint32_t extraLayerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
     avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
     avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
 };
@@ -322,7 +324,7 @@ enum avifProgressiveConfigValueType
 
 static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * config, const char * arg)
 {
-    int * currLayerCount = &config->extraLayerCount;
+    uint32_t * currLayerCount = &config->extraLayerCount;
     avifLayerConfig * currLayers = config->layers;
     uint8_t currLayer = 0;
 
@@ -518,6 +520,7 @@ static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * confi
     }
 
 finish:
+    CHECK(config->extraLayerCount == config->extraLayerCountAlpha, "currently only support color and alpha has same count of layers");
     return AVIF_TRUE;
 }
 
@@ -1064,6 +1067,12 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+            if (gridDimsCount == 0) {
+                gridDimsCount = 3;
+                gridDims[0] = 1;
+                gridDims[1] = 1;
+                gridDims[2] = 1;
+            }
         } else {
             // Positional argument
             input.files[input.filesCount].filename = arg;
@@ -1305,14 +1314,30 @@ int main(int argc, char * argv[])
     if (gridDimsCount > 0) {
         // Grid image!
 
+        uint32_t layerCount = AVIF_MAX(layerConfig.extraLayerCount, layerConfig.extraLayerCountAlpha) + 1;
+        if (gridDims[2] > layerCount) {
+            fprintf(stderr, "ERROR: Excess layer provided! (expecting %u, grid providing %u)\n", layerCount, gridDims[2]);
+            returnCode = 1;
+            goto cleanup;
+        }
+
         gridCellCount = gridDims[0] * gridDims[1];
         printf("Preparing to encode a %ux%u grid (%u cells)...\n", gridDims[0], gridDims[1], gridCellCount);
 
-        gridCellLayerCount = gridCellCount * gridDims[2];
+        gridCellLayerCount = gridCellCount * layerCount;
         gridCells = calloc(gridCellLayerCount, sizeof(avifImage *));
         gridCells[0] = image; // take ownership of image
 
         uint32_t gridCellLayerIndex = 0;
+
+        // Duplicate image to fill remaining layers
+        if ((gridDims[2] < layerCount) && (gridCellLayerIndex % layerCount == gridDims[2] - 1)) {
+            for (uint32_t exIndex = gridDims[2]; exIndex < layerCount; ++exIndex) {
+                ++gridCellLayerIndex;
+                gridCells[gridCellLayerIndex] = image;
+            }
+        }
+
         avifInputFile * nextFile;
         while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
             if (!gridCellLayerIndex) {
@@ -1336,6 +1361,14 @@ int main(int argc, char * argv[])
             cellImage->yuvRange = image->yuvRange;
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
             gridCells[gridCellLayerIndex] = cellImage;
+
+            // Duplicate last image to fill remaining layers
+            if ((gridDims[2] < layerCount) && (gridCellLayerIndex % layerCount == gridDims[2] - 1)) {
+                for (uint32_t exIndex = gridDims[2]; exIndex < layerCount; ++exIndex) {
+                    ++gridCellLayerIndex;
+                    gridCells[gridCellLayerIndex] = cellImage;
+                }
+            }
 
             avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL, NULL);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
@@ -1425,7 +1458,6 @@ int main(int argc, char * argv[])
     encoder->maxQuantizerAlpha = maxQuantizerAlpha;
 
     encoder->extraLayerCount = layerConfig.extraLayerCount;
-    encoder->extraLayerCountAlpha = layerConfig.extraLayerCountAlpha;
     memcpy(encoder->layers, layerConfig.layers, sizeof(encoder->layers));
     memcpy(encoder->layersAlpha, layerConfig.layersAlpha, sizeof(encoder->layersAlpha));
 
@@ -1438,13 +1470,8 @@ int main(int argc, char * argv[])
 
     if (gridDimsCount > 0) {
         avifResult addImageResult;
-        if (gridDims[2] > 1) {
-            addImageResult =
-                avifEncoderAddImageProgressiveGrid(encoder, gridDims[0], gridDims[1], gridDims[2], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
-        } else {
-            addImageResult =
-                avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
-        }
+        addImageResult =
+            avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image grid: %s\n", avifResultToString(addImageResult));
             returnCode = 1;
