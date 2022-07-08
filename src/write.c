@@ -623,7 +623,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     // Currently, layered image can only have one frame.
-    if (((encoder->extraLayerCount > 0) || (encoder->extraLayerCountAlpha > 0)) && encoder->data->frames.count > 0) {
+    if (((encoder->extraLayerCount > 0) || (encoder->extraLayerCountAlpha > 0)) && (encoder->data->frames.count > 0)) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
