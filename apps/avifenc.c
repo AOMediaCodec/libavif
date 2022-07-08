@@ -9,7 +9,6 @@
 #include "y4m.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,8 +26,6 @@
         goto cleanup;                                                 \
     }                                                                 \
     arg = argv[++argIndex]
-
-#define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 typedef struct avifInputFile
 {
@@ -86,9 +83,9 @@ static void syntax(void)
            AVIF_QUANTIZER_LOSSLESS);
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
-    printf("    -g,--grid MxN(xL)                 : Encode a single-image grid AVIF with M cols & N rows & L layers. Either supply MxNxL identical W/H/D images,\n");
-    printf("                                        or L identical W/H/D images that each can be evenly split into the MxN grid and follow AVIF grid image restrictions.\n");
-    printf("                                        The grid will adopt the color profile of the first image supplied.\n");
+    printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
+    printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
+    printf("                                        the color profile of the first image supplied.\n");
     printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
@@ -107,35 +104,6 @@ static void syntax(void)
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
-    printf("    --progressive LAYER_CONFIG        : Encode progressive AVIF with given layer config\n");
-    printf("\n");
-    printf("progressive layer config format:\n");
-    printf("    LAYER_CONFIG can be one of the two forms:\n");
-    printf("        1. SUB_CONFIG             apply SUB_CONFIG to both color (YUV) planes and alpha plane\n");
-    printf("        2. SUB_CONFIG;SUB_CONFIG  apply first SUB_CONFIG to color planes, second SUB_CONFIG to alpha plane\n");
-    printf("\n");
-    printf("    SUB_CONFIG is 0-4 LAYER_CONFIG joined by colon(:), and LAYER_CONFIG is in this form:\n");
-    printf("        MinQ[,MaxQ][-ScaleH[,ScaleV]]\n");
-    printf("\n");
-    printf("    MinQ and MaxQ are min and max quantizers for this layer, and will overwrite values given by --min and --max.\n");
-    printf("    Specially, when using aom with end-usage set to q or cq, min and max quantizers will use values given by --min and --max,\n");
-    printf("    and cq-level of this layer will set to average of MinQ and MaxQ.\n");
-    printf("    ScaleH and ScaleV are horizontal and vertical scale ratios [default=1, or any fraction].\n");
-    printf("    If MaxQ is eliminated it uses the value of MinQ.\n");
-    printf("    If ScaleH is eliminated it uses default value 1 (no scaling); if ScaleV is eliminated it uses the value of ScaleH.\n");
-    printf("\n");
-    printf("    Examples:\n");
-    printf("        40,62-1/2,1/4:30-1/2:10\n");
-    printf("            Color and alpha planes both have 3 layers and share the same following config:\n");
-    printf("                #0: min quantizer 40, max quantizer 62, 1/2 width, 1/4 height\n");
-    printf("                #1: min quantizer 30, max quantizer 30, 1/2 width, 1/2 height\n");
-    printf("                #2: min quantizer 10, max quantizer 10, full width, full height\n");
-    printf("\n");
-    printf("        30,1/2:10;\n");
-    printf("            Color planes have 2 layers, alpha plane is not layered.\n");
-    printf("\n");
-    printf("        ;30,1/2:10\n");
-    printf("            Color planes is not layered, alpha plane have 2 layers.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
@@ -262,268 +230,6 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat 
     return AVIF_TRUE;
 }
 
-#define CHECK(condition, reason)                                                       \
-    do {                                                                               \
-        if (!(condition)) {                                                            \
-            fprintf(stderr, "ERROR: Failed reading progressive config: %s\n", reason); \
-            return AVIF_FALSE;                                                         \
-        }                                                                              \
-    } while (0)
-
-struct avifEncoderLayerConfig
-{
-    uint32_t extraLayerCount;      // Image layers for color sub image; 0 to disable layer image (default).
-    uint32_t extraLayerCountAlpha; // Image layers for alpha sub image; 0 to disable layer image (default).
-    avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
-    avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
-};
-
-static const avifScalingMode avifScalingModeNormal = { 1, 1 };
-
-static avifBool avifParseScalingMode(const char ** pArg, avifScalingMode * mode)
-{
-    char * end;
-    uint64_t value = strtoull(*pArg, &end, 10);
-    CHECK(errno != ERANGE, "overflowed while reading scale nominator");
-    CHECK(end != *pArg, "can't parse scale nominator");
-    if (*end != '/') {
-        if (value == 1) {
-            *mode = avifScalingModeNormal;
-            *pArg = end;
-            return AVIF_TRUE;
-        }
-        return AVIF_FALSE;
-    }
-    mode->numerator = value;
-    *pArg = end + 1;
-    value = strtoull(*pArg, &end, 10);
-    CHECK(errno != ERANGE, "overflowed while reading scale denominator");
-    CHECK(end != *pArg, "can't parse scale denominator");
-    mode->denominator = value;
-    *pArg = end;
-    return AVIF_TRUE;
-}
-
-enum avifProgressiveConfigScannerState
-{
-    AVIF_PROGRESSIVE_SCANNER_STATE_VALUE,
-    AVIF_PROGRESSIVE_SCANNER_STATE_COMMA,
-    AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN,
-    AVIF_PROGRESSIVE_SCANNER_STATE_COLON,
-    AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON
-};
-
-enum avifProgressiveConfigValueType
-{
-    AVIF_PROGRESSIVE_VALUE_TYPE_NONE,
-    AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q,
-    AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q,
-    AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE,
-    AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE,
-};
-
-static avifBool avifParseProgressiveConfig(struct avifEncoderLayerConfig * config, const char * arg)
-{
-    uint32_t * currLayerCount = &config->extraLayerCount;
-    avifLayerConfig * currLayers = config->layers;
-    uint8_t currLayer = 0;
-
-    enum avifProgressiveConfigScannerState currState = *arg == ';' ? AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON
-                                                                   : AVIF_PROGRESSIVE_SCANNER_STATE_VALUE;
-    enum avifProgressiveConfigScannerState targetState = AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON;
-
-    enum avifProgressiveConfigValueType prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_NONE;
-
-    for (;;) {
-        switch (currState) {
-            case AVIF_PROGRESSIVE_SCANNER_STATE_VALUE: {
-                int64_t value;
-                avifScalingMode mode;
-                char * end;
-                switch (prevReadValue) {
-                    case AVIF_PROGRESSIVE_VALUE_TYPE_NONE:
-                        value = strtoll(arg, &end, 10);
-                        CHECK(errno != ERANGE, "overflowed while reading min quantizer");
-                        CHECK(end != arg, "can't parse min quantizer");
-                        CHECK(value <= 63, "min quantizer too big");
-
-                        arg = end;
-                        currLayers[currLayer].minQuantizer = (int)value;
-                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_COMMA;
-                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q;
-                        break;
-
-                    case AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q:
-                        value = strtoll(arg, &end, 10);
-                        CHECK(errno != ERANGE, "overflowed while reading max quantizer");
-                        CHECK(end != arg, "can't parse max quantizer");
-                        CHECK(value <= 63, "max quantizer too big");
-
-                        arg = end;
-                        currLayers[currLayer].maxQuantizer = (int)value;
-                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN;
-                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q;
-                        break;
-
-                    case AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q:
-                        CHECK(avifParseScalingMode(&arg, &mode), "unknown scaling mode");
-
-                        currLayers[currLayer].horizontalMode = mode;
-                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_COMMA;
-                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE;
-                        break;
-
-                    case AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE:
-                        CHECK(avifParseScalingMode(&arg, &mode), "unknown scaling mode");
-
-                        currLayers[currLayer].verticalMode = mode;
-                        currState = AVIF_PROGRESSIVE_SCANNER_STATE_COLON;
-                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE;
-                        break;
-
-                    case AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE:
-                        CHECK(AVIF_FALSE, "too many values in layer config");
-                }
-                break;
-            }
-
-            case AVIF_PROGRESSIVE_SCANNER_STATE_COMMA:
-            case AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN:
-            case AVIF_PROGRESSIVE_SCANNER_STATE_COLON:
-            case AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON:
-                switch (*arg) {
-                    case ',':
-                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_COMMA;
-                        break;
-                    case '-':
-                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN;
-                        break;
-                    case ':':
-                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_COLON;
-                        break;
-                    case ';':
-                    case '\0':
-                        targetState = AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON;
-                        break;
-                    default:
-                        CHECK(AVIF_FALSE, "unexpected separator");
-                }
-
-                CHECK(currState <= targetState, "too many config entries");
-
-                avifBool earlyEnd = currState < targetState;
-                switch (targetState) {
-                    case AVIF_PROGRESSIVE_SCANNER_STATE_VALUE:
-                        CHECK(AVIF_FALSE, "unknown state");
-                        break;
-
-                    case AVIF_PROGRESSIVE_SCANNER_STATE_COMMA:
-                        CHECK(!earlyEnd, "unknown state");
-                        break;
-
-                    case AVIF_PROGRESSIVE_SCANNER_STATE_HYPHEN:
-                        if (!earlyEnd) {
-                            CHECK(prevReadValue == AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q, "unknown state");
-                            break;
-                        }
-
-                        CHECK(prevReadValue == AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q, "unknown state");
-                        currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
-                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q;
-                        break;
-
-                    case AVIF_PROGRESSIVE_SCANNER_STATE_COLON:
-                        if (earlyEnd) {
-                            switch (prevReadValue) {
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q:
-                                    currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
-                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
-                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
-                                    break;
-
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q:
-                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
-                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
-                                    break;
-
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE:
-                                    currLayers[currLayer].verticalMode = currLayers[currLayer].horizontalMode;
-                                    break;
-
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE:
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_NONE:
-                                    CHECK(AVIF_FALSE, "unknown state");
-                            }
-                        }
-
-                        ++currLayer;
-                        CHECK(currLayer < MAX_AV1_LAYER_COUNT, "too many layers");
-                        prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_NONE;
-                        break;
-
-                    case AVIF_PROGRESSIVE_SCANNER_STATE_SEMICOLON:
-                        if (earlyEnd) {
-                            switch (prevReadValue) {
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_MIN_Q:
-                                    currLayers[currLayer].maxQuantizer = currLayers[currLayer].minQuantizer;
-                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
-                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
-                                    break;
-
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_MAX_Q:
-                                    currLayers[currLayer].horizontalMode = avifScalingModeNormal;
-                                    currLayers[currLayer].verticalMode = avifScalingModeNormal;
-                                    break;
-
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_H_SCALE:
-                                    currLayers[currLayer].verticalMode = currLayers[currLayer].horizontalMode;
-                                    break;
-
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_V_SCALE:
-                                    break;
-
-                                case AVIF_PROGRESSIVE_VALUE_TYPE_NONE:
-                                    CHECK(AVIF_FALSE, "unknown state");
-                            }
-
-                            ++currLayer;
-                        }
-
-                        *currLayerCount = currLayer - 1;
-                        if (*arg == ';') {
-                            CHECK(currLayers == config->layers, "too many sub image configurations");
-                            currLayers = config->layersAlpha;
-                            currLayerCount = &config->extraLayerCountAlpha;
-
-                            if (*(arg + 1) == '\0') {
-                                goto finish;
-                            }
-
-                            prevReadValue = AVIF_PROGRESSIVE_VALUE_TYPE_NONE;
-                            currLayer = 0;
-                        } else {
-                            // reached \0
-                            if (currLayers == config->layers) {
-                                memcpy(config->layersAlpha, config->layers, sizeof(config->layers));
-                                config->extraLayerCountAlpha = config->extraLayerCount;
-                            }
-
-                            goto finish;
-                        }
-                        break;
-                }
-
-                ++arg;
-                currState = AVIF_PROGRESSIVE_SCANNER_STATE_VALUE;
-                break;
-        }
-    }
-
-finish:
-    CHECK(config->extraLayerCount == config->extraLayerCountAlpha, "currently only support color and alpha has same count of layers");
-    return AVIF_TRUE;
-}
-
 static avifInputFile * avifInputGetNextFile(avifInput * input)
 {
     if (input->useStdin) {
@@ -631,7 +337,7 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
-static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, uint32_t layerCount, avifImage ** gridCells)
+static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
 {
     if ((gridSplitImage->width % gridCols) != 0) {
         fprintf(stderr, "ERROR: Can't split image width (%u) evenly into %u columns.\n", gridSplitImage->width, gridCols);
@@ -657,7 +363,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
         for (uint32_t gridX = 0; gridX < gridCols; ++gridX) {
             uint32_t gridIndex = gridX + (gridY * gridCols);
             avifImage * cellImage = avifImageCreateEmpty();
-            gridCells[gridIndex * layerCount] = cellImage;
+            gridCells[gridIndex] = cellImage;
 
             avifImageCopy(cellImage, gridSplitImage, 0);
             cellImage->width = cellWidth;
@@ -749,9 +455,8 @@ int main(int argc, char * argv[])
     avifBool cicpExplicitlySet = AVIF_FALSE;
     avifBool premultiplyAlpha = AVIF_FALSE;
     int gridDimsCount = 0;
-    uint32_t gridDims[8]; // only the first two or three are used
+    uint32_t gridDims[8]; // only the first two are used
     uint32_t gridCellCount = 0;
-    uint32_t gridCellLayerCount = 0;
     avifImage ** gridCells = NULL;
     avifImage * gridSplitImage = NULL; // used for cleanup tracking
     memset(gridDims, 0, sizeof(gridDims));
@@ -769,9 +474,6 @@ int main(int argc, char * argv[])
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
-
-    struct avifEncoderLayerConfig layerConfig;
-    memset(&layerConfig, 0, sizeof(layerConfig));
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -881,20 +583,13 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
             NEXTARG();
             gridDimsCount = parseU32List(gridDims, arg);
-            if (gridDimsCount == 2) {
-                gridDims[2] = 1;
-            } else if (gridDimsCount != 3) {
+            if (gridDimsCount != 2) {
                 fprintf(stderr, "ERROR: Invalid grid dims: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
             if ((gridDims[0] == 0) || (gridDims[0] > 256) || (gridDims[1] == 0) || (gridDims[1] > 256)) {
                 fprintf(stderr, "ERROR: Invalid grid dims (valid dim range [1-256]): %s\n", arg);
-                returnCode = 1;
-                goto cleanup;
-            }
-            if ((gridDims[2] == 0 || gridDims[2] > MAX_AV1_LAYER_COUNT)) {
-                fprintf(stderr, "ERROR: Invalid layer count (valid layer range [1-4]): %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
@@ -1054,25 +749,13 @@ int main(int argc, char * argv[])
             minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;      // lossless
             maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;      // lossless
             codecChoice = AVIF_CODEC_CHOICE_AOM;              // rav1e doesn't support lossless transform yet:
-                                                              // https://github.com/xiph/rav1e/issues/151
-                                                              // SVT-AV1 doesn't support lossless encoding yet:
-                                                              // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
+                                                                    // https://github.com/xiph/rav1e/issues/151
+                                                                    // SVT-AV1 doesn't support lossless encoding yet:
+                                                                    // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
             requestedRange = AVIF_RANGE_FULL;                 // avoid limited range
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
-        } else if (!strcmp(arg, "--progressive")) {
-            NEXTARG();
-            if (!avifParseProgressiveConfig(&layerConfig, arg)) {
-                returnCode = 1;
-                goto cleanup;
-            }
-            if (gridDimsCount == 0) {
-                gridDimsCount = 3;
-                gridDims[0] = 1;
-                gridDims[1] = 1;
-                gridDims[2] = 1;
-            }
         } else {
             // Positional argument
             input.files[input.filesCount].filename = arg;
@@ -1126,12 +809,6 @@ int main(int argc, char * argv[])
             printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
                    image->matrixCoefficients);
         }
-    }
-
-    if (gridDimsCount == 0 && input.filesCount > 1 && (layerConfig.extraLayerCount > 0 || layerConfig.extraLayerCountAlpha > 0)) {
-        fprintf(stderr, "Progressive animated AVIF currently not supported.\n");
-        returnCode = 1;
-        goto cleanup;
     }
 
     avifInputFile * firstFile = avifInputGetNextFile(&input);
@@ -1314,37 +991,20 @@ int main(int argc, char * argv[])
     if (gridDimsCount > 0) {
         // Grid image!
 
-        uint32_t layerCount = AVIF_MAX(layerConfig.extraLayerCount, layerConfig.extraLayerCountAlpha) + 1;
-        if (gridDims[2] > layerCount) {
-            fprintf(stderr, "ERROR: Excess layer provided! (expecting %u, grid providing %u)\n", layerCount, gridDims[2]);
-            returnCode = 1;
-            goto cleanup;
-        }
-
         gridCellCount = gridDims[0] * gridDims[1];
         printf("Preparing to encode a %ux%u grid (%u cells)...\n", gridDims[0], gridDims[1], gridCellCount);
 
-        gridCellLayerCount = gridCellCount * layerCount;
-        gridCells = calloc(gridCellLayerCount, sizeof(avifImage *));
+        gridCells = calloc(gridCellCount, sizeof(avifImage *));
         gridCells[0] = image; // take ownership of image
 
-        uint32_t gridCellLayerIndex = 0;
-
-        // Duplicate image to fill remaining layers
-        if ((gridDims[2] < layerCount) && (gridCellLayerIndex % layerCount == gridDims[2] - 1)) {
-            for (uint32_t exIndex = gridDims[2]; exIndex < layerCount; ++exIndex) {
-                ++gridCellLayerIndex;
-                gridCells[gridCellLayerIndex] = image;
-            }
-        }
-
+        uint32_t gridCellIndex = 0;
         avifInputFile * nextFile;
         while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
-            if (!gridCellLayerIndex) {
+            if (!gridCellIndex) {
                 printf("Loading additional cells for grid image (%u cells)...\n", gridCellCount);
             }
-            ++gridCellLayerIndex;
-            if (gridCellLayerIndex >= gridCellLayerCount) {
+            ++gridCellIndex;
+            if (gridCellIndex >= gridCellCount) {
                 // We have enough, warn and continue
                 fprintf(stderr,
                         "WARNING: [--grid] More than %u images were supplied for this %ux%u grid. The rest will be ignored.\n",
@@ -1360,15 +1020,7 @@ int main(int argc, char * argv[])
             cellImage->matrixCoefficients = image->matrixCoefficients;
             cellImage->yuvRange = image->yuvRange;
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
-            gridCells[gridCellLayerIndex] = cellImage;
-
-            // Duplicate last image to fill remaining layers
-            if ((gridDims[2] < layerCount) && (gridCellLayerIndex % layerCount == gridDims[2] - 1)) {
-                for (uint32_t exIndex = gridDims[2]; exIndex < layerCount; ++exIndex) {
-                    ++gridCellLayerIndex;
-                    gridCells[gridCellLayerIndex] = cellImage;
-                }
-            }
+            gridCells[gridCellIndex] = cellImage;
 
             avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL, NULL);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
@@ -1404,22 +1056,19 @@ int main(int argc, char * argv[])
             }
         }
 
-        if (gridCellLayerIndex == gridDims[2] - 1 && (gridDims[0] != 1 || gridDims[1] != 1)) {
+        if (gridCellIndex == 0) {
             printf("Single image input for a grid image. Attempting to split into %u cells...\n", gridCellCount);
+            gridSplitImage = image;
+            gridCells[0] = NULL;
 
-            for (uint32_t layerIndex = 0; layerIndex < gridDims[2]; ++layerIndex) {
-                gridSplitImage = gridCells[layerIndex];
-                gridCells[layerIndex] = NULL;
-                if (!avifImageSplitGrid(gridSplitImage, gridDims[0], gridDims[1], gridDims[2], gridCells + layerIndex)) {
-                    returnCode = 1;
-                    goto cleanup;
-                }
+            if (!avifImageSplitGrid(gridSplitImage, gridDims[0], gridDims[1], gridCells)) {
+                returnCode = 1;
+                goto cleanup;
             }
-
-            gridCellLayerIndex = gridCellLayerCount - 1;
+            gridCellIndex = gridCellCount - 1;
         }
 
-        if (gridCellLayerIndex != gridCellLayerCount - 1) {
+        if (gridCellIndex != gridCellCount - 1) {
             fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
             returnCode = 1;
             goto cleanup;
@@ -1431,11 +1080,7 @@ int main(int argc, char * argv[])
         lossyHint = " (Lossless)";
     }
     printf("AVIF to be written:%s\n", lossyHint);
-    avifBool progressive = layerConfig.extraLayerCount > 0 || layerConfig.extraLayerCountAlpha > 0;
-    avifImageDump(gridCells ? gridCells[0] : image,
-                  gridDims[0],
-                  gridDims[1],
-                  progressive ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+    avifImageDump(gridCells ? gridCells[0] : image, gridDims[0], gridDims[1], AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
     printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], tileRowsLog2 [%d], tileColsLog2 [%d], %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
@@ -1456,11 +1101,6 @@ int main(int argc, char * argv[])
     encoder->maxQuantizer = maxQuantizer;
     encoder->minQuantizerAlpha = minQuantizerAlpha;
     encoder->maxQuantizerAlpha = maxQuantizerAlpha;
-
-    encoder->extraLayerCount = layerConfig.extraLayerCount;
-    memcpy(encoder->layers, layerConfig.layers, sizeof(encoder->layers));
-    memcpy(encoder->layersAlpha, layerConfig.layersAlpha, sizeof(encoder->layersAlpha));
-
     encoder->tileRowsLog2 = tileRowsLog2;
     encoder->tileColsLog2 = tileColsLog2;
     encoder->codecChoice = codecChoice;
@@ -1469,8 +1109,7 @@ int main(int argc, char * argv[])
     encoder->keyframeInterval = keyframeInterval;
 
     if (gridDimsCount > 0) {
-        avifResult addImageResult;
-        addImageResult =
+        avifResult addImageResult =
             avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image grid: %s\n", avifResultToString(addImageResult));
