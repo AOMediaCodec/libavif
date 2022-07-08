@@ -77,12 +77,17 @@ if(AVIF_ENABLE_GTEST)
 
     add_executable(avifincrtest gtest/avifincrtest.cc)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
-    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
     target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifmetadatatest COMMAND avifmetadatatest)
+
+    add_executable(avifrgbtoyuvtest gtest/avifrgbtoyuvtest.cc)
+    target_link_libraries(avifrgbtoyuvtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifrgbtoyuvtest COMMAND avifrgbtoyuvtest)
 
     add_executable(avify4mtest gtest/avify4mtest.cc)
     target_link_libraries(avify4mtest aviftest_helpers avif_apps ${GTEST_BOTH_LIBRARIES})
