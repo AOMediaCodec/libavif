@@ -749,9 +749,9 @@ int main(int argc, char * argv[])
             minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;      // lossless
             maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;      // lossless
             codecChoice = AVIF_CODEC_CHOICE_AOM;              // rav1e doesn't support lossless transform yet:
-                                                                    // https://github.com/xiph/rav1e/issues/151
-                                                                    // SVT-AV1 doesn't support lossless encoding yet:
-                                                                    // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
+                                                              // https://github.com/xiph/rav1e/issues/151
+                                                              // SVT-AV1 doesn't support lossless encoding yet:
+                                                              // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
             requestedRange = AVIF_RANGE_FULL;                 // avoid limited range
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {

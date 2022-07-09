@@ -998,12 +998,14 @@ AVIF_API avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, ui
 struct avifEncoderData;
 struct avifCodecSpecificOptions;
 
-typedef struct avifScalingMode {
+typedef struct avifScalingMode
+{
     uint64_t numerator;
     uint64_t denominator;
 } avifScalingMode;
 
-typedef struct avifLayerConfig {
+typedef struct avifLayerConfig
+{
     int minQuantizer;
     int maxQuantizer;
     avifScalingMode horizontalMode;
@@ -1039,7 +1041,7 @@ typedef struct avifEncoder
     uint64_t timescale;   // timescale of the media (Hz)
 
     // Layers (used by progressive rendering)
-    int extraLayerCount; // Extra color layers; 0 for regular single-layer color image (default).
+    int extraLayerCount;      // Extra color layers; 0 for regular single-layer color image (default).
     int extraLayerCountAlpha; // Extra alpha layers; 0 for regular single-layer alpha image (default).
     avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
     avifLayerConfig layersAlpha[MAX_AV1_LAYER_COUNT];
@@ -1096,9 +1098,7 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             const avifImage * const * cellImages,
                                             avifAddImageFlags addImageFlags);
 // cellImages should have max(encoder->extraLayerCount, encoder->extraLayerCountAlpha) + 1 elements.
-avifResult avifEncoderAddImageProgressive(avifEncoder * encoder,
-                                          const avifImage * const * layerImages,
-                                          avifAddImageFlags addImageFlags);
+avifResult avifEncoderAddImageProgressive(avifEncoder * encoder, const avifImage * const * layerImages, avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs. These

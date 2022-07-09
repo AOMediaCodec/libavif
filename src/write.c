@@ -882,9 +882,7 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
     return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
 }
 
-avifResult avifEncoderAddImageProgressive(avifEncoder * encoder,
-                                          const avifImage * const * layerImages,
-                                          avifAddImageFlags addImageFlags)
+avifResult avifEncoderAddImageProgressive(avifEncoder * encoder, const avifImage * const * layerImages, avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
     return avifEncoderAddImageInternal(encoder, 1, 1, layerImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single frame progressive images are supported
@@ -1555,9 +1553,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             // Interleave - Pick out and record layered image items, interleave them later.
             // Layer image items have same number of samples and fixups.
-            if (useInterleave && item->encodeOutput->samples.count > 0 &&
-                item->encodeOutput->samples.count == item->mdatFixups.count) {
-
+            if (useInterleave && item->encodeOutput->samples.count > 0 && item->encodeOutput->samples.count == item->mdatFixups.count) {
                 avifEncoderItemReference * ref;
                 if (item->alpha) {
                     ref = (avifEncoderItemReference *)avifArrayPushPtr(&layeredAlphaItems);
