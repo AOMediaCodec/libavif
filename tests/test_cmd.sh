@@ -56,6 +56,11 @@ echo "Testing basic lossless"
 "${ARE_IMAGES_EQUAL}" "${PNG_FILE}" "${DECODED_FILE}" 0
 set +e
 "${ARE_IMAGES_EQUAL}" "${TESTDATA_DIR}"/kodim23_yuv420_8bpc.y4m "${DECODED_FILE}" 0
+if [ $? -ne 1 ]
+then
+    echo "Image should be different"
+    exit 1
+fi
 set -e
 
 echo "TEST OK"

@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
       AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy)};
   if (!decoded[0] || !decoded[1]) {
     std::cerr << "Cannot create AVIF images." << std::endl;
-    return 1;
+    return 2;
   }
   uint32_t depth[2];
   // Request the bit depth closest to the bit depth of the input file.
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
                       decoded[i].get(), &depth[i], NULL,
                       NULL) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
-      return 1;
+      return 2;
     }
   }
 
