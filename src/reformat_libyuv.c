@@ -6,6 +6,12 @@
 #if !defined(AVIF_LIBYUV_ENABLED)
 
 // No libyuv!
+avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
+{
+    (void)image;
+    (void)rgb;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
 {
     (void)image;
@@ -49,6 +55,126 @@ unsigned int avifLibYUVVersion(void)
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
+
+static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb);
+
+avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
+{
+    if ((image->depth == 8) && (rgb->depth == 8)) {
+        return avifImageRGBToYUVLibYUV8bpc(image, rgb);
+    }
+
+    // This function didn't do anything; use the built-in conversion.
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+
+// Returns whether libyuv was compiled with LIBYUV_BIT_EXACT defined or not.
+static avifBool avifIsLibyuvBitExact()
+{
+    // Use hardcoded conversion results to detect precision loss.
+    // These values may need to be updated if libyuv behavior changes.
+
+    // libyuv ARGB (libavif BGRA) to YUV limited range BT.601
+    const uint8_t argb[] = { 215, 22, 5, 255 };
+    uint8_t y = 0, u = 0, v = 0;
+    ARGBToI444(argb, 0, &y, 0, &u, 0, &v, 0, /*width=*/1, /*height=*/1);
+    if (y == 49 && u == 215 && v == 107) { // leads to BGR 212, 21, 5 when converted back with libyuv
+        return AVIF_TRUE;
+    }
+    assert(y == 49 && u == 214 && v == 106); // leads to BGR 210, 23, 3 when converted back with libyuv
+    return AVIF_FALSE;
+}
+
+avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb)
+{
+    assert((image->depth == 8) && (rgb->depth == 8));
+    // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
+    // similar to PNG. libyuv orders in word-order, so libavif's RGBA would be referred to in libyuv as ABGR.
+
+    if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+        // Generic mapping from any RGB layout (with or without alpha) to monochrome.
+        int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int) = NULL;
+
+        // LIBYUV_BIT_EXACT has no impact on monochrome conversions.
+        if (image->yuvRange == AVIF_RANGE_LIMITED) {
+            if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                RGBtoY = ARGBToI400;
+            }
+        } else { // image->yuvRange == AVIF_RANGE_FULL
+            if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                RGBtoY = ARGBToJ400;
+            }
+        }
+
+        return !RGBtoY ? AVIF_RESULT_NOT_IMPLEMENTED
+               : RGBtoY(rgb->pixels,
+                        rgb->rowBytes,
+                        image->yuvPlanes[AVIF_CHAN_Y],
+                        image->yuvRowBytes[AVIF_CHAN_Y],
+                        image->width,
+                        image->height)
+                   ? AVIF_RESULT_REFORMAT_FAILED
+                   : AVIF_RESULT_OK;
+    }
+
+    // Generic mapping from any RGB layout (with or without alpha) to any YUV layout (subsampled or not).
+    int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int) = NULL;
+
+    // libyuv only handles BT.601 for RGB to YUV, and not all range/order/subsampling combinations.
+    if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) {
+        if (image->yuvRange == AVIF_RANGE_LIMITED) {
+            // libyuv has a smaller conversion loss from RGB to YUV limited range BT.601 when
+            // it is built with LIBYUV_BIT_EXACT defined (opposite to full range).
+            if (!avifIsLibyuvBitExact()) {
+                // The loss is considered too heavy; rely on the slow but precise built-in conversion.
+                return AVIF_RESULT_NOT_IMPLEMENTED;
+            }
+            if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
+                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? ABGRToI420 : NULL;
+            } else if (rgb->format == AVIF_RGB_FORMAT_ARGB) {
+                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? BGRAToI420 : NULL;
+            } else if (rgb->format == AVIF_RGB_FORMAT_BGR) {
+                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? RGB24ToI420 : NULL;
+            } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444)   ? ARGBToI444
+                           : (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) ? ARGBToI422
+                           : (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? ARGBToI420
+                                                                            : NULL;
+            } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
+                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? RGBAToI420 : NULL;
+            }
+        } else { // image->yuvRange == AVIF_RANGE_FULL
+            // libyuv has a smaller conversion loss from RGB to YUV full range BT.601 when
+            // it is built without LIBYUV_BIT_EXACT defined (opposite to limited range).
+            if (avifIsLibyuvBitExact()) {
+                // The loss is considered too heavy; rely on the slow but precise built-in conversion.
+                return AVIF_RESULT_NOT_IMPLEMENTED;
+            }
+            if (rgb->format == AVIF_RGB_FORMAT_BGR) {
+                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? RGB24ToJ420 : NULL;
+            } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)   ? ARGBToJ422
+                           : (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? ARGBToJ420
+                                                                            : NULL;
+            }
+        }
+    }
+    // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the current implementation
+
+    return (RGBtoYUV == NULL) ? AVIF_RESULT_NOT_IMPLEMENTED
+           : RGBtoYUV(rgb->pixels,
+                      rgb->rowBytes,
+                      image->yuvPlanes[AVIF_CHAN_Y],
+                      image->yuvRowBytes[AVIF_CHAN_Y],
+                      image->yuvPlanes[AVIF_CHAN_U],
+                      image->yuvRowBytes[AVIF_CHAN_U],
+                      image->yuvPlanes[AVIF_CHAN_V],
+                      image->yuvRowBytes[AVIF_CHAN_V],
+                      image->width,
+                      image->height)
+               ? AVIF_RESULT_REFORMAT_FAILED
+               : AVIF_RESULT_OK;
+}
 
 static avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                               avifRGBImage * rgb,
@@ -245,6 +371,8 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
     // AVIF_RGB_FORMAT_RGBA  *ToARGBMatrix   matrixYVU
     // AVIF_RGB_FORMAT_ABGR  *ToRGBAMatrix   matrixYUV
     // AVIF_RGB_FORMAT_ARGB  *ToRGBAMatrix   matrixYVU
+    //
+    // Note: LIBYUV_BIT_EXACT has no impact when converting from YUV to RGB, only the other way around.
 
     if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
         // AVIF_RGB_FORMAT_BGRA  *ToARGBMatrix   matrixYUV

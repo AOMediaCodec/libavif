@@ -204,172 +204,160 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         }
     }
 
-    const float kr = state.kr;
-    const float kg = state.kg;
-    const float kb = state.kb;
+    avifBool convertedWithLibYUV = AVIF_FALSE;
+    if (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
+        avifResult libyuvResult = avifImageRGBToYUVLibYUV(image, rgb);
+        if (libyuvResult == AVIF_RESULT_OK) {
+            convertedWithLibYUV = AVIF_TRUE;
+        } else if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
+            return libyuvResult;
+        }
+    }
 
-    struct YUVBlock yuvBlock[2][2];
-    float rgbPixel[3];
-    const float rgbMaxChannelF = state.rgbMaxChannelF;
-    uint8_t ** yuvPlanes = image->yuvPlanes;
-    uint32_t * yuvRowBytes = image->yuvRowBytes;
-    for (uint32_t outerJ = 0; outerJ < image->height; outerJ += 2) {
-        for (uint32_t outerI = 0; outerI < image->width; outerI += 2) {
-            int blockW = 2, blockH = 2;
-            if ((outerI + 1) >= image->width) {
-                blockW = 1;
-            }
-            if ((outerJ + 1) >= image->height) {
-                blockH = 1;
-            }
+    if (!convertedWithLibYUV) {
+        const float kr = state.kr;
+        const float kg = state.kg;
+        const float kb = state.kb;
 
-            // Convert an entire 2x2 block to YUV, and populate any fully sampled channels as we go
-            for (int bJ = 0; bJ < blockH; ++bJ) {
-                for (int bI = 0; bI < blockW; ++bI) {
-                    int i = outerI + bI;
-                    int j = outerJ + bJ;
+        struct YUVBlock yuvBlock[2][2];
+        float rgbPixel[3];
+        const float rgbMaxChannelF = state.rgbMaxChannelF;
+        uint8_t ** yuvPlanes = image->yuvPlanes;
+        uint32_t * yuvRowBytes = image->yuvRowBytes;
+        for (uint32_t outerJ = 0; outerJ < image->height; outerJ += 2) {
+            for (uint32_t outerI = 0; outerI < image->width; outerI += 2) {
+                int blockW = 2, blockH = 2;
+                if ((outerI + 1) >= image->width) {
+                    blockW = 1;
+                }
+                if ((outerJ + 1) >= image->height) {
+                    blockH = 1;
+                }
 
-                    // Unpack RGB into normalized float
-                    if (state.rgbChannelBytes > 1) {
-                        rgbPixel[0] =
-                            *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesR + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
-                            rgbMaxChannelF;
-                        rgbPixel[1] =
-                            *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesG + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
-                            rgbMaxChannelF;
-                        rgbPixel[2] =
-                            *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesB + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
-                            rgbMaxChannelF;
-                    } else {
-                        rgbPixel[0] = rgb->pixels[state.rgbOffsetBytesR + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
-                        rgbPixel[1] = rgb->pixels[state.rgbOffsetBytesG + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
-                        rgbPixel[2] = rgb->pixels[state.rgbOffsetBytesB + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
-                    }
+                // Convert an entire 2x2 block to YUV, and populate any fully sampled channels as we go
+                for (int bJ = 0; bJ < blockH; ++bJ) {
+                    for (int bI = 0; bI < blockW; ++bI) {
+                        int i = outerI + bI;
+                        int j = outerJ + bJ;
 
-                    if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
-                        float a;
+                        // Unpack RGB into normalized float
                         if (state.rgbChannelBytes > 1) {
-                            a = *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
+                            rgbPixel[0] =
+                                *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesR + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
+                                rgbMaxChannelF;
+                            rgbPixel[1] =
+                                *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesG + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
+                                rgbMaxChannelF;
+                            rgbPixel[2] =
+                                *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesB + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
                                 rgbMaxChannelF;
                         } else {
-                            a = rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
+                            rgbPixel[0] = rgb->pixels[state.rgbOffsetBytesR + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] /
+                                          rgbMaxChannelF;
+                            rgbPixel[1] = rgb->pixels[state.rgbOffsetBytesG + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] /
+                                          rgbMaxChannelF;
+                            rgbPixel[2] = rgb->pixels[state.rgbOffsetBytesB + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] /
+                                          rgbMaxChannelF;
                         }
 
-                        if (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
-                            if (a == 0) {
-                                rgbPixel[0] = 0;
-                                rgbPixel[1] = 0;
-                                rgbPixel[2] = 0;
-                            } else if (a < 1.0f) {
-                                rgbPixel[0] *= a;
-                                rgbPixel[1] *= a;
-                                rgbPixel[2] *= a;
+                        if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
+                            float a;
+                            if (state.rgbChannelBytes > 1) {
+                                a = *((uint16_t *)(&rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)])) /
+                                    rgbMaxChannelF;
+                            } else {
+                                a = rgb->pixels[state.rgbOffsetBytesA + (i * state.rgbPixelBytes) + (j * rgb->rowBytes)] / rgbMaxChannelF;
+                            }
+
+                            if (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
+                                if (a == 0) {
+                                    rgbPixel[0] = 0;
+                                    rgbPixel[1] = 0;
+                                    rgbPixel[2] = 0;
+                                } else if (a < 1.0f) {
+                                    rgbPixel[0] *= a;
+                                    rgbPixel[1] *= a;
+                                    rgbPixel[2] *= a;
+                                }
+                            } else {
+                                // alphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
+                                if (a == 0) {
+                                    rgbPixel[0] = 0;
+                                    rgbPixel[1] = 0;
+                                    rgbPixel[2] = 0;
+                                } else if (a < 1.0f) {
+                                    rgbPixel[0] /= a;
+                                    rgbPixel[1] /= a;
+                                    rgbPixel[2] /= a;
+                                    rgbPixel[0] = AVIF_MIN(rgbPixel[0], 1.0f);
+                                    rgbPixel[1] = AVIF_MIN(rgbPixel[1], 1.0f);
+                                    rgbPixel[2] = AVIF_MIN(rgbPixel[2], 1.0f);
+                                }
+                            }
+                        }
+
+                        // RGB -> YUV conversion
+                        if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
+                            // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            yuvBlock[bI][bJ].y = rgbPixel[1]; // G
+                            yuvBlock[bI][bJ].u = rgbPixel[2]; // B
+                            yuvBlock[bI][bJ].v = rgbPixel[0]; // R
+                        } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO) {
+                            // Formulas 44,45,46 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            yuvBlock[bI][bJ].y = 0.5f * rgbPixel[1] + 0.25f * (rgbPixel[0] + rgbPixel[2]);
+                            yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
+                            yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
+                        } else {
+                            float Y = (kr * rgbPixel[0]) + (kg * rgbPixel[1]) + (kb * rgbPixel[2]);
+                            yuvBlock[bI][bJ].y = Y;
+                            yuvBlock[bI][bJ].u = (rgbPixel[2] - Y) / (2 * (1 - kb));
+                            yuvBlock[bI][bJ].v = (rgbPixel[0] - Y) / (2 * (1 - kr));
+                        }
+
+                        if (state.yuvChannelBytes > 1) {
+                            uint16_t * pY = (uint16_t *)&yuvPlanes[AVIF_CHAN_Y][(i * 2) + (j * yuvRowBytes[AVIF_CHAN_Y])];
+                            *pY = (uint16_t)avifReformatStateYToUNorm(&state, yuvBlock[bI][bJ].y);
+                            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+                                // YUV444, full chroma
+                                uint16_t * pU = (uint16_t *)&yuvPlanes[AVIF_CHAN_U][(i * 2) + (j * yuvRowBytes[AVIF_CHAN_U])];
+                                *pU = (uint16_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].u);
+                                uint16_t * pV = (uint16_t *)&yuvPlanes[AVIF_CHAN_V][(i * 2) + (j * yuvRowBytes[AVIF_CHAN_V])];
+                                *pV = (uint16_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].v);
                             }
                         } else {
-                            // alphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
-                            if (a == 0) {
-                                rgbPixel[0] = 0;
-                                rgbPixel[1] = 0;
-                                rgbPixel[2] = 0;
-                            } else if (a < 1.0f) {
-                                rgbPixel[0] /= a;
-                                rgbPixel[1] /= a;
-                                rgbPixel[2] /= a;
-                                rgbPixel[0] = AVIF_MIN(rgbPixel[0], 1.0f);
-                                rgbPixel[1] = AVIF_MIN(rgbPixel[1], 1.0f);
-                                rgbPixel[2] = AVIF_MIN(rgbPixel[2], 1.0f);
+                            yuvPlanes[AVIF_CHAN_Y][i + (j * yuvRowBytes[AVIF_CHAN_Y])] =
+                                (uint8_t)avifReformatStateYToUNorm(&state, yuvBlock[bI][bJ].y);
+                            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+                                // YUV444, full chroma
+                                yuvPlanes[AVIF_CHAN_U][i + (j * yuvRowBytes[AVIF_CHAN_U])] =
+                                    (uint8_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].u);
+                                yuvPlanes[AVIF_CHAN_V][i + (j * yuvRowBytes[AVIF_CHAN_V])] =
+                                    (uint8_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].v);
                             }
                         }
                     }
-
-                    // RGB -> YUV conversion
-                    if (state.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-                        // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
-                        yuvBlock[bI][bJ].y = rgbPixel[1]; // G
-                        yuvBlock[bI][bJ].u = rgbPixel[2]; // B
-                        yuvBlock[bI][bJ].v = rgbPixel[0]; // R
-                    } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO) {
-                        // Formulas 44,45,46 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
-                        yuvBlock[bI][bJ].y = 0.5f * rgbPixel[1] + 0.25f * (rgbPixel[0] + rgbPixel[2]);
-                        yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
-                        yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
-                    } else {
-                        float Y = (kr * rgbPixel[0]) + (kg * rgbPixel[1]) + (kb * rgbPixel[2]);
-                        yuvBlock[bI][bJ].y = Y;
-                        yuvBlock[bI][bJ].u = (rgbPixel[2] - Y) / (2 * (1 - kb));
-                        yuvBlock[bI][bJ].v = (rgbPixel[0] - Y) / (2 * (1 - kr));
-                    }
-
-                    if (state.yuvChannelBytes > 1) {
-                        uint16_t * pY = (uint16_t *)&yuvPlanes[AVIF_CHAN_Y][(i * 2) + (j * yuvRowBytes[AVIF_CHAN_Y])];
-                        *pY = (uint16_t)avifReformatStateYToUNorm(&state, yuvBlock[bI][bJ].y);
-                        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
-                            // YUV444, full chroma
-                            uint16_t * pU = (uint16_t *)&yuvPlanes[AVIF_CHAN_U][(i * 2) + (j * yuvRowBytes[AVIF_CHAN_U])];
-                            *pU = (uint16_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].u);
-                            uint16_t * pV = (uint16_t *)&yuvPlanes[AVIF_CHAN_V][(i * 2) + (j * yuvRowBytes[AVIF_CHAN_V])];
-                            *pV = (uint16_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].v);
-                        }
-                    } else {
-                        yuvPlanes[AVIF_CHAN_Y][i + (j * yuvRowBytes[AVIF_CHAN_Y])] =
-                            (uint8_t)avifReformatStateYToUNorm(&state, yuvBlock[bI][bJ].y);
-                        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
-                            // YUV444, full chroma
-                            yuvPlanes[AVIF_CHAN_U][i + (j * yuvRowBytes[AVIF_CHAN_U])] =
-                                (uint8_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].u);
-                            yuvPlanes[AVIF_CHAN_V][i + (j * yuvRowBytes[AVIF_CHAN_V])] =
-                                (uint8_t)avifReformatStateUVToUNorm(&state, yuvBlock[bI][bJ].v);
-                        }
-                    }
                 }
-            }
 
-            // Populate any subsampled channels with averages from the 2x2 block
-            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                // YUV420, average 4 samples (2x2)
+                // Populate any subsampled channels with averages from the 2x2 block
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    // YUV420, average 4 samples (2x2)
 
-                float sumU = 0.0f;
-                float sumV = 0.0f;
-                for (int bJ = 0; bJ < blockH; ++bJ) {
-                    for (int bI = 0; bI < blockW; ++bI) {
-                        sumU += yuvBlock[bI][bJ].u;
-                        sumV += yuvBlock[bI][bJ].v;
-                    }
-                }
-                float totalSamples = (float)(blockW * blockH);
-                float avgU = sumU / totalSamples;
-                float avgV = sumV / totalSamples;
-
-                const int chromaShiftX = 1;
-                const int chromaShiftY = 1;
-                int uvI = outerI >> chromaShiftX;
-                int uvJ = outerJ >> chromaShiftY;
-                if (state.yuvChannelBytes > 1) {
-                    uint16_t * pU = (uint16_t *)&yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * yuvRowBytes[AVIF_CHAN_U])];
-                    *pU = (uint16_t)avifReformatStateUVToUNorm(&state, avgU);
-                    uint16_t * pV = (uint16_t *)&yuvPlanes[AVIF_CHAN_V][(uvI * 2) + (uvJ * yuvRowBytes[AVIF_CHAN_V])];
-                    *pV = (uint16_t)avifReformatStateUVToUNorm(&state, avgV);
-                } else {
-                    yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * yuvRowBytes[AVIF_CHAN_U])] = (uint8_t)avifReformatStateUVToUNorm(&state, avgU);
-                    yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * yuvRowBytes[AVIF_CHAN_V])] = (uint8_t)avifReformatStateUVToUNorm(&state, avgV);
-                }
-            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-                // YUV422, average 2 samples (1x2), twice
-
-                for (int bJ = 0; bJ < blockH; ++bJ) {
                     float sumU = 0.0f;
                     float sumV = 0.0f;
-                    for (int bI = 0; bI < blockW; ++bI) {
-                        sumU += yuvBlock[bI][bJ].u;
-                        sumV += yuvBlock[bI][bJ].v;
+                    for (int bJ = 0; bJ < blockH; ++bJ) {
+                        for (int bI = 0; bI < blockW; ++bI) {
+                            sumU += yuvBlock[bI][bJ].u;
+                            sumV += yuvBlock[bI][bJ].v;
+                        }
                     }
-                    float totalSamples = (float)blockW;
+                    float totalSamples = (float)(blockW * blockH);
                     float avgU = sumU / totalSamples;
                     float avgV = sumV / totalSamples;
 
                     const int chromaShiftX = 1;
+                    const int chromaShiftY = 1;
                     int uvI = outerI >> chromaShiftX;
-                    int uvJ = outerJ + bJ;
+                    int uvJ = outerJ >> chromaShiftY;
                     if (state.yuvChannelBytes > 1) {
                         uint16_t * pU = (uint16_t *)&yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * yuvRowBytes[AVIF_CHAN_U])];
                         *pU = (uint16_t)avifReformatStateUVToUNorm(&state, avgU);
@@ -380,6 +368,35 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             (uint8_t)avifReformatStateUVToUNorm(&state, avgU);
                         yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * yuvRowBytes[AVIF_CHAN_V])] =
                             (uint8_t)avifReformatStateUVToUNorm(&state, avgV);
+                    }
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+                    // YUV422, average 2 samples (1x2), twice
+
+                    for (int bJ = 0; bJ < blockH; ++bJ) {
+                        float sumU = 0.0f;
+                        float sumV = 0.0f;
+                        for (int bI = 0; bI < blockW; ++bI) {
+                            sumU += yuvBlock[bI][bJ].u;
+                            sumV += yuvBlock[bI][bJ].v;
+                        }
+                        float totalSamples = (float)blockW;
+                        float avgU = sumU / totalSamples;
+                        float avgV = sumV / totalSamples;
+
+                        const int chromaShiftX = 1;
+                        int uvI = outerI >> chromaShiftX;
+                        int uvJ = outerJ + bJ;
+                        if (state.yuvChannelBytes > 1) {
+                            uint16_t * pU = (uint16_t *)&yuvPlanes[AVIF_CHAN_U][(uvI * 2) + (uvJ * yuvRowBytes[AVIF_CHAN_U])];
+                            *pU = (uint16_t)avifReformatStateUVToUNorm(&state, avgU);
+                            uint16_t * pV = (uint16_t *)&yuvPlanes[AVIF_CHAN_V][(uvI * 2) + (uvJ * yuvRowBytes[AVIF_CHAN_V])];
+                            *pV = (uint16_t)avifReformatStateUVToUNorm(&state, avgV);
+                        } else {
+                            yuvPlanes[AVIF_CHAN_U][uvI + (uvJ * yuvRowBytes[AVIF_CHAN_U])] =
+                                (uint8_t)avifReformatStateUVToUNorm(&state, avgU);
+                            yuvPlanes[AVIF_CHAN_V][uvI + (uvJ * yuvRowBytes[AVIF_CHAN_V])] =
+                                (uint8_t)avifReformatStateUVToUNorm(&state, avgV);
+                        }
                     }
                 }
             }
