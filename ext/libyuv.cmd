@@ -5,7 +5,7 @@
 : # cmake and ninja must be in your PATH.
 
 : # Add -DCMAKE_C_FLAGS="-DLIBYUV_BIT_EXACT" -DCMAKE_CXX_FLAGS="-DLIBYUV_BIT_EXACT" to the cmake command
-: # to enable faster RGB to YUV limited range BT.601 conversion (disables faster full range BT.601 conversion).
+: # to enable faster RGB to YUV limited range BT.601 conversion and disable faster full range BT.601 conversion.
 : # See avifIsLibyuvBitExact() call sites in src/reformat_libyuv.c for further information.
 
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):

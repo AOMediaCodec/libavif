@@ -6,10 +6,10 @@
 #if !defined(AVIF_LIBYUV_ENABLED)
 
 // No libyuv!
-avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
+avifResult avifImageRGBToYUVLibYUV(const avifRGBImage * rgb, avifImage * image)
 {
-    (void)image;
     (void)rgb;
+    (void)image;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
@@ -58,7 +58,7 @@ unsigned int avifLibYUVVersion(void)
 
 static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb);
 
-avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
+avifResult avifImageRGBToYUVLibYUV(const avifRGBImage * rgb, avifImage * image)
 {
     if ((image->depth == 8) && (rgb->depth == 8)) {
         return avifImageRGBToYUVLibYUV8bpc(image, rgb);
@@ -106,15 +106,13 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
             }
         }
 
-        return !RGBtoY ? AVIF_RESULT_NOT_IMPLEMENTED
-               : RGBtoY(rgb->pixels,
-                        rgb->rowBytes,
-                        image->yuvPlanes[AVIF_CHAN_Y],
-                        image->yuvRowBytes[AVIF_CHAN_Y],
-                        image->width,
-                        image->height)
-                   ? AVIF_RESULT_REFORMAT_FAILED
-                   : AVIF_RESULT_OK;
+        if (!RGBtoY) {
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+        if (RGBtoY(rgb->pixels, rgb->rowBytes, image->yuvPlanes[AVIF_CHAN_Y], image->yuvRowBytes[AVIF_CHAN_Y], image->width, image->height)) {
+            return AVIF_RESULT_REFORMAT_FAILED;
+        }
+        return AVIF_RESULT_OK;
     }
 
     // Generic mapping from any RGB layout (with or without alpha) to any YUV layout (subsampled or not).
@@ -130,18 +128,29 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
                 return AVIF_RESULT_NOT_IMPLEMENTED;
             }
             if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
-                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? ABGRToI420 : NULL;
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = ABGRToI420;
+                }
             } else if (rgb->format == AVIF_RGB_FORMAT_ARGB) {
-                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? BGRAToI420 : NULL;
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = BGRAToI420;
+                }
             } else if (rgb->format == AVIF_RGB_FORMAT_BGR) {
-                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? RGB24ToI420 : NULL;
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = RGB24ToI420;
+                }
             } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
-                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444)   ? ARGBToI444
-                           : (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) ? ARGBToI422
-                           : (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? ARGBToI420
-                                                                            : NULL;
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+                    RGBtoYUV = ARGBToI444;
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+                    RGBtoYUV = ARGBToI422;
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = ARGBToI420;
+                }
             } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
-                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? RGBAToI420 : NULL;
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = RGBAToI420;
+                }
             }
         } else { // image->yuvRange == AVIF_RANGE_FULL
             // libyuv has a smaller conversion loss from RGB to YUV full range BT.601 when
@@ -151,29 +160,36 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
                 return AVIF_RESULT_NOT_IMPLEMENTED;
             }
             if (rgb->format == AVIF_RGB_FORMAT_BGR) {
-                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? RGB24ToJ420 : NULL;
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = RGB24ToJ420;
+                }
             } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
-                RGBtoYUV = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)   ? ARGBToJ422
-                           : (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) ? ARGBToJ420
-                                                                            : NULL;
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+                    RGBtoYUV = ARGBToJ422;
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = ARGBToJ420;
+                }
             }
         }
     }
     // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the current implementation
 
-    return (RGBtoYUV == NULL) ? AVIF_RESULT_NOT_IMPLEMENTED
-           : RGBtoYUV(rgb->pixels,
-                      rgb->rowBytes,
-                      image->yuvPlanes[AVIF_CHAN_Y],
-                      image->yuvRowBytes[AVIF_CHAN_Y],
-                      image->yuvPlanes[AVIF_CHAN_U],
-                      image->yuvRowBytes[AVIF_CHAN_U],
-                      image->yuvPlanes[AVIF_CHAN_V],
-                      image->yuvRowBytes[AVIF_CHAN_V],
-                      image->width,
-                      image->height)
-               ? AVIF_RESULT_REFORMAT_FAILED
-               : AVIF_RESULT_OK;
+    if (!RGBtoYUV) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    if (RGBtoYUV(rgb->pixels,
+                 rgb->rowBytes,
+                 image->yuvPlanes[AVIF_CHAN_Y],
+                 image->yuvRowBytes[AVIF_CHAN_Y],
+                 image->yuvPlanes[AVIF_CHAN_U],
+                 image->yuvRowBytes[AVIF_CHAN_U],
+                 image->yuvPlanes[AVIF_CHAN_V],
+                 image->yuvRowBytes[AVIF_CHAN_V],
+                 image->width,
+                 image->height)) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+    return AVIF_RESULT_OK;
 }
 
 static avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
