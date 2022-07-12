@@ -22,7 +22,7 @@ using AvifDecoderPtr =
 
 class AvifRwData : public avifRWData {
  public:
-  AvifRwData() : avifRWData({}) {}
+  AvifRwData() : avifRWData{nullptr, 0} {}
   ~AvifRwData() { avifRWDataFree(this); }
 };
 
