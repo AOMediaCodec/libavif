@@ -54,14 +54,14 @@ echo "Testing basic lossless"
 "${AVIFENC}" -s 10 -l "${PNG_FILE}" -o "${TMP_ENCODED_FILE}"
 "${AVIFDEC}" "${TMP_ENCODED_FILE}" "${DECODED_FILE}"
 "${ARE_IMAGES_EQUAL}" "${PNG_FILE}" "${DECODED_FILE}" 0
+
+# Test code that should fail.
 set +e
 "${ARE_IMAGES_EQUAL}" "${TESTDATA_DIR}"/kodim23_yuv420_8bpc.y4m "${DECODED_FILE}" 0
-if [ $? -ne 1 ]
-then
-    echo "Image should be different"
-    exit 1
+if [[ $? -ne 1 ]]; then
+  echo "Image should be different"
+  exit 1
 fi
-set -e
 
 echo "TEST OK"
 exit 0
