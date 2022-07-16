@@ -96,7 +96,7 @@ double GetPsnr(double sq_diff_sum, double num_diffs, double max_abs_diff) {
 
 //------------------------------------------------------------------------------
 
-class YUVToRGBTest
+class RGBToYUVTest
     : public testing::TestWithParam<
           std::tuple</*rgb_depth=*/int, /*yuv_depth=*/int, avifRGBFormat,
                      avifPixelFormat, avifRange, avifMatrixCoefficients,
@@ -106,7 +106,7 @@ class YUVToRGBTest
 // Converts from RGB to YUV and back to RGB for all RGB combinations, separated
 // by a color step for reasonable timing. If add_noise is true, also applies
 // some noise to the input samples to exercise chroma subsampling.
-TEST_P(YUVToRGBTest, Convert) {
+TEST_P(RGBToYUVTest, Convert) {
   const int rgb_depth = std::get<0>(GetParam());
   const int yuv_depth = std::get<1>(GetParam());
   const avifRGBFormat rgb_format = std::get<2>(GetParam());
@@ -239,7 +239,7 @@ constexpr avifRGBFormat kAllRgbFormats[] = {
 
 // This is the default avifenc setup when encoding from 8b PNG files to AVIF.
 INSTANTIATE_TEST_SUITE_P(
-    DefaultFormat, YUVToRGBTest,
+    DefaultFormat, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(8),
             /*yuv_depth=*/Values(8), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV420), Values(AVIF_RANGE_FULL),
@@ -253,7 +253,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Keeping RGB samples in full range and same or higher bit depth should not
 // bring any loss in the roundtrip.
-INSTANTIATE_TEST_SUITE_P(Identity8b, YUVToRGBTest,
+INSTANTIATE_TEST_SUITE_P(Identity8b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(8),
                                  /*yuv_depth=*/Values(8, 10, 12),
                                  ValuesIn(kAllRgbFormats),
@@ -264,7 +264,7 @@ INSTANTIATE_TEST_SUITE_P(Identity8b, YUVToRGBTest,
                                  /*rgb_step=*/Values(31),
                                  /*max_abs_average_diff=*/Values(0.),
                                  /*min_psnr=*/Values(99.)));
-INSTANTIATE_TEST_SUITE_P(Identity10b, YUVToRGBTest,
+INSTANTIATE_TEST_SUITE_P(Identity10b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(10),
                                  /*yuv_depth=*/Values(10, 12),
                                  ValuesIn(kAllRgbFormats),
@@ -275,7 +275,7 @@ INSTANTIATE_TEST_SUITE_P(Identity10b, YUVToRGBTest,
                                  /*rgb_step=*/Values(101),
                                  /*max_abs_average_diff=*/Values(0.),
                                  /*min_psnr=*/Values(99.)));
-INSTANTIATE_TEST_SUITE_P(Identity12b, YUVToRGBTest,
+INSTANTIATE_TEST_SUITE_P(Identity12b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(12),
                                  /*yuv_depth=*/Values(12),
                                  ValuesIn(kAllRgbFormats),
@@ -289,7 +289,7 @@ INSTANTIATE_TEST_SUITE_P(Identity12b, YUVToRGBTest,
 
 // 4:4:4 and chroma subsampling have similar distortions on plain color inputs.
 INSTANTIATE_TEST_SUITE_P(
-    PlainAnySubsampling8b, YUVToRGBTest,
+    PlainAnySubsampling8b, RGBToYUVTest,
     Combine(
         /*rgb_depth=*/Values(8),
         /*yuv_depth=*/Values(8), ValuesIn(kAllRgbFormats),
@@ -305,7 +305,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Converting grey RGB samples to full-range monochrome of same or greater bit
 // depth should be lossless.
-INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b, YUVToRGBTest,
+INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(8),
                                  /*yuv_depth=*/Values(8, 10, 12),
                                  ValuesIn(kAllRgbFormats),
@@ -316,7 +316,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b, YUVToRGBTest,
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
                                  /*min_psnr=*/Values(99.)));
-INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b, YUVToRGBTest,
+INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(10),
                                  /*yuv_depth=*/Values(10, 12),
                                  ValuesIn(kAllRgbFormats),
@@ -327,7 +327,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b, YUVToRGBTest,
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
                                  /*min_psnr=*/Values(99.)));
-INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, YUVToRGBTest,
+INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(12),
                                  /*yuv_depth=*/Values(12),
                                  ValuesIn(kAllRgbFormats),
@@ -342,7 +342,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, YUVToRGBTest,
 // Can be used to print the drift of all RGB to YUV conversion possibilities.
 // Also used for coverage.
 INSTANTIATE_TEST_SUITE_P(
-    All8b, YUVToRGBTest,
+    All8b, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(8),
             /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
@@ -355,7 +355,7 @@ INSTANTIATE_TEST_SUITE_P(
                                                   // of high rgb_step.
             /*min_psnr=*/Values(36.)));
 INSTANTIATE_TEST_SUITE_P(
-    All10b, YUVToRGBTest,
+    All10b, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(10),
             /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
@@ -368,7 +368,7 @@ INSTANTIATE_TEST_SUITE_P(
                                                    // of high rgb_step.
             /*min_psnr=*/Values(47.)));
 INSTANTIATE_TEST_SUITE_P(
-    All12b, YUVToRGBTest,
+    All12b, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(12),
             /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
