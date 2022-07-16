@@ -15,7 +15,7 @@ TEST(ProgressiveTest, EncodeDecode) {
     GTEST_SKIP() << "ProgressiveTest requires AOM encoder.";
   }
 
-  const int image_size = 512;
+  const uint32_t image_size = 512;
   testutil::AvifImagePtr image =
       testutil::CreateImage(image_size, image_size, 8, AVIF_PIXEL_FORMAT_YUV444,
                             AVIF_PLANES_YUV, AVIF_RANGE_FULL);
