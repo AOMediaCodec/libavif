@@ -1041,6 +1041,8 @@ typedef struct avifEncoder
     uint64_t timescale;   // timescale of the media (Hz)
 
     // Layers (used by progressive rendering)
+    // * Note: libavif currently can only properly decode images without alpha,
+    //   or images whose extraLayerCount == extraLayerCountAlpha, if progressive decode is enabled.
     int extraLayerCount;      // Extra color layers; 0 for regular single-layer color image (default).
     int extraLayerCountAlpha; // Extra alpha layers; 0 for regular single-layer alpha image (default).
     avifLayerConfig layers[MAX_AV1_LAYER_COUNT];
@@ -1068,9 +1070,9 @@ typedef enum avifAddImageFlag
     // Force this frame to be a keyframe (sync frame).
     AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME = (1 << 0),
 
-    // Use this flag when encoding a single image. Signals "still_picture" to AV1 encoders, which
-    // tweaks various compression rules. This is enabled automatically when using the
-    // avifEncoderWrite() single-image encode path.
+    // Use this flag when encoding a single frame, single layer image.
+    // Signals "still_picture" to AV1 encoders, which tweaks various compression rules.
+    // This is enabled automatically when using the avifEncoderWrite() single-image encode path.
     AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
 } avifAddImageFlag;
 typedef uint32_t avifAddImageFlags;

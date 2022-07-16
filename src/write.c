@@ -743,7 +743,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
         encoder->data->alphaPresent = (firstCell->alphaPlane != NULL);
-        if (encoder->data->alphaPresent && (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
+        if (encoder->data->alphaPresent &&
+            ((addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || (encoder->extraLayerCount > 0) || (encoder->extraLayerCountAlpha > 0))) {
             // If encoding a single image in which the alpha plane exists but is entirely opaque,
             // simply skip writing an alpha AV1 payload entirely, as it'll be interpreted as opaque
             // and is less bytes.
@@ -879,13 +880,16 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                    avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single image grids are supported
+    if (encoder->extraLayerCount == 0 && encoder->extraLayerCountAlpha == 0) {
+        addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE; // only single image grids are supported
+    }
+    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, 1, addImageFlags);
 }
 
 avifResult avifEncoderAddImageProgressive(avifEncoder * encoder, const avifImage * const * layerImages, avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    return avifEncoderAddImageInternal(encoder, 1, 1, layerImages, 1, addImageFlags | AVIF_ADD_IMAGE_FLAG_SINGLE); // only single frame progressive images are supported
+    return avifEncoderAddImageInternal(encoder, 1, 1, layerImages, 1, addImageFlags);
 }
 
 static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)

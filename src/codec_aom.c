@@ -557,11 +557,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 {
     uint32_t extraLayerCount = alpha ? encoder->extraLayerCountAlpha : encoder->extraLayerCount;
     const avifLayerConfig * layers = alpha ? encoder->layersAlpha : encoder->layers;
-    // Disable single image flag to allow interlayer compression
-    // todo: we clearly don't want ALL_INTRA, but other tweaks should be reviewed as well.
-    if (extraLayerCount > 0) {
-        addImageFlags &= ~AVIF_ADD_IMAGE_FLAG_SINGLE;
-    }
 
     aom_codec_enc_cfg_t * cfg = &codec->internal->cfg;
     // Map encoder speed to AOM usage + CpuUsed:
@@ -696,7 +691,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         cfg->g_input_bit_depth = image->depth;
         cfg->g_w = image->width;
         cfg->g_h = image->height;
-        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+        if (extraLayerCount > 0) {
+            cfg->g_lag_in_frames = 0;
+        } else if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
             // Set the maximum number of frames to encode to 1. This instructs
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
@@ -713,9 +710,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->kf_mode = AOM_KF_DISABLED;
             // Tell libaom that all frames will be key frames.
             cfg->kf_max_dist = 0;
-        }
-        if (extraLayerCount > 0) {
-            cfg->g_lag_in_frames = 0;
         }
         if (encoder->maxThreads > 1) {
             cfg->g_threads = encoder->maxThreads;
@@ -1037,9 +1031,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    if ((addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || ((extraLayerCount > 0) && (layerIndex == extraLayerCount))) {
+    if (((extraLayerCount > 0) && (layerIndex == extraLayerCount)) ||
+        ((extraLayerCount == 0) && (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE))) {
         // Flush and clean up encoder resources early to save on overhead when encoding alpha or grid images.
-        // (For layered image, this is when the last layer is encoded.)
+        // (For layered image, this should be done after the last layer is encoded.)
 
         if (!aomCodecEncodeFinish(codec, output)) {
             return AVIF_RESULT_UNKNOWN_ERROR;

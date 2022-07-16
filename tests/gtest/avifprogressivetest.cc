@@ -32,7 +32,7 @@ TEST(ProgressiveTest, EncodeDecode) {
   encoder->layers[1] = {25, 25, {1, 1}, {1, 1}};
   avifImage* layer_image_ptrs[2] = {image.get(), image.get()};
   ASSERT_EQ(avifEncoderAddImageProgressive(encoder.get(), layer_image_ptrs,
-                                           AVIF_ADD_IMAGE_FLAG_SINGLE),
+                                           AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
   testutil::AvifRwData encodedAvif;
   ASSERT_EQ(avifEncoderFinish(encoder.get(), &encodedAvif), AVIF_RESULT_OK);
