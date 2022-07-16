@@ -1,30 +1,24 @@
 // Copyright 2022 Google LLC. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <array>
-
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-using ::testing::Combine;
-using ::testing::Values;
-using ::testing::ValuesIn;
-
 namespace libavif {
 namespace {
-
 class ProgressiveTest : public testing::Test {};
-}  // namespace
 
 TEST(ProgressiveTest, EncodeDecode) {
   if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
       nullptr) {
-    GTEST_SKIP_("ProgressiveTest requires AOM encoder.");
+    GTEST_SKIP() << "ProgressiveTest requires AOM encoder.";
   }
 
-  testutil::AvifImagePtr image = testutil::CreateImage(
-      512, 512, 8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  const int image_size = 512;
+  testutil::AvifImagePtr image =
+      testutil::CreateImage(image_size, image_size, 8, AVIF_PIXEL_FORMAT_YUV444,
+                            AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
@@ -36,11 +30,10 @@ TEST(ProgressiveTest, EncodeDecode) {
   encoder->extraLayerCount = 1;
   encoder->layers[0] = {50, 50, {1, 4}, {1, 4}};
   encoder->layers[1] = {25, 25, {1, 1}, {1, 1}};
-  std::array<avifImage*, 2> layer_image_ptrs = {image.get(), image.get()};
-  ASSERT_EQ(
-      avifEncoderAddImageProgressive(encoder.get(), layer_image_ptrs.data(),
-                                     AVIF_ADD_IMAGE_FLAG_SINGLE),
-      AVIF_RESULT_OK);
+  avifImage* layer_image_ptrs[2] = {image.get(), image.get()};
+  ASSERT_EQ(avifEncoderAddImageProgressive(encoder.get(), layer_image_ptrs,
+                                           AVIF_ADD_IMAGE_FLAG_SINGLE),
+            AVIF_RESULT_OK);
   testutil::AvifRwData encodedAvif;
   ASSERT_EQ(avifEncoderFinish(encoder.get(), &encodedAvif), AVIF_RESULT_OK);
 
@@ -55,8 +48,13 @@ TEST(ProgressiveTest, EncodeDecode) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   ASSERT_EQ(decoder->progressiveState, AVIF_PROGRESSIVE_STATE_ACTIVE);
   ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
-  // Check decoder->image
+  ASSERT_EQ(decoder->image->width, image_size);
+  ASSERT_EQ(decoder->image->height, image_size);
+  // TODO Check decoder->image and image are similar
   ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
-  // Check decoder->image
+  ASSERT_EQ(decoder->image->width, image_size);
+  ASSERT_EQ(decoder->image->height, image_size);
+  // TODO Check decoder->image and image are more similar than previous layer
 }
+}  // namespace
 }  // namespace libavif

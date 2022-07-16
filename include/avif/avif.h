@@ -1097,7 +1097,7 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             uint32_t gridRows,
                                             const avifImage * const * cellImages,
                                             avifAddImageFlags addImageFlags);
-// cellImages should have max(encoder->extraLayerCount, encoder->extraLayerCountAlpha) + 1 elements.
+// layerImages should have max(encoder->extraLayerCount, encoder->extraLayerCountAlpha) + 1 elements.
 avifResult avifEncoderAddImageProgressive(avifEncoder * encoder, const avifImage * const * layerImages, avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 

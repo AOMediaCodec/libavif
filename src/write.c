@@ -1553,7 +1553,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             // Interleave - Pick out and record layered image items, interleave them later.
             // Layer image items have same number of samples and fixups.
-            if (useInterleave && item->encodeOutput->samples.count > 0 && item->encodeOutput->samples.count == item->mdatFixups.count) {
+            if (useInterleave && (item->encodeOutput->samples.count > 0) &&
+                (item->encodeOutput->samples.count == item->mdatFixups.count)) {
                 avifEncoderItemReference * ref;
                 if (item->alpha) {
                     ref = (avifEncoderItemReference *)avifArrayPushPtr(&layeredAlphaItems);
