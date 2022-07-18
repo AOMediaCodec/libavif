@@ -1026,9 +1026,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
 
-        avifRWStreamWriteU16(&s, item->id);                  // unsigned int(16) item_ID;
-        avifRWStreamWriteU16(&s, 0);                         // unsigned int(16) data_reference_index;
-        avifRWStreamWriteU16(&s, item->extraLayerCount + 1); // unsigned int(16) extent_count;
+        avifRWStreamWriteU16(&s, item->id);                              // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, 0);                                     // unsigned int(16) data_reference_index;
+        avifRWStreamWriteU16(&s, (uint16_t)(item->extraLayerCount + 1)); // unsigned int(16) extent_count;
 
         for (uint32_t i = 0; i < item->extraLayerCount + 1; ++i) {
             avifEncoderItemAddMdatFixup(item, &s);
@@ -1222,8 +1222,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 }
             }
 
-            avifRWStreamWriteU8(&dedup->s, largeSize); // unsigned int(7) reserved = 0;
-                                                       // unsigned int(1) large_size;
+            avifRWStreamWriteU8(&dedup->s, (uint8_t)largeSize); // unsigned int(7) reserved = 0;
+                                                                // unsigned int(1) large_size;
 
             // FieldLength = (large_size + 1) * 16;
             // unsigned int(FieldLength) layer_size[3];
