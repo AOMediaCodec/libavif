@@ -206,7 +206,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
     avifBool convertedWithLibYUV = AVIF_FALSE;
     if (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
-        avifResult libyuvResult = avifImageRGBToYUVLibYUV(rgb, image);
+        avifResult libyuvResult = avifImageRGBToYUVLibYUV(image, rgb);
         if (libyuvResult == AVIF_RESULT_OK) {
             convertedWithLibYUV = AVIF_TRUE;
         } else if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {

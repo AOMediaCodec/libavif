@@ -143,7 +143,7 @@ typedef struct avifReformatState
 // * AVIF_RESULT_OK              - Converted successfully with libyuv
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in RGB conversion
 // * [any other error]           - Return error to caller
-avifResult avifImageRGBToYUVLibYUV(const avifRGBImage * rgb, avifImage * image);
+avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb);
 
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libyuv

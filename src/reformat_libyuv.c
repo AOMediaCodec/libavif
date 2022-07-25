@@ -6,10 +6,10 @@
 #if !defined(AVIF_LIBYUV_ENABLED)
 
 // No libyuv!
-avifResult avifImageRGBToYUVLibYUV(const avifRGBImage * rgb, avifImage * image)
+avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 {
-    (void)rgb;
     (void)image;
+    (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
@@ -58,7 +58,7 @@ unsigned int avifLibYUVVersion(void)
 
 static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb);
 
-avifResult avifImageRGBToYUVLibYUV(const avifRGBImage * rgb, avifImage * image)
+avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 {
     if ((image->depth == 8) && (rgb->depth == 8)) {
         return avifImageRGBToYUVLibYUV8bpc(image, rgb);
