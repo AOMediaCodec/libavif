@@ -207,6 +207,7 @@ static avifBool svtCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
     input_buffer.p_app_private = NULL;
     input_buffer.flags = EB_BUFFERFLAG_EOS;
     input_buffer.p_buffer = NULL;
+    input_buffer.metadata = NULL;
 
     // flush
     ret = svt_av1_enc_send_picture(codec->internal->svt_encoder, &input_buffer);
@@ -263,6 +264,7 @@ static avifBool allocate_svt_buffers(EbBufferHeaderType ** input_buf)
     (*input_buf)->size = sizeof(EbBufferHeaderType);
     (*input_buf)->p_app_private = NULL;
     (*input_buf)->pic_type = EB_AV1_INVALID_PICTURE;
+    (*input_buf)->metadata = NULL;
 
     return AVIF_TRUE;
 }
