@@ -68,23 +68,6 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 
-// Returns whether libyuv was compiled with LIBYUV_BIT_EXACT defined or not.
-static avifBool avifIsLibyuvBitExact()
-{
-    // Use hardcoded conversion results to detect precision loss.
-    // These values may need to be updated if libyuv behavior changes.
-
-    // libyuv ARGB (libavif BGRA) to YUV limited range BT.601
-    const uint8_t argb[] = { 215, 22, 5, 255 };
-    uint8_t y = 0, u = 0, v = 0;
-    ARGBToI444(argb, 0, &y, 0, &u, 0, &v, 0, /*width=*/1, /*height=*/1);
-    if (y == 49 && u == 215 && v == 107) { // leads to BGR 212, 21, 5 when converted back with libyuv
-        return AVIF_TRUE;
-    }
-    assert(y == 49 && u == 214 && v == 106); // leads to BGR 210, 23, 3 when converted back with libyuv
-    return AVIF_FALSE;
-}
-
 avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb)
 {
     assert((image->depth == 8) && (rgb->depth == 8));
@@ -121,12 +104,6 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
     // libyuv only handles BT.601 for RGB to YUV, and not all range/order/subsampling combinations.
     if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) {
         if (image->yuvRange == AVIF_RANGE_LIMITED) {
-            // libyuv has a smaller conversion loss from RGB to YUV limited range BT.601 when
-            // it is built with LIBYUV_BIT_EXACT defined (opposite to full range).
-            if (!avifIsLibyuvBitExact()) {
-                // The loss is considered too heavy; rely on the slow but precise built-in conversion.
-                return AVIF_RESULT_NOT_IMPLEMENTED;
-            }
             if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
                     RGBtoYUV = ABGRToI420;
@@ -153,12 +130,6 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
                 }
             }
         } else { // image->yuvRange == AVIF_RANGE_FULL
-            // libyuv has a smaller conversion loss from RGB to YUV full range BT.601 when
-            // it is built without LIBYUV_BIT_EXACT defined (opposite to limited range).
-            if (avifIsLibyuvBitExact()) {
-                // The loss is considered too heavy; rely on the slow but precise built-in conversion.
-                return AVIF_RESULT_NOT_IMPLEMENTED;
-            }
             if (rgb->format == AVIF_RGB_FORMAT_BGR) {
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
                     RGBtoYUV = RGB24ToJ420;
