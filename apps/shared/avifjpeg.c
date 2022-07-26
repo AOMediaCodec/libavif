@@ -356,12 +356,25 @@ avifBool avifJPEGRead(const char * inputFilename,
 
         avif->width = cinfo.output_width;
         avif->height = cinfo.output_height;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+#else
+        const avifBool useYCgCoR = AVIF_FALSE;
+#endif
         if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-            // Identity is only valid with YUV444.
-            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ? AVIF_PIXEL_FORMAT_YUV444
-                                                                                              : AVIF_APP_DEFAULT_PIXEL_FORMAT;
+            // Identity and YCgCo-R are only valid with YUV444.
+            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY || useYCgCoR)
+                                  ? AVIF_PIXEL_FORMAT_YUV444
+                                  : AVIF_APP_DEFAULT_PIXEL_FORMAT;
         }
         avif->depth = requestedDepth ? requestedDepth : 8;
+        if (useYCgCoR) {
+            if (requestedDepth == 12) {
+                fprintf(stderr, "Cannot perform YCgCo-R on 12 bit input.\n");
+                return AVIF_FALSE;
+            }
+            avif->depth += 2;
+        }
         avifRGBImageSetDefaults(&rgb, avif);
         rgb.format = AVIF_RGB_FORMAT_RGB;
         rgb.chromaDownsampling = chromaDownsampling;

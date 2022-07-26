@@ -313,9 +313,14 @@ avifBool avifPNGRead(const char * inputFilename,
     avif->width = rawWidth;
     avif->height = rawHeight;
     avif->yuvFormat = requestedFormat;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+    const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+#else
+    const avifBool useYCgCoR = AVIF_FALSE;
+#endif
     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
-            // Identity is only valid with YUV444.
+        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY || useYCgCoR) {
+            // Identity and YCgCo-R is only valid with YUV444.
             avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
         } else if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
             avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
@@ -325,10 +330,14 @@ avifBool avifPNGRead(const char * inputFilename,
     }
     avif->depth = requestedDepth;
     if (avif->depth == 0) {
-        if (imgBitDepth == 8) {
-            avif->depth = 8;
+        if (useYCgCoR) {
+            avif->depth = imgBitDepth + 2;
         } else {
-            avif->depth = 12;
+            if (imgBitDepth == 8) {
+                avif->depth = 8;
+            } else {
+                avif->depth = 12;
+            }
         }
     }
 
@@ -396,10 +405,19 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
     volatile int rgbDepth = requestedDepth;
     if (rgbDepth == 0) {
-        if (avif->depth > 8) {
-            rgbDepth = 16;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+#else
+        const avifBool useYCgCoR = AVIF_FALSE;
+#endif
+        if (useYCgCoR) {
+            rgbDepth = avif->depth - 2;
         } else {
-            rgbDepth = 8;
+            if (avif->depth > 8) {
+                rgbDepth = 16;
+            } else {
+                rgbDepth = 8;
+            }
         }
     }
 
