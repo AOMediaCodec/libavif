@@ -118,6 +118,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifiostatstest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifiostatstest COMMAND avifiostatstest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
+    add_executable(aviflosslesstest gtest/aviflosslesstest.cc)
+    target_link_libraries(aviflosslesstest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(aviflosslesstest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME aviflosslesstest COMMAND aviflosslesstest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
     target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -167,7 +172,9 @@ if(AVIF_ENABLE_GTEST)
         # These tests are supported with aom being the encoder and decoder. If aom is unavailable,
         # these tests are disabled because other codecs may not implement all the necessary features.
         # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
-        set_tests_properties(avifallocationtest avifgridapitest avifmetadatatest avifincrtest PROPERTIES DISABLED True)
+        set_tests_properties(
+            avifallocationtest avifgridapitest avifincrtest aviflosslesstest avifmetadatatest PROPERTIES DISABLED True
+        )
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding or decoding.")
     endif()
