@@ -68,6 +68,11 @@ if(AVIF_ENABLE_GTEST)
         find_package(GTest REQUIRED)
     endif()
 
+    add_executable(avifallocationtest gtest/avifallocationtest.cc)
+    target_link_libraries(avifallocationtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifallocationtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifallocationtest COMMAND avifallocationtest)
+
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})

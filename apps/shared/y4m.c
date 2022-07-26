@@ -355,9 +355,13 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     avif->yuvFormat = frame.format;
     avif->yuvRange = frame.range;
     avif->yuvChromaSamplePosition = frame.chromaSamplePosition;
-    avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
-    if (frame.hasAlpha) {
-        avifImageAllocatePlanes(avif, AVIF_PLANES_A);
+    avifResult allocationResult = avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
+    if ((allocationResult == AVIF_RESULT_OK) && frame.hasAlpha) {
+        allocationResult = avifImageAllocatePlanes(avif, AVIF_PLANES_A);
+    }
+    if (allocationResult != AVIF_RESULT_OK) {
+        fprintf(stderr, "Allocation failed: %s\n", avifResultToString(allocationResult));
+        goto cleanup;
     }
 
     avifPixelFormatInfo formatInfo;

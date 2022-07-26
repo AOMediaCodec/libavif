@@ -89,7 +89,11 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     }
 
     if (srcYUVPlanes[0]) {
-        avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+        const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+        if (allocationResult != AVIF_RESULT_OK) {
+            avifDiagnosticsPrintf(diag, "Image allocation failed: %s", avifResultToString(allocationResult));
+            return AVIF_FALSE;
+        }
 
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
@@ -132,7 +136,11 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     }
 
     if (srcAlphaPlane) {
-        avifImageAllocatePlanes(image, AVIF_PLANES_A);
+        const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_A);
+        if (allocationResult != AVIF_RESULT_OK) {
+            avifDiagnosticsPrintf(diag, "Image allocation failed: %s", avifResultToString(allocationResult));
+            return AVIF_FALSE;
+        }
 
         if (image->depth > 8) {
             uint16_t * const srcPlane = (uint16_t *)srcAlphaPlane;

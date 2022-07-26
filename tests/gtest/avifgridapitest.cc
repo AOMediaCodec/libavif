@@ -41,6 +41,9 @@ TEST_P(GridApiTest, EncodeDecode) {
     cell_images.emplace_back(testutil::CreateImage(
         horizontal.size, vertical.size, bit_depth, yuv_format,
         create_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV));
+    if (cell_images.back() == nullptr && !expected_success) {
+      return;  // Bad dimensions may be already caught.
+    }
     ASSERT_NE(cell_images.back(), nullptr);
     testutil::FillImageGradient(cell_images.back().get());
   }

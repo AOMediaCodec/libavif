@@ -57,7 +57,9 @@ AvifImagePtr CreateImage(int width, int height, int depth,
     return {nullptr, nullptr};
   }
   image->yuvRange = yuv_range;
-  avifImageAllocatePlanes(image.get(), planes);
+  if (avifImageAllocatePlanes(image.get(), planes) != AVIF_RESULT_OK) {
+    return {nullptr, nullptr};
+  }
   return image;
 }
 
