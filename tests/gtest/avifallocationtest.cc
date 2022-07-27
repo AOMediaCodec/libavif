@@ -98,9 +98,11 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
   image->depth = depth;
   image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
 
-  // This is the maximum number of bytes that can safely be allocated in
-  // this test.
-  static constexpr uint64_t kMaxAlloc = std::numeric_limits<int32_t>::max();
+  // This is a fairly high number of bytes that can safely be allocated in this
+  // test. The goal is to have something to give to libavif but libavif should
+  // return an error before attempting to read all of it, so it does not matter
+  // if there are fewer bytes than the provided image dimensions.
+  static constexpr uint64_t kMaxAlloc = 2147483647;
   size_t num_allocated_bytes;
   if ((uint64_t)image->width * image->height >
       kMaxAlloc / (avifImageUsesU16(image.get()) ? 2 : 1)) {
