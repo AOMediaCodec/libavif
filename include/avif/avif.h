@@ -531,6 +531,18 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 //   * x/x/[1|2|5|6|9]/Limited
 //   * [1|2|5|6|9]/x/12/Limited
 
+// If libavif is built with libyuv fast paths enabled, libavif will use libyuv for conversion from
+// RGB to YUV if the following requirements are met:
+//
+// * YUV depth: 8
+// * RGB depth: 8
+// * rgb.chromaDownsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC, AVIF_CHROMA_UPSAMPLING_FASTEST
+// * One of the following combinations (avifRGBFormat to avifPixelFormat/Range):
+//   *  BGRA            to [YUV400|YUV420|YUV422]/[Full|Limited]
+//   *  BGRA            to  YUV444               / Limited
+//   *  BGR             to  YUV420               /[Full|Limited]
+//   * [RGBA|ARGB|ABGR] to  YUV420               / Limited
+
 typedef enum avifRGBFormat
 {
     AVIF_RGB_FORMAT_RGB = 0,
@@ -552,6 +564,14 @@ typedef enum avifChromaUpsampling
     AVIF_CHROMA_UPSAMPLING_BILINEAR = 4      // Uses bilinear filter (built-in)
 } avifChromaUpsampling;
 
+typedef enum avifChromaDownsampling
+{
+    AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (prefers libyuv, else uses BEST_QUALITY)
+    AVIF_CHROMA_DOWNSAMPLING_FASTEST = 1,      // Chooses speed over quality (prefers libyuv, else uses AVERAGE)
+    AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling (avoids libyuv, uses AVERAGE)
+    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = 3       // Uses floating point RGB-to-YUV conversion then averaging (built-in)
+} avifChromaDownsampling;
+
 typedef struct avifRGBImage
 {
     uint32_t width;       // must match associated avifImage
@@ -560,6 +580,8 @@ typedef struct avifRGBImage
     avifRGBFormat format; // all channels are always full range
     avifChromaUpsampling chromaUpsampling; // Defaults to AVIF_CHROMA_UPSAMPLING_AUTOMATIC: How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
                                            // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
+    avifChromaDownsampling chromaDownsampling; // How to convert (and downsample to non-4:4:4 UV) when converting from RGB.
+                                               // Unused when converting to RGB. Defaults to AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC.
     avifBool ignoreAlpha;        // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                                  // RGB, treating the alpha bits as if they were all 1.
     avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false

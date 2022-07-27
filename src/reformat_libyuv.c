@@ -60,6 +60,13 @@ static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBIm
 
 avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 {
+    if ((rgb->chromaDownsampling != AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC) && (rgb->chromaDownsampling != AVIF_CHROMA_DOWNSAMPLING_FASTEST)) {
+        // We do not ensure a specific downsampling filter is used when calling libyuv, so if the end
+        // user chose a specific one, avoid using libyuv. Also libyuv trades a bit of accuracy for
+        // speed, so if the end user requested best quality, avoid using libyuv as well.
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     if ((image->depth == 8) && (rgb->depth == 8)) {
         return avifImageRGBToYUVLibYUV8bpc(image, rgb);
     }
@@ -78,7 +85,6 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
         // Generic mapping from any RGB layout (with or without alpha) to monochrome.
         int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int) = NULL;
 
-        // LIBYUV_BIT_EXACT has no impact on monochrome conversions.
         if (image->yuvRange == AVIF_RANGE_LIMITED) {
             if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
                 RGBtoY = ARGBToI400;
@@ -102,7 +108,8 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
     int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int) = NULL;
 
     // libyuv only handles BT.601 for RGB to YUV, and not all range/order/subsampling combinations.
-    if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601) {
+    // BT.470BG has the same coefficients as BT.601.
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT470BG) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601)) {
         if (image->yuvRange == AVIF_RANGE_LIMITED) {
             if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
@@ -358,8 +365,6 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
     // AVIF_RGB_FORMAT_RGBA  *ToARGBMatrix   matrixYVU
     // AVIF_RGB_FORMAT_ABGR  *ToRGBAMatrix   matrixYUV
     // AVIF_RGB_FORMAT_ARGB  *ToRGBAMatrix   matrixYVU
-    //
-    // Note: LIBYUV_BIT_EXACT has no impact when converting from YUV to RGB, only the other way around.
 
     if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
         // AVIF_RGB_FORMAT_BGRA  *ToARGBMatrix   matrixYUV

@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 There is an incompatible ABI change in this release. Members were removed from
-avifImage struct. It is necessary to recompile your code.
+avifImage struct and members were added to avifRGBImage. It is necessary to
+recompile your code.
 
 ### Changed
 * Update aom.cmd: v3.4.0
@@ -16,6 +17,10 @@ avifImage struct. It is necessary to recompile your code.
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that
   alpha plane is always full range.
+
+### Added
+* Add avifChromaDownsampling enum
+* Add chromaDownsampling field to avifRGBImage struct
 
 ## [0.10.1] - 2022-04-11
 

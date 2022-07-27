@@ -183,6 +183,10 @@ TEST_P(RGBToYUVTest, Convert) {
       SetImageChannel(&src_rgb, offsets.b, r,
                       add_noise ? kBlueNoise : kPlainColor);
 
+      // Change these to BEST_QUALITY to force built-in over libyuv conversion.
+      src_rgb.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
+      dst_rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
+
       ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
       ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
@@ -243,7 +247,8 @@ INSTANTIATE_TEST_SUITE_P(
     Combine(/*rgb_depth=*/Values(8),
             /*yuv_depth=*/Values(8), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV420), Values(AVIF_RANGE_FULL),
-            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+            Values(AVIF_MATRIX_COEFFICIENTS_BT470BG,  // Same as BT.601
+                   AVIF_MATRIX_COEFFICIENTS_BT601),
             /*add_noise=*/Values(true),
             /*rgb_step=*/Values(3),
             /*max_abs_average_diff=*/Values(0.1),  // The color drift is almost
@@ -383,8 +388,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 // TODO: Test other matrix coefficients than identity and bt.601.
 
-// This was used to estimate the quality loss of libyuv for RGB-to-YUV
-// and the impact of defining LIBYUV_BIT_EXACT or not.
+// This was used to estimate the quality loss of libyuv for RGB-to-YUV.
 // Disabled because it takes a few minutes.
 INSTANTIATE_TEST_SUITE_P(
     DISABLED_All8bTo8b, RGBToYUVTest,
