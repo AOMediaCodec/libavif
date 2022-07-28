@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <limits.h>
+#include <stdint.h>
 #include <string.h>
 
 #define STR_HELPER(x) #x
@@ -277,32 +278,29 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
     if (image->width == 0 || image->height == 0) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
-    if (image->depth != 8 && image->depth != 10 && image->depth != 12) {
-        return AVIF_RESULT_UNSUPPORTED_DEPTH;
-    }
     const size_t channelSize = avifImageUsesU16(image) ? 2 : 1;
     if (image->width > SIZE_MAX / channelSize) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const size_t fullRowBytes = channelSize * image->width;
-    if ((image->height > SIZE_MAX / fullRowBytes) || (fullRowBytes > UINT_MAX)) {
+    if ((fullRowBytes > UINT32_MAX) || (image->height > SIZE_MAX / fullRowBytes)) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const size_t fullSize = fullRowBytes * image->height;
-    if (image->width * image->height > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) {
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
 
     if ((planes & AVIF_PLANES_YUV) && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
         avifPixelFormatInfo info;
         avifGetPixelFormatInfo(image->yuvFormat, &info);
 
-        int shiftedW = (image->width + info.chromaShiftX) >> info.chromaShiftX;
-        int shiftedH = (image->height + info.chromaShiftY) >> info.chromaShiftY;
+        // Intermediary computation as 64 bits in case width or height is exactly UINT32_MAX.
+        const size_t shiftedW = (image->width + (uint64_t)info.chromaShiftX) >> info.chromaShiftX;
+        const size_t shiftedH = (image->height + (uint64_t)info.chromaShiftY) >> info.chromaShiftY;
 
-        int uvRowBytes = channelSize * shiftedW;
-        int uvSize = uvRowBytes * shiftedH;
+        // These are equal to fullRowBytes/fullSize or lower. No need to check overflows.
+        const size_t uvRowBytes = channelSize * shiftedW;
+        const size_t uvSize = uvRowBytes * shiftedH;
 
+        image->imageOwnsYUVPlanes = AVIF_TRUE;
         if (!image->yuvPlanes[AVIF_CHAN_Y]) {
             image->yuvRowBytes[AVIF_CHAN_Y] = fullRowBytes;
             image->yuvPlanes[AVIF_CHAN_Y] = avifAlloc(fullSize);
@@ -327,9 +325,9 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
                 }
             }
         }
-        image->imageOwnsYUVPlanes = AVIF_TRUE;
     }
     if (planes & AVIF_PLANES_A) {
+        image->imageOwnsAlphaPlane = AVIF_TRUE;
         if (!image->alphaPlane) {
             image->alphaRowBytes = fullRowBytes;
             image->alphaPlane = avifAlloc(fullSize);
@@ -337,7 +335,6 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
                 return AVIF_RESULT_OUT_OF_MEMORY;
             }
         }
-        image->imageOwnsAlphaPlane = AVIF_TRUE;
     }
     return AVIF_RESULT_OK;
 }

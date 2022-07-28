@@ -6,15 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-There is an incompatible ABI change in this release. Members were removed from
-avifImage struct and avifImage*() signatures changed. It is necessary to
-recompile your code.
+There are incompatible ABI changes in this release. Members were removed from
+avifImage struct. avifImageCopy() and avifImageAllocatePlanes() signatures
+changed. It is necessary to recompile your code. It is also recommended to check
+the return values of avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
 * Update aom.cmd: v3.4.0
 * Update svt.cmd/svt.sh: v1.1.0
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
-  void to warn about invalid parameters or memory allocation failures
+  void to report invalid parameters or memory allocation failures
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that

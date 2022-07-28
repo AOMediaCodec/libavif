@@ -63,30 +63,32 @@ void TestAllocation(uint32_t width, uint32_t height, uint32_t depth,
 TEST(AllocationTest, MinimumValid) { TestAllocation(1, 1, 8, AVIF_RESULT_OK); }
 
 TEST(AllocationTest, MaximumValid) {
-  TestAllocation(AVIF_DEFAULT_IMAGE_SIZE_LIMIT, 1, 12, AVIF_RESULT_OK);
-  TestAllocation(1, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, 12, AVIF_RESULT_OK);
-}
-
-TEST(AllocationTest, MinimumInvalid) {
-  TestAllocation(0, 1, 8, AVIF_RESULT_INVALID_ARGUMENT);
-  TestAllocation(1, 0, 8, AVIF_RESULT_INVALID_ARGUMENT);
-  TestAllocation(1, 1, 0, AVIF_RESULT_UNSUPPORTED_DEPTH);
-  TestAllocation(AVIF_DEFAULT_IMAGE_SIZE_LIMIT + 1, 1, 8,
-                 AVIF_RESULT_INVALID_ARGUMENT);
-  TestAllocation(1, AVIF_DEFAULT_IMAGE_SIZE_LIMIT + 1, 8,
-                 AVIF_RESULT_INVALID_ARGUMENT);
+  // 8 bits
+  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 8,
+                 AVIF_RESULT_OK);
+  TestAllocation(1, std::numeric_limits<typeof(avifImage::height)>::max(), 8,
+                 AVIF_RESULT_OK);
+  // 12 bits (impacts the width because avifImage stride is stored as uint32_t)
+  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max() / 2, 1,
+                 12, AVIF_RESULT_OK);
+  TestAllocation(1, std::numeric_limits<typeof(avifImage::height)>::max(), 12,
+                 AVIF_RESULT_OK);
+  // Some high number of bytes that malloc() accepts to allocate.
+  TestAllocation(1024 * 16, 1024 * 16, 12, AVIF_RESULT_OK);  // Up to 2 GB total
 }
 
 TEST(AllocationTest, MaximumInvalid) {
-  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 8,
-                 AVIF_RESULT_INVALID_ARGUMENT);
-  TestAllocation(1, std::numeric_limits<typeof(avifImage::height)>::max(), 8,
-                 AVIF_RESULT_INVALID_ARGUMENT);
   TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(),
                  std::numeric_limits<typeof(avifImage::height)>::max(), 12,
                  AVIF_RESULT_INVALID_ARGUMENT);
-  TestAllocation(1, 1, std::numeric_limits<typeof(avifImage::depth)>::max(),
-                 AVIF_RESULT_UNSUPPORTED_DEPTH);
+}
+
+// This is valid in theory but malloc() should refuse to allocate so much and
+// avifAlloc() aborts on malloc() failure.
+TEST(DISABLED_AllocationTest, OutOfMemory) {
+  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max() / 2,
+                 std::numeric_limits<typeof(avifImage::height)>::max(), 12,
+                 AVIF_RESULT_OUT_OF_MEMORY);
 }
 
 void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
@@ -140,6 +142,8 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
 TEST(EncodingTest, MinimumValid) { TestAllocation(1, 1, 8, AVIF_RESULT_OK); }
 
 TEST(EncodingTest, MaximumValid) {
+  // 65535 is the maximum AV1 frame dimension allowed by the aom encoder.
+  // See validate_config() in av1_cx_iface.c
   TestEncoding(65535, 1, 12, AVIF_RESULT_OK);
   TestEncoding(1, 65535, 12, AVIF_RESULT_OK);
   // TestEncoding(16384, 8096, 12, AVIF_RESULT_OK);  // Too slow.
@@ -149,8 +153,12 @@ TEST(EncodingTest, MinimumInvalid) {
   TestEncoding(0, 1, 8, AVIF_RESULT_NO_CONTENT);
   TestEncoding(1, 0, 8, AVIF_RESULT_NO_CONTENT);
   TestEncoding(1, 1, 0, AVIF_RESULT_UNSUPPORTED_DEPTH);
-  TestEncoding(65536, 1, 12, AVIF_RESULT_ENCODE_COLOR_FAILED);
-  TestEncoding(1, 65536, 12, AVIF_RESULT_ENCODE_COLOR_FAILED);
+  // The AV1 specification provides MAX_TILE_ROWS = 64, MAX_TILE_COLS = 64 and
+  // MAX_TILE_WIDTH = 4096, MAX_TILE_AREA = 4096 * 2304.
+  TestEncoding(64 * 4096 + 1, 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
+  TestEncoding(1, 64 * 4096 * 2304 + 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
+  TestEncoding(64 * 4096 + 1, 64 * 2304, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
+  TestEncoding(64 * 4096, 64 * 2304 + 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
 }
 
 TEST(EncodingTest, MaximumInvalid) {

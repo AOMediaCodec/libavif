@@ -354,7 +354,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 
             const avifResult copyResult = avifImageCopy(cellImage, gridSplitImage, 0);
             if (copyResult != AVIF_RESULT_OK) {
-                fprintf(stderr, "ERROR: Image copy failed (%s)\n", avifResultToString(copyResult));
+                fprintf(stderr, "ERROR: Image copy failed: %s\n", avifResultToString(copyResult));
                 return AVIF_FALSE;
             }
             cellImage->width = cellWidth;

@@ -193,18 +193,19 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
+    const avifBool hasAlpha = avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha;
+    avifResult allocationResult = avifImageAllocatePlanes(image, hasAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
+    if (allocationResult != AVIF_RESULT_OK) {
+        return allocationResult;
+    }
+
     avifAlphaMultiplyMode alphaMode = AVIF_ALPHA_MULTIPLY_MODE_NO_OP;
-    avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
-    if ((allocationResult == AVIF_RESULT_OK) && avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha) {
-        allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_A);
+    if (hasAlpha) {
         if (!rgb->alphaPremultiplied && image->alphaPremultiplied) {
             alphaMode = AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY;
         } else if (rgb->alphaPremultiplied && !image->alphaPremultiplied) {
             alphaMode = AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY;
         }
-    }
-    if (allocationResult != AVIF_RESULT_OK) {
-        return allocationResult;
     }
 
     const float kr = state.kr;

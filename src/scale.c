@@ -91,7 +91,7 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     if (srcYUVPlanes[0]) {
         const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
         if (allocationResult != AVIF_RESULT_OK) {
-            avifDiagnosticsPrintf(diag, "Image allocation failed: %s", avifResultToString(allocationResult));
+            avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed: %s", avifResultToString(allocationResult));
             return AVIF_FALSE;
         }
 
@@ -138,7 +138,7 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
     if (srcAlphaPlane) {
         const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_A);
         if (allocationResult != AVIF_RESULT_OK) {
-            avifDiagnosticsPrintf(diag, "Image allocation failed: %s", avifResultToString(allocationResult));
+            avifDiagnosticsPrintf(diag, "Allocation of alpha plane failed: %s", avifResultToString(allocationResult));
             return AVIF_FALSE;
         }
 
