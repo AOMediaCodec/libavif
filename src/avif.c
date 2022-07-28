@@ -481,8 +481,8 @@ static void clapFractionSimplify(clapFraction * f)
 {
     int64_t gcd = calcGCD(f->n, f->d);
     if (gcd > 1) {
-        f->n /= gcd;
-        f->d /= gcd;
+        f->n = (int32_t)(f->n / gcd);
+        f->d = (int32_t)(f->d / gcd);
     }
 }
 
