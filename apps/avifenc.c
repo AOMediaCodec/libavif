@@ -66,22 +66,14 @@ static void syntax(void)
     printf("                                        M = matrix coefficients\n");
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
-    printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
-    printf("    --max Q                           : Set max quantizer for color (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
-    printf("    --minalpha Q                      : Set min quantizer for alpha (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
-    printf("    --maxalpha Q                      : Set max quantizer for alpha (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
+    printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
+    printf("    --qalpha Q                        : Set quality for alpha (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
@@ -109,6 +101,22 @@ static void syntax(void)
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
+    printf("    --min QP                          : Set min quantizer for color (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
+    printf("    --max QP                          : Set max quantizer for color (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
+    printf("    --minalpha QP                     : Set min quantizer for alpha (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
+    printf("    --maxalpha QP                     : Set max quantizer for alpha (%d-%d, where %d is lossless)\n",
+           AVIF_QUANTIZER_BEST_QUALITY,
+           AVIF_QUANTIZER_WORST_QUALITY,
+           AVIF_QUANTIZER_LOSSLESS);
     printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
@@ -137,18 +145,18 @@ static void syntax(void)
 }
 
 // This is *very* arbitrary, I just want to set people's expectations a bit
-static const char * quantizerString(int quantizer)
+static const char * qualityString(int quality)
 {
-    if (quantizer == 0) {
+    if (quality == 100) {
         return "Lossless";
     }
-    if (quantizer <= 12) {
+    if (quality >= 80) {
         return "High";
     }
-    if (quantizer <= 32) {
+    if (quality >= 50) {
         return "Medium";
     }
-    if (quantizer == AVIF_QUANTIZER_WORST_QUALITY) {
+    if (quality == AVIF_QUALITY_WORST) {
         return "Worst";
     }
     return "Low";
@@ -428,6 +436,9 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
     return AVIF_TRUE;
 }
 
+#define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
+#define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
+
 int main(int argc, char * argv[])
 {
     if (argc < 2) {
@@ -447,6 +458,8 @@ int main(int argc, char * argv[])
 
     int returnCode = 0;
     int jobs = 1;
+    int quality = -1;
+    int qualityAlpha = -1;
     int minQuantizer = -1;
     int maxQuantizer = -1;
     int minQuantizerAlpha = -1;
@@ -564,6 +577,24 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-k") || !strcmp(arg, "--keyframe")) {
             NEXTARG();
             keyframeInterval = atoi(arg);
+        } else if (!strcmp(arg, "-q") || !strcmp(arg, "--qcolor")) {
+            NEXTARG();
+            quality = atoi(arg);
+            if (quality < AVIF_QUALITY_WORST) {
+                quality = AVIF_QUALITY_WORST;
+            }
+            if (quality > AVIF_QUALITY_BEST) {
+                quality = AVIF_QUALITY_BEST;
+            }
+        } else if (!strcmp(arg, "--qalpha")) {
+            NEXTARG();
+            qualityAlpha = atoi(arg);
+            if (qualityAlpha < AVIF_QUALITY_WORST) {
+                qualityAlpha = AVIF_QUALITY_WORST;
+            }
+            if (qualityAlpha > AVIF_QUALITY_BEST) {
+                qualityAlpha = AVIF_QUALITY_BEST;
+            }
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
             minQuantizer = atoi(arg);
@@ -841,6 +872,12 @@ int main(int argc, char * argv[])
         }
         // Don't subsample when using AVIF_MATRIX_COEFFICIENTS_IDENTITY.
         input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
+        // Quality.
+        if ((quality >= 0 && quality != AVIF_QUALITY_LOSSLESS) || (qualityAlpha >= 0 && qualityAlpha != AVIF_QUALITY_LOSSLESS)) {
+            fprintf(stderr, "Quality cannot be set in lossless mode, except to %d.\n", AVIF_QUALITY_LOSSLESS);
+            returnCode = 1;
+        }
+        quality = qualityAlpha = AVIF_QUALITY_LOSSLESS;
         // Quantizers.
         if (minQuantizer > 0 || maxQuantizer > 0 || minQuantizerAlpha > 0 || maxQuantizerAlpha > 0) {
             fprintf(stderr, "Quantizers cannot be set in lossless mode, except to 0.\n");
@@ -872,17 +909,33 @@ int main(int argc, char * argv[])
             goto cleanup;
     } else {
         // Set lossy defaults.
-        if (minQuantizer == -1) {
-            minQuantizer = 24;
+        if (minQuantizer < 0) {
+            assert(maxQuantizer < 0);
+            if (quality < 0) {
+                quality = DEFAULT_QUALITY;
+            }
+            minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+            maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
+        } else {
+            assert(maxQuantizer >= 0);
+            if (quality < 0) {
+                const int quantizer = (minQuantizer + maxQuantizer) / 2;
+                quality = ((63 - quantizer) * 100 + 31) / 63;
+            }
         }
-        if (maxQuantizer == -1) {
-            maxQuantizer = 26;
-        }
-        if (minQuantizerAlpha == -1) {
-            minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-        }
-        if (maxQuantizerAlpha == -1) {
-            maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+        if (minQuantizerAlpha < 0) {
+            assert(maxQuantizerAlpha < 0);
+            if (qualityAlpha < 0) {
+                qualityAlpha = DEFAULT_QUALITY_ALPHA;
+            }
+            minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
+            maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+        } else {
+            assert(maxQuantizerAlpha >= 0);
+            if (qualityAlpha < 0) {
+                const int quantizerAlpha = (minQuantizerAlpha + maxQuantizerAlpha) / 2;
+                qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
+            }
         }
     }
 
@@ -1044,8 +1097,8 @@ int main(int argc, char * argv[])
         usingAOM = AVIF_TRUE;
     }
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
-    avifBool losslessColorQP = (minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS);
-    avifBool losslessAlphaQP = (minQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizerAlpha == AVIF_QUANTIZER_LOSSLESS);
+    avifBool losslessColorQuality = (quality == AVIF_QUALITY_LOSSLESS);
+    avifBool losslessAlphaQuality = (qualityAlpha == AVIF_QUALITY_LOSSLESS);
     avifBool depthMatches = (sourceDepth == image->depth);
     avifBool using400 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     avifBool using444 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
@@ -1053,9 +1106,9 @@ int main(int argc, char * argv[])
     avifBool usingIdentityMatrix = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY);
 
     // Guess if the enduser is asking for lossless and enable it so that warnings can be emitted
-    if (!lossless && losslessColorQP && (!hasAlpha || losslessAlphaQP)) {
+    if (!lossless && losslessColorQuality && (!hasAlpha || losslessAlphaQuality)) {
         // The enduser is probably expecting lossless. Turn it on and emit warnings
-        printf("Min/max QPs set to %d, assuming --lossless to enable warnings on potential lossless issues.\n", AVIF_QUANTIZER_LOSSLESS);
+        printf("Quality set to %d, assuming --lossless to enable warnings on potential lossless issues.\n", AVIF_QUALITY_LOSSLESS);
         lossless = AVIF_TRUE;
     }
 
@@ -1066,17 +1119,17 @@ int main(int argc, char * argv[])
             lossless = AVIF_FALSE;
         }
 
-        if (!losslessColorQP) {
+        if (!losslessColorQuality) {
             fprintf(stderr,
-                    "WARNING: [--lossless] Color quantizer range (--min, --max) not set to %d. Color output might not be lossless.\n",
-                    AVIF_QUANTIZER_LOSSLESS);
+                    "WARNING: [--lossless] Color quality (-q or --qcolor) not set to %d. Color output might not be lossless.\n",
+                    AVIF_QUALITY_LOSSLESS);
             lossless = AVIF_FALSE;
         }
 
-        if (hasAlpha && !losslessAlphaQP) {
+        if (hasAlpha && !losslessAlphaQuality) {
             fprintf(stderr,
-                    "WARNING: [--lossless] Alpha present and alpha quantizer range (--minalpha, --maxalpha) not set to %d. Alpha output might not be lossless.\n",
-                    AVIF_QUANTIZER_LOSSLESS);
+                    "WARNING: [--lossless] Alpha present and alpha quality (--qalpha) not set to %d. Alpha output might not be lossless.\n",
+                    AVIF_QUALITY_LOSSLESS);
             lossless = AVIF_FALSE;
         }
 
@@ -1194,20 +1247,18 @@ int main(int argc, char * argv[])
     char manualTilingStr[128];
     snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", tileRowsLog2, tileColsLog2);
 
-    printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %s, %d worker thread(s), please wait...\n",
+    printf("Encoding with AV1 codec '%s' speed [%d], color quality [%d (%s)], alpha quality [%d (%s)], %s, %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
            speed,
-           minQuantizer,
-           quantizerString(minQuantizer),
-           maxQuantizer,
-           quantizerString(maxQuantizer),
-           minQuantizerAlpha,
-           quantizerString(minQuantizerAlpha),
-           maxQuantizerAlpha,
-           quantizerString(maxQuantizerAlpha),
+           quality,
+           qualityString(quality),
+           qualityAlpha,
+           qualityString(qualityAlpha),
            autoTiling ? "automatic tiling" : manualTilingStr,
            jobs);
     encoder->maxThreads = jobs;
+    encoder->quality = quality;
+    encoder->qualityAlpha = qualityAlpha;
     encoder->minQuantizer = minQuantizer;
     encoder->maxQuantizer = maxQuantizer;
     encoder->minQuantizerAlpha = minQuantizerAlpha;

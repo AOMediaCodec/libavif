@@ -78,6 +78,11 @@ typedef int avifBool;
 // a 12 hour AVIF image sequence, running at 60 fps (a basic sanity check as this is quite ridiculous)
 #define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
 
+#define AVIF_QUALITY_DEFAULT -1
+#define AVIF_QUALITY_LOSSLESS 100
+#define AVIF_QUALITY_WORST 0
+#define AVIF_QUALITY_BEST 100
+
 #define AVIF_QUANTIZER_LOSSLESS 0
 #define AVIF_QUANTIZER_BEST_QUALITY 0
 #define AVIF_QUANTIZER_WORST_QUALITY 63
@@ -1066,7 +1071,14 @@ struct avifCodecSpecificOptions;
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
 //   * NOTE: Please see the "Understanding maxThreads" comment block above
-// * Quality range: [AVIF_QUANTIZER_BEST_QUALITY - AVIF_QUANTIZER_WORST_QUALITY]
+// * Quality range: [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST]
+// * Quantizer range: [AVIF_QUANTIZER_BEST_QUALITY - AVIF_QUANTIZER_WORST_QUALITY]
+// * In older versions of libavif, the avifEncoder struct doesn't have the quality and qualityAlpha
+//   fields. For backward compatibility, if the quality field is not set, the default value of
+//   quality is based on the average of minQuantizer and maxQuantizer. Similarly the default value
+//   of qualityAlpha is based on the average of minQuantizerAlpha and maxQuantizerAlpha. New code
+//   should set quality and qualityAlpha and leave minQuantizer, maxQuantizer, minQuantizerAlpha,
+//   and maxQuantizerAlpha initialized to their default values.
 // * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
 //   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
 //   If autoTiling is set to AVIF_TRUE, libavif ignores tileRowsLog2 and tileColsLog2 and
@@ -1093,6 +1105,8 @@ typedef struct avifEncoder
                           // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
 
     // changeable encoder settings
+    int quality;
+    int qualityAlpha;
     int minQuantizer;
     int maxQuantizer;
     int minQuantizerAlpha;

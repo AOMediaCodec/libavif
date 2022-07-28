@@ -204,10 +204,16 @@ typedef struct avifEncoderData
 {
     avifEncoderItemArray items;
     avifEncoderFrameArray frames;
+    // Map the encoder settings quality and qualityAlpha to quantizer and quantizerAlpha
+    int quantizer;
+    int quantizerAlpha;
     // tileRowsLog2 and tileColsLog2 are the actual tiling values after automatic tiling is handled
     int tileRowsLog2;
     int tileColsLog2;
     avifEncoder lastEncoder;
+    // lastQuantizer and lastQuantizerAlpha are the quantizer and quantizerAlpha values used last time
+    int lastQuantizer;
+    int lastQuantizerAlpha;
     // lastTileRowsLog2 and lastTileColsLog2 are the actual tiling values used last time
     int lastTileRowsLog2;
     int lastTileColsLog2;
@@ -385,10 +391,12 @@ avifEncoder * avifEncoderCreate(void)
     encoder->speed = AVIF_SPEED_DEFAULT;
     encoder->keyframeInterval = 0;
     encoder->timescale = 1;
-    encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
-    encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
-    encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-    encoder->maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    encoder->quality = AVIF_QUALITY_DEFAULT;
+    encoder->qualityAlpha = AVIF_QUALITY_DEFAULT;
+    encoder->minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+    encoder->maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
+    encoder->minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
+    encoder->maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
     encoder->autoTiling = AVIF_FALSE;
@@ -425,6 +433,8 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     lastEncoder->maxQuantizer = encoder->maxQuantizer;
     lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
     lastEncoder->maxQuantizerAlpha = encoder->maxQuantizerAlpha;
+    encoder->data->lastQuantizer = encoder->data->quantizer;
+    encoder->data->lastQuantizerAlpha = encoder->data->quantizerAlpha;
     encoder->data->lastTileRowsLog2 = encoder->data->tileRowsLog2;
     encoder->data->lastTileColsLog2 = encoder->data->tileColsLog2;
 }
@@ -448,6 +458,12 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
         return AVIF_FALSE;
     }
 
+    if (encoder->data->lastQuantizer != encoder->data->quantizer) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_QUANTIZER;
+    }
+    if (encoder->data->lastQuantizerAlpha != encoder->data->quantizerAlpha) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA;
+    }
     if (lastEncoder->minQuantizer != encoder->minQuantizer) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER;
     }
@@ -811,6 +827,20 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
     return dstImage;
 }
 
+static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantizer)
+{
+    quality = AVIF_CLAMP(quality, -1, 100);
+    int quantizer;
+    if (quality == AVIF_QUALITY_DEFAULT) {
+        // In older libavif releases, avifEncoder didn't have the quality and qualityAlpha fields.
+        // Supply a default value for quantizer.
+        quantizer = (minQuantizer + maxQuantizer) / 2;
+    } else {
+        quantizer = ((100 - quality) * 63 + 50) / 100;
+    }
+    return quantizer;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -912,6 +942,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Map quality and qualityAlpha to quantizer and quantizerAlpha
+    encoder->data->quantizer = avifQualityToQuantizer(encoder->quality, encoder->minQuantizer, encoder->maxQuantizer);
+    encoder->data->quantizerAlpha = avifQualityToQuantizer(encoder->qualityAlpha, encoder->minQuantizerAlpha, encoder->maxQuantizerAlpha);
 
     // -----------------------------------------------------------------------
     // Handle automatic tiling
@@ -1120,12 +1155,14 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 }
                 cellImage = paddedCellImage;
             }
+            const int quantizer = item->alpha ? encoder->data->quantizerAlpha : encoder->data->quantizer;
             avifResult encodeResult = item->codec->encodeImage(item->codec,
                                                                encoder,
                                                                cellImage,
                                                                item->alpha,
                                                                encoder->data->tileRowsLog2,
                                                                encoder->data->tileColsLog2,
+                                                               quantizer,
                                                                encoderChanges,
                                                                addImageFlags,
                                                                item->encodeOutput);

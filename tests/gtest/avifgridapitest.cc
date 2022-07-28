@@ -42,10 +42,8 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
   encoder->speed = AVIF_SPEED_FASTEST;
-  encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
-  encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
-  encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-  encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+  encoder->quality = AVIF_QUALITY_LOSSLESS;
+  encoder->qualityAlpha = AVIF_QUALITY_LOSSLESS;
   // cell_image_ptrs exists only to match the libavif API.
   std::vector<avifImage*> cell_image_ptrs(cell_images.size());
   for (size_t i = 0; i < cell_images.size(); ++i) {

@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 There are incompatible ABI changes in this release. The clli member was added
 to the avifImage struct. The repetitionCount member was added to the avifEncoder
-and avifDecoder structs.
+and avifDecoder structs. The quality and qualityAlpha members were added to the
+avifEncoder struct.
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
@@ -16,6 +17,7 @@ and avifDecoder structs.
 * Add clli metadata read and write support
 * Add repetitionCount member to avifEncoder and avifDecoder structs to specify
   the number of repetitions for animated image sequences.
+* Add quality and qualityAlpha to avifEncoder
 
 ### Changed
 * Exif and XMP metadata is exported to PNG and JPEG files by default,
