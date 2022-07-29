@@ -6,10 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-There are incompatible ABI changes in this release. Members were removed from
-avifImage struct. avifImageCopy() and avifImageAllocatePlanes() signatures
-changed. It is necessary to recompile your code. It is also recommended to check
-the return values of avifImageCopy() and avifImageAllocatePlanes().
+There are incompatible ABI changes in this release. The alphaRange member was
+removed from avifImage struct. avifImageCopy() and avifImageAllocatePlanes()
+signatures changed. It is necessary to recompile your code. Also check the
+return values of avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
 * Update aom.cmd: v3.4.0

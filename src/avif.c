@@ -293,10 +293,10 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
         avifGetPixelFormatInfo(image->yuvFormat, &info);
 
         // Intermediary computation as 64 bits in case width or height is exactly UINT32_MAX.
-        const size_t shiftedW = (image->width + (uint64_t)info.chromaShiftX) >> info.chromaShiftX;
-        const size_t shiftedH = (image->height + (uint64_t)info.chromaShiftY) >> info.chromaShiftY;
+        const uint32_t shiftedW = (uint32_t)((image->width + (uint64_t)info.chromaShiftX) >> info.chromaShiftX);
+        const uint32_t shiftedH = (uint32_t)((image->height + (uint64_t)info.chromaShiftY) >> info.chromaShiftY);
 
-        // These are equal to fullRowBytes/fullSize or lower. No need to check overflows.
+        // These are less than or equal to fullRowBytes/fullSize. No need to check overflows.
         const size_t uvRowBytes = channelSize * shiftedW;
         const size_t uvSize = uvRowBytes * shiftedH;
 

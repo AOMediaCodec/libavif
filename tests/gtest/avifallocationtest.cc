@@ -36,8 +36,7 @@ void TestAllocation(uint32_t width, uint32_t height, uint32_t depth,
 
       // Make sure the actual plane pointers are consistent with the settings.
       if (expected_result == AVIF_RESULT_OK &&
-          format != AVIF_PIXEL_FORMAT_NONE &&
-          (planes == AVIF_PLANES_YUV || planes == AVIF_PLANES_ALL)) {
+          format != AVIF_PIXEL_FORMAT_NONE && (planes & AVIF_PLANES_YUV)) {
         EXPECT_NE(image->yuvPlanes[AVIF_CHAN_Y], nullptr);
       } else {
         EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_Y], nullptr);
@@ -63,18 +62,26 @@ void TestAllocation(uint32_t width, uint32_t height, uint32_t depth,
 TEST(AllocationTest, MinimumValid) { TestAllocation(1, 1, 8, AVIF_RESULT_OK); }
 
 TEST(AllocationTest, MaximumValid) {
+  // On 32-bit builds, malloc() will fail with fairly low sizes.
+  // Adapt the tests to take that into account.
+  constexpr bool kIsPlatform64b = sizeof(void*) > 4;
+  constexpr uint32_t kMaxAllocatableDimension =
+      kIsPlatform64b ? std::numeric_limits<typeof(avifImage::width)>::max()
+                     : 268435456;  // Up to 2 GB total for YUVA
+
   // 8 bits
-  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 8,
-                 AVIF_RESULT_OK);
-  TestAllocation(1, std::numeric_limits<typeof(avifImage::height)>::max(), 8,
-                 AVIF_RESULT_OK);
+  TestAllocation(kMaxAllocatableDimension, 1, 8, AVIF_RESULT_OK);
+  TestAllocation(1, kMaxAllocatableDimension, 8, AVIF_RESULT_OK);
   // 12 bits (impacts the width because avifImage stride is stored as uint32_t)
-  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max() / 2, 1,
-                 12, AVIF_RESULT_OK);
-  TestAllocation(1, std::numeric_limits<typeof(avifImage::height)>::max(), 12,
-                 AVIF_RESULT_OK);
+  TestAllocation(kMaxAllocatableDimension / 2, 1, 12, AVIF_RESULT_OK);
+  TestAllocation(1, kMaxAllocatableDimension, 12, AVIF_RESULT_OK);
   // Some high number of bytes that malloc() accepts to allocate.
   TestAllocation(1024 * 16, 1024 * 16, 12, AVIF_RESULT_OK);  // Up to 2 GB total
+}
+
+TEST(AllocationTest, MinimumInvalid) {
+  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 12,
+                 AVIF_RESULT_INVALID_ARGUMENT);
 }
 
 TEST(AllocationTest, MaximumInvalid) {
@@ -105,13 +112,15 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
   // return an error before attempting to read all of it, so it does not matter
   // if there are fewer bytes than the provided image dimensions.
   static constexpr uint64_t kMaxAlloc = 2147483647;
+  uint32_t row_bytes;
   size_t num_allocated_bytes;
   if ((uint64_t)image->width * image->height >
       kMaxAlloc / (avifImageUsesU16(image.get()) ? 2 : 1)) {
+    row_bytes = 1024;  // Does not matter much.
     num_allocated_bytes = kMaxAlloc;
   } else {
-    num_allocated_bytes =
-        image->width * image->height * (avifImageUsesU16(image.get()) ? 2 : 1);
+    row_bytes = image->width * (avifImageUsesU16(image.get()) ? 2 : 1);
+    num_allocated_bytes = row_bytes * image->height;
   }
 
   // Initialize pixels as 16b values to make sure values are valid for 10
@@ -121,13 +130,13 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
   // Avoid avifImageAllocatePlanes() to exercise the checks at encoding.
   image->imageOwnsYUVPlanes = AVIF_FALSE;
   image->imageOwnsAlphaPlane = AVIF_FALSE;
-  image->yuvRowBytes[AVIF_CHAN_Y] = image->width;
+  image->yuvRowBytes[AVIF_CHAN_Y] = row_bytes;
   image->yuvPlanes[AVIF_CHAN_Y] = bytes;
-  image->yuvRowBytes[AVIF_CHAN_U] = image->width;
+  image->yuvRowBytes[AVIF_CHAN_U] = row_bytes;
   image->yuvPlanes[AVIF_CHAN_U] = bytes;
-  image->yuvRowBytes[AVIF_CHAN_V] = image->width;
+  image->yuvRowBytes[AVIF_CHAN_V] = row_bytes;
   image->yuvPlanes[AVIF_CHAN_V] = bytes;
-  image->alphaRowBytes = image->width;
+  image->alphaRowBytes = row_bytes;
   image->alphaPlane = bytes;
 
   // Try to encode.
@@ -142,23 +151,22 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
 TEST(EncodingTest, MinimumValid) { TestAllocation(1, 1, 8, AVIF_RESULT_OK); }
 
 TEST(EncodingTest, MaximumValid) {
-  // 65535 is the maximum AV1 frame dimension allowed by the aom encoder.
-  // See validate_config() in av1_cx_iface.c
+  // 65536 is the maximum AV1 frame dimension allowed by the AV1 specification.
+  // See the section 5.5.1. General sequence header OBU syntax.
+  // TODO(yguyon): Replace 65535 by 65536 once ext/aom.cmd clones a version of
+  //               aom that includes the fix for https://crbug.com/aomedia/3304.
   TestEncoding(65535, 1, 12, AVIF_RESULT_OK);
   TestEncoding(1, 65535, 12, AVIF_RESULT_OK);
-  // TestEncoding(16384, 8096, 12, AVIF_RESULT_OK);  // Too slow.
+  // TestEncoding(65536, 65536, 12, AVIF_RESULT_OK);  // Too slow.
 }
 
 TEST(EncodingTest, MinimumInvalid) {
   TestEncoding(0, 1, 8, AVIF_RESULT_NO_CONTENT);
   TestEncoding(1, 0, 8, AVIF_RESULT_NO_CONTENT);
   TestEncoding(1, 1, 0, AVIF_RESULT_UNSUPPORTED_DEPTH);
-  // The AV1 specification provides MAX_TILE_ROWS = 64, MAX_TILE_COLS = 64 and
-  // MAX_TILE_WIDTH = 4096, MAX_TILE_AREA = 4096 * 2304.
-  TestEncoding(64 * 4096 + 1, 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
-  TestEncoding(1, 64 * 4096 * 2304 + 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
-  TestEncoding(64 * 4096 + 1, 64 * 2304, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
-  TestEncoding(64 * 4096, 64 * 2304 + 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
+  TestEncoding(65536 + 1, 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
+  TestEncoding(1, 65536 + 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
+  TestEncoding(65536 + 1, 65536 + 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
 }
 
 TEST(EncodingTest, MaximumInvalid) {
