@@ -1,9 +1,8 @@
 // Copyright 2022 Google LLC. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <array>
 #include <limits>
-#include <tuple>
+#include <vector>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
@@ -59,15 +58,17 @@ void TestAllocation(uint32_t width, uint32_t height, uint32_t depth,
   }
 }
 
-TEST(AllocationTest, MinimumValid) { TestAllocation(1, 1, 8, AVIF_RESULT_OK); }
+TEST(AllocationTest, MinimumValidDimensions) {
+  TestAllocation(1, 1, 8, AVIF_RESULT_OK);
+}
 
-TEST(AllocationTest, MaximumValid) {
+TEST(AllocationTest, MaximumValidDimensions) {
   // On 32-bit builds, malloc() will fail with fairly low sizes.
   // Adapt the tests to take that into account.
   constexpr bool kIsPlatform64b = sizeof(void*) > 4;
   constexpr uint32_t kMaxAllocatableDimension =
       kIsPlatform64b ? std::numeric_limits<typeof(avifImage::width)>::max()
-                     : 268435456;  // Up to 2 GB total for YUVA
+                     : 134217728;  // Up to 1 GB total for YUVA
 
   // 8 bits
   TestAllocation(kMaxAllocatableDimension, 1, 8, AVIF_RESULT_OK);
@@ -76,15 +77,15 @@ TEST(AllocationTest, MaximumValid) {
   TestAllocation(kMaxAllocatableDimension / 2, 1, 12, AVIF_RESULT_OK);
   TestAllocation(1, kMaxAllocatableDimension, 12, AVIF_RESULT_OK);
   // Some high number of bytes that malloc() accepts to allocate.
-  TestAllocation(1024 * 16, 1024 * 16, 12, AVIF_RESULT_OK);  // Up to 2 GB total
+  TestAllocation(1024 * 16, 1024 * 8, 12, AVIF_RESULT_OK);  // Up to 1 GB total
 }
 
-TEST(AllocationTest, MinimumInvalid) {
+TEST(AllocationTest, MinimumInvalidDimensions) {
   TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 12,
                  AVIF_RESULT_INVALID_ARGUMENT);
 }
 
-TEST(AllocationTest, MaximumInvalid) {
+TEST(AllocationTest, MaximumInvalidDimensions) {
   TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(),
                  std::numeric_limits<typeof(avifImage::height)>::max(), 12,
                  AVIF_RESULT_INVALID_ARGUMENT);
@@ -111,7 +112,7 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
   // test. The goal is to have something to give to libavif but libavif should
   // return an error before attempting to read all of it, so it does not matter
   // if there are fewer bytes than the provided image dimensions.
-  static constexpr uint64_t kMaxAlloc = 2147483647;
+  static constexpr uint64_t kMaxAlloc = 1073741824;
   uint32_t row_bytes;
   size_t num_allocated_bytes;
   if ((uint64_t)image->width * image->height >
@@ -148,19 +149,20 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
             expected_result);
 }
 
-TEST(EncodingTest, MinimumValid) { TestAllocation(1, 1, 8, AVIF_RESULT_OK); }
+TEST(EncodingTest, MinimumValidDimensions) {
+  TestAllocation(1, 1, 8, AVIF_RESULT_OK);
+}
 
-TEST(EncodingTest, MaximumValid) {
+TEST(EncodingTest, MaximumValidDimensions) {
   // 65536 is the maximum AV1 frame dimension allowed by the AV1 specification.
   // See the section 5.5.1. General sequence header OBU syntax.
-  // TODO(yguyon): Replace 65535 by 65536 once ext/aom.cmd clones a version of
-  //               aom that includes the fix for https://crbug.com/aomedia/3304.
+  // Old versions of libaom are capped to 65535 (http://crbug.com/aomedia/3304).
   TestEncoding(65535, 1, 12, AVIF_RESULT_OK);
   TestEncoding(1, 65535, 12, AVIF_RESULT_OK);
   // TestEncoding(65536, 65536, 12, AVIF_RESULT_OK);  // Too slow.
 }
 
-TEST(EncodingTest, MinimumInvalid) {
+TEST(EncodingTest, MinimumInvalidDimensions) {
   TestEncoding(0, 1, 8, AVIF_RESULT_NO_CONTENT);
   TestEncoding(1, 0, 8, AVIF_RESULT_NO_CONTENT);
   TestEncoding(1, 1, 0, AVIF_RESULT_UNSUPPORTED_DEPTH);
@@ -169,7 +171,7 @@ TEST(EncodingTest, MinimumInvalid) {
   TestEncoding(65536 + 1, 65536 + 1, 8, AVIF_RESULT_ENCODE_COLOR_FAILED);
 }
 
-TEST(EncodingTest, MaximumInvalid) {
+TEST(EncodingTest, MaximumInvalidDimensions) {
   TestEncoding(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 8,
                AVIF_RESULT_ENCODE_COLOR_FAILED);
   TestEncoding(1, std::numeric_limits<typeof(avifImage::height)>::max(), 8,
