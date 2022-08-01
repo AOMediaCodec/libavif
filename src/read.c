@@ -1363,7 +1363,10 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
         }
     }
 
-    avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+    if (avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
+        avifDiagnosticsPrintf(data->diag, "Image allocation failure");
+        return AVIF_FALSE;
+    }
 
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
@@ -3744,7 +3747,10 @@ static avifResult avifImageLimitedToFullAlpha(avifImage * image)
     // codec's internal frame buffers. Allocate memory for the conversion.
     image->alphaPlane = NULL;
     image->alphaRowBytes = 0;
-    avifImageAllocatePlanes(image, AVIF_PLANES_A);
+    const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_A);
+    if (allocationResult != AVIF_RESULT_OK) {
+        return allocationResult;
+    }
 
     if (image->depth > 8) {
         for (uint32_t j = 0; j < image->height; ++j) {
@@ -4145,8 +4151,7 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image)
     if (result != AVIF_RESULT_OK) {
         return result;
     }
-    avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
-    return AVIF_RESULT_OK;
+    return avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
 }
 
 avifResult avifDecoderReadMemory(avifDecoder * decoder, avifImage * image, const uint8_t * data, size_t size)

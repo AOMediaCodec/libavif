@@ -683,7 +683,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
     if (encoder->data->items.count == 0) {
         // Make a copy of the first image's metadata (sans pixels) for future writing/validation
-        avifImageCopy(encoder->data->imageMetadata, firstCell, 0);
+        const avifResult copyResult = avifImageCopy(encoder->data->imageMetadata, firstCell, 0);
+        if (copyResult != AVIF_RESULT_OK) {
+            return copyResult;
+        }
 
         // Prepare all AV1 items
 

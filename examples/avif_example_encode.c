@@ -41,7 +41,11 @@ int main(int argc, char * argv[])
         // If you have YUV(A) data you want to encode, use this path
         printf("Encoding raw YUVA data\n");
 
-        avifImageAllocatePlanes(image, AVIF_PLANES_YUV | AVIF_PLANES_A);
+        const avifResult allocateResult = avifImageAllocatePlanes(image, AVIF_PLANES_ALL);
+        if (allocateResult != AVIF_RESULT_OK) {
+            fprintf(stderr, "Failed to allocate the planes: %s\n", avifResultToString(allocateResult));
+            goto cleanup;
+        }
 
         // Fill your YUV(A) data here
         memset(image->yuvPlanes[AVIF_CHAN_Y], 255, image->yuvRowBytes[AVIF_CHAN_Y] * image->height);
