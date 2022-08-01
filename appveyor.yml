@@ -10,7 +10,7 @@ skip_commits:
 install:
  # Get submodules
  - git submodule update --init --recursive
- # Prepare VS env
+ # Prepare Visual Studio environment
  - call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
  # Install Nasm
  - appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.15.05-win64.zip" -FileName "nasm.zip"
