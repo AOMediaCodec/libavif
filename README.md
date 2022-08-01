@@ -60,7 +60,7 @@ with ext/googletest.cmd or installed on the system.
 
 ## Prebuilt Library (Windows)
 
-If you're building on Windows with Visual Studio 2019 and want to try out
+If you're building on Windows with Visual Studio 2022 and want to try out
 libavif without going through the build process, static library builds for both
 Debug and Release are available on
 [AppVeyor](https://ci.appveyor.com/project/louquillio/libavif).
