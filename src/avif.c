@@ -302,7 +302,7 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
 
         image->imageOwnsYUVPlanes = AVIF_TRUE;
         if (!image->yuvPlanes[AVIF_CHAN_Y]) {
-            image->yuvRowBytes[AVIF_CHAN_Y] = fullRowBytes;
+            image->yuvRowBytes[AVIF_CHAN_Y] = (uint32_t)fullRowBytes;
             image->yuvPlanes[AVIF_CHAN_Y] = avifAlloc(fullSize);
             if (!image->yuvPlanes[AVIF_CHAN_Y]) {
                 return AVIF_RESULT_OUT_OF_MEMORY;
@@ -311,14 +311,14 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
 
         if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
             if (!image->yuvPlanes[AVIF_CHAN_U]) {
-                image->yuvRowBytes[AVIF_CHAN_U] = uvRowBytes;
+                image->yuvRowBytes[AVIF_CHAN_U] = (uint32_t)uvRowBytes;
                 image->yuvPlanes[AVIF_CHAN_U] = avifAlloc(uvSize);
                 if (!image->yuvPlanes[AVIF_CHAN_U]) {
                     return AVIF_RESULT_OUT_OF_MEMORY;
                 }
             }
             if (!image->yuvPlanes[AVIF_CHAN_V]) {
-                image->yuvRowBytes[AVIF_CHAN_V] = uvRowBytes;
+                image->yuvRowBytes[AVIF_CHAN_V] = (uint32_t)uvRowBytes;
                 image->yuvPlanes[AVIF_CHAN_V] = avifAlloc(uvSize);
                 if (!image->yuvPlanes[AVIF_CHAN_V]) {
                     return AVIF_RESULT_OUT_OF_MEMORY;
@@ -329,7 +329,7 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
     if (planes & AVIF_PLANES_A) {
         image->imageOwnsAlphaPlane = AVIF_TRUE;
         if (!image->alphaPlane) {
-            image->alphaRowBytes = fullRowBytes;
+            image->alphaRowBytes = (uint32_t)fullRowBytes;
             image->alphaPlane = avifAlloc(fullSize);
             if (!image->alphaPlane) {
                 return AVIF_RESULT_OUT_OF_MEMORY;
