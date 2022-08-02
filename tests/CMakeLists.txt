@@ -42,9 +42,14 @@ endforeach()
 ################################################################################
 # GoogleTest
 
-if(AVIF_ENABLE_GTEST)
+if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 11)
+    add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
+    target_link_libraries(aviftest_helpers avif ${AVIF_PLATFORM_LIBRARIES})
+endif()
+
+if(AVIF_ENABLE_GTEST)
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
         set(GTEST_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/libgtest${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -63,8 +68,10 @@ if(AVIF_ENABLE_GTEST)
         find_package(GTest REQUIRED)
     endif()
 
-    add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
-    target_link_libraries(aviftest_helpers avif ${AVIF_PLATFORM_LIBRARIES})
+    add_executable(avifallocationtest gtest/avifallocationtest.cc)
+    target_link_libraries(avifallocationtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifallocationtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifallocationtest COMMAND avifallocationtest)
 
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
@@ -95,4 +102,18 @@ if(AVIF_ENABLE_GTEST)
     add_test(NAME avify4mtest COMMAND avify4mtest)
 else()
     message(STATUS "Most tests are disabled because AVIF_ENABLE_GTEST is OFF.")
+endif()
+
+################################################################################
+# Bash tests
+
+if(AVIF_BUILD_APPS)
+    # When building apps, test the avifenc/avifdec.
+    # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
+    add_executable(are_images_equal gtest/are_images_equal.cc)
+    target_link_libraries(are_images_equal aviftest_helpers avif_apps)
+    add_test(
+        NAME test_cmd
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()

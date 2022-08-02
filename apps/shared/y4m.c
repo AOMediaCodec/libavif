@@ -348,16 +348,17 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         *sourceTiming = frame.sourceTiming;
     }
 
-    avifImageFreePlanes(avif, AVIF_PLANES_YUV | AVIF_PLANES_A);
+    avifImageFreePlanes(avif, AVIF_PLANES_ALL);
     avif->width = frame.width;
     avif->height = frame.height;
     avif->depth = frame.depth;
     avif->yuvFormat = frame.format;
     avif->yuvRange = frame.range;
     avif->yuvChromaSamplePosition = frame.chromaSamplePosition;
-    avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
-    if (frame.hasAlpha) {
-        avifImageAllocatePlanes(avif, AVIF_PLANES_A);
+    avifResult allocationResult = avifImageAllocatePlanes(avif, frame.hasAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
+    if (allocationResult != AVIF_RESULT_OK) {
+        fprintf(stderr, "Failed to allocate the planes: %s\n", avifResultToString(allocationResult));
+        goto cleanup;
     }
 
     avifPixelFormatInfo formatInfo;

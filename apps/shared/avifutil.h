@@ -56,6 +56,18 @@ typedef struct avifAppSourceTiming
     uint64_t timescale; // timescale of the media (Hz)
 } avifAppSourceTiming;
 
+struct y4mFrameIterator;
+// Reads an image from a file with the requested format and depth.
+// In case of a y4m file, sourceTiming and frameIter can be set.
+// Returns AVIF_APP_FILE_FORMAT_UNKNOWN in case of error.
+avifAppFileFormat avifReadImage(const char * filename,
+                                avifPixelFormat requestedFormat,
+                                int requestedDepth,
+                                avifImage * image,
+                                uint32_t * outDepth,
+                                avifAppSourceTiming * sourceTiming,
+                                struct y4mFrameIterator ** frameIter);
+
 // Used by image decoders when the user doesn't explicitly choose a format with --yuv
 // This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.
 #define AVIF_APP_DEFAULT_PIXEL_FORMAT AVIF_PIXEL_FORMAT_YUV444

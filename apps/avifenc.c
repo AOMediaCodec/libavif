@@ -278,27 +278,14 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
 
-    avifAppFileFormat nextInputFormat = avifGuessFileFormat(input->files[input->fileIndex].filename);
-    if (nextInputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
-        if (!y4mRead(input->files[input->fileIndex].filename, image, sourceTiming, &input->frameIter)) {
-            return AVIF_APP_FILE_FORMAT_UNKNOWN;
-        }
-        if (outDepth) {
-            *outDepth = image->depth;
-        }
-    } else if (nextInputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(input->files[input->fileIndex].filename, image, input->requestedFormat, input->requestedDepth)) {
-            return AVIF_APP_FILE_FORMAT_UNKNOWN;
-        }
-        if (outDepth) {
-            *outDepth = 8;
-        }
-    } else if (nextInputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(input->files[input->fileIndex].filename, image, input->requestedFormat, input->requestedDepth, outDepth)) {
-            return AVIF_APP_FILE_FORMAT_UNKNOWN;
-        }
-    } else {
-        fprintf(stderr, "Unrecognized file format: %s\n", input->files[input->fileIndex].filename);
+    const avifAppFileFormat nextInputFormat = avifReadImage(input->files[input->fileIndex].filename,
+                                                            input->requestedFormat,
+                                                            input->requestedDepth,
+                                                            image,
+                                                            outDepth,
+                                                            sourceTiming,
+                                                            &input->frameIter);
+    if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
 
@@ -365,7 +352,11 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
             avifImage * cellImage = avifImageCreateEmpty();
             gridCells[gridIndex] = cellImage;
 
-            avifImageCopy(cellImage, gridSplitImage, 0);
+            const avifResult copyResult = avifImageCopy(cellImage, gridSplitImage, 0);
+            if (copyResult != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Image copy failed: %s\n", avifResultToString(copyResult));
+                return AVIF_FALSE;
+            }
             cellImage->width = cellWidth;
             cellImage->height = cellHeight;
 
