@@ -16,7 +16,10 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 * Update aom.cmd: v3.4.0
 * Update svt.cmd/svt.sh: v1.1.0
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
-  void to report invalid parameters or memory allocation failures
+  void to report invalid parameters or memory allocation failures.
+* avifImageRGBToYUV() now uses libyuv fast paths by default. It may slightly
+  change conversion results. The old behavior can be retrieved by setting
+  avifRGBImage::chromaDownsampling to AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY.
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that

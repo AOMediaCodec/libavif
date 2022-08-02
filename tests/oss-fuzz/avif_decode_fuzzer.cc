@@ -48,7 +48,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                             rgb.format = rgbFormats[rgbFormatsIndex];
                             rgb.depth = rgbDepths[rgbDepthsIndex];
                             rgb.chromaUpsampling = upsamplings[upsamplingsIndex];
-                            rgb.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AVERAGE;
                             avifRGBImageAllocatePixels(&rgb);
                             avifResult rgbResult = avifImageYUVToRGB(decoder->image, &rgb);
                             // Since avifImageRGBToYUV() ignores rgb.chromaUpsampling, we only need

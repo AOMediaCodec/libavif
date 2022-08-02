@@ -247,8 +247,7 @@ INSTANTIATE_TEST_SUITE_P(
     Combine(/*rgb_depth=*/Values(8),
             /*yuv_depth=*/Values(8), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV420), Values(AVIF_RANGE_FULL),
-            Values(AVIF_MATRIX_COEFFICIENTS_BT470BG,  // Same as BT.601
-                   AVIF_MATRIX_COEFFICIENTS_BT601),
+            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
             /*add_noise=*/Values(true),
             /*rgb_step=*/Values(3),
             /*max_abs_average_diff=*/Values(0.1),  // The color drift is almost

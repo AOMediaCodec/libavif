@@ -427,8 +427,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
             avifReformatAlpha(&params);
         } else {
-            // libyuv does not import alpha from RGB to YUV so fill it
-            // independently of the value of convertedWithLibYUV.
+            // libyuv does not fill alpha when converting from RGB to YUV so
+            // fill it regardless of the value of convertedWithLibYUV.
             avifFillAlpha(&params);
         }
     }

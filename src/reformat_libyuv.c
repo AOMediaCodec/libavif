@@ -61,9 +61,11 @@ static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBIm
 avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 {
     if ((rgb->chromaDownsampling != AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC) && (rgb->chromaDownsampling != AVIF_CHROMA_DOWNSAMPLING_FASTEST)) {
-        // We do not ensure a specific downsampling filter is used when calling libyuv, so if the end
-        // user chose a specific one, avoid using libyuv. Also libyuv trades a bit of accuracy for
-        // speed, so if the end user requested best quality, avoid using libyuv as well.
+        // libyuv uses integer/fixed-point averaging and RGB-to-YUV conversion.
+        // We do not ensure a specific ordering of these two steps and libyuv
+        // may perform one or the other depending on the implementation or
+        // platform. Also libyuv trades a bit of accuracy for speed, so if the
+        // end user requested best quality, avoid using libyuv as well.
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
