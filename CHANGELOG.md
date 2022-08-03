@@ -18,7 +18,7 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
   void to report invalid parameters or memory allocation failures.
 * avifImageRGBToYUV() now uses libyuv fast paths by default. It may slightly
-  change conversion results. The old behavior can be retrieved by setting
+  change conversion results. The old behavior can be restored by setting
   avifRGBImage::chromaDownsampling to AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY.
 
 ### Removed
