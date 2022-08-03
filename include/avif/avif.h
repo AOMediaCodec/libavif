@@ -569,7 +569,7 @@ typedef enum avifChromaDownsampling
     AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (prefers libyuv, else uses BEST_QUALITY)
     AVIF_CHROMA_DOWNSAMPLING_FASTEST = 1,      // Chooses speed over quality (prefers libyuv, else uses AVERAGE)
     AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling (avoids libyuv, uses AVERAGE)
-    AVIF_CHROMA_DOWNSAMPLING_FLOAT_AVERAGE = 3 // Uses floating point RGB-to-YUV conversion then averaging (built-in)
+    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = 3       // Uses floating point RGB-to-YUV conversion then averaging (built-in)
 } avifChromaDownsampling;
 
 typedef struct avifRGBImage
