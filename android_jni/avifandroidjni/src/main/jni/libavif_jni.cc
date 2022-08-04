@@ -127,8 +127,9 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap) {
         decoder.decoder->image->height);
     return false;
   }
-  // Ensure that the bitmap format is either RGBA_8888 or RGBA_F16.
+  // Ensure that the bitmap format is RGBA_8888, RGB_565 or RGBA_F16.
   if (bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 &&
+      bitmap_info.format != ANDROID_BITMAP_FORMAT_RGB_565 &&
       bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_F16) {
     LOGE("Bitmap format (%d) is not supported.", bitmap_info.format);
     return false;
@@ -144,6 +145,9 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap) {
   if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGBA_F16) {
     rgb_image.depth = 16;
     rgb_image.isFloat = AVIF_TRUE;
+  } else if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
+    rgb_image.format = AVIF_RGB_FORMAT_RGB_565;
+    rgb_image.depth = 8;
   } else {
     rgb_image.depth = 8;
   }

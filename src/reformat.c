@@ -25,6 +25,9 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     if (rgb->isFloat && rgb->depth != 16) {
         return AVIF_FALSE;
     }
+    if (rgb->format == AVIF_RGB_FORMAT_RGB_565 && rgb->depth != 8) {
+        return AVIF_FALSE;
+    }
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
     //
@@ -105,6 +108,16 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
             state->rgbOffsetBytesG = state->rgbChannelBytes * 2;
             state->rgbOffsetBytesR = state->rgbChannelBytes * 3;
             break;
+        case AVIF_RGB_FORMAT_RGB_565:
+            // Since RGB_565 consists of two bytes per RGB pixel, we simply use
+            // the pointer to the red channel to populate the entire pixel value
+            // as a uint16_t. As a result only rgbOffsetBytesR is used and the
+            // other offsets are unused.
+            state->rgbOffsetBytesR = 0;
+            state->rgbOffsetBytesG = 0;
+            state->rgbOffsetBytesB = 0;
+            state->rgbOffsetBytesA = 0;
+            break;
 
         default:
             return AVIF_FALSE;
@@ -180,7 +193,7 @@ static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
 
 avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 {
-    if (!rgb->pixels) {
+    if (!rgb->pixels || rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
@@ -433,6 +446,20 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         }
     }
     return AVIF_RESULT_OK;
+}
+
+static void avifStoreRGB8Pixel(avifRGBFormat format, uint8_t R, uint8_t G, uint8_t B, uint8_t * ptrR, uint8_t * ptrG, uint8_t * ptrB)
+{
+    if (format == AVIF_RGB_FORMAT_RGB_565) {
+        // References for RGB565 color conversion:
+        // * https://docs.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb
+        // * https://chromium.googlesource.com/libyuv/libyuv/+/9892d70c965678381d2a70a1c9002d1cf136ee78/source/row_common.cc#2362
+        *(uint16_t *)ptrR = (uint16_t)((B >> 3) | ((G >> 2) << 5) | ((R >> 3) << 11));
+        return;
+    }
+    *ptrR = R;
+    *ptrG = G;
+    *ptrB = B;
 }
 
 // Note: This function handles alpha (un)multiply.
@@ -695,9 +722,13 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
             }
 
             if (rgb->depth == 8) {
-                *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannelF));
-                *ptrG = (uint8_t)(0.5f + (Gc * rgbMaxChannelF));
-                *ptrB = (uint8_t)(0.5f + (Bc * rgbMaxChannelF));
+                avifStoreRGB8Pixel(rgb->format,
+                                   (uint8_t)(0.5f + (Rc * rgbMaxChannelF)),
+                                   (uint8_t)(0.5f + (Gc * rgbMaxChannelF)),
+                                   (uint8_t)(0.5f + (Bc * rgbMaxChannelF)),
+                                   ptrR,
+                                   ptrG,
+                                   ptrB);
             } else {
                 *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannelF));
                 *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannelF));
@@ -847,9 +878,13 @@ static avifResult avifImageYUV16ToRGB8Color(const avifImage * image, avifRGBImag
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannelF));
-            *ptrG = (uint8_t)(0.5f + (Gc * rgbMaxChannelF));
-            *ptrB = (uint8_t)(0.5f + (Bc * rgbMaxChannelF));
+            avifStoreRGB8Pixel(rgb->format,
+                               (uint8_t)(0.5f + (Rc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Gc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Bc * rgbMaxChannelF)),
+                               ptrR,
+                               ptrG,
+                               ptrB);
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -891,9 +926,13 @@ static avifResult avifImageYUV16ToRGB8Mono(const avifImage * image, avifRGBImage
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannelF));
-            *ptrG = (uint8_t)(0.5f + (Gc * rgbMaxChannelF));
-            *ptrB = (uint8_t)(0.5f + (Bc * rgbMaxChannelF));
+            avifStoreRGB8Pixel(rgb->format,
+                               (uint8_t)(0.5f + (Rc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Gc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Bc * rgbMaxChannelF)),
+                               ptrR,
+                               ptrG,
+                               ptrB);
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -1001,9 +1040,7 @@ static avifResult avifImageIdentity8ToRGB8ColorFullRange(const avifImage * image
         uint8_t * ptrB = &rgb->pixels[state->rgbOffsetBytesB + (j * rgb->rowBytes)];
 
         for (uint32_t i = 0; i < image->width; ++i) {
-            *ptrR = ptrV[i];
-            *ptrG = ptrY[i];
-            *ptrB = ptrU[i];
+            avifStoreRGB8Pixel(rgb->format, ptrV[i], ptrY[i], ptrU[i], ptrR, ptrG, ptrB);
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -1047,9 +1084,13 @@ static avifResult avifImageYUV8ToRGB8Color(const avifImage * image, avifRGBImage
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannelF));
-            *ptrG = (uint8_t)(0.5f + (Gc * rgbMaxChannelF));
-            *ptrB = (uint8_t)(0.5f + (Bc * rgbMaxChannelF));
+            avifStoreRGB8Pixel(rgb->format,
+                               (uint8_t)(0.5f + (Rc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Gc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Bc * rgbMaxChannelF)),
+                               ptrR,
+                               ptrG,
+                               ptrB);
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -1087,9 +1128,13 @@ static avifResult avifImageYUV8ToRGB8Mono(const avifImage * image, avifRGBImage 
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *ptrR = (uint8_t)(0.5f + (Rc * rgbMaxChannelF));
-            *ptrG = (uint8_t)(0.5f + (Gc * rgbMaxChannelF));
-            *ptrB = (uint8_t)(0.5f + (Bc * rgbMaxChannelF));
+            avifStoreRGB8Pixel(rgb->format,
+                               (uint8_t)(0.5f + (Rc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Gc * rgbMaxChannelF)),
+                               (uint8_t)(0.5f + (Bc * rgbMaxChannelF)),
+                               ptrR,
+                               ptrG,
+                               ptrB);
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
