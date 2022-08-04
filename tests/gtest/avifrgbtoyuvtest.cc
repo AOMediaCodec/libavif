@@ -183,6 +183,10 @@ TEST_P(RGBToYUVTest, Convert) {
       SetImageChannel(&src_rgb, offsets.b, r,
                       add_noise ? kBlueNoise : kPlainColor);
 
+      // Change these to BEST_QUALITY to force built-in over libyuv conversion.
+      src_rgb.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
+      dst_rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
+
       ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
       ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
@@ -299,7 +303,7 @@ INSTANTIATE_TEST_SUITE_P(
         /*add_noise=*/Values(false),
         /*rgb_step=*/Values(17),
         /*max_abs_average_diff=*/Values(0.02),  // The color drift is centered.
-        /*min_psnr=*/Values(52.)  // RGB>YUV>RGB distortion is barely
+        /*min_psnr=*/Values(49.)  // RGB>YUV>RGB distortion is barely
                                   // noticeable.
         ));
 
@@ -382,6 +386,21 @@ INSTANTIATE_TEST_SUITE_P(
             /*min_psnr=*/Values(52.)));
 
 // TODO: Test other matrix coefficients than identity and bt.601.
+
+// This was used to estimate the quality loss of libyuv for RGB-to-YUV.
+// Disabled because it takes a few minutes.
+INSTANTIATE_TEST_SUITE_P(
+    DISABLED_All8bTo8b, RGBToYUVTest,
+    Combine(/*rgb_depth=*/Values(8),
+            /*yuv_depth=*/Values(8), ValuesIn(kAllRgbFormats),
+            Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
+                   AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400),
+            Values(AVIF_RANGE_FULL, AVIF_RANGE_LIMITED),
+            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+            /*add_noise=*/Values(false, true),
+            /*rgb_step=*/Values(3),  // way faster and 99% similar to rgb_step=1
+            /*max_abs_average_diff=*/Values(10.),
+            /*min_psnr=*/Values(10.)));
 
 }  // namespace
 }  // namespace libavif

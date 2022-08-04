@@ -6,6 +6,12 @@
 #if !defined(AVIF_LIBYUV_ENABLED)
 
 // No libyuv!
+avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
+{
+    (void)image;
+    (void)rgb;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
 {
     (void)image;
@@ -49,6 +55,122 @@ unsigned int avifLibYUVVersion(void)
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
+
+static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb);
+
+avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
+{
+    if ((rgb->chromaDownsampling != AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC) && (rgb->chromaDownsampling != AVIF_CHROMA_DOWNSAMPLING_FASTEST)) {
+        // libyuv uses integer/fixed-point averaging and RGB-to-YUV conversion.
+        // We do not ensure a specific ordering of these two steps and libyuv
+        // may perform one or the other depending on the implementation or
+        // platform. Also libyuv trades a bit of accuracy for speed, so if the
+        // end user requested best quality, avoid using libyuv as well.
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    if ((image->depth == 8) && (rgb->depth == 8)) {
+        return avifImageRGBToYUVLibYUV8bpc(image, rgb);
+    }
+
+    // This function didn't do anything; use the built-in conversion.
+    return AVIF_RESULT_NOT_IMPLEMENTED;
+}
+
+avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb)
+{
+    assert((image->depth == 8) && (rgb->depth == 8));
+    // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
+    // similar to PNG. libyuv orders in word-order, so libavif's RGBA would be referred to in libyuv as ABGR.
+
+    if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+        // Generic mapping from any RGB layout (with or without alpha) to monochrome.
+        int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int) = NULL;
+
+        if (image->yuvRange == AVIF_RANGE_LIMITED) {
+            if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                RGBtoY = ARGBToI400;
+            }
+        } else { // image->yuvRange == AVIF_RANGE_FULL
+            if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                RGBtoY = ARGBToJ400;
+            }
+        }
+
+        if (!RGBtoY) {
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+        if (RGBtoY(rgb->pixels, rgb->rowBytes, image->yuvPlanes[AVIF_CHAN_Y], image->yuvRowBytes[AVIF_CHAN_Y], image->width, image->height)) {
+            return AVIF_RESULT_REFORMAT_FAILED;
+        }
+        return AVIF_RESULT_OK;
+    }
+
+    // Generic mapping from any RGB layout (with or without alpha) to any YUV layout (subsampled or not).
+    int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int) = NULL;
+
+    // libyuv only handles BT.601 for RGB to YUV, and not all range/order/subsampling combinations.
+    // BT.470BG has the same coefficients as BT.601.
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT470BG) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601)) {
+        if (image->yuvRange == AVIF_RANGE_LIMITED) {
+            if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = ABGRToI420;
+                }
+            } else if (rgb->format == AVIF_RGB_FORMAT_ARGB) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = BGRAToI420;
+                }
+            } else if (rgb->format == AVIF_RGB_FORMAT_BGR) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = RGB24ToI420;
+                }
+            } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+                    RGBtoYUV = ARGBToI444;
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+                    RGBtoYUV = ARGBToI422;
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = ARGBToI420;
+                }
+            } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = RGBAToI420;
+                }
+            }
+        } else { // image->yuvRange == AVIF_RANGE_FULL
+            if (rgb->format == AVIF_RGB_FORMAT_BGR) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = RGB24ToJ420;
+                }
+            } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+                    RGBtoYUV = ARGBToJ422;
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                    RGBtoYUV = ARGBToJ420;
+                }
+            }
+        }
+    }
+    // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the current implementation
+
+    if (!RGBtoYUV) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    if (RGBtoYUV(rgb->pixels,
+                 rgb->rowBytes,
+                 image->yuvPlanes[AVIF_CHAN_Y],
+                 image->yuvRowBytes[AVIF_CHAN_Y],
+                 image->yuvPlanes[AVIF_CHAN_U],
+                 image->yuvRowBytes[AVIF_CHAN_U],
+                 image->yuvPlanes[AVIF_CHAN_V],
+                 image->yuvRowBytes[AVIF_CHAN_V],
+                 image->width,
+                 image->height)) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+    return AVIF_RESULT_OK;
+}
 
 static avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                               avifRGBImage * rgb,
