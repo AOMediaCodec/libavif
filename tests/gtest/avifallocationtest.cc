@@ -58,22 +58,16 @@ TEST(AllocationTest, MinimumValidDimensions) {
   TestAllocation(1, 1, 8, AVIF_RESULT_OK);
 }
 
-TEST(AllocationTest, MaximumValidDimensions) {
-  // On 32-bit builds, malloc() will fail with fairly low sizes.
-  // Adapt the tests to take that into account.
-  constexpr bool kIsPlatform64b = sizeof(void*) > 4;
-  constexpr uint32_t kMaxAllocatableDimension =
-      kIsPlatform64b ? std::numeric_limits<typeof(avifImage::width)>::max()
-                     : 134217728;  // Up to 1 GB total for YUVA
-
-  // 8 bits
-  TestAllocation(kMaxAllocatableDimension, 1, 8, AVIF_RESULT_OK);
-  TestAllocation(1, kMaxAllocatableDimension, 8, AVIF_RESULT_OK);
-  // 12 bits (impacts the width because avifImage stride is stored as uint32_t)
-  TestAllocation(kMaxAllocatableDimension / 2, 1, 12, AVIF_RESULT_OK);
-  TestAllocation(1, kMaxAllocatableDimension, 12, AVIF_RESULT_OK);
-  // Some high number of bytes that malloc() accepts to allocate.
-  TestAllocation(1024 * 16, 1024 * 8, 12, AVIF_RESULT_OK);  // Up to 1 GB total
+TEST(AllocationTest, MaximumAllocatableValidDimensions) {
+  // Limit the total allocation to 1 GB to prevent any failure no matter the
+  // platform or environment.
+  // 8 bits, so one byte per pixel per channel, up to 4 channels
+  TestAllocation((1 << 30) / 4, 1, 8, AVIF_RESULT_OK);
+  TestAllocation(1, (1 << 30) / 4, 8, AVIF_RESULT_OK);
+  // 12 bits, so two bytes per pixel per channel, up to 4 channels
+  TestAllocation((1 << 30) / 2 / 4, 1, 12, AVIF_RESULT_OK);
+  TestAllocation(1, (1 << 30) / 2 / 4, 12, AVIF_RESULT_OK);
+  TestAllocation(1 << 15, (1 << 15) / 2 / 4, 12, AVIF_RESULT_OK);
 }
 
 TEST(AllocationTest, MinimumInvalidDimensions) {
@@ -87,9 +81,12 @@ TEST(AllocationTest, MaximumInvalidDimensions) {
                  AVIF_RESULT_INVALID_ARGUMENT);
 }
 
-// This is valid in theory but malloc() should refuse to allocate so much and
-// avifAlloc() aborts on malloc() failure.
 TEST(DISABLED_AllocationTest, OutOfMemory) {
+  // This should pass on 64-bit but may fail on 32-bit or other setups.
+  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 8,
+                 AVIF_RESULT_OK);
+  // This is valid in theory: malloc() should always refuse to allocate so much,
+  // but avifAlloc() aborts on malloc() failure instead of returning.
   TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max() / 2,
                  std::numeric_limits<typeof(avifImage::height)>::max(), 12,
                  AVIF_RESULT_OUT_OF_MEMORY);
@@ -149,12 +146,21 @@ TEST(EncodingTest, MinimumValidDimensions) {
   TestAllocation(1, 1, 8, AVIF_RESULT_OK);
 }
 
-TEST(EncodingTest, MaximumValidDimensions) {
-  // 65536 is the maximum AV1 frame dimension allowed by the AV1 specification.
-  // See the section 5.5.1. General sequence header OBU syntax.
-  // Old versions of libaom are capped to 65535 (http://crbug.com/aomedia/3304).
-  TestEncoding(65535, 1, 12, AVIF_RESULT_OK);
-  TestEncoding(1, 65535, 12, AVIF_RESULT_OK);
+TEST(EncodingTest, ReasonableValidDimensions) {
+  TestEncoding(16384, 1, 12, AVIF_RESULT_OK);
+  TestEncoding(1, 16384, 12, AVIF_RESULT_OK);
+}
+
+// 65536 is the maximum AV1 frame dimension allowed by the AV1 specification.
+// See the section 5.5.1. General sequence header OBU syntax.
+// However, this test is disabled because:
+// - Old versions of libaom are capped to 65535 (http://crbug.com/aomedia/3304).
+// - libaom may be compiled with CONFIG_SIZE_LIMIT defined, limiting the
+//   internal allocation to DECODE_WIDTH_LIMIT and DECODE_HEIGHT_LIMIT during
+//   encoding in aom_realloc_frame_buffer().
+TEST(DISABLED_EncodingTest, MaximumValidDimensions) {
+  TestEncoding(65536, 1, 12, AVIF_RESULT_OK);
+  TestEncoding(1, 65536, 12, AVIF_RESULT_OK);
   // TestEncoding(65536, 65536, 12, AVIF_RESULT_OK);  // Too slow.
 }
 
