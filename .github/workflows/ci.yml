@@ -31,7 +31,7 @@ jobs:
       with:
         version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
-      if: steps.cache-ext.outputs.cache-hit != 'true'
+      #if: steps.cache-ext.outputs.cache-hit != 'true'
     - run: pip install meson
       if: steps.cache-ext.outputs.cache-hit != 'true'
     - name: Build aom
