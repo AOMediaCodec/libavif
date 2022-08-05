@@ -31,7 +31,7 @@ jobs:
       with:
         version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
-      if: steps.cache-ext.outputs.cache-hit != 'true'
+      #if: steps.cache-ext.outputs.cache-hit != 'true'
     - run: pip install meson
       if: steps.cache-ext.outputs.cache-hit != 'true'
     - name: Build aom
@@ -67,7 +67,8 @@ jobs:
     - name: Prepare libavif (cmake)
       run: |
         mkdir build && cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+        cmake .. -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
           -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON \
           -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON \
           -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON \
@@ -76,9 +77,9 @@ jobs:
           -DAVIF_LOCAL_LIBYUV=ON \
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON \
           -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
-    - name: Build libavif (make)
+    - name: Build libavif (ninja)
       working-directory: ./build
-      run: make -j $(($(nproc) + 1))
+      run: ninja
     - name: Run AVIF Tests (on Linux)
       if: runner.os == 'Linux'
       working-directory: ./build
