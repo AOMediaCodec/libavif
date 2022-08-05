@@ -112,42 +112,48 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
     // libyuv only handles BT.601 for RGB to YUV, and not all range/order/subsampling combinations.
     // BT.470BG has the same coefficients as BT.601.
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT470BG) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601)) {
-        if (image->yuvRange == AVIF_RANGE_LIMITED) {
-            if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                    RGBtoYUV = ABGRToI420;
-                }
-            } else if (rgb->format == AVIF_RGB_FORMAT_ARGB) {
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                    RGBtoYUV = BGRAToI420;
-                }
-            } else if (rgb->format == AVIF_RGB_FORMAT_BGR) {
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                    RGBtoYUV = RGB24ToI420;
-                }
-            } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
-                    RGBtoYUV = ARGBToI444;
-                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-                    RGBtoYUV = ARGBToI422;
-                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
+            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                if (image->yuvRange == AVIF_RANGE_FULL) {
+                    RGBtoYUV = ARGBToJ420;
+                } else {
                     RGBtoYUV = ARGBToI420;
                 }
-            } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                    RGBtoYUV = RGBAToI420;
+            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+                if (image->yuvRange == AVIF_RANGE_FULL) {
+                    RGBtoYUV = ARGBToJ422;
+                } else {
+                    RGBtoYUV = ARGBToI422;
+                }
+            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+                if (image->yuvRange == AVIF_RANGE_LIMITED) {
+                    RGBtoYUV = ARGBToI444;
                 }
             }
-        } else { // image->yuvRange == AVIF_RANGE_FULL
-            if (rgb->format == AVIF_RGB_FORMAT_BGR) {
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        } else if (rgb->format == AVIF_RGB_FORMAT_BGR) {
+            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                if (image->yuvRange == AVIF_RANGE_FULL) {
                     RGBtoYUV = RGB24ToJ420;
+                } else {
+                    RGBtoYUV = RGB24ToI420;
                 }
-            } else if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-                    RGBtoYUV = ARGBToJ422;
-                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                    RGBtoYUV = ARGBToJ420;
+            }
+        } else if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
+            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                if (image->yuvRange == AVIF_RANGE_LIMITED) {
+                    RGBtoYUV = ABGRToI420;
+                }
+            }
+        } else if (rgb->format == AVIF_RGB_FORMAT_ARGB) {
+            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                if (image->yuvRange == AVIF_RANGE_LIMITED) {
+                    RGBtoYUV = BGRAToI420;
+                }
+            }
+        } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
+            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                if (image->yuvRange == AVIF_RANGE_LIMITED) {
+                    RGBtoYUV = RGBAToI420;
                 }
             }
         }
