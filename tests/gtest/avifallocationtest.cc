@@ -72,24 +72,24 @@ TEST(AllocationTest, Allocate1GB) {
 }
 
 TEST(AllocationTest, MinimumInvalidDimensions) {
-  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 12,
+  TestAllocation(std::numeric_limits<decltype(avifImage::width)>::max(), 1, 12,
                  AVIF_RESULT_INVALID_ARGUMENT);
 }
 
 TEST(AllocationTest, MaximumInvalidDimensions) {
-  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(),
-                 std::numeric_limits<typeof(avifImage::height)>::max(), 12,
+  TestAllocation(std::numeric_limits<decltype(avifImage::width)>::max(),
+                 std::numeric_limits<decltype(avifImage::height)>::max(), 12,
                  AVIF_RESULT_INVALID_ARGUMENT);
 }
 
 TEST(DISABLED_AllocationTest, OutOfMemory) {
   // This should pass on 64-bit but may fail on 32-bit or other setups.
-  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 8,
+  TestAllocation(std::numeric_limits<decltype(avifImage::width)>::max(), 1, 8,
                  AVIF_RESULT_OK);
   // This is valid in theory: malloc() should always refuse to allocate so much,
   // but avifAlloc() aborts on malloc() failure instead of returning.
-  TestAllocation(std::numeric_limits<typeof(avifImage::width)>::max() / 2,
-                 std::numeric_limits<typeof(avifImage::height)>::max(), 12,
+  TestAllocation(std::numeric_limits<decltype(avifImage::width)>::max() / 2,
+                 std::numeric_limits<decltype(avifImage::height)>::max(), 12,
                  AVIF_RESULT_OUT_OF_MEMORY);
 }
 
@@ -175,14 +175,14 @@ TEST(EncodingTest, MinimumInvalidDimensions) {
 }
 
 TEST(EncodingTest, MaximumInvalidDimensions) {
-  TestEncoding(std::numeric_limits<typeof(avifImage::width)>::max(), 1, 8,
+  TestEncoding(std::numeric_limits<decltype(avifImage::width)>::max(), 1, 8,
                AVIF_RESULT_ENCODE_COLOR_FAILED);
-  TestEncoding(1, std::numeric_limits<typeof(avifImage::height)>::max(), 8,
+  TestEncoding(1, std::numeric_limits<decltype(avifImage::height)>::max(), 8,
                AVIF_RESULT_ENCODE_COLOR_FAILED);
-  TestEncoding(std::numeric_limits<typeof(avifImage::width)>::max(),
-               std::numeric_limits<typeof(avifImage::height)>::max(), 12,
+  TestEncoding(std::numeric_limits<decltype(avifImage::width)>::max(),
+               std::numeric_limits<decltype(avifImage::height)>::max(), 12,
                AVIF_RESULT_ENCODE_COLOR_FAILED);
-  TestEncoding(1, 1, std::numeric_limits<typeof(avifImage::depth)>::max(),
+  TestEncoding(1, 1, std::numeric_limits<decltype(avifImage::depth)>::max(),
                AVIF_RESULT_UNSUPPORTED_DEPTH);
 }
 
