@@ -15,6 +15,7 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 ### Changed
 * Update aom.cmd: v3.4.0
 * Update svt.cmd/svt.sh: v1.1.0
+* Update libgav1.cmd: v0.18.0
 * Update libyuv.cmd: d53f1be (version 1837)
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
   void to report invalid parameters or memory allocation failures.
