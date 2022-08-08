@@ -58,8 +58,8 @@ TEST(AllocationTest, MinimumValidDimensions) {
   TestAllocation(1, 1, 8, AVIF_RESULT_OK);
 }
 
-// The libavif API accepts allocating up to SIZE_MAX bytes. Testing this
-// threshold is unrealistic so allocate 1 GB: that should pass on all platforms
+// Up to SIZE_MAX can be passed as the input argument to avifAlloc(). Testing
+// this value is unrealistic so allocate 1 GB: that should pass on all platforms
 // and environments.
 TEST(AllocationTest, Allocate1GB) {
   // 8 bits, so one byte per pixel per channel, up to 4 channels
