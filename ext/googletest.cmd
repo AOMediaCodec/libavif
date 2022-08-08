@@ -11,5 +11,5 @@ git clone -b release-1.11.0 --depth 1 https://github.com/google/googletest.git
 cd googletest
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF ..
 cmake --build .
