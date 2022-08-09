@@ -190,6 +190,11 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.depth = rgbDepth;
+    int colorType = PNG_COLOR_TYPE_RGBA;
+    if (!avif->alphaPlane) {
+        colorType = PNG_COLOR_TYPE_RGB;
+        rgb.format = AVIF_RGB_FORMAT_RGB;
+    }
     rgb.chromaUpsampling = chromaUpsampling;
     avifRGBImageAllocatePixels(&rgb);
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
@@ -231,7 +236,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         png_set_compression_level(png, compressionLevel);
     }
 
-    png_set_IHDR(png, info, avif->width, avif->height, rgb.depth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png, info, avif->width, avif->height, rgb.depth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
         png_set_iCCP(png, info, "libavif", 0, (png_iccp_datap)avif->icc.data, (png_uint_32)avif->icc.size);
     }
