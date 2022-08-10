@@ -58,6 +58,10 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash libyuv.cmd
+    - name: Build libjpeg
+      # if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash libjpeg.cmd
     - name: Build GoogleTest
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -75,7 +79,7 @@ jobs:
         -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON
         -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
         -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON
-        -DAVIF_LOCAL_LIBYUV=ON
+        -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_JPEG=ON
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
     - name: Build libavif (ninja)
