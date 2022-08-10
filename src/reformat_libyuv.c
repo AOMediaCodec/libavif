@@ -77,6 +77,54 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 
+// Two-step replacement for AVIF_RGB_FORMAT_RGBA to 8-bit BT.601 full range YUV, which is missing from libyuv.
+static int avifABGRToJ420(const uint8_t * src_abgr,
+                          int src_stride_abgr,
+                          uint8_t * dst_y,
+                          int dst_stride_y,
+                          uint8_t * dst_u,
+                          int dst_stride_u,
+                          uint8_t * dst_v,
+                          int dst_stride_v,
+                          int width,
+                          int height)
+{
+    // A temporary buffer is needed to swap the R and B channels before calling ARGBToJ420().
+    uint8_t * src_argb;
+    const int src_stride_argb = width * 4;
+    const uint64_t soft_allocation_limit = 16384; // Arbitrarily chosen trade-off between CPU and memory footprints.
+    int num_allocated_rows;
+    if ((uint64_t)src_stride_argb * height <= soft_allocation_limit) {
+        // Process the whole buffer in one go.
+        num_allocated_rows = height;
+    } else {
+        // The last row of an odd number of RGB rows to be converted to subsampled YUV is treated differently
+        // by libyuv, so make sure all steps but the last one process an even number of rows.
+        // Try to process as many row pairs as possible in a single step without allocating more than
+        // soft_allocation_limit, unless two rows need more than that.
+        num_allocated_rows = (int)AVIF_CEIL(soft_allocation_limit, (uint64_t)src_stride_argb * 2) * 2;
+    }
+    src_argb = avifAlloc(num_allocated_rows * src_stride_argb);
+    if (!src_argb) {
+        return 1;
+    }
+
+    for (int y = 0; y < height; y += num_allocated_rows) {
+        const int num_rows = AVIF_MIN(num_allocated_rows, height - y);
+        if (ARGBToABGR(src_abgr, src_stride_abgr, src_argb, src_stride_argb, width, num_rows) ||
+            ARGBToJ420(src_argb, src_stride_argb, dst_y, dst_stride_y, dst_u, dst_stride_u, dst_v, dst_stride_v, width, num_rows)) {
+            avifFree(src_argb);
+            return 1;
+        }
+        src_abgr += (uint64_t)num_rows * src_stride_abgr;
+        dst_y += (uint64_t)num_rows * dst_stride_y;
+        dst_u += (uint64_t)num_rows * dst_stride_u / 2; // 4:2:0
+        dst_v += (uint64_t)num_rows * dst_stride_v / 2; // (either num_rows is even or this is the last loop turn)
+    }
+    avifFree(src_argb);
+    return 0;
+}
+
 avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb)
 {
     assert((image->depth == 8) && (rgb->depth == 8));
@@ -140,7 +188,9 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
             }
         } else if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
             if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                if (image->yuvRange == AVIF_RANGE_LIMITED) {
+                if (image->yuvRange == AVIF_RANGE_FULL) {
+                    RGBtoYUV = avifABGRToJ420;
+                } else {
                     RGBtoYUV = ABGRToI420;
                 }
             }
