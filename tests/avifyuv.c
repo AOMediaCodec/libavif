@@ -39,6 +39,8 @@ static const char * rgbFormatToString(avifRGBFormat format)
             return "BGRA";
         case AVIF_RGB_FORMAT_ABGR:
             return "ABGR";
+        case AVIF_RGB_FORMAT_RGB_565:
+            return "RGB_565";
     }
     return "Unknown";
 }

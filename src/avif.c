@@ -420,7 +420,7 @@ void avifCodecDestroy(avifCodec * codec)
 
 avifBool avifRGBFormatHasAlpha(avifRGBFormat format)
 {
-    return (format != AVIF_RGB_FORMAT_RGB) && (format != AVIF_RGB_FORMAT_BGR);
+    return (format != AVIF_RGB_FORMAT_RGB) && (format != AVIF_RGB_FORMAT_BGR) && (format != AVIF_RGB_FORMAT_RGB_565);
 }
 
 uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
@@ -430,6 +430,9 @@ uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
 
 uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb)
 {
+    if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
+        return 2;
+    }
     return avifRGBFormatChannelCount(rgb->format) * ((rgb->depth > 8) ? 2 : 1);
 }
 

@@ -365,14 +365,15 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
     // In addition, swapping U and V in any of these calls, along with using the Yvu matrix instead of Yuv matrix,
     // swaps B and R in these orderings as well. This table summarizes this block's intent:
     //
-    // libavif format        libyuv Func     UV matrix (and UV argument ordering)
-    // --------------------  -------------   ------------------------------------
-    // AVIF_RGB_FORMAT_RGB   *ToRGB24Matrix  matrixYVU
-    // AVIF_RGB_FORMAT_BGR   *ToRGB24Matrix  matrixYUV
-    // AVIF_RGB_FORMAT_BGRA  *ToARGBMatrix   matrixYUV
-    // AVIF_RGB_FORMAT_RGBA  *ToARGBMatrix   matrixYVU
-    // AVIF_RGB_FORMAT_ABGR  *ToRGBAMatrix   matrixYUV
-    // AVIF_RGB_FORMAT_ARGB  *ToRGBAMatrix   matrixYVU
+    // libavif format            libyuv Func      UV matrix (and UV argument ordering)
+    // --------------------      -------------    ------------------------------------
+    // AVIF_RGB_FORMAT_RGB       *ToRGB24Matrix   matrixYVU
+    // AVIF_RGB_FORMAT_BGR       *ToRGB24Matrix   matrixYUV
+    // AVIF_RGB_FORMAT_RGB_565   *ToRGB565Matrix  matrixYUV
+    // AVIF_RGB_FORMAT_BGRA      *ToARGBMatrix    matrixYUV
+    // AVIF_RGB_FORMAT_RGBA      *ToARGBMatrix    matrixYVU
+    // AVIF_RGB_FORMAT_ABGR      *ToRGBAMatrix    matrixYUV
+    // AVIF_RGB_FORMAT_ARGB      *ToRGBAMatrix    matrixYVU
 
     if (rgb->format == AVIF_RGB_FORMAT_RGB) {
         // AVIF_RGB_FORMAT_RGB   *ToRGB24Matrix  matrixYVU
@@ -408,6 +409,25 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                   matrixYUV,
                                   image->width,
                                   image->height) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+            return AVIF_RESULT_OK;
+        }
+    } else if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
+        // AVIF_RGB_FORMAT_BGR   *ToRGB565Matrix  matrixYUV
+
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+            if (I420ToRGB565Matrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                   image->yuvRowBytes[AVIF_CHAN_Y],
+                                   image->yuvPlanes[AVIF_CHAN_U],
+                                   image->yuvRowBytes[AVIF_CHAN_U],
+                                   image->yuvPlanes[AVIF_CHAN_V],
+                                   image->yuvRowBytes[AVIF_CHAN_V],
+                                   rgb->pixels,
+                                   rgb->rowBytes,
+                                   matrixYUV,
+                                   image->width,
+                                   image->height) != 0) {
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
             return AVIF_RESULT_OK;
