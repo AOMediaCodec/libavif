@@ -448,13 +448,15 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     return AVIF_RESULT_OK;
 }
 
+#define RGB565(R, G, B) ((uint16_t)(((B) >> 3) | (((G) >> 2) << 5) | (((R) >> 3) << 11)))
+
 static void avifStoreRGB8Pixel(avifRGBFormat format, uint8_t R, uint8_t G, uint8_t B, uint8_t * ptrR, uint8_t * ptrG, uint8_t * ptrB)
 {
     if (format == AVIF_RGB_FORMAT_RGB_565) {
         // References for RGB565 color conversion:
         // * https://docs.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb
         // * https://chromium.googlesource.com/libyuv/libyuv/+/9892d70c965678381d2a70a1c9002d1cf136ee78/source/row_common.cc#2362
-        *(uint16_t *)ptrR = (uint16_t)((B >> 3) | ((G >> 2) << 5) | ((R >> 3) << 11));
+        *(uint16_t *)ptrR = RGB565(R, G, B);
         return;
     }
     *ptrR = R;
@@ -1039,12 +1041,23 @@ static avifResult avifImageIdentity8ToRGB8ColorFullRange(const avifImage * image
         uint8_t * ptrG = &rgb->pixels[state->rgbOffsetBytesG + (j * rgb->rowBytes)];
         uint8_t * ptrB = &rgb->pixels[state->rgbOffsetBytesB + (j * rgb->rowBytes)];
 
-        for (uint32_t i = 0; i < image->width; ++i) {
-            avifStoreRGB8Pixel(rgb->format, ptrV[i], ptrY[i], ptrU[i], ptrR, ptrG, ptrB);
-
-            ptrR += rgbPixelBytes;
-            ptrG += rgbPixelBytes;
-            ptrB += rgbPixelBytes;
+        // This is intentionally a per-row conditional instead of a per-pixel
+        // conditional. This makes the "else" path (much more common than the
+        // "if" path) much faster than having a per-pixel branch.
+        if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
+            for (uint32_t i = 0; i < image->width; ++i) {
+                *(uint16_t *)ptrR = RGB565(ptrV[i], ptrY[i], ptrU[i]);
+                ptrR += rgbPixelBytes;
+            }
+        } else {
+            for (uint32_t i = 0; i < image->width; ++i) {
+                *ptrR = ptrV[i];
+                *ptrG = ptrY[i];
+                *ptrB = ptrU[i];
+                ptrR += rgbPixelBytes;
+                ptrG += rgbPixelBytes;
+                ptrB += rgbPixelBytes;
+            }
         }
     }
     return AVIF_RESULT_OK;
