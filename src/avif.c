@@ -28,6 +28,7 @@ const char * avifPixelFormatToString(avifPixelFormat format)
         case AVIF_PIXEL_FORMAT_YUV400:
             return "YUV400";
         case AVIF_PIXEL_FORMAT_NONE:
+        case AVIF_PIXEL_FORMAT_COUNT:
         default:
             break;
     }
@@ -61,6 +62,7 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
             break;
 
         case AVIF_PIXEL_FORMAT_NONE:
+        case AVIF_PIXEL_FORMAT_COUNT:
         default:
             break;
     }

@@ -28,6 +28,10 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     if (rgb->format == AVIF_RGB_FORMAT_RGB_565 && rgb->depth != 8) {
         return AVIF_FALSE;
     }
+    if (image->yuvFormat <= AVIF_PIXEL_FORMAT_NONE || image->yuvFormat >= AVIF_PIXEL_FORMAT_COUNT ||
+        rgb->format < AVIF_RGB_FORMAT_RGB || rgb->format >= AVIF_RGB_FORMAT_COUNT) {
+        return AVIF_FALSE;
+    }
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
     //
@@ -43,10 +47,6 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     }
 
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
-        return AVIF_FALSE;
-    }
-
-    if (image->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
         return AVIF_FALSE;
     }
 
@@ -119,7 +119,7 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
             state->rgbOffsetBytesA = 0;
             break;
 
-        default:
+        case AVIF_RGB_FORMAT_COUNT:
             return AVIF_FALSE;
     }
 
