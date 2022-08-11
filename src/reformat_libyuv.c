@@ -102,11 +102,11 @@ static int avifABGRToJ420(const uint8_t * src_abgr,
         // by libyuv, so make sure all steps but the last one process an even number of rows.
         // Try to process as many row pairs as possible in a single step without allocating more than
         // soft_allocation_limit, unless two rows need more than that.
-        num_allocated_rows = (int)AVIF_CEIL(soft_allocation_limit, (uint64_t)src_stride_argb * 2) * 2;
+        num_allocated_rows = (int)AVIF_DIV_CEIL(soft_allocation_limit, (uint64_t)src_stride_argb * 2) * 2;
     }
     src_argb = avifAlloc(num_allocated_rows * src_stride_argb);
     if (!src_argb) {
-        return 1;
+        return -1;
     }
 
     for (int y = 0; y < height; y += num_allocated_rows) {
@@ -114,12 +114,12 @@ static int avifABGRToJ420(const uint8_t * src_abgr,
         if (ARGBToABGR(src_abgr, src_stride_abgr, src_argb, src_stride_argb, width, num_rows) ||
             ARGBToJ420(src_argb, src_stride_argb, dst_y, dst_stride_y, dst_u, dst_stride_u, dst_v, dst_stride_v, width, num_rows)) {
             avifFree(src_argb);
-            return 1;
+            return -1;
         }
-        src_abgr += (uint64_t)num_rows * src_stride_abgr;
-        dst_y += (uint64_t)num_rows * dst_stride_y;
-        dst_u += (uint64_t)num_rows * dst_stride_u / 2; // 4:2:0
-        dst_v += (uint64_t)num_rows * dst_stride_v / 2; // (either num_rows is even or this is the last loop turn)
+        src_abgr += (size_t)num_rows * src_stride_abgr;
+        dst_y += (size_t)num_rows * dst_stride_y;
+        dst_u += (size_t)num_rows * dst_stride_u / 2; // 4:2:0
+        dst_v += (size_t)num_rows * dst_stride_v / 2; // (either num_rows is even or this is the last loop turn)
     }
     avifFree(src_argb);
     return 0;
