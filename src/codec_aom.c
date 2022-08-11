@@ -272,6 +272,7 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
                 fmt = AOM_IMG_FMT_I420;
                 break;
             case AVIF_PIXEL_FORMAT_NONE:
+            case AVIF_PIXEL_FORMAT_COUNT:
             default:
                 return AOM_IMG_FMT_NONE;
         }
@@ -649,6 +650,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                         seqProfile = 0;
                         break;
                     case AVIF_PIXEL_FORMAT_NONE:
+                    case AVIF_PIXEL_FORMAT_COUNT:
                     default:
                         break;
                 }

@@ -457,7 +457,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
                     y4mHeaderFormat = "Cmono XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -476,7 +477,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
                     y4mHeaderFormat = "Cmono10 XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -495,7 +497,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
                     y4mHeaderFormat = "Cmono12 XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;

@@ -180,7 +180,11 @@ AVIF_API void avifRWDataFree(avifRWData * raw);
 
 // ---------------------------------------------------------------------------
 // avifPixelFormat
-
+//
+// Note to libavif maintainers: The lookup tables in avifImageYUVToRGBLibYUV
+// rely on the ordering of this enum values for their correctness. So changing
+// the values in this enum will require auditing avifImageYUVToRGBLibYUV for
+// correctness.
 typedef enum avifPixelFormat
 {
     // No YUV pixels are present. Alpha plane can still be present.
@@ -189,7 +193,8 @@ typedef enum avifPixelFormat
     AVIF_PIXEL_FORMAT_YUV444,
     AVIF_PIXEL_FORMAT_YUV422,
     AVIF_PIXEL_FORMAT_YUV420,
-    AVIF_PIXEL_FORMAT_YUV400
+    AVIF_PIXEL_FORMAT_YUV400,
+    AVIF_PIXEL_FORMAT_COUNT
 } avifPixelFormat;
 AVIF_API const char * avifPixelFormatToString(avifPixelFormat format);
 
@@ -544,6 +549,10 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 //   *  BGR             to  YUV420        /[5|6]/[Full|Limited]
 //   * [RGBA|ARGB|ABGR] to  YUV420        /[5|6]/ Limited
 
+// Note to libavif maintainers: The lookup tables in avifImageYUVToRGBLibYUV
+// rely on the ordering of this enum values for their correctness. So changing
+// the values in this enum will require auditing avifImageYUVToRGBLibYUV for
+// correctness.
 typedef enum avifRGBFormat
 {
     AVIF_RGB_FORMAT_RGB = 0,
@@ -561,7 +570,8 @@ typedef enum avifRGBFormat
     //   b4 and b0 are the MSB and LSB of the blue component respectively.
     // This format is only supported for YUV -> RGB conversion and when
     // avifRGBImage.depth is set to 8.
-    AVIF_RGB_FORMAT_RGB_565
+    AVIF_RGB_FORMAT_RGB_565,
+    AVIF_RGB_FORMAT_COUNT
 } avifRGBFormat;
 AVIF_API uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
 AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
