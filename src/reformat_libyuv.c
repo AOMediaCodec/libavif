@@ -416,7 +416,24 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
     } else if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         // AVIF_RGB_FORMAT_BGR   *ToRGB565Matrix  matrixYUV
 
-        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
+#if LIBYUV_VERSION >= 1838
+            if (I422ToRGB565Matrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                   image->yuvRowBytes[AVIF_CHAN_Y],
+                                   image->yuvPlanes[AVIF_CHAN_U],
+                                   image->yuvRowBytes[AVIF_CHAN_U],
+                                   image->yuvPlanes[AVIF_CHAN_V],
+                                   image->yuvRowBytes[AVIF_CHAN_V],
+                                   rgb->pixels,
+                                   rgb->rowBytes,
+                                   matrixYUV,
+                                   image->width,
+                                   image->height) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+            return AVIF_RESULT_OK;
+#endif
+        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
             if (I420ToRGB565Matrix(image->yuvPlanes[AVIF_CHAN_Y],
                                    image->yuvRowBytes[AVIF_CHAN_Y],
                                    image->yuvPlanes[AVIF_CHAN_U],
