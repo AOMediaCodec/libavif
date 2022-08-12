@@ -111,15 +111,15 @@ static int avifABGRToJ420(const uint8_t * src_abgr,
 
     for (int y = 0; y < height; y += num_allocated_rows) {
         const int num_rows = AVIF_MIN(num_allocated_rows, height - y);
-        if (ARGBToABGR(src_abgr, src_stride_abgr, src_argb, src_stride_argb, width, num_rows) ||
+        if (ABGRToARGB(src_abgr, src_stride_abgr, src_argb, src_stride_argb, width, num_rows) ||
             ARGBToJ420(src_argb, src_stride_argb, dst_y, dst_stride_y, dst_u, dst_stride_u, dst_v, dst_stride_v, width, num_rows)) {
             avifFree(src_argb);
             return -1;
         }
         src_abgr += (size_t)num_rows * src_stride_abgr;
         dst_y += (size_t)num_rows * dst_stride_y;
-        dst_u += (size_t)num_rows * dst_stride_u / 2; // 4:2:0
-        dst_v += (size_t)num_rows * dst_stride_v / 2; // (either num_rows is even or this is the last loop turn)
+        dst_u += (size_t)num_rows / 2 * dst_stride_u; // 4:2:0
+        dst_v += (size_t)num_rows / 2 * dst_stride_v; // (either num_rows is even or this is the last iteration)
     }
     avifFree(src_argb);
     return 0;

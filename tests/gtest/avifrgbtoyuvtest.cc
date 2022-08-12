@@ -39,18 +39,10 @@ void ModifyImageChannel(avifRGBImage* image, uint32_t channel_offset,
 
 void ModifyImageChannel(avifRGBImage* image, uint32_t channel_offset,
                         const int32_t modifier[kModifierSize]) {
-  (image->depth <= 8)
-      ? ModifyImageChannel<uint8_t>(image, channel_offset, modifier)
-      : ModifyImageChannel<uint16_t>(image, channel_offset, modifier);
-}
-
-// Fills the image channel with the given value, and modifies the individual
-// pixel values of that channel with the modifier, if not null.
-void SetImageChannel(avifRGBImage* image, uint32_t channel_offset,
-                     uint32_t value, const int32_t modifier[kModifierSize]) {
-  testutil::FillImageChannel(image, channel_offset, value);
-  if (modifier) {
-    ModifyImageChannel(image, channel_offset, modifier);
+  if (image->depth <= 8) {
+    ModifyImageChannel<uint8_t>(image, channel_offset, modifier);
+  } else {
+    ModifyImageChannel<uint16_t>(image, channel_offset, modifier);
   }
 }
 
@@ -116,7 +108,6 @@ constexpr int32_t kBlueNoise[kModifierSize] = {
     13, 12, 2,  7,   // that is somewhat close to kGreenNoise.
     3,  1,  11, 10,  //
     6,  15, 5,  4};
-constexpr int32_t* kPlainColor = nullptr;
 
 //------------------------------------------------------------------------------
 
@@ -177,15 +168,19 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
   for (uint32_t r = 0; r < max_value + rgb_step; r += rgb_step) {
     r = std::min(r, max_value);  // Test the maximum sample value even if it is
                                  // not a multiple of rgb_step.
-    SetImageChannel(&src_rgb, offsets.r, r,
-                    add_noise ? kRedNoise : kPlainColor);
+    testutil::FillImageChannel(&src_rgb, offsets.r, r);
+    if (add_noise) {
+      ModifyImageChannel(&src_rgb, offsets.r, kRedNoise);
+    }
 
     if (is_monochrome) {
       // Test only greyish input when converting to a single channel.
-      SetImageChannel(&src_rgb, offsets.g, r,
-                      add_noise ? kGreenNoise : kPlainColor);
-      SetImageChannel(&src_rgb, offsets.b, r,
-                      add_noise ? kBlueNoise : kPlainColor);
+      testutil::FillImageChannel(&src_rgb, offsets.g, r);
+      testutil::FillImageChannel(&src_rgb, offsets.b, r);
+      if (add_noise) {
+        ModifyImageChannel(&src_rgb, offsets.g, kGreenNoise);
+        ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
+      }
 
       // Change these to BEST_QUALITY to force built-in over libyuv conversion.
       src_rgb.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
@@ -199,12 +194,16 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
     } else {
       for (uint32_t g = 0; g < max_value + rgb_step; g += rgb_step) {
         g = std::min(g, max_value);
-        SetImageChannel(&src_rgb, offsets.g, g,
-                        add_noise ? kGreenNoise : kPlainColor);
+        testutil::FillImageChannel(&src_rgb, offsets.g, g);
+        if (add_noise) {
+          ModifyImageChannel(&src_rgb, offsets.g, kGreenNoise);
+        }
         for (uint32_t b = 0; b < max_value + rgb_step; b += rgb_step) {
           b = std::min(b, max_value);
-          SetImageChannel(&src_rgb, offsets.b, b,
-                          add_noise ? kBlueNoise : kPlainColor);
+          testutil::FillImageChannel(&src_rgb, offsets.b, b);
+          if (add_noise) {
+            ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
+          }
 
           // Change these to BEST_QUALITY to force built-in over libyuv
           // conversion.
@@ -283,14 +282,16 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
           testutil::GetRgbChannelOffsets(rgb_format);
 
       // Fill the input buffer with whatever content.
-      SetImageChannel(&src_rgb, offsets.r, /*value=*/0,
-                      add_noise ? kRedNoise : kPlainColor);
-      SetImageChannel(
-          &src_rgb, offsets.g, /*value=*/0,
-          add_noise ? is_monochrome ? kRedNoise : kGreenNoise : kPlainColor);
-      SetImageChannel(
-          &src_rgb, offsets.b, /*value=*/0,
-          add_noise ? is_monochrome ? kRedNoise : kBlueNoise : kPlainColor);
+      testutil::FillImageChannel(&src_rgb, offsets.r, /*value=*/0);
+      testutil::FillImageChannel(&src_rgb, offsets.g, /*value=*/0);
+      testutil::FillImageChannel(&src_rgb, offsets.b, /*value=*/0);
+      if (add_noise) {
+        ModifyImageChannel(&src_rgb, offsets.r, kRedNoise);
+        ModifyImageChannel(&src_rgb, offsets.g,
+                           is_monochrome ? kRedNoise : kGreenNoise);
+        ModifyImageChannel(&src_rgb, offsets.b,
+                           is_monochrome ? kRedNoise : kBlueNoise);
+      }
       // Alpha values are not tested here. Keep it opaque.
       if (avifRGBFormatHasAlpha(src_rgb.format)) {
         testutil::FillImageChannel(&src_rgb, offsets.a, rgb_max);
