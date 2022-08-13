@@ -1037,12 +1037,17 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
+// * AV1 encoder settings and csOptions will be applied to AV1 encoder before encoding first image, and images
+//   added with AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS flag.
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
     // settings (see Notes above)
+    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
+    uint64_t timescale;   // timescale of the media (Hz)
+    // AV1 encoder settings.
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
@@ -1051,8 +1056,6 @@ typedef struct avifEncoder
     int tileRowsLog2;
     int tileColsLog2;
     int speed;
-    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
-    uint64_t timescale;   // timescale of the media (Hz)
 
     // stats from the most recent write
     avifIOStats ioStats;
@@ -1079,7 +1082,10 @@ typedef enum avifAddImageFlag
     // Use this flag when encoding a single image. Signals "still_picture" to AV1 encoders, which
     // tweaks various compression rules. This is enabled automatically when using the
     // avifEncoderWrite() single-image encode path.
-    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
+    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1),
+
+    // Use this flag to update encode settings of AV1 encoder.
+    AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS = (1 << 2)
 } avifAddImageFlag;
 typedef uint32_t avifAddImageFlags;
 

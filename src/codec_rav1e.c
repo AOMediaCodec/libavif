@@ -54,6 +54,10 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
 
     RaConfig * rav1eConfig = NULL;

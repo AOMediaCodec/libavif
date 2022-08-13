@@ -61,6 +61,16 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
 
 //------------------------------------------------------------------------------
 
+struct AvifIOLimitedReader {
+  static constexpr uint64_t NoClamp = UINT64_MAX;
+
+  avifIO io;
+  avifIO* underlayIO;
+  uint64_t clamp;
+};
+
+avifIO* AvifIOCreateLimitedReader(avifIO* underlayIO, uint64_t clamp);
+
 }  // namespace testutil
 }  // namespace libavif
 

@@ -49,6 +49,10 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     EbColorFormat color_format = EB_YUV420;
     EbBufferHeaderType * input_buffer = NULL;
