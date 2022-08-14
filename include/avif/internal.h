@@ -15,9 +15,6 @@ extern "C" {
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-// Returns the equivalent of ceil(a/b) for positive integers a and b.
-#define AVIF_DIV_CEIL(a, b) (((a) + (b)-1) / (b))
-
 // Used by stream related things.
 #define CHECK(A)               \
     do {                       \
