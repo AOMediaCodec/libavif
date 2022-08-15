@@ -41,6 +41,7 @@ unsigned int avifLibYUVVersion(void)
 #else
 
 #include <assert.h>
+#include <limits.h>
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -98,13 +99,16 @@ static int avifABGRToJ420(const uint8_t * src_abgr,
         // Process the whole buffer in one go.
         num_allocated_rows = height;
     } else {
+        if ((uint64_t)src_stride_argb * 2 > INT_MAX) {
+            return -1;
+        }
         // The last row of an odd number of RGB rows to be converted to subsampled YUV is treated differently
         // by libyuv, so make sure all steps but the last one process an even number of rows.
         // Try to process as many row pairs as possible in a single step without allocating more than
         // soft_allocation_limit, unless two rows need more than that.
-        num_allocated_rows = AVIF_MAX(1, soft_allocation_limit / ((uint64_t)src_stride_argb * 2)) * 2;
+        num_allocated_rows = AVIF_MAX(1, soft_allocation_limit / (src_stride_argb * 2)) * 2;
     }
-    src_argb = avifAlloc((uint64_t)num_allocated_rows * src_stride_argb);
+    src_argb = avifAlloc(num_allocated_rows * src_stride_argb);
     if (!src_argb) {
         return -1;
     }
