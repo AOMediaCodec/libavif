@@ -159,11 +159,12 @@ int main(int argc, char * argv[])
             ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--size-limit")) {
             NEXTARG();
-            imageSizeLimit = strtoul(arg, NULL, 10);
-            if ((imageSizeLimit > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) || (imageSizeLimit == 0)) {
+            unsigned long value = strtoul(arg, NULL, 10);
+            if ((value > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) || (value == 0)) {
                 fprintf(stderr, "ERROR: invalid image size limit: %s\n", arg);
                 return 1;
             }
+            imageSizeLimit = (uint32_t)value;
         } else {
             // Positional argument
             if (!inputFilename) {

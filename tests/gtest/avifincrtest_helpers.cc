@@ -100,8 +100,8 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
     byte_count -= byte_count / 2;
   }
   // Linearly map the input availability ratio to the decoded row ratio.
-  const uint32_t min_decoded_cell_row_count =
-      (height / cell_height) * available_byte_count / byte_count;
+  const uint32_t min_decoded_cell_row_count = static_cast<uint32_t>(
+      (height / cell_height) * available_byte_count / byte_count);
   const uint32_t min_decoded_px_row_count =
       min_decoded_cell_row_count * cell_height;
   // One cell is the incremental decoding granularity.
