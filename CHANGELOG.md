@@ -14,7 +14,7 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
 * Update aom.cmd: v3.4.0
-* Update svt.cmd/svt.sh: v1.2.0
+* Update svt.cmd/svt.sh: v1.2.1
 * Update libgav1.cmd: v0.18.0
 * Update libyuv.cmd: 9b17af9b (version 1838)
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
