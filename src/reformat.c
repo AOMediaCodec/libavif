@@ -69,7 +69,7 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     state->yuvChannelBytes = (image->depth > 8) ? 2 : 1;
     state->rgbChannelBytes = (rgb->depth > 8) ? 2 : 1;
     state->rgbChannelCount = avifRGBFormatChannelCount(rgb->format);
-    state->rgbPixelBytes = state->rgbChannelBytes * state->rgbChannelCount;
+    state->rgbPixelBytes = avifRGBImagePixelSize(rgb);
 
     switch (rgb->format) {
         case AVIF_RGB_FORMAT_RGB:
