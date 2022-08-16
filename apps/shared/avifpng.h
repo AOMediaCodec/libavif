@@ -15,7 +15,7 @@ avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelForm
 avifBool avifPNGWrite(const char * outputFilename,
                       const avifImage * avif,
                       uint32_t requestedDepth,
-                      avifChromaUpsampling chromaUpsampling,
+                      avifConversionFlags conversionFlags,
                       int compressionLevel);
 
 #ifdef __cplusplus

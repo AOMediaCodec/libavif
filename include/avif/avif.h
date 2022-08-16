@@ -601,8 +601,11 @@ AVIF_API void avifRGBImageFreePixels(avifRGBImage * rgb);
 // The main conversion options.
 typedef enum avifConversionFlag
 {
-    AVIF_CONVERSION_AUTO = 0, // Default settings: prefers libyuv if available,
-                              // AVIF_CHROMA_DOWNSAMPLING_AVERAGE, AVIF_CHROMA_UPSAMPLING_BILINEAR
+    AVIF_CONVERSION_AUTO = 0, // Default settings.
+                              // Uses the first available upsampling filter among:
+                              //   libyuv average, built-in average
+                              // Uses the first available downsampling filter among:
+                              //   libyuv bilinear, libyuv nearest-neighbor, built-in bilinear
 
     // libyuv preference
 

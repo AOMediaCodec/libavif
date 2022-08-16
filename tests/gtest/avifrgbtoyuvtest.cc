@@ -182,12 +182,10 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
         ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
       }
 
-      // Change these to BEST_QUALITY to force built-in over libyuv conversion.
-      src_rgb.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
-      dst_rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
-
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
-      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
+      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_AUTO),
+                AVIF_RESULT_OK);
+      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_AUTO),
+                AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                              &sq_diff_sum, &max_abs_diff);
       num_diffs += src_rgb.width * src_rgb.height * 3;  // Alpha is lossless.
@@ -205,13 +203,12 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
             ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
           }
 
-          // Change these to BEST_QUALITY to force built-in over libyuv
-          // conversion.
-          src_rgb.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
-          dst_rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
-
-          ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
-          ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
+          ASSERT_EQ(
+              avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_AUTO),
+              AVIF_RESULT_OK);
+          ASSERT_EQ(
+              avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_AUTO),
+              AVIF_RESULT_OK);
           GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                                  &sq_diff_sum, &max_abs_diff);
           num_diffs +=
@@ -275,9 +272,6 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
       yuv->yuvRange = yuv_range;
       testutil::AvifRgbImage src_rgb(yuv.get(), rgb_depth, rgb_format);
       testutil::AvifRgbImage dst_rgb(yuv.get(), rgb_depth, rgb_format);
-      // Change these to BEST_QUALITY to force built-in over libyuv conversion.
-      src_rgb.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
-      dst_rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
       const testutil::RgbChannelOffsets offsets =
           testutil::GetRgbChannelOffsets(rgb_format);
 
@@ -297,8 +291,10 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
         testutil::FillImageChannel(&src_rgb, offsets.a, rgb_max);
       }
 
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
-      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
+      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_AUTO),
+                AVIF_RESULT_OK);
+      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_AUTO),
+                AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                              &sq_diff_sum, &max_abs_diff);
       num_diffs += src_rgb.width * src_rgb.height * 3;
