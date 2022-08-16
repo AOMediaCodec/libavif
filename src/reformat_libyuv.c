@@ -95,11 +95,11 @@ static int avifABGRToJ420(const uint8_t * src_abgr,
     const int src_stride_argb = width * 4;
     const int soft_allocation_limit = 16384; // Arbitrarily chosen trade-off between CPU and memory footprints.
     int num_allocated_rows;
-    if ((height == 1) || ((uint64_t)src_stride_argb * height <= (uint64_t)soft_allocation_limit)) {
+    if ((height == 1) || ((int64_t)src_stride_argb * height <= soft_allocation_limit)) {
         // Process the whole buffer in one go.
         num_allocated_rows = height;
     } else {
-        if ((uint64_t)src_stride_argb * 2 > INT_MAX) {
+        if ((int64_t)src_stride_argb * 2 > INT_MAX) {
             return -1;
         }
         // The last row of an odd number of RGB rows to be converted to subsampled YUV is treated differently
