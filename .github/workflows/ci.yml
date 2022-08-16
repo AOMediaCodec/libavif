@@ -62,6 +62,10 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash libjpeg.cmd
+    - name: Build libsharpyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash libsharpyuv.cmd
     - name: Build GoogleTest
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext

@@ -152,6 +152,12 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb);
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
 
 // Returns:
+// * AVIF_RESULT_OK              - Converted successfully with libsharpyuv
+// * AVIF_RESULT_NOT_IMPLEMENTED - libsharpyuv is not compiled in, or doesn't support this type of input
+// * [any other error]           - Return error to caller
+avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * rgb, const avifReformatState * state);
+
+// Returns:
 // * AVIF_RESULT_OK               - Converted successfully with libyuv.
 // * AVIF_RESULT_NOT_IMPLEMENTED  - The fast path for this conversion is not implemented with libyuv, use built-in conversion.
 // * AVIF_RESULT_INVALID_ARGUMENT - Return error to caller.
