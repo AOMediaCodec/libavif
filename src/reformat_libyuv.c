@@ -93,9 +93,9 @@ static int avifABGRToJ420(const uint8_t * src_abgr,
     // A temporary buffer is needed to swap the R and B channels before calling ARGBToJ420().
     uint8_t * src_argb;
     const int src_stride_argb = width * 4;
-    const uint64_t soft_allocation_limit = 16384; // Arbitrarily chosen trade-off between CPU and memory footprints.
+    const int soft_allocation_limit = 16384; // Arbitrarily chosen trade-off between CPU and memory footprints.
     int num_allocated_rows;
-    if ((height == 1) || ((uint64_t)src_stride_argb * height <= soft_allocation_limit)) {
+    if ((height == 1) || ((uint64_t)src_stride_argb * height <= (uint64_t)soft_allocation_limit)) {
         // Process the whole buffer in one go.
         num_allocated_rows = height;
     } else {
