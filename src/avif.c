@@ -407,6 +407,17 @@ avifBool avifImageUsesU16(const avifImage * image)
     return (image->depth > 8);
 }
 
+avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
+{
+    if (width > (imageSizeLimit / height)) {
+        return AVIF_TRUE;
+    }
+    if ((imageDimensionLimit != 0) && ((width > imageDimensionLimit) || (height > imageDimensionLimit))) {
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
+}
+
 // avifCodecCreate*() functions are in their respective codec_*.c files
 
 void avifCodecDestroy(avifCodec * codec)

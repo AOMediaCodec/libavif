@@ -164,11 +164,18 @@ avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb);
 avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
+avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit);
+
 // ---------------------------------------------------------------------------
 // Scaling
 
 // This scales the YUV/A planes in-place.
-avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag);
+avifBool avifImageScale(avifImage * image,
+                        uint32_t dstWidth,
+                        uint32_t dstHeight,
+                        uint32_t imageSizeLimit,
+                        uint32_t imageDimensionLimit,
+                        avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // Grid AVIF images
