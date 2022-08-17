@@ -52,6 +52,15 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
   }
   decoder->decoder->ignoreXMP = AVIF_TRUE;
   decoder->decoder->ignoreExif = AVIF_TRUE;
+
+  // Turn off 'clap' (clean aperture) property validation. The JNI wrapper
+  // ignores the 'clap' property.
+  decoder->decoder->strictFlags &= ~AVIF_STRICT_CLAP_VALID;
+  // Allow 'pixi' (pixel information) property to be missing. Older versions of
+  // libheif did not add the 'pixi' item property to AV1 image items (See
+  // crbug.com/1198455).
+  decoder->decoder->strictFlags &= ~AVIF_STRICT_PIXI_REQUIRED;
+
   avifResult res = avifDecoderSetIOMemory(decoder->decoder, buffer, length);
   if (res != AVIF_RESULT_OK) {
     LOGE("Failed to set AVIF IO to a memory reader.");
