@@ -74,6 +74,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                 break;
             case AVIF_PIXEL_FORMAT_YUV400:
             case AVIF_PIXEL_FORMAT_NONE:
+            case AVIF_PIXEL_FORMAT_COUNT:
             default:
                 return AVIF_RESULT_UNKNOWN_ERROR;
         }
