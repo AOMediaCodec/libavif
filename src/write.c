@@ -122,11 +122,13 @@ typedef struct avifEncoderData
 {
     avifEncoderItemArray items;
     avifEncoderFrameArray frames;
+    avifEncoder lastEncoder;
     avifImage * imageMetadata;
     uint16_t lastItemID;
     uint16_t primaryItemID;
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
+    avifBool csOptionsUpdated;
 } avifEncoderData;
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
@@ -317,6 +319,47 @@ void avifEncoderDestroy(avifEncoder * encoder)
 void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
+    encoder->data->csOptionsUpdated = AVIF_TRUE;
+}
+
+avifBool avifEncoderCheckSettingsChange(avifEncoder * encoder, avifAddImageFlag * flags)
+{
+    avifEncoder * lastEncoder = &encoder->data->lastEncoder;
+
+    // lastEncoder->data is used to mark that lastEncoder is initialized.
+    if (lastEncoder->data == NULL) {
+        lastEncoder->data = encoder->data;
+        goto copy;
+    }
+
+    if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
+        (lastEncoder->timescale != encoder->timescale)) {
+        return AVIF_FALSE;
+    }
+
+    if ((lastEncoder->maxThreads != encoder->maxThreads) || (lastEncoder->minQuantizer != encoder->minQuantizer) ||
+        (lastEncoder->maxQuantizer != encoder->maxQuantizer) || (lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha) ||
+        (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) || (lastEncoder->tileRowsLog2 != encoder->tileRowsLog2) ||
+        (lastEncoder->tileColsLog2 != encoder->tileColsLog2) || (lastEncoder->speed != encoder->speed) ||
+        (encoder->data->csOptionsUpdated)) {
+        *flags |= AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS;
+        goto copy;
+    }
+
+copy:
+    lastEncoder->codecChoice = encoder->codecChoice;
+    lastEncoder->keyframeInterval = encoder->keyframeInterval;
+    lastEncoder->timescale = encoder->timescale;
+    lastEncoder->maxThreads = encoder->maxThreads;
+    lastEncoder->minQuantizer = encoder->minQuantizer;
+    lastEncoder->maxQuantizer = encoder->maxQuantizer;
+    lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
+    lastEncoder->maxQuantizerAlpha = encoder->maxQuantizerAlpha;
+    lastEncoder->tileRowsLog2 = encoder->tileRowsLog2;
+    lastEncoder->tileColsLog2 = encoder->tileColsLog2;
+    lastEncoder->speed = encoder->speed;
+    encoder->data->csOptionsUpdated = AVIF_FALSE;
+    return AVIF_TRUE;
 }
 
 // This function is used in two codepaths:
@@ -604,6 +647,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
     if (!avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE)) {
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
+    }
+
+    if (!avifEncoderCheckSettingsChange(encoder, &addImageFlags)) {
+        return AVIF_RESULT_CANNOT_CHANGE_SETTING;
     }
 
     // -----------------------------------------------------------------------

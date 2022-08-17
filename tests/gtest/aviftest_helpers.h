@@ -4,6 +4,7 @@
 #ifndef LIBAVIF_TESTS_AVIFTEST_HELPERS_H_
 #define LIBAVIF_TESTS_AVIFTEST_HELPERS_H_
 
+#include <limits>
 #include <memory>
 
 #include "avif/avif.h"
@@ -62,7 +63,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
 //------------------------------------------------------------------------------
 
 struct AvifIOLimitedReader {
-  static constexpr uint64_t NoClamp = UINT64_MAX;
+  static constexpr uint64_t kNoClamp = std::numeric_limits<uint64_t>::max();
 
   avifIO io;
   avifIO* underlayIO;

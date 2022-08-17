@@ -146,7 +146,8 @@ typedef enum avifResult
     AVIF_RESULT_WAITING_ON_IO, // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
     AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
-    AVIF_RESULT_OUT_OF_MEMORY
+    AVIF_RESULT_OUT_OF_MEMORY,
+    AVIF_RESULT_CANNOT_CHANGE_SETTING, // a setting that can't change is changed during encoding
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -1037,8 +1038,8 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
-// * AV1 encoder settings and csOptions will be applied to AV1 encoder before encoding first image, and images
-//   added with AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS flag.
+// * AV1 encoder settings and codecSpecificOptions will be applied to AV1 encoder when changed or when
+//   AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS flag is explicitly requested.
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
@@ -1085,6 +1086,7 @@ typedef enum avifAddImageFlag
     AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1),
 
     // Use this flag to update encode settings of AV1 encoder.
+    // This is enabled automatically if encoder settings is changed.
     AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS = (1 << 2)
 } avifAddImageFlag;
 typedef uint32_t avifAddImageFlags;

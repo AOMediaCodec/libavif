@@ -717,11 +717,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
-        aom_codec_flags_t encoderFlags = 0;
-        if (image->depth > 8) {
-            encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
-        }
         if (!codec->internal->encoderInitialized) {
+            aom_codec_flags_t encoderFlags = 0;
+            if (image->depth > 8) {
+                encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
+            }
+
             if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, cfg, encoderFlags) != AOM_CODEC_OK) {
                 avifDiagnosticsPrintf(codec->diag,
                                       "aom_codec_enc_init() failed: %s: %s",

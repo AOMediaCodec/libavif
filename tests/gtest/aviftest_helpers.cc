@@ -214,7 +214,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
 static avifResult avifIOLimitedReaderRead(struct avifIO* io, uint32_t readFlags,
                                           uint64_t offset, size_t size,
                                           avifROData* out) {
-  auto reader = (AvifIOLimitedReader*)io;
+  auto reader = reinterpret_cast<AvifIOLimitedReader*>(io);
 
   if (offset + size > reader->clamp) {
     return AVIF_RESULT_WAITING_ON_IO;
@@ -225,25 +225,25 @@ static avifResult avifIOLimitedReaderRead(struct avifIO* io, uint32_t readFlags,
 }
 
 static void avifIOLimitedReaderDestroy(struct avifIO* io) {
-  auto reader = (AvifIOLimitedReader*)io;
+  auto reader = reinterpret_cast<AvifIOLimitedReader*>(io);
   reader->underlayIO->destroy(reader->underlayIO);
   delete reader;
 }
 
 avifIO* AvifIOCreateLimitedReader(avifIO* underlayIO, uint64_t clamp) {
-  return (avifIO*)new AvifIOLimitedReader{{
-                                              avifIOLimitedReaderDestroy,
-                                              avifIOLimitedReaderRead,
-                                              nullptr,
-                                              underlayIO->sizeHint,
-                                              underlayIO->persistent,
-                                              nullptr,
-                                          },
-                                          underlayIO,
-                                          clamp};
+  return reinterpret_cast<avifIO*>(
+      new AvifIOLimitedReader{{
+                                  avifIOLimitedReaderDestroy,
+                                  avifIOLimitedReaderRead,
+                                  nullptr,
+                                  underlayIO->sizeHint,
+                                  underlayIO->persistent,
+                                  nullptr,
+                              },
+                              underlayIO,
+                              clamp});
 }
 
 //------------------------------------------------------------------------------
-
 }  // namespace testutil
 }  // namespace libavif
