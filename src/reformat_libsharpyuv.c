@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
-#include <stdio.h>
 
 #if defined(AVIF_LIBSHARPYUV_ENABLED)
 #include <sharpyuv/sharpyuv.h>

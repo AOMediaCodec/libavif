@@ -1,5 +1,5 @@
-: # If you want to use a local build of libyuv, you must clone the libwebp repo in this directory first,
-: # then enable CMake's AVIF_LOCAL_LIBYUV option.
+: # If you want to use a local build of libsharpyuv, you must clone the libwebp repo in this directory first,
+: # then enable CMake's AVIF_LOCAL_LIBSHARPYUV option.
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
