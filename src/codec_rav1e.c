@@ -90,6 +90,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                     codec->internal->yShift = 1;
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
+                case AVIF_PIXEL_FORMAT_COUNT:
                 default:
                     return AVIF_RESULT_UNKNOWN_ERROR;
             }
