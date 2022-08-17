@@ -526,10 +526,11 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // If libavif is built with libyuv fast paths enabled, libavif will use libyuv for conversion from
 // YUV to RGB if the following requirements are met:
 //
-// * YUV depth: 8
+// * YUV depth: 8 or 10
 // * RGB depth: 8
 // * rgb.chromaUpsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC, AVIF_CHROMA_UPSAMPLING_FASTEST
-// * rgb.format: AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA (420/422 support for AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_ARGB)
+// * rgb.format: AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA (420/422 support for
+//               AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_ARGB, AVIF_RGB_FORMAT_RGB_565)
 // * CICP is one of the following combinations (CP/TC/MC/Range):
 //   * x/x/[2|5|6]/Full
 //   * [5|6]/x/12/Full
