@@ -147,7 +147,8 @@ typedef enum avifResult
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
     AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
     AVIF_RESULT_OUT_OF_MEMORY,
-    AVIF_RESULT_CANNOT_CHANGE_SETTING // a setting that can't change is changed during encoding
+    AVIF_RESULT_CANNOT_CHANGE_SETTING, // a setting that can't change is changed during encoding
+    AVIF_RESULT_INCOMPATIBLE_IMAGE     // given image is not compatible with already encoded image
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);

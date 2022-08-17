@@ -863,10 +863,23 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     } else {
         // Another frame in an image sequence
 
-        if (encoder->data->alphaPresent && !firstCell->alphaPlane) {
-            // If the first image in the sequence had an alpha plane (even if fully opaque), all
-            // subsequence images must have alpha as well.
-            return AVIF_RESULT_ENCODE_ALPHA_FAILED;
+        const avifImage * imageMetadata = encoder->data->imageMetadata;
+        // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
+        //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
+        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
+        //   same decoder configuration (see 7.3.6.2).
+        // If the first image in the sequence had an alpha plane (even if fully opaque), all
+        // subsequence images must have alpha as well.
+        if ((imageMetadata->width != firstCell->width) || (imageMetadata->height != firstCell->height) ||
+            (imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||
+            (imageMetadata->yuvRange != firstCell->yuvRange) || (imageMetadata->colorPrimaries != firstCell->colorPrimaries) ||
+            (imageMetadata->transferCharacteristics != firstCell->transferCharacteristics) ||
+            (imageMetadata->matrixCoefficients != firstCell->matrixCoefficients) ||
+            (!!imageMetadata->alphaPlane != !!firstCell->alphaPlane) ||
+            (imageMetadata->alphaPremultiplied != firstCell->alphaPremultiplied) ||
+            (encoder->data->alphaPresent && !firstCell->alphaPlane)) {
+            return AVIF_RESULT_INCOMPATIBLE_IMAGE;
         }
     }
 
