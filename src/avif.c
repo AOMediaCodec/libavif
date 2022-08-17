@@ -96,7 +96,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_INVALID_ARGUMENT:              return "Invalid argument";
         case AVIF_RESULT_NOT_IMPLEMENTED:               return "Not implemented";
         case AVIF_RESULT_OUT_OF_MEMORY:                 return "Out of memory";
-        case AVIF_RESULT_CANNOT_CHANGE_SETTING:             return "Can not change some settings during encoding";
+        case AVIF_RESULT_CANNOT_CHANGE_SETTING:         return "Can not change some settings during encoding";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;

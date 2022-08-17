@@ -322,31 +322,12 @@ void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, 
     encoder->data->csOptionsUpdated = AVIF_TRUE;
 }
 
-avifBool avifEncoderCheckSettingsChange(avifEncoder * encoder, avifAddImageFlag * flags)
+static void avifBackupSettings(avifEncoder * encoder)
 {
     avifEncoder * lastEncoder = &encoder->data->lastEncoder;
 
     // lastEncoder->data is used to mark that lastEncoder is initialized.
-    if (lastEncoder->data == NULL) {
-        lastEncoder->data = encoder->data;
-        goto copy;
-    }
-
-    if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
-        (lastEncoder->timescale != encoder->timescale)) {
-        return AVIF_FALSE;
-    }
-
-    if ((lastEncoder->maxThreads != encoder->maxThreads) || (lastEncoder->minQuantizer != encoder->minQuantizer) ||
-        (lastEncoder->maxQuantizer != encoder->maxQuantizer) || (lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha) ||
-        (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) || (lastEncoder->tileRowsLog2 != encoder->tileRowsLog2) ||
-        (lastEncoder->tileColsLog2 != encoder->tileColsLog2) || (lastEncoder->speed != encoder->speed) ||
-        (encoder->data->csOptionsUpdated)) {
-        *flags |= AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS;
-        goto copy;
-    }
-
-copy:
+    lastEncoder->data = encoder->data;
     lastEncoder->codecChoice = encoder->codecChoice;
     lastEncoder->keyframeInterval = encoder->keyframeInterval;
     lastEncoder->timescale = encoder->timescale;
@@ -359,6 +340,32 @@ copy:
     lastEncoder->tileColsLog2 = encoder->tileColsLog2;
     lastEncoder->speed = encoder->speed;
     encoder->data->csOptionsUpdated = AVIF_FALSE;
+}
+
+// This function detect changes made on avifEncoder.
+// It reports if the change is valid, i.e. if any setting that can't change was changed.
+// It also sets needUpdate to true if valid changes are detected.
+static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifBool * needUpdate)
+{
+    const avifEncoder * lastEncoder = &encoder->data->lastEncoder;
+
+    if (lastEncoder->data == NULL) {
+        return AVIF_TRUE;
+    }
+
+    if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
+        (lastEncoder->timescale != encoder->timescale)) {
+        return AVIF_FALSE;
+    }
+
+    if ((lastEncoder->maxThreads != encoder->maxThreads) || (lastEncoder->minQuantizer != encoder->minQuantizer) ||
+        (lastEncoder->maxQuantizer != encoder->maxQuantizer) || (lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha) ||
+        (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) || (lastEncoder->tileRowsLog2 != encoder->tileRowsLog2) ||
+        (lastEncoder->tileColsLog2 != encoder->tileColsLog2) || (lastEncoder->speed != encoder->speed) ||
+        (encoder->data->csOptionsUpdated)) {
+        *needUpdate = AVIF_TRUE;
+    }
+
     return AVIF_TRUE;
 }
 
@@ -649,8 +656,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
     }
 
-    if (!avifEncoderCheckSettingsChange(encoder, &addImageFlags)) {
+    avifBool updateConfig = AVIF_FALSE;
+    if (!avifEncoderSettingsChanged(encoder, &updateConfig)) {
         return AVIF_RESULT_CANNOT_CHANGE_SETTING;
+    } else {
+        avifBackupSettings(encoder);
     }
 
     // -----------------------------------------------------------------------
@@ -872,7 +882,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
             avifResult encodeResult =
-                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, addImageFlags, item->encodeOutput);
+                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, updateConfig, addImageFlags, item->encodeOutput);
             if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                 encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }

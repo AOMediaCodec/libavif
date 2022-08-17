@@ -526,10 +526,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
+                                      avifBool updateConfig,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
-    if (!codec->internal->encoderInitialized || (addImageFlags & AVIF_ADD_IMAGE_FLAG_UPDATE_SETTINGS)) {
+    if (!codec->internal->encoderInitialized || updateConfig) {
         // Map encoder speed to AOM usage + CpuUsed:
         // Speed  0: GoodQuality CpuUsed 0
         // Speed  1: GoodQuality CpuUsed 1

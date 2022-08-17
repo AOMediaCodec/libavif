@@ -96,7 +96,11 @@ void TestEncodeDecode(avifCodecChoice codec,
 }
 
 TEST(ChangeSettingTest, AOM) {
+  // Test if changes to AV1 encode settings are detected.
   TestEncodeDecode(AVIF_CODEC_CHOICE_AOM, {{"end-usage", "cbr"}}, true, false);
+
+  // Test if changes to codec specific options are detected.
+  TestEncodeDecode(AVIF_CODEC_CHOICE_AOM, {}, true, true);
 }
 
 TEST(ChangeSettingTest, RAV1E) {
@@ -107,11 +111,7 @@ TEST(ChangeSettingTest, SVT) {
   TestEncodeDecode(AVIF_CODEC_CHOICE_SVT, {}, false, false);
 }
 
-TEST(ChangeSettingTest, ChangeCsOptions) {
-  TestEncodeDecode(AVIF_CODEC_CHOICE_AOM, {}, true, true);
-}
-
-TEST(ChangeSettingTest, UnchangableSetting) {
+TEST(ChangeSettingTest, UnchangeableSetting) {
   if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
       nullptr) {
     GTEST_SKIP() << "Codec unavailable, skip test.";
