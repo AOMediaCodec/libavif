@@ -120,13 +120,13 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     printf(" * Progressive    : %s\n", avifProgressiveStateToString(progressiveState));
 }
 
-void avifImageDump(avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)
+void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)
 {
     const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
     avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent, progressiveState);
 }
 
-void avifContainerDump(avifDecoder * decoder)
+void avifContainerDump(const avifDecoder * decoder)
 {
     avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent, decoder->progressiveState);
 }
