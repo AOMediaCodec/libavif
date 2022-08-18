@@ -3101,7 +3101,11 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
 
             avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID);
             avifROData itemContents;
-            avifResult readResult = avifDecoderItemRead(item, decoder->io, &itemContents, sample->offset, bytesToRead, &decoder->diag);
+            if (sample->offset > SIZE_MAX) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            size_t offset = (size_t)sample->offset;
+            avifResult readResult = avifDecoderItemRead(item, decoder->io, &itemContents, offset, bytesToRead, &decoder->diag);
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
             }
