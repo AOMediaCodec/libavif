@@ -32,6 +32,8 @@ avifImageCopy() and avifImageAllocatePlanes().
 * Add avifChromaDownsampling enum
 * Add chromaDownsampling field to avifRGBImage struct
 * Add imageDimensionLimit field to avifDecoder struct
+* avifdec: Add --dimension-limit, which specifies the image dimension limit
+  (width or height) that should be tolerated
 
 ## [0.10.1] - 2022-04-11
 
