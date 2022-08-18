@@ -40,6 +40,84 @@ static avifBool avifImageIsOpaque(const avifImage * image);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
 // ---------------------------------------------------------------------------
+// avifSetTileConfiguration
+
+static int countLeadingZeros(uint32_t n)
+{
+    int count = 32;
+    while (n != 0) {
+        --count;
+        n >>= 1;
+    }
+    return count;
+}
+
+static int floorLog2(uint32_t n)
+{
+    assert(n > 0);
+    return 31 ^ countLeadingZeros(n);
+}
+
+// Splits tilesLog2 into *tileDim1Log2 and *tileDim2Log2, considering the ratio of dim1 to dim2.
+//
+// Precondition:
+//     dim1 >= dim2
+// Postcondition:
+//     tilesLog2 == *tileDim1Log2 + *tileDim2Log2
+//     *tileDim1Log2 >= *tileDim2Log2
+static void splitTilesLog2(uint32_t dim1, uint32_t dim2, int tilesLog2, int * tileDim1Log2, int * tileDim2Log2)
+{
+    assert(dim1 >= dim2);
+    uint32_t ratio = dim1 / dim2;
+    int diffLog2 = floorLog2(ratio);
+    int subtract = tilesLog2 - diffLog2;
+    if (subtract < 0) {
+        subtract = 0;
+    }
+    *tileDim2Log2 = subtract / 2;
+    *tileDim1Log2 = tilesLog2 - *tileDim2Log2;
+    assert(*tileDim1Log2 >= *tileDim2Log2);
+}
+
+// Set the tile configuration: the number of tiles and the tile size.
+//
+// Tiles improve encoding and decoding speeds when multiple threads are available. However, for
+// image coding, the total tile boundary length affects the compression efficiency because intra
+// prediction can't go across tile boundaries. So the more tiles there are in an image, the worse
+// the compression ratio is. For a given number of tiles, making the tile size close to a square
+// tends to reduce the total tile boundary length inside the image. Use more tiles along the longer
+// dimension of the image to make the tile size closer to a square.
+void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int * tileRowsLog2, int * tileColsLog2)
+{
+    *tileRowsLog2 = 0;
+    *tileColsLog2 = 0;
+    if (threads > 1) {
+        // Avoid small tiles because they are particularly bad for image coding.
+        //
+        // Use no more tiles than the number of threads. Aim for one tile per thread. Using more
+        // than one thread inside one tile could be less efficient. Using more tiles than the
+        // number of threads would result in a compression penalty without much benefit.
+        const uint32_t kMinTileArea = 512 * 512;
+        const uint32_t kMaxTiles = 32;
+        uint32_t imageArea = width * height;
+        uint32_t tiles = (imageArea + kMinTileArea - 1) / kMinTileArea;
+        if (tiles > kMaxTiles) {
+            tiles = kMaxTiles;
+        }
+        if (tiles > (uint32_t)threads) {
+            tiles = threads;
+        }
+        int tilesLog2 = floorLog2(tiles);
+        // If the image's width is greater than the height, use more tile columns than tile rows.
+        if (width >= height) {
+            splitTilesLog2(width, height, tilesLog2, tileColsLog2, tileRowsLog2);
+        } else {
+            splitTilesLog2(height, width, tilesLog2, tileRowsLog2, tileColsLog2);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // avifCodecEncodeOutput
 
 avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void)

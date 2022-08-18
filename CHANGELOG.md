@@ -39,6 +39,8 @@ avifImageCopy() and avifImageAllocatePlanes().
   reduces artifacts caused by 420 chroma downsampling. Needs libsharpyuv (part
   of the libwebp repository) at compile time.
 * avifenc: Add --ignore-exif and --ignore-xmp flags.
+* avifenc: Add --autotiling, which sets --tilerowslog2 and --tilecolslog2
+  automatically
 
 ## [0.10.1] - 2022-04-11
 
