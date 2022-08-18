@@ -229,7 +229,8 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
       static_cast<double>(diff_sum) / static_cast<double>(num_diffs);
   const double average_abs_diff =
       static_cast<double>(abs_diff_sum) / static_cast<double>(num_diffs);
-  const double psnr = GetPsnr(sq_diff_sum, num_diffs, rgb_max);
+  const double psnr = GetPsnr(static_cast<double>(sq_diff_sum),
+                              static_cast<double>(num_diffs), rgb_max);
   EXPECT_LE(std::abs(average_diff), max_abs_average_diff);
   EXPECT_GE(psnr, min_psnr);
 
@@ -307,7 +308,9 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
   // max_abs_average_diff is not tested here because it is not meaningful for
   // only 3*3 conversions as it takes the maximum difference per conversion.
   // PSNR is averaged on all pixels so it can be tested here.
-  EXPECT_GE(GetPsnr(sq_diff_sum, num_diffs, rgb_max), min_psnr);
+  EXPECT_GE(GetPsnr(static_cast<double>(sq_diff_sum),
+                    static_cast<double>(num_diffs), rgb_max),
+            min_psnr);
 }
 
 constexpr avifRGBFormat kAllRgbFormats[] = {
