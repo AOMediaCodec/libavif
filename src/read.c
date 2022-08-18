@@ -1658,7 +1658,12 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
-static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit, avifDiagnostics * diag)
+static avifBool avifParseImageGridBox(avifImageGrid * grid,
+                                      const uint8_t * raw,
+                                      size_t rawLen,
+                                      uint32_t imageSizeLimit,
+                                      uint32_t imageDimensionLimit,
+                                      avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[grid]");
 
@@ -1695,7 +1700,7 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid, const uint8_t * raw,
         avifDiagnosticsPrintf(diag, "Grid box contains illegal dimensions: [%u x %u]", grid->outputWidth, grid->outputHeight);
         return AVIF_FALSE;
     }
-    if (grid->outputWidth > (imageSizeLimit / grid->outputHeight)) {
+    if (avifDimensionsTooLarge(grid->outputWidth, grid->outputHeight, imageSizeLimit, imageDimensionLimit)) {
         avifDiagnosticsPrintf(diag, "Grid box dimensions are too large: [%u x %u]", grid->outputWidth, grid->outputHeight);
         return AVIF_FALSE;
     }
@@ -2410,7 +2415,12 @@ static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t ra
     return AVIF_TRUE;
 }
 
-static avifBool avifParseTrackHeaderBox(avifTrack * track, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit, avifDiagnostics * diag)
+static avifBool avifParseTrackHeaderBox(avifTrack * track,
+                                        const uint8_t * raw,
+                                        size_t rawLen,
+                                        uint32_t imageSizeLimit,
+                                        uint32_t imageDimensionLimit,
+                                        avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[tkhd]");
 
@@ -2457,8 +2467,8 @@ static avifBool avifParseTrackHeaderBox(avifTrack * track, const uint8_t * raw, 
         avifDiagnosticsPrintf(diag, "Track ID [%u] has an invalid size [%ux%u]", track->id, track->width, track->height);
         return AVIF_FALSE;
     }
-    if (track->width > (imageSizeLimit / track->height)) {
-        avifDiagnosticsPrintf(diag, "Track ID [%u] size is too large [%ux%u]", track->id, track->width, track->height);
+    if (avifDimensionsTooLarge(track->width, track->height, imageSizeLimit, imageDimensionLimit)) {
+        avifDiagnosticsPrintf(diag, "Track ID [%u] dimensions are too large [%ux%u]", track->id, track->width, track->height);
         return AVIF_FALSE;
     }
 
@@ -2739,7 +2749,7 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
     return AVIF_TRUE;
 }
 
-static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit)
+static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
 {
     BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[trak]");
 
@@ -2750,7 +2760,7 @@ static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, s
         CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "tkhd", 4)) {
-            CHECK(avifParseTrackHeaderBox(track, avifROStreamCurrent(&s), header.size, imageSizeLimit, data->diag));
+            CHECK(avifParseTrackHeaderBox(track, avifROStreamCurrent(&s), header.size, imageSizeLimit, imageDimensionLimit, data->diag));
         } else if (!memcmp(header.type, "meta", 4)) {
             CHECK(avifParseMetaBox(track->meta, avifROStreamCurrent(&s), header.size, data->diag));
         } else if (!memcmp(header.type, "mdia", 4)) {
@@ -2764,7 +2774,7 @@ static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMovieBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit)
+static avifBool avifParseMovieBox(avifDecoderData * data, const uint8_t * raw, size_t rawLen, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
 {
     BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[moov]");
 
@@ -2773,7 +2783,7 @@ static avifBool avifParseMovieBox(avifDecoderData * data, const uint8_t * raw, s
         CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "trak", 4)) {
-            CHECK(avifParseTrackBox(data, avifROStreamCurrent(&s), header.size, imageSizeLimit));
+            CHECK(avifParseTrackBox(data, avifROStreamCurrent(&s), header.size, imageSizeLimit, imageDimensionLimit));
         }
 
         CHECK(avifROStreamSkip(&s, header.size));
@@ -2875,7 +2885,8 @@ static avifResult avifParse(avifDecoder * decoder)
             metaSeen = AVIF_TRUE;
         } else if (!memcmp(header.type, "moov", 4)) {
             CHECKERR(!moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
-            CHECKERR(avifParseMovieBox(data, boxContents.data, boxContents.size, decoder->imageSizeLimit), AVIF_RESULT_BMFF_PARSE_FAILED);
+            CHECKERR(avifParseMovieBox(data, boxContents.data, boxContents.size, decoder->imageSizeLimit, decoder->imageDimensionLimit),
+                     AVIF_RESULT_BMFF_PARSE_FAILED);
             moovSeen = AVIF_TRUE;
         }
 
@@ -2944,6 +2955,7 @@ avifDecoder * avifDecoderCreate(void)
     memset(decoder, 0, sizeof(avifDecoder));
     decoder->maxThreads = 1;
     decoder->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
+    decoder->imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
     decoder->strictFlags = AVIF_STRICT_ENABLED;
     return decoder;
@@ -3089,7 +3101,11 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
 
             avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID);
             avifROData itemContents;
-            avifResult readResult = avifDecoderItemRead(item, decoder->io, &itemContents, sample->offset, bytesToRead, &decoder->diag);
+            if (sample->offset > SIZE_MAX) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            size_t offset = (size_t)sample->offset;
+            avifResult readResult = avifDecoderItemRead(item, decoder->io, &itemContents, offset, bytesToRead, &decoder->diag);
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
             }
@@ -3179,8 +3195,8 @@ avifResult avifDecoderParse(avifDecoder * decoder)
                 avifDiagnosticsPrintf(data->diag, "Item ID [%u] has an invalid size [%ux%u]", item->id, item->width, item->height);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            if (item->width > (decoder->imageSizeLimit / item->height)) {
-                avifDiagnosticsPrintf(data->diag, "Item ID [%u] size is too large [%ux%u]", item->id, item->width, item->height);
+            if (avifDimensionsTooLarge(item->width, item->height, decoder->imageSizeLimit, decoder->imageDimensionLimit)) {
+                avifDiagnosticsPrintf(data->diag, "Item ID [%u] dimensions are too large [%ux%u]", item->id, item->width, item->height);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
         } else {
@@ -3428,7 +3444,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 if (readResult != AVIF_RESULT_OK) {
                     return readResult;
                 }
-                if (!avifParseImageGridBox(&data->colorGrid, readData.data, readData.size, decoder->imageSizeLimit, data->diag)) {
+                if (!avifParseImageGridBox(&data->colorGrid,
+                                           readData.data,
+                                           readData.size,
+                                           decoder->imageSizeLimit,
+                                           decoder->imageDimensionLimit,
+                                           data->diag)) {
                     return AVIF_RESULT_INVALID_IMAGE_GRID;
                 }
             }
@@ -3468,7 +3489,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     if (readResult != AVIF_RESULT_OK) {
                         return readResult;
                     }
-                    if (!avifParseImageGridBox(&data->alphaGrid, readData.data, readData.size, decoder->imageSizeLimit, data->diag)) {
+                    if (!avifParseImageGridBox(&data->alphaGrid,
+                                               readData.data,
+                                               readData.size,
+                                               decoder->imageSizeLimit,
+                                               decoder->imageDimensionLimit,
+                                               data->diag)) {
                         return AVIF_RESULT_INVALID_IMAGE_GRID;
                     }
                 }
@@ -3813,7 +3839,12 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder,
 
         // Scale the decoded image so that it corresponds to this tile's output dimensions
         if ((tile->width != tile->image->width) || (tile->height != tile->image->height)) {
-            if (!avifImageScale(tile->image, tile->width, tile->height, decoder->imageSizeLimit, &decoder->diag)) {
+            if (!avifImageScale(tile->image,
+                                tile->width,
+                                tile->height,
+                                decoder->imageSizeLimit,
+                                decoder->imageDimensionLimit,
+                                &decoder->diag)) {
                 avifDiagnosticsPrintf(&decoder->diag, "avifImageScale() failed");
                 return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
             }

@@ -40,9 +40,12 @@ RgbChannelOffsets GetRgbChannelOffsets(avifRGBFormat format) {
       return {/*r=*/2, /*g=*/1, /*b=*/0, /*a=*/0};
     case AVIF_RGB_FORMAT_BGRA:
       return {/*r=*/2, /*g=*/1, /*b=*/0, /*a=*/3};
-    default:
-      assert(format == AVIF_RGB_FORMAT_ABGR);
+    case AVIF_RGB_FORMAT_ABGR:
       return {/*r=*/3, /*g=*/2, /*b=*/1, /*a=*/0};
+    case AVIF_RGB_FORMAT_RGB_565:
+    case AVIF_RGB_FORMAT_COUNT:
+    default:
+      return {/*r=*/0, /*g=*/0, /*b=*/0, /*a=*/0};
   }
 }
 

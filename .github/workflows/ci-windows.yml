@@ -1,3 +1,16 @@
+# This is a copy of ci.yml for Windows. It differs from ci.yml as follows:
+#
+#   * The os matrix consists of windows-latest only.
+#   * Installs Visual Studio in the os image.
+#   * Doesn't install cmake 3.13.x, because only recent versions of cmake with
+#     the following bug fix detect Visual Studio compilers correctly:
+#     https://gitlab.kitware.com/cmake/cmake/-/issues/20585
+#   * Runs ext/*.cmd as Windows batch files rather than using bash. This is
+#     important for ext/svt.cmd, to prevent it from running ext/svt.sh.
+#   * Builds with local zlib and libpng (-DAVIF_LOCAL_ZLIBPNG=ON).
+#   * Doesn't build GoogleTest and the tests, because MSVC's /Wall option
+#     reports too many warnings in the C++ test code.
+
 name: CI
 on: [push, pull_request]
 jobs:
@@ -6,13 +19,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set GCC & G++ 10 compiler (on Linux)
-      if: runner.os == 'Linux'
-      run: echo "CC=gcc-10" >> $GITHUB_ENV && echo "CXX=g++-10" >> $GITHUB_ENV
+    - name: Setup Visual Studio shell
+      if: runner.os == 'Windows'
+      uses: egor-tensin/vs-shell@v2
     - uses: actions/setup-python@v4
       with:
         python-version: '3.x'
@@ -23,10 +36,6 @@ jobs:
       with:
         path: ext
         key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
-    - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
-      with:
-        cmake-version: '3.13.x'
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@v1
@@ -37,40 +46,35 @@ jobs:
     - name: Build aom
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash aom.cmd
+      run: ./aom.cmd
     - name: Build dav1d
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash dav1d.cmd
+      run: ./dav1d.cmd
     - name: Build rav1e
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash rav1e.cmd
+      run: ./rav1e.cmd
     - name: Build SVT-AV1
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash svt.cmd
+      run: ./svt.cmd
     - name: Build libgav1
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libgav1.cmd
+      run: ./libgav1.cmd
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libyuv.cmd
+      run: ./libyuv.cmd
     - name: Build libjpeg
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libjpeg.cmd
-    - name: Build libsharpyuv
+      run: ./libjpeg.cmd
+    - name: Build zlib and libpng
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libsharpyuv.cmd
-    - name: Build GoogleTest
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
-      run: bash googletest.cmd
+      run: ./zlibpng.cmd
 
     - name: Prepare libavif (cmake)
       run: >
@@ -84,12 +88,8 @@ jobs:
         -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
         -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON
         -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_JPEG=ON
+        -DAVIF_LOCAL_ZLIBPNG=ON
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
-        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
-    - name: Run AVIF Tests (on Linux)
-      if: runner.os == 'Linux'
-      working-directory: ./build
-      run: ctest -j $(nproc)
