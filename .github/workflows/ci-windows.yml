@@ -75,7 +75,7 @@ jobs:
       working-directory: ./ext
       run: ./zlibpng.cmd
     - name: Build GoogleTest
-      #if: steps.cache-ext.outputs.cache-hit != 'true'
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: ./googletest.cmd
 
