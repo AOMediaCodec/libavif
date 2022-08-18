@@ -11,6 +11,9 @@ git clone -b release-1.11.0 --depth 1 https://github.com/google/googletest.git
 cd googletest
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF ..
+: # The gtest_force_shared_crt option makes gtest link the Microsoft C runtime library (CRT) dynamically
+: # on Windows:
+: # https://github.com/google/googletest/blob/main/googletest/README.md#visual-studio-dynamic-vs-static-runtimes
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF -Dgtest_force_shared_crt=ON ..
 cmake --build .
 cd ../..
