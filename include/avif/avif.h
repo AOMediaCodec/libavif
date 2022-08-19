@@ -1084,7 +1084,7 @@ typedef enum avifAddImageFlag
     // Use this flag when encoding a single image. Signals "still_picture" to AV1 encoders, which
     // tweaks various compression rules. This is enabled automatically when using the
     // avifEncoderWrite() single-image encode path.
-    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1),
+    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
 } avifAddImageFlag;
 typedef uint32_t avifAddImageFlags;
 

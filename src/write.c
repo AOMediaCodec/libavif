@@ -319,7 +319,7 @@ void avifEncoderDestroy(avifEncoder * encoder)
 void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
-    encoder->data->csOptionsUpdated = AVIF_TRUE;
+    encoder->data->csOptionsUpdated = AVIF_TRUE; // False positive is possible but not important.
 }
 
 static void avifBackupSettings(avifEncoder * encoder)
@@ -349,7 +349,7 @@ static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifBool
 {
     const avifEncoder * lastEncoder = &encoder->data->lastEncoder;
 
-    if (lastEncoder->data == NULL) {
+    if (!lastEncoder->data) {
         return AVIF_TRUE;
     }
 
