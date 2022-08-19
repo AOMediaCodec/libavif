@@ -659,9 +659,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     avifBool updateConfig = AVIF_FALSE;
     if (!avifEncoderSettingsChanged(encoder, &updateConfig)) {
         return AVIF_RESULT_CANNOT_CHANGE_SETTING;
-    } else {
-        avifBackupSettings(encoder);
     }
+    avifBackupSettings(encoder);
 
     // -----------------------------------------------------------------------
     // Validate images
