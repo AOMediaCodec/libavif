@@ -51,6 +51,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
+                                        uint32_t layerIndex,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
@@ -58,6 +59,10 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
 
     RaConfig * rav1eConfig = NULL;
     RaFrame * rav1eFrame = NULL;
+
+    if (layerIndex != 0) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
 
     if (!codec->internal->rav1eContext) {
         if (codec->csOptions->count > 0) {

@@ -46,6 +46,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
+                                      uint32_t layerIndex,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
@@ -53,6 +54,10 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     EbColorFormat color_format = EB_YUV420;
     EbBufferHeaderType * input_buffer = NULL;
     EbErrorType res = EB_ErrorNone;
+
+    if (layerIndex != 0) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
 
     int y_shift = 0;
     // EbColorRange svt_range;

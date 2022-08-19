@@ -98,6 +98,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_INVALID_ARGUMENT:              return "Invalid argument";
         case AVIF_RESULT_NOT_IMPLEMENTED:               return "Not implemented";
         case AVIF_RESULT_OUT_OF_MEMORY:                 return "Out of memory";
+        case AVIF_RESULT_INVALID_LAYERS:                return "Invalid layer image";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
