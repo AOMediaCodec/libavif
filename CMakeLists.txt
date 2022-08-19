@@ -3,6 +3,11 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+# New in CMake version 3.15. MSVC warning flags are not in CMAKE_<LANG>_FLAGS by default.
+if(POLICY CMP0092)
+    cmake_policy(SET CMP0092 NEW)
+endif()
+
 # Specify search path for CMake modules to be loaded by include() and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
@@ -132,16 +137,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     message(STATUS "libavif: Enabling warnings for MSVC")
     add_definitions(
-        /Wall # All warnings
-        /wd4255 # Disable: no function prototype given
+        /W4
         /wd4324 # Disable: structure was padded due to alignment specifier
-        /wd4668 # Disable: is not defined as a preprocessor macro, replacing with '0'
-        /wd4710 # Disable: function not inlined
-        /wd4711 # Disable: function selected for inline expansion
-        /wd4738 # Disable: storing 32-bit float result in memory, possible loss of performance
-        /wd4820 # Disable: bytes padding added after data member
         /wd4996 # Disable: potentially unsafe stdlib methods
-        /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
         # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
         # libavif uses ANSI API to print to console, which is not portable between systems using different
         # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
