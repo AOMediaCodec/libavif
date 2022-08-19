@@ -60,6 +60,7 @@ struct avifCodecInternal
 #if defined(AVIF_CODEC_AOM_ENCODE)
     avifBool encoderInitialized;
     aom_codec_ctx_t encoder;
+    struct aom_codec_enc_cfg cfg;
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
     avifBool monochromeEnabled;
@@ -526,10 +527,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
+                                      avifBool updateConfig,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
-    if (!codec->internal->encoderInitialized) {
+    if (!codec->internal->encoderInitialized || updateConfig) {
         // Map encoder speed to AOM usage + CpuUsed:
         // Speed  0: GoodQuality CpuUsed 0
         // Speed  1: GoodQuality CpuUsed 1
@@ -587,37 +589,41 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
-        if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
-            return AVIF_RESULT_UNKNOWN_ERROR;
+        struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
+
+        aom_codec_iface_t * encoderInterface = NULL;
+        if (!codec->internal->encoderInitialized) {
+            codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
+            if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
+
+            avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
+
+            encoderInterface = aom_codec_av1_cx();
+            aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, cfg, aomUsage);
+            if (err != AOM_CODEC_OK) {
+                avifDiagnosticsPrintf(codec->diag, "aom_codec_enc_config_default() failed: %s", aom_codec_err_to_string(err));
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
 
-        avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
-
-        aom_codec_iface_t * encoderInterface = aom_codec_av1_cx();
-        struct aom_codec_enc_cfg cfg;
-        aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, &cfg, aomUsage);
-        if (err != AOM_CODEC_OK) {
-            avifDiagnosticsPrintf(codec->diag, "aom_codec_enc_config_default() failed: %s", aom_codec_err_to_string(err));
-            return AVIF_RESULT_UNKNOWN_ERROR;
-        }
-
-        // Set our own default cfg.rc_end_usage value, which may differ from libaom's default.
+        // Set our own default cfg->rc_end_usage value, which may differ from libaom's default.
         switch (aomUsage) {
             case AOM_USAGE_GOOD_QUALITY:
                 // libaom's default is AOM_VBR. Change the default to AOM_Q since we don't need to
                 // hit a certain target bit rate. It's easier to control the worst quality in Q
                 // mode.
-                cfg.rc_end_usage = AOM_Q;
+                cfg->rc_end_usage = AOM_Q;
                 break;
             case AOM_USAGE_REALTIME:
                 // For real-time mode we need to use CBR rate control mode. AOM_Q doesn't fit the
                 // rate control requirements for real-time mode. CBR does.
-                cfg.rc_end_usage = AOM_CBR;
+                cfg->rc_end_usage = AOM_CBR;
                 break;
 #if defined(AOM_USAGE_ALL_INTRA)
             case AOM_USAGE_ALL_INTRA:
-                cfg.rc_end_usage = AOM_Q;
+                cfg->rc_end_usage = AOM_Q;
                 break;
 #endif
         }
@@ -657,16 +663,16 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        cfg.g_profile = seqProfile;
-        cfg.g_bit_depth = image->depth;
-        cfg.g_input_bit_depth = image->depth;
-        cfg.g_w = image->width;
-        cfg.g_h = image->height;
+        cfg->g_profile = seqProfile;
+        cfg->g_bit_depth = image->depth;
+        cfg->g_input_bit_depth = image->depth;
+        cfg->g_w = image->width;
+        cfg->g_h = image->height;
         if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
             // Set the maximum number of frames to encode to 1. This instructs
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
-            cfg.g_limit = 1;
+            cfg->g_limit = 1;
 
             // Use the default settings of the new AOM_USAGE_ALL_INTRA (added in
             // https://crbug.com/aomedia/2959).
@@ -674,14 +680,14 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // Set g_lag_in_frames to 0 to reduce the number of frame buffers
             // (from 20 to 2) in libaom's lookahead structure. This reduces
             // memory consumption when encoding a single image.
-            cfg.g_lag_in_frames = 0;
+            cfg->g_lag_in_frames = 0;
             // Disable automatic placement of key frames by the encoder.
-            cfg.kf_mode = AOM_KF_DISABLED;
+            cfg->kf_mode = AOM_KF_DISABLED;
             // Tell libaom that all frames will be key frames.
-            cfg.kf_max_dist = 0;
+            cfg->kf_max_dist = 0;
         }
         if (encoder->maxThreads > 1) {
-            cfg.g_threads = encoder->maxThreads;
+            cfg->g_threads = encoder->maxThreads;
         }
 
         int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
@@ -691,8 +697,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
         }
         avifBool lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS));
-        cfg.rc_min_quantizer = minQuantizer;
-        cfg.rc_max_quantizer = maxQuantizer;
+        cfg->rc_min_quantizer = minQuantizer;
+        cfg->rc_max_quantizer = maxQuantizer;
 
         codec->internal->monochromeEnabled = AVIF_FALSE;
         if (aomVersion > aomVersion_2_0_0) {
@@ -700,32 +706,43 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // access nonexistent UV planes when encoding monochrome at faster libavif "speeds". It
             // was fixed shortly after the 2.0.0 libaom release, and the fix exists in both the
             // master and applejack branches. This ensures that the next version *after* 2.0.0 will
-            // have the fix, and we must avoid cfg.monochrome until then.
+            // have the fix, and we must avoid cfg->monochrome until then.
             //
             // Bugfix Change-Id: https://aomedia-review.googlesource.com/q/I26a39791f820b4d4e1d63ff7141f594c3c7181f5
 
             if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
                 codec->internal->monochromeEnabled = AVIF_TRUE;
-                cfg.monochrome = 1;
+                cfg->monochrome = 1;
             }
         }
 
-        if (!avifProcessAOMOptionsPreInit(codec, alpha, &cfg)) {
+        if (!avifProcessAOMOptionsPreInit(codec, alpha, cfg)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
-        aom_codec_flags_t encoderFlags = 0;
-        if (image->depth > 8) {
-            encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
+        if (!codec->internal->encoderInitialized) {
+            aom_codec_flags_t encoderFlags = 0;
+            if (image->depth > 8) {
+                encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
+            }
+
+            if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, cfg, encoderFlags) != AOM_CODEC_OK) {
+                avifDiagnosticsPrintf(codec->diag,
+                                      "aom_codec_enc_init() failed: %s: %s",
+                                      aom_codec_error(&codec->internal->encoder),
+                                      aom_codec_error_detail(&codec->internal->encoder));
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
+            codec->internal->encoderInitialized = AVIF_TRUE;
+        } else {
+            if (aom_codec_enc_config_set(&codec->internal->encoder, cfg) != AOM_CODEC_OK) {
+                avifDiagnosticsPrintf(codec->diag,
+                                      "aom_codec_enc_config_set() failed: %s: %s",
+                                      aom_codec_error(&codec->internal->encoder),
+                                      aom_codec_error_detail(&codec->internal->encoder));
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
-        if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, &cfg, encoderFlags) != AOM_CODEC_OK) {
-            avifDiagnosticsPrintf(codec->diag,
-                                  "aom_codec_enc_init() failed: %s: %s",
-                                  aom_codec_error(&codec->internal->encoder),
-                                  aom_codec_error_detail(&codec->internal->encoder));
-            return AVIF_RESULT_UNKNOWN_ERROR;
-        }
-        codec->internal->encoderInitialized = AVIF_TRUE;
 
         if (lossless) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, 1);
@@ -756,8 +773,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // set the min and max quantizers in the avifEncoder struct. If this is the case, set
             // cq-level to a reasonable value for the user, otherwise the default cq-level
             // (currently 10) will be unknowingly used.
-            assert(cfg.rc_end_usage == AOM_Q);
-            unsigned int cqLevel = (cfg.rc_min_quantizer + cfg.rc_max_quantizer) / 2;
+            assert(cfg->rc_end_usage == AOM_Q);
+            unsigned int cqLevel = (cfg->rc_min_quantizer + cfg->rc_max_quantizer) / 2;
             aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, cqLevel);
         }
 #endif
