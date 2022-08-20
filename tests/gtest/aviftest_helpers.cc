@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 
 #include "avif/avif.h"
 
@@ -214,36 +215,39 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
   return true;
 }
 
-static avifResult avifIOLimitedReaderRead(struct avifIO* io, uint32_t readFlags,
+static avifResult avifIOLimitedReaderRead(avifIO* io, uint32_t readFlags,
                                           uint64_t offset, size_t size,
                                           avifROData* out) {
   auto reader = reinterpret_cast<AvifIOLimitedReader*>(io);
 
+  if (offset > UINT64_MAX - size) {
+    return AVIF_RESULT_IO_ERROR;
+  }
   if (offset + size > reader->clamp) {
     return AVIF_RESULT_WAITING_ON_IO;
   }
 
-  return reader->underlayIO->read(reader->underlayIO, readFlags, offset, size,
+  return reader->underlyingIO->read(reader->underlyingIO, readFlags, offset, size,
                                   out);
 }
 
-static void avifIOLimitedReaderDestroy(struct avifIO* io) {
+static void avifIOLimitedReaderDestroy(avifIO* io) {
   auto reader = reinterpret_cast<AvifIOLimitedReader*>(io);
-  reader->underlayIO->destroy(reader->underlayIO);
+  reader->underlyingIO->destroy(reader->underlyingIO);
   delete reader;
 }
 
-avifIO* AvifIOCreateLimitedReader(avifIO* underlayIO, uint64_t clamp) {
+avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp) {
   return reinterpret_cast<avifIO*>(
       new AvifIOLimitedReader{{
                                   avifIOLimitedReaderDestroy,
                                   avifIOLimitedReaderRead,
                                   nullptr,
-                                  underlayIO->sizeHint,
-                                  underlayIO->persistent,
+                                  underlyingIO->sizeHint,
+                                  underlyingIO->persistent,
                                   nullptr,
                               },
-                              underlayIO,
+                              underlyingIO,
                               clamp});
 }
 

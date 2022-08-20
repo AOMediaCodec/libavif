@@ -151,7 +151,7 @@ typedef enum avifResult
     AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
     AVIF_RESULT_OUT_OF_MEMORY,
     AVIF_RESULT_CANNOT_CHANGE_SETTING, // a setting that can't change is changed during encoding
-    AVIF_RESULT_INCOMPATIBLE_IMAGE     // given image is not compatible with already encoded image
+    AVIF_RESULT_INCOMPATIBLE_IMAGE     // the image is incompatible with already encoded images
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -1054,11 +1054,11 @@ typedef struct avifEncoder
     avifCodecChoice codecChoice;
 
     // settings (see Notes above)
-    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
-    uint64_t timescale;   // timescale of the media (Hz)
     int maxThreads;
     int speed;
-    // changeable encoder settings.
+    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
+    uint64_t timescale;   // timescale of the media (Hz)
+    // changeable encoder settings
     int minQuantizer;
     int maxQuantizer;
     int minQuantizerAlpha;

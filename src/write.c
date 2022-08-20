@@ -294,15 +294,15 @@ avifEncoder * avifEncoderCreate(void)
     avifEncoder * encoder = (avifEncoder *)avifAlloc(sizeof(avifEncoder));
     memset(encoder, 0, sizeof(avifEncoder));
     encoder->maxThreads = 1;
+    encoder->speed = AVIF_SPEED_DEFAULT;
+    encoder->keyframeInterval = 0;
+    encoder->timescale = 1;
     encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
     encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
     encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     encoder->maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
-    encoder->speed = AVIF_SPEED_DEFAULT;
-    encoder->keyframeInterval = 0;
-    encoder->timescale = 1;
     encoder->data = avifEncoderDataCreate();
     encoder->csOptions = avifCodecSpecificOptionsCreate();
     return encoder;
@@ -320,59 +320,61 @@ void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, 
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
 }
 
-static void avifBackupSettings(avifEncoder * encoder)
+static void avifEncoderBackupSettings(avifEncoder * encoder)
 {
     avifEncoder * lastEncoder = &encoder->data->lastEncoder;
 
-    // lastEncoder->data is used to mark that lastEncoder is initialized.
+    // lastEncoder->data is only used to mark that lastEncoder is initialized. lastEncoder->data
+    // must not be dereferenced.
     lastEncoder->data = encoder->data;
     lastEncoder->codecChoice = encoder->codecChoice;
+    lastEncoder->maxThreads = encoder->maxThreads;
+    lastEncoder->speed = encoder->speed;
     lastEncoder->keyframeInterval = encoder->keyframeInterval;
     lastEncoder->timescale = encoder->timescale;
-    lastEncoder->maxThreads = encoder->maxThreads;
     lastEncoder->minQuantizer = encoder->minQuantizer;
     lastEncoder->maxQuantizer = encoder->maxQuantizer;
     lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
     lastEncoder->maxQuantizerAlpha = encoder->maxQuantizerAlpha;
     lastEncoder->tileRowsLog2 = encoder->tileRowsLog2;
     lastEncoder->tileColsLog2 = encoder->tileColsLog2;
-    lastEncoder->speed = encoder->speed;
 }
 
-// This function detect changes made on avifEncoder.
-// It reports if the change is valid, i.e. if any setting that can't change was changed.
-// It also reports detected changes in updatedConfig.
-static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifEncoderChanges * encoderChanges)
+// This function detects changes made on avifEncoder. It returns true on success (i.e., if every
+// change is valid), or false on failure (i.e., if any setting that can't change was changed). It
+// reports detected changes in encoderChanges.
+static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncoderChanges * encoderChanges)
 {
     const avifEncoder * lastEncoder = &encoder->data->lastEncoder;
+    *encoderChanges = 0;
 
     if (!lastEncoder->data) {
+        // lastEncoder is not initialized.
         return AVIF_TRUE;
     }
 
-    if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
-        (lastEncoder->timescale != encoder->timescale) || (lastEncoder->maxThreads != encoder->maxThreads) ||
-        (lastEncoder->speed != encoder->speed)) {
+    if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->maxThreads != encoder->maxThreads) ||
+        (lastEncoder->speed != encoder->speed) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
+        (lastEncoder->timescale != encoder->timescale)) {
         return AVIF_FALSE;
     }
 
-    *encoderChanges = 0;
-    if ((lastEncoder->minQuantizer != encoder->minQuantizer)) {
+    if (lastEncoder->minQuantizer != encoder->minQuantizer) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER;
     }
-    if ((lastEncoder->maxQuantizer != encoder->maxQuantizer)) {
+    if (lastEncoder->maxQuantizer != encoder->maxQuantizer) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER;
     }
-    if ((lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha)) {
+    if (lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA;
     }
-    if ((lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha)) {
+    if (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA;
     }
-    if ((lastEncoder->tileRowsLog2 != encoder->tileRowsLog2)) {
+    if (lastEncoder->tileRowsLog2 != encoder->tileRowsLog2) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2;
     }
-    if ((lastEncoder->tileColsLog2 != encoder->tileColsLog2)) {
+    if (lastEncoder->tileColsLog2 != encoder->tileColsLog2) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_COLS_LOG2;
     }
     if (encoder->csOptions->count > 0) {
@@ -669,11 +671,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
     }
 
-    avifEncoderChanges encoderChanges = 0;
-    if (!avifEncoderSettingsChanged(encoder, &encoderChanges)) {
+    avifEncoderChanges encoderChanges;
+    if (!avifEncoderDetectChanges(encoder, &encoderChanges)) {
         return AVIF_RESULT_CANNOT_CHANGE_SETTING;
     }
-    avifBackupSettings(encoder);
+    avifEncoderBackupSettings(encoder);
 
     // -----------------------------------------------------------------------
     // Validate images
@@ -876,7 +878,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Another frame in an image sequence
 
         const avifImage * imageMetadata = encoder->data->imageMetadata;
-        // If the first image had an alpha plane (even if fully opaque), all subsequent images must have alpha as well.
+        // If the first image in the sequence had an alpha plane (even if fully opaque), all
+        // subsequent images must have alpha as well.
         if ((imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||
             (imageMetadata->yuvRange != firstCell->yuvRange) || (imageMetadata->colorPrimaries != firstCell->colorPrimaries) ||
             (imageMetadata->transferCharacteristics != firstCell->transferCharacteristics) ||
