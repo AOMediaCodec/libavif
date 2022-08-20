@@ -53,16 +53,16 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
-                                        avifEncoderChanges updatedConfig,
+                                        avifEncoderChanges encoderChanges,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
-    // rav1e does not support changing config.
-    if (updatedConfig) {
+    // rav1e does not support changing encoder settings.
+    if (encoderChanges) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
-    // rav1e does not support changing encoding dimension.
+    // rav1e does not support changing image dimensions.
     if (!codec->internal->rav1eContext) {
         codec->internal->encodeWidth = image->width;
         codec->internal->encodeHeight = image->height;
