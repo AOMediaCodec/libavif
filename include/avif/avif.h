@@ -1130,6 +1130,7 @@ AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs.
 // key must be non-NULL, but passing a NULL value will delete that key, if it exists.
+// Settings will be sent to codec once at the next avifEncoderAddImage() call.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().
 AVIF_API void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
