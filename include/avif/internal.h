@@ -273,6 +273,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,
                                                avifBool alpha,
+                                               avifBool updateConfig,
                                                avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);

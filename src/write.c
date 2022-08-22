@@ -122,11 +122,13 @@ typedef struct avifEncoderData
 {
     avifEncoderItemArray items;
     avifEncoderFrameArray frames;
+    avifEncoder lastEncoder;
     avifImage * imageMetadata;
     uint16_t lastItemID;
     uint16_t primaryItemID;
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
+    avifBool csOptionsUpdated;
 } avifEncoderData;
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
@@ -317,6 +319,54 @@ void avifEncoderDestroy(avifEncoder * encoder)
 void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
+    encoder->data->csOptionsUpdated = AVIF_TRUE; // False positive is possible but not important.
+}
+
+static void avifBackupSettings(avifEncoder * encoder)
+{
+    avifEncoder * lastEncoder = &encoder->data->lastEncoder;
+
+    // lastEncoder->data is used to mark that lastEncoder is initialized.
+    lastEncoder->data = encoder->data;
+    lastEncoder->codecChoice = encoder->codecChoice;
+    lastEncoder->keyframeInterval = encoder->keyframeInterval;
+    lastEncoder->timescale = encoder->timescale;
+    lastEncoder->maxThreads = encoder->maxThreads;
+    lastEncoder->minQuantizer = encoder->minQuantizer;
+    lastEncoder->maxQuantizer = encoder->maxQuantizer;
+    lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
+    lastEncoder->maxQuantizerAlpha = encoder->maxQuantizerAlpha;
+    lastEncoder->tileRowsLog2 = encoder->tileRowsLog2;
+    lastEncoder->tileColsLog2 = encoder->tileColsLog2;
+    lastEncoder->speed = encoder->speed;
+    encoder->data->csOptionsUpdated = AVIF_FALSE;
+}
+
+// This function detect changes made on avifEncoder.
+// It reports if the change is valid, i.e. if any setting that can't change was changed.
+// It also sets needUpdate to true if valid changes are detected.
+static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifBool * needUpdate)
+{
+    const avifEncoder * lastEncoder = &encoder->data->lastEncoder;
+
+    if (!lastEncoder->data) {
+        return AVIF_TRUE;
+    }
+
+    if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
+        (lastEncoder->timescale != encoder->timescale)) {
+        return AVIF_FALSE;
+    }
+
+    if ((lastEncoder->maxThreads != encoder->maxThreads) || (lastEncoder->minQuantizer != encoder->minQuantizer) ||
+        (lastEncoder->maxQuantizer != encoder->maxQuantizer) || (lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha) ||
+        (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) || (lastEncoder->tileRowsLog2 != encoder->tileRowsLog2) ||
+        (lastEncoder->tileColsLog2 != encoder->tileColsLog2) || (lastEncoder->speed != encoder->speed) ||
+        (encoder->data->csOptionsUpdated)) {
+        *needUpdate = AVIF_TRUE;
+    }
+
+    return AVIF_TRUE;
 }
 
 // This function is used in two codepaths:
@@ -606,6 +656,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
     }
 
+    avifBool updateConfig = AVIF_FALSE;
+    if (!avifEncoderSettingsChanged(encoder, &updateConfig)) {
+        return AVIF_RESULT_CANNOT_CHANGE_SETTING;
+    }
+    avifBackupSettings(encoder);
+
     // -----------------------------------------------------------------------
     // Validate images
 
@@ -806,10 +862,23 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     } else {
         // Another frame in an image sequence
 
-        if (encoder->data->alphaPresent && !firstCell->alphaPlane) {
-            // If the first image in the sequence had an alpha plane (even if fully opaque), all
-            // subsequence images must have alpha as well.
-            return AVIF_RESULT_ENCODE_ALPHA_FAILED;
+        const avifImage * imageMetadata = encoder->data->imageMetadata;
+        // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
+        //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
+        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
+        //   same decoder configuration (see 7.3.6.2).
+        // If the first image in the sequence had an alpha plane (even if fully opaque), all
+        // subsequence images must have alpha as well.
+        if ((imageMetadata->width != firstCell->width) || (imageMetadata->height != firstCell->height) ||
+            (imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||
+            (imageMetadata->yuvRange != firstCell->yuvRange) || (imageMetadata->colorPrimaries != firstCell->colorPrimaries) ||
+            (imageMetadata->transferCharacteristics != firstCell->transferCharacteristics) ||
+            (imageMetadata->matrixCoefficients != firstCell->matrixCoefficients) ||
+            (!!imageMetadata->alphaPlane != !!firstCell->alphaPlane) ||
+            (imageMetadata->alphaPremultiplied != firstCell->alphaPremultiplied) ||
+            (encoder->data->alphaPresent && !firstCell->alphaPlane)) {
+            return AVIF_RESULT_INCOMPATIBLE_IMAGE;
         }
     }
 
@@ -825,7 +894,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
             avifResult encodeResult =
-                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, addImageFlags, item->encodeOutput);
+                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, updateConfig, addImageFlags, item->encodeOutput);
             if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                 encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }

@@ -15,6 +15,7 @@ avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
 * Update aom.cmd: v3.4.0
+* Update rav1e.cmd: v0.5.1
 * Update svt.cmd/svt.sh: v1.2.1
 * Update libgav1.cmd: v0.18.0
 * Update libyuv.cmd: 9b17af9b (version 1838)
@@ -32,6 +33,8 @@ avifImageCopy() and avifImageAllocatePlanes().
 * Add avifChromaDownsampling enum
 * Add chromaDownsampling field to avifRGBImage struct
 * Add imageDimensionLimit field to avifDecoder struct
+* avifdec: Add --dimension-limit, which specifies the image dimension limit
+  (width or height) that should be tolerated
 
 ## [0.10.1] - 2022-04-11
 

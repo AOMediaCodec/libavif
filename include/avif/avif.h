@@ -149,7 +149,9 @@ typedef enum avifResult
     AVIF_RESULT_WAITING_ON_IO, // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
     AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
-    AVIF_RESULT_OUT_OF_MEMORY
+    AVIF_RESULT_OUT_OF_MEMORY,
+    AVIF_RESULT_CANNOT_CHANGE_SETTING, // a setting that can't change is changed during encoding
+    AVIF_RESULT_INCOMPATIBLE_IMAGE     // given image is not compatible with already encoded image
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -1056,12 +1058,17 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
+// * AV1 encoder settings and codec specific options set by avifEncoderSetCodecSpecificOption()
+//   will be applied / updated to AV1 encoder before each call to avifEncoderAddImage().
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
     // settings (see Notes above)
+    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
+    uint64_t timescale;   // timescale of the media (Hz)
+    // AV1 encoder settings.
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
@@ -1070,8 +1077,6 @@ typedef struct avifEncoder
     int tileRowsLog2;
     int tileColsLog2;
     int speed;
-    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
-    uint64_t timescale;   // timescale of the media (Hz)
 
     // stats from the most recent write
     avifIOStats ioStats;
@@ -1123,9 +1128,7 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
-// Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs. These
-// should be set as early as possible, preferably just after creating avifEncoder but before
-// performing any other actions.
+// Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs.
 // key must be non-NULL, but passing a NULL value will delete that key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().

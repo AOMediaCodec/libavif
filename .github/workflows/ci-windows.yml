@@ -8,8 +8,7 @@
 #   * Runs ext/*.cmd as Windows batch files rather than using bash. This is
 #     important for ext/svt.cmd, to prevent it from running ext/svt.sh.
 #   * Builds with local zlib and libpng (-DAVIF_LOCAL_ZLIBPNG=ON).
-#   * Doesn't build GoogleTest and the tests, because MSVC's /Wall option
-#     reports too many warnings in the C++ test code.
+#   * Doesn't run ctest, because the test 'test_cmd' is a shell script.
 
 name: CI
 on: [push, pull_request]
@@ -79,6 +78,10 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: ./zlibpng.cmd
+    - name: Build GoogleTest
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./googletest.cmd
 
     - name: Prepare libavif (cmake)
       run: >
@@ -95,6 +98,7 @@ jobs:
         -DAVIF_LOCAL_LIBSHARPYUV=ON
         -DAVIF_LOCAL_ZLIBPNG=ON
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja

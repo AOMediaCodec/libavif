@@ -40,7 +40,7 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
   const uint32_t pixel_byte_count =
       (image1.depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
 
-  for (uint32_t plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV);
+  for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV);
        ++plane) {
     const uint32_t width = (plane == AVIF_CHAN_Y) ? image1.width : uv_width;
     const uint32_t width_byte_count = width * pixel_byte_count;
