@@ -246,11 +246,12 @@ else()
     message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
 endif()
 
-find_package(WebP) # not required
-if(TARGET WebP::sharpyuv)
-    message(STATUS "libavif: libsharpyuv found " ${LIBSHARPYUV_INCLUDE_DIR} " " ${LIBSHARPYUV_LIBRARY})
+find_package(libsharpyuv QUIET) # not required
+if (libsharpyuv_FOUND)
+    message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} WebP::sharpyuv)
+    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
+    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
 else()
     message(STATUS "libavif: libsharpyuv not found")
 endif()

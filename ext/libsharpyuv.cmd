@@ -12,10 +12,10 @@
 git clone --single-branch https://chromium.googlesource.com/webm/libwebp
 
 cd libwebp
-git checkout c170df3
+git checkout 15a91ab
 
 mkdir build
 cd build
-cmake -G Ninja -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=Release ..
+cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release ..
 ninja
 cd ../..

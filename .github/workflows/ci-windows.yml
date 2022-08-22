@@ -71,6 +71,10 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: ./libjpeg.cmd
+    - name: Build libsharpyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libsharpyuv.cmd
     - name: Build zlib and libpng
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -88,6 +92,7 @@ jobs:
         -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
         -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON
         -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_JPEG=ON
+        -DAVIF_LOCAL_LIBSHARPYUV=ON
         -DAVIF_LOCAL_ZLIBPNG=ON
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
     - name: Build libavif (ninja)
