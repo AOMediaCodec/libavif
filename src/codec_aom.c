@@ -518,7 +518,6 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
         }
 #endif // defined(HAVE_AOM_CODEC_SET_OPTION)
     }
-    codec->csOptions->count = 0;
     return AVIF_TRUE;
 }
 
@@ -608,6 +607,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         } else {
+            // Update AOM usage according to updated speed setting.
             cfg->g_usage = aomUsage;
         }
 
@@ -780,6 +780,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
+
+        // Sync our copy with updated config in AOM encoder.
+        *cfg = *codec->internal->encoder.config.enc;
     }
 
     aom_image_t aomImage;

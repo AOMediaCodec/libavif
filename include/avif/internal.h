@@ -244,6 +244,7 @@ typedef struct avifCodecSpecificOption
 } avifCodecSpecificOption;
 AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
+void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
 

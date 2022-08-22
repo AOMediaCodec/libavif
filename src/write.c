@@ -893,6 +893,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
     }
 
+    avifCodecSpecificOptionsClear(encoder->csOptions);
     avifEncoderFrame * frame = (avifEncoderFrame *)avifArrayPushPtr(&encoder->data->frames);
     frame->durationInTimescales = durationInTimescales;
     return AVIF_RESULT_OK;

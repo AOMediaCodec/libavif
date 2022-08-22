@@ -878,7 +878,7 @@ error:
     return NULL;
 }
 
-void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
+void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
 {
     if (!csOptions) {
         return;
@@ -889,6 +889,13 @@ void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
         avifFree(entry->key);
         avifFree(entry->value);
     }
+
+    csOptions->count = 0;
+}
+
+void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
+{
+    avifCodecSpecificOptionsClear(csOptions);
     avifArrayDestroy(csOptions);
     avifFree(csOptions);
 }
@@ -916,10 +923,12 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
         }
     }
 
-    // Add a new key
-    avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
-    entry->key = avifStrdup(key);
-    entry->value = avifStrdup(value);
+    if (value) {
+        // Add a new key
+        avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
+        entry->key = avifStrdup(key);
+        entry->value = avifStrdup(value);
+    }
 }
 
 // ---------------------------------------------------------------------------
