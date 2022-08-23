@@ -880,10 +880,6 @@ error:
 
 void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
 {
-    if (!csOptions) {
-        return;
-    }
-
     for (uint32_t i = 0; i < csOptions->count; ++i) {
         avifCodecSpecificOption * entry = &csOptions->entries[i];
         avifFree(entry->key);
@@ -895,6 +891,10 @@ void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
 
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
 {
+    if (!csOptions) {
+        return;
+    }
+
     avifCodecSpecificOptionsClear(csOptions);
     avifArrayDestroy(csOptions);
     avifFree(csOptions);

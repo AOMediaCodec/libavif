@@ -607,7 +607,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         } else {
-            // Update AOM usage according to updated speed setting.
+            // aomUsage was taken into account by aom_codec_enc_config_default() but it can only be manually updated afterwards.
             cfg->g_usage = aomUsage;
         }
 
@@ -725,6 +725,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
+        avifBool initPhase = AVIF_FALSE;
         if (!codec->internal->encoderInitialized) {
             aom_codec_flags_t encoderFlags = 0;
             if (image->depth > 8) {
@@ -739,6 +740,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
             codec->internal->encoderInitialized = AVIF_TRUE;
+            initPhase = AVIF_TRUE;
         } else {
             if (aom_codec_enc_config_set(&codec->internal->encoder, cfg) != AOM_CODEC_OK) {
                 avifDiagnosticsPrintf(codec->diag,
@@ -749,12 +751,21 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless);
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_ROW_MT, encoder->maxThreads > 1);
+        if (!initPhase || lossless) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless);
+        }
+        int rowMT = encoder->maxThreads > 1;
+        if (!initPhase || rowMT) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_ROW_MT, rowMT);
+        }
         int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
+        if (!initPhase || (tileRowsLog2 > 0)) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
+        }
         int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+        if (!initPhase || (tileColsLog2 > 0)) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+        }
         if (aomCpuUsed != -1) {
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;

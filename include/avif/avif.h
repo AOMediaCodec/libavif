@@ -1129,7 +1129,7 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs,
-// to be sent to codec once at the next avifEncoderAddImage() call.
+// to be sent to codec at the next avifEncoderAddImage() call.
 // See the codec documentation to know if a setting is permanent or applied only to the next frame.
 // key must be non-NULL, but passing a NULL value will delete that pending key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
