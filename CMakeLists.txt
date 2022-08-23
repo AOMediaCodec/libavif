@@ -124,6 +124,23 @@ if(AVIF_LOCAL_LIBYUV)
         set(LIBYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
 endif()
+option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
+if(AVIF_LOCAL_LIBSHARPYUV)
+    set(LIB_FILENAME
+        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    )
+    message(STATUS "AVIF_LOCAL_LIBSHARPYUV LIB_FILENAME ${LIB_FILENAME}")
+    if(NOT EXISTS "${LIB_FILENAME}")
+        message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBSHARPYUV): ${LIB_FILENAME} is missing, bailing out")
+    endif()
+    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(LIBSHARPYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp")
+        set(LIBSHARPYUV_LIBRARY ${LIB_FILENAME})
+    else()
+        set(LIBSHARPYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp" PARENT_SCOPE)
+        set(LIBSHARPYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
+    endif()
+endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
@@ -187,6 +204,7 @@ set(AVIF_SRCS
     src/read.c
     src/reformat.c
     src/reformat_libyuv.c
+    src/reformat_libsharpyuv.c
     src/scale.c
     src/stream.c
     src/utils.c
@@ -224,6 +242,16 @@ if(libyuv_FOUND)
     endif()
 else()
     message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
+endif()
+
+find_package(libsharpyuv QUIET) # not required
+if (libsharpyuv_FOUND)
+    message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
+    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
+    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
+    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
+else()
+    message(STATUS "libavif: libsharpyuv not found")
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)
