@@ -127,7 +127,7 @@ endif()
 option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBSHARPYUV)
     set(LIB_FILENAME
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/${CMAKE_STATIC_LIBRARY_PREFIX}sharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
     )
     message(STATUS "AVIF_LOCAL_LIBSHARPYUV LIB_FILENAME ${LIB_FILENAME}")
     if(NOT EXISTS "${LIB_FILENAME}")

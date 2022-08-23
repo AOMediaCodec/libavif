@@ -26,7 +26,7 @@ jobs:
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.12
       with:
-        cmake-version: '3.13.x'
+        cmake-version: '3.17.x'
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@v1
