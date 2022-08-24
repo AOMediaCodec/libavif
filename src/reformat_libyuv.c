@@ -498,7 +498,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
             }
             return AVIF_RESULT_OK;
         }
-    } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+    } else { // image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400
         // Lookup table for YUV400 to RGB Matrix.
         typedef int (*YUV400ToRGBMatrix)(const uint8_t *, int, uint8_t *, int, const struct YuvConstants *, int, int);
         YUV400ToRGBMatrix lutYuv400ToRgbMatrix[AVIF_RGB_FORMAT_COUNT] = {
