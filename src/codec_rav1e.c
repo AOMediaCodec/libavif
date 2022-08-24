@@ -51,9 +51,14 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
+                                        avifBool updateConfig,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
+    if (updateConfig) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
 
     RaConfig * rav1eConfig = NULL;
@@ -90,6 +95,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                     codec->internal->yShift = 1;
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
+                case AVIF_PIXEL_FORMAT_COUNT:
                 default:
                     return AVIF_RESULT_UNKNOWN_ERROR;
             }

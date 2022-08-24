@@ -68,9 +68,12 @@ typedef int avifBool;
 
 #define AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE 256
 
-// A reasonable default for maximum image size to avoid out-of-memory errors or integer overflow in
-// (32-bit) int or unsigned int arithmetic operations.
+// A reasonable default for maximum image size (in pixel count) to avoid out-of-memory errors or
+// integer overflow in (32-bit) int or unsigned int arithmetic operations.
 #define AVIF_DEFAULT_IMAGE_SIZE_LIMIT (16384 * 16384)
+
+// A reasonable default for maximum image dimension (width or height).
+#define AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT 32768
 
 // a 12 hour AVIF image sequence, running at 60 fps (a basic sanity check as this is quite ridiculous)
 #define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
@@ -146,7 +149,9 @@ typedef enum avifResult
     AVIF_RESULT_WAITING_ON_IO, // similar to EAGAIN/EWOULDBLOCK, this means the avifIO doesn't have necessary data available yet
     AVIF_RESULT_INVALID_ARGUMENT, // an argument passed into this function is invalid
     AVIF_RESULT_NOT_IMPLEMENTED,  // a requested code path is not (yet) implemented
-    AVIF_RESULT_OUT_OF_MEMORY
+    AVIF_RESULT_OUT_OF_MEMORY,
+    AVIF_RESULT_CANNOT_CHANGE_SETTING, // a setting that can't change is changed during encoding
+    AVIF_RESULT_INCOMPATIBLE_IMAGE     // given image is not compatible with already encoded image
 } avifResult;
 
 AVIF_API const char * avifResultToString(avifResult result);
@@ -527,9 +532,10 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // libavif will use libyuv for conversion between RGB and YUV if the following requirements are met:
 
 // Conversion from YUV to RGB:
-// * YUV depth: 8
+// * YUV depth: 8 or 10
 // * RGB depth: 8
-// * rgb.format: AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA (420/422 support for AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_ARGB)
+// * rgb.format: AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA (420/422 support for
+//               AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_ARGB, AVIF_RGB_FORMAT_RGB_565)
 // * CICP is one of the following combinations (CP/TC/MC/Range):
 //   * x/x/[2|5|6]/Full
 //   * [5|6]/x/12/Full
@@ -880,11 +886,16 @@ typedef struct avifDecoder
     avifBool ignoreExif;
     avifBool ignoreXMP;
 
-    // This represents the maximum size of a image (in pixel count) that libavif and the underlying
-    // AV1 decoder should attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_SIZE_LIMIT, and can be
-    // set to a smaller value. The value 0 is reserved.
+    // This represents the maximum size of an image (in pixel count) that libavif and the underlying
+    // AV1 decoder should attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_SIZE_LIMIT, and can
+    // be set to a smaller value. The value 0 is reserved.
     // Note: Only some underlying AV1 codecs support a configurable size limit (such as dav1d).
     uint32_t imageSizeLimit;
+
+    // This represents the maximum dimension of an image (width or height) that libavif should
+    // attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT. Set it to 0 to ignore
+    // the limit.
+    uint32_t imageDimensionLimit;
 
     // This provides an upper bound on how many images the decoder is willing to attempt to decode,
     // to provide a bit of protection from malicious or malformed AVIFs citing millions upon
@@ -1050,12 +1061,17 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
+// * AV1 encoder settings and codec specific options set by avifEncoderSetCodecSpecificOption()
+//   will be applied / updated to AV1 encoder before each call to avifEncoderAddImage().
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
     // settings (see Notes above)
+    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
+    uint64_t timescale;   // timescale of the media (Hz)
+    // AV1 encoder settings.
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
@@ -1064,8 +1080,6 @@ typedef struct avifEncoder
     int tileRowsLog2;
     int tileColsLog2;
     int speed;
-    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
-    uint64_t timescale;   // timescale of the media (Hz)
 
     // stats from the most recent write
     avifIOStats ioStats;
@@ -1117,9 +1131,7 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
-// Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs. These
-// should be set as early as possible, preferably just after creating avifEncoder but before
-// performing any other actions.
+// Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs.
 // key must be non-NULL, but passing a NULL value will delete that key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().

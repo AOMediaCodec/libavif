@@ -127,9 +127,14 @@ avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelForm
     avif->height = rawHeight;
     avif->yuvFormat = requestedFormat;
     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-        // Identity is only valid with YUV444.
-        avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) ? AVIF_PIXEL_FORMAT_YUV444
-                                                                                          : AVIF_APP_DEFAULT_PIXEL_FORMAT;
+        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+            // Identity is only valid with YUV444.
+            avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
+        } else if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
+            avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+        } else {
+            avif->yuvFormat = AVIF_APP_DEFAULT_PIXEL_FORMAT;
+        }
     }
     avif->depth = requestedDepth;
     if (avif->depth == 0) {

@@ -112,6 +112,11 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Specifies the image size limit (in total pixels) that should be tolerated.
     Default is 268,435,456 pixels (16,384 by 16,384 pixels for a square image).
 
+**\--dimension-limit** _C_
+:   Specifies the image dimension limit (width or height) that should be
+    tolerated.
+    Default is 32,768. Set it to 0 to ignore the limit.
+
 # EXAMPLES
 
 Decompress an AVIF file to a PNG file:

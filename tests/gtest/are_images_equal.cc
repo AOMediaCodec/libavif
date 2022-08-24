@@ -3,6 +3,7 @@
 // Compares two files and returns whether they are the same once decoded.
 
 #include <iostream>
+#include <string>
 
 #include "aviftest_helpers.h"
 #include "avifutil.h"

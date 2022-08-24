@@ -365,12 +365,11 @@ static gboolean avif_image_saver(FILE          *f,
                 }
 
                 if (quality < 0 || quality > 100) {
-
                     g_set_error(error,
                                 GDK_PIXBUF_ERROR,
                                 GDK_PIXBUF_ERROR_BAD_OPTION,
-                                "AVIF quality must be a value between 0 and 100; value \"%d\" is not allowed.",
-                                (int)quality);
+                                "AVIF quality must be a value between 0 and 100; value \"%ld\" is not allowed.",
+                                quality);
 
                     return FALSE;
                 }
@@ -423,7 +422,7 @@ static gboolean avif_image_saver(FILE          *f,
         }
     }
 
-    max_quantizer = AVIF_QUANTIZER_WORST_QUALITY * ( 100 - CLAMP(quality, 0, 100)) / 100;
+    max_quantizer = AVIF_QUANTIZER_WORST_QUALITY * (100 - (int)quality) / 100;
     min_quantizer = 0;
     alpha_quantizer = 0;
 

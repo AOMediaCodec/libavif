@@ -8,13 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 There are incompatible ABI changes in this release. The alphaRange member was
 removed from avifImage struct. The chromaDownsampling member was added to the
-avifRGBImage struct. avifImageCopy() and avifImageAllocatePlanes()
-signatures changed. It is necessary to recompile your code. Also check the
-return values of avifImageCopy() and avifImageAllocatePlanes().
+avifRGBImage struct. The imageDimensionLimit member was added to the avifDecoder
+struct. avifImageCopy() and avifImageAllocatePlanes() signatures changed. It is
+necessary to recompile your code. Also check the return values of
+avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
 * Update aom.cmd: v3.4.0
-* Update svt.cmd/svt.sh: v1.2.0
+* Update rav1e.cmd: v0.5.1
+* Update svt.cmd/svt.sh: v1.2.1
 * Update libgav1.cmd: v0.18.0
 * Update libyuv.cmd: 9b17af9b (version 1838)
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
@@ -30,6 +32,9 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 ### Added
 * Add avifChromaDownsampling enum
 * Add chromaDownsampling field to avifRGBImage struct
+* Add imageDimensionLimit field to avifDecoder struct
+* avifdec: Add --dimension-limit, which specifies the image dimension limit
+  (width or height) that should be tolerated
 
 ## [0.10.1] - 2022-04-11
 

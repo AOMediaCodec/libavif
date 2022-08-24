@@ -45,6 +45,8 @@ static void syntax(void)
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --size-limit C    : Specifies the image size limit (in total pixels) that should be tolerated.\n");
     printf("                        Default: %u, set to a smaller value to further restrict.\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
+    printf("  --dimension-limit C : Specifies the image dimension limit (width or height) that should be tolerated.\n");
+    printf("                        Default: %u, set to 0 to ignore.\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
     printf("\n");
     avifPrintVersions();
 }
@@ -66,6 +68,7 @@ int main(int argc, char * argv[])
     avifStrictFlags strictFlags = AVIF_STRICT_ENABLED;
     uint32_t frameIndex = 0;
     uint32_t imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
+    uint32_t imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
 
     if (argc < 2) {
         syntax();
@@ -159,11 +162,20 @@ int main(int argc, char * argv[])
             ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--size-limit")) {
             NEXTARG();
-            imageSizeLimit = strtoul(arg, NULL, 10);
-            if ((imageSizeLimit > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) || (imageSizeLimit == 0)) {
+            unsigned long value = strtoul(arg, NULL, 10);
+            if ((value > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) || (value == 0)) {
                 fprintf(stderr, "ERROR: invalid image size limit: %s\n", arg);
                 return 1;
             }
+            imageSizeLimit = (uint32_t)value;
+        } else if (!strcmp(arg, "--dimension-limit")) {
+            NEXTARG();
+            unsigned long value = strtoul(arg, NULL, 10);
+            if (value > UINT32_MAX) {
+                fprintf(stderr, "ERROR: invalid image dimension limit: %s\n", arg);
+                return 1;
+            }
+            imageDimensionLimit = (uint32_t)value;
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -195,6 +207,7 @@ int main(int argc, char * argv[])
         decoder->maxThreads = jobs;
         decoder->codecChoice = codecChoice;
         decoder->imageSizeLimit = imageSizeLimit;
+        decoder->imageDimensionLimit = imageDimensionLimit;
         decoder->strictFlags = strictFlags;
         decoder->allowProgressive = allowProgressive;
         avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
@@ -263,6 +276,7 @@ int main(int argc, char * argv[])
     decoder->maxThreads = jobs;
     decoder->codecChoice = codecChoice;
     decoder->imageSizeLimit = imageSizeLimit;
+    decoder->imageDimensionLimit = imageDimensionLimit;
     decoder->strictFlags = strictFlags;
     decoder->allowProgressive = allowProgressive;
 

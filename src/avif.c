@@ -98,6 +98,8 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_INVALID_ARGUMENT:              return "Invalid argument";
         case AVIF_RESULT_NOT_IMPLEMENTED:               return "Not implemented";
         case AVIF_RESULT_OUT_OF_MEMORY:                 return "Out of memory";
+        case AVIF_RESULT_CANNOT_CHANGE_SETTING:         return "Can not change some settings during encoding";
+        case AVIF_RESULT_INCOMPATIBLE_IMAGE:            return "This image is incompatible with already encoded image";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
@@ -405,6 +407,17 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanes
 avifBool avifImageUsesU16(const avifImage * image)
 {
     return (image->depth > 8);
+}
+
+avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
+{
+    if (width > (imageSizeLimit / height)) {
+        return AVIF_TRUE;
+    }
+    if ((imageDimensionLimit != 0) && ((width > imageDimensionLimit) || (height > imageDimensionLimit))) {
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
 }
 
 // avifCodecCreate*() functions are in their respective codec_*.c files

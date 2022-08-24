@@ -73,6 +73,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifallocationtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifallocationtest COMMAND avifallocationtest)
 
+    add_executable(avifchangesettingtest gtest/avifchangesettingtest.cc)
+    target_link_libraries(avifchangesettingtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifchangesettingtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifchangesettingtest COMMAND avifchangesettingtest)
+
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})

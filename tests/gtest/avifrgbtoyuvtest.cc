@@ -24,7 +24,7 @@ constexpr uint32_t kModifierSize = 4 * 4;
 // Modifies the pixel values of a channel in image by modifier[] (row-ordered).
 template <typename PixelType>
 void ModifyImageChannel(avifRGBImage* image, uint32_t channel_offset,
-                        const int32_t modifier[kModifierSize]) {
+                        const uint8_t modifier[kModifierSize]) {
   const uint32_t channel_count = avifRGBFormatChannelCount(image->format);
   assert(channel_offset < channel_count);
   for (uint32_t y = 0, i = 0; y < image->height; ++y) {
@@ -38,7 +38,7 @@ void ModifyImageChannel(avifRGBImage* image, uint32_t channel_offset,
 }
 
 void ModifyImageChannel(avifRGBImage* image, uint32_t channel_offset,
-                        const int32_t modifier[kModifierSize]) {
+                        const uint8_t modifier[kModifierSize]) {
   if (image->depth <= 8) {
     ModifyImageChannel<uint8_t>(image, channel_offset, modifier);
   } else {
@@ -93,17 +93,17 @@ double GetPsnr(double sq_diff_sum, double num_diffs, double max_abs_diff) {
 // To exercise the chroma subsampling loss, the input samples must differ in
 // each of the RGB channels. Chroma subsampling expects the input RGB channels
 // to be correlated to minimize the quality loss.
-constexpr int32_t kRedNoise[kModifierSize] = {
+constexpr uint8_t kRedNoise[kModifierSize] = {
     7,  14, 11, 5,   // Random permutation of 16 values.
     4,  6,  8,  15,  //
     2,  9,  13, 3,   //
     12, 1,  10, 0};
-constexpr int32_t kGreenNoise[kModifierSize] = {
+constexpr uint8_t kGreenNoise[kModifierSize] = {
     3,  2,  12, 15,  // Random permutation of 16 values
     14, 10, 7,  13,  // that is somewhat close to kRedNoise.
     5,  1,  9,  0,   //
     8,  4,  11, 6};
-constexpr int32_t kBlueNoise[kModifierSize] = {
+constexpr uint8_t kBlueNoise[kModifierSize] = {
     0,  8,  14, 9,   // Random permutation of 16 values
     13, 12, 2,  7,   // that is somewhat close to kGreenNoise.
     3,  1,  11, 10,  //
@@ -226,7 +226,8 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
       static_cast<double>(diff_sum) / static_cast<double>(num_diffs);
   const double average_abs_diff =
       static_cast<double>(abs_diff_sum) / static_cast<double>(num_diffs);
-  const double psnr = GetPsnr(sq_diff_sum, num_diffs, rgb_max);
+  const double psnr = GetPsnr(static_cast<double>(sq_diff_sum),
+                              static_cast<double>(num_diffs), rgb_max);
   EXPECT_LE(std::abs(average_diff), max_abs_average_diff);
   EXPECT_GE(psnr, min_psnr);
 
@@ -303,12 +304,20 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
   // max_abs_average_diff is not tested here because it is not meaningful for
   // only 3*3 conversions as it takes the maximum difference per conversion.
   // PSNR is averaged on all pixels so it can be tested here.
-  EXPECT_GE(GetPsnr(sq_diff_sum, num_diffs, rgb_max), min_psnr);
+  EXPECT_GE(GetPsnr(static_cast<double>(sq_diff_sum),
+                    static_cast<double>(num_diffs), rgb_max),
+            min_psnr);
 }
 
 constexpr avifRGBFormat kAllRgbFormats[] = {
     AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
     AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR};
+
+// avifMatrixCoefficients-typed constants for testing::Values() to work on MSVC.
+constexpr avifMatrixCoefficients kMatrixCoefficientsBT601 =
+    AVIF_MATRIX_COEFFICIENTS_BT601;
+constexpr avifMatrixCoefficients kMatrixCoefficientsIdentity =
+    AVIF_MATRIX_COEFFICIENTS_IDENTITY;
 
 // This is the default avifenc setup when encoding from 8b PNG files to AVIF.
 INSTANTIATE_TEST_SUITE_P(
@@ -316,7 +325,7 @@ INSTANTIATE_TEST_SUITE_P(
     Combine(/*rgb_depth=*/Values(8),
             /*yuv_depth=*/Values(8), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV420), Values(AVIF_RANGE_FULL),
-            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+            Values(kMatrixCoefficientsBT601),
             /*add_noise=*/Values(true),
             /*rgb_step=*/Values(3),
             /*max_abs_average_diff=*/Values(0.1),  // The color drift is almost
@@ -332,7 +341,7 @@ INSTANTIATE_TEST_SUITE_P(Identity8b, RGBToYUVTest,
                                  ValuesIn(kAllRgbFormats),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
-                                 Values(AVIF_MATRIX_COEFFICIENTS_IDENTITY),
+                                 Values(kMatrixCoefficientsIdentity),
                                  /*add_noise=*/Values(true),
                                  /*rgb_step=*/Values(31),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -343,7 +352,7 @@ INSTANTIATE_TEST_SUITE_P(Identity10b, RGBToYUVTest,
                                  ValuesIn(kAllRgbFormats),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
-                                 Values(AVIF_MATRIX_COEFFICIENTS_IDENTITY),
+                                 Values(kMatrixCoefficientsIdentity),
                                  /*add_noise=*/Values(true),
                                  /*rgb_step=*/Values(101),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -354,7 +363,7 @@ INSTANTIATE_TEST_SUITE_P(Identity12b, RGBToYUVTest,
                                  ValuesIn(kAllRgbFormats),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
-                                 Values(AVIF_MATRIX_COEFFICIENTS_IDENTITY),
+                                 Values(kMatrixCoefficientsIdentity),
                                  /*add_noise=*/Values(true),
                                  /*rgb_step=*/Values(401),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -368,7 +377,7 @@ INSTANTIATE_TEST_SUITE_P(
         /*yuv_depth=*/Values(8), ValuesIn(kAllRgbFormats),
         Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                AVIF_PIXEL_FORMAT_YUV420),
-        Values(AVIF_RANGE_FULL), Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+        Values(AVIF_RANGE_FULL), Values(kMatrixCoefficientsBT601),
         /*add_noise=*/Values(false),
         /*rgb_step=*/Values(17),
         /*max_abs_average_diff=*/Values(0.02),  // The color drift is centered.
@@ -384,7 +393,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b, RGBToYUVTest,
                                  ValuesIn(kAllRgbFormats),
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
-                                 Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+                                 Values(kMatrixCoefficientsBT601),
                                  /*add_noise=*/Values(false),
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -395,7 +404,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b, RGBToYUVTest,
                                  ValuesIn(kAllRgbFormats),
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
-                                 Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+                                 Values(kMatrixCoefficientsBT601),
                                  /*add_noise=*/Values(false),
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -406,7 +415,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, RGBToYUVTest,
                                  ValuesIn(kAllRgbFormats),
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
-                                 Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+                                 Values(kMatrixCoefficientsBT601),
                                  /*add_noise=*/Values(false),
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -421,7 +430,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
-            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+            Values(kMatrixCoefficientsBT601),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(61),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(1.),  // Not very accurate because
@@ -434,7 +443,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
-            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+            Values(kMatrixCoefficientsBT601),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(211),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.2),  // Not very accurate because
@@ -447,7 +456,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
-            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+            Values(kMatrixCoefficientsBT601),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(809),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.3),  // Not very accurate because
@@ -465,7 +474,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400),
             Values(AVIF_RANGE_FULL, AVIF_RANGE_LIMITED),
-            Values(AVIF_MATRIX_COEFFICIENTS_BT601),
+            Values(kMatrixCoefficientsBT601),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(3),  // way faster and 99% similar to rgb_step=1
             /*max_abs_average_diff=*/Values(10.),

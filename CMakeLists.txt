@@ -3,6 +3,11 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+# New in CMake version 3.15. MSVC warning flags are not in CMAKE_<LANG>_FLAGS by default.
+if(POLICY CMP0092)
+    cmake_policy(SET CMP0092 NEW)
+endif()
+
 # Specify search path for CMake modules to be loaded by include() and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
@@ -119,29 +124,39 @@ if(AVIF_LOCAL_LIBYUV)
         set(LIBYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
 endif()
+option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
+if(AVIF_LOCAL_LIBSHARPYUV)
+    set(LIB_FILENAME
+        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    )
+    message(STATUS "AVIF_LOCAL_LIBSHARPYUV LIB_FILENAME ${LIB_FILENAME}")
+    if(NOT EXISTS "${LIB_FILENAME}")
+        message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBSHARPYUV): ${LIB_FILENAME} is missing, bailing out")
+    endif()
+    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(LIBSHARPYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp")
+        set(LIBSHARPYUV_LIBRARY ${LIB_FILENAME})
+    else()
+        set(LIBSHARPYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp" PARENT_SCOPE)
+        set(LIBSHARPYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
+    endif()
+endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
 include(CheckCCompilerFlag)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    add_definitions(-Wall -Wextra)
+    add_definitions(-Wall -Wextra -Wshorten-64-to-32)
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
     add_definitions(-Wall -Wextra)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     message(STATUS "libavif: Enabling warnings for MSVC")
     add_definitions(
-        /Wall # All warnings
-        /wd4255 # Disable: no function prototype given
+        /W4
         /wd4324 # Disable: structure was padded due to alignment specifier
-        /wd4668 # Disable: is not defined as a preprocessor macro, replacing with '0'
-        /wd4710 # Disable: function not inlined
-        /wd4711 # Disable: function selected for inline expansion
-        /wd4738 # Disable: storing 32-bit float result in memory, possible loss of performance
-        /wd4820 # Disable: bytes padding added after data member
         /wd4996 # Disable: potentially unsafe stdlib methods
-        /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
         # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
         # libavif uses ANSI API to print to console, which is not portable between systems using different
         # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
@@ -189,6 +204,7 @@ set(AVIF_SRCS
     src/read.c
     src/reformat.c
     src/reformat_libyuv.c
+    src/reformat_libsharpyuv.c
     src/scale.c
     src/stream.c
     src/utils.c
@@ -226,6 +242,16 @@ if(libyuv_FOUND)
     endif()
 else()
     message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
+endif()
+
+find_package(libsharpyuv QUIET) # not required
+if (libsharpyuv_FOUND)
+    message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
+    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
+    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
+    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
+else()
+    message(STATUS "libavif: libsharpyuv not found")
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)

@@ -5,12 +5,18 @@
 
 #if !defined(AVIF_LIBYUV_ENABLED)
 
-avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag)
+avifBool avifImageScale(avifImage * image,
+                        uint32_t dstWidth,
+                        uint32_t dstHeight,
+                        uint32_t imageSizeLimit,
+                        uint32_t imageDimensionLimit,
+                        avifDiagnostics * diag)
 {
     (void)image;
     (void)dstWidth;
     (void)dstHeight;
     (void)imageSizeLimit;
+    (void)imageDimensionLimit;
     avifDiagnosticsPrintf(diag, "avifImageScale() called, but is unimplemented without libyuv!");
     return AVIF_FALSE;
 }
@@ -36,7 +42,12 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
 // This should be configurable and/or smarter. kFilterBox has the highest quality but is the slowest.
 #define AVIF_LIBYUV_FILTER_MODE kFilterBox
 
-avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag)
+avifBool avifImageScale(avifImage * image,
+                        uint32_t dstWidth,
+                        uint32_t dstHeight,
+                        uint32_t imageSizeLimit,
+                        uint32_t imageDimensionLimit,
+                        avifDiagnostics * diag)
 {
     if ((image->width == dstWidth) && (image->height == dstHeight)) {
         // Nothing to do
@@ -47,7 +58,7 @@ avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight
         avifDiagnosticsPrintf(diag, "avifImageScale requested invalid dst dimensions [%ux%u]", dstWidth, dstHeight);
         return AVIF_FALSE;
     }
-    if (dstWidth > (imageSizeLimit / dstHeight)) {
+    if (avifDimensionsTooLarge(dstWidth, dstHeight, imageSizeLimit, imageDimensionLimit)) {
         avifDiagnosticsPrintf(diag, "avifImageScale requested dst dimensions that are too large [%ux%u]", dstWidth, dstHeight);
         return AVIF_FALSE;
     }

@@ -40,7 +40,7 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
   const uint32_t pixel_byte_count =
       (image1.depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
 
-  for (uint32_t plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV);
+  for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV);
        ++plane) {
     const uint32_t width = (plane == AVIF_CHAN_Y) ? image1.width : uv_width;
     const uint32_t width_byte_count = width * pixel_byte_count;
@@ -100,8 +100,8 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
     byte_count -= byte_count / 2;
   }
   // Linearly map the input availability ratio to the decoded row ratio.
-  const uint32_t min_decoded_cell_row_count =
-      (height / cell_height) * available_byte_count / byte_count;
+  const uint32_t min_decoded_cell_row_count = static_cast<uint32_t>(
+      (height / cell_height) * available_byte_count / byte_count);
   const uint32_t min_decoded_px_row_count =
       min_decoded_cell_row_count * cell_height;
   // One cell is the incremental decoding granularity.

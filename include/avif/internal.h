@@ -152,6 +152,12 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb);
 avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifConversionFlags flags);
 
 // Returns:
+// * AVIF_RESULT_OK              - Converted successfully with libsharpyuv
+// * AVIF_RESULT_NOT_IMPLEMENTED - libsharpyuv is not compiled in, or doesn't support this type of input
+// * [any other error]           - Return error to caller
+avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * rgb, const avifReformatState * state);
+
+// Returns:
 // * AVIF_RESULT_OK               - Converted successfully with libyuv.
 // * AVIF_RESULT_NOT_IMPLEMENTED  - The fast path for this conversion is not implemented with libyuv, use built-in conversion.
 // * AVIF_RESULT_INVALID_ARGUMENT - Return error to caller.
@@ -164,23 +170,25 @@ avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb);
 avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
+avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit);
+
 // ---------------------------------------------------------------------------
 // Scaling
 
 // This scales the YUV/A planes in-place.
-avifBool avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, uint32_t imageSizeLimit, avifDiagnostics * diag);
+avifBool avifImageScale(avifImage * image,
+                        uint32_t dstWidth,
+                        uint32_t dstHeight,
+                        uint32_t imageSizeLimit,
+                        uint32_t imageDimensionLimit,
+                        avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // Grid AVIF images
 
 // Returns false if the tiles in a grid image violate any standards.
 // The image contains imageW*imageH pixels. The tiles are of tileW*tileH pixels each.
-AVIF_API avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
-                                             uint32_t imageW,
-                                             uint32_t imageH,
-                                             uint32_t tileW,
-                                             uint32_t tileH,
-                                             avifDiagnostics * diag);
+avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, uint32_t imageH, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
@@ -265,6 +273,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,
                                                avifBool alpha,
+                                               avifBool updateConfig,
                                                avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);
