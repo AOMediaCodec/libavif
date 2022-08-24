@@ -203,8 +203,8 @@ set(AVIF_SRCS
     src/rawdata.c
     src/read.c
     src/reformat.c
-    src/reformat_libyuv.c
     src/reformat_libsharpyuv.c
+    src/reformat_libyuv.c
     src/scale.c
     src/stream.c
     src/utils.c

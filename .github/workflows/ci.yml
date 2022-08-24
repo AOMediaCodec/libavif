@@ -26,6 +26,7 @@ jobs:
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.12
       with:
+        # CMake version 3.17 is required to build libwebp on macOS.
         cmake-version: '3.17.x'
     - name: Print cmake version
       run: cmake --version
