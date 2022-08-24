@@ -6,6 +6,7 @@
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
+#include "avifutil.h"
 #include "gtest/gtest.h"
 
 using ::testing::Bool;
@@ -15,6 +16,9 @@ namespace libavif {
 namespace {
 
 //------------------------------------------------------------------------------
+
+// Used to pass the data folder path to the GoogleTest suites.
+const char* data_path = nullptr;
 
 // ICC color profiles are not checked by libavif so the content does not matter.
 // This is a truncated widespread ICC color profile.
@@ -108,5 +112,34 @@ INSTANTIATE_TEST_SUITE_P(All, MetadataTest,
                          Combine(/*use_icc=*/Bool(), /*use_exif=*/Bool(),
                                  /*use_xmp=*/Bool()));
 
+//------------------------------------------------------------------------------
+
+TEST(MetadataTest, ReadPngExif) {
+  avifImage* image = avifImageCreateEmpty();
+  ASSERT_NE(image, nullptr);
+  const std::string file_path =
+      std::string(data_path) + "/paris_exif_xmp_icc.png";
+  ASSERT_EQ(avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0, image,
+                          nullptr, nullptr, nullptr),
+            AVIF_APP_FILE_FORMAT_PNG);
+  EXPECT_NE(image->width * image->height, 0u);
+  EXPECT_NE(image->exif.size, 0u);
+  EXPECT_NE(image->exif.data, nullptr);
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace libavif
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  if (argc < 2) {
+    std::cerr
+        << "The path to the test data folder must be provided as an argument"
+        << std::endl;
+    return 1;
+  }
+  libavif::data_path = argv[1];
+  return RUN_ALL_TESTS();
+}
