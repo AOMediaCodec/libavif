@@ -547,7 +547,7 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 //
 // * YUV depth: 8
 // * RGB depth: 8
-// * rgb.chromaDownsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC, AVIF_CHROMA_UPSAMPLING_FASTEST
+// * rgb.chromaDownsampling: AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, AVIF_CHROMA_DOWNSAMPLING_FASTEST
 // * One of the following combinations (avifRGBFormat to avifPixelFormat/MC/Range):
 //   *  BGRA            to  YUV400        /  x  /[Full|Limited]
 //   *  BGRA            to [YUV420|YUV422]/[5|6]/[Full|Limited]
