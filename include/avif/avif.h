@@ -529,31 +529,37 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // routines will fail if the width and height don't match the associated avifImage.
 
 // If libavif is built with libyuv fast paths enabled, libavif will use libyuv for conversion from
-// YUV to RGB if the following requirements are met:
-//
-// * YUV depth: 8 or 10
-// * RGB depth: 8
-// * rgb.chromaUpsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC, AVIF_CHROMA_UPSAMPLING_FASTEST
-// * rgb.format: AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA (420/422 support for
-//               AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_ARGB, AVIF_RGB_FORMAT_RGB_565)
-// * CICP is one of the following combinations (CP/TC/MC/Range):
-//   * x/x/[2|5|6]/Full
-//   * [5|6]/x/12/Full
-//   * x/x/[1|2|5|6|9]/Limited
-//   * [1|2|5|6|9]/x/12/Limited
-
-// If libavif is built with libyuv fast paths enabled, libavif will use libyuv for conversion from
 // RGB to YUV if the following requirements are met:
 //
 // * YUV depth: 8
 // * RGB depth: 8
 // * rgb.chromaDownsampling: AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, AVIF_CHROMA_DOWNSAMPLING_FASTEST
-// * One of the following combinations (avifRGBFormat to avifPixelFormat/MC/Range):
-//   *  BGRA            to  YUV400        /  x  /[Full|Limited]
-//   *  BGRA            to [YUV420|YUV422]/[5|6]/[Full|Limited]
-//   *  BGRA            to  YUV444        /[5|6]/ Limited
-//   *  BGR             to  YUV420        /[5|6]/[Full|Limited]
-//   * [RGBA|ARGB|ABGR] to  YUV420        /[5|6]/ Limited
+// * CICP is one of the following combinations (CP/TC/MC):
+//   *  x/x/[5|6]
+// * One of the following combinations (avifRGBFormat to avifPixelFormat/Range):
+//   * RGBA     to  [      |      |YUV420|      ]/[Limited|Full]
+//   * ARGB     to  [      |      |YUV420|      ]/[Limited|    ]
+//   * BGR      to  [      |      |YUV420|      ]/[Limited|Full]
+//   * BGRA     to  [YUV444|YUV422|YUV420|YUV400]/[Limited|    ] or
+//                  [      |YUV422|YUV420|YUV400]/[       |Full]
+//   * ABGR     to  [      |      |YUV420|      ]/[Limited|    ]
+
+// If libavif is built with libyuv fast paths enabled, libavif will use libyuv for conversion from
+// YUV to RGB if the following requirements are met:
+//
+// * RGB depth: 8
+// * rgb.chromaUpsampling: AVIF_CHROMA_UPSAMPLING_AUTOMATIC, AVIF_CHROMA_UPSAMPLING_FASTEST
+// * CICP is one of the following combinations (CP/TC/MC/Range):
+//   *      x     /x/[1|2|5|6|9]/[Limited|Full]
+//   * [1|2|5|6|9]/x/    12     /[Limited|Full]
+// * One of the following combinations (avifRGBFormat from avifPixelFormat/depth):
+//   * RGB      from  [      |      |YUV420|      ]/8-bit
+//   * RGBA     from  [YUV444|YUV422|YUV420|YUV400]/8-bit or [YUV444|YUV422|YUV420]/10-bit or [YUV420]/12-bit
+//   * ARGB     from  [      |YUV422|YUV420|      ]/8-bit
+//   * BGR      from  [      |      |YUV420|      ]/8-bit
+//   * BGRA     from  [YUV444|YUV422|YUV420|YUV400]/8-bit or [YUV444|YUV422|YUV420]/10-bit or [YUV420]/12-bit
+//   * ABGR     from  [      |YUV422|YUV420|      ]/8-bit
+//   * RGB_565  from  [      |YUV422|YUV420|      ]/8-bit
 
 // Note to libavif maintainers: The lookup tables in avifImageYUVToRGBLibYUV
 // rely on the ordering of this enum values for their correctness. So changing
