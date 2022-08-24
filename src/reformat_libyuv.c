@@ -495,12 +495,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
         };
         YUVToRGBMatrixFilter yuvToRgbMatrixFilter = lutYuvToRgbMatrixFilter[rgb->format][image->yuvFormat];
         if (yuvToRgbMatrixFilter != NULL) {
-            enum FilterMode filter = kFilterBilinear;
-            if (flags & AVIF_CHROMA_UPSAMPLING_NEAREST) {
-                filter = kFilterNone;
-            } else if (flags & AVIF_CHROMA_UPSAMPLING_BOX) {
-                filter = kFilterBox;
-            }
+            const enum FilterMode filter = (flags & AVIF_CHROMA_UPSAMPLING_NEAREST) ? kFilterNone : kFilterBilinear;
             if (yuvToRgbMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
                                      image->yuvRowBytes[AVIF_CHAN_Y],
                                      image->yuvPlanes[uPlaneIndex],
@@ -519,7 +514,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
         }
 
         // Only proceed with the nearest-neighbor filter if explicitly specified or left as default.
-        if ((flags & AVIF_CHROMA_UPSAMPLING_BILINEAR) | (flags & AVIF_CHROMA_UPSAMPLING_BOX)) {
+        if (flags & AVIF_CHROMA_UPSAMPLING_BILINEAR) {
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
         // Lookup table for YUV To RGB Matrix (nearest-neighbor filter).
@@ -624,12 +619,7 @@ avifResult avifImageYUVToRGBLibYUVHighBitDepth(const avifImage * image,
     };
     YUVToRGBMatrixFilter yuvToRgbMatrixFilter = lutYuvToRgbMatrixFilter[depthIndex][rgb->format][image->yuvFormat];
     if (yuvToRgbMatrixFilter != NULL) {
-        enum FilterMode filter = kFilterBilinear;
-        if (flags & AVIF_CHROMA_UPSAMPLING_NEAREST) {
-            filter = kFilterNone;
-        } else if (flags & AVIF_CHROMA_UPSAMPLING_BOX) {
-            filter = kFilterBox;
-        }
+        const enum FilterMode filter = (flags & AVIF_CHROMA_UPSAMPLING_NEAREST) ? kFilterNone : kFilterBilinear;
         if (yuvToRgbMatrixFilter((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
                                  image->yuvRowBytes[AVIF_CHAN_Y] / 2,
                                  (const uint16_t *)image->yuvPlanes[uPlaneIndex],
@@ -648,7 +638,7 @@ avifResult avifImageYUVToRGBLibYUVHighBitDepth(const avifImage * image,
     }
 
     // Only proceed with the nearest-neighbor filter if explicitly specified or left as default.
-    if ((flags & AVIF_CHROMA_UPSAMPLING_BILINEAR) | (flags & AVIF_CHROMA_UPSAMPLING_BOX)) {
+    if (flags & AVIF_CHROMA_UPSAMPLING_BILINEAR) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
     // Lookup table for YUV To RGB Matrix (nearest-neighbor filter).

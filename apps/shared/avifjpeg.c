@@ -314,7 +314,7 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
             memcpy(pixelRow, buffer[0], rgb.rowBytes);
             ++row;
         }
-        if (avifImageRGBToYUV(avif, &rgb, AVIF_CONVERSION_AUTO) != AVIF_RESULT_OK) {
+        if (avifImageRGBToYUV(avif, &rgb, AVIF_CONVERSION_DEFAULT) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
             goto cleanup;
         }

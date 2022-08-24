@@ -59,7 +59,8 @@ int main(int argc, char * argv[])
         // Be sure to use uint16_t* instead of uint8_t* for rgb.pixels/rgb.rowBytes if (rgb.depth > 8)
         avifRGBImageAllocatePixels(&rgb);
 
-        if (avifImageYUVToRGB(decoder->image, &rgb, AVIF_CONVERSION_AUTO) != AVIF_RESULT_OK) {
+        // Other flags than AVIF_CONVERSION_DEFAULT, such as AVIF_CHROMA_UPSAMPLING_NEAREST, can be passed.
+        if (avifImageYUVToRGB(decoder->image, &rgb, AVIF_CONVERSION_DEFAULT) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion from YUV failed: %s\n", inputFilename);
             goto cleanup;
         }

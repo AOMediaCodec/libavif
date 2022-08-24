@@ -182,9 +182,9 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
         ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
       }
 
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_AUTO),
+      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_DEFAULT),
                 AVIF_RESULT_OK);
-      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_AUTO),
+      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_DEFAULT),
                 AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                              &sq_diff_sum, &max_abs_diff);
@@ -204,10 +204,10 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
           }
 
           ASSERT_EQ(
-              avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_AUTO),
+              avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_DEFAULT),
               AVIF_RESULT_OK);
           ASSERT_EQ(
-              avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_AUTO),
+              avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_DEFAULT),
               AVIF_RESULT_OK);
           GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                                  &sq_diff_sum, &max_abs_diff);
@@ -292,9 +292,9 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
         testutil::FillImageChannel(&src_rgb, offsets.a, rgb_max);
       }
 
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_AUTO),
+      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_CONVERSION_DEFAULT),
                 AVIF_RESULT_OK);
-      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_AUTO),
+      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_CONVERSION_DEFAULT),
                 AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                              &sq_diff_sum, &max_abs_diff);

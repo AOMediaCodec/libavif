@@ -61,7 +61,7 @@ int main(int argc, char * argv[])
     int pngCompressionLevel = -1; // -1 is a sentinel to avifPNGWrite() to skip calling png_set_compression_level()
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool infoOnly = AVIF_FALSE;
-    avifConversionFlags upsamplingFlags = AVIF_CONVERSION_AUTO;
+    avifConversionFlags upsamplingFlags = AVIF_CONVERSION_DEFAULT;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
     avifBool allowProgressive = AVIF_FALSE;

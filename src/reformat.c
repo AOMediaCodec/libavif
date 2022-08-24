@@ -491,9 +491,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
     const uint16_t yuvMaxChannel = (uint16_t)state->yuvMaxChannel;
     const float rgbMaxChannelF = state->rgbMaxChannelF;
 
-    // AVIF_CHROMA_UPSAMPLING_NEAREST and AVIF_CHROMA_UPSAMPLING_BILINEAR are the only supported built-ins
-    assert(!(flags & AVIF_CHROMA_UPSAMPLING_BOX));
-
     // If toRGBAlphaMode is active (not no-op), assert that the alpha plane is present. The end of
     // the avifPrepareReformatState() function should ensure this, but this assert makes it clear
     // to clang's analyzer.
@@ -1196,9 +1193,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifCo
     }
 
     // At most one filter can be specified.
-    if (((flags & AVIF_CHROMA_UPSAMPLING_NEAREST) && (flags & AVIF_CHROMA_UPSAMPLING_BILINEAR)) ||
-        ((flags & AVIF_CHROMA_UPSAMPLING_NEAREST) && (flags & AVIF_CHROMA_UPSAMPLING_BOX)) ||
-        ((flags & AVIF_CHROMA_UPSAMPLING_BILINEAR) && (flags & AVIF_CHROMA_UPSAMPLING_BOX))) {
+    if ((flags & AVIF_CHROMA_UPSAMPLING_NEAREST) && (flags & AVIF_CHROMA_UPSAMPLING_BILINEAR)) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
@@ -1245,10 +1240,6 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifCo
 
     if (!convertedWithLibYUV) {
         // libyuv is either unavailable or unable to perform the specific conversion required here.
-
-        if (flags & AVIF_CHROMA_UPSAMPLING_BOX) {
-            return AVIF_RESULT_REFORMAT_FAILED; // AVIF_CHROMA_UPSAMPLING_BOX is only available with libyuv.
-        }
 
         // Look over the available built-in "fast" routines for YUV->RGB conversion and see if one
         // fits the current combination, or as a last resort, call avifImageYUVAnyToRGBAnySlow(),

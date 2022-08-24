@@ -528,7 +528,7 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // conversion, if necessary. Pixels in an avifRGBImage buffer are always full range, and conversion
 // routines will fail if the width and height don't match the associated avifImage.
 
-// If libavif is built with libyuv fast paths enabled, and if the AVIF_CONVERSION_AVOID_LIBYUV flag is not set,
+// If libavif is built with libyuv fast paths enabled and the AVIF_CONVERSION_AVOID_LIBYUV flag is not set,
 // libavif will use libyuv for conversion between RGB and YUV if the following requirements are met:
 
 // Conversion from YUV to RGB:
@@ -604,14 +604,14 @@ AVIF_API uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb);
 AVIF_API void avifRGBImageAllocatePixels(avifRGBImage * rgb);
 AVIF_API void avifRGBImageFreePixels(avifRGBImage * rgb);
 
-// The main conversion options.
+// Conversion options.
 typedef enum avifConversionFlag
 {
-    AVIF_CONVERSION_AUTO = 0, // Default settings.
-                              // Uses the first available upsampling filter among:
-                              //   libyuv average, built-in average
-                              // Uses the first available downsampling filter among:
-                              //   libyuv bilinear, libyuv nearest-neighbor, built-in bilinear
+    AVIF_CONVERSION_DEFAULT = 0, // Default settings.
+                                 // Uses the first available upsampling filter among:
+                                 //   libyuv average, built-in average
+                                 // Uses the first available downsampling filter among:
+                                 //   libyuv bilinear, libyuv nearest-neighbor, built-in bilinear
 
     // libyuv preference
 
@@ -625,9 +625,8 @@ typedef enum avifConversionFlag
     // Conversion from YUV 4:2:2 or YUV 4:2:0 to RGB (ignored in all other cases)
 
     // Chroma upsampling filter. Set at most one:
-    AVIF_CHROMA_UPSAMPLING_NEAREST = (1 << 20),  // only use the fast nearest-neighbor filter (libyuv or built-in)
-    AVIF_CHROMA_UPSAMPLING_BILINEAR = (1 << 21), // only use the good-quality bilinear filter (libyuv or built-in)
-    AVIF_CHROMA_UPSAMPLING_BOX = (1 << 22)       // only use the slow best-quality box filter (libyuv)
+    AVIF_CHROMA_UPSAMPLING_NEAREST = (1 << 20), // only use the fast nearest-neighbor filter (libyuv or built-in)
+    AVIF_CHROMA_UPSAMPLING_BILINEAR = (1 << 21) // only use the good-quality bilinear filter (libyuv or built-in)
 } avifConversionFlag;
 typedef uint32_t avifConversionFlags;
 
