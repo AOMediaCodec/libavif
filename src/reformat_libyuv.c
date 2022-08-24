@@ -142,7 +142,7 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
             (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
             // Lookup table for RGB To YUV Matrix (average filter).
             typedef int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int);
-            // Third dimension is for avifRange: 0 is AVIF_RANGE_LIMITED, 1 is AVIF_RANGE_FULL.
+            // Third dimension is for avifRange.
             RGBtoYUV lutRgbToYuv[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT][2] = {
                 { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } },                 // RGB
                 { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { ABGRToI420, avifABGRToJ420 }, { NULL, NULL } }, // RGBA
@@ -168,10 +168,10 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
                 }
                 return AVIF_RESULT_OK;
             }
-        } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+        } else { // image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400
             // Lookup table for RGB To Y (monochrome).
             typedef int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int);
-            // Second dimension is for avifRange: 0 is AVIF_RANGE_LIMITED, 1 is AVIF_RANGE_FULL.
+            // Second dimension is for avifRange.
             RGBtoY lutRgbToY[AVIF_RGB_FORMAT_COUNT][2] = {
                 { NULL, NULL },             // RGB
                 { NULL, NULL },             // RGBA
