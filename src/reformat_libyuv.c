@@ -138,8 +138,32 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
     // libyuv only handles BT.601 for RGB to YUV, and not all range/order/subsampling combinations.
     // BT.470BG has the same coefficients as BT.601.
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT470BG) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601)) {
-        if ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) ||
-            (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+            // Lookup table for RGB To Y (monochrome).
+            typedef int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int);
+            // Second dimension is for avifRange.
+            RGBtoY lutRgbToY[AVIF_RGB_FORMAT_COUNT][2] = {
+                { NULL, NULL },             // RGB
+                { NULL, NULL },             // RGBA
+                { NULL, NULL },             // ARGB
+                { NULL, NULL },             // BGR
+                { ARGBToI400, ARGBToJ400 }, // BGRA
+                { NULL, NULL },             // ABGR
+                { NULL, NULL }              // RGB_565
+            };
+            RGBtoY rgbToY = lutRgbToY[rgb->format][image->yuvRange];
+            if (rgbToY != NULL) {
+                if (rgbToY(rgb->pixels,
+                           rgb->rowBytes,
+                           image->yuvPlanes[AVIF_CHAN_Y],
+                           image->yuvRowBytes[AVIF_CHAN_Y],
+                           image->width,
+                           image->height) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
+                }
+                return AVIF_RESULT_OK;
+            }
+        } else {
             // Lookup table for RGB To YUV Matrix (average filter).
             typedef int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int);
             // Third dimension is for avifRange.
@@ -168,34 +192,9 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
                 }
                 return AVIF_RESULT_OK;
             }
-        } else { // image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400
-            // Lookup table for RGB To Y (monochrome).
-            typedef int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int);
-            // Second dimension is for avifRange.
-            RGBtoY lutRgbToY[AVIF_RGB_FORMAT_COUNT][2] = {
-                { NULL, NULL },             // RGB
-                { NULL, NULL },             // RGBA
-                { NULL, NULL },             // ARGB
-                { NULL, NULL },             // BGR
-                { ARGBToI400, ARGBToJ400 }, // BGRA
-                { NULL, NULL },             // ABGR
-                { NULL, NULL }              // RGB_565
-            };
-            RGBtoY rgbToY = lutRgbToY[rgb->format][image->yuvRange];
-            if (rgbToY != NULL) {
-                if (rgbToY(rgb->pixels,
-                           rgb->rowBytes,
-                           image->yuvPlanes[AVIF_CHAN_Y],
-                           image->yuvRowBytes[AVIF_CHAN_Y],
-                           image->width,
-                           image->height) != 0) {
-                    return AVIF_RESULT_REFORMAT_FAILED;
-                }
-                return AVIF_RESULT_OK;
-            }
         }
     }
-    // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the current implementation
+    // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the built-in implementation
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 
@@ -422,8 +421,32 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
 
     avifBool isYVU = lutIsYVU[rgb->format];
     const struct YuvConstants * matrix = isYVU ? matrixYVU : matrixYUV;
-    if ((image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) ||
-        (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
+    if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+        // Lookup table for YUV400 to RGB Matrix.
+        typedef int (*YUV400ToRGBMatrix)(const uint8_t *, int, uint8_t *, int, const struct YuvConstants *, int, int);
+        YUV400ToRGBMatrix lutYuv400ToRgbMatrix[AVIF_RGB_FORMAT_COUNT] = {
+            NULL,             // RGB
+            I400ToARGBMatrix, // RGBA
+            NULL,             // ARGB
+            NULL,             // BGR
+            I400ToARGBMatrix, // BGRA
+            NULL,             // ABGR
+            NULL,             // RGB_565
+        };
+        YUV400ToRGBMatrix yuv400ToRgbMatrix = lutYuv400ToRgbMatrix[rgb->format];
+        if (yuv400ToRgbMatrix != NULL) {
+            if (yuv400ToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                  image->yuvRowBytes[AVIF_CHAN_Y],
+                                  rgb->pixels,
+                                  rgb->rowBytes,
+                                  matrix,
+                                  image->width,
+                                  image->height) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+            return AVIF_RESULT_OK;
+        }
+    } else {
         int uPlaneIndex = isYVU ? AVIF_CHAN_V : AVIF_CHAN_U;
         int vPlaneIndex = isYVU ? AVIF_CHAN_U : AVIF_CHAN_V;
         // Lookup table for YUV To RGB Matrix (with filter).
@@ -494,31 +517,6 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                matrix,
                                image->width,
                                image->height) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
-            }
-            return AVIF_RESULT_OK;
-        }
-    } else { // image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400
-        // Lookup table for YUV400 to RGB Matrix.
-        typedef int (*YUV400ToRGBMatrix)(const uint8_t *, int, uint8_t *, int, const struct YuvConstants *, int, int);
-        YUV400ToRGBMatrix lutYuv400ToRgbMatrix[AVIF_RGB_FORMAT_COUNT] = {
-            NULL,             // RGB
-            I400ToARGBMatrix, // RGBA
-            NULL,             // ARGB
-            NULL,             // BGR
-            I400ToARGBMatrix, // BGRA
-            NULL,             // ABGR
-            NULL,             // RGB_565
-        };
-        YUV400ToRGBMatrix yuv400ToRgbMatrix = lutYuv400ToRgbMatrix[rgb->format];
-        if (yuv400ToRgbMatrix != NULL) {
-            if (yuv400ToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
-                                  image->yuvRowBytes[AVIF_CHAN_Y],
-                                  rgb->pixels,
-                                  rgb->rowBytes,
-                                  matrix,
-                                  image->width,
-                                  image->height) != 0) {
                 return AVIF_RESULT_REFORMAT_FAILED;
             }
             return AVIF_RESULT_OK;

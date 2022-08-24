@@ -529,8 +529,7 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // routines will fail if the width and height don't match the associated avifImage.
 
 // If libavif is built with a version of libyuv offering a fast conversion between RGB and YUV for
-// the given settings (avifMatrixCoefficients, avifColorPrimaries, avifPixelFormat, avifRGBFormat,
-// avifRange, bit depth), libavif will use it. See reformat_libyuv.c for the details.
+// the given inputs, libavif will use it. See reformat_libyuv.c for the details.
 
 // Note to libavif maintainers: The lookup tables in avifImageYUVToRGBLibYUV
 // rely on the ordering of this enum values for their correctness. So changing
