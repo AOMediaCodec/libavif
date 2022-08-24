@@ -236,8 +236,7 @@ int main(int argc, char * argv[])
             }
 
             int currIndex = 0;
-            avifResult nextImageResult;
-            while ((nextImageResult = avifDecoderNextImage(decoder)) == AVIF_RESULT_OK) {
+            while ((result = avifDecoderNextImage(decoder)) == AVIF_RESULT_OK) {
                 printf("   * Decoded frame [%d] [pts %2.2f (%" PRIu64 " timescales)] [duration %2.2f (%" PRIu64 " timescales)] [%ux%u]\n",
                        currIndex,
                        decoder->imageTiming.pts,
@@ -248,17 +247,19 @@ int main(int argc, char * argv[])
                        decoder->image->height);
                 ++currIndex;
             }
-            if (nextImageResult != AVIF_RESULT_NO_IMAGES_REMAINING) {
-                printf("ERROR: Failed to decode frame: %s\n", avifResultToString(nextImageResult));
+            if (result == AVIF_RESULT_NO_IMAGES_REMAINING) {
+                result = AVIF_RESULT_OK;
+            } else {
+                fprintf(stderr, "ERROR: Failed to decode frame: %s\n", avifResultToString(result));
                 avifDumpDiagnostics(&decoder->diag);
             }
         } else {
-            printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
+            fprintf(stderr, "ERROR: Failed to parse image: %s\n", avifResultToString(result));
             avifDumpDiagnostics(&decoder->diag);
         }
 
         avifDecoderDestroy(decoder);
-        return 0;
+        return result != AVIF_RESULT_OK;
     } else {
         if (!inputFilename || !outputFilename) {
             syntax();
