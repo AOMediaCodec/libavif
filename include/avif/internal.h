@@ -254,6 +254,18 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
 struct avifCodec;
 struct avifCodecInternal;
 
+typedef enum avifEncoderConfig
+{
+    AVIF_ENCODER_CONFIG_MIN_QUANTIZER = (1 << 0),
+    AVIF_ENCODER_CONFIG_MAX_QUANTIZER = (1 << 1),
+    AVIF_ENCODER_CONFIG_MIN_QUANTIZER_ALPHA = (1 << 2),
+    AVIF_ENCODER_CONFIG_MAX_QUANTIZER_ALPHA = (1 << 3),
+    AVIF_ENCODER_CONFIG_TILE_ROWS_LOG_2 = (1 << 4),
+    AVIF_ENCODER_CONFIG_TILE_COLS_LOG_2 = (1 << 5),
+
+    AVIF_ENCODER_CONFIG_CODEC_SPECIFIC = (1 << 31)
+} avifEncoderConfig;
+
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
                                               struct avifDecoder * decoder,
                                               const avifDecodeSample * sample,
@@ -268,7 +280,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,
                                                avifBool alpha,
-                                               avifBool updateConfig,
+                                               avifEncoderConfig updateConfig,
                                                avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);

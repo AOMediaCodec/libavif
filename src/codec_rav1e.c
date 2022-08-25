@@ -12,6 +12,8 @@ struct avifCodecInternal
     RaContext * rav1eContext;
     RaChromaSampling chromaSampling;
     int yShift;
+    uint32_t encodeWidth;
+    uint32_t encodeHeight;
 };
 
 static void rav1eCodecDestroyInternal(avifCodec * codec)
@@ -51,11 +53,20 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
-                                        avifBool updateConfig,
+                                        avifEncoderConfig updatedConfig,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
-    if (updateConfig) {
+    // rav1e does not support changing config.
+    if (updatedConfig) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    // rav1e does not support changing encoding dimension.
+    if (!codec->internal->rav1eContext) {
+        codec->internal->encodeWidth = image->width;
+        codec->internal->encodeHeight = image->height;
+    } else if ((codec->internal->encodeWidth != image->width) || (codec->internal->encodeHeight != image->height)) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 

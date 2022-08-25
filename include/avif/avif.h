@@ -1058,8 +1058,8 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
-// * AV1 encoder settings and codec specific options set by avifEncoderSetCodecSpecificOption()
-//   will be applied / updated to AV1 encoder before each call to avifEncoderAddImage().
+// * Some encoder settings can be changed. Changes will take effect from next call to
+//   avifEncoderAddImage().
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
@@ -1068,15 +1068,15 @@ typedef struct avifEncoder
     // settings (see Notes above)
     int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
     uint64_t timescale;   // timescale of the media (Hz)
-    // AV1 encoder settings.
     int maxThreads;
+    int speed;
+    // changeable encoder settings.
     int minQuantizer;
     int maxQuantizer;
     int minQuantizerAlpha;
     int maxQuantizerAlpha;
     int tileRowsLog2;
     int tileColsLog2;
-    int speed;
 
     // stats from the most recent write
     avifIOStats ioStats;
@@ -1129,9 +1129,9 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs,
-// to be sent to codec at the next avifEncoderAddImage() call.
-// See the codec documentation to know if a setting is permanent or applied only to the next frame.
-// key must be non-NULL, but passing a NULL value will delete that pending key, if it exists.
+// to be consumed by the codec at the next avifEncoderAddImage() call.
+// See the codec documentation to know if a setting is persistent or applied only to the next frame.
+// key must be non-NULL, but passing a NULL value will delete the pending key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().
 AVIF_API void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
