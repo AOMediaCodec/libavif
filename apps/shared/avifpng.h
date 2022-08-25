@@ -16,6 +16,7 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifPixelFormat requestedFormat,
                      uint32_t requestedDepth,
                      avifRGBToYUVFlags flags,
+                     avifBool ignoreExif,
                      uint32_t * outPNGDepth);
 avifBool avifPNGWrite(const char * outputFilename,
                       const avifImage * avif,

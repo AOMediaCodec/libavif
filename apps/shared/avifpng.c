@@ -137,6 +137,7 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifPixelFormat requestedFormat,
                      uint32_t requestedDepth,
                      avifRGBToYUVFlags flags,
+                     avifBool ignoreExif,
                      uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
@@ -265,20 +266,22 @@ avifBool avifPNGRead(const char * inputFilename,
         goto cleanup;
     }
 
-    // Read Exif metadata at the beginning of the file.
-    if (!avifExtractExif(png, info, avif)) {
-        goto cleanup;
-    }
-    // Read Exif metadata at the end of the file if there was none at the beginning.
-    if (!avif->exif.data) {
-        info_end = png_create_info_struct(png);
-        if (!info_end) {
-            fprintf(stderr, "Cannot init libpng (info_end): %s\n", inputFilename);
+    if (!ignoreExif) {
+        // Read Exif metadata at the beginning of the file.
+        if (!avifExtractExif(png, info, avif)) {
             goto cleanup;
         }
-        png_read_end(png, info_end);
-        if (!avifExtractExif(png, info_end, avif)) {
-            goto cleanup;
+        // Read Exif metadata at the end of the file if there was none at the beginning.
+        if (!avif->exif.data) {
+            info_end = png_create_info_struct(png);
+            if (!info_end) {
+                fprintf(stderr, "Cannot init libpng (info_end): %s\n", inputFilename);
+                goto cleanup;
+            }
+            png_read_end(png, info_end);
+            if (!avifExtractExif(png, info_end, avif)) {
+                goto cleanup;
+            }
         }
     }
     readResult = AVIF_TRUE;

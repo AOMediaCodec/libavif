@@ -159,6 +159,16 @@ void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
 
 //------------------------------------------------------------------------------
 
+bool AreByteSequencesEqual(const uint8_t data1[], size_t data1_length,
+                           const uint8_t data2[], size_t data2_length) {
+  if (data1_length != data2_length) return false;
+  return data1_length == 0 || std::equal(data1, data1 + data1_length, data2);
+}
+
+bool AreByteSequencesEqual(const avifRWData& data1, const avifRWData& data2) {
+  return AreByteSequencesEqual(data1.data, data1.size, data2.data, data2.size);
+}
+
 // Returns true if image1 and image2 are identical.
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha) {
@@ -212,7 +222,9 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
       row2 += row_bytes2;
     }
   }
-  return true;
+  return AreByteSequencesEqual(image1.icc, image2.icc) &&
+         AreByteSequencesEqual(image1.exif, image2.exif) &&
+         AreByteSequencesEqual(image1.xmp, image2.xmp);
 }
 
 static avifResult avifIOLimitedReaderRead(avifIO* io, uint32_t readFlags,

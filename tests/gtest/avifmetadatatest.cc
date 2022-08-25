@@ -85,27 +85,15 @@ TEST_P(MetadataTest, EncodeDecode) {
             AVIF_RESULT_OK);
 
   // Compare input and output metadata.
-  if (use_icc) {
-    ASSERT_EQ(decoded->icc.size, kSampleIcc.size());
-    EXPECT_TRUE(
-        std::equal(kSampleIcc.begin(), kSampleIcc.end(), decoded->icc.data));
-  } else {
-    EXPECT_EQ(decoded->icc.size, 0u);
-  }
-  if (use_exif) {
-    ASSERT_EQ(decoded->exif.size, kSampleExif.size());
-    EXPECT_TRUE(
-        std::equal(kSampleExif.begin(), kSampleExif.end(), decoded->exif.data));
-  } else {
-    EXPECT_EQ(decoded->exif.size, 0u);
-  }
-  if (use_xmp) {
-    ASSERT_EQ(decoded->xmp.size, kSampleXmp.size());
-    EXPECT_TRUE(
-        std::equal(kSampleXmp.begin(), kSampleXmp.end(), decoded->xmp.data));
-  } else {
-    EXPECT_EQ(decoded->xmp.size, 0u);
-  }
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(
+      decoded->icc.data, decoded->icc.size, kSampleIcc.data(),
+      use_icc ? kSampleIcc.size() : 0u));
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(
+      decoded->exif.data, decoded->exif.size, kSampleExif.data(),
+      use_exif ? kSampleExif.size() : 0u));
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(
+      decoded->xmp.data, decoded->xmp.size, kSampleXmp.data(),
+      use_xmp ? kSampleXmp.size() : 0u));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, MetadataTest,
@@ -119,9 +107,11 @@ TEST(MetadataTest, ReadPngExif) {
   ASSERT_NE(image, nullptr);
   const std::string file_path =
       std::string(data_path) + "/paris_exif_xmp_icc.png";
-  ASSERT_EQ(avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0, image,
-                          nullptr, nullptr, nullptr),
-            AVIF_APP_FILE_FORMAT_PNG);
+  ASSERT_EQ(
+      avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0,
+                    /*ignoreICC=*/AVIF_TRUE, /*ignoreExif=*/AVIF_FALSE,
+                    /*ignoreXMP=*/AVIF_TRUE, image, nullptr, nullptr, nullptr),
+      AVIF_APP_FILE_FORMAT_PNG);
   EXPECT_NE(image->width * image->height, 0u);
   EXPECT_NE(image->exif.size, 0u);
   EXPECT_NE(image->exif.data, nullptr);
