@@ -32,6 +32,9 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
         rgb->format < AVIF_RGB_FORMAT_RGB || rgb->format >= AVIF_RGB_FORMAT_COUNT) {
         return AVIF_FALSE;
     }
+    if (image->yuvRange != AVIF_RANGE_LIMITED && image->yuvRange != AVIF_RANGE_FULL) {
+        return AVIF_FALSE;
+    }
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
     //

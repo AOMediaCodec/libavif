@@ -221,61 +221,7 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
     // Find the correct libyuv YuvConstants, based on range and CP/MC
     const struct YuvConstants * matrixYUV = NULL;
     const struct YuvConstants * matrixYVU = NULL;
-    if (image->yuvRange == AVIF_RANGE_LIMITED) {
-        switch (image->matrixCoefficients) {
-            case AVIF_MATRIX_COEFFICIENTS_BT709:
-                matrixYUV = &kYuvH709Constants;
-                matrixYVU = &kYvuH709Constants;
-                break;
-            case AVIF_MATRIX_COEFFICIENTS_BT470BG:
-            case AVIF_MATRIX_COEFFICIENTS_BT601:
-            case AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED:
-                matrixYUV = &kYuvI601Constants;
-                matrixYVU = &kYvuI601Constants;
-                break;
-            case AVIF_MATRIX_COEFFICIENTS_BT2020_NCL:
-                matrixYUV = &kYuv2020Constants;
-                matrixYVU = &kYvu2020Constants;
-                break;
-            case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL:
-                switch (image->colorPrimaries) {
-                    case AVIF_COLOR_PRIMARIES_BT709:
-                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
-                        matrixYUV = &kYuvH709Constants;
-                        matrixYVU = &kYvuH709Constants;
-                        break;
-                    case AVIF_COLOR_PRIMARIES_BT470BG:
-                    case AVIF_COLOR_PRIMARIES_BT601:
-                        matrixYUV = &kYuvI601Constants;
-                        matrixYVU = &kYvuI601Constants;
-                        break;
-                    case AVIF_COLOR_PRIMARIES_BT2020:
-                        matrixYUV = &kYuv2020Constants;
-                        matrixYVU = &kYvu2020Constants;
-                        break;
-
-                    case AVIF_COLOR_PRIMARIES_UNKNOWN:
-                    case AVIF_COLOR_PRIMARIES_BT470M:
-                    case AVIF_COLOR_PRIMARIES_SMPTE240:
-                    case AVIF_COLOR_PRIMARIES_GENERIC_FILM:
-                    case AVIF_COLOR_PRIMARIES_XYZ:
-                    case AVIF_COLOR_PRIMARIES_SMPTE431:
-                    case AVIF_COLOR_PRIMARIES_SMPTE432:
-                    case AVIF_COLOR_PRIMARIES_EBU3213:
-                        break;
-                }
-                break;
-            case AVIF_MATRIX_COEFFICIENTS_IDENTITY:
-            case AVIF_MATRIX_COEFFICIENTS_FCC:
-            case AVIF_MATRIX_COEFFICIENTS_SMPTE240:
-            case AVIF_MATRIX_COEFFICIENTS_YCGCO:
-            case AVIF_MATRIX_COEFFICIENTS_BT2020_CL:
-            case AVIF_MATRIX_COEFFICIENTS_SMPTE2085:
-            case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL:
-            case AVIF_MATRIX_COEFFICIENTS_ICTCP:
-                break;
-        }
-    } else { // image->yuvRange == AVIF_RANGE_FULL
+    if (image->yuvRange == AVIF_RANGE_FULL) {
         switch (image->matrixCoefficients) {
             // BT.709 full range YuvConstants were added in libyuv version 1772.
             // See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/2646472.
@@ -332,6 +278,60 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb)
                 }
                 break;
 
+            case AVIF_MATRIX_COEFFICIENTS_IDENTITY:
+            case AVIF_MATRIX_COEFFICIENTS_FCC:
+            case AVIF_MATRIX_COEFFICIENTS_SMPTE240:
+            case AVIF_MATRIX_COEFFICIENTS_YCGCO:
+            case AVIF_MATRIX_COEFFICIENTS_BT2020_CL:
+            case AVIF_MATRIX_COEFFICIENTS_SMPTE2085:
+            case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL:
+            case AVIF_MATRIX_COEFFICIENTS_ICTCP:
+                break;
+        }
+    } else { // image->yuvRange == AVIF_RANGE_LIMITED
+        switch (image->matrixCoefficients) {
+            case AVIF_MATRIX_COEFFICIENTS_BT709:
+                matrixYUV = &kYuvH709Constants;
+                matrixYVU = &kYvuH709Constants;
+                break;
+            case AVIF_MATRIX_COEFFICIENTS_BT470BG:
+            case AVIF_MATRIX_COEFFICIENTS_BT601:
+            case AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED:
+                matrixYUV = &kYuvI601Constants;
+                matrixYVU = &kYvuI601Constants;
+                break;
+            case AVIF_MATRIX_COEFFICIENTS_BT2020_NCL:
+                matrixYUV = &kYuv2020Constants;
+                matrixYVU = &kYvu2020Constants;
+                break;
+            case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL:
+                switch (image->colorPrimaries) {
+                    case AVIF_COLOR_PRIMARIES_BT709:
+                    case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
+                        matrixYUV = &kYuvH709Constants;
+                        matrixYVU = &kYvuH709Constants;
+                        break;
+                    case AVIF_COLOR_PRIMARIES_BT470BG:
+                    case AVIF_COLOR_PRIMARIES_BT601:
+                        matrixYUV = &kYuvI601Constants;
+                        matrixYVU = &kYvuI601Constants;
+                        break;
+                    case AVIF_COLOR_PRIMARIES_BT2020:
+                        matrixYUV = &kYuv2020Constants;
+                        matrixYVU = &kYvu2020Constants;
+                        break;
+
+                    case AVIF_COLOR_PRIMARIES_UNKNOWN:
+                    case AVIF_COLOR_PRIMARIES_BT470M:
+                    case AVIF_COLOR_PRIMARIES_SMPTE240:
+                    case AVIF_COLOR_PRIMARIES_GENERIC_FILM:
+                    case AVIF_COLOR_PRIMARIES_XYZ:
+                    case AVIF_COLOR_PRIMARIES_SMPTE431:
+                    case AVIF_COLOR_PRIMARIES_SMPTE432:
+                    case AVIF_COLOR_PRIMARIES_EBU3213:
+                        break;
+                }
+                break;
             case AVIF_MATRIX_COEFFICIENTS_IDENTITY:
             case AVIF_MATRIX_COEFFICIENTS_FCC:
             case AVIF_MATRIX_COEFFICIENTS_SMPTE240:
