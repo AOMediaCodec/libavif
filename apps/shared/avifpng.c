@@ -18,6 +18,22 @@ typedef png_bytep png_iccp_datap;
 typedef png_charp png_iccp_datap;
 #endif
 
+static avifBool avifIsHexDigit(char hexDigit, uint8_t * decimalValue)
+{
+    if ((hexDigit >= 'A') && (hexDigit <= 'F')) {
+        *decimalValue = (uint8_t)(hexDigit - 'A') + 10;
+        return AVIF_TRUE;
+    } else if ((hexDigit >= 'a') && (hexDigit <= 'f')) {
+        *decimalValue = (uint8_t)(hexDigit - 'a') + 10;
+        return AVIF_TRUE;
+    } else if ((hexDigit >= '0') && (hexDigit <= '9')) {
+        *decimalValue = (uint8_t)(hexDigit - '0');
+        return AVIF_TRUE;
+    } else {
+        return AVIF_FALSE;
+    }
+}
+
 // Converts a hexadecimal string which contains 2-byte character representations of hexadecimal values to raw data.
 // hexString may contain values consisting of [A-F][a-f][0-9] in pairs, e.g., 7af2..., separated by any number of newlines.
 // On success the bytes are filled and AVIF_TRUE is returned.
@@ -26,21 +42,19 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t expectedLeng
 {
     avifRWDataRealloc(bytes, expectedLength);
     const char * src = hexString;
-    uint8_t * dst = bytes->data;
     size_t actualLength = 0;
-    for (; (actualLength < expectedLength) && (*src != '\0'); ++actualLength, ++dst) {
+    for (; (actualLength < expectedLength) && (*src != '\0'); ++actualLength) {
         while (*src == '\n') {
             ++src;
         }
-        const char hexValue[3] = { src[0], src[1], '\0' };
-        src += 2;
-        char * end;
-        bytes->data[actualLength] = (uint8_t)strtol(hexValue, &end, 16);
-        if (end != &hexValue[2]) {
+        uint8_t mostSignificant, leastSignificant;
+        if (!avifIsHexDigit(src[0], &mostSignificant) || !avifIsHexDigit(src[1], &leastSignificant)) {
             avifRWDataFree(bytes);
             fprintf(stderr, "Exif extraction failed: invalid token at " AVIF_FMT_ZU "\n", actualLength);
             return AVIF_FALSE;
         }
+        src += 2;
+        bytes->data[actualLength] = (mostSignificant << 4) | leastSignificant;
     }
 
     if (actualLength != expectedLength) {

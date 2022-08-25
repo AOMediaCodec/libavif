@@ -121,6 +121,5 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(are_images_equal aviftest_helpers avif_apps)
     add_test(
         NAME test_cmd
-        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data)
 endif()
