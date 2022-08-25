@@ -12,7 +12,7 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
     (void)rgb;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
-avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifConversionFlags flags)
+avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags)
 {
     (void)image;
     (void)rgb;
@@ -228,14 +228,14 @@ static avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                               avifRGBImage * rgb,
                                               const struct YuvConstants * matrixYUV,
                                               const struct YuvConstants * matrixYVU,
-                                              avifConversionFlags flags);
+                                              avifYUVToRGBFlags flags);
 static avifResult avifImageYUVToRGBLibYUVHighBitDepth(const avifImage * image,
                                                       avifRGBImage * rgb,
                                                       const struct YuvConstants * matrixYUV,
                                                       const struct YuvConstants * matrixYVU,
-                                                      avifConversionFlags flags);
+                                                      avifYUVToRGBFlags flags);
 
-avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifConversionFlags flags)
+avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags)
 {
     // See if the current settings can be accomplished with libyuv, and use it (if possible).
 
@@ -420,7 +420,7 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                        avifRGBImage * rgb,
                                        const struct YuvConstants * matrixYUV,
                                        const struct YuvConstants * matrixYVU,
-                                       avifConversionFlags flags)
+                                       avifYUVToRGBFlags flags)
 {
     // See if the current settings can be accomplished with libyuv, and use it (if possible).
 
@@ -556,7 +556,7 @@ avifResult avifImageYUVToRGBLibYUVHighBitDepth(const avifImage * image,
                                                avifRGBImage * rgb,
                                                const struct YuvConstants * matrixYUV,
                                                const struct YuvConstants * matrixYVU,
-                                               avifConversionFlags flags)
+                                               avifYUVToRGBFlags flags)
 {
     // See if the current settings can be accomplished with libyuv, and use it (if possible).
 

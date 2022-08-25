@@ -61,7 +61,7 @@ int main(int argc, char * argv[])
     int pngCompressionLevel = -1; // -1 is a sentinel to avifPNGWrite() to skip calling png_set_compression_level()
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool infoOnly = AVIF_FALSE;
-    avifConversionFlags upsamplingFlags = AVIF_CONVERSION_DEFAULT;
+    avifYUVToRGBFlags upsamplingFlags = AVIF_YUV_TO_RGB_DEFAULT;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
     avifBool allowProgressive = AVIF_FALSE;
@@ -134,11 +134,11 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-u") || !strcmp(arg, "--upsampling")) {
             NEXTARG();
             if (!strcmp(arg, "automatic")) {
-                upsamplingFlags = AVIF_CODEC_CHOICE_AUTO;
+                upsamplingFlags = AVIF_YUV_TO_RGB_DEFAULT;
             } else if (!strcmp(arg, "fastest")) {
                 upsamplingFlags = AVIF_CHROMA_UPSAMPLING_NEAREST;
             } else if (!strcmp(arg, "best")) {
-                upsamplingFlags = AVIF_CONVERSION_AVOID_LIBYUV | AVIF_CHROMA_UPSAMPLING_BILINEAR;
+                upsamplingFlags = AVIF_YUV_TO_RGB_AVOID_LIBYUV | AVIF_CHROMA_UPSAMPLING_BILINEAR;
             } else if (!strcmp(arg, "nearest")) {
                 upsamplingFlags = AVIF_CHROMA_UPSAMPLING_NEAREST;
             } else if (!strcmp(arg, "bilinear")) {

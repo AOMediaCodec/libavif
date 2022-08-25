@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth);
-avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifConversionFlags conversionFlags);
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifYUVToRGBFlags conversionFlags);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -191,7 +191,7 @@ static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
     return AVIF_CLAMP(unorm, 0, state->yuvMaxChannel);
 }
 
-avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifConversionFlags flags)
+avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifRGBToYUVFlags flags)
 {
     if (!rgb->pixels || rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         return AVIF_RESULT_REFORMAT_FAILED;
@@ -222,7 +222,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifCo
     }
 
     avifBool convertedWithLibYUV = AVIF_FALSE;
-    if (!(flags & AVIF_CONVERSION_AVOID_LIBYUV) && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
+    if (!(flags & AVIF_RGB_TO_YUV_AVOID_LIBYUV) && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
         avifResult libyuvResult = avifImageRGBToYUVLibYUV(image, rgb);
         if (libyuvResult == AVIF_RESULT_OK) {
             convertedWithLibYUV = AVIF_TRUE;
@@ -465,7 +465,7 @@ static void avifStoreRGB8Pixel(avifRGBFormat format, uint8_t R, uint8_t G, uint8
 }
 
 // Note: This function handles alpha (un)multiply.
-static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBImage * rgb, avifReformatState * state, avifConversionFlags flags)
+static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBImage * rgb, avifReformatState * state, avifYUVToRGBFlags flags)
 {
     // Aliases for some state
     const float kr = state->kr;
@@ -1149,10 +1149,10 @@ static avifResult avifImageYUV8ToRGB8Mono(const avifImage * image, avifRGBImage 
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifRGBImageToF16(avifRGBImage * rgb, avifConversionFlags flags)
+static avifResult avifRGBImageToF16(avifRGBImage * rgb, avifYUVToRGBFlags flags)
 {
     avifResult libyuvResult = AVIF_RESULT_NOT_IMPLEMENTED;
-    if (!(flags & AVIF_CONVERSION_AVOID_LIBYUV)) {
+    if (!(flags & AVIF_YUV_TO_RGB_AVOID_LIBYUV)) {
         libyuvResult = avifRGBImageToF16LibYUV(rgb);
     }
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
@@ -1181,7 +1181,7 @@ static avifResult avifRGBImageToF16(avifRGBImage * rgb, avifConversionFlags flag
     return AVIF_RESULT_OK;
 }
 
-avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifConversionFlags flags)
+avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags)
 {
     if (!image->yuvPlanes[AVIF_CHAN_Y]) {
         return AVIF_RESULT_REFORMAT_FAILED;
@@ -1199,7 +1199,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifCo
 
     avifAlphaMultiplyMode alphaMultiplyMode = state.toRGBAlphaMode;
     avifBool convertedWithLibYUV = AVIF_FALSE;
-    if (!(flags & AVIF_CONVERSION_AVOID_LIBYUV) &&
+    if (!(flags & AVIF_YUV_TO_RGB_AVOID_LIBYUV) &&
         ((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || avifRGBFormatHasAlpha(rgb->format))) {
         avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb, flags);
         if (libyuvResult == AVIF_RESULT_OK) {
@@ -1240,7 +1240,6 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifCo
 
     if (!convertedWithLibYUV) {
         // libyuv is either unavailable or unable to perform the specific conversion required here.
-
         // Look over the available built-in "fast" routines for YUV->RGB conversion and see if one
         // fits the current combination, or as a last resort, call avifImageYUVAnyToRGBAnySlow(),
         // which handles every possibly YUV->RGB combination, but very slowly (in comparison).

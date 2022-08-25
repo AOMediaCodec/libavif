@@ -314,7 +314,7 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
             memcpy(pixelRow, buffer[0], rgb.rowBytes);
             ++row;
         }
-        if (avifImageRGBToYUV(avif, &rgb, AVIF_CONVERSION_DEFAULT) != AVIF_RESULT_OK) {
+        if (avifImageRGBToYUV(avif, &rgb, AVIF_RGB_TO_YUV_DEFAULT) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
             goto cleanup;
         }
@@ -332,7 +332,7 @@ cleanup:
     return ret;
 }
 
-avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifConversionFlags conversionFlags)
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifYUVToRGBFlags conversionFlags)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;

@@ -203,8 +203,8 @@ int main(int argc, char * argv[])
                                 }
                             }
 
-                            avifImageRGBToYUV(image, &srcRGB, AVIF_CONVERSION_DEFAULT);
-                            avifImageYUVToRGB(image, &dstRGB, AVIF_CONVERSION_DEFAULT);
+                            avifImageRGBToYUV(image, &srcRGB, AVIF_RGB_TO_YUV_DEFAULT);
+                            avifImageYUVToRGB(image, &dstRGB, AVIF_YUV_TO_RGB_DEFAULT);
 
                             for (int y = 0; y < dim; ++y) {
                                 const uint8_t * srcRow = &srcRGB.pixels[y * srcRGB.rowBytes];
@@ -344,23 +344,23 @@ int main(int argc, char * argv[])
                         avifImageFreePlanes(image, AVIF_PLANES_ALL);
                         image->depth = yuvDepth;
                         image->yuvRange = yuvRange;
-                        avifImageRGBToYUV(image, &srcRGB, AVIF_CONVERSION_DEFAULT);
+                        avifImageRGBToYUV(image, &srcRGB, AVIF_RGB_TO_YUV_DEFAULT);
 
                         avifRGBImage intermediateRGB;
                         avifRGBImageSetDefaults(&intermediateRGB, image);
                         intermediateRGB.depth = rgbDepth;
                         intermediateRGB.format = rgbFormat;
                         avifRGBImageAllocatePixels(&intermediateRGB);
-                        avifImageYUVToRGB(image, &intermediateRGB, AVIF_CONVERSION_DEFAULT);
+                        avifImageYUVToRGB(image, &intermediateRGB, AVIF_YUV_TO_RGB_DEFAULT);
 
                         avifImageFreePlanes(image, AVIF_PLANES_ALL);
-                        avifImageRGBToYUV(image, &intermediateRGB, AVIF_CONVERSION_DEFAULT);
+                        avifImageRGBToYUV(image, &intermediateRGB, AVIF_RGB_TO_YUV_DEFAULT);
 
                         avifRGBImage dstRGB;
                         avifRGBImageSetDefaults(&dstRGB, image);
                         dstRGB.depth = yuvDepth;
                         avifRGBImageAllocatePixels(&dstRGB);
-                        avifImageYUVToRGB(image, &dstRGB, AVIF_CONVERSION_DEFAULT);
+                        avifImageYUVToRGB(image, &dstRGB, AVIF_YUV_TO_RGB_DEFAULT);
 
                         avifBool moveOn = AVIF_FALSE;
                         for (uint32_t j = 0; j < originalHeight; ++j) {

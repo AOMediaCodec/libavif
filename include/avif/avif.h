@@ -528,8 +528,9 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // conversion, if necessary. Pixels in an avifRGBImage buffer are always full range, and conversion
 // routines will fail if the width and height don't match the associated avifImage.
 
-// If libavif is built with libyuv fast paths enabled and the AVIF_CONVERSION_AVOID_LIBYUV flag is not set,
-// libavif will use libyuv for conversion between RGB and YUV if the following requirements are met:
+// If libavif is built with libyuv fast paths enabled and the AVIF_RGB_TO_YUV_AVOID_LIBYUV or
+// AVIF_YUV_TO_RGB_AVOID_LIBYUV flag is not set, libavif will use libyuv for conversion between
+// RGB and YUV if the following requirements are met:
 
 // Conversion from YUV to RGB:
 // * YUV depth: 8 or 10
@@ -605,34 +606,41 @@ AVIF_API void avifRGBImageAllocatePixels(avifRGBImage * rgb);
 AVIF_API void avifRGBImageFreePixels(avifRGBImage * rgb);
 
 // Conversion options.
-typedef enum avifConversionFlag
+typedef enum avifRGBToYUVFlag
 {
-    AVIF_CONVERSION_DEFAULT = 0, // Default settings.
-                                 // Uses the first available upsampling filter among:
+    AVIF_RGB_TO_YUV_DEFAULT = 0, // Uses the first available upsampling filter among:
                                  //   libyuv average, built-in average
-                                 // Uses the first available downsampling filter among:
-                                 //   libyuv bilinear, libyuv nearest-neighbor, built-in bilinear
 
     // libyuv preference
 
-    AVIF_CONVERSION_AVOID_LIBYUV = (1 << 0), // Only picks built-in paths. The default is to prefer libyuv if available.
+    AVIF_RGB_TO_YUV_AVOID_LIBYUV = (1 << 0), // Only picks built-in paths. The default is to prefer libyuv if available.
 
     // Conversion from RGB to YUV 4:2:2 or YUV 4:2:0 (ignored in all other cases)
 
     // Chroma downsampling filter. Set at most one:
     AVIF_CHROMA_DOWNSAMPLING_AVERAGE = (1 << 10), // only use the averaging filter (libyuv or built-in)
+} avifRGBToYUVFlag;
+typedef uint32_t avifRGBToYUVFlags;
+typedef enum avifYUVToRGBFlag
+{
+    AVIF_YUV_TO_RGB_DEFAULT = 0, // Uses the first available downsampling filter among:
+                                 //   libyuv bilinear, libyuv nearest-neighbor, built-in bilinear
+
+    // libyuv preference
+
+    AVIF_YUV_TO_RGB_AVOID_LIBYUV = (1 << 0), // Only picks built-in paths. The default is to prefer libyuv if available.
 
     // Conversion from YUV 4:2:2 or YUV 4:2:0 to RGB (ignored in all other cases)
 
     // Chroma upsampling filter. Set at most one:
-    AVIF_CHROMA_UPSAMPLING_NEAREST = (1 << 20), // only use the fast nearest-neighbor filter (libyuv or built-in)
-    AVIF_CHROMA_UPSAMPLING_BILINEAR = (1 << 21) // only use the good-quality bilinear filter (libyuv or built-in)
-} avifConversionFlag;
-typedef uint32_t avifConversionFlags;
+    AVIF_CHROMA_UPSAMPLING_NEAREST = (1 << 10), // only use the fast nearest-neighbor filter (libyuv or built-in)
+    AVIF_CHROMA_UPSAMPLING_BILINEAR = (1 << 11) // only use the good-quality bilinear filter (libyuv or built-in)
+} avifYUVToRGBFlag;
+typedef uint32_t avifYUVToRGBFlags;
 
-// The main conversion functions.
-AVIF_API avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifConversionFlags flags);
-AVIF_API avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifConversionFlags flags);
+// Conversion functions.
+AVIF_API avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifRGBToYUVFlags flags);
+AVIF_API avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags);
 
 // Premultiply handling functions.
 // (Un)premultiply is automatically done by the main conversion functions above,
