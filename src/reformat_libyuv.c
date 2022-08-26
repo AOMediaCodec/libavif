@@ -58,6 +58,142 @@ unsigned int avifLibYUVVersion(void)
 #pragma clang diagnostic pop
 #endif
 
+//--------------------------------------------------------------------------------------------------
+// libyuv API availability management
+
+// These defines are used to create a NULL reference to libyuv functions that
+// did not exist prior to a particular version of libyuv.
+#if LIBYUV_VERSION < 1840
+#define ABGRToJ400 NULL
+#endif
+#if LIBYUV_VERSION < 1838
+#define I422ToRGB565Matrix NULL
+#endif
+#if LIBYUV_VERSION < 1813
+#define I422ToARGBMatrixFilter NULL
+#define I420ToARGBMatrixFilter NULL
+#define I210ToARGBMatrixFilter NULL
+#define I010ToARGBMatrixFilter NULL
+#endif
+#if LIBYUV_VERSION < 1780
+#define I410ToARGBMatrix NULL
+#endif
+#if LIBYUV_VERSION < 1756
+#define I400ToARGBMatrix NULL
+#endif
+#if LIBYUV_VERSION < 1781
+#define I012ToARGBMatrix NULL
+#endif
+
+// Two-step replacement for the conversions to 8-bit BT.601 YUV which are missing from libyuv.
+static int avifReorderARGBThenConvertToYUV(int (*ReorderARGB)(const uint8_t *, int, uint8_t *, int, int, int),
+                                           int (*ConvertToYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int),
+                                           const uint8_t * src_abgr,
+                                           int src_stride_abgr,
+                                           uint8_t * dst_y,
+                                           int dst_stride_y,
+                                           uint8_t * dst_u,
+                                           int dst_stride_u,
+                                           uint8_t * dst_v,
+                                           int dst_stride_v,
+                                           avifPixelFormat dst_format,
+                                           int width,
+                                           int height)
+{
+    // Only the vertically subsampled formats need to be processed by luma row pairs.
+    avifPixelFormatInfo format_info;
+    avifGetPixelFormatInfo(dst_format, &format_info);
+    const int min_num_rows = (format_info.chromaShiftY == 1) ? 2 : 1;
+
+    // A temporary buffer is needed to call ReorderARGB().
+    uint8_t * src_argb;
+    const int src_stride_argb = width * 4;
+    const int soft_allocation_limit = 16384; // Arbitrarily chosen trade-off between CPU and memory footprints.
+    int num_allocated_rows;
+    if ((height == 1) || ((int64_t)src_stride_argb * height <= soft_allocation_limit)) {
+        // Process the whole buffer in one go.
+        num_allocated_rows = height;
+    } else {
+        if ((int64_t)src_stride_argb * min_num_rows > INT_MAX) {
+            return -1;
+        }
+        // The last row of an odd number of RGB rows to be converted to vertically subsampled YUV is treated
+        // differently by libyuv, so make sure all steps but the last one process a multiple of min_num_rows rows.
+        // Try to process the highest multiple of min_num_rows rows possible in a single step without
+        // allocating more than soft_allocation_limit, unless min_num_rows rows need more than that.
+        num_allocated_rows = AVIF_MAX(1, soft_allocation_limit / (src_stride_argb * min_num_rows)) * min_num_rows;
+    }
+    src_argb = avifAlloc(num_allocated_rows * src_stride_argb);
+    if (!src_argb) {
+        return -1;
+    }
+
+    for (int y = 0; y < height; y += num_allocated_rows) {
+        const int num_rows = AVIF_MIN(num_allocated_rows, height - y);
+        if (ReorderARGB(src_abgr, src_stride_abgr, src_argb, src_stride_argb, width, num_rows) ||
+            ConvertToYUV(src_argb, src_stride_argb, dst_y, dst_stride_y, dst_u, dst_stride_u, dst_v, dst_stride_v, width, num_rows)) {
+            avifFree(src_argb);
+            return -1;
+        }
+        src_abgr += (size_t)num_rows * src_stride_abgr;
+        dst_y += (size_t)num_rows * dst_stride_y;
+        // Either chroma is not vertically subsampled, num_rows is even, or this is the last iteration.
+        dst_u += (size_t)(num_rows >> format_info.chromaShiftY) * dst_stride_u;
+        dst_v += (size_t)(num_rows >> format_info.chromaShiftY) * dst_stride_v;
+    }
+    avifFree(src_argb);
+    return 0;
+}
+
+#define AVIF_DEFINE_CONVERSION(NAME, REORDER_ARGB, CONVERT_TO_YUV, YUV_FORMAT) \
+    static int NAME(const uint8_t * src_abgr,                                  \
+                    int src_stride_abgr,                                       \
+                    uint8_t * dst_y,                                           \
+                    int dst_stride_y,                                          \
+                    uint8_t * dst_u,                                           \
+                    int dst_stride_u,                                          \
+                    uint8_t * dst_v,                                           \
+                    int dst_stride_v,                                          \
+                    int width,                                                 \
+                    int height)                                                \
+    {                                                                          \
+        return avifReorderARGBThenConvertToYUV(REORDER_ARGB,                   \
+                                               CONVERT_TO_YUV,                 \
+                                               src_abgr,                       \
+                                               src_stride_abgr,                \
+                                               dst_y,                          \
+                                               dst_stride_y,                   \
+                                               dst_u,                          \
+                                               dst_stride_u,                   \
+                                               dst_v,                          \
+                                               dst_stride_v,                   \
+                                               YUV_FORMAT,                     \
+                                               width,                          \
+                                               height);                        \
+    }
+
+#if LIBYUV_VERSION < 1840
+// AVIF_RGB_FORMAT_RGBA
+AVIF_DEFINE_CONVERSION(ABGRToJ422, ABGRToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
+AVIF_DEFINE_CONVERSION(ABGRToJ420, ABGRToARGB, ARGBToJ420, AVIF_PIXEL_FORMAT_YUV420)
+#endif
+
+// These are not yet implemented in libyuv so they cannot be guarded by a version check.
+// The "avif" prefix avoids any redefinition if they are available in libyuv one day.
+// AVIF_RGB_FORMAT_ARGB
+AVIF_DEFINE_CONVERSION(avifBGRAToI444, BGRAToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
+AVIF_DEFINE_CONVERSION(avifBGRAToI422, BGRAToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
+AVIF_DEFINE_CONVERSION(avifBGRAToJ422, BGRAToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
+AVIF_DEFINE_CONVERSION(avifBGRAToJ420, BGRAToARGB, ARGBToJ420, AVIF_PIXEL_FORMAT_YUV420)
+// AVIF_RGB_FORMAT_ABGR
+AVIF_DEFINE_CONVERSION(avifRGBAToI444, RGBAToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
+AVIF_DEFINE_CONVERSION(avifRGBAToI422, RGBAToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
+AVIF_DEFINE_CONVERSION(avifRGBAToJ422, RGBAToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
+AVIF_DEFINE_CONVERSION(avifRGBAToJ420, RGBAToARGB, ARGBToJ420, AVIF_PIXEL_FORMAT_YUV420)
+
+//--------------------------------------------------------------------------------------------------
+// RGB to YUV
+
 static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb);
 
 avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
@@ -68,57 +204,6 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 
     // This function didn't do anything; use the built-in conversion.
     return AVIF_RESULT_NOT_IMPLEMENTED;
-}
-
-// Two-step replacement for AVIF_RGB_FORMAT_RGBA to 8-bit BT.601 full range YUV, which is missing from libyuv.
-static int avifABGRToJ420(const uint8_t * src_abgr,
-                          int src_stride_abgr,
-                          uint8_t * dst_y,
-                          int dst_stride_y,
-                          uint8_t * dst_u,
-                          int dst_stride_u,
-                          uint8_t * dst_v,
-                          int dst_stride_v,
-                          int width,
-                          int height)
-{
-    // A temporary buffer is needed to swap the R and B channels before calling ARGBToJ420().
-    uint8_t * src_argb;
-    const int src_stride_argb = width * 4;
-    const int soft_allocation_limit = 16384; // Arbitrarily chosen trade-off between CPU and memory footprints.
-    int num_allocated_rows;
-    if ((height == 1) || ((int64_t)src_stride_argb * height <= soft_allocation_limit)) {
-        // Process the whole buffer in one go.
-        num_allocated_rows = height;
-    } else {
-        if ((int64_t)src_stride_argb * 2 > INT_MAX) {
-            return -1;
-        }
-        // The last row of an odd number of RGB rows to be converted to subsampled YUV is treated differently
-        // by libyuv, so make sure all steps but the last one process an even number of rows.
-        // Try to process as many row pairs as possible in a single step without allocating more than
-        // soft_allocation_limit, unless two rows need more than that.
-        num_allocated_rows = AVIF_MAX(1, soft_allocation_limit / (src_stride_argb * 2)) * 2;
-    }
-    src_argb = avifAlloc(num_allocated_rows * src_stride_argb);
-    if (!src_argb) {
-        return -1;
-    }
-
-    for (int y = 0; y < height; y += num_allocated_rows) {
-        const int num_rows = AVIF_MIN(num_allocated_rows, height - y);
-        if (ABGRToARGB(src_abgr, src_stride_abgr, src_argb, src_stride_argb, width, num_rows) ||
-            ARGBToJ420(src_argb, src_stride_argb, dst_y, dst_stride_y, dst_u, dst_stride_u, dst_v, dst_stride_v, width, num_rows)) {
-            avifFree(src_argb);
-            return -1;
-        }
-        src_abgr += (size_t)num_rows * src_stride_abgr;
-        dst_y += (size_t)num_rows * dst_stride_y;
-        dst_u += (size_t)num_rows / 2 * dst_stride_u; // 4:2:0
-        dst_v += (size_t)num_rows / 2 * dst_stride_v; // (either num_rows is even or this is the last iteration)
-    }
-    avifFree(src_argb);
-    return 0;
 }
 
 avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * rgb)
@@ -136,7 +221,7 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
             // Second dimension is for avifRange.
             RGBtoY lutRgbToY[AVIF_RGB_FORMAT_COUNT][2] = {
                 { NULL, NULL },             // RGB
-                { NULL, NULL },             // RGBA
+                { NULL, ABGRToJ400 },       // RGBA
                 { NULL, NULL },             // ARGB
                 { NULL, NULL },             // BGR
                 { ARGBToI400, ARGBToJ400 }, // BGRA
@@ -160,13 +245,13 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
             typedef int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int);
             // Third dimension is for avifRange.
             RGBtoYUV lutRgbToYuv[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT][2] = {
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } },                 // RGB
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { ABGRToI420, avifABGRToJ420 }, { NULL, NULL } }, // RGBA
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { BGRAToI420, NULL }, { NULL, NULL } },           // ARGB
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { RGB24ToI420, RGB24ToJ420 }, { NULL, NULL } },   // BGR
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } },                   // RGB
+                { { NULL, NULL }, { NULL, NULL }, { NULL, ABGRToJ422 }, { ABGRToI420, ABGRToJ420 }, { NULL, NULL } }, // RGBA
+                { { NULL, NULL }, { avifBGRAToI444, NULL }, { avifBGRAToI422, avifBGRAToJ422 }, { BGRAToI420, avifBGRAToJ420 }, { NULL, NULL } }, // ARGB
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { RGB24ToI420, RGB24ToJ420 }, { NULL, NULL } }, // BGR
                 { { NULL, NULL }, { ARGBToI444, NULL }, { ARGBToI422, ARGBToJ422 }, { ARGBToI420, ARGBToJ420 }, { NULL, NULL } }, // BGRA
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { RGBAToI420, NULL }, { NULL, NULL } }, // ABGR
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } }        // RGB_565
+                { { NULL, NULL }, { avifRGBAToI444, NULL }, { avifRGBAToI422, avifRGBAToJ422 }, { RGBAToI420, avifRGBAToJ420 }, { NULL, NULL } }, // ABGR
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } } // RGB_565
             };
             RGBtoYUV rgbToYuv = lutRgbToYuv[rgb->format][image->yuvFormat][image->yuvRange];
             if (rgbToYuv != NULL) {
@@ -189,6 +274,9 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
     // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the built-in implementation
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
+
+//--------------------------------------------------------------------------------------------------
+// YUV to RGB
 
 static avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                               avifRGBImage * rgb,
@@ -347,27 +435,6 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
     // This function didn't do anything; use the built-in YUV conversion
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
-
-// These defines are used to create a NULL reference to libyuv functions that
-// did not exist prior to a particular version of libyuv.
-#if LIBYUV_VERSION < 1838
-#define I422ToRGB565Matrix NULL
-#endif
-#if LIBYUV_VERSION < 1813
-#define I422ToARGBMatrixFilter NULL
-#define I420ToARGBMatrixFilter NULL
-#define I210ToARGBMatrixFilter NULL
-#define I010ToARGBMatrixFilter NULL
-#endif
-#if LIBYUV_VERSION < 1780
-#define I410ToARGBMatrix NULL
-#endif
-#if LIBYUV_VERSION < 1756
-#define I400ToARGBMatrix NULL
-#endif
-#if LIBYUV_VERSION < 1781
-#define I012ToARGBMatrix NULL
-#endif
 
 // Lookup table for isYVU. If the entry in this table is AVIF_TRUE, then it
 // means that we are using a libyuv function with R and B channels swapped,
@@ -651,6 +718,8 @@ avifResult avifImageYUVToRGBLibYUVHighBitDepth(const avifImage * image,
 
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
+
+//--------------------------------------------------------------------------------------------------
 
 avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb)
 {
