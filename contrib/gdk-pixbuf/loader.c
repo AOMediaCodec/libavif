@@ -448,7 +448,7 @@ static gboolean avif_image_saver(FILE          *f,
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
 
-    res = avifImageRGBToYUV(avif, &rgb);
+    res = avifImageRGBToYUV(avif, &rgb, AVIF_CONVERSION_AUTO);
     if ( res != AVIF_RESULT_OK ) {
         g_set_error(error,
                     GDK_PIXBUF_ERROR,

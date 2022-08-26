@@ -149,7 +149,7 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb);
 // * AVIF_RESULT_OK              - Converted successfully with libyuv
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
 // * [any other error]           - Return error to caller
-avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
+avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags);
 
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libsharpyuv

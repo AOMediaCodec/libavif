@@ -61,7 +61,7 @@ int main(int argc, char * argv[])
     int pngCompressionLevel = -1; // -1 is a sentinel to avifPNGWrite() to skip calling png_set_compression_level()
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool infoOnly = AVIF_FALSE;
-    avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
+    avifYUVToRGBFlags upsamplingFlags = AVIF_YUV_TO_RGB_DEFAULT;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
     avifBool allowProgressive = AVIF_FALSE;
@@ -134,15 +134,15 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-u") || !strcmp(arg, "--upsampling")) {
             NEXTARG();
             if (!strcmp(arg, "automatic")) {
-                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
+                upsamplingFlags = AVIF_YUV_TO_RGB_DEFAULT;
             } else if (!strcmp(arg, "fastest")) {
-                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_FASTEST;
+                upsamplingFlags = AVIF_CHROMA_UPSAMPLING_NEAREST;
             } else if (!strcmp(arg, "best")) {
-                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BEST_QUALITY;
+                upsamplingFlags = AVIF_YUV_TO_RGB_AVOID_LIBYUV | AVIF_CHROMA_UPSAMPLING_BILINEAR;
             } else if (!strcmp(arg, "nearest")) {
-                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_NEAREST;
+                upsamplingFlags = AVIF_CHROMA_UPSAMPLING_NEAREST;
             } else if (!strcmp(arg, "bilinear")) {
-                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
+                upsamplingFlags = AVIF_CHROMA_UPSAMPLING_BILINEAR;
             } else {
                 fprintf(stderr, "ERROR: invalid upsampling: %s\n", arg);
                 return 1;
@@ -324,11 +324,11 @@ int main(int argc, char * argv[])
         if (rawColor) {
             decoder->image->alphaPremultiplied = AVIF_TRUE;
         }
-        if (!avifJPEGWrite(outputFilename, decoder->image, jpegQuality, chromaUpsampling)) {
+        if (!avifJPEGWrite(outputFilename, decoder->image, jpegQuality, upsamplingFlags)) {
             returnCode = 1;
         }
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGWrite(outputFilename, decoder->image, requestedDepth, chromaUpsampling, pngCompressionLevel)) {
+        if (!avifPNGWrite(outputFilename, decoder->image, requestedDepth, upsamplingFlags, pngCompressionLevel)) {
             returnCode = 1;
         }
     } else {
