@@ -6,6 +6,7 @@
 
 #include "png.h"
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,42 +67,44 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t expectedLeng
 }
 
 // Parses the raw profile string of profileLen characters and extracts the payload.
-static avifBool avifCopyRawProfile(const char * profile, size_t profileLen, avifRWData * payload)
+static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, avifRWData * payload)
 {
-    if (!profile || (profileLen < 3)) {
-        fprintf(stderr, "Exif extraction failed: empty profile\n");
+    // ImageMagick formats 'raw profiles' as "\n<name>\n<length>(%8lu)\n<hex payload>\n".
+    if (!profile || (profileLength < 3) || (profile[0] != '\n')) {
+        fprintf(stderr, "Exif extraction failed: truncated or malformed raw profile\n");
         return AVIF_FALSE;
     }
 
-    // ImageMagick formats 'raw profiles' as "\n<name>\n<length>(%8lu)\n<hex payload>\n".
-    const char * src = profile;
-    if (*src != '\n') {
-        fprintf(stderr, "Exif extraction failed: malformed raw profile, expected '\\n' but got '\\x%.2X'\n", *src);
-        return AVIF_FALSE;
-    }
-    ++src;
-    size_t numReadCharacters = 1;
-    // Skip the profile name and extract the length.
-    for (; (*src != '\0') && (*src != '\n'); ++src, ++numReadCharacters) {
-        if (numReadCharacters == profileLen) {
-            fprintf(stderr, "Exif extraction failed: truncated raw profile of size " AVIF_FMT_ZU "\n", profileLen);
+    const char * lengthStart = NULL;
+    for (size_t i = 1; i < profileLength; ++i) {
+        if (profile[i] == '\0') {
+            fprintf(stderr, "Exif extraction failed: malformed raw profile, unexpected null-terminating character at " AVIF_FMT_ZU "\n", i);
             return AVIF_FALSE;
+        } else if (profile[i] == '\n') {
+            if (!lengthStart) {
+                // Skip the name and store the beginning of the string containing the length of the payload.
+                lengthStart = &profile[i + 1];
+            } else {
+                const char * hexPayloadStart = &profile[i + 1];
+                const size_t hexPayloadMaxLength = profileLength - (i + 1);
+                // Parse the length, now that we are sure that it is surrounded by '\n' within the profileLength characters.
+                char * lengthEnd;
+                const long expectedLength = strtol(lengthStart, &lengthEnd, 10);
+                if (lengthEnd != &profile[i]) {
+                    fprintf(stderr, "Exif extraction failed: malformed raw profile, expected '\\n' but got '\\x%.2X'\n", *lengthEnd);
+                    return AVIF_FALSE;
+                }
+                // No need to check for errno. Just make sure expectedLength is not LONG_MIN and not LONG_MAX.
+                if ((expectedLength <= 0) || (expectedLength == LONG_MAX) || ((unsigned long)expectedLength > hexPayloadMaxLength)) {
+                    fprintf(stderr, "Exif extraction failed: invalid length %ld\n", expectedLength);
+                    return AVIF_FALSE;
+                }
+                return avifHexStringToBytes(hexPayloadStart, (size_t)expectedLength, payload);
+            }
         }
     }
-    char * end;
-    const long expectedLength = strtol(src, &end, 10);
-    if ((expectedLength <= 0) || ((unsigned long)expectedLength > SIZE_MAX)) {
-        fprintf(stderr, "Exif extraction failed: invalid length %ld\n", expectedLength);
-        return AVIF_FALSE;
-    }
-    if (*end != '\n') {
-        fprintf(stderr, "Exif extraction failed: malformed raw profile, expected '\\n' but got '\\x%.2X'\n", *end);
-        return AVIF_FALSE;
-    }
-    ++end;
-
-    // 'end' now points to the profile payload.
-    return avifHexStringToBytes(end, (size_t)expectedLength, payload);
+    fprintf(stderr, "Exif extraction failed: malformed or truncated raw profile\n");
+    return AVIF_FALSE;
 }
 
 // Returns AVIF_TRUE if there was no Exif metadata located at info or if the Exif metadata located at info
