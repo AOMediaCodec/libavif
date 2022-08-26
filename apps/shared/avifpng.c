@@ -96,6 +96,19 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
 // was correctly parsed and imported to avif->exif. Returns AVIF_FALSE in case of error.
 static avifBool avifExtractExif(png_structp png, png_infop const info, avifImage * avif)
 {
+#ifdef PNG_eXIf_SUPPORTED
+    png_uint_32 exifSize = 0;
+    png_bytep exif = NULL;
+    if (png_get_eXIf_1(png, info, &exifSize, &exif) == PNG_INFO_eXIf) {
+        if ((exifSize == 0) || !exif) {
+            fprintf(stderr, "Exif extraction failed: empty eXIf chunk\n");
+            return AVIF_FALSE;
+        }
+        avifImageSetMetadataExif(avif, exif, exifSize);
+        return AVIF_TRUE;
+    }
+#endif // PNG_eXIf_SUPPORTED
+
     png_textp text = NULL;
     const png_uint_32 numTextChunks = png_get_text(png, info, &text, NULL);
     for (png_uint_32 i = 0; i < numTextChunks; ++i, ++text) {
