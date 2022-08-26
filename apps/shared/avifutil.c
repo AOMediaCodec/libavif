@@ -230,7 +230,8 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifImage * image,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
-                                struct y4mFrameIterator ** frameIter)
+                                struct y4mFrameIterator ** frameIter,
+                                avifRGBToYUVFlags flags)
 {
     const avifAppFileFormat format = avifGuessFileFormat(filename);
     if (format == AVIF_APP_FILE_FORMAT_Y4M) {
@@ -241,14 +242,14 @@ avifAppFileFormat avifReadImage(const char * filename,
             *outDepth = image->depth;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth)) {
+        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, flags)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, outDepth)) {
+        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, outDepth, flags)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {

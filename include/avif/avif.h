@@ -586,7 +586,7 @@ AVIF_API void avifRGBImageFreePixels(avifRGBImage * rgb);
 // Conversion options.
 typedef enum avifRGBToYUVFlag
 {
-    AVIF_RGB_TO_YUV_DEFAULT = 0, // Uses the first available upsampling filter among:
+    AVIF_RGB_TO_YUV_DEFAULT = 0, // Uses the first available downsampling filter among:
                                  //   libyuv average, built-in average
 
     // libyuv preference
@@ -596,12 +596,14 @@ typedef enum avifRGBToYUVFlag
     // Conversion from RGB to YUV 4:2:2 or YUV 4:2:0 (ignored in all other cases)
 
     // Chroma downsampling filter. Set at most one:
-    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = (1 << 10), // only use the averaging filter (libyuv or built-in)
+    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = (1 << 10),   // only use the averaging filter (libyuv or built-in)
+    AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV = (1 << 11), // only use sharp yuv filter (libsharpyuv),
+                                                    // available for 4:2:0 only, ignored for 4:2:2
 } avifRGBToYUVFlag;
 typedef uint32_t avifRGBToYUVFlags;
 typedef enum avifYUVToRGBFlag
 {
-    AVIF_YUV_TO_RGB_DEFAULT = 0, // Uses the first available downsampling filter among:
+    AVIF_YUV_TO_RGB_DEFAULT = 0, // Uses the first available upsampling filter among:
                                  //   libyuv bilinear, libyuv nearest-neighbor, built-in bilinear
 
     // libyuv preference

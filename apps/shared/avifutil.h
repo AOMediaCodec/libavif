@@ -66,7 +66,8 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifImage * image,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
-                                struct y4mFrameIterator ** frameIter);
+                                struct y4mFrameIterator ** frameIter,
+                                avifRGBToYUVFlags flags);
 
 // Used by image decoders when the user doesn't explicitly choose a format with --yuv
 // This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.

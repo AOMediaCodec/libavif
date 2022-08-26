@@ -115,6 +115,7 @@ class RGBToYUVTest
     : public testing::TestWithParam<
           std::tuple</*rgb_depth=*/int, /*yuv_depth=*/int, avifRGBFormat,
                      avifPixelFormat, avifRange, avifMatrixCoefficients,
+                     /*sharpYuv=*/bool,
                      /*add_noise=*/bool, /*rgb_step=*/uint32_t,
                      /*max_abs_average_diff=*/double, /*min_psnr=*/double>> {};
 
@@ -128,15 +129,16 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
   const avifPixelFormat yuv_format = std::get<3>(GetParam());
   const avifRange yuv_range = std::get<4>(GetParam());
   const avifMatrixCoefficients matrix_coefficients = std::get<5>(GetParam());
+  const bool sharp_yuv = std::get<6>(GetParam());
   // Whether to add noise to the input RGB samples. Should only impact
   // subsampled chroma (4:2:2 and 4:2:0).
-  const bool add_noise = std::get<6>(GetParam());
+  const bool add_noise = std::get<7>(GetParam());
   // Testing each RGB combination would be more accurate but results are similar
   // with faster settings.
-  const uint32_t rgb_step = std::get<7>(GetParam());
+  const uint32_t rgb_step = std::get<8>(GetParam());
   // Thresholds to pass.
-  const double max_abs_average_diff = std::get<8>(GetParam());
-  const double min_psnr = std::get<9>(GetParam());
+  const double max_abs_average_diff = std::get<9>(GetParam());
+  const double min_psnr = std::get<10>(GetParam());
   // Deduced constants.
   const bool is_monochrome =
       (yuv_format == AVIF_PIXEL_FORMAT_YUV400);  // If so, only test grey input.
@@ -151,6 +153,10 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
       avifImageCreate(width, height, yuv_depth, yuv_format), avifImageDestroy);
   yuv->matrixCoefficients = matrix_coefficients;
   yuv->yuvRange = yuv_range;
+  avifRGBToYUVFlags rgb_to_yuv_flags = AVIF_RGB_TO_YUV_DEFAULT;
+  if (sharp_yuv) {
+    rgb_to_yuv_flags |= AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV;
+  }
   testutil::AvifRgbImage src_rgb(yuv.get(), rgb_depth, rgb_format);
   testutil::AvifRgbImage dst_rgb(yuv.get(), rgb_depth, rgb_format);
   const testutil::RgbChannelOffsets offsets =
@@ -182,7 +188,7 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
         ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
       }
 
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_RGB_TO_YUV_DEFAULT),
+      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, rgb_to_yuv_flags),
                 AVIF_RESULT_OK);
       ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_YUV_TO_RGB_DEFAULT),
                 AVIF_RESULT_OK);
@@ -316,6 +322,8 @@ constexpr avifRGBFormat kAllRgbFormats[] = {
 // avifMatrixCoefficients-typed constants for testing::Values() to work on MSVC.
 constexpr avifMatrixCoefficients kMatrixCoefficientsBT601 =
     AVIF_MATRIX_COEFFICIENTS_BT601;
+constexpr avifMatrixCoefficients kMatrixCoefficientsBT709 =
+    AVIF_MATRIX_COEFFICIENTS_BT709;
 constexpr avifMatrixCoefficients kMatrixCoefficientsIdentity =
     AVIF_MATRIX_COEFFICIENTS_IDENTITY;
 
@@ -326,6 +334,7 @@ INSTANTIATE_TEST_SUITE_P(
             /*yuv_depth=*/Values(8), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV420), Values(AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
+            /*sharp_yuv=*/Values(false),
             /*add_noise=*/Values(true),
             /*rgb_step=*/Values(3),
             /*max_abs_average_diff=*/Values(0.1),  // The color drift is almost
@@ -342,6 +351,7 @@ INSTANTIATE_TEST_SUITE_P(Identity8b, RGBToYUVTest,
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsIdentity),
+                                 /*sharp_yuv=*/Values(false),
                                  /*add_noise=*/Values(true),
                                  /*rgb_step=*/Values(31),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -353,6 +363,7 @@ INSTANTIATE_TEST_SUITE_P(Identity10b, RGBToYUVTest,
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsIdentity),
+                                 /*sharp_yuv=*/Values(false),
                                  /*add_noise=*/Values(true),
                                  /*rgb_step=*/Values(101),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -364,6 +375,7 @@ INSTANTIATE_TEST_SUITE_P(Identity12b, RGBToYUVTest,
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsIdentity),
+                                 /*sharp_yuv=*/Values(false),
                                  /*add_noise=*/Values(true),
                                  /*rgb_step=*/Values(401),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -378,6 +390,7 @@ INSTANTIATE_TEST_SUITE_P(
         Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                AVIF_PIXEL_FORMAT_YUV420),
         Values(AVIF_RANGE_FULL), Values(kMatrixCoefficientsBT601),
+        /*sharp_yuv=*/Values(false),
         /*add_noise=*/Values(false),
         /*rgb_step=*/Values(17),
         /*max_abs_average_diff=*/Values(0.02),  // The color drift is centered.
@@ -394,6 +407,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b, RGBToYUVTest,
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsBT601),
+                                 /*sharp_yuv=*/Values(false),
                                  /*add_noise=*/Values(false),
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -405,6 +419,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b, RGBToYUVTest,
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsBT601),
+                                 /*sharp_yuv=*/Values(false),
                                  /*add_noise=*/Values(false),
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
@@ -416,10 +431,59 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, RGBToYUVTest,
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsBT601),
+                                 /*sharp_yuv=*/Values(false),
                                  /*add_noise=*/Values(false),
                                  /*rgb_step=*/Values(1),
                                  /*max_abs_average_diff=*/Values(0.),
                                  /*min_psnr=*/Values(99.)));
+
+// Can be used to print the drift of all RGB to YUV conversion possibilities.
+// Also used for coverage.
+INSTANTIATE_TEST_SUITE_P(
+    SharpYuv8Bit, RGBToYUVTest,
+    Combine(
+        /*rgb_depth=*/Values(8),
+        /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+        Values(AVIF_PIXEL_FORMAT_YUV420),
+        Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
+        Values(kMatrixCoefficientsBT601, kMatrixCoefficientsBT709),
+        /*sharp_yuv=*/Values(true),
+        /*add_noise=*/Values(true),
+        /*rgb_step=*/Values(17),
+        /*max_abs_average_diff=*/Values(1.2),  // Sharp YUV introduces some
+                                               // color shift.
+        /*min_psnr=*/Values(34.)  // SharpYuv distortion is acceptable.
+        ));
+INSTANTIATE_TEST_SUITE_P(
+    SharpYuv10Bit, RGBToYUVTest,
+    Combine(
+        /*rgb_depth=*/Values(10),
+        /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+        Values(AVIF_PIXEL_FORMAT_YUV420),
+        Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
+        Values(kMatrixCoefficientsBT601),
+        /*sharp_yuv=*/Values(true),
+        /*add_noise=*/Values(true),
+        /*rgb_step=*/Values(211),              // High or it would be too slow.
+        /*max_abs_average_diff=*/Values(1.2),  // Sharp YUV introduces some
+                                               // color shift.
+        /*min_psnr=*/Values(34.)  // SharpYuv distortion is acceptable.
+        ));
+INSTANTIATE_TEST_SUITE_P(
+    SharpYuv12Bit, RGBToYUVTest,
+    Combine(
+        /*rgb_depth=*/Values(12),
+        /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+        Values(AVIF_PIXEL_FORMAT_YUV420),
+        Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
+        Values(kMatrixCoefficientsBT601),
+        /*sharp_yuv=*/Values(true),
+        /*add_noise=*/Values(true),
+        /*rgb_step=*/Values(840),              // High or it would be too slow.
+        /*max_abs_average_diff=*/Values(1.2),  // Sharp YUV introduces some
+                                               // color shift.
+        /*min_psnr=*/Values(34.)  // SharpYuv distortion is acceptable.
+        ));
 
 // Can be used to print the drift of all RGB to YUV conversion possibilities.
 // Also used for coverage.
@@ -431,6 +495,7 @@ INSTANTIATE_TEST_SUITE_P(
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
+            /*sharp_yuv=*/Values(false),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(61),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(1.),  // Not very accurate because
@@ -444,6 +509,7 @@ INSTANTIATE_TEST_SUITE_P(
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
+            /*sharp_yuv=*/Values(false),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(211),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.2),  // Not very accurate because
@@ -457,6 +523,7 @@ INSTANTIATE_TEST_SUITE_P(
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
+            /*sharp_yuv=*/Values(false),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(809),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.3),  // Not very accurate because
@@ -475,6 +542,7 @@ INSTANTIATE_TEST_SUITE_P(
                    AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400),
             Values(AVIF_RANGE_FULL, AVIF_RANGE_LIMITED),
             Values(kMatrixCoefficientsBT601),
+            /*sharp_yuv=*/Values(false),
             /*add_noise=*/Values(false, true),
             /*rgb_step=*/Values(3),  // way faster and 99% similar to rgb_step=1
             /*max_abs_average_diff=*/Values(10.),
