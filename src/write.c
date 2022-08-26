@@ -342,7 +342,7 @@ static void avifBackupSettings(avifEncoder * encoder)
 // This function detect changes made on avifEncoder.
 // It reports if the change is valid, i.e. if any setting that can't change was changed.
 // It also reports detected changes in updatedConfig.
-static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifEncoderConfig * updatedConfig)
+static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifEncoderChanges * encoderChanges)
 {
     const avifEncoder * lastEncoder = &encoder->data->lastEncoder;
 
@@ -356,26 +356,27 @@ static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifEnco
         return AVIF_FALSE;
     }
 
+    *encoderChanges = 0;
     if ((lastEncoder->minQuantizer != encoder->minQuantizer)) {
-        *updatedConfig |= AVIF_ENCODER_CONFIG_MIN_QUANTIZER;
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER;
     }
     if ((lastEncoder->maxQuantizer != encoder->maxQuantizer)) {
-        *updatedConfig |= AVIF_ENCODER_CONFIG_MAX_QUANTIZER;
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER;
     }
     if ((lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha)) {
-        *updatedConfig |= AVIF_ENCODER_CONFIG_MIN_QUANTIZER_ALPHA;
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA;
     }
     if ((lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha)) {
-        *updatedConfig |= AVIF_ENCODER_CONFIG_MAX_QUANTIZER_ALPHA;
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA;
     }
     if ((lastEncoder->tileRowsLog2 != encoder->tileRowsLog2)) {
-        *updatedConfig |= AVIF_ENCODER_CONFIG_TILE_ROWS_LOG_2;
+        *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2;
     }
     if ((lastEncoder->tileColsLog2 != encoder->tileColsLog2)) {
-        *updatedConfig |= AVIF_ENCODER_CONFIG_TILE_COLS_LOG_2;
+        *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_COLS_LOG2;
     }
     if (encoder->csOptions->count > 0) {
-        *updatedConfig |= AVIF_ENCODER_CONFIG_CODEC_SPECIFIC;
+        *encoderChanges |= AVIF_ENCODER_CHANGE_CODEC_SPECIFIC;
     }
 
     return AVIF_TRUE;
@@ -668,8 +669,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
     }
 
-    avifEncoderConfig updatedConfig = 0;
-    if (!avifEncoderSettingsChanged(encoder, &updatedConfig)) {
+    avifEncoderChanges encoderChanges = 0;
+    if (!avifEncoderSettingsChanged(encoder, &encoderChanges)) {
         return AVIF_RESULT_CANNOT_CHANGE_SETTING;
     }
     avifBackupSettings(encoder);
@@ -898,7 +899,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
             avifResult encodeResult =
-                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, updatedConfig, addImageFlags, item->encodeOutput);
+                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, encoderChanges, addImageFlags, item->encodeOutput);
             if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                 encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }

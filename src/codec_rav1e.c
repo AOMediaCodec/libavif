@@ -53,7 +53,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
-                                        avifEncoderConfig updatedConfig,
+                                        avifEncoderChanges updatedConfig,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
