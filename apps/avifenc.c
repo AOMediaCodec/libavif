@@ -470,7 +470,11 @@ int main(int argc, char * argv[])
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
 
-        if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
+        if (!strcmp(arg, "--")) {
+            // Strop parsing flags, everything after this is positional arguments
+            ++argIndex;
+            break;
+        } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
             goto cleanup;
         } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
@@ -747,6 +751,11 @@ int main(int argc, char * argv[])
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
+        } else if (arg[0] == '-') {
+            fprintf(stderr, "ERROR: unrecognized flag %s\n\n", arg);
+            syntax();
+            returnCode = 1;
+            goto cleanup;
         } else {
             // Positional argument
             input.files[input.filesCount].filename = arg;
@@ -754,6 +763,14 @@ int main(int argc, char * argv[])
             ++input.filesCount;
         }
 
+        ++argIndex;
+    }
+    // Parse additional positional arguments if any
+    while (argIndex < argc) {
+        const char * arg = argv[argIndex];
+        input.files[input.filesCount].filename = arg;
+        input.files[input.filesCount].duration = outputTiming.duration;
+        ++input.filesCount;
         ++argIndex;
     }
 

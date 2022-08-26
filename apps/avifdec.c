@@ -79,7 +79,11 @@ int main(int argc, char * argv[])
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
 
-        if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
+        if (!strcmp(arg, "--")) {
+            // Strop parsing flags, everything after this is positional arguments
+            ++argIndex;
+            break;
+        } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
             return 0;
         } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
@@ -176,6 +180,10 @@ int main(int argc, char * argv[])
                 return 1;
             }
             imageDimensionLimit = (uint32_t)value;
+        } else if (arg[0] == '-') {
+            fprintf(stderr, "ERROR: unrecognized flag %s\n\n", arg);
+            syntax();
+            return 1;
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -183,13 +191,26 @@ int main(int argc, char * argv[])
             } else if (!outputFilename) {
                 outputFilename = arg;
             } else {
-                fprintf(stderr, "Too many positional arguments: %s\n", arg);
+                fprintf(stderr, "Too many positional arguments: %s\n\n", arg);
                 syntax();
                 return 1;
             }
         }
 
         ++argIndex;
+    }
+    // Parse additional positional arguments if any
+    while (argIndex < argc) {
+        const char * arg = argv[argIndex];
+        if (!inputFilename) {
+            inputFilename = arg;
+        } else if (!outputFilename) {
+            outputFilename = arg;
+        } else {
+            fprintf(stderr, "Too many positional arguments: %s\n\n", arg);
+            syntax();
+            return 1;
+        }
     }
 
     if (!inputFilename) {

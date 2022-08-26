@@ -252,7 +252,7 @@ avifAppFileFormat avifReadImage(const char * filename,
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {
-        fprintf(stderr, "Unrecognized file format: %s\n", filename);
+        fprintf(stderr, "Unrecognized file format for input file: %s\n", filename);
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
     return format;
