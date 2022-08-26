@@ -6,6 +6,7 @@
 
 #include "png.h"
 
+#include <ctype.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -18,22 +19,6 @@ typedef png_bytep png_iccp_datap;
 #else
 typedef png_charp png_iccp_datap;
 #endif
-
-static avifBool avifIsHexDigit(char hexDigit, uint8_t * decimalValue)
-{
-    if ((hexDigit >= 'A') && (hexDigit <= 'F')) {
-        *decimalValue = (uint8_t)(hexDigit - 'A') + 10;
-        return AVIF_TRUE;
-    } else if ((hexDigit >= 'a') && (hexDigit <= 'f')) {
-        *decimalValue = (uint8_t)(hexDigit - 'a') + 10;
-        return AVIF_TRUE;
-    } else if ((hexDigit >= '0') && (hexDigit <= '9')) {
-        *decimalValue = (uint8_t)(hexDigit - '0');
-        return AVIF_TRUE;
-    } else {
-        return AVIF_FALSE;
-    }
-}
 
 // Converts a hexadecimal string which contains 2-byte character representations of hexadecimal values to raw data.
 // hexString may contain values consisting of [A-F][a-f][0-9] in pairs, e.g., 7af2..., separated by any number of newlines.
@@ -48,14 +33,14 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t expectedLeng
         while (*src == '\n') {
             ++src;
         }
-        uint8_t mostSignificant, leastSignificant;
-        if (!avifIsHexDigit(src[0], &mostSignificant) || !avifIsHexDigit(src[1], &leastSignificant)) {
+        if (!isxdigit(src[0]) || !isxdigit(src[1])) {
             avifRWDataFree(bytes);
             fprintf(stderr, "Exif extraction failed: invalid token at " AVIF_FMT_ZU "\n", actualLength);
             return AVIF_FALSE;
         }
+        const char twoHexDigits[] = { src[0], src[1], '\0' };
+        bytes->data[actualLength] = (uint8_t)strtol(twoHexDigits, NULL, 16);
         src += 2;
-        bytes->data[actualLength] = (mostSignificant << 4) | leastSignificant;
     }
 
     if (actualLength != expectedLength) {
