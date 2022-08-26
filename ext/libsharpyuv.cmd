@@ -16,6 +16,6 @@ git checkout 15a91ab
 
 mkdir build
 cd build
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DWEBP_BUILD_CWEBP=OFF -DCMAKE_BUILD_TYPE=Release ..
-ninja
+cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release ..
+ninja sharpyuv
 cd ../..

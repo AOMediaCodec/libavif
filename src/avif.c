@@ -457,8 +457,6 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
     rgb->height = image->height;
     rgb->depth = image->depth;
     rgb->format = AVIF_RGB_FORMAT_RGBA;
-    rgb->chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
-    rgb->chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
     rgb->ignoreAlpha = AVIF_FALSE;
     rgb->pixels = NULL;
     rgb->rowBytes = 0;
@@ -878,17 +876,24 @@ error:
     return NULL;
 }
 
+void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
+{
+    for (uint32_t i = 0; i < csOptions->count; ++i) {
+        avifCodecSpecificOption * entry = &csOptions->entries[i];
+        avifFree(entry->key);
+        avifFree(entry->value);
+    }
+
+    csOptions->count = 0;
+}
+
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
 {
     if (!csOptions) {
         return;
     }
 
-    for (uint32_t i = 0; i < csOptions->count; ++i) {
-        avifCodecSpecificOption * entry = &csOptions->entries[i];
-        avifFree(entry->key);
-        avifFree(entry->value);
-    }
+    avifCodecSpecificOptionsClear(csOptions);
     avifArrayDestroy(csOptions);
     avifFree(csOptions);
 }
@@ -916,10 +921,12 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
         }
     }
 
-    // Add a new key
-    avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
-    entry->key = avifStrdup(key);
-    entry->value = avifStrdup(value);
+    if (value) {
+        // Add a new key
+        avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
+        entry->key = avifStrdup(key);
+        entry->value = avifStrdup(value);
+    }
 }
 
 // ---------------------------------------------------------------------------

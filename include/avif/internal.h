@@ -149,7 +149,7 @@ avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb);
 // * AVIF_RESULT_OK              - Converted successfully with libyuv
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
 // * [any other error]           - Return error to caller
-avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
+avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags);
 
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libsharpyuv
@@ -250,6 +250,7 @@ typedef struct avifCodecSpecificOption
 } avifCodecSpecificOption;
 AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
+void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
 
@@ -258,6 +259,19 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
 
 struct avifCodec;
 struct avifCodecInternal;
+
+typedef enum avifEncoderChange
+{
+    AVIF_ENCODER_CHANGE_MIN_QUANTIZER = (1 << 0),
+    AVIF_ENCODER_CHANGE_MAX_QUANTIZER = (1 << 1),
+    AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA = (1 << 2),
+    AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA = (1 << 3),
+    AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2 = (1 << 4),
+    AVIF_ENCODER_CHANGE_TILE_COLS_LOG2 = (1 << 5),
+
+    AVIF_ENCODER_CHANGE_CODEC_SPECIFIC = (1 << 31)
+} avifEncoderChange;
+typedef uint32_t avifEncoderChanges;
 
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
                                               struct avifDecoder * decoder,
@@ -273,7 +287,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,
                                                avifBool alpha,
-                                               avifBool updateConfig,
+                                               avifEncoderChanges encoderChanges,
                                                avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);

@@ -558,33 +558,12 @@ typedef enum avifRGBFormat
 AVIF_API uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
 AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
-typedef enum avifChromaUpsampling
-{
-    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (prefers libyuv, else uses BEST_QUALITY)
-    AVIF_CHROMA_UPSAMPLING_FASTEST = 1,      // Chooses speed over quality (prefers libyuv, else uses NEAREST)
-    AVIF_CHROMA_UPSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling, given settings (avoids libyuv)
-    AVIF_CHROMA_UPSAMPLING_NEAREST = 3,      // Uses nearest-neighbor filter (built-in)
-    AVIF_CHROMA_UPSAMPLING_BILINEAR = 4      // Uses bilinear filter (built-in)
-} avifChromaUpsampling;
-
-typedef enum avifChromaDownsampling
-{
-    AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (prefers libyuv, else uses BEST_QUALITY)
-    AVIF_CHROMA_DOWNSAMPLING_FASTEST = 1,      // Chooses speed over quality (prefers libyuv, else uses AVERAGE)
-    AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling (avoids libyuv, uses AVERAGE)
-    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = 3       // Uses floating point RGB-to-YUV conversion then averaging (built-in)
-} avifChromaDownsampling;
-
 typedef struct avifRGBImage
 {
-    uint32_t width;       // must match associated avifImage
-    uint32_t height;      // must match associated avifImage
-    uint32_t depth;       // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
-    avifRGBFormat format; // all channels are always full range
-    avifChromaUpsampling chromaUpsampling; // Defaults to AVIF_CHROMA_UPSAMPLING_AUTOMATIC: How to upsample non-4:4:4 UV (ignored for 444) when converting to RGB.
-                                           // Unused when converting to YUV. avifRGBImageSetDefaults() prefers quality over speed.
-    avifChromaDownsampling chromaDownsampling; // How to convert (and downsample to non-4:4:4 UV) when converting to YUV.
-                                               // Unused when converting to RGB. Defaults to AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC.
+    uint32_t width;              // must match associated avifImage
+    uint32_t height;             // must match associated avifImage
+    uint32_t depth;              // legal depths [8, 10, 12, 16]. if depth>8, pixels must be uint16_t internally
+    avifRGBFormat format;        // all channels are always full range
     avifBool ignoreAlpha;        // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
                                  // RGB, treating the alpha bits as if they were all 1.
     avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false
@@ -604,9 +583,42 @@ AVIF_API uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb);
 AVIF_API void avifRGBImageAllocatePixels(avifRGBImage * rgb);
 AVIF_API void avifRGBImageFreePixels(avifRGBImage * rgb);
 
-// The main conversion functions
-AVIF_API avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb);
-AVIF_API avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb);
+// Conversion options.
+typedef enum avifRGBToYUVFlag
+{
+    AVIF_RGB_TO_YUV_DEFAULT = 0, // Uses the first available upsampling filter among:
+                                 //   libyuv average, built-in average
+
+    // libyuv preference
+
+    AVIF_RGB_TO_YUV_AVOID_LIBYUV = (1 << 0), // Only picks built-in paths. The default is to prefer libyuv if available.
+
+    // Conversion from RGB to YUV 4:2:2 or YUV 4:2:0 (ignored in all other cases)
+
+    // Chroma downsampling filter. Set at most one:
+    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = (1 << 10), // only use the averaging filter (libyuv or built-in)
+} avifRGBToYUVFlag;
+typedef uint32_t avifRGBToYUVFlags;
+typedef enum avifYUVToRGBFlag
+{
+    AVIF_YUV_TO_RGB_DEFAULT = 0, // Uses the first available downsampling filter among:
+                                 //   libyuv bilinear, libyuv nearest-neighbor, built-in bilinear
+
+    // libyuv preference
+
+    AVIF_YUV_TO_RGB_AVOID_LIBYUV = (1 << 0), // Only picks built-in paths. The default is to prefer libyuv if available.
+
+    // Conversion from YUV 4:2:2 or YUV 4:2:0 to RGB (ignored in all other cases)
+
+    // Chroma upsampling filter. Set at most one:
+    AVIF_CHROMA_UPSAMPLING_NEAREST = (1 << 10), // only use the fast nearest-neighbor filter (libyuv or built-in)
+    AVIF_CHROMA_UPSAMPLING_BILINEAR = (1 << 11) // only use the good-quality bilinear filter (libyuv or built-in)
+} avifYUVToRGBFlag;
+typedef uint32_t avifYUVToRGBFlags;
+
+// Conversion functions.
+AVIF_API avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifRGBToYUVFlags flags);
+AVIF_API avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags);
 
 // Premultiply handling functions.
 // (Un)premultiply is automatically done by the main conversion functions above,
@@ -1034,8 +1046,8 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
-// * AV1 encoder settings and codec specific options set by avifEncoderSetCodecSpecificOption()
-//   will be applied / updated to AV1 encoder before each call to avifEncoderAddImage().
+// * Some encoder settings can be changed after encoding starts. Changes will take effect in the next
+//   call to avifEncoderAddImage().
 typedef struct avifEncoder
 {
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
@@ -1044,15 +1056,15 @@ typedef struct avifEncoder
     // settings (see Notes above)
     int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
     uint64_t timescale;   // timescale of the media (Hz)
-    // AV1 encoder settings.
     int maxThreads;
+    int speed;
+    // changeable encoder settings.
     int minQuantizer;
     int maxQuantizer;
     int minQuantizerAlpha;
     int maxQuantizerAlpha;
     int tileRowsLog2;
     int tileColsLog2;
-    int speed;
 
     // stats from the most recent write
     avifIOStats ioStats;
@@ -1104,8 +1116,10 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
-// Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs.
-// key must be non-NULL, but passing a NULL value will delete that key, if it exists.
+// Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs,
+// to be consumed by the codec at the next avifEncoderAddImage() call.
+// See the codec documentation to know if a setting is persistent or applied only to the next frame.
+// key must be non-NULL, but passing a NULL value will delete the pending key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().
 AVIF_API void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);

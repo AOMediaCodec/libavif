@@ -527,11 +527,17 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
-                                      avifBool updateConfig,
+                                      avifEncoderChanges encoderChanges,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
-    if (!codec->internal->encoderInitialized || updateConfig) {
+    struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
+    aom_codec_iface_t * encoderInterface = NULL;
+    unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
+    int aomCpuUsed = -1;
+    avifBool lossless = AVIF_FALSE;
+
+    if (!codec->internal->encoderInitialized) {
         // Map encoder speed to AOM usage + CpuUsed:
         // Speed  0: GoodQuality CpuUsed 0
         // Speed  1: GoodQuality CpuUsed 1
@@ -544,7 +550,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         // Speed  8: RealTime    CpuUsed 8
         // Speed  9: RealTime    CpuUsed 9
         // Speed 10: RealTime    CpuUsed 9
-        unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
         // Use the new AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still
         // image encoding if it is available.
 #if defined(AOM_USAGE_ALL_INTRA)
@@ -552,7 +557,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             aomUsage = AOM_USAGE_ALL_INTRA;
         }
 #endif
-        int aomCpuUsed = -1;
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
             if (aomCpuUsed >= 7) {
@@ -589,23 +593,18 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
+        codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
+        if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
 
-        aom_codec_iface_t * encoderInterface = NULL;
-        if (!codec->internal->encoderInitialized) {
-            codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
-            if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
+        avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
 
-            avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
-
-            encoderInterface = aom_codec_av1_cx();
-            aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, cfg, aomUsage);
-            if (err != AOM_CODEC_OK) {
-                avifDiagnosticsPrintf(codec->diag, "aom_codec_enc_config_default() failed: %s", aom_codec_err_to_string(err));
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
+        encoderInterface = aom_codec_av1_cx();
+        aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, cfg, aomUsage);
+        if (err != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag, "aom_codec_enc_config_default() failed: %s", aom_codec_err_to_string(err));
+            return AVIF_RESULT_UNKNOWN_ERROR;
         }
 
         // Set our own default cfg->rc_end_usage value, which may differ from libaom's default.
@@ -666,8 +665,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         cfg->g_profile = seqProfile;
         cfg->g_bit_depth = image->depth;
         cfg->g_input_bit_depth = image->depth;
-        cfg->g_w = image->width;
-        cfg->g_h = image->height;
+
         if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
             // Set the maximum number of frames to encode to 1. This instructs
             // libaom to set still_picture and reduced_still_picture_header to
@@ -690,16 +688,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->g_threads = encoder->maxThreads;
         }
 
-        int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-        int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
-        if (alpha) {
-            minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
-            maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
-        }
-        avifBool lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS));
-        cfg->rc_min_quantizer = minQuantizer;
-        cfg->rc_max_quantizer = maxQuantizer;
-
         codec->internal->monochromeEnabled = AVIF_FALSE;
         if (aomVersion > aomVersion_2_0_0) {
             // There exists a bug in libaom's chroma_check() function where it will attempt to
@@ -715,75 +703,125 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 cfg->monochrome = 1;
             }
         }
+    }
+
+    avifBool dimensionsChanged = AVIF_FALSE;
+    if (!codec->internal->encoderInitialized) {
+        cfg->g_w = image->width;
+        cfg->g_h = image->height;
+    } else if ((cfg->g_w != image->width) || (cfg->g_h != image->height)) {
+        // We are not ready for dimension change for now.
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    if (!codec->internal->encoderInitialized || encoderChanges) {
+        int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
+        int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
+        if (alpha) {
+            minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
+            maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
+        }
+        lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS));
+        cfg->rc_min_quantizer = minQuantizer;
+        cfg->rc_max_quantizer = maxQuantizer;
+    }
+
+    if (!codec->internal->encoderInitialized) {
+        aom_codec_flags_t encoderFlags = 0;
+        if (image->depth > 8) {
+            encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
+        }
 
         if (!avifProcessAOMOptionsPreInit(codec, alpha, cfg)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
-        if (!codec->internal->encoderInitialized) {
-            aom_codec_flags_t encoderFlags = 0;
-            if (image->depth > 8) {
-                encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
-            }
-
-            if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, cfg, encoderFlags) != AOM_CODEC_OK) {
-                avifDiagnosticsPrintf(codec->diag,
-                                      "aom_codec_enc_init() failed: %s: %s",
-                                      aom_codec_error(&codec->internal->encoder),
-                                      aom_codec_error_detail(&codec->internal->encoder));
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
-            codec->internal->encoderInitialized = AVIF_TRUE;
-        } else {
-            if (aom_codec_enc_config_set(&codec->internal->encoder, cfg) != AOM_CODEC_OK) {
-                avifDiagnosticsPrintf(codec->diag,
-                                      "aom_codec_enc_config_set() failed: %s: %s",
-                                      aom_codec_error(&codec->internal->encoder),
-                                      aom_codec_error_detail(&codec->internal->encoder));
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
+        if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, cfg, encoderFlags) != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag,
+                                  "aom_codec_enc_init() failed: %s: %s",
+                                  aom_codec_error(&codec->internal->encoder),
+                                  aom_codec_error_detail(&codec->internal->encoder));
+            return AVIF_RESULT_UNKNOWN_ERROR;
         }
 
-        if (lossless) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, 1);
-        }
         if (encoder->maxThreads > 1) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_ROW_MT, 1);
-        }
-        if (encoder->tileRowsLog2 != 0) {
-            int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
-        }
-        if (encoder->tileColsLog2 != 0) {
-            int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
         }
         if (aomCpuUsed != -1) {
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
+    } else if ((encoderChanges & ~AVIF_ENCODER_CHANGE_CODEC_SPECIFIC) || dimensionsChanged) {
+        // Codec specific options does not change cfg, so no need to update it.
+        aom_codec_err_t err = aom_codec_enc_config_set(&codec->internal->encoder, cfg);
+        if (err != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag,
+                                  "aom_codec_enc_config_set() failed: %s: %s",
+                                  aom_codec_error(&codec->internal->encoder),
+                                  aom_codec_error_detail(&codec->internal->encoder));
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
+    }
+
+    if (!codec->internal->encoderInitialized || (encoderChanges & AVIF_ENCODER_CHANGE_CODEC_SPECIFIC)) {
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
-#if defined(AOM_USAGE_ALL_INTRA)
-        if (aomUsage == AOM_USAGE_ALL_INTRA && !codec->internal->endUsageSet && !codec->internal->cqLevelSet) {
-            // The default rc_end_usage in all intra mode is AOM_Q, which requires cq-level to
-            // function. A libavif user may not know this internal detail and therefore may only
-            // set the min and max quantizers in the avifEncoder struct. If this is the case, set
-            // cq-level to a reasonable value for the user, otherwise the default cq-level
-            // (currently 10) will be unknowingly used.
-            assert(cfg->rc_end_usage == AOM_Q);
-            unsigned int cqLevel = (cfg->rc_min_quantizer + cfg->rc_max_quantizer) / 2;
-            aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, cqLevel);
+    }
+
+    avifBool quantizerUpdated = AVIF_FALSE;
+    if (!codec->internal->encoderInitialized) {
+        quantizerUpdated = AVIF_TRUE;
+        if (lossless) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless);
         }
-#endif
+        int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+        if (tileRowsLog2 > 0) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
+        }
+        int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+        if (tileColsLog2 > 0) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+        }
         if (!codec->internal->tuningSet) {
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
+        codec->internal->encoderInitialized = AVIF_TRUE;
+    } else if (encoderChanges) {
+        if (alpha) {
+            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
+                quantizerUpdated = AVIF_TRUE;
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless);
+            }
+        } else {
+            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER | AVIF_ENCODER_CHANGE_MAX_QUANTIZER)) {
+                quantizerUpdated = AVIF_TRUE;
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless);
+            }
+        }
+        if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, AVIF_CLAMP(encoder->tileRowsLog2, 0, 6));
+        }
+        if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_COLS_LOG2) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, AVIF_CLAMP(encoder->tileColsLog2, 0, 6));
+        }
     }
+
+#if defined(AOM_USAGE_ALL_INTRA)
+    if (aomUsage == AOM_USAGE_ALL_INTRA && !codec->internal->endUsageSet && !codec->internal->cqLevelSet && quantizerUpdated) {
+        // The default rc_end_usage in all intra mode is AOM_Q, which requires cq-level to
+        // function. A libavif user may not know this internal detail and therefore may only
+        // set the min and max quantizers in the avifEncoder struct. If this is the case, set
+        // cq-level to a reasonable value for the user, otherwise the default cq-level
+        // (currently 10) will be unknowingly used.
+        assert(cfg->rc_end_usage == AOM_Q);
+        unsigned int cqLevel = (cfg->rc_min_quantizer + cfg->rc_max_quantizer) / 2;
+        aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, cqLevel);
+    }
+#endif
 
     aom_image_t aomImage;
     // We prefer to simply set the aomImage.planes[] pointers to the plane buffers in 'image'. When

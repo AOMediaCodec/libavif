@@ -128,7 +128,6 @@ typedef struct avifEncoderData
     uint16_t primaryItemID;
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
-    avifBool csOptionsUpdated;
 } avifEncoderData;
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
@@ -319,7 +318,6 @@ void avifEncoderDestroy(avifEncoder * encoder)
 void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
     avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
-    encoder->data->csOptionsUpdated = AVIF_TRUE; // False positive is possible but not important.
 }
 
 static void avifBackupSettings(avifEncoder * encoder)
@@ -339,13 +337,12 @@ static void avifBackupSettings(avifEncoder * encoder)
     lastEncoder->tileRowsLog2 = encoder->tileRowsLog2;
     lastEncoder->tileColsLog2 = encoder->tileColsLog2;
     lastEncoder->speed = encoder->speed;
-    encoder->data->csOptionsUpdated = AVIF_FALSE;
 }
 
 // This function detect changes made on avifEncoder.
 // It reports if the change is valid, i.e. if any setting that can't change was changed.
-// It also sets needUpdate to true if valid changes are detected.
-static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifBool * needUpdate)
+// It also reports detected changes in updatedConfig.
+static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifEncoderChanges * encoderChanges)
 {
     const avifEncoder * lastEncoder = &encoder->data->lastEncoder;
 
@@ -354,16 +351,32 @@ static avifBool avifEncoderSettingsChanged(const avifEncoder * encoder, avifBool
     }
 
     if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
-        (lastEncoder->timescale != encoder->timescale)) {
+        (lastEncoder->timescale != encoder->timescale) || (lastEncoder->maxThreads != encoder->maxThreads) ||
+        (lastEncoder->speed != encoder->speed)) {
         return AVIF_FALSE;
     }
 
-    if ((lastEncoder->maxThreads != encoder->maxThreads) || (lastEncoder->minQuantizer != encoder->minQuantizer) ||
-        (lastEncoder->maxQuantizer != encoder->maxQuantizer) || (lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha) ||
-        (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) || (lastEncoder->tileRowsLog2 != encoder->tileRowsLog2) ||
-        (lastEncoder->tileColsLog2 != encoder->tileColsLog2) || (lastEncoder->speed != encoder->speed) ||
-        (encoder->data->csOptionsUpdated)) {
-        *needUpdate = AVIF_TRUE;
+    *encoderChanges = 0;
+    if ((lastEncoder->minQuantizer != encoder->minQuantizer)) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER;
+    }
+    if ((lastEncoder->maxQuantizer != encoder->maxQuantizer)) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER;
+    }
+    if ((lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha)) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA;
+    }
+    if ((lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha)) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA;
+    }
+    if ((lastEncoder->tileRowsLog2 != encoder->tileRowsLog2)) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2;
+    }
+    if ((lastEncoder->tileColsLog2 != encoder->tileColsLog2)) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_COLS_LOG2;
+    }
+    if (encoder->csOptions->count > 0) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_CODEC_SPECIFIC;
     }
 
     return AVIF_TRUE;
@@ -656,8 +669,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
     }
 
-    avifBool updateConfig = AVIF_FALSE;
-    if (!avifEncoderSettingsChanged(encoder, &updateConfig)) {
+    avifEncoderChanges encoderChanges = 0;
+    if (!avifEncoderSettingsChanged(encoder, &encoderChanges)) {
         return AVIF_RESULT_CANNOT_CHANGE_SETTING;
     }
     avifBackupSettings(encoder);
@@ -863,19 +876,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Another frame in an image sequence
 
         const avifImage * imageMetadata = encoder->data->imageMetadata;
-        // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
-        //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
-        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
-        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
-        //   same decoder configuration (see 7.3.6.2).
-        // If the first image in the sequence had an alpha plane (even if fully opaque), all
-        // subsequence images must have alpha as well.
-        if ((imageMetadata->width != firstCell->width) || (imageMetadata->height != firstCell->height) ||
-            (imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||
+        // If the first image had an alpha plane (even if fully opaque), all subsequent images must have alpha as well.
+        if ((imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||
             (imageMetadata->yuvRange != firstCell->yuvRange) || (imageMetadata->colorPrimaries != firstCell->colorPrimaries) ||
             (imageMetadata->transferCharacteristics != firstCell->transferCharacteristics) ||
             (imageMetadata->matrixCoefficients != firstCell->matrixCoefficients) ||
-            (!!imageMetadata->alphaPlane != !!firstCell->alphaPlane) ||
             (imageMetadata->alphaPremultiplied != firstCell->alphaPremultiplied) ||
             (encoder->data->alphaPresent && !firstCell->alphaPlane)) {
             return AVIF_RESULT_INCOMPATIBLE_IMAGE;
@@ -894,7 +899,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
             avifResult encodeResult =
-                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, updateConfig, addImageFlags, item->encodeOutput);
+                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, encoderChanges, addImageFlags, item->encodeOutput);
             if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                 encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
@@ -904,6 +909,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
     }
 
+    avifCodecSpecificOptionsClear(encoder->csOptions);
     avifEncoderFrame * frame = (avifEncoderFrame *)avifArrayPushPtr(&encoder->data->frames);
     frame->durationInTimescales = durationInTimescales;
     return AVIF_RESULT_OK;
