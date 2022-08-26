@@ -666,6 +666,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         cfg->g_input_bit_depth = image->depth;
         cfg->g_w = image->width;
         cfg->g_h = image->height;
+        cfg->g_forced_max_frame_width = encoder->width;
+        cfg->g_forced_max_frame_height = encoder->height;
         if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
             // Set the maximum number of frames to encode to 1. This instructs
             // libaom to set still_picture and reduced_still_picture_header to
@@ -761,8 +763,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     } else {
         avifBool dimensionsChanged = AVIF_FALSE;
         if ((cfg->g_w != image->width) || (cfg->g_h != image->height)) {
-            // We are not ready for dimension change for now.
-            return AVIF_RESULT_NOT_IMPLEMENTED;
+            cfg->g_w = image->width;
+            cfg->g_h = image->height;
+            dimensionsChanged = AVIF_TRUE;
         }
         if (alpha) {
             if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {

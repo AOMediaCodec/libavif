@@ -1046,6 +1046,9 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
+// * Width and height: width and height of encoded image. Default value 0 means infer from first frame.
+//   For grid image, this is the size of one cell. Value must not be smaller than the largest frame
+//   to be encoded.
 // * Some encoder settings can be changed after encoding starts. Changes will take effect in the next
 //   call to avifEncoderAddImage().
 typedef struct avifEncoder
@@ -1058,6 +1061,8 @@ typedef struct avifEncoder
     int speed;
     int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
     uint64_t timescale;   // timescale of the media (Hz)
+    uint32_t width;
+    uint32_t height;
     // changeable encoder settings
     int minQuantizer;
     int maxQuantizer;

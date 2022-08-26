@@ -116,6 +116,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
+        svt_config->forced_max_frame_width = encoder->width;
+        svt_config->forced_max_frame_height = encoder->height;
         svt_config->logical_processors = encoder->maxThreads;
         svt_config->enable_adaptive_quantization = AVIF_FALSE;
         // disable 2-pass
