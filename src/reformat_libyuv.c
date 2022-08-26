@@ -127,101 +127,67 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
     // libavif uses byte-order when describing pixel formats, such that the R in RGBA is the lowest address,
     // similar to PNG. libyuv orders in word-order, so libavif's RGBA would be referred to in libyuv as ABGR.
 
-    if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
-        // Generic mapping from any RGB layout (with or without alpha) to monochrome.
-        int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int) = NULL;
-
-        if (image->yuvRange == AVIF_RANGE_LIMITED) {
-            if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
-                RGBtoY = ARGBToI400;
-            }
-        } else { // image->yuvRange == AVIF_RANGE_FULL
-            if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
-                RGBtoY = ARGBToJ400;
-            }
-        }
-
-        if (!RGBtoY) {
-            return AVIF_RESULT_NOT_IMPLEMENTED;
-        }
-        if (RGBtoY(rgb->pixels, rgb->rowBytes, image->yuvPlanes[AVIF_CHAN_Y], image->yuvRowBytes[AVIF_CHAN_Y], image->width, image->height)) {
-            return AVIF_RESULT_REFORMAT_FAILED;
-        }
-        return AVIF_RESULT_OK;
-    }
-
-    // Generic mapping from any RGB layout (with or without alpha) to any YUV layout (subsampled or not).
-    int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int) = NULL;
-
     // libyuv only handles BT.601 for RGB to YUV, and not all range/order/subsampling combinations.
     // BT.470BG has the same coefficients as BT.601.
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT470BG) || (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601)) {
-        if (rgb->format == AVIF_RGB_FORMAT_BGRA) {
-            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                if (image->yuvRange == AVIF_RANGE_FULL) {
-                    RGBtoYUV = ARGBToJ420;
-                } else {
-                    RGBtoYUV = ARGBToI420;
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+            // Lookup table for RGB To Y (monochrome).
+            typedef int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int);
+            // Second dimension is for avifRange.
+            RGBtoY lutRgbToY[AVIF_RGB_FORMAT_COUNT][2] = {
+                { NULL, NULL },             // RGB
+                { NULL, NULL },             // RGBA
+                { NULL, NULL },             // ARGB
+                { NULL, NULL },             // BGR
+                { ARGBToI400, ARGBToJ400 }, // BGRA
+                { NULL, NULL },             // ABGR
+                { NULL, NULL }              // RGB_565
+            };
+            RGBtoY rgbToY = lutRgbToY[rgb->format][image->yuvRange];
+            if (rgbToY != NULL) {
+                if (rgbToY(rgb->pixels,
+                           rgb->rowBytes,
+                           image->yuvPlanes[AVIF_CHAN_Y],
+                           image->yuvRowBytes[AVIF_CHAN_Y],
+                           image->width,
+                           image->height) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
                 }
-            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-                if (image->yuvRange == AVIF_RANGE_FULL) {
-                    RGBtoYUV = ARGBToJ422;
-                } else {
-                    RGBtoYUV = ARGBToI422;
-                }
-            } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
-                if (image->yuvRange == AVIF_RANGE_LIMITED) {
-                    RGBtoYUV = ARGBToI444;
-                }
+                return AVIF_RESULT_OK;
             }
-        } else if (rgb->format == AVIF_RGB_FORMAT_BGR) {
-            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                if (image->yuvRange == AVIF_RANGE_FULL) {
-                    RGBtoYUV = RGB24ToJ420;
-                } else {
-                    RGBtoYUV = RGB24ToI420;
+        } else {
+            // Lookup table for RGB To YUV Matrix (average filter).
+            typedef int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int);
+            // Third dimension is for avifRange.
+            RGBtoYUV lutRgbToYuv[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT][2] = {
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } },                 // RGB
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { ABGRToI420, avifABGRToJ420 }, { NULL, NULL } }, // RGBA
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { BGRAToI420, NULL }, { NULL, NULL } },           // ARGB
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { RGB24ToI420, RGB24ToJ420 }, { NULL, NULL } },   // BGR
+                { { NULL, NULL }, { ARGBToI444, NULL }, { ARGBToI422, ARGBToJ422 }, { ARGBToI420, ARGBToJ420 }, { NULL, NULL } }, // BGRA
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { RGBAToI420, NULL }, { NULL, NULL } }, // ABGR
+                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } }        // RGB_565
+            };
+            RGBtoYUV rgbToYuv = lutRgbToYuv[rgb->format][image->yuvFormat][image->yuvRange];
+            if (rgbToYuv != NULL) {
+                if (rgbToYuv(rgb->pixels,
+                             rgb->rowBytes,
+                             image->yuvPlanes[AVIF_CHAN_Y],
+                             image->yuvRowBytes[AVIF_CHAN_Y],
+                             image->yuvPlanes[AVIF_CHAN_U],
+                             image->yuvRowBytes[AVIF_CHAN_U],
+                             image->yuvPlanes[AVIF_CHAN_V],
+                             image->yuvRowBytes[AVIF_CHAN_V],
+                             image->width,
+                             image->height) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
                 }
-            }
-        } else if (rgb->format == AVIF_RGB_FORMAT_RGBA) {
-            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                if (image->yuvRange == AVIF_RANGE_FULL) {
-                    RGBtoYUV = avifABGRToJ420;
-                } else {
-                    RGBtoYUV = ABGRToI420;
-                }
-            }
-        } else if (rgb->format == AVIF_RGB_FORMAT_ARGB) {
-            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                if (image->yuvRange == AVIF_RANGE_LIMITED) {
-                    RGBtoYUV = BGRAToI420;
-                }
-            }
-        } else if (rgb->format == AVIF_RGB_FORMAT_ABGR) {
-            if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                if (image->yuvRange == AVIF_RANGE_LIMITED) {
-                    RGBtoYUV = RGBAToI420;
-                }
+                return AVIF_RESULT_OK;
             }
         }
     }
-    // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the current implementation
-
-    if (!RGBtoYUV) {
-        return AVIF_RESULT_NOT_IMPLEMENTED;
-    }
-    if (RGBtoYUV(rgb->pixels,
-                 rgb->rowBytes,
-                 image->yuvPlanes[AVIF_CHAN_Y],
-                 image->yuvRowBytes[AVIF_CHAN_Y],
-                 image->yuvPlanes[AVIF_CHAN_U],
-                 image->yuvRowBytes[AVIF_CHAN_U],
-                 image->yuvPlanes[AVIF_CHAN_V],
-                 image->yuvRowBytes[AVIF_CHAN_V],
-                 image->width,
-                 image->height)) {
-        return AVIF_RESULT_REFORMAT_FAILED;
-    }
-    return AVIF_RESULT_OK;
+    // TODO: Use SplitRGBPlane() for AVIF_MATRIX_COEFFICIENTS_IDENTITY if faster than the built-in implementation
+    return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 
 static avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
@@ -309,7 +275,7 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
             case AVIF_MATRIX_COEFFICIENTS_ICTCP:
                 break;
         }
-    } else {
+    } else { // image->yuvRange == AVIF_RANGE_LIMITED
         switch (image->matrixCoefficients) {
             case AVIF_MATRIX_COEFFICIENTS_BT709:
                 matrixYUV = &kYuvH709Constants;
