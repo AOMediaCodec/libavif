@@ -227,8 +227,8 @@ static avifResult avifIOLimitedReaderRead(avifIO* io, uint32_t readFlags,
     return AVIF_RESULT_WAITING_ON_IO;
   }
 
-  return reader->underlyingIO->read(reader->underlyingIO, readFlags, offset, size,
-                                  out);
+  return reader->underlyingIO->read(reader->underlyingIO, readFlags, offset,
+                                    size, out);
 }
 
 static void avifIOLimitedReaderDestroy(avifIO* io) {
