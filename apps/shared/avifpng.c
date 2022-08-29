@@ -27,6 +27,8 @@ typedef png_charp png_iccp_datap;
 static avifBool avifHexStringToBytes(const char * hexString, size_t expectedLength, avifRWData * bytes)
 {
     // Preprocess the input hexString by removing a tag commonly added at encoding, if present.
+    // HEIF specification ISO-23008 section A.2.1 allows including and excluding it from AVIF files.
+    // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
     const char tagExif00[] = "457869660000"; // "Exif\0\0" tag encoded as a hexadecimal string.
     const size_t tagExif00Len = 6 * 2;
     if ((expectedLength >= tagExif00Len) && !memcmp(hexString, tagExif00, tagExif00Len)) {
