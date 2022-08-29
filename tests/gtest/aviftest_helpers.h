@@ -55,6 +55,7 @@ void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
                       uint32_t value);
 
 // Returns true if both arrays are empty or have the same length and bytes.
+// data1 or data2 may be null only when data1_length is 0.
 bool AreByteSequencesEqual(const uint8_t data1[], size_t data1_length,
                            const uint8_t data2[], size_t data2_length);
 bool AreByteSequencesEqual(const avifRWData& data1, const avifRWData& data2);

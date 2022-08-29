@@ -99,8 +99,8 @@ static void syntax(void)
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
     printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
-    printf("    --ignore-exif                     : If the input file contains an embedded Exif chunk, ignore it (no-op if absent)\n");
-    printf("    --ignore-xmp                      : If the input file contains an embedded XMP chunk, ignore it (no-op if absent)\n");
+    printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
+    printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");

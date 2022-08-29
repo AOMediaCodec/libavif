@@ -26,6 +26,15 @@ typedef png_charp png_iccp_datap;
 // AVIF_FALSE is returned if fewer than expectedLength hexadecimal pairs are converted.
 static avifBool avifHexStringToBytes(const char * hexString, size_t expectedLength, avifRWData * bytes)
 {
+    // Preprocess the input hexString by removing a tag commonly added at encoding, if present.
+    const char tagExif00[] = "457869660000"; // "Exif\0\0" tag encoded as a hexadecimal string.
+    const size_t tagExif00Len = 6 * 2;
+    if ((expectedLength >= tagExif00Len) &&
+        !memcmp(hexString, tagExif00, tagExif00Len)) {
+        hexString += tagExif00Len;
+        expectedLength -= tagExif00Len;
+    }
+
     avifRWDataRealloc(bytes, expectedLength);
     const char * src = hexString;
     size_t actualLength = 0;
@@ -63,9 +72,11 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
     const char * lengthStart = NULL;
     for (size_t i = 1; i < profileLength; ++i) {
         if (profile[i] == '\0') {
-            fprintf(stderr, "Exif extraction failed: malformed raw profile, unexpected null-terminating character at " AVIF_FMT_ZU "\n", i);
+            // This should not happen as libpng provides this guarantee but extra safety does not hurt.
+            fprintf(stderr, "Exif extraction failed: malformed raw profile, unexpected null character at " AVIF_FMT_ZU "\n", i);
             return AVIF_FALSE;
-        } else if (profile[i] == '\n') {
+        }
+        if (profile[i] == '\n') {
             if (!lengthStart) {
                 // Skip the name and store the beginning of the string containing the length of the payload.
                 lengthStart = &profile[i + 1];
@@ -80,10 +91,13 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
                     return AVIF_FALSE;
                 }
                 // No need to check for errno. Just make sure expectedLength is not LONG_MIN and not LONG_MAX.
-                if ((expectedLength <= 0) || (expectedLength == LONG_MAX) || ((unsigned long)expectedLength > hexPayloadMaxLength)) {
+                if ((expectedLength <= 0) || (expectedLength == LONG_MAX) ||
+                    ((unsigned long)expectedLength > (hexPayloadMaxLength / 2))) {
                     fprintf(stderr, "Exif extraction failed: invalid length %ld\n", expectedLength);
                     return AVIF_FALSE;
                 }
+                // Note: The profile may be malformed by containing more data than the extracted expectedLength bytes.
+                //       Be lenient about it and consider it as a valid payload.
                 return avifHexStringToBytes(hexPayloadStart, (size_t)expectedLength, payload);
             }
         }

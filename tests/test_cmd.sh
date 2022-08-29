@@ -41,7 +41,7 @@ DECODED_FILE=/tmp/avif_test_cmd_decoded.png
 PNG_FILE=/tmp/avif_test_cmd_kodim03.png
 
 # Prepare some extra data.
-set -x
+set +x
 echo "Generating a color PNG"
 "${AVIFENC}" -s 10 "${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m" -o "${ENCODED_FILE}" > /dev/null
 "${AVIFDEC}" "${ENCODED_FILE}" "${PNG_FILE}"  > /dev/null
@@ -86,6 +86,9 @@ set +e
 "${ARE_IMAGES_EQUAL}" "${TESTDATA_DIR}/kodim23_yuv420_8bpc.y4m" "${DECODED_FILE}" 0
 if [[ $? -ne 1 ]]; then
   echo "Image should be different"
+
+  # Cleanup
+  rm "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${DECODED_FILE}" "${PNG_FILE}"
   exit 1
 fi
 

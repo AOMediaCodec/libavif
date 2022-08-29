@@ -11,6 +11,7 @@
 
 using ::testing::Bool;
 using ::testing::Combine;
+using ::testing::Values;
 
 namespace libavif {
 namespace {
@@ -39,14 +40,15 @@ const std::array<uint8_t, 24> kSampleXmp = {
     0x67, 0x69, 0x6e, 0x3d, 0x22, 0xef, 0xbb, 0xbf, 0x22, 0x20, 0x69, 0x64};
 
 //------------------------------------------------------------------------------
+// AVIF encode/decode metadata tests
 
-class MetadataTest
+class AvifMetadataTest
     : public testing::TestWithParam<
           std::tuple</*use_icc=*/bool, /*use_exif=*/bool, /*use_xmp=*/bool>> {};
 
 // Encodes, decodes then verifies that the output metadata matches the input
 // metadata defined by the parameters.
-TEST_P(MetadataTest, EncodeDecode) {
+TEST_P(AvifMetadataTest, EncodeDecode) {
   const bool use_icc = std::get<0>(GetParam());
   const bool use_exif = std::get<1>(GetParam());
   const bool use_xmp = std::get<2>(GetParam());
@@ -96,26 +98,91 @@ TEST_P(MetadataTest, EncodeDecode) {
       use_xmp ? kSampleXmp.size() : 0u));
 }
 
-INSTANTIATE_TEST_SUITE_P(All, MetadataTest,
+INSTANTIATE_TEST_SUITE_P(All, AvifMetadataTest,
                          Combine(/*use_icc=*/Bool(), /*use_exif=*/Bool(),
                                  /*use_xmp=*/Bool()));
 
 //------------------------------------------------------------------------------
+// Jpeg and PNG metadata tests
 
-TEST(MetadataTest, ReadPngExif) {
+class MetadataTest
+    : public testing::TestWithParam<
+          std::tuple</*file_name=*/const char*, /*use_icc=*/bool,
+                     /*use_exif=*/bool, /*use_xmp=*/bool, /*expect_icc=*/bool,
+                     /*expect_exif=*/bool, /*expect_xmp=*/bool>> {};
+
+// zTXt "Raw profile type exif" at the beginning of a PNG file.
+TEST_P(MetadataTest, Read) {
+  const std::string file_path =
+      std::string(data_path) + std::get<0>(GetParam());
+  const bool use_icc = std::get<1>(GetParam());
+  const bool use_exif = std::get<2>(GetParam());
+  const bool use_xmp = std::get<3>(GetParam());
+  const bool expect_icc = std::get<4>(GetParam());
+  const bool expect_exif = std::get<5>(GetParam());
+  const bool expect_xmp = std::get<6>(GetParam());
+
   avifImage* image = avifImageCreateEmpty();
   ASSERT_NE(image, nullptr);
-  const std::string file_path =
-      std::string(data_path) + "/paris_exif_xmp_icc.png";
-  ASSERT_EQ(
-      avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0,
-                    /*ignoreICC=*/AVIF_TRUE, /*ignoreExif=*/AVIF_FALSE,
-                    /*ignoreXMP=*/AVIF_TRUE, image, nullptr, nullptr, nullptr),
-      AVIF_APP_FILE_FORMAT_PNG);
+  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;  // lossless
+  ASSERT_NE(
+      avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0, !use_icc,
+                    !use_exif, !use_xmp, image, nullptr, nullptr, nullptr),
+      AVIF_APP_FILE_FORMAT_UNKNOWN);
   EXPECT_NE(image->width * image->height, 0u);
-  EXPECT_NE(image->exif.size, 0u);
-  EXPECT_NE(image->exif.data, nullptr);
+  if (expect_icc) {
+    EXPECT_NE(image->icc.size, 0u);
+    EXPECT_NE(image->icc.data, nullptr);
+  } else {
+    EXPECT_EQ(image->icc.size, 0u);
+    EXPECT_EQ(image->icc.data, nullptr);
+  }
+  if (expect_exif) {
+    EXPECT_NE(image->exif.size, 0u);
+    EXPECT_NE(image->exif.data, nullptr);
+  } else {
+    EXPECT_EQ(image->exif.size, 0u);
+    EXPECT_EQ(image->exif.data, nullptr);
+  }
+  if (expect_xmp) {
+    EXPECT_NE(image->xmp.size, 0u);
+    EXPECT_NE(image->xmp.data, nullptr);
+  } else {
+    EXPECT_EQ(image->xmp.size, 0u);
+    EXPECT_EQ(image->xmp.data, nullptr);
+  }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    PngNone, MetadataTest,
+    Combine(Values("/paris_exif_xmp_icc.png"),  // zTXt iCCP iTXt IDAT
+            /*use_icc=*/Values(false), /*use_exif=*/Values(false),
+            /*use_xmp=*/Values(false),
+            // ignoreICC is not yet implemented.
+            /*expected_icc=*/Values(true),
+            /*expected_exif=*/Values(false), /*expected_xmp=*/Values(false)));
+INSTANTIATE_TEST_SUITE_P(
+    PngAll, MetadataTest,
+    Combine(Values("/paris_exif_xmp_icc.png"), /*use_icc=*/Values(true),
+            /*use_exif=*/Values(true), /*use_xmp=*/Values(true),
+            /*expected_icc=*/Values(true), /*expected_exif=*/Values(true),
+            // XMP extraction is not yet implemented.
+            /*expected_xmp=*/Values(false)));
+
+INSTANTIATE_TEST_SUITE_P(
+    PngExifAtEnd, MetadataTest,
+    Combine(Values("/paris_exif_at_end.png"),  // iCCP IDAT eXIf
+            /*use_icc=*/Values(true), /*use_exif=*/Values(true),
+            /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
+            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(false)));
+
+INSTANTIATE_TEST_SUITE_P(
+    Jpeg, MetadataTest,
+    Combine(Values("/paris_exif_xmp_icc.jpg"), /*use_icc=*/Values(true),
+            /*use_exif=*/Values(true), /*use_xmp=*/Values(true),
+            /*expected_icc=*/Values(true),
+            // Exif and XMP are not yet implemented.
+            /*expected_exif=*/Values(false), /*expected_xmp=*/Values(false)));
 
 //------------------------------------------------------------------------------
 
