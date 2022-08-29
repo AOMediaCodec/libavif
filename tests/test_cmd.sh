@@ -41,8 +41,8 @@ PNG_FILE=/tmp/kodim03.png
 # Prepare some extra data.
 set +x
 echo "Generating a color PNG"
-"${AVIFENC}" -s 10 "${TESTDATA_DIR}"/kodim03_yuv420_8bpc.y4m -o "${TMP_ENCODED_FILE}" &> /dev/null
-"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${PNG_FILE}"  &> /dev/null
+"${AVIFENC}" -s 10 "${TESTDATA_DIR}"/kodim03_yuv420_8bpc.y4m -o "${TMP_ENCODED_FILE}" > /dev/null
+"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${PNG_FILE}" > /dev/null
 set -x
 
 # Basic calls.
