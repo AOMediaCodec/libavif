@@ -104,6 +104,7 @@ static void syntax(void)
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
+    printf("    --                                : Signals the end of options. Everything after is interpreted as file names.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
@@ -471,8 +472,16 @@ int main(int argc, char * argv[])
         const char * arg = argv[argIndex];
 
         if (!strcmp(arg, "--")) {
-            // Strop parsing flags, everything after this is positional arguments
+            // Stop parsing flags, everything after this is positional arguments
             ++argIndex;
+            // Parse additional positional arguments if any
+            while (argIndex < argc) {
+                const char * arg = argv[argIndex];
+                input.files[input.filesCount].filename = arg;
+                input.files[input.filesCount].duration = outputTiming.duration;
+                ++input.filesCount;
+                ++argIndex;
+            }
             break;
         } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
@@ -752,7 +761,7 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
         } else if (arg[0] == '-') {
-            fprintf(stderr, "ERROR: unrecognized flag %s\n\n", arg);
+            fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
             syntax();
             returnCode = 1;
             goto cleanup;
@@ -763,14 +772,6 @@ int main(int argc, char * argv[])
             ++input.filesCount;
         }
 
-        ++argIndex;
-    }
-    // Parse additional positional arguments if any
-    while (argIndex < argc) {
-        const char * arg = argv[argIndex];
-        input.files[input.filesCount].filename = arg;
-        input.files[input.filesCount].duration = outputTiming.duration;
-        ++input.filesCount;
         ++argIndex;
     }
 

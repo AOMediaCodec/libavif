@@ -47,6 +47,7 @@ static void syntax(void)
     printf("                        Default: %u, set to a smaller value to further restrict.\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
     printf("  --dimension-limit C : Specifies the image dimension limit (width or height) that should be tolerated.\n");
     printf("                        Default: %u, set to 0 to ignore.\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
+    printf("    --                : Signals the end of options. Everything after is interpreted as file names.\n");
     printf("\n");
     avifPrintVersions();
 }
@@ -80,9 +81,22 @@ int main(int argc, char * argv[])
         const char * arg = argv[argIndex];
 
         if (!strcmp(arg, "--")) {
-            // Strop parsing flags, everything after this is positional arguments
+            // Stop parsing flags, everything after this is positional arguments
             ++argIndex;
-            break;
+            // Parse additional positional arguments if any.
+            while (argIndex < argc) {
+                const char * arg = argv[argIndex];
+                if (!inputFilename) {
+                    inputFilename = arg;
+                } else if (!outputFilename) {
+                    outputFilename = arg;
+                } else {
+                    fprintf(stderr, "Too many positional arguments: %s\n\n", arg);
+                    syntax();
+                    return 1;
+                }
+                ++argIndex;
+            }
         } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
             return 0;
@@ -181,7 +195,7 @@ int main(int argc, char * argv[])
             }
             imageDimensionLimit = (uint32_t)value;
         } else if (arg[0] == '-') {
-            fprintf(stderr, "ERROR: unrecognized flag %s\n\n", arg);
+            fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
             syntax();
             return 1;
         } else {
@@ -198,19 +212,6 @@ int main(int argc, char * argv[])
         }
 
         ++argIndex;
-    }
-    // Parse additional positional arguments if any
-    while (argIndex < argc) {
-        const char * arg = argv[argIndex];
-        if (!inputFilename) {
-            inputFilename = arg;
-        } else if (!outputFilename) {
-            outputFilename = arg;
-        } else {
-            fprintf(stderr, "Too many positional arguments: %s\n\n", arg);
-            syntax();
-            return 1;
-        }
     }
 
     if (!inputFilename) {
