@@ -29,8 +29,7 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t expectedLeng
     // Preprocess the input hexString by removing a tag commonly added at encoding, if present.
     const char tagExif00[] = "457869660000"; // "Exif\0\0" tag encoded as a hexadecimal string.
     const size_t tagExif00Len = 6 * 2;
-    if ((expectedLength >= tagExif00Len) &&
-        !memcmp(hexString, tagExif00, tagExif00Len)) {
+    if ((expectedLength >= tagExif00Len) && !memcmp(hexString, tagExif00, tagExif00Len)) {
         hexString += tagExif00Len;
         expectedLength -= tagExif00Len;
     }
