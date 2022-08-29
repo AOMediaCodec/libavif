@@ -6,6 +6,8 @@
 
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
+: # Clang-cl is recommended to build libyuv on Windows. Run this if you have clang-cl installed:
+: #     set CC=clang-cl && set CXX=clang-cl
 
 git clone --single-branch https://chromium.googlesource.com/libyuv/libyuv
 
