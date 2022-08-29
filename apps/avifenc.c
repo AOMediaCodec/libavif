@@ -286,11 +286,11 @@ static avifAppFileFormat avifInputReadImage(avifInput * input,
     const avifAppFileFormat nextInputFormat = avifReadImage(input->files[input->fileIndex].filename,
                                                             input->requestedFormat,
                                                             input->requestedDepth,
+                                                            flags,
                                                             image,
                                                             outDepth,
                                                             sourceTiming,
-                                                            &input->frameIter,
-                                                            flags);
+                                                            &input->frameIter);
     if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }

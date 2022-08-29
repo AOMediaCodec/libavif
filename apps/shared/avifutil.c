@@ -227,11 +227,11 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
 avifAppFileFormat avifReadImage(const char * filename,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
+                                avifRGBToYUVFlags flags,
                                 avifImage * image,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
-                                struct y4mFrameIterator ** frameIter,
-                                avifRGBToYUVFlags flags)
+                                struct y4mFrameIterator ** frameIter)
 {
     const avifAppFileFormat format = avifGuessFileFormat(filename);
     if (format == AVIF_APP_FILE_FORMAT_Y4M) {
