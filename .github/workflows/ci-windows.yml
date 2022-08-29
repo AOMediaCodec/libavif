@@ -66,9 +66,6 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: ./libyuv.cmd
-      env:
-        CC: clang-cl
-        CXX: clang-cl
     - name: Build libjpeg
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
