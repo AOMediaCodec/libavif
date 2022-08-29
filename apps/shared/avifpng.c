@@ -35,8 +35,8 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifImage * avif,
                      avifPixelFormat requestedFormat,
                      uint32_t requestedDepth,
-                     uint32_t * outPNGDepth,
-                     avifRGBToYUVFlags flags)
+                     avifRGBToYUVFlags flags,
+                     uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;

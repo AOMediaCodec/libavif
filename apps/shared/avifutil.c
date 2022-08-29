@@ -249,7 +249,7 @@ avifAppFileFormat avifReadImage(const char * filename,
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, outDepth, flags)) {
+        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, flags, outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {
