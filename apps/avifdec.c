@@ -85,7 +85,7 @@ int main(int argc, char * argv[])
             ++argIndex;
             // Parse additional positional arguments if any.
             while (argIndex < argc) {
-                const char * arg = argv[argIndex];
+                arg = argv[argIndex];
                 if (!inputFilename) {
                     inputFilename = arg;
                 } else if (!outputFilename) {

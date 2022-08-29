@@ -476,7 +476,7 @@ int main(int argc, char * argv[])
             ++argIndex;
             // Parse additional positional arguments if any
             while (argIndex < argc) {
-                const char * arg = argv[argIndex];
+                arg = argv[argIndex];
                 input.files[input.filesCount].filename = arg;
                 input.files[input.filesCount].duration = outputTiming.duration;
                 ++input.filesCount;
