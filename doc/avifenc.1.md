@@ -226,6 +226,9 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     :   - **0** (top-to-bottom)
         - **1** (left-to-right)
 
+**\--**
+:   Signals the end of options. Everything after this is interpreted as file names.
+
 # EXAMPLES
 
 Compress a PNG file to an AVIF file:
