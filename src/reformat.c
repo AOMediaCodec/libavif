@@ -229,12 +229,11 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifRG
     // Try converting with libsharpyuv.
     if ((flags & AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV) && image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
         const avifResult libSharpYUVResult = avifImageRGBToYUVLibSharpYUV(image, rgb, &state);
-        if (libSharpYUVResult == AVIF_RESULT_OK) {
-            converted = AVIF_TRUE;
-        } else {
+        if (libSharpYUVResult != AVIF_RESULT_OK) {
             // Return the error if sharpyuv was requested but failed for any reason, including libsharpyuv not being available.
             return libSharpYUVResult;
         }
+        converted = AVIF_TRUE;
     }
 
     if (!converted && !(flags & AVIF_RGB_TO_YUV_AVOID_LIBYUV) && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
