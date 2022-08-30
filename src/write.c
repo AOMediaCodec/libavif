@@ -360,7 +360,8 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
 
     if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->maxThreads != encoder->maxThreads) ||
         (lastEncoder->speed != encoder->speed) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
-        (lastEncoder->timescale != encoder->timescale) || (lastEncoder->width != encoder->width) || (lastEncoder->height != encoder->height)) {
+        (lastEncoder->timescale != encoder->timescale) || (lastEncoder->width != encoder->width) ||
+        (lastEncoder->height != encoder->height)) {
         return AVIF_FALSE;
     }
 
