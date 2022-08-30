@@ -231,6 +231,7 @@ avifBool avifPNGRead(const char * inputFilename,
     if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, (png_iccp_datap *)&iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
         avifImageSetProfileICC(avif, iccpData, iccpDataLen);
     }
+    // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
 
     int rawWidth = png_get_image_width(png, info);
     int rawHeight = png_get_image_height(png, info);
@@ -322,6 +323,7 @@ avifBool avifPNGRead(const char * inputFilename,
             }
         }
     }
+    // TODO(yguyon): Extract XMP to avif->xmp, if any.
     readResult = AVIF_TRUE;
 
 cleanup:
