@@ -47,7 +47,7 @@ static void syntax(void)
     printf("                        Default: %u, set to a smaller value to further restrict.\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
     printf("  --dimension-limit C : Specifies the image dimension limit (width or height) that should be tolerated.\n");
     printf("                        Default: %u, set to 0 to ignore.\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
-    printf("    --                : Signals the end of options. Everything after is interpreted as file names.\n");
+    printf("    --                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     avifPrintVersions();
 }
@@ -97,6 +97,7 @@ int main(int argc, char * argv[])
                 }
                 ++argIndex;
             }
+            break;
         } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
             return 0;

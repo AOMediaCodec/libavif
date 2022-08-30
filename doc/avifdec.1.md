@@ -118,7 +118,7 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     Default is 32,768. Set it to 0 to ignore the limit.
 
 **\--**
-:   Signals the end of options. Everything after is interpreted as file names.
+:   Signals the end of options. Everything after this is interpreted as file names.
 
 # EXAMPLES
 
