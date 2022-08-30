@@ -45,7 +45,7 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
 
     avifRWDataRealloc(bytes, numExpectedBytes);
     size_t numBytes = 0;
-    for (size_t i = 0; (i < hexStringLength) && (numBytes < numExpectedBytes);) {
+    for (size_t i = 0; (i + 1 < hexStringLength) && (numBytes < numExpectedBytes);) {
         if (hexString[i] == '\n') {
             ++i;
             continue;
