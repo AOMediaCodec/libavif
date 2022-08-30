@@ -114,7 +114,7 @@ class MetadataTest
 // zTXt "Raw profile type exif" at the beginning of a PNG file.
 TEST_P(MetadataTest, Read) {
   const std::string file_path =
-      std::string(data_path) + std::get<0>(GetParam());
+      std::string(data_path) + "/" + std::get<0>(GetParam());
   const bool use_icc = std::get<1>(GetParam());
   const bool use_exif = std::get<2>(GetParam());
   const bool use_xmp = std::get<3>(GetParam());
@@ -155,7 +155,7 @@ TEST_P(MetadataTest, Read) {
 
 INSTANTIATE_TEST_SUITE_P(
     PngNone, MetadataTest,
-    Combine(Values("/paris_exif_xmp_icc.png"),  // zTXt iCCP iTXt IDAT
+    Combine(Values("paris_exif_xmp_icc.png"),  // zTXt iCCP iTXt IDAT
             /*use_icc=*/Values(false), /*use_exif=*/Values(false),
             /*use_xmp=*/Values(false),
             // ignoreICC is not yet implemented.
@@ -163,7 +163,7 @@ INSTANTIATE_TEST_SUITE_P(
             /*expected_exif=*/Values(false), /*expected_xmp=*/Values(false)));
 INSTANTIATE_TEST_SUITE_P(
     PngAll, MetadataTest,
-    Combine(Values("/paris_exif_xmp_icc.png"), /*use_icc=*/Values(true),
+    Combine(Values("paris_exif_xmp_icc.png"), /*use_icc=*/Values(true),
             /*use_exif=*/Values(true), /*use_xmp=*/Values(true),
             /*expected_icc=*/Values(true), /*expected_exif=*/Values(true),
             // XMP extraction is not yet implemented.
@@ -171,18 +171,50 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     PngExifAtEnd, MetadataTest,
-    Combine(Values("/paris_exif_at_end.png"),  // iCCP IDAT eXIf
+    Combine(Values("paris_exif_at_end.png"),  // iCCP IDAT eXIf
             /*use_icc=*/Values(true), /*use_exif=*/Values(true),
             /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
             /*expected_exif=*/Values(true), /*expected_xmp=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     Jpeg, MetadataTest,
-    Combine(Values("/paris_exif_xmp_icc.jpg"), /*use_icc=*/Values(true),
+    Combine(Values("paris_exif_xmp_icc.jpg"), /*use_icc=*/Values(true),
             /*use_exif=*/Values(true), /*use_xmp=*/Values(true),
             /*expected_icc=*/Values(true),
             // Exif and XMP are not yet implemented.
             /*expected_exif=*/Values(false), /*expected_xmp=*/Values(false)));
+
+// Verify all parsers lead exactly to the same metadata bytes.
+TEST(MetadataTest, Compare) {
+  constexpr const char* kFileNames[] = {"paris_exif_at_end.png",
+                                        "paris_exif_xmp_icc.jpg",
+                                        "paris_exif_xmp_icc.png"};
+  avifImage* images[sizeof(kFileNames) / sizeof(kFileNames[0])];
+  avifImage** image_it = images;
+  for (const char* file_name : kFileNames) {
+    const std::string file_path = std::string(data_path) + "/" + file_name;
+
+    *image_it = avifImageCreateEmpty();
+    ASSERT_NE(*image_it, nullptr);
+    ASSERT_NE(avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0,
+                            /*ignoreICC=*/false, /*ignoreExif=*/false,
+                            /*ignoreXMP=*/false, *image_it, nullptr, nullptr,
+                            nullptr),
+              AVIF_APP_FILE_FORMAT_UNKNOWN);
+    ++image_it;
+  }
+
+  for (avifImage* image : images) {
+    if (image->exif.size != 0) {  // Not implemented for JPEG.
+      EXPECT_TRUE(
+          testutil::AreByteSequencesEqual(image->exif, images[0]->exif));
+    }
+    if (image->xmp.size != 0) {  // Not implemented.
+      EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, images[0]->xmp));
+    }
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->icc, images[0]->icc));
+  }
+}
 
 //------------------------------------------------------------------------------
 

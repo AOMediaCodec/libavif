@@ -723,7 +723,7 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--ignore-exif")) {
             ignoreExif = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-xmp")) {
-            ignoreExif = AVIF_TRUE;
+            ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--pasp")) {

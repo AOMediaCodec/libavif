@@ -20,42 +20,50 @@ typedef png_bytep png_iccp_datap;
 typedef png_charp png_iccp_datap;
 #endif
 
-// Converts a hexadecimal string which contains 2-byte character representations of hexadecimal values to raw data.
+// Converts a hexadecimal string which contains 2-byte character representations of hexadecimal values to raw data (bytes).
 // hexString may contain values consisting of [A-F][a-f][0-9] in pairs, e.g., 7af2..., separated by any number of newlines.
 // On success the bytes are filled and AVIF_TRUE is returned.
 // AVIF_FALSE is returned if fewer than expectedLength hexadecimal pairs are converted.
-static avifBool avifHexStringToBytes(const char * hexString, size_t expectedLength, avifRWData * bytes)
+static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLength, size_t numExpectedBytes, avifRWData * bytes)
 {
+    // Remove any trailing new line. They are not part of the numExpectedBytes.
+    while ((hexStringLength >= 1) && (hexString[0] == '\n')) {
+        ++hexString;
+        --hexStringLength;
+    }
+
     // Preprocess the input hexString by removing a tag commonly added at encoding, if present.
     // HEIF specification ISO-23008 section A.2.1 allows including and excluding it from AVIF files.
     // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
     const char tagExif00[] = "457869660000"; // "Exif\0\0" tag encoded as a hexadecimal string.
     const size_t tagExif00Len = 6 * 2;
-    if ((expectedLength >= tagExif00Len) && !memcmp(hexString, tagExif00, tagExif00Len)) {
+    if ((hexStringLength >= tagExif00Len) && !memcmp(hexString, tagExif00, tagExif00Len)) {
         hexString += tagExif00Len;
-        expectedLength -= tagExif00Len;
+        hexStringLength -= tagExif00Len;
+        numExpectedBytes -= tagExif00Len / 2;
     }
 
-    avifRWDataRealloc(bytes, expectedLength);
-    const char * src = hexString;
-    size_t actualLength = 0;
-    for (; (actualLength < expectedLength) && (*src != '\0'); ++actualLength) {
-        while (*src == '\n') {
-            ++src;
+    avifRWDataRealloc(bytes, numExpectedBytes);
+    size_t numBytes = 0;
+    for (size_t i = 0; (i < hexStringLength) && (numBytes < numExpectedBytes);) {
+        if (hexString[i] == '\n') {
+            ++i;
+            continue;
         }
-        if (!isxdigit(src[0]) || !isxdigit(src[1])) {
+        if (!isxdigit(hexString[i]) || !isxdigit(hexString[i + 1])) {
             avifRWDataFree(bytes);
-            fprintf(stderr, "Exif extraction failed: invalid token at " AVIF_FMT_ZU "\n", actualLength);
+            fprintf(stderr, "Exif extraction failed: invalid character at " AVIF_FMT_ZU "\n", i);
             return AVIF_FALSE;
         }
-        const char twoHexDigits[] = { src[0], src[1], '\0' };
-        bytes->data[actualLength] = (uint8_t)strtol(twoHexDigits, NULL, 16);
-        src += 2;
+        const char twoHexDigits[] = { hexString[i], hexString[i + 1], '\0' };
+        bytes->data[numBytes] = (uint8_t)strtol(twoHexDigits, NULL, 16);
+        ++numBytes;
+        i += 2;
     }
 
-    if (actualLength != expectedLength) {
+    if (numBytes != numExpectedBytes) {
         avifRWDataFree(bytes);
-        fprintf(stderr, "Exif extraction failed: expected " AVIF_FMT_ZU " tokens but got " AVIF_FMT_ZU "\n", expectedLength, actualLength);
+        fprintf(stderr, "Exif extraction failed: expected " AVIF_FMT_ZU " tokens but got " AVIF_FMT_ZU "\n", numExpectedBytes, numBytes);
         return AVIF_FALSE;
     }
     return AVIF_TRUE;
@@ -99,7 +107,7 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
                 }
                 // Note: The profile may be malformed by containing more data than the extracted expectedLength bytes.
                 //       Be lenient about it and consider it as a valid payload.
-                return avifHexStringToBytes(hexPayloadStart, (size_t)expectedLength, payload);
+                return avifHexStringToBytes(hexPayloadStart, hexPayloadMaxLength, (size_t)expectedLength, payload);
             }
         }
     }
