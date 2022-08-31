@@ -88,7 +88,7 @@ void TestEncodeDecode(avifCodecChoice codec,
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_WAITING_ON_IO);
-  ((testutil::AvifIOLimitedReader*)io)->clamp =
+  reinterpret_cast<testutil::AvifIOLimitedReader*>(io)->clamp =
       testutil::AvifIOLimitedReader::kNoClamp;
   ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderNextImage(decoder.get()),

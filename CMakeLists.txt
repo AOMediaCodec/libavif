@@ -211,6 +211,11 @@ set(AVIF_SRCS
     src/write.c
 )
 
+# Only applicable to macOS. In GitHub CI's macos-latest os image, this prevents using the libpng
+# and libjpeg headers from /Library/Frameworks/Mono.framework/Headers instead of
+# /usr/local/include.
+set(CMAKE_FIND_FRAMEWORK LAST)
+
 set(AVIF_PLATFORM_DEFINITIONS)
 set(AVIF_PLATFORM_INCLUDES)
 set(AVIF_PLATFORM_LIBRARIES)
@@ -480,7 +485,14 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
                          apps/shared/y4m.c
     )
     target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
-    target_include_directories(avif_apps PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} INTERFACE apps/shared)
+    # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
+    # libjpeg but also the headers of an older version of libavif. Put the avif include directory
+    # before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif headers
+    # from /usr/local/include.
+    target_include_directories(
+        avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR}
+        INTERFACE apps/shared
+    )
 endif()
 
 if(AVIF_BUILD_APPS)

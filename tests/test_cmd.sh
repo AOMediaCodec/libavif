@@ -37,12 +37,13 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 TMP_ENCODED_FILE=/tmp/encoded.avif
 DECODED_FILE=/tmp/decoded.png
 PNG_FILE=/tmp/kodim03.png
+TMP_ENCODED_FILE_WTH_DASH=-encoded.avif
 
 # Prepare some extra data.
 set +x
 echo "Generating a color PNG"
-"${AVIFENC}" -s 10 "${TESTDATA_DIR}"/kodim03_yuv420_8bpc.y4m -o "${TMP_ENCODED_FILE}" &> /dev/null
-"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${PNG_FILE}"  &> /dev/null
+"${AVIFENC}" -s 10 "${TESTDATA_DIR}"/kodim03_yuv420_8bpc.y4m -o "${TMP_ENCODED_FILE}" > /dev/null
+"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${PNG_FILE}" > /dev/null
 set -x
 
 # Basic calls.
@@ -54,6 +55,24 @@ echo "Testing basic lossless"
 "${AVIFENC}" -s 10 -l "${PNG_FILE}" -o "${TMP_ENCODED_FILE}"
 "${AVIFDEC}" "${TMP_ENCODED_FILE}" "${DECODED_FILE}"
 "${ARE_IMAGES_EQUAL}" "${PNG_FILE}" "${DECODED_FILE}" 0
+
+# Argument parsing test with filenames starting with a dash.
+"${AVIFENC}" -s 10 "${PNG_FILE}" -- "${TMP_ENCODED_FILE_WTH_DASH}"
+"${AVIFDEC}" --info  -- "${TMP_ENCODED_FILE_WTH_DASH}"
+# Passing a filename starting with a dash without using -- should fail.
+set +e
+"${AVIFENC}" -s 10 "${PNG_FILE}" "${TMP_ENCODED_FILE_WTH_DASH}"
+if [[ $? -ne 1 ]]; then
+  echo "Argument parsing should fail for avifenc"
+  exit 1
+fi
+"${AVIFDEC}" --info "${TMP_ENCODED_FILE_WTH_DASH}"
+if [[ $? -ne 1 ]]; then
+  echo "Argument parsing should fail for avifdec"
+  exit 1
+fi
+set -e
+rm -- "${TMP_ENCODED_FILE_WTH_DASH}"
 
 # Test code that should fail.
 set +e

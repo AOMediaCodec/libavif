@@ -46,16 +46,16 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
-                                      avifEncoderChanges updatedConfig,
+                                      avifEncoderChanges encoderChanges,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
-    // svt does not support changing config.
-    if (updatedConfig) {
+    // SVT-AV1 does not support changing encoder settings.
+    if (encoderChanges) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
-    // svt does not support changing encoding dimension.
+    // SVT-AV1 does not support changing image dimensions.
     if (codec->internal->svt_encoder != NULL) {
         if ((codec->internal->svt_config.source_width != image->width) || (codec->internal->svt_config.source_height != image->height)) {
             return AVIF_RESULT_NOT_IMPLEMENTED;

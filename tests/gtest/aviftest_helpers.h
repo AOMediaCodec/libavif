@@ -66,13 +66,15 @@ struct AvifIOLimitedReader {
   static constexpr uint64_t kNoClamp = std::numeric_limits<uint64_t>::max();
 
   avifIO io;
-  avifIO* underlayIO;
+  avifIO* underlyingIO;
   uint64_t clamp;
 };
 
-avifIO* AvifIOCreateLimitedReader(avifIO* underlayIO, uint64_t clamp);
+avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp);
 
 }  // namespace testutil
 }  // namespace libavif
+
+//------------------------------------------------------------------------------
 
 #endif  // LIBAVIF_TESTS_AVIFTEST_HELPERS_H_
