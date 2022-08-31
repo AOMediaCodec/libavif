@@ -8,8 +8,7 @@
 #include "aviftest_helpers.h"
 #include "avifutil.h"
 
-using ::libavif::testutil::AreImagesEqual;
-using ::libavif::testutil::AvifImagePtr;
+using libavif::testutil::AvifImagePtr;
 
 int main(int argc, char** argv) {
   if (argc != 4) {

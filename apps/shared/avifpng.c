@@ -332,12 +332,10 @@ avifBool avifPNGRead(const char * inputFilename,
     if (avif->depth == 0) {
         if (useYCgCoR) {
             avif->depth = imgBitDepth + 2;
+        } else if (imgBitDepth == 8) {
+            avif->depth = 8;
         } else {
-            if (imgBitDepth == 8) {
-                avif->depth = 8;
-            } else {
-                avif->depth = 12;
-            }
+            avif->depth = 12;
         }
     }
 
@@ -413,11 +411,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         if (useYCgCoR) {
             rgbDepth = avif->depth - 2;
         } else {
-            if (avif->depth > 8) {
-                rgbDepth = 16;
-            } else {
-                rgbDepth = 8;
-            }
+            rgbDepth = (avif->depth > 8) ? 16 : 8;
         }
     }
 

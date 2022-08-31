@@ -1409,8 +1409,6 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "-l") || !strcmp(arg, "--lossless")) {
             lossless = AVIF_TRUE;
-            // Set defaults, and warn later on if anything looks incorrect
-            requestedRange = AVIF_RANGE_FULL; // avoid limited range
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
         } else if (!strcmp(arg, "--sharpyuv")) {
@@ -1428,25 +1426,6 @@ int main(int argc, char * argv[])
         }
 
         ++argIndex;
-    }
-    if (lossless) {
-        requestedRange = AVIF_RANGE_FULL; // avoid limited range
-        minQuantizer = AVIF_QUANTIZER_LOSSLESS;
-        maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
-        minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-        maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-        // rav1e doesn't support lossless transform yet:
-        // https://github.com/xiph/rav1e/issues/151
-        // SVT-AV1 doesn't support lossless encoding yet:
-        // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
-        codecChoice = AVIF_CODEC_CHOICE_AOM;
-        avifBool changeMC = (matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-        changeMC &= (matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
-#endif
-        if (changeMC) {
-            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
-        }
     }
 
     if ((settings.minQuantizer < 0) != (settings.maxQuantizer < 0)) {
@@ -1500,11 +1479,18 @@ int main(int argc, char * argv[])
             returnCode = 1;
         }
         // Matrix coefficients.
-        if (cicpExplicitlySet && settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
-            fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
-            returnCode = 1;
+        if (cicpExplicitlySet) {
+            avifBool changeMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+            changeMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+#endif
+            if (changeMC) {
+                fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
+                returnCode = 1;
+            }
+        } else {
+            settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         }
-        settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         if (returnCode == 1)
             goto cleanup;
     } else {
@@ -1722,7 +1708,6 @@ int main(int argc, char * argv[])
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
     avifBool usingLosslessColor = (settings.quality == AVIF_QUALITY_LOSSLESS);
     avifBool usingLosslessAlpha = (settings.qualityAlpha == AVIF_QUALITY_LOSSLESS);
-    avifBool depthMatches = (sourceDepth == image->depth);
     avifBool using400 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     avifBool using444 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
     avifBool usingFullRange = (image->yuvRange == AVIF_RANGE_FULL);

@@ -370,8 +370,8 @@ avifBool avifJPEGRead(const char * inputFilename,
         avif->depth = requestedDepth ? requestedDepth : 8;
         if (useYCgCoR) {
             if (requestedDepth == 12) {
-                fprintf(stderr, "Cannot perform YCgCo-R on 12 bit input.\n");
-                return AVIF_FALSE;
+                fprintf(stderr, "Cannot request 12 bits for YCgCo-R as it uses 1 or 2 extra bits.\n");
+                goto cleanup;
             }
             avif->depth += 2;
         }

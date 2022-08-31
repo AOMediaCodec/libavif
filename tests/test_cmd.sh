@@ -40,19 +40,6 @@ fi
 AVIFENC="${BINARY_DIR}/avifenc"
 AVIFDEC="${BINARY_DIR}/avifdec"
 ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
-TMP_ENCODED_FILE=/tmp/encoded.avif
-DECODED_FILE=/tmp/decoded.png
-PNG_FILE=/tmp/kodim03.png
-JPG_FILE=/tmp/kodim03.jpg
-TMP_ENCODED_FILE_WTH_DASH=-encoded.avif
-
-# Prepare some extra data.
-set +x
-echo "Generating a color PNG"
-"${AVIFENC}" -s 10 "${TESTDATA_DIR}"/kodim03_yuv420_8bpc.y4m -o "${TMP_ENCODED_FILE}" > /dev/null
-"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${PNG_FILE}" > /dev/null
-"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${JPG_FILE}"  &> /dev/null
-set -x
 
 # Basic calls.
 "${AVIFENC}" --version
@@ -65,24 +52,6 @@ ENCODED_FILE="avif_test_cmd_encoded.avif"
 ENCODED_FILE_WITH_DASH="-avif_test_cmd_encoded.avif"
 DECODED_FILE="avif_test_cmd_decoded.png"
 OUT_MSG="avif_test_cmd_out_msg.txt"
-
-# Lossless test.
-echo "Testing basic lossless on PNG and JPEG"
-for f in ${PNG_FILE} ${JPG_FILE}; do
-  "${AVIFENC}" -s 10 -l "${f}" -o "${TMP_ENCODED_FILE}"
-  "${AVIFDEC}" "${TMP_ENCODED_FILE}" "${DECODED_FILE}"
-  "${ARE_IMAGES_EQUAL}" "${f}" "${DECODED_FILE}" 1
-  echo "YCgCo works on ${f}"
-done
-
-# Enable when enabling AVIF_ENABLE_EXPERIMENTAL_YCGCO_R.
-echo "Testing YCgCo-R lossless on PNG and JPEG"
-for f in ${PNG_FILE} ${JPG_FILE}; do
-  "${AVIFENC}" -s 10 --cicp 2/2/15 -l "${f}" -o "${TMP_ENCODED_FILE}"
-  "${AVIFDEC}" "${TMP_ENCODED_FILE}" "${DECODED_FILE}"
-  "${ARE_IMAGES_EQUAL}" "${f}" "${DECODED_FILE}" 1
-  echo "YCgCo-R works on ${f}"
-done
 
 # Cleanup
 cleanup() {
