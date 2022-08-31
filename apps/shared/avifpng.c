@@ -46,6 +46,10 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
         hexStringLength -= tagExif00Len;
         numExpectedBytes -= (tagExif00Len / 2);
     }
+    if (numExpectedBytes == 0) {
+        fprintf(stderr, "Exif extraction failed: empty payload\n");
+        return AVIF_FALSE;
+    }
 
     avifRWDataRealloc(bytes, numExpectedBytes);
     size_t numBytes = 0;
