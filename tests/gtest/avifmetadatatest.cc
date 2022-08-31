@@ -223,10 +223,10 @@ TEST(MetadataTest, Compare) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  if (argc < 2) {
-    std::cerr
-        << "The path to the test data folder must be provided as an argument"
-        << std::endl;
+  if (argc != 2) {
+    std::cerr << "There must be exactly one argument containing the path to "
+                 "the test data folder"
+              << std::endl;
     return 1;
   }
   libavif::data_path = argv[1];

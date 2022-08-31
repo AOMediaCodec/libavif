@@ -23,13 +23,17 @@ typedef png_charp png_iccp_datap;
 // Converts a hexadecimal string which contains 2-byte character representations of hexadecimal values to raw data (bytes).
 // hexString may contain values consisting of [A-F][a-f][0-9] in pairs, e.g., 7af2..., separated by any number of newlines.
 // On success the bytes are filled and AVIF_TRUE is returned.
-// AVIF_FALSE is returned if fewer than expectedLength hexadecimal pairs are converted.
+// AVIF_FALSE is returned if fewer than numExpectedBytes hexadecimal pairs are converted.
 static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLength, size_t numExpectedBytes, avifRWData * bytes)
 {
-    // Remove any trailing new line. They are not part of the numExpectedBytes.
-    while ((hexStringLength >= 1) && (hexString[0] == '\n')) {
+    // Remove any leading new line. They are not part of the numExpectedBytes.
+    while ((hexStringLength != 0) && (hexString[0] == '\n')) {
         ++hexString;
         --hexStringLength;
+    }
+    if (hexStringLength < (numExpectedBytes * 2)) {
+        fprintf(stderr, "Exif extraction failed: " AVIF_FMT_ZU " missing characters\n", (numExpectedBytes * 2) - hexStringLength);
+        return AVIF_FALSE;
     }
 
     // Preprocess the input hexString by removing a tag commonly added at encoding, if present.
@@ -37,10 +41,10 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
     // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
     const char tagExif00[] = "457869660000"; // "Exif\0\0" tag encoded as a hexadecimal string.
     const size_t tagExif00Len = 6 * 2;
-    if ((hexStringLength >= tagExif00Len) && !memcmp(hexString, tagExif00, tagExif00Len)) {
+    if ((numExpectedBytes >= (tagExif00Len / 2)) && !memcmp(hexString, tagExif00, tagExif00Len)) {
         hexString += tagExif00Len;
         hexStringLength -= tagExif00Len;
-        numExpectedBytes -= tagExif00Len / 2;
+        numExpectedBytes -= (tagExif00Len / 2);
     }
 
     avifRWDataRealloc(bytes, numExpectedBytes);
@@ -69,17 +73,17 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
     return AVIF_TRUE;
 }
 
-// Parses the raw profile string of profileLen characters and extracts the payload.
+// Parses the raw profile string of profileLength characters and extracts the payload.
 static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, avifRWData * payload)
 {
     // ImageMagick formats 'raw profiles' as "\n<name>\n<length>(%8lu)\n<hex payload>\n".
-    if (!profile || (profileLength < 3) || (profile[0] != '\n')) {
+    if (!profile || (profileLength == 0) || (profile[0] != '\n')) {
         fprintf(stderr, "Exif extraction failed: truncated or malformed raw profile\n");
         return AVIF_FALSE;
     }
 
     const char * lengthStart = NULL;
-    for (size_t i = 1; i < profileLength; ++i) {
+    for (size_t i = 1; i < profileLength; ++i) { // i starts at 1 because the first '\n' was already checked above.
         if (profile[i] == '\0') {
             // This should not happen as libpng provides this guarantee but extra safety does not hurt.
             fprintf(stderr, "Exif extraction failed: malformed raw profile, unexpected null character at " AVIF_FMT_ZU "\n", i);
@@ -181,7 +185,7 @@ avifBool avifPNGRead(const char * inputFilename,
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_infop info_end = NULL;
+    png_infop infoEnd = NULL;
     png_bytep * volatile rowPointers = NULL;
 
     avifRGBImage rgb;
@@ -312,13 +316,13 @@ avifBool avifPNGRead(const char * inputFilename,
         }
         // Read Exif metadata at the end of the file if there was none at the beginning.
         if (!avif->exif.data) {
-            info_end = png_create_info_struct(png);
-            if (!info_end) {
-                fprintf(stderr, "Cannot init libpng (info_end): %s\n", inputFilename);
+            infoEnd = png_create_info_struct(png);
+            if (!infoEnd) {
+                fprintf(stderr, "Cannot init libpng (infoEnd): %s\n", inputFilename);
                 goto cleanup;
             }
-            png_read_end(png, info_end);
-            if (!avifExtractExif(png, info_end, avif)) {
+            png_read_end(png, infoEnd);
+            if (!avifExtractExif(png, infoEnd, avif)) {
                 goto cleanup;
             }
         }
@@ -332,7 +336,7 @@ cleanup:
     }
     if (png) {
         png_destroy_read_struct(&png, &info, NULL);
-        png_destroy_read_struct(&png, &info_end, NULL);
+        png_destroy_read_struct(&png, &infoEnd, NULL);
     }
     if (rowPointers) {
         free(rowPointers);
