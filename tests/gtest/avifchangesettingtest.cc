@@ -178,6 +178,8 @@ TEST(ChangeSettingTest, DISABLED_ChangeDimension) {
     encoder->width = size_display;
     encoder->height = size_display;
 
+//    avifEncoderSetCodecSpecificOption(encoder.get(), "tune", "psnr");
+
     ASSERT_EQ(avifEncoderAddImage(encoder.get(), first.get(), 1, 0),
               AVIF_RESULT_OK);
 
