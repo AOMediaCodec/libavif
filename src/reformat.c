@@ -224,17 +224,28 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifRG
         }
     }
 
-    avifBool convertedWithLibYUV = AVIF_FALSE;
-    if (!(flags & AVIF_RGB_TO_YUV_AVOID_LIBYUV) && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
+    avifBool converted = AVIF_FALSE;
+
+    // Try converting with libsharpyuv.
+    if ((flags & AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV) && image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        const avifResult libSharpYUVResult = avifImageRGBToYUVLibSharpYUV(image, rgb, &state);
+        if (libSharpYUVResult != AVIF_RESULT_OK) {
+            // Return the error if sharpyuv was requested but failed for any reason, including libsharpyuv not being available.
+            return libSharpYUVResult;
+        }
+        converted = AVIF_TRUE;
+    }
+
+    if (!converted && !(flags & AVIF_RGB_TO_YUV_AVOID_LIBYUV) && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
         avifResult libyuvResult = avifImageRGBToYUVLibYUV(image, rgb);
         if (libyuvResult == AVIF_RESULT_OK) {
-            convertedWithLibYUV = AVIF_TRUE;
+            converted = AVIF_TRUE;
         } else if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
             return libyuvResult;
         }
     }
 
-    if (!convertedWithLibYUV) {
+    if (!converted) {
         const float kr = state.kr;
         const float kg = state.kg;
         const float kb = state.kb;

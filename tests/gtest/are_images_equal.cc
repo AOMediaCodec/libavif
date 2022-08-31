@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
     // Make sure no color conversion happens.
     decoded[i]->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
     if (avifReadImage(argv[i + 1], requestedFormat, kRequestedDepth,
-                      decoded[i].get(), &depth[i], nullptr,
-                      nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+                      AVIF_RGB_TO_YUV_DEFAULT, decoded[i].get(), &depth[i],
+                      nullptr, nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
       return 2;
     }

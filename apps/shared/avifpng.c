@@ -31,7 +31,12 @@ typedef png_charp png_iccp_datap;
 // modified between setjmp and longjmp. But GCC's -Wclobbered warning may have
 // trouble figuring that out, so we preemptively declare them as volatile.
 
-avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth, uint32_t * outPNGDepth)
+avifBool avifPNGRead(const char * inputFilename,
+                     avifImage * avif,
+                     avifPixelFormat requestedFormat,
+                     uint32_t requestedDepth,
+                     avifRGBToYUVFlags flags,
+                     uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -153,7 +158,7 @@ avifBool avifPNGRead(const char * inputFilename, avifImage * avif, avifPixelForm
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
     png_read_image(png, rowPointers);
-    if (avifImageRGBToYUV(avif, &rgb, AVIF_RGB_TO_YUV_DEFAULT) != AVIF_RESULT_OK) {
+    if (avifImageRGBToYUV(avif, &rgb, flags) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
         goto cleanup;
     }

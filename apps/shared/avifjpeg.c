@@ -239,7 +239,7 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
 // longjmp. But GCC's -Wclobbered warning may have trouble figuring that out, so
 // we preemptively declare it as volatile.
 
-avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth)
+avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth, avifRGBToYUVFlags flags)
 {
     volatile avifBool ret = AVIF_FALSE;
     uint8_t * volatile iccData = NULL;
@@ -314,7 +314,7 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
             memcpy(pixelRow, buffer[0], rgb.rowBytes);
             ++row;
         }
-        if (avifImageRGBToYUV(avif, &rgb, AVIF_RGB_TO_YUV_DEFAULT) != AVIF_RESULT_OK) {
+        if (avifImageRGBToYUV(avif, &rgb, flags) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
             goto cleanup;
         }

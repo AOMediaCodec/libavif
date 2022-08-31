@@ -69,6 +69,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **-p**, **\--premultiply**
 :   Premultiply color by the alpha channel and signal this in the AVIF.
 
+**\--sharpyuv**
+:   Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if
+    output is not 420.
+
 **\--stdin**
 :   Read y4m frames from stdin instead of files.
     No input filenames allowed, must be set before specifying the output

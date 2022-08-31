@@ -58,6 +58,7 @@ static void syntax(void)
     printf("    -y,--yuv FORMAT                   : Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained)\n");
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
+    printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = color primaries\n");
@@ -255,7 +256,11 @@ static avifBool avifInputHasRemainingData(avifInput * input)
     return (input->fileIndex < input->filesCount);
 }
 
-static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image, uint32_t * outDepth, avifAppSourceTiming * sourceTiming)
+static avifAppFileFormat avifInputReadImage(avifInput * input,
+                                            avifImage * image,
+                                            uint32_t * outDepth,
+                                            avifAppSourceTiming * sourceTiming,
+                                            avifRGBToYUVFlags flags)
 {
     if (sourceTiming) {
         // A source timing of all 0s is a sentinel value hinting that the value is unset / should be
@@ -282,6 +287,7 @@ static avifAppFileFormat avifInputReadImage(avifInput * input, avifImage * image
     const avifAppFileFormat nextInputFormat = avifReadImage(input->files[input->fileIndex].filename,
                                                             input->requestedFormat,
                                                             input->requestedDepth,
+                                                            flags,
                                                             image,
                                                             outDepth,
                                                             sourceTiming,
@@ -466,6 +472,7 @@ int main(int argc, char * argv[])
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+    avifRGBToYUVFlags flags = AVIF_RGB_TO_YUV_DEFAULT;
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -760,6 +767,8 @@ int main(int argc, char * argv[])
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
+        } else if (!strcmp(arg, "--sharpyuv")) {
+            flags |= AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV;
         } else if (arg[0] == '-') {
             fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
             syntax();
@@ -823,7 +832,7 @@ int main(int argc, char * argv[])
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
     avifAppSourceTiming firstSourceTiming;
-    avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth, &firstSourceTiming);
+    avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth, &firstSourceTiming, flags);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
         returnCode = 1;
@@ -1031,7 +1040,7 @@ int main(int argc, char * argv[])
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
             gridCells[gridCellIndex] = cellImage;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL, NULL);
+            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL, NULL, flags);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
@@ -1170,7 +1179,7 @@ int main(int argc, char * argv[])
             nextImage->yuvRange = image->yuvRange;
             nextImage->alphaPremultiplied = image->alphaPremultiplied;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL, NULL);
+            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL, NULL, flags);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
