@@ -35,6 +35,9 @@ avifImageCopy() and avifImageAllocatePlanes().
 * Add imageDimensionLimit field to avifDecoder struct
 * avifdec: Add --dimension-limit, which specifies the image dimension limit
   (width or height) that should be tolerated
+* avifenc: Add --sharpyuv, which enables "sharp" RGB to YUV420 conversion, which
+  reduces artifacts caused by 420 chroma downsampling. Needs libsharpyuv (part
+  of the libwebp repository) at compile time.
 
 ## [0.10.1] - 2022-04-11
 
