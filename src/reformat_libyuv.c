@@ -63,6 +63,7 @@ unsigned int avifLibYUVVersion(void)
 
 // These defines are used to create a NULL reference to libyuv functions that
 // did not exist prior to a particular version of libyuv.
+// Versions prior to 1750 are considered too old and not checked.
 #if LIBYUV_VERSION < 1840
 #define ABGRToJ400 NULL
 #endif
@@ -75,14 +76,17 @@ unsigned int avifLibYUVVersion(void)
 #define I210ToARGBMatrixFilter NULL
 #define I010ToARGBMatrixFilter NULL
 #endif
+#if LIBYUV_VERSION < 1782
+#define RAWToJ420 NULL
+#endif
+#if LIBYUV_VERSION < 1781
+#define I012ToARGBMatrix NULL
+#endif
 #if LIBYUV_VERSION < 1780
 #define I410ToARGBMatrix NULL
 #endif
 #if LIBYUV_VERSION < 1756
 #define I400ToARGBMatrix NULL
-#endif
-#if LIBYUV_VERSION < 1781
-#define I012ToARGBMatrix NULL
 #endif
 
 // Two-step replacement for the conversions to 8-bit BT.601 YUV which are missing from libyuv.
@@ -180,11 +184,22 @@ AVIF_DEFINE_CONVERSION(ABGRToJ420, ABGRToARGB, ARGBToJ420, AVIF_PIXEL_FORMAT_YUV
 
 // These are not yet implemented in libyuv so they cannot be guarded by a version check.
 // The "avif" prefix avoids any redefinition if they are available in libyuv one day.
+// AVIF_RGB_FORMAT_RGB
+AVIF_DEFINE_CONVERSION(avifRAWToI444, RAWToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
+AVIF_DEFINE_CONVERSION(avifRAWToI422, RAWToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
+AVIF_DEFINE_CONVERSION(avifRAWToJ422, RAWToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
+// AVIF_RGB_FORMAT_RGBA
+AVIF_DEFINE_CONVERSION(avifABGRToI444, ABGRToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
+AVIF_DEFINE_CONVERSION(avifABGRToI422, ABGRToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
 // AVIF_RGB_FORMAT_ARGB
 AVIF_DEFINE_CONVERSION(avifBGRAToI444, BGRAToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
 AVIF_DEFINE_CONVERSION(avifBGRAToI422, BGRAToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
 AVIF_DEFINE_CONVERSION(avifBGRAToJ422, BGRAToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
 AVIF_DEFINE_CONVERSION(avifBGRAToJ420, BGRAToARGB, ARGBToJ420, AVIF_PIXEL_FORMAT_YUV420)
+// AVIF_RGB_FORMAT_BGR
+AVIF_DEFINE_CONVERSION(avifRGB24ToI444, RGB24ToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
+AVIF_DEFINE_CONVERSION(avifRGB24ToI422, RGB24ToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
+AVIF_DEFINE_CONVERSION(avifRGB24ToJ422, RGB24ToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
 // AVIF_RGB_FORMAT_ABGR
 AVIF_DEFINE_CONVERSION(avifRGBAToI444, RGBAToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
 AVIF_DEFINE_CONVERSION(avifRGBAToI422, RGBAToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
@@ -220,12 +235,12 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
             typedef int (*RGBtoY)(const uint8_t *, int, uint8_t *, int, int, int);
             // Second dimension is for avifRange.
             RGBtoY lutRgbToY[AVIF_RGB_FORMAT_COUNT][2] = {
-                { NULL, NULL },             // RGB
+                { NULL, RAWToJ400 },        // RGB
                 { NULL, ABGRToJ400 },       // RGBA
                 { NULL, NULL },             // ARGB
-                { NULL, NULL },             // BGR
+                { NULL, RGB24ToJ400 },      // BGR
                 { ARGBToI400, ARGBToJ400 }, // BGRA
-                { NULL, NULL },             // ABGR
+                { NULL, RGBAToJ400 },       // ABGR
                 { NULL, NULL }              // RGB_565
             };
             RGBtoY rgbToY = lutRgbToY[rgb->format][image->yuvRange];
@@ -243,17 +258,32 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
         } else {
             // Lookup table for RGB To YUV Matrix (average filter).
             typedef int (*RGBtoYUV)(const uint8_t *, int, uint8_t *, int, uint8_t *, int, uint8_t *, int, int, int);
-            // Third dimension is for avifRange.
-            RGBtoYUV lutRgbToYuv[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT][2] = {
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } },                   // RGB
-                { { NULL, NULL }, { NULL, NULL }, { NULL, ABGRToJ422 }, { ABGRToI420, ABGRToJ420 }, { NULL, NULL } }, // RGBA
-                { { NULL, NULL }, { avifBGRAToI444, NULL }, { avifBGRAToI422, avifBGRAToJ422 }, { BGRAToI420, avifBGRAToJ420 }, { NULL, NULL } }, // ARGB
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { RGB24ToI420, RGB24ToJ420 }, { NULL, NULL } }, // BGR
-                { { NULL, NULL }, { ARGBToI444, NULL }, { ARGBToI422, ARGBToJ422 }, { ARGBToI420, ARGBToJ420 }, { NULL, NULL } }, // BGRA
-                { { NULL, NULL }, { avifRGBAToI444, NULL }, { avifRGBAToI422, avifRGBAToJ422 }, { RGBAToI420, avifRGBAToJ420 }, { NULL, NULL } }, // ABGR
-                { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } } // RGB_565
+            // First dimension is for avifRange.
+            RGBtoYUV lutRgbToYuv[2][AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
+                // AVIF_RANGE_LIMITED
+                {
+                    // { NONE,    YUV444,    YUV422,    YUV420,    YUV400 }        // AVIF_RGB_FORMAT_
+                    { NULL, avifRAWToI444, avifRAWToI422, RAWToI420, NULL },       // RGB
+                    { NULL, avifABGRToI444, avifABGRToI422, ABGRToI420, NULL },    // RGBA
+                    { NULL, avifBGRAToI444, avifBGRAToI422, BGRAToI420, NULL },    // ARGB
+                    { NULL, avifRGB24ToI444, avifRGB24ToI422, RGB24ToI420, NULL }, // BGR
+                    { NULL, ARGBToI444, ARGBToI422, ARGBToI420, NULL },            // BGRA
+                    { NULL, avifRGBAToI444, avifRGBAToI422, RGBAToI420, NULL },    // ABGR
+                    { NULL, NULL, NULL, NULL, NULL }                               // RGB_565
+                },
+                // AVIF_RANGE_FULL
+                {
+                    // { NONE, YUV444, YUV422,   YUV420,   YUV400 }       // AVIF_RGB_FORMAT_
+                    { NULL, NULL, avifRAWToJ422, RAWToJ420, NULL },       // RGB
+                    { NULL, NULL, ABGRToJ422, ABGRToJ420, NULL },         // RGBA
+                    { NULL, NULL, avifBGRAToJ422, avifBGRAToJ420, NULL }, // ARGB
+                    { NULL, NULL, avifRGB24ToJ422, RGB24ToJ420, NULL },   // BGR
+                    { NULL, NULL, ARGBToJ422, ARGBToJ420, NULL },         // BGRA
+                    { NULL, NULL, avifRGBAToJ422, avifRGBAToJ420, NULL }, // ABGR
+                    { NULL, NULL, NULL, NULL, NULL }                      // RGB_565
+                }
             };
-            RGBtoYUV rgbToYuv = lutRgbToYuv[rgb->format][image->yuvFormat][image->yuvRange];
+            RGBtoYUV rgbToYuv = lutRgbToYuv[image->yuvRange][rgb->format][image->yuvFormat];
             if (rgbToYuv != NULL) {
                 if (rgbToYuv(rgb->pixels,
                              rgb->rowBytes,
