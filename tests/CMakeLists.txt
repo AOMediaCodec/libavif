@@ -92,9 +92,9 @@ if(AVIF_ENABLE_GTEST)
     add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
-    target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_link_libraries(avifmetadatatest aviftest_helpers avif_apps ${GTEST_LIBRARIES})
     target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifmetadatatest COMMAND avifmetadatatest)
+    add_test(NAME avifmetadatatest COMMAND avifmetadatatest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
     add_executable(avifrgbtoyuvtest gtest/avifrgbtoyuvtest.cc)
     target_link_libraries(avifrgbtoyuvtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
@@ -119,6 +119,5 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(are_images_equal aviftest_helpers avif_apps)
     add_test(
         NAME test_cmd
-        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data)
 endif()

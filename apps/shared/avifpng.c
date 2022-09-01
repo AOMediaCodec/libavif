@@ -6,6 +6,9 @@
 
 #include "png.h"
 
+#include <ctype.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +19,150 @@ typedef png_bytep png_iccp_datap;
 #else
 typedef png_charp png_iccp_datap;
 #endif
+
+// Converts a hexadecimal string which contains 2-byte character representations of hexadecimal values to raw data (bytes).
+// hexString may contain values consisting of [A-F][a-f][0-9] in pairs, e.g., 7af2..., separated by any number of newlines.
+// On success the bytes are filled and AVIF_TRUE is returned.
+// AVIF_FALSE is returned if fewer than numExpectedBytes hexadecimal pairs are converted.
+static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLength, size_t numExpectedBytes, avifRWData * bytes)
+{
+    // Remove any leading new line. They are not part of the numExpectedBytes.
+    while ((hexStringLength != 0) && (hexString[0] == '\n')) {
+        ++hexString;
+        --hexStringLength;
+    }
+    if (hexStringLength < (numExpectedBytes * 2)) {
+        fprintf(stderr, "Exif extraction failed: " AVIF_FMT_ZU " missing characters\n", (numExpectedBytes * 2) - hexStringLength);
+        return AVIF_FALSE;
+    }
+
+    // Preprocess the input hexString by removing a tag commonly added at encoding, if present.
+    // HEIF specification ISO-23008 section A.2.1 allows including and excluding it from AVIF files.
+    // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
+    const char tagExif00[] = "457869660000"; // "Exif\0\0" tag encoded as a hexadecimal string.
+    const size_t tagExif00Len = 6 * 2;
+    if ((numExpectedBytes >= (tagExif00Len / 2)) && !memcmp(hexString, tagExif00, tagExif00Len)) {
+        hexString += tagExif00Len;
+        hexStringLength -= tagExif00Len;
+        numExpectedBytes -= (tagExif00Len / 2);
+    }
+    if (numExpectedBytes == 0) {
+        fprintf(stderr, "Exif extraction failed: empty payload\n");
+        return AVIF_FALSE;
+    }
+
+    avifRWDataRealloc(bytes, numExpectedBytes);
+    size_t numBytes = 0;
+    for (size_t i = 0; (i + 1 < hexStringLength) && (numBytes < numExpectedBytes);) {
+        if (hexString[i] == '\n') {
+            ++i;
+            continue;
+        }
+        if (!isxdigit(hexString[i]) || !isxdigit(hexString[i + 1])) {
+            avifRWDataFree(bytes);
+            fprintf(stderr, "Exif extraction failed: invalid character at " AVIF_FMT_ZU "\n", i);
+            return AVIF_FALSE;
+        }
+        const char twoHexDigits[] = { hexString[i], hexString[i + 1], '\0' };
+        bytes->data[numBytes] = (uint8_t)strtol(twoHexDigits, NULL, 16);
+        ++numBytes;
+        i += 2;
+    }
+
+    if (numBytes != numExpectedBytes) {
+        avifRWDataFree(bytes);
+        fprintf(stderr, "Exif extraction failed: expected " AVIF_FMT_ZU " tokens but got " AVIF_FMT_ZU "\n", numExpectedBytes, numBytes);
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
+// Parses the raw profile string of profileLength characters and extracts the payload.
+static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, avifRWData * payload)
+{
+    // ImageMagick formats 'raw profiles' as "\n<name>\n<length>(%8lu)\n<hex payload>\n".
+    if (!profile || (profileLength == 0) || (profile[0] != '\n')) {
+        fprintf(stderr, "Exif extraction failed: truncated or malformed raw profile\n");
+        return AVIF_FALSE;
+    }
+
+    const char * lengthStart = NULL;
+    for (size_t i = 1; i < profileLength; ++i) { // i starts at 1 because the first '\n' was already checked above.
+        if (profile[i] == '\0') {
+            // This should not happen as libpng provides this guarantee but extra safety does not hurt.
+            fprintf(stderr, "Exif extraction failed: malformed raw profile, unexpected null character at " AVIF_FMT_ZU "\n", i);
+            return AVIF_FALSE;
+        }
+        if (profile[i] == '\n') {
+            if (!lengthStart) {
+                // Skip the name and store the beginning of the string containing the length of the payload.
+                lengthStart = &profile[i + 1];
+            } else {
+                const char * hexPayloadStart = &profile[i + 1];
+                const size_t hexPayloadMaxLength = profileLength - (i + 1);
+                // Parse the length, now that we are sure that it is surrounded by '\n' within the profileLength characters.
+                char * lengthEnd;
+                const long expectedLength = strtol(lengthStart, &lengthEnd, 10);
+                if (lengthEnd != &profile[i]) {
+                    fprintf(stderr, "Exif extraction failed: malformed raw profile, expected '\\n' but got '\\x%.2X'\n", *lengthEnd);
+                    return AVIF_FALSE;
+                }
+                // No need to check for errno. Just make sure expectedLength is not LONG_MIN and not LONG_MAX.
+                if ((expectedLength <= 0) || (expectedLength == LONG_MAX) ||
+                    ((unsigned long)expectedLength > (hexPayloadMaxLength / 2))) {
+                    fprintf(stderr, "Exif extraction failed: invalid length %ld\n", expectedLength);
+                    return AVIF_FALSE;
+                }
+                // Note: The profile may be malformed by containing more data than the extracted expectedLength bytes.
+                //       Be lenient about it and consider it as a valid payload.
+                return avifHexStringToBytes(hexPayloadStart, hexPayloadMaxLength, (size_t)expectedLength, payload);
+            }
+        }
+    }
+    fprintf(stderr, "Exif extraction failed: malformed or truncated raw profile\n");
+    return AVIF_FALSE;
+}
+
+// Returns AVIF_TRUE if there was no Exif metadata located at info or if the Exif metadata located at info
+// was correctly parsed and imported to avif->exif. Returns AVIF_FALSE in case of error.
+static avifBool avifExtractExif(png_structp png, png_infop const info, avifImage * avif)
+{
+#ifdef PNG_eXIf_SUPPORTED
+    png_uint_32 exifSize = 0;
+    png_bytep exif = NULL;
+    if (png_get_eXIf_1(png, info, &exifSize, &exif) == PNG_INFO_eXIf) {
+        if ((exifSize == 0) || !exif) {
+            fprintf(stderr, "Exif extraction failed: empty eXIf chunk\n");
+            return AVIF_FALSE;
+        }
+        avifImageSetMetadataExif(avif, exif, exifSize);
+        return AVIF_TRUE;
+    }
+#endif // PNG_eXIf_SUPPORTED
+
+    png_textp text = NULL;
+    const png_uint_32 numTextChunks = png_get_text(png, info, &text, NULL);
+    for (png_uint_32 i = 0; i < numTextChunks; ++i, ++text) {
+        if (!strcmp(text->key, "Raw profile type exif") || !strcmp(text->key, "Raw profile type APP1")) {
+            png_size_t textLength;
+            switch (text->compression) {
+#ifdef PNG_iTXt_SUPPORTED
+                case PNG_ITXT_COMPRESSION_NONE:
+                case PNG_ITXT_COMPRESSION_zTXt:
+                    textLength = text->itxt_length;
+                    break;
+#endif
+                case PNG_TEXT_COMPRESSION_NONE:
+                case PNG_TEXT_COMPRESSION_zTXt:
+                default:
+                    textLength = text->text_length;
+                    break;
+            }
+            return avifCopyRawProfile(text->text, textLength, &avif->exif);
+        }
+    }
+    return AVIF_TRUE;
+}
 
 // Note on setjmp() and volatile variables:
 //
@@ -36,11 +183,13 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifPixelFormat requestedFormat,
                      uint32_t requestedDepth,
                      avifRGBToYUVFlags flags,
+                     avifBool ignoreExif,
                      uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
+    png_infop infoEnd = NULL;
     png_bytep * volatile rowPointers = NULL;
 
     avifRGBImage rgb;
@@ -90,6 +239,7 @@ avifBool avifPNGRead(const char * inputFilename,
     if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, (png_iccp_datap *)&iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
         avifImageSetProfileICC(avif, iccpData, iccpDataLen);
     }
+    // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
 
     int rawWidth = png_get_image_width(png, info);
     int rawHeight = png_get_image_height(png, info);
@@ -162,6 +312,26 @@ avifBool avifPNGRead(const char * inputFilename,
         fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
         goto cleanup;
     }
+
+    if (!ignoreExif) {
+        // Read Exif metadata at the beginning of the file.
+        if (!avifExtractExif(png, info, avif)) {
+            goto cleanup;
+        }
+        // Read Exif metadata at the end of the file if there was none at the beginning.
+        if (!avif->exif.data) {
+            infoEnd = png_create_info_struct(png);
+            if (!infoEnd) {
+                fprintf(stderr, "Cannot init libpng (infoEnd): %s\n", inputFilename);
+                goto cleanup;
+            }
+            png_read_end(png, infoEnd);
+            if (!avifExtractExif(png, infoEnd, avif)) {
+                goto cleanup;
+            }
+        }
+    }
+    // TODO(yguyon): Extract XMP to avif->xmp, if any.
     readResult = AVIF_TRUE;
 
 cleanup:
@@ -170,6 +340,7 @@ cleanup:
     }
     if (png) {
         png_destroy_read_struct(&png, &info, NULL);
+        png_destroy_read_struct(&png, &infoEnd, NULL);
     }
     if (rowPointers) {
         free(rowPointers);

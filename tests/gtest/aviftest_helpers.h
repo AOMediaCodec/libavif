@@ -54,13 +54,21 @@ void FillImageGradient(avifImage* image);
 void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
                       uint32_t value);
 
-// Returns true if both images have the same features and pixel values.
-// If ignore_alpha is true, the alpha channel is not taken into account in the
-// comparison.
+// Returns true if both arrays are empty or have the same length and bytes.
+// data1 may be null only when data1_length is 0.
+// data2 may be null only when data2_length is 0.
+bool AreByteSequencesEqual(const uint8_t data1[], size_t data1_length,
+                           const uint8_t data2[], size_t data2_length);
+bool AreByteSequencesEqual(const avifRWData& data1, const avifRWData& data2);
+
+// Returns true if both images have the same features, pixel values and
+// metadata. If ignore_alpha is true, the alpha channel is not taken into
+// account in the comparison.
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha = false);
 
 //------------------------------------------------------------------------------
+// avifIO overlay
 
 struct AvifIOLimitedReader {
   static constexpr uint64_t kNoClamp = std::numeric_limits<uint64_t>::max();

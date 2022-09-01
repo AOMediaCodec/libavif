@@ -34,16 +34,17 @@ fi
 AVIFENC="${BINARY_DIR}/avifenc"
 AVIFDEC="${BINARY_DIR}/avifdec"
 ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
-TMP_ENCODED_FILE=/tmp/encoded.avif
-DECODED_FILE=/tmp/decoded.png
-PNG_FILE=/tmp/kodim03.png
-TMP_ENCODED_FILE_WTH_DASH=-encoded.avif
+ENCODED_FILE=/tmp/avif_test_cmd_encoded.avif
+ENCODED_FILE_NO_METADATA=/tmp/avif_test_cmd_encoded_no_metadata.avif
+ENCODED_FILE_WITH_DASH=-avif_test_cmd_encoded.avif
+DECODED_FILE=/tmp/avif_test_cmd_decoded.png
+PNG_FILE=/tmp/avif_test_cmd_kodim03.png
 
 # Prepare some extra data.
 set +x
 echo "Generating a color PNG"
-"${AVIFENC}" -s 10 "${TESTDATA_DIR}"/kodim03_yuv420_8bpc.y4m -o "${TMP_ENCODED_FILE}" > /dev/null
-"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${PNG_FILE}" > /dev/null
+"${AVIFENC}" -s 10 "${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m" -o "${ENCODED_FILE}" > /dev/null
+"${AVIFDEC}" "${ENCODED_FILE}" "${PNG_FILE}" > /dev/null
 set -x
 
 # Basic calls.
@@ -52,35 +53,48 @@ set -x
 
 # Lossless test.
 echo "Testing basic lossless"
-"${AVIFENC}" -s 10 -l "${PNG_FILE}" -o "${TMP_ENCODED_FILE}"
-"${AVIFDEC}" "${TMP_ENCODED_FILE}" "${DECODED_FILE}"
+"${AVIFENC}" -s 10 -l "${PNG_FILE}" -o "${ENCODED_FILE}"
+"${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
 "${ARE_IMAGES_EQUAL}" "${PNG_FILE}" "${DECODED_FILE}" 0
 
+# Metadata test.
+echo "Testing metadata enc/dec"
+"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.png" -o "${ENCODED_FILE}"
+"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
+cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+
 # Argument parsing test with filenames starting with a dash.
-"${AVIFENC}" -s 10 "${PNG_FILE}" -- "${TMP_ENCODED_FILE_WTH_DASH}"
-"${AVIFDEC}" --info  -- "${TMP_ENCODED_FILE_WTH_DASH}"
+"${AVIFENC}" -s 10 "${PNG_FILE}" -- "${ENCODED_FILE_WITH_DASH}"
+"${AVIFDEC}" --info  -- "${ENCODED_FILE_WITH_DASH}"
 # Passing a filename starting with a dash without using -- should fail.
 set +e
-"${AVIFENC}" -s 10 "${PNG_FILE}" "${TMP_ENCODED_FILE_WTH_DASH}"
+"${AVIFENC}" -s 10 "${PNG_FILE}" "${ENCODED_FILE_WITH_DASH}"
 if [[ $? -ne 1 ]]; then
   echo "Argument parsing should fail for avifenc"
   exit 1
 fi
-"${AVIFDEC}" --info "${TMP_ENCODED_FILE_WTH_DASH}"
+"${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}"
 if [[ $? -ne 1 ]]; then
   echo "Argument parsing should fail for avifdec"
   exit 1
 fi
 set -e
-rm -- "${TMP_ENCODED_FILE_WTH_DASH}"
+rm -- "${ENCODED_FILE_WITH_DASH}"
 
 # Test code that should fail.
 set +e
-"${ARE_IMAGES_EQUAL}" "${TESTDATA_DIR}"/kodim23_yuv420_8bpc.y4m "${DECODED_FILE}" 0
+"${ARE_IMAGES_EQUAL}" "${TESTDATA_DIR}/kodim23_yuv420_8bpc.y4m" "${DECODED_FILE}" 0
 if [[ $? -ne 1 ]]; then
   echo "Image should be different"
+
+  # Cleanup
+  rm "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${DECODED_FILE}" "${PNG_FILE}"
   exit 1
 fi
 
 echo "TEST OK"
+
+# Cleanup
+rm "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${DECODED_FILE}" "${PNG_FILE}"
+
 exit 0

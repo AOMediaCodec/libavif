@@ -91,14 +91,16 @@ static void syntax(void)
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
-    printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item\n");
-    printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item\n");
-    printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item\n");
+    printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
+    printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
+    printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
     printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
+    printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
+    printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
@@ -257,6 +259,9 @@ static avifBool avifInputHasRemainingData(avifInput * input)
 }
 
 static avifAppFileFormat avifInputReadImage(avifInput * input,
+                                            avifBool ignoreICC,
+                                            avifBool ignoreExif,
+                                            avifBool ignoreXMP,
                                             avifImage * image,
                                             uint32_t * outDepth,
                                             avifAppSourceTiming * sourceTiming,
@@ -288,6 +293,9 @@ static avifAppFileFormat avifInputReadImage(avifInput * input,
                                                             input->requestedFormat,
                                                             input->requestedDepth,
                                                             flags,
+                                                            ignoreICC,
+                                                            ignoreExif,
+                                                            ignoreXMP,
                                                             image,
                                                             outDepth,
                                                             sourceTiming,
@@ -441,6 +449,8 @@ int main(int argc, char * argv[])
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool lossless = AVIF_FALSE;
+    avifBool ignoreExif = AVIF_FALSE;
+    avifBool ignoreXMP = AVIF_FALSE;
     avifBool ignoreICC = AVIF_FALSE;
     avifEncoder * encoder = avifEncoderCreate();
     avifImage * image = NULL;
@@ -646,6 +656,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+            ignoreExif = AVIF_TRUE;
         } else if (!strcmp(arg, "--xmp")) {
             NEXTARG();
             if (!readEntireFile(arg, &xmpOverride)) {
@@ -653,6 +664,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+            ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--icc")) {
             NEXTARG();
             if (!readEntireFile(arg, &iccOverride)) {
@@ -660,6 +672,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+            ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--duration")) {
             NEXTARG();
             int durationInt = atoi(arg);
@@ -707,6 +720,10 @@ int main(int argc, char * argv[])
             }
             avifEncoderSetCodecSpecificOption(encoder, tempBuffer, value);
             free(tempBuffer);
+        } else if (!strcmp(arg, "--ignore-exif")) {
+            ignoreExif = AVIF_TRUE;
+        } else if (!strcmp(arg, "--ignore-xmp")) {
+            ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--pasp")) {
@@ -832,7 +849,8 @@ int main(int argc, char * argv[])
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
     avifAppSourceTiming firstSourceTiming;
-    avifAppFileFormat inputFormat = avifInputReadImage(&input, image, &sourceDepth, &firstSourceTiming, flags);
+    avifAppFileFormat inputFormat =
+        avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, image, &sourceDepth, &firstSourceTiming, flags);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
         returnCode = 1;
@@ -864,9 +882,6 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (ignoreICC) {
-        avifImageSetProfileICC(image, NULL, 0);
-    }
     if (iccOverride.size) {
         avifImageSetProfileICC(image, iccOverride.data, iccOverride.size);
     }
@@ -1040,7 +1055,8 @@ int main(int argc, char * argv[])
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
             gridCells[gridCellIndex] = cellImage;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, cellImage, NULL, NULL, flags);
+            avifAppFileFormat nextInputFormat =
+                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, cellImage, NULL, NULL, flags);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
@@ -1179,7 +1195,8 @@ int main(int argc, char * argv[])
             nextImage->yuvRange = image->yuvRange;
             nextImage->alphaPremultiplied = image->alphaPremultiplied;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, nextImage, NULL, NULL, flags);
+            avifAppFileFormat nextInputFormat =
+                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, nextImage, NULL, NULL, flags);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;

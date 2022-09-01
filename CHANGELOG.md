@@ -38,6 +38,7 @@ avifImageCopy() and avifImageAllocatePlanes().
 * avifenc: Add --sharpyuv, which enables "sharp" RGB to YUV420 conversion, which
   reduces artifacts caused by 420 chroma downsampling. Needs libsharpyuv (part
   of the libwebp repository) at compile time.
+* avifenc: Add --ignore-exif and --ignore-xmp flags.
 
 ## [0.10.1] - 2022-04-11
 
