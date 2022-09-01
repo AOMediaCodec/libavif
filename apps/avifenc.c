@@ -849,7 +849,8 @@ int main(int argc, char * argv[])
     avifInputFile * firstFile = avifInputGetNextFile(&input);
     uint32_t sourceDepth = 0;
     avifAppSourceTiming firstSourceTiming;
-    avifAppFileFormat inputFormat = avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, image, &sourceDepth, &firstSourceTiming, flags);
+    avifAppFileFormat inputFormat =
+        avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, image, &sourceDepth, &firstSourceTiming, flags);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
         returnCode = 1;
@@ -1054,7 +1055,8 @@ int main(int argc, char * argv[])
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
             gridCells[gridCellIndex] = cellImage;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, cellImage, NULL, NULL, flags);
+            avifAppFileFormat nextInputFormat =
+                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, cellImage, NULL, NULL, flags);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
@@ -1193,7 +1195,8 @@ int main(int argc, char * argv[])
             nextImage->yuvRange = image->yuvRange;
             nextImage->alphaPremultiplied = image->alphaPremultiplied;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, nextImage, NULL, NULL, flags);
+            avifAppFileFormat nextInputFormat =
+                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, nextImage, NULL, NULL, flags);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
