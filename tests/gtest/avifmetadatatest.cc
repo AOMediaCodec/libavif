@@ -125,10 +125,10 @@ TEST_P(MetadataTest, Read) {
   avifImage* image = avifImageCreateEmpty();
   ASSERT_NE(image, nullptr);
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;  // lossless
-  ASSERT_NE(
-      avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0, !use_icc,
-                    !use_exif, !use_xmp, image, nullptr, nullptr, nullptr),
-      AVIF_APP_FILE_FORMAT_UNKNOWN);
+  ASSERT_NE(avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0,
+                          AVIF_RGB_TO_YUV_DEFAULT, !use_icc, !use_exif,
+                          !use_xmp, image, nullptr, nullptr, nullptr),
+            AVIF_APP_FILE_FORMAT_UNKNOWN);
   EXPECT_NE(image->width * image->height, 0u);
   if (expect_icc) {
     EXPECT_NE(image->icc.size, 0u);
@@ -197,9 +197,9 @@ TEST(MetadataTest, Compare) {
     *image_it = avifImageCreateEmpty();
     ASSERT_NE(*image_it, nullptr);
     ASSERT_NE(avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0,
-                            /*ignoreICC=*/false, /*ignoreExif=*/false,
-                            /*ignoreXMP=*/false, *image_it, nullptr, nullptr,
-                            nullptr),
+                            AVIF_RGB_TO_YUV_DEFAULT, /*ignoreICC=*/false,
+                            /*ignoreExif=*/false, /*ignoreXMP=*/false,
+                            *image_it, nullptr, nullptr, nullptr),
               AVIF_APP_FILE_FORMAT_UNKNOWN);
     ++image_it;
   }

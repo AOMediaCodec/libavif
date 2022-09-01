@@ -252,6 +252,7 @@ avifAppFileFormat avifReadImage(const char * filename,
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
+        (void)ignoreICC, (void)ignoreXMP; // TODO(yguyon): Implement
         if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, flags, ignoreExif, outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
