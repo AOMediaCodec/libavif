@@ -162,7 +162,8 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap) {
   }
   rgb_image.pixels = static_cast<uint8_t*>(bitmap_pixels);
   rgb_image.rowBytes = bitmap_info.stride;
-  res = avifImageYUVToRGB(decoder.decoder->image, &rgb_image);
+  res = avifImageYUVToRGB(decoder.decoder->image, &rgb_image,
+                          AVIF_YUV_TO_RGB_DEFAULT);
   AndroidBitmap_unlockPixels(env, bitmap);
   if (res != AVIF_RESULT_OK) {
     LOGE("Failed to convert YUV Pixels to RGB. Status: %d", res);
