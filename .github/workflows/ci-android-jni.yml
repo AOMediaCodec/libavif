@@ -20,8 +20,8 @@ jobs:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
         with:
-          # We use the same version as the one in build.gradle.
-          cmake-version: "3.18.1"
+          # This is the minimum cmake version needed to build libgav1.
+          cmake-version: "3.7.x"
       - name: Build libgav1 with the Android NDK
         working-directory: ext
         run: bash libgav1_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -32,6 +32,10 @@ jobs:
           java-version: 11
       - name: Download and Setup the Android SDK
         uses: android-actions/setup-android@v2
+      - name: Install CMake in the Android SDK
+        # This is the same version of cmake that is found in build.gradle. This
+        # will be used to build libavif and the JNI bindings.
+        run: sdkmanager "cmake;3.18.1"
       - name: Build the libavif JNI Wrapper
         working-directory: android_jni
         run: ./gradlew --no-daemon assembleRelease
