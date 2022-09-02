@@ -3,6 +3,7 @@
 
 #include <android/bitmap.h>
 #include <android/log.h>
+#include <cpu-features.h>
 #include <jni.h>
 
 #include "avif/avif.h"
@@ -44,12 +45,14 @@ struct AvifDecoderWrapper {
 };
 
 bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
-                           const uint8_t* const buffer, int length) {
+                           const uint8_t* const buffer, int length,
+                           int threads) {
   decoder->decoder = avifDecoderCreate();
   if (decoder->decoder == nullptr) {
     LOGE("Failed to create AVIF Decoder.");
     return false;
   }
+  decoder->decoder->maxThreads = threads;
   decoder->decoder->ignoreXMP = AVIF_TRUE;
   decoder->decoder->ignoreExif = AVIF_TRUE;
 
@@ -100,7 +103,7 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
-  if (!CreateDecoderAndParse(&decoder, buffer, length)) {
+  if (!CreateDecoderAndParse(&decoder, buffer, length, /*threads=*/ 1)) {
     return false;
   }
   env->SetIntField(info, global_info_width, decoder.decoder->image->width);
@@ -113,7 +116,8 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap) {
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
-  if (!CreateDecoderAndParse(&decoder, buffer, length)) {
+  if (!CreateDecoderAndParse(&decoder, buffer, length,
+                             android_getCpuCount())) {
     return false;
   }
   avifResult res = avifDecoderNextImage(decoder.decoder);
