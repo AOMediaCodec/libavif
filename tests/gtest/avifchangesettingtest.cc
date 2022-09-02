@@ -143,7 +143,7 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
             AVIF_RESULT_CANNOT_CHANGE_SETTING);
 }
 
-TEST(ChangeSettingTest, DISABLED_ChangeDimension) {
+TEST(ChangeSettingTest, ChangeDimension) {
   if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
       nullptr) {
     GTEST_SKIP() << "Codec unavailable, skip test.";
@@ -177,8 +177,6 @@ TEST(ChangeSettingTest, DISABLED_ChangeDimension) {
     encoder->maxQuantizer = 63;
     encoder->width = size_display;
     encoder->height = size_display;
-
-//    avifEncoderSetCodecSpecificOption(encoder.get(), "tune", "psnr");
 
     ASSERT_EQ(avifEncoderAddImage(encoder.get(), first.get(), 1, 0),
               AVIF_RESULT_OK);

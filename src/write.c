@@ -342,7 +342,6 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     lastEncoder->maxQuantizerAlpha = encoder->maxQuantizerAlpha;
     lastEncoder->tileRowsLog2 = encoder->tileRowsLog2;
     lastEncoder->tileColsLog2 = encoder->tileColsLog2;
-    lastEncoder->speed = encoder->speed;
 }
 
 // This function detects changes made on avifEncoder. It returns true on success (i.e., if every
@@ -1216,8 +1215,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         uint32_t imageWidth = cellWidth;
         uint32_t imageHeight = cellHeight;
         if (isGrid) {
-            imageWidth = imageWidth * item->gridCols;
-            imageHeight = imageHeight * item->gridRows;
+            imageWidth *= item->gridCols;
+            imageHeight *= item->gridRows;
         }
 
         // Properties all av01 items need
