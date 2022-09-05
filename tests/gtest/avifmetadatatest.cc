@@ -155,40 +155,36 @@ TEST_P(MetadataTest, Read) {
 
 INSTANTIATE_TEST_SUITE_P(
     PngNone, MetadataTest,
-    Combine(Values("paris_exif_xmp_icc.png"),  // zTXt iCCP iTXt IDAT
+    Combine(Values("paris_icc_exif_xmp.png"),  // iCCP zTXt zTXt IDAT
             /*use_icc=*/Values(false), /*use_exif=*/Values(false),
-            /*use_xmp=*/Values(false),
-            // ignoreICC is not yet implemented.
-            /*expected_icc=*/Values(true),
+            /*use_xmp=*/Values(false), /*expected_icc=*/Values(false),
             /*expected_exif=*/Values(false), /*expected_xmp=*/Values(false)));
 INSTANTIATE_TEST_SUITE_P(
     PngAll, MetadataTest,
-    Combine(Values("paris_exif_xmp_icc.png"), /*use_icc=*/Values(true),
-            /*use_exif=*/Values(true), /*use_xmp=*/Values(true),
-            /*expected_icc=*/Values(true), /*expected_exif=*/Values(true),
-            // XMP extraction is not yet implemented.
-            /*expected_xmp=*/Values(false)));
+    Combine(Values("paris_icc_exif_xmp.png"),  // iCCP zTXt zTXt IDAT
+            /*use_icc=*/Values(true), /*use_exif=*/Values(true),
+            /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
+            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(true)));
 
 INSTANTIATE_TEST_SUITE_P(
     PngExifAtEnd, MetadataTest,
-    Combine(Values("paris_exif_at_end.png"),  // iCCP IDAT eXIf
+    Combine(Values("paris_icc_exif_xmp_at_end.png"),  // iCCP IDAT eXIf tEXt
             /*use_icc=*/Values(true), /*use_exif=*/Values(true),
             /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
-            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(false)));
+            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(true)));
 
 INSTANTIATE_TEST_SUITE_P(
     Jpeg, MetadataTest,
-    Combine(Values("paris_exif_xmp_icc.jpg"), /*use_icc=*/Values(true),
-            /*use_exif=*/Values(true), /*use_xmp=*/Values(true),
-            /*expected_icc=*/Values(true),
-            // Exif and XMP are not yet implemented.
-            /*expected_exif=*/Values(false), /*expected_xmp=*/Values(false)));
+    Combine(Values("paris_exif_xmp_icc.jpg"),  // APP1-Exif, APP1-XMP, APP2-ICC
+            /*use_icc=*/Values(true), /*use_exif=*/Values(true),
+            /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
+            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(true)));
 
 // Verify all parsers lead exactly to the same metadata bytes.
 TEST(MetadataTest, Compare) {
-  constexpr const char* kFileNames[] = {"paris_exif_at_end.png",
+  constexpr const char* kFileNames[] = {"paris_icc_exif_xmp.png",
                                         "paris_exif_xmp_icc.jpg",
-                                        "paris_exif_xmp_icc.png"};
+                                        "paris_icc_exif_xmp_at_end.png"};
   avifImage* images[sizeof(kFileNames) / sizeof(kFileNames[0])];
   avifImage** image_it = images;
   for (const char* file_name : kFileNames) {
@@ -205,13 +201,8 @@ TEST(MetadataTest, Compare) {
   }
 
   for (avifImage* image : images) {
-    if (image->exif.size != 0) {  // Not implemented for JPEG.
-      EXPECT_TRUE(
-          testutil::AreByteSequencesEqual(image->exif, images[0]->exif));
-    }
-    if (image->xmp.size != 0) {  // Not implemented.
-      EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, images[0]->xmp));
-    }
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, images[0]->exif));
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, images[0]->xmp));
     EXPECT_TRUE(testutil::AreByteSequencesEqual(image->icc, images[0]->icc));
   }
 }
