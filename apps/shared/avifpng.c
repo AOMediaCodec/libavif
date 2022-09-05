@@ -216,8 +216,6 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
                 }
             } else {
                 // For simplicity, consider everything else as XMP.
-                // In theory, it could be an ICC stored as text but iCCP has been around for a while,
-                // so it is not worth the hassle.
                 if (*ignoreXMP) {
                     avifRWDataFree(&metadata);
                 } else {
@@ -317,6 +315,7 @@ avifBool avifPNGRead(const char * inputFilename,
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, (png_iccp_datap *)&iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
             avifImageSetProfileICC(avif, iccpData, iccpDataLen);
         }
+        // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
         // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
     }
 
