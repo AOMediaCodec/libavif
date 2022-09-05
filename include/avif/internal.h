@@ -191,6 +191,12 @@ avifBool avifImageScale(avifImage * image,
 avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, uint32_t imageH, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
+// Metadata
+
+// Validates the Exif payload and finds the TIFF header offset.
+avifResult avifExtractExifTiffHeaderOffset(const uint8_t * exif, size_t exifSize, uint32_t * exifTiffHeaderOffset);
+
+// ---------------------------------------------------------------------------
 // avifCodecDecodeInput
 
 // Legal spatial_id values are [0,1,2,3], so this serves as a sentinel value for "do not filter by spatial_id"

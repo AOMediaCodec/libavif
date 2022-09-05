@@ -603,29 +603,28 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
     avifRWStreamFinishWrite(&s);
 }
 
-static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
+avifResult avifExtractExifTiffHeaderOffset(const uint8_t * exif, size_t exifSize, uint32_t * exifTiffHeaderOffset)
 {
-    // Validate Exif payload (if any) and find TIFF header offset
-    uint32_t exifTiffHeaderOffset = 0;
-    if (exif->size < 4) {
-        // Can't even fit the TIFF header, something is wrong
-        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
-    }
-
+    *exifTiffHeaderOffset = 0;
     const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
     const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
-    for (; exifTiffHeaderOffset < (exif->size - 4); ++exifTiffHeaderOffset) {
-        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
-            break;
-        }
-        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
-            break;
+    for (; *exifTiffHeaderOffset + sizeof(tiffHeaderBE) <= exifSize; ++*exifTiffHeaderOffset) {
+        if (!memcmp(&exif[*exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE)) ||
+            !memcmp(&exif[*exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
+            return AVIF_RESULT_OK;
         }
     }
+    // Couldn't find the TIFF header
+    return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+}
 
-    if (exifTiffHeaderOffset >= exif->size - 4) {
+static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
+{
+    uint32_t exifTiffHeaderOffset;
+    const avifResult result = avifExtractExifTiffHeaderOffset(exif->data, exif->size, &exifTiffHeaderOffset);
+    if (result != AVIF_RESULT_OK) {
         // Couldn't find the TIFF header
-        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+        return result;
     }
 
     avifEncoderItem * exifItem = avifEncoderDataCreateItem(data, "Exif", "Exif", 5, 0);
