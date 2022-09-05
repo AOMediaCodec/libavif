@@ -156,6 +156,9 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     }
 #endif // PNG_eXIf_SUPPORTED
 
+    // tXMP could be retrieved using the png_get_unknown_chunks() API but tXMP is deprecated
+    // and there is no PNG file example with a tXMP chunk lying around, so it is not worth the hassle.
+
     png_textp text = NULL;
     const png_uint_32 numTextChunks = png_get_text(png, info, &text, NULL);
     for (png_uint_32 i = 0; (!*ignoreExif || !*ignoreXMP) && (i < numTextChunks); ++i, ++text) {
@@ -213,6 +216,8 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
                 }
             } else {
                 // For simplicity, consider everything else as XMP.
+                // In theory, it could be an ICC stored as text but iCCP has been around for a while,
+                // so it is not worth the hassle.
                 if (*ignoreXMP) {
                     avifRWDataFree(&metadata);
                 } else {
