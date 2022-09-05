@@ -175,6 +175,10 @@ static avifBool avifExtractXMP(png_structp png, png_infop info, avifImage * avif
         if (!strcmp(text->key, "Raw profile type xmp")) {
             return avifCopyRawProfile("XMP", text->text, avifGetPngTextLength(text), &avif->xmp);
         }
+        if (!strcmp(text->key, "XML:com.adobe.xmp")) {
+            avifImageSetMetadataXMP(avif, (const uint8_t*)text->text, avifGetPngTextLength(text));
+            return AVIF_TRUE;
+        }
     }
     return AVIF_TRUE;
 }
