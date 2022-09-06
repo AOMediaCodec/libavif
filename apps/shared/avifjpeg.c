@@ -351,18 +351,24 @@ avifBool avifJPEGRead(const char * inputFilename,
         }
     }
     if (!ignoreXMP) {
-        const avifROData tagXmp = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
+        const avifROData tagStandardXmp = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
+        const avifROData tagExtendedXmp = { (const uint8_t *)"http://ns.adobe.com/xmp/extension/\0", 35 };
         avifBool found = AVIF_FALSE;
         for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
-            if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagXmp.size) &&
-                !memcmp(marker->data, tagXmp.data, tagXmp.size)) {
+            if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagStandardXmp.size) &&
+                !memcmp(marker->data, tagStandardXmp.data, tagStandardXmp.size)) {
                 if (found) {
                     // TODO(yguyon): Implement instead of outputting an error.
                     fprintf(stderr, "XMP extraction failed: unsupported XMP split into multiple chunks or invalid multiple XMP chunks\n");
                     goto cleanup;
                 }
-                avifImageSetMetadataXMP(avif, marker->data + tagXmp.size, marker->data_length - tagXmp.size);
+                avifImageSetMetadataXMP(avif, marker->data + tagStandardXmp.size, marker->data_length - tagStandardXmp.size);
                 found = AVIF_TRUE;
+            } else if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagExtendedXmp.size) &&
+                       !memcmp(marker->data, tagExtendedXmp.data, tagExtendedXmp.size)) {
+                // TODO(yguyon): Implement instead of outputting an error.
+                fprintf(stderr, "XMP extraction failed: extended XMP is unsupported\n");
+                goto cleanup;
             }
         }
     }
