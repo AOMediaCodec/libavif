@@ -527,6 +527,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
+                                      int tileRowsLog2,
+                                      int tileColsLog2,
                                       avifEncoderChanges encoderChanges,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
@@ -737,12 +739,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (encoder->maxThreads > 1) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_ROW_MT, 1);
         }
-        if (encoder->tileRowsLog2 != 0) {
-            int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+        if (tileRowsLog2 != 0) {
+            tileRowsLog2 = AVIF_CLAMP(tileRowsLog2, 0, 6);
             aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
         }
-        if (encoder->tileColsLog2 != 0) {
-            int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+        if (tileColsLog2 != 0) {
+            tileColsLog2 = AVIF_CLAMP(tileColsLog2, 0, 6);
             aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
         }
         if (aomCpuUsed != -1) {
@@ -793,10 +795,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
         if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, AVIF_CLAMP(encoder->tileRowsLog2, 0, 6));
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, AVIF_CLAMP(tileRowsLog2, 0, 6));
         }
         if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_COLS_LOG2) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, AVIF_CLAMP(encoder->tileColsLog2, 0, 6));
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, AVIF_CLAMP(tileColsLog2, 0, 6));
         }
         if (encoderChanges & AVIF_ENCODER_CHANGE_CODEC_SPECIFIC) {
             if (!avifProcessAOMOptionsPostInit(codec, alpha)) {

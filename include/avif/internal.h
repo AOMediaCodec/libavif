@@ -172,6 +172,14 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
 avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit);
 
+// Given the number of encoding threads or decoding threads available and the image dimensions,
+// chooses suitable values of *tileRowsLog2 and *tileColsLog2.
+//
+// Note: Although avifSetTileConfiguration() is only used in src/write.c and could be a static
+// function in that file, it is defined as an internal global function so that it can be tested by
+// unit tests.
+void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int * tileRowsLog2, int * tileColsLog2);
+
 // ---------------------------------------------------------------------------
 // Scaling
 
@@ -283,10 +291,16 @@ typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
 // encoded and EncodeFinish is called, the number of samples emitted must match the number of submitted frames.
 // avifCodecEncodeImageFunc may return AVIF_RESULT_UNKNOWN_ERROR to automatically emit the appropriate
 // AVIF_RESULT_ENCODE_COLOR_FAILED or AVIF_RESULT_ENCODE_ALPHA_FAILED depending on the alpha argument.
+// avifCodecEncodeImageFunc should use tileRowsLog2 and tileColsLog2 instead of
+// encoder->tileRowsLog2, encoder->tileColsLog2, and encoder->autoTiling. The caller of
+// avifCodecEncodeImageFunc is responsible for automatic tiling if encoder->autoTiling is set to
+// AVIF_TRUE. The actual tiling values are passed to avifCodecEncodeImageFunc as parameters.
 typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,
                                                avifBool alpha,
+                                               int tileRowsLog2,
+                                               int tileColsLog2,
                                                avifEncoderChanges encoderChanges,
                                                avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
