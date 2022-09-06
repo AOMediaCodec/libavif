@@ -153,13 +153,13 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
                 return AVIF_FALSE;
             }
             avifRemoveHeader(&exifApp1Header, &avif->exif); // Optional.
-            *ignoreExif = AVIF_TRUE;                    // Ignore any other Exif chunk.
+            *ignoreExif = AVIF_TRUE;                        // Ignore any other Exif chunk.
         } else if (!*ignoreXMP && !strcmp(text->key, "Raw profile type xmp")) {
             if (!avifCopyRawProfile(text->text, textLength, &avif->xmp)) {
                 return AVIF_FALSE;
             }
             avifRemoveHeader(&xmpApp1Header, &avif->xmp); // Optional.
-            *ignoreXMP = AVIF_TRUE;                   // Ignore any other XMP chunk.
+            *ignoreXMP = AVIF_TRUE;                       // Ignore any other XMP chunk.
         } else if (!strcmp(text->key, "Raw profile type APP1")) {
             // This can be either Exif, XMP or something else.
             avifRWData metadata = { NULL, 0 };
