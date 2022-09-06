@@ -99,18 +99,16 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
     return AVIF_FALSE;
 }
 
-static void avifRemoveHeadingExif00TagIfAny(avifRWData * exif)
+static avifBool avifRemoveHeader(const avifROData * header, avifRWData * payload)
 {
-    // Preprocess the input hexString by removing an Exif tag commonly added at encoding, if present.
-    // HEIF specification ISO-23008 section A.2.1 allows including and excluding it from AVIF files.
-    // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
-    const avifROData exif00Tag = { (const uint8_t *)"Exif\0\0", 6 };
-    if (exif->size > exif00Tag.size && !memcmp(exif->data, exif00Tag.data, exif00Tag.size)) {
-        avifRWData strippedExif = { NULL, 0 };
-        avifRWDataSet(&strippedExif, exif->data + exif00Tag.size, exif->size - exif00Tag.size);
-        avifRWDataFree(exif);
-        *exif = strippedExif;
+    if (payload->size > header->size && !memcmp(payload->data, header->data, header->size)) {
+        avifRWData strippedPayload = { NULL, 0 };
+        avifRWDataSet(&strippedPayload, payload->data + header->size, payload->size - header->size);
+        avifRWDataFree(payload);
+        *payload = strippedPayload;
+        return AVIF_TRUE;
     }
+    return AVIF_FALSE;
 }
 
 // Extracts metadata to avif->exif and avif->xmp unless the corresponding *ignoreExif or *ignoreXMP is set to AVIF_TRUE.
@@ -132,6 +130,11 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     }
 #endif // PNG_eXIf_SUPPORTED
 
+    // HEIF specification ISO-23008 section A.2.1 allows including and excluding the Exif\0\0 header from AVIF files.
+    // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
+    const avifROData exifHeader = { (const uint8_t *)"Exif\0\0", 6 };
+    const avifROData xmpHeader = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
+
     // tXMP could be retrieved using the png_get_unknown_chunks() API but tXMP is deprecated
     // and there is no PNG file example with a tXMP chunk lying around, so it is not worth the hassle.
 
@@ -149,45 +152,30 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             if (!avifCopyRawProfile(text->text, textLength, &avif->exif)) {
                 return AVIF_FALSE;
             }
-            avifRemoveHeadingExif00TagIfAny(&avif->exif);
-            *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
+            avifRemoveHeader(&exifHeader, &avif->exif); // Optional.
+            *ignoreExif = AVIF_TRUE;                    // Ignore any other Exif chunk.
         } else if (!*ignoreXMP && !strcmp(text->key, "Raw profile type xmp")) {
             if (!avifCopyRawProfile(text->text, textLength, &avif->xmp)) {
                 return AVIF_FALSE;
             }
-            *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
+            avifRemoveHeader(&xmpHeader, &avif->xmp); // Optional.
+            *ignoreXMP = AVIF_TRUE;                   // Ignore any other XMP chunk.
         } else if (!strcmp(text->key, "Raw profile type APP1")) {
             // This can be either Exif, XMP or something else.
             avifRWData metadata = { NULL, 0 };
             if (!avifCopyRawProfile(text->text, textLength, &metadata)) {
                 return AVIF_FALSE;
             }
-            const uint32_t exifTiffHeaderSize = 10; // "MM\0\42" or "II\42\0", maybe prefixed by "Exif\0\0"
-            uint32_t exifTiffHeaderOffset;
-            const avifROData xmpJpegHeader = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
-            if ((metadata.size > exifTiffHeaderSize) &&
-                (avifExtractExifTiffHeaderOffset(metadata.data, exifTiffHeaderSize, &exifTiffHeaderOffset) == AVIF_RESULT_OK)) {
-                // metadata has an exif header.
-                if (*ignoreExif) {
-                    avifRWDataFree(&metadata);
-                } else {
-                    avifRWDataFree(&avif->exif);
-                    avif->exif = metadata;
-                    avifRemoveHeadingExif00TagIfAny(&avif->exif);
-                    *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
-                }
-            } else if ((metadata.data[0] == '<') ||
-                       ((metadata.size > xmpJpegHeader.size) && !memcmp(metadata.data, xmpJpegHeader.data, xmpJpegHeader.size))) {
-                // metadata has an XMP header.
-                if (*ignoreXMP) {
-                    avifRWDataFree(&metadata);
-                } else {
-                    avifRWDataFree(&avif->xmp);
-                    avif->xmp = metadata;
-                    *ignoreXMP = AVIF_TRUE; // Ignore any other Exif chunk.
-                }
+            if (!*ignoreExif && avifRemoveHeader(&exifHeader, &metadata)) {
+                avifRWDataFree(&avif->exif);
+                avif->exif = metadata;
+                *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
+            } else if (!*ignoreXMP && avifRemoveHeader(&xmpHeader, &metadata)) {
+                avifRWDataFree(&avif->xmp);
+                avif->xmp = metadata;
+                *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
             } else {
-                avifRWDataFree(&metadata);
+                avifRWDataFree(&metadata); // Discard chunk.
             }
         } else if (!*ignoreXMP && !strcmp(text->key, "XML:com.adobe.xmp")) {
             if (textLength == 0) {
