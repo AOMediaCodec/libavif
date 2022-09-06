@@ -25,36 +25,8 @@ typedef png_charp png_iccp_datap;
 // hexString may contain values consisting of [A-F][a-f][0-9] in pairs, e.g., 7af2..., separated by any number of newlines.
 // On success the bytes are filled and AVIF_TRUE is returned.
 // AVIF_FALSE is returned if fewer than numExpectedBytes hexadecimal pairs are converted.
-static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLength, size_t numExpectedBytes, avifRWData * bytes, avifBool * tagExif00WasRemoved)
+static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLength, size_t numExpectedBytes, avifRWData * bytes)
 {
-    // Remove any leading new line. They are not part of the numExpectedBytes.
-    while ((hexStringLength != 0) && (hexString[0] == '\n')) {
-        ++hexString;
-        --hexStringLength;
-    }
-    if (hexStringLength < (numExpectedBytes * 2)) {
-        fprintf(stderr, "Metadata extraction failed: " AVIF_FMT_ZU " missing characters\n", (numExpectedBytes * 2) - hexStringLength);
-        return AVIF_FALSE;
-    }
-
-    // Preprocess the input hexString by removing an Exif tag commonly added at encoding, if present.
-    // HEIF specification ISO-23008 section A.2.1 allows including and excluding it from AVIF files.
-    // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
-    const char tagExif00[] = "457869660000"; // "Exif\0\0" tag encoded as a hexadecimal string.
-    const size_t tagExif00Len = 6 * 2;
-    if ((numExpectedBytes >= (tagExif00Len / 2)) && !memcmp(hexString, tagExif00, tagExif00Len)) {
-        hexString += tagExif00Len;
-        hexStringLength -= tagExif00Len;
-        numExpectedBytes -= (tagExif00Len / 2);
-        *tagExif00WasRemoved = AVIF_TRUE;
-    } else {
-        *tagExif00WasRemoved = AVIF_FALSE;
-    }
-    if (numExpectedBytes == 0) {
-        fprintf(stderr, "Metadata extraction failed: empty payload\n");
-        return AVIF_FALSE;
-    }
-
     avifRWDataRealloc(bytes, numExpectedBytes);
     size_t numBytes = 0;
     for (size_t i = 0; (i + 1 < hexStringLength) && (numBytes < numExpectedBytes);) {
@@ -82,7 +54,7 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
 }
 
 // Parses the raw profile string of profileLength characters and extracts the payload.
-static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, avifRWData * payload, avifBool * tagExif00WasRemoved)
+static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, avifRWData * payload)
 {
     // ImageMagick formats 'raw profiles' as "\n<name>\n<length>(%8lu)\n<hex payload>\n".
     if (!profile || (profileLength == 0) || (profile[0] != '\n')) {
@@ -119,7 +91,7 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
                 }
                 // Note: The profile may be malformed by containing more data than the extracted expectedLength bytes.
                 //       Be lenient about it and consider it as a valid payload.
-                return avifHexStringToBytes(hexPayloadStart, hexPayloadMaxLength, (size_t)expectedLength, payload, tagExif00WasRemoved);
+                return avifHexStringToBytes(hexPayloadStart, hexPayloadMaxLength, (size_t)expectedLength, payload);
             }
         }
     }
@@ -127,14 +99,18 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
     return AVIF_FALSE;
 }
 
-static png_size_t avifGetPngTextLength(png_const_textp text)
+static void avifRemoveHeadingExif00TagIfAny(avifRWData * exif)
 {
-#ifdef PNG_iTXt_SUPPORTED
-    if ((text->compression == PNG_ITXT_COMPRESSION_NONE) || (text->compression == PNG_ITXT_COMPRESSION_zTXt)) {
-        return text->itxt_length;
+    // Preprocess the input hexString by removing an Exif tag commonly added at encoding, if present.
+    // HEIF specification ISO-23008 section A.2.1 allows including and excluding it from AVIF files.
+    // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
+    const avifROData exif00Tag = { (const uint8_t *)"Exif\0\0", 6 };
+    if (exif->size > exif00Tag.size && !memcmp(exif->data, exif00Tag.data, exif00Tag.size)) {
+        avifRWData strippedExif = { NULL, 0 };
+        avifRWDataSet(&strippedExif, exif->data + exif00Tag.size, exif->size - exif00Tag.size);
+        avifRWDataFree(exif);
+        *exif = strippedExif;
     }
-#endif
-    return text->text_length;
 }
 
 // Extracts metadata to avif->exif and avif->xmp unless the corresponding *ignoreExif or *ignoreXMP is set to AVIF_TRUE.
@@ -162,75 +138,63 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     png_textp text = NULL;
     const png_uint_32 numTextChunks = png_get_text(png, info, &text, NULL);
     for (png_uint_32 i = 0; (!*ignoreExif || !*ignoreXMP) && (i < numTextChunks); ++i, ++text) {
-        avifRWData metadata = { NULL, 0 };
-        avifBool tagExif00WasRemoved;
+        png_size_t textLength = text->text_length;
+#ifdef PNG_iTXt_SUPPORTED
+        if ((text->compression == PNG_ITXT_COMPRESSION_NONE) || (text->compression == PNG_ITXT_COMPRESSION_zTXt)) {
+            textLength = text->itxt_length;
+        }
+#endif
+
         if (!*ignoreExif && !strcmp(text->key, "Raw profile type exif")) {
-            if (!avifCopyRawProfile(text->text, avifGetPngTextLength(text), &metadata, &tagExif00WasRemoved)) {
+            if (!avifCopyRawProfile(text->text, textLength, &avif->exif)) {
                 return AVIF_FALSE;
             }
-            uint32_t exifTiffHeaderOffset;
-            if (avifExtractExifTiffHeaderOffset(metadata.data, metadata.size, &exifTiffHeaderOffset) != AVIF_RESULT_OK) {
-                avifRWDataFree(&metadata);
-                fprintf(stderr, "Exif extraction failed: missing TIFF header\n");
-                return AVIF_FALSE;
-            }
-            avifRWDataFree(&avif->exif);
-            avif->exif = metadata;
+            avifRemoveHeadingExif00TagIfAny(&avif->exif);
             *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
         } else if (!*ignoreXMP && !strcmp(text->key, "Raw profile type xmp")) {
-            if (!avifCopyRawProfile(text->text, avifGetPngTextLength(text), &metadata, &tagExif00WasRemoved)) {
+            if (!avifCopyRawProfile(text->text, textLength, &avif->xmp)) {
                 return AVIF_FALSE;
             }
-            if (tagExif00WasRemoved) {
-                avifRWDataFree(&metadata);
-                fprintf(stderr, "XMP extraction failed: XMP payload begins with an Exif tag\n");
-                return AVIF_FALSE;
-            }
-            avifRWDataFree(&avif->xmp);
-            avif->xmp = metadata;
             *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
         } else if (!strcmp(text->key, "Raw profile type APP1")) {
-            if (!avifCopyRawProfile(text->text, avifGetPngTextLength(text), &metadata, &tagExif00WasRemoved)) {
+            // This can be either Exif, XMP or something else.
+            avifRWData metadata = { NULL, 0 };
+            if (!avifCopyRawProfile(text->text, textLength, &metadata)) {
                 return AVIF_FALSE;
             }
-            // Differentiate Exif and XMP by checking whether the chunk begins with a valid TIFF header ("IIx0x42" or "MMx42x0").
-            const uint32_t tiffHeaderSize = 4;
+            const uint32_t exifTiffHeaderSize = 10; // "MM\0\42" or "II\42\0", maybe prefixed by "Exif\0\0"
             uint32_t exifTiffHeaderOffset;
-            if (metadata.size > tiffHeaderSize &&
-                (avifExtractExifTiffHeaderOffset(metadata.data, tiffHeaderSize, &exifTiffHeaderOffset) == AVIF_RESULT_OK)) {
+            const avifROData xmpJpegHeader = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
+            if ((metadata.size > exifTiffHeaderSize) &&
+                (avifExtractExifTiffHeaderOffset(metadata.data, exifTiffHeaderSize, &exifTiffHeaderOffset) == AVIF_RESULT_OK)) {
+                // metadata has an exif header.
                 if (*ignoreExif) {
                     avifRWDataFree(&metadata);
                 } else {
                     avifRWDataFree(&avif->exif);
                     avif->exif = metadata;
+                    avifRemoveHeadingExif00TagIfAny(&avif->exif);
                     *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
                 }
-            } else if (tagExif00WasRemoved) {
-                if (*ignoreExif) {
-                    // Ignore invalid Exif payloads too.
-                    avifRWDataFree(&metadata);
-                } else {
-                    avifRWDataFree(&metadata);
-                    fprintf(stderr, "Exif extraction failed: missing TIFF header\n");
-                    return AVIF_FALSE;
-                }
-            } else {
-                // For simplicity, consider everything else as XMP.
+            } else if ((metadata.data[0] == '<') ||
+                       ((metadata.size > xmpJpegHeader.size) && !memcmp(metadata.data, xmpJpegHeader.data, xmpJpegHeader.size))) {
+                // metadata has an XMP header.
                 if (*ignoreXMP) {
                     avifRWDataFree(&metadata);
                 } else {
                     avifRWDataFree(&avif->xmp);
                     avif->xmp = metadata;
-                    *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
+                    *ignoreXMP = AVIF_TRUE; // Ignore any other Exif chunk.
                 }
+            } else {
+                avifRWDataFree(&metadata);
             }
         } else if (!*ignoreXMP && !strcmp(text->key, "XML:com.adobe.xmp")) {
-            const png_size_t textLength = avifGetPngTextLength(text);
             if (textLength == 0) {
                 fprintf(stderr, "XMP extraction failed: empty XML:com.adobe.xmp payload\n");
                 return AVIF_FALSE;
             }
-            avifImageSetMetadataXMP(avif, (const uint8_t *)text->text, avifGetPngTextLength(text));
+            avifImageSetMetadataXMP(avif, (const uint8_t *)text->text, textLength);
             *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
         }
     }
