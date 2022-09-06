@@ -336,21 +336,33 @@ avifBool avifJPEGRead(const char * inputFilename,
 
     if (!ignoreExif) {
         const avifROData tagExif = { (const uint8_t *)"Exif\0\0", 6 };
+        avifBool found = AVIF_FALSE;
         for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
             if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagExif.size) &&
                 !memcmp(marker->data, tagExif.data, tagExif.size)) {
+                if (found) {
+                    // TODO(yguyon): Implement instead of outputting an error.
+                    fprintf(stderr, "Exif extraction failed: unsupported Exif split into multiple chunks or invalid multiple Exif chunks\n");
+                    goto cleanup;
+                }
                 avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size);
-                break; // Only take the first Exif chunk into account.
+                found = AVIF_TRUE;
             }
         }
     }
     if (!ignoreXMP) {
         const avifROData tagXmp = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
+        avifBool found = AVIF_FALSE;
         for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
             if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagXmp.size) &&
                 !memcmp(marker->data, tagXmp.data, tagXmp.size)) {
+                if (found) {
+                    // TODO(yguyon): Implement instead of outputting an error.
+                    fprintf(stderr, "XMP extraction failed: unsupported XMP split into multiple chunks or invalid multiple XMP chunks\n");
+                    goto cleanup;
+                }
                 avifImageSetMetadataXMP(avif, marker->data + tagXmp.size, marker->data_length - tagXmp.size);
-                break; // Only take the first XMP chunk into account.
+                found = AVIF_TRUE;
             }
         }
     }
