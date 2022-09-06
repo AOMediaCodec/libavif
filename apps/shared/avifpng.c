@@ -132,8 +132,8 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
 
     // HEIF specification ISO-23008 section A.2.1 allows including and excluding the Exif\0\0 header from AVIF files.
     // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
-    const avifROData exifHeader = { (const uint8_t *)"Exif\0\0", 6 };
-    const avifROData xmpHeader = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
+    const avifROData exifApp1Header = { (const uint8_t *)"Exif\0\0", 6 };
+    const avifROData xmpApp1Header = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
 
     // tXMP could be retrieved using the png_get_unknown_chunks() API but tXMP is deprecated
     // and there is no PNG file example with a tXMP chunk lying around, so it is not worth the hassle.
@@ -152,13 +152,13 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             if (!avifCopyRawProfile(text->text, textLength, &avif->exif)) {
                 return AVIF_FALSE;
             }
-            avifRemoveHeader(&exifHeader, &avif->exif); // Optional.
+            avifRemoveHeader(&exifApp1Header, &avif->exif); // Optional.
             *ignoreExif = AVIF_TRUE;                    // Ignore any other Exif chunk.
         } else if (!*ignoreXMP && !strcmp(text->key, "Raw profile type xmp")) {
             if (!avifCopyRawProfile(text->text, textLength, &avif->xmp)) {
                 return AVIF_FALSE;
             }
-            avifRemoveHeader(&xmpHeader, &avif->xmp); // Optional.
+            avifRemoveHeader(&xmpApp1Header, &avif->xmp); // Optional.
             *ignoreXMP = AVIF_TRUE;                   // Ignore any other XMP chunk.
         } else if (!strcmp(text->key, "Raw profile type APP1")) {
             // This can be either Exif, XMP or something else.
@@ -166,11 +166,11 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             if (!avifCopyRawProfile(text->text, textLength, &metadata)) {
                 return AVIF_FALSE;
             }
-            if (!*ignoreExif && avifRemoveHeader(&exifHeader, &metadata)) {
+            if (!*ignoreExif && avifRemoveHeader(&exifApp1Header, &metadata)) {
                 avifRWDataFree(&avif->exif);
                 avif->exif = metadata;
                 *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
-            } else if (!*ignoreXMP && avifRemoveHeader(&xmpHeader, &metadata)) {
+            } else if (!*ignoreXMP && avifRemoveHeader(&xmpApp1Header, &metadata)) {
                 avifRWDataFree(&avif->xmp);
                 avif->xmp = metadata;
                 *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
