@@ -660,30 +660,6 @@ typedef uint32_t avifCodecFlags;
 AVIF_API const char * avifCodecName(avifCodecChoice choice, avifCodecFlags requiredFlags);
 AVIF_API avifCodecChoice avifCodecChoiceFromName(const char * name);
 
-typedef struct avifCodecConfigurationBox
-{
-    // [skipped; is constant] unsigned int (1)marker = 1;
-    // [skipped; is constant] unsigned int (7)version = 1;
-
-    uint8_t seqProfile;           // unsigned int (3) seq_profile;
-    uint8_t seqLevelIdx0;         // unsigned int (5) seq_level_idx_0;
-    uint8_t seqTier0;             // unsigned int (1) seq_tier_0;
-    uint8_t highBitdepth;         // unsigned int (1) high_bitdepth;
-    uint8_t twelveBit;            // unsigned int (1) twelve_bit;
-    uint8_t monochrome;           // unsigned int (1) monochrome;
-    uint8_t chromaSubsamplingX;   // unsigned int (1) chroma_subsampling_x;
-    uint8_t chromaSubsamplingY;   // unsigned int (1) chroma_subsampling_y;
-    uint8_t chromaSamplePosition; // unsigned int (2) chroma_sample_position;
-
-    // unsigned int (3)reserved = 0;
-    // unsigned int (1)initial_presentation_delay_present;
-    // if (initial_presentation_delay_present) {
-    //     unsigned int (4)initial_presentation_delay_minus_one;
-    // } else {
-    //     unsigned int (4)reserved = 0;
-    // }
-} avifCodecConfigurationBox;
-
 // ---------------------------------------------------------------------------
 // avifIO
 
