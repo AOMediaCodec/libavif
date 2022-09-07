@@ -59,8 +59,21 @@ echo "Testing basic lossless"
 
 # Metadata test.
 echo "Testing metadata enc/dec"
-"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.png" -o "${ENCODED_FILE}"
-"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
+# PNG.
+"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE}"
+"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-icc
+cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
+cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
+cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+# JPEG.
+"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE}"
+"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE_NO_METADATA}" --ignore-icc
+cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
+cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
 cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
 
 # Argument parsing test with filenames starting with a dash.

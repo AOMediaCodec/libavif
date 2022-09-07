@@ -245,15 +245,14 @@ avifAppFileFormat avifReadImage(const char * filename,
             *outDepth = image->depth;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, flags)) {
+        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, flags, ignoreICC, ignoreExif, ignoreXMP)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
-        (void)ignoreICC, (void)ignoreXMP; // TODO(yguyon): Implement
-        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, flags, ignoreExif, outDepth)) {
+        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, flags, ignoreICC, ignoreExif, ignoreXMP, outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {

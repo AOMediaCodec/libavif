@@ -239,7 +239,14 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
 // longjmp. But GCC's -Wclobbered warning may have trouble figuring that out, so
 // we preemptively declare it as volatile.
 
-avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth, avifRGBToYUVFlags flags)
+avifBool avifJPEGRead(const char * inputFilename,
+                      avifImage * avif,
+                      avifPixelFormat requestedFormat,
+                      uint32_t requestedDepth,
+                      avifRGBToYUVFlags flags,
+                      avifBool ignoreICC,
+                      avifBool ignoreExif,
+                      avifBool ignoreXMP)
 {
     volatile avifBool ret = AVIF_FALSE;
     uint8_t * volatile iccData = NULL;
@@ -263,15 +270,22 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
 
     jpeg_create_decompress(&cinfo);
 
-    setup_read_icc_profile(&cinfo);
+    if (!ignoreExif || !ignoreXMP) {
+        jpeg_save_markers(&cinfo, JPEG_APP0 + 1, /*length_limit=*/0xFFFF); // Exif/XMP
+    }
+    if (!ignoreICC) {
+        setup_read_icc_profile(&cinfo);
+    }
     jpeg_stdio_src(&cinfo, f);
     jpeg_read_header(&cinfo, TRUE);
 
-    uint8_t * iccDataTmp;
-    unsigned int iccDataLen;
-    if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
-        iccData = iccDataTmp;
-        avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen);
+    if (!ignoreICC) {
+        uint8_t * iccDataTmp;
+        unsigned int iccDataLen;
+        if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
+            iccData = iccDataTmp;
+            avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen);
+        }
     }
 
     avif->yuvFormat = requestedFormat; // This may be AVIF_PIXEL_FORMAT_NONE, which is "auto" to avifJPEGReadCopy()
@@ -320,13 +334,48 @@ avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFor
         }
     }
 
+    if (!ignoreExif) {
+        const avifROData tagExif = { (const uint8_t *)"Exif\0\0", 6 };
+        avifBool found = AVIF_FALSE;
+        for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
+            if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagExif.size) &&
+                !memcmp(marker->data, tagExif.data, tagExif.size)) {
+                if (found) {
+                    // TODO(yguyon): Implement instead of outputting an error.
+                    fprintf(stderr, "Exif extraction failed: unsupported Exif split into multiple chunks or invalid multiple Exif chunks\n");
+                    goto cleanup;
+                }
+                avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size);
+                found = AVIF_TRUE;
+            }
+        }
+    }
+    if (!ignoreXMP) {
+        const avifROData tagStandardXmp = { (const uint8_t *)"http://ns.adobe.com/xap/1.0/\0", 29 };
+        const avifROData tagExtendedXmp = { (const uint8_t *)"http://ns.adobe.com/xmp/extension/\0", 35 };
+        avifBool found = AVIF_FALSE;
+        for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
+            if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagStandardXmp.size) &&
+                !memcmp(marker->data, tagStandardXmp.data, tagStandardXmp.size)) {
+                if (found) {
+                    fprintf(stderr, "XMP extraction failed: invalid multiple XMP chunks\n");
+                    goto cleanup;
+                }
+                avifImageSetMetadataXMP(avif, marker->data + tagStandardXmp.size, marker->data_length - tagStandardXmp.size);
+                found = AVIF_TRUE;
+            } else if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagExtendedXmp.size) &&
+                       !memcmp(marker->data, tagExtendedXmp.data, tagExtendedXmp.size)) {
+                // TODO(yguyon): Implement instead of outputting an error.
+                fprintf(stderr, "XMP extraction failed: extended XMP is unsupported\n");
+                goto cleanup;
+            }
+        }
+    }
     jpeg_finish_decompress(&cinfo);
     ret = AVIF_TRUE;
 cleanup:
     jpeg_destroy_decompress(&cinfo);
-    if (f) {
-        fclose(f);
-    }
+    fclose(f);
     free(iccData);
     avifRGBImageFreePixels(&rgb);
     return ret;
