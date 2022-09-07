@@ -126,9 +126,7 @@ if(AVIF_LOCAL_LIBYUV)
 endif()
 option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBSHARPYUV)
-    set(LIB_FILENAME
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
-    )
+    set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
     message(STATUS "AVIF_LOCAL_LIBSHARPYUV LIB_FILENAME ${LIB_FILENAME}")
     if(NOT EXISTS "${LIB_FILENAME}")
         message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBSHARPYUV): ${LIB_FILENAME} is missing, bailing out")
@@ -250,7 +248,7 @@ else()
 endif()
 
 find_package(libsharpyuv QUIET) # not required
-if (libsharpyuv_FOUND)
+if(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
     set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
