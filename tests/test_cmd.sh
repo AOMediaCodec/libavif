@@ -67,7 +67,7 @@ cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
 cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
 "${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
 cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
-# Jpeg.
+# JPEG.
 "${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE}"
 "${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE_NO_METADATA}" --ignore-icc
 cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1

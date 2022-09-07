@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avifpng.h"
-#include "avif/internal.h"
 #include "avifutil.h"
 
 #include "png.h"
@@ -102,16 +101,15 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
 static avifBool avifRemoveHeader(const avifROData * header, avifRWData * payload)
 {
     if (payload->size > header->size && !memcmp(payload->data, header->data, header->size)) {
-        avifRWData strippedPayload = { NULL, 0 };
-        avifRWDataSet(&strippedPayload, payload->data + header->size, payload->size - header->size);
-        avifRWDataFree(payload);
-        *payload = strippedPayload;
+        memmove(payload->data, payload->data + header->size, payload->size - header->size);
+        payload->size -= header->size;
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
 }
 
 // Extracts metadata to avif->exif and avif->xmp unless the corresponding *ignoreExif or *ignoreXMP is set to AVIF_TRUE.
+// *ignoreExif and *ignoreXMP may be set to AVIF_TRUE if the corresponding Exif or XMP metadata was extracted.
 // Returns AVIF_FALSE in case of a parsing error.
 static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool * ignoreExif, avifBool * ignoreXMP, avifImage * avif)
 {
@@ -152,13 +150,13 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             if (!avifCopyRawProfile(text->text, textLength, &avif->exif)) {
                 return AVIF_FALSE;
             }
-            avifRemoveHeader(&exifApp1Header, &avif->exif); // Optional.
+            avifRemoveHeader(&exifApp1Header, &avif->exif); // Ignore the return value because the header is optional.
             *ignoreExif = AVIF_TRUE;                        // Ignore any other Exif chunk.
         } else if (!*ignoreXMP && !strcmp(text->key, "Raw profile type xmp")) {
             if (!avifCopyRawProfile(text->text, textLength, &avif->xmp)) {
                 return AVIF_FALSE;
             }
-            avifRemoveHeader(&xmpApp1Header, &avif->xmp); // Optional.
+            avifRemoveHeader(&xmpApp1Header, &avif->xmp); // Ignore the return value because the header is optional.
             *ignoreXMP = AVIF_TRUE;                       // Ignore any other XMP chunk.
         } else if (!strcmp(text->key, "Raw profile type APP1")) {
             // This can be either Exif, XMP or something else.
