@@ -358,7 +358,6 @@ avifBool avifJPEGRead(const char * inputFilename,
             if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagStandardXmp.size) &&
                 !memcmp(marker->data, tagStandardXmp.data, tagStandardXmp.size)) {
                 if (found) {
-                    // TODO(yguyon): Implement instead of outputting an error.
                     fprintf(stderr, "XMP extraction failed: invalid multiple XMP chunks\n");
                     goto cleanup;
                 }
