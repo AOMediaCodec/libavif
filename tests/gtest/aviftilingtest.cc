@@ -1,112 +1,68 @@
 // Copyright 2022 Google LLC. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <ostream>
+
 #include "avif/avif.h"
 #include "avif/internal.h"
 #include "gtest/gtest.h"
 
 namespace {
 
+struct SetTileConfigurationTestParams {
+  int threads;
+  uint32_t width;
+  uint32_t height;
+  int expected_tile_rows_log2;
+  int expected_tile_cols_log2;
+};
+
+std::ostream& operator<<(std::ostream& os,
+                         const SetTileConfigurationTestParams& test) {
+  return os << "SetTileConfigurationTestParams { threads:" << test.threads
+            << " width:" << test.width << " height:" << test.height << " }";
+}
+
 TEST(TilingTest, SetTileConfiguration) {
   constexpr int kThreads = 8;
   int tile_rows_log2;
   int tile_cols_log2;
-  // 144p
-  avifSetTileConfiguration(kThreads, 256, 144, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 0);
-  avifSetTileConfiguration(kThreads, 144, 256, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 0);
-  // 240p
-  avifSetTileConfiguration(kThreads, 426, 240, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 0);
-  avifSetTileConfiguration(kThreads, 240, 426, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 0);
-  // 360p
-  avifSetTileConfiguration(kThreads, 640, 360, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 0);
-  avifSetTileConfiguration(kThreads, 360, 640, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 0);
-  // 480p
-  avifSetTileConfiguration(kThreads, 854, 480, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 1);
-  avifSetTileConfiguration(kThreads, 480, 854, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 1);
-  EXPECT_EQ(tile_cols_log2, 0);
-  // 720p
-  avifSetTileConfiguration(kThreads, 1280, 720, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 1);
-  EXPECT_EQ(tile_cols_log2, 1);
-  avifSetTileConfiguration(kThreads, 720, 1280, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 1);
-  EXPECT_EQ(tile_cols_log2, 1);
-  // 1080p
-  avifSetTileConfiguration(kThreads, 1920, 1080, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 1);
-  EXPECT_EQ(tile_cols_log2, 2);
-  avifSetTileConfiguration(kThreads, 1080, 1920, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 2);
-  EXPECT_EQ(tile_cols_log2, 1);
-  // 2K
-  avifSetTileConfiguration(kThreads, 2560, 1440, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 1);
-  EXPECT_EQ(tile_cols_log2, 2);
-  avifSetTileConfiguration(kThreads, 1440, 2560, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 2);
-  EXPECT_EQ(tile_cols_log2, 1);
-  // 4K
-  avifSetTileConfiguration(32, 3840, 2160, &tile_rows_log2, &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 2);
-  EXPECT_EQ(tile_cols_log2, 3);
-  avifSetTileConfiguration(32, 2160, 3840, &tile_rows_log2, &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 3);
-  EXPECT_EQ(tile_cols_log2, 2);
-  // 8K
-  avifSetTileConfiguration(32, 7680, 4320, &tile_rows_log2, &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 2);
-  EXPECT_EQ(tile_cols_log2, 3);
-  avifSetTileConfiguration(32, 4320, 7680, &tile_rows_log2, &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 3);
-  EXPECT_EQ(tile_cols_log2, 2);
 
-  // Kodak image set: 768x512
-  avifSetTileConfiguration(kThreads, 768, 512, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 1);
-  avifSetTileConfiguration(kThreads, 512, 768, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 1);
-  EXPECT_EQ(tile_cols_log2, 0);
+  constexpr SetTileConfigurationTestParams kTests[]{
+      // 144p
+      {kThreads, 256, 144, 0, 0},
+      // 240p
+      {kThreads, 426, 240, 0, 0},
+      // 360p
+      {kThreads, 640, 360, 0, 0},
+      // 480p
+      {kThreads, 854, 480, 0, 1},
+      // 720p
+      {kThreads, 1280, 720, 1, 1},
+      // 1080p
+      {kThreads, 1920, 1080, 1, 2},
+      // 2K
+      {kThreads, 2560, 1440, 1, 2},
+      // 4K
+      {32, 3840, 2160, 2, 3},
+      // 8K
+      {32, 7680, 4320, 2, 3},
+      // Kodak image set: 768x512
+      {kThreads, 768, 512, 0, 1},
+      {kThreads, 16384, 64, 0, 2},
+  };
 
-  avifSetTileConfiguration(kThreads, 16384, 64, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 0);
-  EXPECT_EQ(tile_cols_log2, 2);
-  avifSetTileConfiguration(kThreads, 64, 16384, &tile_rows_log2,
-                           &tile_cols_log2);
-  EXPECT_EQ(tile_rows_log2, 2);
-  EXPECT_EQ(tile_cols_log2, 0);
+  for (const auto& test : kTests) {
+    avifSetTileConfiguration(test.threads, test.width, test.height,
+                             &tile_rows_log2, &tile_cols_log2);
+    EXPECT_EQ(tile_rows_log2, test.expected_tile_rows_log2) << test;
+    EXPECT_EQ(tile_cols_log2, test.expected_tile_cols_log2) << test;
+    // Swap width and height.
+    avifSetTileConfiguration(test.threads, test.height, test.width,
+                             &tile_rows_log2, &tile_cols_log2);
+    EXPECT_EQ(tile_rows_log2, test.expected_tile_cols_log2) << test;
+    EXPECT_EQ(tile_cols_log2, test.expected_tile_rows_log2) << test;
+  }
 }
 
 }  // namespace

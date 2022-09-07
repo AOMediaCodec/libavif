@@ -137,10 +137,10 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
 
         if (tileRowsLog2 != 0) {
-            svt_config->tile_rows = AVIF_CLAMP(tileRowsLog2, 0, 6);
+            svt_config->tile_rows = tileRowsLog2;
         }
         if (tileColsLog2 != 0) {
-            svt_config->tile_columns = AVIF_CLAMP(tileColsLog2, 0, 6);
+            svt_config->tile_columns = tileColsLog2;
         }
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             int speed = AVIF_CLAMP(encoder->speed, 0, 8);

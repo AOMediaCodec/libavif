@@ -828,8 +828,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // -----------------------------------------------------------------------
     // Handle automatic tiling
 
-    encoder->data->tileRowsLog2 = encoder->tileRowsLog2;
-    encoder->data->tileColsLog2 = encoder->tileColsLog2;
+    encoder->data->tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+    encoder->data->tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
     if (encoder->autoTiling) {
         // Use as many tiles as allowed by the minimum tile area requirement and impose a maximum
         // of 8 tiles.

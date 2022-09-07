@@ -295,6 +295,12 @@ typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
 // encoder->tileRowsLog2, encoder->tileColsLog2, and encoder->autoTiling. The caller of
 // avifCodecEncodeImageFunc is responsible for automatic tiling if encoder->autoTiling is set to
 // AVIF_TRUE. The actual tiling values are passed to avifCodecEncodeImageFunc as parameters.
+//
+// Note: The caller of avifCodecEncodeImageFunc always passes encoder->data->tileRowsLog2 and
+// encoder->data->tileColsLog2 as the tileRowsLog2 and tileColsLog2 arguments. Because
+// encoder->data is of a struct type defined in src/write.c, avifCodecEncodeImageFunc cannot
+// dereference encoder->data and has to receive encoder->data->tileRowsLog2 and
+// encoder->data->tileColsLog2 via function parameters.
 typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifEncoder * encoder,
                                                const avifImage * image,

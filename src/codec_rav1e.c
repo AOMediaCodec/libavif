@@ -153,13 +153,11 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
             goto cleanup;
         }
         if (tileRowsLog2 != 0) {
-            tileRowsLog2 = AVIF_CLAMP(tileRowsLog2, 0, 6);
             if (rav1e_config_parse_int(rav1eConfig, "tile_rows", 1 << tileRowsLog2) == -1) {
                 goto cleanup;
             }
         }
         if (tileColsLog2 != 0) {
-            tileColsLog2 = AVIF_CLAMP(tileColsLog2, 0, 6);
             if (rav1e_config_parse_int(rav1eConfig, "tile_cols", 1 << tileColsLog2) == -1) {
                 goto cleanup;
             }
