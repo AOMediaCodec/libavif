@@ -52,8 +52,12 @@ endif()
 if(AVIF_ENABLE_GTEST)
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
-        set(GTEST_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX})
-        set(GTEST_MAIN_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(GTEST_LIBRARIES
+            ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}
+        )
+        set(GTEST_MAIN_LIBRARIES
+            ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX}
+        )
         set(GTEST_BOTH_LIBRARIES ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES})
         if(NOT EXISTS ${GTEST_INCLUDE_DIRS}/gtest/gtest.h)
             message(FATAL_ERROR "googletest(AVIF_LOCAL_GTEST): ${GTEST_INCLUDE_DIRS}/gtest/gtest.h is missing, bailing out")
@@ -117,7 +121,7 @@ if(AVIF_BUILD_APPS)
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
     add_executable(are_images_equal gtest/are_images_equal.cc)
     target_link_libraries(are_images_equal aviftest_helpers avif_apps)
-    add_test(
-        NAME test_cmd
-        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
+                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
 endif()
