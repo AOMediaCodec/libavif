@@ -80,9 +80,9 @@ metadata this way).
 
 ## Grid
 
-### File [sofa_grid_1x5_420.avif](sofa_grid_1x5_420.avif)
+### File [sofa_grid1x5_420.avif](sofa_grid1x5_420.avif)
 
-![](sofa_grid_1x5_420.avif)
+![](sofa_grid1x5_420.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
