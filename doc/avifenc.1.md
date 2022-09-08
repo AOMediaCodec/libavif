@@ -122,6 +122,9 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     Possible values are in the range **0**-**6**.
     Default is 0.
 
+**\--autotiling**
+:   Set **\--tilerowslog2** and **\--tilecolslog2** automatically.
+
 **-g**, **\--grid** *M***x***N*
 :   Encode a single-image grid AVIF with _M_ cols and _N_ rows.
     Either supply MxN images of the same width, height and depth, or a single

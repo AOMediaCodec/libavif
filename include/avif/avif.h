@@ -1020,6 +1020,8 @@ struct avifCodecSpecificOptions;
 // * Quality range: [AVIF_QUANTIZER_BEST_QUALITY - AVIF_QUANTIZER_WORST_QUALITY]
 // * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
 //   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
+//   If autoTiling is set to AVIF_TRUE, libavif ignores tileRowsLog2 and tileColsLog2 and
+//   automatically chooses suitable tiling values.
 // * Speed range: [AVIF_SPEED_SLOWEST - AVIF_SPEED_FASTEST]. Slower should make for a better quality
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
@@ -1043,6 +1045,7 @@ typedef struct avifEncoder
     int maxQuantizerAlpha;
     int tileRowsLog2;
     int tileColsLog2;
+    avifBool autoTiling;
 
     // stats from the most recent write
     avifIOStats ioStats;

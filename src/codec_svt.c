@@ -46,6 +46,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
+                                      int tileRowsLog2,
+                                      int tileColsLog2,
                                       avifEncoderChanges encoderChanges,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
@@ -134,11 +136,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             svt_config->qp = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
         }
 
-        if (encoder->tileRowsLog2 != 0) {
-            svt_config->tile_rows = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+        if (tileRowsLog2 != 0) {
+            svt_config->tile_rows = tileRowsLog2;
         }
-        if (encoder->tileColsLog2 != 0) {
-            svt_config->tile_columns = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+        if (tileColsLog2 != 0) {
+            svt_config->tile_columns = tileColsLog2;
         }
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             int speed = AVIF_CLAMP(encoder->speed, 0, 8);

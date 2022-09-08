@@ -40,6 +40,84 @@ static avifBool avifImageIsOpaque(const avifImage * image);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
 // ---------------------------------------------------------------------------
+// avifSetTileConfiguration
+
+static int countLeadingZeros(uint32_t n)
+{
+    int count = 32;
+    while (n != 0) {
+        --count;
+        n >>= 1;
+    }
+    return count;
+}
+
+static int floorLog2(uint32_t n)
+{
+    assert(n > 0);
+    return 31 ^ countLeadingZeros(n);
+}
+
+// Splits tilesLog2 into *tileDim1Log2 and *tileDim2Log2, considering the ratio of dim1 to dim2.
+//
+// Precondition:
+//     dim1 >= dim2
+// Postcondition:
+//     tilesLog2 == *tileDim1Log2 + *tileDim2Log2
+//     *tileDim1Log2 >= *tileDim2Log2
+static void splitTilesLog2(uint32_t dim1, uint32_t dim2, int tilesLog2, int * tileDim1Log2, int * tileDim2Log2)
+{
+    assert(dim1 >= dim2);
+    uint32_t ratio = dim1 / dim2;
+    int diffLog2 = floorLog2(ratio);
+    int subtract = tilesLog2 - diffLog2;
+    if (subtract < 0) {
+        subtract = 0;
+    }
+    *tileDim2Log2 = subtract / 2;
+    *tileDim1Log2 = tilesLog2 - *tileDim2Log2;
+    assert(*tileDim1Log2 >= *tileDim2Log2);
+}
+
+// Set the tile configuration: the number of tiles and the tile size.
+//
+// Tiles improve encoding and decoding speeds when multiple threads are available. However, for
+// image coding, the total tile boundary length affects the compression efficiency because intra
+// prediction can't go across tile boundaries. So the more tiles there are in an image, the worse
+// the compression ratio is. For a given number of tiles, making the tile size close to a square
+// tends to reduce the total tile boundary length inside the image. Use more tiles along the longer
+// dimension of the image to make the tile size closer to a square.
+void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int * tileRowsLog2, int * tileColsLog2)
+{
+    *tileRowsLog2 = 0;
+    *tileColsLog2 = 0;
+    if (threads > 1) {
+        // Avoid small tiles because they are particularly bad for image coding.
+        //
+        // Use no more tiles than the number of threads. Aim for one tile per thread. Using more
+        // than one thread inside one tile could be less efficient. Using more tiles than the
+        // number of threads would result in a compression penalty without much benefit.
+        const uint32_t kMinTileArea = 512 * 512;
+        const uint32_t kMaxTiles = 32;
+        uint32_t imageArea = width * height;
+        uint32_t tiles = (imageArea + kMinTileArea - 1) / kMinTileArea;
+        if (tiles > kMaxTiles) {
+            tiles = kMaxTiles;
+        }
+        if (tiles > (uint32_t)threads) {
+            tiles = threads;
+        }
+        int tilesLog2 = floorLog2(tiles);
+        // If the image's width is greater than the height, use more tile columns than tile rows.
+        if (width >= height) {
+            splitTilesLog2(width, height, tilesLog2, tileColsLog2, tileRowsLog2);
+        } else {
+            splitTilesLog2(height, width, tilesLog2, tileRowsLog2, tileColsLog2);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // avifCodecEncodeOutput
 
 avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void)
@@ -122,7 +200,13 @@ typedef struct avifEncoderData
 {
     avifEncoderItemArray items;
     avifEncoderFrameArray frames;
+    // tileRowsLog2 and tileColsLog2 are the actual tiling values after automatic tiling is handled
+    int tileRowsLog2;
+    int tileColsLog2;
     avifEncoder lastEncoder;
+    // lastTileRowsLog2 and lastTileColsLog2 are the actual tiling values used last time
+    int lastTileRowsLog2;
+    int lastTileColsLog2;
     avifImage * imageMetadata;
     uint16_t lastItemID;
     uint16_t primaryItemID;
@@ -303,6 +387,7 @@ avifEncoder * avifEncoderCreate(void)
     encoder->maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
+    encoder->autoTiling = AVIF_FALSE;
     encoder->data = avifEncoderDataCreate();
     encoder->csOptions = avifCodecSpecificOptionsCreate();
     return encoder;
@@ -336,8 +421,8 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     lastEncoder->maxQuantizer = encoder->maxQuantizer;
     lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
     lastEncoder->maxQuantizerAlpha = encoder->maxQuantizerAlpha;
-    lastEncoder->tileRowsLog2 = encoder->tileRowsLog2;
-    lastEncoder->tileColsLog2 = encoder->tileColsLog2;
+    encoder->data->lastTileRowsLog2 = encoder->data->tileRowsLog2;
+    encoder->data->lastTileColsLog2 = encoder->data->tileColsLog2;
 }
 
 // This function detects changes made on avifEncoder. It returns true on success (i.e., if every
@@ -371,10 +456,10 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
     if (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA;
     }
-    if (lastEncoder->tileRowsLog2 != encoder->tileRowsLog2) {
+    if (encoder->data->lastTileRowsLog2 != encoder->data->tileRowsLog2) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2;
     }
-    if (lastEncoder->tileColsLog2 != encoder->tileColsLog2) {
+    if (encoder->data->lastTileColsLog2 != encoder->data->tileColsLog2) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_COLS_LOG2;
     }
     if (encoder->csOptions->count > 0) {
@@ -671,12 +756,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
     }
 
-    avifEncoderChanges encoderChanges;
-    if (!avifEncoderDetectChanges(encoder, &encoderChanges)) {
-        return AVIF_RESULT_CANNOT_CHANGE_SETTING;
-    }
-    avifEncoderBackupSettings(encoder);
-
     // -----------------------------------------------------------------------
     // Validate images
 
@@ -745,6 +824,27 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Handle automatic tiling
+
+    encoder->data->tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+    encoder->data->tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+    if (encoder->autoTiling) {
+        // Use as many tiles as allowed by the minimum tile area requirement and impose a maximum
+        // of 8 tiles.
+        const int threads = 8;
+        avifSetTileConfiguration(threads, firstCell->width, firstCell->height, &encoder->data->tileRowsLog2, &encoder->data->tileColsLog2);
+    }
+
+    // -----------------------------------------------------------------------
+    // All encoder settings are known now. Detect changes.
+
+    avifEncoderChanges encoderChanges;
+    if (!avifEncoderDetectChanges(encoder, &encoderChanges)) {
+        return AVIF_RESULT_CANNOT_CHANGE_SETTING;
+    }
+    avifEncoderBackupSettings(encoder);
 
     // -----------------------------------------------------------------------
 
@@ -901,8 +1001,15 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
-            avifResult encodeResult =
-                item->codec->encodeImage(item->codec, encoder, cellImage, item->alpha, encoderChanges, addImageFlags, item->encodeOutput);
+            avifResult encodeResult = item->codec->encodeImage(item->codec,
+                                                               encoder,
+                                                               cellImage,
+                                                               item->alpha,
+                                                               encoder->data->tileRowsLog2,
+                                                               encoder->data->tileColsLog2,
+                                                               encoderChanges,
+                                                               addImageFlags,
+                                                               item->encodeOutput);
             if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                 encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }

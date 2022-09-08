@@ -84,6 +84,7 @@ static void syntax(void)
            AVIF_QUANTIZER_LOSSLESS);
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
+    printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
@@ -436,8 +437,9 @@ int main(int argc, char * argv[])
     int maxQuantizer = 26;
     int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
     int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-    int tileRowsLog2 = 0;
-    int tileColsLog2 = 0;
+    int tileRowsLog2 = -1;
+    int tileColsLog2 = -1;
+    avifBool autoTiling = AVIF_FALSE;
     int speed = 6;
     int paspCount = 0;
     uint32_t paspValues[8]; // only the first two are used
@@ -601,6 +603,8 @@ int main(int argc, char * argv[])
             if (tileColsLog2 > 6) {
                 tileColsLog2 = 6;
             }
+        } else if (!strcmp(arg, "--autotiling")) {
+            autoTiling = AVIF_TRUE;
         } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
             NEXTARG();
             gridDimsCount = parseU32List(gridDims, arg);
@@ -1114,9 +1118,28 @@ int main(int argc, char * argv[])
         lossyHint = " (Lossless)";
     }
     printf("AVIF to be written:%s\n", lossyHint);
-    avifImageDump(gridCells ? gridCells[0] : image, gridDims[0], gridDims[1], AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+    const avifImage * avif = gridCells ? gridCells[0] : image;
+    avifImageDump(avif, gridDims[0], gridDims[1], AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
-    printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], tileRowsLog2 [%d], tileColsLog2 [%d], %d worker thread(s), please wait...\n",
+    if (autoTiling) {
+        if ((tileRowsLog2 >= 0) || (tileColsLog2 >= 0)) {
+            fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified\n");
+            returnCode = 1;
+            goto cleanup;
+        }
+    } else {
+        if (tileRowsLog2 < 0) {
+            tileRowsLog2 = 0;
+        }
+        if (tileColsLog2 < 0) {
+            tileColsLog2 = 0;
+        }
+    }
+
+    char manualTilingStr[128];
+    snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", tileRowsLog2, tileColsLog2);
+
+    printf("Encoding with AV1 codec '%s' speed [%d], color QP [%d (%s) <-> %d (%s)], alpha QP [%d (%s) <-> %d (%s)], %s, %d worker thread(s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
            speed,
            minQuantizer,
@@ -1127,8 +1150,7 @@ int main(int argc, char * argv[])
            quantizerString(minQuantizerAlpha),
            maxQuantizerAlpha,
            quantizerString(maxQuantizerAlpha),
-           tileRowsLog2,
-           tileColsLog2,
+           autoTiling ? "automatic tiling" : manualTilingStr,
            jobs);
     encoder->maxThreads = jobs;
     encoder->minQuantizer = minQuantizer;
@@ -1137,6 +1159,7 @@ int main(int argc, char * argv[])
     encoder->maxQuantizerAlpha = maxQuantizerAlpha;
     encoder->tileRowsLog2 = tileRowsLog2;
     encoder->tileColsLog2 = tileColsLog2;
+    encoder->autoTiling = autoTiling;
     encoder->codecChoice = codecChoice;
     encoder->speed = speed;
     encoder->timescale = outputTiming.timescale;
