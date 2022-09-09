@@ -4,11 +4,17 @@
 
 ### Files `kodim*`
 
+![](io/kodim03_yuv420_8bpc.avif)
+
+![](io/kodim23_yuv420_8bpc.avif)
+
 License: released by the Eastman Kodak Company for unrestricted usage
 
-Source: http://r0k.us/graphics/kodak/
+Source: <http://r0k.us/graphics/kodak/>
 
 ### Files `cosmos*`
+
+![](io/cosmos1650_yuv444_10bpc_p3pq.avif)
 
 License: [Creative Commons Attribution license (reuse allowed)](https://creativecommons.org/licenses/by/3.0/legalcode)
 
@@ -19,7 +25,9 @@ beginning)
 
 The structure can be displayed using `exiv2 -pS <file>`.
 
-### File `paris_exif_xmp_icc.jpg`
+### File [paris_exif_xmp_icc.jpg](paris_exif_xmp_icc.jpg)
+
+![](paris_exif_xmp_icc.jpg)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
@@ -34,7 +42,9 @@ Source: Personal photo edited with Gimp 2.10.
 |    5087 | 0xffe2 APP2 |    612 | `ICC_PROFILE......T........mntrRG chunk 1/1` |
 |         |             |        | ...                                          |
 
-### File `paris_icc_exif_xmp.png`
+### File [paris_icc_exif_xmp.png](paris_icc_exif_xmp.png)
+
+![](paris_icc_exif_xmp.png)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
@@ -50,7 +60,9 @@ metadata this way).
 |    2162 | IDAT   |        | ...                              |
 |  160456 | IEND   |      0 |                                  |
 
-### File `paris_icc_exif_xmp_at_end.png`
+### File [paris_icc_exif_xmp_at_end.png](paris_icc_exif_xmp_at_end.png)
+
+![](paris_icc_exif_xmp_at_end.png)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
@@ -68,7 +80,9 @@ metadata this way).
 
 ## Grid
 
-### File `sofa_grid_1x5_420.avif`
+### File [sofa_grid_1x5_420.avif](sofa_grid_1x5_420.avif)
+
+![](sofa_grid_1x5_420.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
