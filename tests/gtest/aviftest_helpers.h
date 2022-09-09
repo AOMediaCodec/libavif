@@ -68,6 +68,18 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha = false);
 
 //------------------------------------------------------------------------------
+// Shorter versions of avifutil.h functions
+
+// Reads the image named file_name located in directory at folder_path.
+// Returns nullptr in case of error.
+AvifImagePtr ReadImage(
+    const char* folder_path, const char* file_name,
+    avifPixelFormat requested_format = AVIF_PIXEL_FORMAT_NONE,
+    int requested_depth = 0, avifRGBToYUVFlags flags = AVIF_RGB_TO_YUV_DEFAULT,
+    avifBool ignore_icc = false, avifBool ignore_exif = false,
+    avifBool ignore_xmp = false);
+
+//------------------------------------------------------------------------------
 // avifIO overlay
 
 struct AvifIOLimitedReader {

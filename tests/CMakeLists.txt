@@ -42,14 +42,12 @@ endforeach()
 ################################################################################
 # GoogleTest
 
-if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
+if(AVIF_ENABLE_GTEST)
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 11)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
-    target_link_libraries(aviftest_helpers avif ${AVIF_PLATFORM_LIBRARIES})
-endif()
+    target_link_libraries(aviftest_helpers avif_apps)
 
-if(AVIF_ENABLE_GTEST)
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
         set(GTEST_LIBRARIES
@@ -93,12 +91,12 @@ if(AVIF_ENABLE_GTEST)
 
     add_executable(avifincrtest gtest/avifincrtest.cc)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
-    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
-    target_link_libraries(avifmetadatatest aviftest_helpers avif_apps ${GTEST_LIBRARIES})
+    target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifmetadatatest COMMAND avifmetadatatest ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_test(NAME avifmetadatatest COMMAND avifmetadatatest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
     add_executable(avifrgbtoyuvtest gtest/avifrgbtoyuvtest.cc)
     target_link_libraries(avifrgbtoyuvtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
@@ -115,7 +113,7 @@ if(AVIF_ENABLE_GTEST)
     endif()
 
     add_executable(avify4mtest gtest/avify4mtest.cc)
-    target_link_libraries(avify4mtest aviftest_helpers avif_apps ${GTEST_BOTH_LIBRARIES})
+    target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avify4mtest COMMAND avify4mtest)
 else()
@@ -129,7 +127,7 @@ if(AVIF_BUILD_APPS)
     # When building apps, test the avifenc/avifdec.
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
     add_executable(are_images_equal gtest/are_images_equal.cc)
-    target_link_libraries(are_images_equal aviftest_helpers avif_apps)
+    target_link_libraries(are_images_equal aviftest_helpers)
     add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
     )

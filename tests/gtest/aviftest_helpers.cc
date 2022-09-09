@@ -6,8 +6,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <string>
 
 #include "avif/avif.h"
+#include "avifutil.h"
 
 namespace libavif {
 namespace testutil {
@@ -227,6 +229,26 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
          AreByteSequencesEqual(image1.xmp, image2.xmp);
 }
 
+//------------------------------------------------------------------------------
+
+AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
+                       avifPixelFormat requested_format, int requested_depth,
+                       avifRGBToYUVFlags flags, avifBool ignore_icc,
+                       avifBool ignore_exif, avifBool ignore_xmp) {
+  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  if (!image ||
+      avifReadImage((std::string(folder_path) + file_name).c_str(),
+                    requested_format, requested_depth, flags, ignore_icc,
+                    ignore_exif, ignore_xmp, image.get(), /*outDepth=*/nullptr,
+                    /*sourceTiming=*/nullptr,
+                    /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+    return {nullptr, avifImageDestroy};
+  }
+  return image;
+}
+
+//------------------------------------------------------------------------------
+
 static avifResult avifIOLimitedReaderRead(avifIO* io, uint32_t readFlags,
                                           uint64_t offset, size_t size,
                                           avifROData* out) {
@@ -264,5 +286,6 @@ avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp) {
 }
 
 //------------------------------------------------------------------------------
+
 }  // namespace testutil
 }  // namespace libavif

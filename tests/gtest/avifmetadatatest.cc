@@ -6,7 +6,6 @@
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
-#include "avifutil.h"
 #include "gtest/gtest.h"
 
 using ::testing::Bool;
@@ -113,8 +112,7 @@ class MetadataTest
 
 // zTXt "Raw profile type exif" at the beginning of a PNG file.
 TEST_P(MetadataTest, Read) {
-  const std::string file_path =
-      std::string(data_path) + "/" + std::get<0>(GetParam());
+  const char* file_name = std::get<0>(GetParam());
   const bool use_icc = std::get<1>(GetParam());
   const bool use_exif = std::get<2>(GetParam());
   const bool use_xmp = std::get<3>(GetParam());
@@ -122,14 +120,12 @@ TEST_P(MetadataTest, Read) {
   const bool expect_exif = std::get<5>(GetParam());
   const bool expect_xmp = std::get<6>(GetParam());
 
-  avifImage* image = avifImageCreateEmpty();
+  const testutil::AvifImagePtr image = testutil::ReadImage(
+      data_path, file_name, AVIF_PIXEL_FORMAT_NONE, 0, AVIF_RGB_TO_YUV_DEFAULT,
+      !use_icc, !use_exif, !use_xmp);
   ASSERT_NE(image, nullptr);
-  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;  // lossless
-  ASSERT_NE(avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0,
-                          AVIF_RGB_TO_YUV_DEFAULT, !use_icc, !use_exif,
-                          !use_xmp, image, nullptr, nullptr, nullptr),
-            AVIF_APP_FILE_FORMAT_UNKNOWN);
   EXPECT_NE(image->width * image->height, 0u);
+
   if (expect_icc) {
     EXPECT_NE(image->icc.size, 0u);
     EXPECT_NE(image->icc.data, nullptr);
@@ -182,28 +178,21 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Verify all parsers lead exactly to the same metadata bytes.
 TEST(MetadataTest, Compare) {
-  constexpr const char* kFileNames[] = {"paris_icc_exif_xmp.png",
-                                        "paris_exif_xmp_icc.jpg",
-                                        "paris_icc_exif_xmp_at_end.png"};
-  avifImage* images[sizeof(kFileNames) / sizeof(kFileNames[0])];
-  avifImage** image_it = images;
-  for (const char* file_name : kFileNames) {
-    const std::string file_path = std::string(data_path) + "/" + file_name;
+  const testutil::AvifImagePtr ref =
+      testutil::ReadImage(data_path, "paris_icc_exif_xmp.png");
+  ASSERT_NE(ref, nullptr);
+  EXPECT_GT(ref->exif.size, 0u);
+  EXPECT_GT(ref->xmp.size, 0u);
+  EXPECT_GT(ref->icc.size, 0u);
 
-    *image_it = avifImageCreateEmpty();
-    ASSERT_NE(*image_it, nullptr);
-    ASSERT_NE(avifReadImage(file_path.c_str(), AVIF_PIXEL_FORMAT_NONE, 0,
-                            AVIF_RGB_TO_YUV_DEFAULT, /*ignoreICC=*/false,
-                            /*ignoreExif=*/false, /*ignoreXMP=*/false,
-                            *image_it, nullptr, nullptr, nullptr),
-              AVIF_APP_FILE_FORMAT_UNKNOWN);
-    ++image_it;
-  }
-
-  for (avifImage* image : images) {
-    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, images[0]->exif));
-    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, images[0]->xmp));
-    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->icc, images[0]->icc));
+  for (const char* file_name :
+       {"paris_exif_xmp_icc.jpg", "paris_icc_exif_xmp_at_end.png"}) {
+    const testutil::AvifImagePtr image =
+        testutil::ReadImage(data_path, file_name);
+    ASSERT_NE(image, nullptr);
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, ref->exif));
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, ref->xmp));
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->icc, ref->icc));
   }
 }
 
