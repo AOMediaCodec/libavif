@@ -690,27 +690,11 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
 
 static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
 {
-    // Validate Exif payload (if any) and find TIFF header offset
-    uint32_t exifTiffHeaderOffset = 0;
-    if (exif->size < 4) {
-        // Can't even fit the TIFF header, something is wrong
-        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
-    }
-
-    const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
-    const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
-    for (; exifTiffHeaderOffset < (exif->size - 4); ++exifTiffHeaderOffset) {
-        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
-            break;
-        }
-        if (!memcmp(&exif->data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
-            break;
-        }
-    }
-
-    if (exifTiffHeaderOffset >= exif->size - 4) {
+    uint32_t exifTiffHeaderOffset;
+    const avifResult result = avifExtractExifTiffHeaderOffset(exif, &exifTiffHeaderOffset);
+    if (result != AVIF_RESULT_OK) {
         // Couldn't find the TIFF header
-        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+        return result;
     }
 
     avifEncoderItem * exifItem = avifEncoderDataCreateItem(data, "Exif", "Exif", 5, 0);
@@ -961,15 +945,27 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // -----------------------------------------------------------------------
         // Create metadata items (Exif, XMP)
 
-        if (firstCell->exif.size > 0) {
-            const avifResult result = avifEncoderDataCreateExifItem(encoder->data, &firstCell->exif);
+        if (encoder->data->imageMetadata->exif.size > 0) {
+            const avifResult result = avifEncoderDataCreateExifItem(encoder->data, &encoder->data->imageMetadata->exif);
             if (result != AVIF_RESULT_OK) {
                 return result;
             }
+            // Import Exif orientation only if not already explicitly specified by the user.
+            if (!(encoder->data->imageMetadata->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR))) {
+                avifTransformFlags transformFlags;
+                avifImageRotation irot;
+                avifImageMirror imir;
+                // Ignore any Exif parsing failure.
+                if (avifExtractExifOrientation(&encoder->data->imageMetadata->exif, &transformFlags, &irot, &imir) == AVIF_RESULT_OK) {
+                    encoder->data->imageMetadata->transformFlags = encoder->data->imageMetadata->transformFlags | transformFlags;
+                    encoder->data->imageMetadata->irot = irot;
+                    encoder->data->imageMetadata->imir = imir;
+                }
+            }
         }
 
-        if (firstCell->xmp.size > 0) {
-            const avifResult result = avifEncoderDataCreateXMPItem(encoder->data, &firstCell->xmp);
+        if (encoder->data->imageMetadata->xmp.size > 0) {
+            const avifResult result = avifEncoderDataCreateXMPItem(encoder->data, &encoder->data->imageMetadata->xmp);
             if (result != AVIF_RESULT_OK) {
                 return result;
             }

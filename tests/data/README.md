@@ -86,6 +86,21 @@ metadata this way).
 |  152612 | tEXt   |   7832 | `Raw profile type xmp..XMP.0000` |
 |  160456 | IEND   |      0 |                                  |
 
+### File [paris_exif_orientation_5.jpg](paris_exif_orientation_5.jpg)
+
+![](paris_exif_orientation_5.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `paris_exif_xmp_icc.jpg` stripped from all metadata with `exiftool -all=` and Exif orientation added
+with `exiv2 -k -M "set Exif.Image.Orientation 5"`
+
+| address | marker      |  length | data                                 |
+|--------:|-------------|--------:|--------------------------------------|
+|       0 | 0xffd8 SOI  |         |                                      |
+|       2 | 0xffe1 APP1 |      34 | `Exif..II*......................`    |
+|         |             |         | ...                                  |
+
 ## Grid
 
 ### File [sofa_grid1x5_420.avif](sofa_grid1x5_420.avif)

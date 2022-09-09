@@ -24,6 +24,8 @@ using AvifDecoderPtr =
 class AvifRwData : public avifRWData {
  public:
   AvifRwData() : avifRWData{nullptr, 0} {}
+  AvifRwData(const AvifRwData&) = delete;
+  AvifRwData(AvifRwData&& other);
   ~AvifRwData() { avifRWDataFree(this); }
 };
 
@@ -68,7 +70,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha = false);
 
 //------------------------------------------------------------------------------
-// Shorter versions of avifutil.h functions
+// Shorter versions of libavif functions
 
 // Reads the image named file_name located in directory at folder_path.
 // Returns nullptr in case of error.
@@ -79,6 +81,14 @@ AvifImagePtr ReadImage(
     avifChromaDownsampling flags = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
     avifBool ignore_icc = false, avifBool ignore_exif = false,
     avifBool ignore_xmp = false);
+
+// Encodes the image with default parameters.
+// Returns an empty payload in case of error.
+AvifRwData Encode(const avifImage* image, int speed = AVIF_SPEED_DEFAULT);
+
+// Decodes the bytes to an image with default parameters.
+// Returns nullptr in case of error.
+AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes);
 
 //------------------------------------------------------------------------------
 // avifIO overlay

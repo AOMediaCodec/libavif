@@ -27,6 +27,8 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
   and avifRGBImage::avoidLibYUV to AVIF_TRUE.
 * avifRGBImage::chromaUpsampling now only applies to conversions that need
   upsampling chroma from 4:2:0 or 4:2:2 and has no impact on the use of libyuv.
+* Exif and XMP metadata is imported from PNG and JPEG files.
+* irot/imir orientation is extracted from Exif metadata by the avifEncoder.
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that

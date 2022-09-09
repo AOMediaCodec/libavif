@@ -214,6 +214,80 @@ TEST(MetadataTest, DecoderParseICC) {
 
 //------------------------------------------------------------------------------
 
+TEST(MetadataTest, ExifButDefaultIrotImir) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg");
+  ASSERT_NE(image, nullptr);
+  // The Exif metadata contains orientation information: 1.
+  // It is not parsed before encoding.
+  EXPECT_GT(image->exif.size, 0u);
+  EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+            (avifTransformFlags)AVIF_TRANSFORM_NONE);
+
+  const testutil::AvifRwData encoded =
+      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+  const testutil::AvifImagePtr decoded =
+      testutil::Decode(encoded.data, encoded.size);
+  ASSERT_NE(decoded, nullptr);
+
+  // No irot/imir after decoding because 1 maps to default no irot/imir.
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
+  EXPECT_EQ(
+      decoded->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      (avifTransformFlags)AVIF_TRANSFORM_NONE);
+}
+
+TEST(MetadataTest, ExifOrientation) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
+  ASSERT_NE(image, nullptr);
+  // The Exif metadata contains orientation information: 5.
+  // It is not parsed before encoding.
+  EXPECT_GT(image->exif.size, 0u);
+  EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+            (avifTransformFlags)AVIF_TRANSFORM_NONE);
+
+  const testutil::AvifRwData encoded =
+      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+  const testutil::AvifImagePtr decoded =
+      testutil::Decode(encoded.data, encoded.size);
+  ASSERT_NE(decoded, nullptr);
+
+  // irot/imir are expected.
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
+  EXPECT_EQ(
+      decoded->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      (avifTransformFlags)(AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR));
+  EXPECT_EQ(decoded->irot.angle, 1u);
+  EXPECT_EQ(decoded->imir.mode, 0u);
+}
+
+TEST(MetadataTest, ExifOrientationAndForcedImir) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
+  ASSERT_NE(image, nullptr);
+  // The Exif metadata contains orientation information: 5.
+  // Force irot/imir to values that have a different meaning than 5.
+  // This is not recommended but for testing only.
+  EXPECT_GT(image->exif.size, 0u);
+  image->transformFlags = AVIF_TRANSFORM_IMIR;
+  image->imir.mode = 1;
+
+  const testutil::AvifRwData encoded =
+      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+  const testutil::AvifImagePtr decoded =
+      testutil::Decode(encoded.data, encoded.size);
+  ASSERT_NE(decoded, nullptr);
+
+  // Exif orientation is still there but irot/imir do not match it.
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
+  EXPECT_EQ(decoded->transformFlags, (avifTransformFlags)AVIF_TRANSFORM_IMIR);
+  EXPECT_EQ(decoded->irot.angle, 0u);
+  EXPECT_EQ(decoded->imir.mode, image->imir.mode);
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace libavif
 
