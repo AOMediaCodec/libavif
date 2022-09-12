@@ -214,7 +214,6 @@ avifBool avifPNGRead(const char * inputFilename,
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    png_infop infoEnd = NULL;
     png_bytep * volatile rowPointers = NULL;
 
     avifRGBImage rgb;
@@ -347,13 +346,8 @@ avifBool avifPNGRead(const char * inputFilename,
     }
     // Read Exif or XMP metadata at the end of the file if there was none at the beginning.
     if (!ignoreExif || !ignoreXMP) {
-        infoEnd = png_create_info_struct(png);
-        if (!infoEnd) {
-            fprintf(stderr, "Cannot init libpng (infoEnd): %s\n", inputFilename);
-            goto cleanup;
-        }
-        png_read_end(png, infoEnd);
-        if (!avifExtractExifAndXMP(png, infoEnd, &ignoreExif, &ignoreXMP, avif)) {
+        png_read_end(png, info);
+        if (!avifExtractExifAndXMP(png, info, &ignoreExif, &ignoreXMP, avif)) {
             goto cleanup;
         }
     }
@@ -365,7 +359,6 @@ cleanup:
     }
     if (png) {
         png_destroy_read_struct(&png, &info, NULL);
-        png_destroy_read_struct(&png, &infoEnd, NULL);
     }
     if (rowPointers) {
         free(rowPointers);
