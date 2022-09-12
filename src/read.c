@@ -75,7 +75,7 @@ typedef struct avifContentType
 typedef struct avifColourInformationBox
 {
     avifBool hasICC;
-    size_t iccOffset;
+    uint64_t iccOffset;
     size_t iccSize;
 
     avifBool hasNCLX;
@@ -1728,7 +1728,7 @@ static avifBool avifParseAuxiliaryTypeProperty(avifProperty * prop, const uint8_
     return AVIF_TRUE;
 }
 
-static avifBool avifParseColourInformationBox(avifProperty * prop, const uint8_t * raw, size_t rawOffset, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseColourInformationBox(avifProperty * prop, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[colr]");
 
@@ -1919,7 +1919,7 @@ static avifBool avifParseAV1LayeredImageIndexingProperty(avifProperty * prop, co
 
 static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties,
                                                   const uint8_t * raw,
-                                                  size_t rawOffset,
+                                                  uint64_t rawOffset,
                                                   size_t rawLen,
                                                   avifDiagnostics * diag)
 {
@@ -2152,7 +2152,7 @@ static avifBool avifParseItemDataBox(avifMeta * meta, const uint8_t * raw, size_
     return AVIF_TRUE;
 }
 
-static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw, size_t rawOffset, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseItemPropertiesBox(avifMeta * meta, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[iprp]");
 
@@ -2373,7 +2373,7 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, size_t rawOffset, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseMetaBox(avifMeta * meta, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[meta]");
 
@@ -2632,7 +2632,11 @@ static avifBool avifParseTimeToSampleBox(avifSampleTable * sampleTable, const ui
     return AVIF_TRUE;
 }
 
-static avifBool avifParseSampleDescriptionBox(avifSampleTable * sampleTable, const uint8_t * raw, size_t rawOffset, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseSampleDescriptionBox(avifSampleTable * sampleTable,
+                                              const uint8_t * raw,
+                                              uint64_t rawOffset,
+                                              size_t rawLen,
+                                              avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stsd]");
 
@@ -2665,7 +2669,7 @@ static avifBool avifParseSampleDescriptionBox(avifSampleTable * sampleTable, con
     return AVIF_TRUE;
 }
 
-static avifBool avifParseSampleTableBox(avifTrack * track, const uint8_t * raw, size_t rawOffset, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseSampleTableBox(avifTrack * track, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, avifDiagnostics * diag)
 {
     if (track->sampleTable) {
         // A TrackBox may only have one SampleTable
@@ -2705,7 +2709,7 @@ static avifBool avifParseSampleTableBox(avifTrack * track, const uint8_t * raw, 
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMediaInformationBox(avifTrack * track, const uint8_t * raw, size_t rawOffset, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseMediaInformationBox(avifTrack * track, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[minf]");
 
@@ -2722,7 +2726,7 @@ static avifBool avifParseMediaInformationBox(avifTrack * track, const uint8_t * 
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMediaBox(avifTrack * track, const uint8_t * raw, size_t rawOffset, size_t rawLen, avifDiagnostics * diag)
+static avifBool avifParseMediaBox(avifTrack * track, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[mdia]");
 
@@ -2766,7 +2770,7 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
     return AVIF_TRUE;
 }
 
-static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, size_t rawOffset, size_t rawLen, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
+static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
 {
     BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[trak]");
 
@@ -2791,7 +2795,7 @@ static avifBool avifParseTrackBox(avifDecoderData * data, const uint8_t * raw, s
     return AVIF_TRUE;
 }
 
-static avifBool avifParseMovieBox(avifDecoderData * data, const uint8_t * raw, size_t rawOffset, size_t rawLen, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
+static avifBool avifParseMovieBox(avifDecoderData * data, const uint8_t * raw, uint64_t rawOffset, size_t rawLen, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
 {
     BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[moov]");
 
@@ -2870,7 +2874,7 @@ static avifResult avifParse(avifDecoder * decoder)
 
         // Try to get the remainder of the box, if necessary
         avifROData boxContents = AVIF_DATA_EMPTY;
-        size_t boxOffset = 0;
+        uint64_t boxOffset = 0;
 
         // TODO: reorg this code to only do these memcmps once each
         if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4)) {
