@@ -952,15 +952,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
             // Import Exif orientation only if not already explicitly specified by the user.
             if (!(encoder->data->imageMetadata->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR))) {
-                avifTransformFlags transformFlags;
-                avifImageRotation irot;
-                avifImageMirror imir;
                 // Ignore any Exif parsing failure.
-                if (avifExtractExifOrientation(&encoder->data->imageMetadata->exif, &transformFlags, &irot, &imir) == AVIF_RESULT_OK) {
-                    encoder->data->imageMetadata->transformFlags = encoder->data->imageMetadata->transformFlags | transformFlags;
-                    encoder->data->imageMetadata->irot = irot;
-                    encoder->data->imageMetadata->imir = imir;
-                }
+                (void)avifExtractExifOrientation(encoder->data->imageMetadata);
             }
         }
 
