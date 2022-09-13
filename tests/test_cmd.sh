@@ -16,98 +16,89 @@
 #
 # tests for command lines
 
+# Very verbose but useful for debugging.
 set -ex
 
 if [[ "$#" -ge 1 ]]; then
   # eval so that the passed in directory can contain variables.
   BINARY_DIR="$(eval echo "$1")"
 else
-  # assume "tests" is the current directory
-  BINARY_DIR=..
+  # Assume "tests" is the current directory.
+  BINARY_DIR="$(pwd)/.."
 fi
 if [[ "$#" -ge 2 ]]; then
   TESTDATA_DIR="$(eval echo "$2")"
 else
-  TESTDATA_DIR=./data
+  TESTDATA_DIR="$(pwd)/data"
+fi
+if [[ "$#" -ge 3 ]]; then
+  TMP_DIR="$(eval echo "$3")"
+else
+  TMP_DIR=/tmp
 fi
 
 AVIFENC="${BINARY_DIR}/avifenc"
 AVIFDEC="${BINARY_DIR}/avifdec"
 ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
-ENCODED_FILE=/tmp/avif_test_cmd_encoded.avif
-ENCODED_FILE_NO_METADATA=/tmp/avif_test_cmd_encoded_no_metadata.avif
-ENCODED_FILE_WITH_DASH=-avif_test_cmd_encoded.avif
-DECODED_FILE=/tmp/avif_test_cmd_decoded.png
-PNG_FILE=/tmp/avif_test_cmd_kodim03.png
-
-# Prepare some extra data.
-set +x
-echo "Generating a color PNG"
-"${AVIFENC}" -s 10 "${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m" -o "${ENCODED_FILE}" > /dev/null
-"${AVIFDEC}" "${ENCODED_FILE}" "${PNG_FILE}" > /dev/null
-set -x
 
 # Basic calls.
 "${AVIFENC}" --version
 "${AVIFDEC}" --version
 
-# Lossless test.
-echo "Testing basic lossless"
-"${AVIFENC}" -s 10 -l "${PNG_FILE}" -o "${ENCODED_FILE}"
-"${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-"${ARE_IMAGES_EQUAL}" "${PNG_FILE}" "${DECODED_FILE}" 0
-
-# Metadata test.
-echo "Testing metadata enc/dec"
-# PNG.
-"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE}"
-"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-icc
-cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
-"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
-cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
-"${AVIFENC}" "${TESTDATA_DIR}/paris_icc_exif_xmp.png" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
-cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
-# JPEG.
-"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE}"
-"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE_NO_METADATA}" --ignore-icc
-cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
-"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
-cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
-"${AVIFENC}" "${TESTDATA_DIR}/paris_exif_xmp_icc.jpg" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
-cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
-
-# Argument parsing test with filenames starting with a dash.
-"${AVIFENC}" -s 10 "${PNG_FILE}" -- "${ENCODED_FILE_WITH_DASH}"
-"${AVIFDEC}" --info  -- "${ENCODED_FILE_WITH_DASH}"
-# Passing a filename starting with a dash without using -- should fail.
-set +e
-"${AVIFENC}" -s 10 "${PNG_FILE}" "${ENCODED_FILE_WITH_DASH}"
-if [[ $? -ne 1 ]]; then
-  echo "Argument parsing should fail for avifenc"
-  exit 1
-fi
-"${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}"
-if [[ $? -ne 1 ]]; then
-  echo "Argument parsing should fail for avifdec"
-  exit 1
-fi
-set -e
-rm -- "${ENCODED_FILE_WITH_DASH}"
-
-# Test code that should fail.
-set +e
-"${ARE_IMAGES_EQUAL}" "${TESTDATA_DIR}/kodim23_yuv420_8bpc.y4m" "${DECODED_FILE}" 0
-if [[ $? -ne 1 ]]; then
-  echo "Image should be different"
-
-  # Cleanup
-  rm "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${DECODED_FILE}" "${PNG_FILE}"
-  exit 1
-fi
-
-echo "TEST OK"
+# Input file paths.
+INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
+INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
+INPUT_JPG="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
+# Output file names.
+ENCODED_FILE="avif_test_cmd_encoded.avif"
+ENCODED_FILE_NO_METADATA="avif_test_cmd_encoded_no_metadata.avif"
+ENCODED_FILE_WITH_DASH="-avif_test_cmd_encoded.avif"
+DECODED_FILE="avif_test_cmd_decoded.png"
+DECODED_FILE_LOSSLESS="avif_test_cmd_decoded_lossless.png"
 
 # Cleanup
-rm "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${DECODED_FILE}" "${PNG_FILE}"
+cleanup() {
+  pushd ${TMP_DIR}
+    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" \
+          "${ENCODED_FILE_WITH_DASH}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}"
+  popd
+}
+trap cleanup EXIT
+
+pushd ${TMP_DIR}
+  # Lossy test. The decoded pixels should be different from the original image.
+  echo "Testing basic lossy"
+  "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+  "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M}" "${DECODED_FILE}" 0 && exit 1
+
+  # Lossless test. The decoded pixels should be the same as the original image.
+  echo "Testing basic lossless"
+  # TODO(yguyon): Make this test pass with INPUT_PNG instead of DECODED_FILE.
+  "${AVIFENC}" -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
+  "${ARE_IMAGES_EQUAL}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}" 0
+
+  # Argument parsing test with filenames starting with a dash.
+  echo "Testing arguments"
+  "${AVIFENC}" -s 10 "${INPUT_PNG}" -- "${ENCODED_FILE_WITH_DASH}"
+  "${AVIFDEC}" --info  -- "${ENCODED_FILE_WITH_DASH}"
+  # Passing a filename starting with a dash without using -- should fail.
+  "${AVIFENC}" -s 10 "${INPUT_PNG}" "${ENCODED_FILE_WITH_DASH}" && exit 1
+  "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
+
+  # Metadata test.
+  echo "Testing metadata enc/dec"
+  for INPUT in "${INPUT_PNG}" "${INPUT_JPG}"; do
+    "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE}"
+    # Ignoring a metadata chunk should produce a different output file.
+    "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_NO_METADATA}" --ignore-icc
+    cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+    "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
+    cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+    "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
+    cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+  done
+popd
 
 exit 0

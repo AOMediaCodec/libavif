@@ -129,6 +129,6 @@ if(AVIF_BUILD_APPS)
     add_executable(are_images_equal gtest/are_images_equal.cc)
     target_link_libraries(are_images_equal aviftest_helpers)
     add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
-                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
+                                   ${CMAKE_CURRENT_SOURCE_DIR}/data /tmp
     )
 endif()
