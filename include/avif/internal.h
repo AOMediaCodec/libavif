@@ -16,17 +16,17 @@ extern "C" {
 #define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 // Used by stream related things.
-#define CHECK(A)               \
+#define AVIF_CHECK(A)          \
     do {                       \
         if (!(A))              \
             return AVIF_FALSE; \
     } while (0)
 
 // Used instead of CHECK if needing to return a specific error on failure, instead of AVIF_FALSE
-#define CHECKERR(A, ERR) \
-    do {                 \
-        if (!(A))        \
-            return ERR;  \
+#define AVIF_CHECKERR(A, ERR) \
+    do {                      \
+        if (!(A))             \
+            return ERR;       \
     } while (0)
 
 // ---------------------------------------------------------------------------
