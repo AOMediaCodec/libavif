@@ -30,7 +30,7 @@
 // }
 static const size_t VISUALSAMPLEENTRY_SIZE = 78;
 
-static const char xmpContentType[] = CONTENT_TYPE_XMP;
+static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
 // The only supported ipma box values for both version and flags are [0,1], so there technically
@@ -1503,7 +1503,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
 
 static avifBool isAlphaURN(const char * urn)
 {
-    return !strcmp(urn, URN_ALPHA0) || !strcmp(urn, URN_ALPHA1);
+    return !strcmp(urn, AVIF_URN_ALPHA0) || !strcmp(urn, AVIF_URN_ALPHA1);
 }
 
 // ---------------------------------------------------------------------------

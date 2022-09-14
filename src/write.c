@@ -30,10 +30,10 @@ typedef struct avifOffsetFixup
 } avifOffsetFixup;
 AVIF_ARRAY_DECLARE(avifOffsetFixupArray, avifOffsetFixup, fixup);
 
-static const char alphaURN[] = URN_ALPHA0;
+static const char alphaURN[] = AVIF_URN_ALPHA0;
 static const size_t alphaURNSize = sizeof(alphaURN);
 
-static const char xmpContentType[] = CONTENT_TYPE_XMP;
+static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
 static avifBool avifImageIsOpaque(const avifImage * image);

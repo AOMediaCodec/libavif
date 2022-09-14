@@ -32,10 +32,10 @@ extern "C" {
 // ---------------------------------------------------------------------------
 // URNs and Content-Types
 
-#define URN_ALPHA0 "urn:mpeg:mpegB:cicp:systems:auxiliary:alpha"
-#define URN_ALPHA1 "urn:mpeg:hevc:2015:auxid:1"
+#define AVIF_URN_ALPHA0 "urn:mpeg:mpegB:cicp:systems:auxiliary:alpha"
+#define AVIF_URN_ALPHA1 "urn:mpeg:hevc:2015:auxid:1"
 
-#define CONTENT_TYPE_XMP "application/rdf+xml"
+#define AVIF_CONTENT_TYPE_XMP "application/rdf+xml"
 
 // ---------------------------------------------------------------------------
 // Utils
