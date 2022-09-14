@@ -34,7 +34,7 @@ fi
 if [[ "$#" -ge 3 ]]; then
   TMP_DIR="$(eval echo "$3")"
 else
-  TMP_DIR=/tmp
+  TMP_DIR="$(mktemp -d)"
 fi
 
 AVIFENC="${BINARY_DIR}/avifenc"
