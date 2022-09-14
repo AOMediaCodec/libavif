@@ -62,7 +62,8 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   }
   if (use_exif) {
     avifImageSetMetadataExif(image.get(), kSampleExif.data(),
-                             kSampleExif.size());
+                             kSampleExif.size(),
+                             /*extractExifOrientationToIrotImir=*/AVIF_TRUE);
   }
   if (use_xmp) {
     avifImageSetMetadataXMP(image.get(), kSampleXmp.data(), kSampleXmp.size());
@@ -219,7 +220,7 @@ TEST(MetadataTest, ExifButDefaultIrotImir) {
       testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg");
   ASSERT_NE(image, nullptr);
   // The Exif metadata contains orientation information: 1.
-  // It is not parsed before encoding.
+  // It is converted to no irot/imir.
   EXPECT_GT(image->exif.size, 0u);
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             (avifTransformFlags)AVIF_TRANSFORM_NONE);
@@ -242,10 +243,11 @@ TEST(MetadataTest, ExifOrientation) {
       testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
   ASSERT_NE(image, nullptr);
   // The Exif metadata contains orientation information: 5.
-  // It is not parsed before encoding.
   EXPECT_GT(image->exif.size, 0u);
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
-            (avifTransformFlags)AVIF_TRANSFORM_NONE);
+            (avifTransformFlags)(AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR));
+  EXPECT_EQ(image->irot.angle, 1u);
+  EXPECT_EQ(image->imir.mode, 0u);
 
   const testutil::AvifRwData encoded =
       testutil::Encode(image.get(), AVIF_SPEED_FASTEST);

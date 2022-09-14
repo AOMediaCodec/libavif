@@ -346,7 +346,10 @@ avifBool avifJPEGRead(const char * inputFilename,
                     fprintf(stderr, "Exif extraction failed: unsupported Exif split into multiple chunks or invalid multiple Exif chunks\n");
                     goto cleanup;
                 }
-                avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size);
+                avifImageSetMetadataExif(avif,
+                                         marker->data + tagExif.size,
+                                         marker->data_length - tagExif.size,
+                                         /*extractExifOrientationToIrotImir=*/AVIF_TRUE);
                 found = AVIF_TRUE;
             }
         }

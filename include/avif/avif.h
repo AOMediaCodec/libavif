@@ -482,8 +482,11 @@ AVIF_API void avifImageDestroy(avifImage * image);
 
 AVIF_API void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 
-// Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD
-AVIF_API void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
+// Set Exif and XMP metadata.
+// If extractExifOrientationToIrotImir is AVIF_TRUE, avifImageSetMetadataExif() will attempt to parse the Exif payload
+// and set image->transformFlags, image->irot and image->imir on success.
+// Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD.
+AVIF_API void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize, avifBool extractExifOrientationToIrotImir);
 AVIF_API void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
 AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes

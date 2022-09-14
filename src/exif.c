@@ -19,7 +19,7 @@ avifResult avifExtractExifTiffHeaderOffset(const avifRWData * exif, uint32_t * o
     return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
 }
 
-avifResult avifExtractExifOrientation(avifImage * image)
+avifResult avifExtractExifOrientationToIrotImir(avifImage * image)
 {
     uint32_t offset;
     const avifResult result = avifExtractExifTiffHeaderOffset(&image->exif, &offset);

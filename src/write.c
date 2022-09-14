@@ -950,11 +950,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             if (result != AVIF_RESULT_OK) {
                 return result;
             }
-            // Import Exif orientation only if not already explicitly specified by the user.
-            if (!(encoder->data->imageMetadata->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR))) {
-                // Ignore any Exif parsing failure.
-                (void)avifExtractExifOrientation(encoder->data->imageMetadata);
-            }
         }
 
         if (encoder->data->imageMetadata->xmp.size > 0) {
