@@ -80,6 +80,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifchangesettingtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifchangesettingtest COMMAND avifchangesettingtest)
 
+    add_executable(avifdeprecatedapitest gtest/avifdeprecatedapitest.cc)
+    target_link_libraries(avifdeprecatedapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifdeprecatedapitest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifdeprecatedapitest COMMAND avifdeprecatedapitest)
+
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})

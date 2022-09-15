@@ -524,9 +524,9 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // If you don't want to supply your own pixel buffer, you can use the
 // avifRGBImageAllocatePixels()/avifRGBImageFreePixels() convenience functions.
 
-// avifImageRGBToYUV() and avifImageYUVToRGB() will perform depth rescaling and limited<->full range
-// conversion, if necessary. Pixels in an avifRGBImage buffer are always full range, and conversion
-// routines will fail if the width and height don't match the associated avifImage.
+// avifRGBImageToYUV() and avifRGBImageFromYUV() will perform depth rescaling and limited<->full
+// range conversion, if necessary. Pixels in an avifRGBImage buffer are always full range, and
+// conversion routines will fail if the width and height don't match the associated avifImage.
 
 // If libavif is built with a version of libyuv offering a fast conversion between RGB and YUV for
 // the given inputs, libavif will use it. See reformat_libyuv.c for the details.
@@ -558,6 +558,19 @@ typedef enum avifRGBFormat
 AVIF_API uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
 AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
+// Deprecated API kept for backward compatibility. Use avifRGBImageToYUV() or avifRGBImageFromYUV() instead.
+typedef uint32_t avifChromaDownsampling;
+typedef uint32_t avifChromaUpsampling;
+enum
+{
+    AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC = 0,
+    AVIF_CHROMA_DOWNSAMPLING_FASTEST = (1 << 10),
+    AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY = (1 << 10) | (1 << 0),
+    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0,
+    AVIF_CHROMA_UPSAMPLING_FASTEST = (1 << 10),
+    AVIF_CHROMA_UPSAMPLING_BEST_QUALITY = (1 << 11) | (1 << 0)
+};
+
 typedef struct avifRGBImage
 {
     uint32_t width;              // must match associated avifImage
@@ -571,6 +584,10 @@ typedef struct avifRGBImage
 
     uint8_t * pixels;
     uint32_t rowBytes;
+
+    // Deprecated API kept for backward compatibility. Use avifRGBImageToYUV() or avifRGBImageFromYUV() instead.
+    avifChromaDownsampling chromaDownsampling;
+    avifChromaUpsampling chromaUpsampling;
 } avifRGBImage;
 
 // Sets rgb->width, rgb->height, and rgb->depth to image->width, image->height, and image->depth.
@@ -619,8 +636,12 @@ typedef enum avifYUVToRGBFlag
 typedef uint32_t avifYUVToRGBFlags;
 
 // Conversion functions.
-AVIF_API avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb, avifRGBToYUVFlags flags);
-AVIF_API avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb, avifYUVToRGBFlags flags);
+AVIF_API avifResult avifRGBImageToYUV(const avifRGBImage * rgb, avifImage * yuv, avifRGBToYUVFlags flags);
+AVIF_API avifResult avifRGBImageFromYUV(const avifImage * yuv, avifRGBImage * rgb, avifYUVToRGBFlags flags);
+
+// Deprecated API kept for backward compatibility. Use avifRGBImageToYUV() or avifRGBImageFromYUV() instead.
+AVIF_API avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb);
+AVIF_API avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb);
 
 // Premultiply handling functions.
 // (Un)premultiply is automatically done by the main conversion functions above,
@@ -882,7 +903,7 @@ typedef struct avifDecoder
     //
     // The YUV and A contents of this image are likely owned by the decoder, so be sure to copy any
     // data inside of this image before advancing to the next image or reusing the decoder. It is
-    // legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(), but use
+    // legal to call avifRGBImageFromYUV() on this in between calls to avifDecoderNextImage(), but use
     // avifImageCopy() if you want to make a complete, permanent copy of this image's YUV content or
     // metadata.
     avifImage * image;

@@ -6,11 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-There are incompatible ABI changes in this release. The alphaRange member was
-removed from avifImage struct. The chromaDownsampling member was added to the
-avifRGBImage struct. The imageDimensionLimit member was added to the avifDecoder
-struct. avifImageCopy() and avifImageAllocatePlanes() signatures changed. It is
-necessary to recompile your code. Also check the return values of
+There are incompatible ABI changes in this release:
+* The alphaRange member was removed from avifImage struct.
+* avifChromaDownsampling was deprecated and is no longer an enum.
+* The imageDimensionLimit member was added to the avifDecoder struct.
+* avifImageCopy() and avifImageAllocatePlanes() signatures changed.
+
+It is necessary to recompile your code. Also check the return values of
 avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
@@ -21,9 +23,9 @@ avifImageCopy() and avifImageAllocatePlanes().
 * Update libyuv.cmd: 9b17af9b (version 1838)
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
   void to report invalid parameters or memory allocation failures.
-* avifImageRGBToYUV() now uses libyuv fast paths by default. It may slightly
-  change conversion results. The old behavior can be restored by setting
-  avifRGBImage::chromaDownsampling to AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY.
+* avifRGBImageToYUV() and avifRGBImageFromYUV() were added with avifRGBToYUVFlags
+  and avifYUVToRGBFlags.
+* avifImageRGBToYUV() and avifImageYUVToRGB() are deprecated.
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that

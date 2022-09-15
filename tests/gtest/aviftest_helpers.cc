@@ -21,7 +21,7 @@ constexpr int AVIF_CHAN_A = AVIF_CHAN_V + 1;
 
 //------------------------------------------------------------------------------
 
-AvifRgbImage::AvifRgbImage(const avifImage* yuv, int rgbDepth,
+AvifRgbImage::AvifRgbImage(const avifImage* yuv, uint32_t rgbDepth,
                            avifRGBFormat rgbFormat) {
   avifRGBImageSetDefaults(this, yuv);
   depth = rgbDepth;

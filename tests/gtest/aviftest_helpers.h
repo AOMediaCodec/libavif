@@ -29,7 +29,8 @@ class AvifRwData : public avifRWData {
 
 class AvifRgbImage : public avifRGBImage {
  public:
-  AvifRgbImage(const avifImage* yuv, int rgbDepth, avifRGBFormat rgbFormat);
+  AvifRgbImage(const avifImage* yuv, uint32_t rgbDepth,
+               avifRGBFormat rgbFormat);
   ~AvifRgbImage() { avifRGBImageFreePixels(this); }
 };
 

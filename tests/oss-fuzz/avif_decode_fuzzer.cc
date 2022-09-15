@@ -50,9 +50,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                             rgb.depth = rgbDepths[rgbDepthsIndex];
                             avifRGBImageAllocatePixels(&rgb);
                             avifResult rgbResult =
-                                avifImageYUVToRGB(decoder->image, &rgb, AVIF_YUV_TO_RGB_AVOID_LIBYUV | upsamplingFlags[upsamplingFlagsIndex]);
-                            // Since avifImageRGBToYUV() ignores upsamplingFlags, we only need
-                            // to test avifImageRGBToYUV() with a single upsamplingFlagsIndex.
+                                avifRGBImageFromYUV(decoder->image,
+                                                    &rgb,
+                                                    AVIF_YUV_TO_RGB_AVOID_LIBYUV | upsamplingFlags[upsamplingFlagsIndex]);
+                            // Since avifRGBImageToYUV() ignores upsamplingFlags, we only need
+                            // to test avifRGBImageToYUV() with a single upsamplingFlagsIndex.
                             if ((rgbResult == AVIF_RESULT_OK) && (upsamplingFlagsIndex == 0)) {
                                 for (size_t yuvDepthsIndex = 0; yuvDepthsIndex < yuvDepthsCount; ++yuvDepthsIndex) {
                                     // ... and back to YUV
@@ -60,7 +62,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                                                                             decoder->image->height,
                                                                             yuvDepths[yuvDepthsIndex],
                                                                             decoder->image->yuvFormat);
-                                    avifResult yuvResult = avifImageRGBToYUV(tempImage, &rgb, AVIF_RGB_TO_YUV_AVOID_LIBYUV);
+                                    avifResult yuvResult = avifRGBImageToYUV(&rgb, tempImage, AVIF_RGB_TO_YUV_AVOID_LIBYUV);
                                     if (yuvResult != AVIF_RESULT_OK) {
                                     }
                                     avifImageDestroy(tempImage);

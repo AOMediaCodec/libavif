@@ -135,7 +135,7 @@ typedef struct avifReformatState
     float unormFloatTableUV[1 << 12];
 
     avifReformatMode mode;
-    // Used by avifImageYUVToRGB() only. avifImageRGBToYUV() uses a local variable (alphaMode) instead.
+    // Used by avifRGBImageFromYUV() only. avifRGBImageToYUV() uses a local variable (alphaMode) instead.
     avifAlphaMultiplyMode toRGBAlphaMode;
 } avifReformatState;
 

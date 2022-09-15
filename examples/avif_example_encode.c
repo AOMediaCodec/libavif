@@ -67,7 +67,7 @@ int main(int argc, char * argv[])
         memset(rgb.pixels, 255, rgb.rowBytes * image->height);
 
         // Other flags than AVIF_RGB_TO_YUV_DEFAULT, such as AVIF_RGB_TO_YUV_AVOID_LIBYUV, can be passed.
-        avifResult convertResult = avifImageRGBToYUV(image, &rgb, AVIF_RGB_TO_YUV_DEFAULT);
+        avifResult convertResult = avifRGBImageToYUV(&rgb, image, AVIF_RGB_TO_YUV_DEFAULT);
         if (convertResult != AVIF_RESULT_OK) {
             fprintf(stderr, "Failed to convert to YUV(A): %s\n", avifResultToString(convertResult));
             goto cleanup;

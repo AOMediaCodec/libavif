@@ -82,7 +82,7 @@ int main(int argc, char * argv[])
         avifRGBImageAllocatePixels(&rgb);
 
         // Other flags than AVIF_YUV_TO_RGB_DEFAULT, such as AVIF_CHROMA_UPSAMPLING_NEAREST, can be passed.
-        if (avifImageYUVToRGB(decoder->image, &rgb, AVIF_YUV_TO_RGB_DEFAULT) != AVIF_RESULT_OK) {
+        if (avifRGBImageFromYUV(decoder->image, &rgb, AVIF_YUV_TO_RGB_DEFAULT) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion from YUV failed: %s\n", inputFilename);
             goto cleanup;
         }

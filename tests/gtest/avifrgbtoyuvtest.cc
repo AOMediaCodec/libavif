@@ -113,7 +113,7 @@ constexpr uint8_t kBlueNoise[kModifierSize] = {
 
 class RGBToYUVTest
     : public testing::TestWithParam<
-          std::tuple</*rgb_depth=*/int, /*yuv_depth=*/int, avifRGBFormat,
+          std::tuple</*rgb_depth=*/uint32_t, /*yuv_depth=*/int, avifRGBFormat,
                      avifPixelFormat, avifRange, avifMatrixCoefficients,
                      /*sharpYuv=*/bool,
                      /*add_noise=*/bool, /*rgb_step=*/uint32_t,
@@ -123,7 +123,7 @@ class RGBToYUVTest
 // by a color step for reasonable timing. If add_noise is true, also applies
 // some noise to the input samples to exercise chroma subsampling.
 TEST_P(RGBToYUVTest, ConvertWholeRange) {
-  const int rgb_depth = std::get<0>(GetParam());
+  const uint32_t rgb_depth = std::get<0>(GetParam());
   const int yuv_depth = std::get<1>(GetParam());
   const avifRGBFormat rgb_format = std::get<2>(GetParam());
   const avifPixelFormat yuv_format = std::get<3>(GetParam());
@@ -149,7 +149,7 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
   // to test all these possibilities.
   static constexpr int width = 4;
   static constexpr int height = 4;
-  std::unique_ptr<avifImage, decltype(&avifImageDestroy)> yuv(
+  testutil::AvifImagePtr yuv(
       avifImageCreate(width, height, yuv_depth, yuv_format), avifImageDestroy);
   yuv->matrixCoefficients = matrix_coefficients;
   yuv->yuvRange = yuv_range;
@@ -184,10 +184,11 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
         ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
       }
 
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, rgb_to_yuv_flags),
+      ASSERT_EQ(avifRGBImageToYUV(&src_rgb, yuv.get(), rgb_to_yuv_flags),
                 AVIF_RESULT_OK);
-      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_YUV_TO_RGB_DEFAULT),
-                AVIF_RESULT_OK);
+      ASSERT_EQ(
+          avifRGBImageFromYUV(yuv.get(), &dst_rgb, AVIF_YUV_TO_RGB_DEFAULT),
+          AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                              &sq_diff_sum, &max_abs_diff);
       num_diffs += src_rgb.width * src_rgb.height * 3;  // Alpha is lossless.
@@ -206,10 +207,10 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
           }
 
           ASSERT_EQ(
-              avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_RGB_TO_YUV_DEFAULT),
+              avifRGBImageToYUV(&src_rgb, yuv.get(), AVIF_RGB_TO_YUV_DEFAULT),
               AVIF_RESULT_OK);
           ASSERT_EQ(
-              avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_YUV_TO_RGB_DEFAULT),
+              avifRGBImageFromYUV(yuv.get(), &dst_rgb, AVIF_YUV_TO_RGB_DEFAULT),
               AVIF_RESULT_OK);
           GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                                  &sq_diff_sum, &max_abs_diff);
@@ -248,7 +249,7 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
 // Converts from RGB to YUV and back to RGB for multiple buffer dimensions to
 // exercise stride computation and subsampling edge cases.
 TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
-  const int rgb_depth = std::get<0>(GetParam());
+  const uint32_t rgb_depth = std::get<0>(GetParam());
   const int yuv_depth = std::get<1>(GetParam());
   const avifRGBFormat rgb_format = std::get<2>(GetParam());
   const avifPixelFormat yuv_format = std::get<3>(GetParam());
@@ -268,7 +269,7 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
   int64_t num_diffs = 0;
   for (int width : {1, 2, 127}) {
     for (int height : {1, 2, 251}) {
-      std::unique_ptr<avifImage, decltype(&avifImageDestroy)> yuv(
+      testutil::AvifImagePtr yuv(
           avifImageCreate(width, height, yuv_depth, yuv_format),
           avifImageDestroy);
       yuv->matrixCoefficients = matrix_coefficients;
@@ -294,10 +295,11 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
         testutil::FillImageChannel(&src_rgb, offsets.a, rgb_max);
       }
 
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb, AVIF_RGB_TO_YUV_DEFAULT),
+      ASSERT_EQ(avifRGBImageToYUV(&src_rgb, yuv.get(), AVIF_RGB_TO_YUV_DEFAULT),
                 AVIF_RESULT_OK);
-      ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb, AVIF_YUV_TO_RGB_DEFAULT),
-                AVIF_RESULT_OK);
+      ASSERT_EQ(
+          avifRGBImageFromYUV(yuv.get(), &dst_rgb, AVIF_YUV_TO_RGB_DEFAULT),
+          AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                              &sq_diff_sum, &max_abs_diff);
       num_diffs += src_rgb.width * src_rgb.height * 3;
