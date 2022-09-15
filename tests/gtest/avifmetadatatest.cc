@@ -196,6 +196,22 @@ TEST(MetadataTest, Compare) {
   }
 }
 
+// A test for https://github.com/AOMediaCodec/libavif/issues/1086 to prevent
+// regression.
+TEST(MetadataTest, DecoderParseICC) {
+  std::string file_path = std::string(data_path) + "paris_icc_exif_xmp.avif";
+  avifDecoder* decoder = avifDecoderCreate();
+  EXPECT_EQ(avifDecoderSetIOFile(decoder, file_path.c_str()), AVIF_RESULT_OK);
+  EXPECT_EQ(avifDecoderParse(decoder), AVIF_RESULT_OK);
+  // Check the first four bytes of the ICC profile.
+  ASSERT_GE(decoder->image->icc.size, 4u);
+  EXPECT_EQ(decoder->image->icc.data[0], 0);
+  EXPECT_EQ(decoder->image->icc.data[1], 0);
+  EXPECT_EQ(decoder->image->icc.data[2], 2);
+  EXPECT_EQ(decoder->image->icc.data[3], 84);
+  avifDecoderDestroy(decoder);
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace
