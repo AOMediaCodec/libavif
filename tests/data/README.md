@@ -12,7 +12,6 @@ License: released by the Eastman Kodak Company for unrestricted usage
 
 ### File [kodim23_yuv420_8bpc.avif](io/kodim23_yuv420_8bpc.avif)
 
-
 ![](io/kodim23_yuv420_8bpc.avif)
 
 License: released by the Eastman Kodak Company for unrestricted usage
