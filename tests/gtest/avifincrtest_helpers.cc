@@ -119,15 +119,16 @@ struct PartialData {
   avifROData available;
   size_t full_size;
 
-  // Only used as non persistent input.
-  std::vector<uint8_t> buffer, swapped_buffer;
+  // Only used as nonpersistent input.
+  std::unique_ptr<uint8_t[]> nonpersistent_bytes;
+  size_t num_nonpersistent_bytes;
 };
 
 // Implementation of avifIOReadFunc simulating a stream from an array. See
 // avifIOReadFunc documentation. io->data is expected to point to PartialData.
 avifResult PartialRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
                        size_t size, avifROData* out) {
-  PartialData* data = (PartialData*)io->data;
+  PartialData* data = reinterpret_cast<PartialData*>(io->data);
   if ((read_flags != 0) || !data || (data->full_size < offset)) {
     return AVIF_RESULT_IO_ERROR;
   }
@@ -140,17 +141,19 @@ avifResult PartialRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
   if (io->persistent) {
     out->data = data->available.data + offset;
   } else {
-    // Flip any previously read bit.
-    for (uint8_t& byte : data->buffer) {
-      byte ^= 0xFF;
-    }
-    // Keep the previous buffer to make sure resizing it does not keep the same
-    // memory address.
-    std::swap(data->buffer, data->swapped_buffer);
-    data->buffer.resize(size);
+    // Dedicated buffer containing just the available bytes and nothing more.
+    std::unique_ptr<uint8_t[]> bytes(new uint8_t[size]);
     std::copy(data->available.data + offset,
-              data->available.data + offset + size, data->buffer.begin());
-    out->data = data->buffer.data();
+              data->available.data + offset + size, bytes.get());
+    out->data = bytes.get();
+    // Flip the previously returned bytes to make sure the values changed.
+    for (size_t i = 0; i < data->num_nonpersistent_bytes; ++i) {
+      data->nonpersistent_bytes[i] = ~data->nonpersistent_bytes[i];
+    }
+    // Free the memory to invalidate the old pointer. Only do that after
+    // allocating the new bytes to make sure to have a different pointer.
+    data->nonpersistent_bytes = std::move(bytes);
+    data->num_nonpersistent_bytes = size;
   }
   out->size = size;
   return AVIF_RESULT_OK;
