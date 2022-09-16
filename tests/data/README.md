@@ -28,6 +28,7 @@ License: [Creative Commons Attribution license (reuse allowed)](https://creative
 
 Source: ["Cosmos Laundromat" movie](https://www.youtube.com/watch?v=Y-rmzh0PI3c) (frame at around 1 minute past the
 beginning)
+[![Cosmos Laundromat](cosmos.jpg)](https://www.youtube.com/watch?v=Y-rmzh0PI3c)
 
 ## Metadata
 
