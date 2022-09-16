@@ -118,13 +118,16 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
 struct PartialData {
   avifROData available;
   size_t full_size;
+
+  // Only used as non persistent input.
+  std::vector<uint8_t> buffer, swapped_buffer;
 };
 
 // Implementation of avifIOReadFunc simulating a stream from an array. See
 // avifIOReadFunc documentation. io->data is expected to point to PartialData.
 avifResult PartialRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
                        size_t size, avifROData* out) {
-  const PartialData* data = (PartialData*)io->data;
+  PartialData* data = (PartialData*)io->data;
   if ((read_flags != 0) || !data || (data->full_size < offset)) {
     return AVIF_RESULT_IO_ERROR;
   }
@@ -134,7 +137,21 @@ avifResult PartialRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
   if (data->available.size < (offset + size)) {
     return AVIF_RESULT_WAITING_ON_IO;
   }
-  out->data = data->available.data + offset;
+  if (io->persistent) {
+    out->data = data->available.data + offset;
+  } else {
+    // Flip any previously read bit.
+    for (uint8_t& byte : data->buffer) {
+      byte ^= 0xFF;
+    }
+    // Keep the previous buffer to make sure resizing it does not keep the same
+    // memory address.
+    std::swap(data->buffer, data->swapped_buffer);
+    data->buffer.resize(size);
+    std::copy(data->available.data + offset,
+              data->available.data + offset + size, data->buffer.begin());
+    out->data = data->buffer.data();
+  }
   out->size = size;
   return AVIF_RESULT_OK;
 }
@@ -259,7 +276,8 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
 
   // Emulate a byte-by-byte stream.
   PartialData data = {/*available=*/{encoded_avif.data, 0},
-                      /*fullSize=*/encoded_avif.size};
+                      /*fullSize=*/encoded_avif.size,
+                      /*buffer=*/{}, /*swapped_buffer=*/{}};
   avifIO io = {
       /*destroy=*/nullptr, PartialRead,
       /*write=*/nullptr,   give_size_hint ? encoded_avif.size : 0,
@@ -269,7 +287,7 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
   ASSERT_NE(decoder, nullptr);
   avifDecoderSetIO(decoder.get(), &io);
   decoder->allowIncremental = AVIF_TRUE;
-  const size_t step = std::max(static_cast<size_t>(1), data.full_size / 10000);
+  const size_t step = std::max<size_t>(1, data.full_size / 10000);
 
   // Parsing is not incremental.
   avifResult parse_result = avifDecoderParse(decoder.get());
