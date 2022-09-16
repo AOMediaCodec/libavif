@@ -4,7 +4,13 @@
 
 ### Files `kodim*`
 
+#### File [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif)
+
 ![](io/kodim03_yuv420_8bpc.avif)
+
+License: released by the Eastman Kodak Company for unrestricted usage
+
+#### File [kodim23_yuv420_8bpc.avif](io/kodim23_yuv420_8bpc.avif)
 
 ![](io/kodim23_yuv420_8bpc.avif)
 
@@ -13,6 +19,8 @@ License: released by the Eastman Kodak Company for unrestricted usage
 Source: <http://r0k.us/graphics/kodak/>
 
 ### Files `cosmos*`
+
+#### File [cosmos1650_yuv444_10bpc_p3pq.avif](io/cosmos1650_yuv444_10bpc_p3pq.avif)
 
 ![](io/cosmos1650_yuv444_10bpc_p3pq.avif)
 
