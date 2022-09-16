@@ -105,7 +105,8 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
                         image->imir.mode = 0; // ignored
                         return AVIF_RESULT_OK;
                     default: // reserved
-                        break;
+                        // Consider there can only be one orientation tag per Exif payload.
+                        return AVIF_RESULT_OK;
                 }
             }
         }
