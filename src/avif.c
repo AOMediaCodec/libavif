@@ -272,7 +272,7 @@ void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t ex
     avifRWDataSet(&image->exif, exif, exifSize);
     if (extractExifOrientationToIrotImir) {
         // Ignore any Exif parsing failure.
-        (void)avifExtractExifOrientationToIrotImir(image);
+        (void)avifImageExtractExifOrientationToIrotImir(image);
     }
 }
 

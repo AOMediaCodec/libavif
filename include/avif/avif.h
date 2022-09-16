@@ -482,11 +482,12 @@ AVIF_API void avifImageDestroy(avifImage * image);
 
 AVIF_API void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 
-// Set Exif and XMP metadata.
+// Set Exif metadata.
 // If extractExifOrientationToIrotImir is AVIF_TRUE, avifImageSetMetadataExif() will attempt to parse the Exif payload
 // and set image->transformFlags, image->irot and image->imir on success.
 // Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD.
 AVIF_API void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize, avifBool extractExifOrientationToIrotImir);
+// Set XMP metadata.
 AVIF_API void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
 AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
@@ -1024,7 +1025,7 @@ struct avifCodecSpecificOptions;
 //   a combination of settings are tweaked to simulate this speed range.
 // * Some encoder settings can be changed after encoding starts. Changes will take effect in the next
 //   call to avifEncoderAddImage().
-// * If Exif metadata is provided and neither AVIF_TRANSFORM_IROT or AVIF_TRANSFORM_IMIR is set,
+// * If Exif metadata is provided and neither AVIF_TRANSFORM_IROT nor AVIF_TRANSFORM_IMIR is set,
 //   transformFlags/irot/imir will be set accordingly to the Exif orientation, if parsed successfully.
 typedef struct avifEncoder
 {

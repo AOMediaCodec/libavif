@@ -6,11 +6,11 @@
 #include <stdint.h>
 #include <string.h>
 
-avifResult avifExtractExifTiffHeaderOffset(const avifRWData * exif, uint32_t * offset)
+avifResult avifGetExifTiffHeaderOffset(const avifRWData * exif, uint32_t * offset)
 {
     const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
     const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
-    for (*offset = 0; *offset < (exif->size - 4); ++*offset) {
+    for (*offset = 0; *offset + 4 < exif->size; ++*offset) {
         if (!memcmp(&exif->data[*offset], tiffHeaderBE, 4) || !memcmp(&exif->data[*offset], tiffHeaderLE, 4)) {
             return AVIF_RESULT_OK;
         }
@@ -19,10 +19,10 @@ avifResult avifExtractExifTiffHeaderOffset(const avifRWData * exif, uint32_t * o
     return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
 }
 
-avifResult avifExtractExifOrientationToIrotImir(avifImage * image)
+avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
 {
     uint32_t offset;
-    const avifResult result = avifExtractExifTiffHeaderOffset(&image->exif, &offset);
+    const avifResult result = avifGetExifTiffHeaderOffset(&image->exif, &offset);
     if (result != AVIF_RESULT_OK) {
         // Couldn't find the TIFF header
         return result;
@@ -35,9 +35,9 @@ avifResult avifExtractExifOrientationToIrotImir(avifImage * image)
 
     // TIFF Header
     uint32_t offsetToNextIfd;
-    if (!avifROStreamSkip(&stream, 2 + 2) ||                                       // Byte Order ("II" or "MM" then "42")
+    if (!avifROStreamSkip(&stream, 4) ||                                           // Skip tiffHeaderBE or tiffHeaderLE.
         !avifROStreamReadU32Endianness(&stream, &offsetToNextIfd, littleEndian) || // Offset to 0th IFD
-        offsetToNextIfd < 2 + 2 + 4) {
+        offsetToNextIfd < 4 + 4) {
         return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
     }
 
@@ -52,16 +52,14 @@ avifResult avifExtractExifOrientationToIrotImir(avifImage * image)
             uint16_t type;
             uint32_t count;
             uint16_t firstHalfOfValueOffset;
-            uint16_t secondHalfOfValueOffset;
             if (!avifROStreamReadU16Endianness(&stream, &tag, littleEndian) ||
                 !avifROStreamReadU16Endianness(&stream, &type, littleEndian) ||
                 !avifROStreamReadU32Endianness(&stream, &count, littleEndian) ||
-                !avifROStreamReadU16Endianness(&stream, &firstHalfOfValueOffset, littleEndian) ||
-                !avifROStreamReadU16Endianness(&stream, &secondHalfOfValueOffset, littleEndian)) {
+                !avifROStreamReadU16Endianness(&stream, &firstHalfOfValueOffset, littleEndian) || !avifROStreamSkip(&stream, 2)) {
                 return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
             }
             // Orientation attribute according to JEITA CP-3451C section 4.6.4 (TIFF Rev. 6.0 Attribute Information):
-            if (tag == 0x0112 && type == /*SHORT=*/0x03 && count == 0x01) { // Exif IFD
+            if (tag == 0x0112 && type == /*SHORT=*/0x03 && count == 0x01) {
                 const avifTransformFlags otherFlags = image->transformFlags & ~(AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR);
                 // Mapping from Exif orientation as defined in JEITA CP-3451C section 4.6.4.A Orientation
                 // to irot and imir boxes as defined in HEIF ISO/IEC 28002-12:2021 sections 6.5.10 and 6.5.12.
@@ -111,9 +109,10 @@ avifResult avifExtractExifOrientationToIrotImir(avifImage * image)
                 }
             }
         }
-        if (!avifROStreamReadU32(&stream, &offsetToNextIfd)) {
+        if (!avifROStreamReadU32Endianness(&stream, &offsetToNextIfd, littleEndian)) {
             return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
         }
     }
-    return AVIF_RESULT_NO_CONTENT;
+    // The orientation tag is not mandatory (only recommended) according to JEITA CP-3451C section 4.6.8.A.
+    return AVIF_RESULT_OK;
 }

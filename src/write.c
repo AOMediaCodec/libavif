@@ -691,7 +691,7 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
 static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
 {
     uint32_t exifTiffHeaderOffset;
-    const avifResult result = avifExtractExifTiffHeaderOffset(exif, &exifTiffHeaderOffset);
+    const avifResult result = avifGetExifTiffHeaderOffset(exif, &exifTiffHeaderOffset);
     if (result != AVIF_RESULT_OK) {
         // Couldn't find the TIFF header
         return result;
@@ -945,15 +945,15 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // -----------------------------------------------------------------------
         // Create metadata items (Exif, XMP)
 
-        if (encoder->data->imageMetadata->exif.size > 0) {
-            const avifResult result = avifEncoderDataCreateExifItem(encoder->data, &encoder->data->imageMetadata->exif);
+        if (firstCell->exif.size > 0) {
+            const avifResult result = avifEncoderDataCreateExifItem(encoder->data, &firstCell->exif);
             if (result != AVIF_RESULT_OK) {
                 return result;
             }
         }
 
-        if (encoder->data->imageMetadata->xmp.size > 0) {
-            const avifResult result = avifEncoderDataCreateXMPItem(encoder->data, &encoder->data->imageMetadata->xmp);
+        if (firstCell->xmp.size > 0) {
+            const avifResult result = avifEncoderDataCreateXMPItem(encoder->data, &firstCell->xmp);
             if (result != AVIF_RESULT_OK) {
                 return result;
             }

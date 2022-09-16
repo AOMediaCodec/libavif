@@ -45,7 +45,7 @@ float avifRoundf(float v);
 // H (host) is platform-dependent. Could be little- or big-endian.
 // N (network) is big-endian: most- to least-significant bytes.
 // C (custom) is little-endian: least- to most-significant bytes.
-// Never read N or Z values; only access after casting to uint8_t*.
+// Never read N or C values; only access after casting to uint8_t*.
 uint16_t avifHTONS(uint16_t s);
 uint16_t avifNTOHS(uint16_t s);
 uint16_t avifCTOHS(uint16_t s);
@@ -208,9 +208,9 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, 
 // Metadata
 
 // Validates the first bytes of the Exif payload and finds the TIFF header offset.
-avifResult avifExtractExifTiffHeaderOffset(const avifRWData * exif, uint32_t * offset);
+avifResult avifGetExifTiffHeaderOffset(const avifRWData * exif, uint32_t * offset);
 // Parses the Exif payload and sets the transformFlags, irot and imir if Exif orientation was found.
-avifResult avifExtractExifOrientationToIrotImir(avifImage * image);
+avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
