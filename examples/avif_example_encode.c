@@ -57,7 +57,8 @@ int main(int argc, char * argv[])
         printf("Encoding from converted RGBA\n");
 
         avifRGBImageSetDefaults(&rgb, image);
-        // Override RGB(A)->YUV(A) defaults here: depth, format, ignoreAlpha, alphaPremultiplied, etc
+        // Override RGB(A)->YUV(A) defaults here:
+        //   depth, format, chromaDownsampling, avoidLibYUV, ignoreAlpha, alphaPremultiplied, etc.
 
         // Alternative: set rgb.pixels and rgb.rowBytes yourself, which should match your chosen rgb.format
         // Be sure to use uint16_t* instead of uint8_t* for rgb.pixels/rgb.rowBytes if (rgb.depth > 8)
@@ -66,8 +67,7 @@ int main(int argc, char * argv[])
         // Fill your RGB(A) data here
         memset(rgb.pixels, 255, rgb.rowBytes * image->height);
 
-        // Other flags than AVIF_RGB_TO_YUV_DEFAULT, such as AVIF_RGB_TO_YUV_AVOID_LIBYUV, can be passed.
-        avifResult convertResult = avifImageRGBToYUV(image, &rgb, AVIF_RGB_TO_YUV_DEFAULT);
+        avifResult convertResult = avifImageRGBToYUV(image, &rgb);
         if (convertResult != AVIF_RESULT_OK) {
             fprintf(stderr, "Failed to convert to YUV(A): %s\n", avifResultToString(convertResult));
             goto cleanup;

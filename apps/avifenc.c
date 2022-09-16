@@ -266,7 +266,7 @@ static avifAppFileFormat avifInputReadImage(avifInput * input,
                                             avifImage * image,
                                             uint32_t * outDepth,
                                             avifAppSourceTiming * sourceTiming,
-                                            avifRGBToYUVFlags flags)
+                                            avifChromaDownsampling flags)
 {
     if (sourceTiming) {
         // A source timing of all 0s is a sentinel value hinting that the value is unset / should be
@@ -484,7 +484,7 @@ int main(int argc, char * argv[])
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
-    avifRGBToYUVFlags flags = AVIF_RGB_TO_YUV_DEFAULT;
+    avifChromaDownsampling flags = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
 
     int argIndex = 1;
     while (argIndex < argc) {

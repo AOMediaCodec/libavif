@@ -121,8 +121,8 @@ TEST_P(MetadataTest, Read) {
   const bool expect_xmp = std::get<6>(GetParam());
 
   const testutil::AvifImagePtr image = testutil::ReadImage(
-      data_path, file_name, AVIF_PIXEL_FORMAT_NONE, 0, AVIF_RGB_TO_YUV_DEFAULT,
-      !use_icc, !use_exif, !use_xmp);
+      data_path, file_name, AVIF_PIXEL_FORMAT_NONE, 0,
+      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, !use_icc, !use_exif, !use_xmp);
   ASSERT_NE(image, nullptr);
   EXPECT_NE(image->width * image->height, 0u);
 

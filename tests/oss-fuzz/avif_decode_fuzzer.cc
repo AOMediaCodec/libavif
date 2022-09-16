@@ -8,7 +8,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
     static avifRGBFormat rgbFormats[] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA };
     static size_t rgbFormatsCount = sizeof(rgbFormats) / sizeof(rgbFormats[0]);
 
-    static avifYUVToRGBFlags upsamplingFlags[] = { AVIF_CHROMA_UPSAMPLING_BILINEAR, AVIF_CHROMA_UPSAMPLING_NEAREST };
+    static avifChromaUpsampling upsamplingFlags[] = { AVIF_CHROMA_UPSAMPLING_BILINEAR, AVIF_CHROMA_UPSAMPLING_NEAREST };
     static size_t upsamplingFlagsCount = sizeof(upsamplingFlags) / sizeof(upsamplingFlags[0]);
 
     static uint32_t rgbDepths[] = { 8, 10 };
@@ -47,10 +47,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                         for (size_t rgbDepthsIndex = 0; rgbDepthsIndex < rgbDepthsCount; ++rgbDepthsIndex) {
                             // Convert to RGB
                             rgb.format = rgbFormats[rgbFormatsIndex];
+                            rgb.chromaUpsampling = upsamplingFlags[upsamplingFlagsIndex];
+                            rgb.avoidLibYUV = AVIF_TRUE;
                             rgb.depth = rgbDepths[rgbDepthsIndex];
                             avifRGBImageAllocatePixels(&rgb);
-                            avifResult rgbResult =
-                                avifImageYUVToRGB(decoder->image, &rgb, AVIF_YUV_TO_RGB_AVOID_LIBYUV | upsamplingFlags[upsamplingFlagsIndex]);
+                            avifResult rgbResult = avifImageYUVToRGB(decoder->image, &rgb);
                             // Since avifImageRGBToYUV() ignores upsamplingFlags, we only need
                             // to test avifImageRGBToYUV() with a single upsamplingFlagsIndex.
                             if ((rgbResult == AVIF_RESULT_OK) && (upsamplingFlagsIndex == 0)) {
@@ -60,7 +61,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                                                                             decoder->image->height,
                                                                             yuvDepths[yuvDepthsIndex],
                                                                             decoder->image->yuvFormat);
-                                    avifResult yuvResult = avifImageRGBToYUV(tempImage, &rgb, AVIF_RGB_TO_YUV_AVOID_LIBYUV);
+                                    avifResult yuvResult = avifImageRGBToYUV(tempImage, &rgb);
                                     if (yuvResult != AVIF_RESULT_OK) {
                                     }
                                     avifImageDestroy(tempImage);

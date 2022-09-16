@@ -233,7 +233,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
 
 AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
                        avifPixelFormat requested_format, int requested_depth,
-                       avifRGBToYUVFlags flags, avifBool ignore_icc,
+                       avifChromaDownsampling flags, avifBool ignore_icc,
                        avifBool ignore_exif, avifBool ignore_xmp) {
   testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
   if (!image ||

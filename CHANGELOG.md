@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 There are incompatible ABI changes in this release. The alphaRange member was
-removed from avifImage struct. The chromaDownsampling member was added to the
-avifRGBImage struct. The imageDimensionLimit member was added to the avifDecoder
-struct. avifImageCopy() and avifImageAllocatePlanes() signatures changed. It is
-necessary to recompile your code. Also check the return values of
-avifImageCopy() and avifImageAllocatePlanes().
+removed from avifImage struct. The chromaDownsampling and avoidLibYUV members
+were added to the avifRGBImage struct. The imageDimensionLimit member was added
+to the avifDecoder struct. avifImageCopy() and avifImageAllocatePlanes()
+signatures changed. It is necessary to recompile your code. Also check the
+return values of avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
 * Update aom.cmd: v3.4.0
@@ -24,6 +24,8 @@ avifImageCopy() and avifImageAllocatePlanes().
 * avifImageRGBToYUV() now uses libyuv fast paths by default. It may slightly
   change conversion results. The old behavior can be restored by setting
   avifRGBImage::chromaDownsampling to AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY.
+* avifRGBImage::chromaUpsampling now only applies to conversions that need
+  upsampling chroma from 4:2:0 or 4:2:2.
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that
@@ -34,6 +36,7 @@ avifImageCopy() and avifImageAllocatePlanes().
 * Add chromaDownsampling field to avifRGBImage struct
 * Add imageDimensionLimit field to avifDecoder struct
 * Add autoTiling field to avifEncoder struct
+* Add AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV value to avifChromaDownsampling enum
 * avifdec: Add --dimension-limit, which specifies the image dimension limit
   (width or height) that should be tolerated
 * avifenc: Add --sharpyuv, which enables "sharp" RGB to YUV420 conversion, which
