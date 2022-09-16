@@ -176,7 +176,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
 
     avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
 
-    avifImageSetMetadataExif(dstImage, srcImage->exif.data, srcImage->exif.size, /*extractExifOrientationToIrotImir=*/AVIF_FALSE);
+    avifImageSetMetadataExif(dstImage, srcImage->exif.data, srcImage->exif.size);
     avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
 
     if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
@@ -267,13 +267,9 @@ void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSi
     avifRWDataSet(&image->icc, icc, iccSize);
 }
 
-void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize, avifBool extractExifOrientationToIrotImir)
+void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
     avifRWDataSet(&image->exif, exif, exifSize);
-    if (extractExifOrientationToIrotImir) {
-        // Ignore any Exif parsing failure.
-        (void)avifImageExtractExifOrientationToIrotImir(image);
-    }
 }
 
 void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize)

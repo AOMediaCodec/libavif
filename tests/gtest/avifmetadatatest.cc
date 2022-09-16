@@ -62,8 +62,10 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   }
   if (use_exif) {
     avifImageSetMetadataExif(image.get(), kSampleExif.data(),
-                             kSampleExif.size(),
-                             /*extractExifOrientationToIrotImir=*/AVIF_TRUE);
+                             kSampleExif.size());
+    // kSampleExif is not a valid Exif payload, just some part of it.
+    ASSERT_EQ(avifImageExtractExifOrientationToIrotImir(image.get()),
+              AVIF_RESULT_INVALID_EXIF_PAYLOAD);
   }
   if (use_xmp) {
     avifImageSetMetadataXMP(image.get(), kSampleXmp.data(), kSampleXmp.size());
