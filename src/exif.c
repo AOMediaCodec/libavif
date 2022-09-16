@@ -21,6 +21,7 @@ avifResult avifGetExifTiffHeaderOffset(const avifRWData * exif, uint32_t * offse
 
 avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
 {
+    const avifTransformFlags otherFlags = image->transformFlags & ~(AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR);
     uint32_t offset;
     const avifResult result = avifGetExifTiffHeaderOffset(&image->exif, &offset);
     if (result != AVIF_RESULT_OK) {
@@ -60,12 +61,11 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
             }
             // Orientation attribute according to JEITA CP-3451C section 4.6.4 (TIFF Rev. 6.0 Attribute Information):
             if (tag == 0x0112 && type == /*SHORT=*/0x03 && count == 0x01) {
-                const avifTransformFlags otherFlags = image->transformFlags & ~(AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR);
                 // Mapping from Exif orientation as defined in JEITA CP-3451C section 4.6.4.A Orientation
                 // to irot and imir boxes as defined in HEIF ISO/IEC 28002-12:2021 sections 6.5.10 and 6.5.12.
                 switch (firstHalfOfValueOffset) {
                     case 1: // The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
-                        image->transformFlags = otherFlags | AVIF_TRANSFORM_NONE;
+                        image->transformFlags = otherFlags;
                         image->irot.angle = 0; // ignored
                         image->imir.mode = 0;  // ignored
                         return AVIF_RESULT_OK;
@@ -115,5 +115,10 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
         }
     }
     // The orientation tag is not mandatory (only recommended) according to JEITA CP-3451C section 4.6.8.A.
+    // The default value is 1 if the orientation tag is missing, meaning:
+    //   The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
+    image->transformFlags = otherFlags;
+    image->irot.angle = 0; // ignored
+    image->imir.mode = 0;  // ignored
     return AVIF_RESULT_OK;
 }
