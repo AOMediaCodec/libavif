@@ -101,6 +101,14 @@ with `exiv2 -k -M "set Exif.Image.Orientation 5"`
 |       2 | 0xffe1 APP1 |      34 | `Exif..II*......................`    |
 |         |             |         | ...                                  |
 
+### File [paris_icc_exif_xmp.avif](paris_icc_exif_xmp.avif)
+
+![](paris_icc_exif_xmp.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Encoded from `paris_icc_exif_xmp.png` using `avifenc -s 10` at commit ed52c1b.
+
 ## Grid
 
 ### File [sofa_grid1x5_420.avif](sofa_grid1x5_420.avif)
