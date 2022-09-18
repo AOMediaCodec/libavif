@@ -14,11 +14,11 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifImage * avif,
                       avifPixelFormat requestedFormat,
                       uint32_t requestedDepth,
-                      avifChromaDownsampling flags,
+                      avifChromaDownsampling chromaDownsampling,
                       avifBool ignoreICC,
                       avifBool ignoreExif,
                       avifBool ignoreXMP);
-avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling flags);
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling);
 
 #ifdef __cplusplus
 } // extern "C"

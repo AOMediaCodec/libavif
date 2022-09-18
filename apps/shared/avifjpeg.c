@@ -243,7 +243,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifImage * avif,
                       avifPixelFormat requestedFormat,
                       uint32_t requestedDepth,
-                      avifChromaDownsampling flags,
+                      avifChromaDownsampling chromaDownsampling,
                       avifBool ignoreICC,
                       avifBool ignoreExif,
                       avifBool ignoreXMP)
@@ -318,7 +318,7 @@ avifBool avifJPEGRead(const char * inputFilename,
         avif->depth = requestedDepth ? requestedDepth : 8;
         avifRGBImageSetDefaults(&rgb, avif);
         rgb.format = AVIF_RGB_FORMAT_RGB;
-        rgb.chromaDownsampling = flags;
+        rgb.chromaDownsampling = chromaDownsampling;
         rgb.depth = 8;
         avifRGBImageAllocatePixels(&rgb);
 
@@ -384,7 +384,7 @@ cleanup:
     return ret;
 }
 
-avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling flags)
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;
@@ -398,7 +398,7 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     avifRGBImage rgb;
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.format = AVIF_RGB_FORMAT_RGB;
-    rgb.chromaUpsampling = flags;
+    rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
     avifRGBImageAllocatePixels(&rgb);
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
