@@ -124,7 +124,7 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     rgb.pixels = gdk_pixbuf_get_pixels(output);
     rgb.rowBytes = gdk_pixbuf_get_rowstride(output);
 
-    ret = avifImageYUVToRGB(image, &rgb, AVIF_YUV_TO_RGB_DEFAULT);
+    ret = avifImageYUVToRGB(image, &rgb);
     if (ret != AVIF_RESULT_OK) {
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
                     "Failed to convert YUV to RGB: %s", avifResultToString(ret));
@@ -448,7 +448,7 @@ static gboolean avif_image_saver(FILE          *f,
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
 
-    res = avifImageRGBToYUV(avif, &rgb, AVIF_RGB_TO_YUV_DEFAULT);
+    res = avifImageRGBToYUV(avif, &rgb);
     if ( res != AVIF_RESULT_OK ) {
         g_set_error(error,
                     GDK_PIXBUF_ERROR,

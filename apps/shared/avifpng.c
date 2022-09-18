@@ -205,7 +205,7 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifImage * avif,
                      avifPixelFormat requestedFormat,
                      uint32_t requestedDepth,
-                     avifRGBToYUVFlags flags,
+                     avifChromaDownsampling flags,
                      avifBool ignoreICC,
                      avifBool ignoreExif,
                      avifBool ignoreXMP,
@@ -328,6 +328,7 @@ avifBool avifPNGRead(const char * inputFilename,
     }
 
     avifRGBImageSetDefaults(&rgb, avif);
+    rgb.chromaDownsampling = flags;
     rgb.depth = imgBitDepth;
     avifRGBImageAllocatePixels(&rgb);
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
@@ -335,7 +336,7 @@ avifBool avifPNGRead(const char * inputFilename,
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
     png_read_image(png, rowPointers);
-    if (avifImageRGBToYUV(avif, &rgb, flags) != AVIF_RESULT_OK) {
+    if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
         goto cleanup;
     }
@@ -367,7 +368,7 @@ cleanup:
     return readResult;
 }
 
-avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint32_t requestedDepth, avifYUVToRGBFlags conversionFlags, int compressionLevel)
+avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint32_t requestedDepth, avifChromaUpsampling flags, int compressionLevel)
 {
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -388,6 +389,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     }
 
     avifRGBImageSetDefaults(&rgb, avif);
+    rgb.chromaUpsampling = flags;
     rgb.depth = rgbDepth;
     int colorType = PNG_COLOR_TYPE_RGBA;
     if (!avif->alphaPlane) {
@@ -395,7 +397,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
     avifRGBImageAllocatePixels(&rgb);
-    if (avifImageYUVToRGB(avif, &rgb, conversionFlags) != AVIF_RESULT_OK) {
+    if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
         goto cleanup;
     }

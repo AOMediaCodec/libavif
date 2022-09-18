@@ -243,7 +243,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifImage * avif,
                       avifPixelFormat requestedFormat,
                       uint32_t requestedDepth,
-                      avifRGBToYUVFlags flags,
+                      avifChromaDownsampling flags,
                       avifBool ignoreICC,
                       avifBool ignoreExif,
                       avifBool ignoreXMP)
@@ -318,6 +318,7 @@ avifBool avifJPEGRead(const char * inputFilename,
         avif->depth = requestedDepth ? requestedDepth : 8;
         avifRGBImageSetDefaults(&rgb, avif);
         rgb.format = AVIF_RGB_FORMAT_RGB;
+        rgb.chromaDownsampling = flags;
         rgb.depth = 8;
         avifRGBImageAllocatePixels(&rgb);
 
@@ -328,7 +329,7 @@ avifBool avifJPEGRead(const char * inputFilename,
             memcpy(pixelRow, buffer[0], rgb.rowBytes);
             ++row;
         }
-        if (avifImageRGBToYUV(avif, &rgb, flags) != AVIF_RESULT_OK) {
+        if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
             goto cleanup;
         }
@@ -381,7 +382,7 @@ cleanup:
     return ret;
 }
 
-avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifYUVToRGBFlags conversionFlags)
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling flags)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;
@@ -395,9 +396,10 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     avifRGBImage rgb;
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.format = AVIF_RGB_FORMAT_RGB;
+    rgb.chromaUpsampling = flags;
     rgb.depth = 8;
     avifRGBImageAllocatePixels(&rgb);
-    if (avifImageYUVToRGB(avif, &rgb, conversionFlags) != AVIF_RESULT_OK) {
+    if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
         goto cleanup;
     }

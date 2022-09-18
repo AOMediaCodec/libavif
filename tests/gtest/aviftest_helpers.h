@@ -75,7 +75,8 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
 AvifImagePtr ReadImage(
     const char* folder_path, const char* file_name,
     avifPixelFormat requested_format = AVIF_PIXEL_FORMAT_NONE,
-    int requested_depth = 0, avifRGBToYUVFlags flags = AVIF_RGB_TO_YUV_DEFAULT,
+    int requested_depth = 0,
+    avifChromaDownsampling flags = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
     avifBool ignore_icc = false, avifBool ignore_exif = false,
     avifBool ignore_xmp = false);
 
