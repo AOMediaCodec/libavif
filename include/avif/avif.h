@@ -530,6 +530,9 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 
 // If libavif is built with a version of libyuv offering a fast conversion between RGB and YUV for
 // the given inputs, libavif will use it. See reformat_libyuv.c for the details.
+// libyuv is faster but may have slightly less precision than built-in conversion, so avoidLibYUV
+// should be set to AVIF_TRUE when AVIF_CHROMA_UPSAMPLING_BEST_QUALITY or
+// AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY is used, to get the most precise but slowest results.
 
 // Note to libavif maintainers: The lookup tables in avifImageYUVToRGBLibYUV
 // rely on the ordering of this enum values for their correctness. So changing
@@ -560,19 +563,20 @@ AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 
 typedef enum avifChromaUpsampling
 {
-    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0, // Chooses best trade off of speed/quality (prefers BILINEAR libyuv, then NEAREST libyuv, then BILINEAR built-in)
+    AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (uses BILINEAR libyuv if available,
+                                             // or fallbacks to NEAREST libyuv if available, or fallbacks to BILINEAR built-in)
     AVIF_CHROMA_UPSAMPLING_FASTEST = 1,      // Chooses speed over quality (same as NEAREST)
-    AVIF_CHROMA_UPSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling, given settings (avoids libyuv, uses BILINEAR)
-    AVIF_CHROMA_UPSAMPLING_NEAREST = 3,      // Uses nearest-neighbor filter (prefers libyuv)
-    AVIF_CHROMA_UPSAMPLING_BILINEAR = 4      // Uses bilinear filter (prefers libyuv)
+    AVIF_CHROMA_UPSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling, given settings (same as BILINEAR)
+    AVIF_CHROMA_UPSAMPLING_NEAREST = 3,      // Uses nearest-neighbor filter
+    AVIF_CHROMA_UPSAMPLING_BILINEAR = 4      // Uses bilinear filter
 } avifChromaUpsampling;
 
 typedef enum avifChromaDownsampling
 {
     AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (same as AVERAGE)
     AVIF_CHROMA_DOWNSAMPLING_FASTEST = 1,      // Chooses speed over quality (same as AVERAGE)
-    AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling (avoids libyuv, uses AVERAGE)
-    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = 3,      // Uses averaging filter (prefers libyuv)
+    AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling (same as AVERAGE)
+    AVIF_CHROMA_DOWNSAMPLING_AVERAGE = 3,      // Uses averaging filter
     AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV = 4     // Uses sharp yuv filter (libsharpyuv), available for 4:2:0 only, ignored for 4:2:2
 } avifChromaDownsampling;
 
@@ -586,10 +590,10 @@ typedef struct avifRGBImage
                                            // Ignored when converting to YUV. Defaults to AVIF_CHROMA_UPSAMPLING_AUTOMATIC.
     avifChromaDownsampling chromaDownsampling; // How to downsample to 4:2:0 or 4:2:2 UV when converting from RGB (ignored for 4:4:4 and 4:0:0).
                                                // Ignored when converting to RGB. Defaults to AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC.
-    avifBool avoidLibYUV;                      // Avoids libyuv for converting between RGB and YUV, upsampling or downsampling,
-                                               // even if libyuv is available. Defaults to AVIF_FALSE.
-    avifBool ignoreAlpha;        // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were
-                                 // RGB, treating the alpha bits as if they were all 1.
+    avifBool avoidLibYUV; // If AVIF_FALSE and libyuv conversion between RGB and YUV (including upsampling or downsampling if any)
+                          // is available for the avifImage/avifRGBImage combination, then libyuv is used. Default is AVIF_FALSE.
+    avifBool ignoreAlpha; // Used for XRGB formats, treats formats containing alpha (such as ARGB) as if they were RGB, treating
+                          // the alpha bits as if they were all 1.
     avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false
     avifBool isFloat; // indicates if RGBA values are in half float (f16) format. Valid only when depth == 16. Default: false
 

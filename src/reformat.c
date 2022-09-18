@@ -236,10 +236,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         converted = AVIF_TRUE;
     }
 
-    const avifBool avoidLibYUV =
-        (rgb->avoidLibYUV || (rgb->chromaDownsampling == AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY &&
-                              (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)));
-    if (!converted && !avoidLibYUV && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
+    if (!converted && !rgb->avoidLibYUV && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
         avifResult libyuvResult = avifImageRGBToYUVLibYUV(image, rgb);
         if (libyuvResult == AVIF_RESULT_OK) {
             converted = AVIF_TRUE;
@@ -1212,10 +1209,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
     avifAlphaMultiplyMode alphaMultiplyMode = state.toRGBAlphaMode;
     avifBool convertedWithLibYUV = AVIF_FALSE;
-    const avifBool avoidLibYUV =
-        (rgb->avoidLibYUV || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BEST_QUALITY &&
-                              (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)));
-    if (!avoidLibYUV && ((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || avifRGBFormatHasAlpha(rgb->format))) {
+    if (!rgb->avoidLibYUV && ((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || avifRGBFormatHasAlpha(rgb->format))) {
         avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
         if (libyuvResult == AVIF_RESULT_OK) {
             convertedWithLibYUV = AVIF_TRUE;

@@ -23,9 +23,10 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
   void to report invalid parameters or memory allocation failures.
 * avifImageRGBToYUV() now uses libyuv fast paths by default. It may slightly
   change conversion results. The old behavior can be restored by setting
-  avifRGBImage::chromaDownsampling to AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY.
+  avifRGBImage::chromaDownsampling to AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY
+  and avifRGBImage::avoidLibYUV to AVIF_TRUE.
 * avifRGBImage::chromaUpsampling now only applies to conversions that need
-  upsampling chroma from 4:2:0 or 4:2:2.
+  upsampling chroma from 4:2:0 or 4:2:2 and has no impact on the use of libyuv.
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that
