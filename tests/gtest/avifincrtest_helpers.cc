@@ -278,9 +278,9 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
   }
 
   // Emulate a byte-by-byte stream.
-  PartialData data = {/*available=*/{encoded_avif.data, 0},
-                      /*fullSize=*/encoded_avif.size,
-                      /*buffer=*/{}, /*swapped_buffer=*/{}};
+  PartialData data = {
+      /*available=*/{encoded_avif.data, 0}, /*fullSize=*/encoded_avif.size,
+      /*nonpersistent_bytes=*/nullptr, /*num_nonpersistent_bytes=*/0};
   avifIO io = {
       /*destroy=*/nullptr, PartialRead,
       /*write=*/nullptr,   give_size_hint ? encoded_avif.size : 0,
