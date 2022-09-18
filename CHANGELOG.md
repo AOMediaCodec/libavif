@@ -47,7 +47,8 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
   of the libwebp repository) at compile time.
 * avifenc: Add --ignore-exif and --ignore-xmp flags.
 * avifenc: Add --autotiling, which sets --tilerowslog2 and --tilecolslog2
-  automatically
+  automatically.
+* avifenc: Input Exif orientation is converted to irot/imir by default.
 
 ## [0.10.1] - 2022-04-11
 
