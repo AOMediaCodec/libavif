@@ -63,6 +63,9 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   if (use_exif) {
     avifImageSetMetadataExif(image.get(), kSampleExif.data(),
                              kSampleExif.size());
+    // kSampleExif is not a valid Exif payload, just some part of it.
+    ASSERT_EQ(avifImageExtractExifOrientationToIrotImir(image.get()),
+              AVIF_RESULT_INVALID_EXIF_PAYLOAD);
   }
   if (use_xmp) {
     avifImageSetMetadataXMP(image.get(), kSampleXmp.data(), kSampleXmp.size());
@@ -210,6 +213,99 @@ TEST(MetadataTest, DecoderParseICC) {
   EXPECT_EQ(decoder->image->icc.data[2], 2);
   EXPECT_EQ(decoder->image->icc.data[3], 84);
   avifDecoderDestroy(decoder);
+}
+
+//------------------------------------------------------------------------------
+
+TEST(MetadataTest, ExifButDefaultIrotImir) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg");
+  ASSERT_NE(image, nullptr);
+  // The Exif metadata contains orientation information: 1.
+  // It is converted to no irot/imir.
+  EXPECT_GT(image->exif.size, 0u);
+  EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+            avifTransformFlags{AVIF_TRANSFORM_NONE});
+
+  const testutil::AvifRwData encoded =
+      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+  const testutil::AvifImagePtr decoded =
+      testutil::Decode(encoded.data, encoded.size);
+  ASSERT_NE(decoded, nullptr);
+
+  // No irot/imir after decoding because 1 maps to default no irot/imir.
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
+  EXPECT_EQ(
+      decoded->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      avifTransformFlags{AVIF_TRANSFORM_NONE});
+}
+
+TEST(MetadataTest, ExifOrientation) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
+  ASSERT_NE(image, nullptr);
+  // The Exif metadata contains orientation information: 5.
+  EXPECT_GT(image->exif.size, 0u);
+  EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+            avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
+  EXPECT_EQ(image->irot.angle, 1u);
+  EXPECT_EQ(image->imir.mode, 0u);
+
+  const testutil::AvifRwData encoded =
+      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+  const testutil::AvifImagePtr decoded =
+      testutil::Decode(encoded.data, encoded.size);
+  ASSERT_NE(decoded, nullptr);
+
+  // irot/imir are expected.
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
+  EXPECT_EQ(
+      decoded->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
+  EXPECT_EQ(decoded->irot.angle, 1u);
+  EXPECT_EQ(decoded->imir.mode, 0u);
+}
+
+TEST(MetadataTest, ExifOrientationAndForcedImir) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
+  ASSERT_NE(image, nullptr);
+  // The Exif metadata contains orientation information: 5.
+  // Force irot/imir to values that have a different meaning than 5.
+  // This is not recommended but for testing only.
+  EXPECT_GT(image->exif.size, 0u);
+  image->transformFlags = AVIF_TRANSFORM_IMIR;
+  image->imir.mode = 1;
+
+  const testutil::AvifRwData encoded =
+      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+  const testutil::AvifImagePtr decoded =
+      testutil::Decode(encoded.data, encoded.size);
+  ASSERT_NE(decoded, nullptr);
+
+  // Exif orientation is still there but irot/imir do not match it.
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
+  EXPECT_EQ(decoded->transformFlags, avifTransformFlags{AVIF_TRANSFORM_IMIR});
+  EXPECT_EQ(decoded->irot.angle, 0u);
+  EXPECT_EQ(decoded->imir.mode, image->imir.mode);
+}
+
+TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
+  const testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(image, nullptr);
+  const uint8_t kBadExifPayload[128] = {
+      'M', 'M', 0, 42,                          // TIFF header
+      0,   0,   0, 8,                           // Offset to 0th IFD
+      0,   1,                                   // fieldCount
+      0,   0,   0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  // tag, type, count, valueOffset
+      0,   0,   0, 8  // Invalid IFD offset, infinitely looping back to 0th IFD.
+  };
+  avifRWDataSet(&image->exif, kBadExifPayload,
+                sizeof(kBadExifPayload) / sizeof(kBadExifPayload[0]));
+  // avifImageExtractExifOrientationToIrotImir() does not verify  the whole
+  // payload, only the parts necessary to extract Exif orientation.
+  ASSERT_EQ(avifImageExtractExifOrientationToIrotImir(image.get()),
+            AVIF_RESULT_OK);
 }
 
 //------------------------------------------------------------------------------

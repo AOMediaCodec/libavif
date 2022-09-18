@@ -42,10 +42,16 @@ extern "C" {
 
 float avifRoundf(float v);
 
+// H (host) is platform-dependent. Could be little- or big-endian.
+// N (network) is big-endian: most- to least-significant bytes.
+// C (custom) is little-endian: least- to most-significant bytes.
+// Never read N or C values; only access after casting to uint8_t*.
 uint16_t avifHTONS(uint16_t s);
 uint16_t avifNTOHS(uint16_t s);
+uint16_t avifCTOHS(uint16_t s);
 uint32_t avifHTONL(uint32_t l);
 uint32_t avifNTOHL(uint32_t l);
+uint32_t avifCTOHL(uint32_t l);
 uint64_t avifHTON64(uint64_t l);
 uint64_t avifNTOH64(uint64_t l);
 
@@ -197,6 +203,12 @@ avifBool avifImageScale(avifImage * image,
 // Returns false if the tiles in a grid image violate any standards.
 // The image contains imageW*imageH pixels. The tiles are of tileW*tileH pixels each.
 avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, uint32_t imageH, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag);
+
+// ---------------------------------------------------------------------------
+// Metadata
+
+// Validates the first bytes of the Exif payload and finds the TIFF header offset.
+avifResult avifGetExifTiffHeaderOffset(const avifRWData * exif, uint32_t * offset);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
@@ -354,7 +366,7 @@ __attribute__((__format__(__printf__, 2, 3)))
 void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...);
 
 // ---------------------------------------------------------------------------
-// avifStream
+// avifStream (network byte order; big-endian unless specified)
 
 typedef size_t avifBoxMarker;
 
@@ -382,7 +394,9 @@ size_t avifROStreamRemainingBytes(const avifROStream * stream);
 avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount);
 avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size);
 avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v);
+avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avifBool littleEndian);
 avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v);
+avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avifBool littleEndian);
 avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
 avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v);
 avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize);

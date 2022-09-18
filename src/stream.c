@@ -108,10 +108,24 @@ avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v)
     return AVIF_TRUE;
 }
 
+avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avifBool littleEndian)
+{
+    AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint16_t)));
+    *v = littleEndian ? avifCTOHS(*v) : avifNTOHS(*v);
+    return AVIF_TRUE;
+}
+
 avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v)
 {
     AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint32_t)));
     *v = avifNTOHL(*v);
+    return AVIF_TRUE;
+}
+
+avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avifBool littleEndian)
+{
+    AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint32_t)));
+    *v = littleEndian ? avifCTOHL(*v) : avifNTOHL(*v);
     return AVIF_TRUE;
 }
 

@@ -891,6 +891,8 @@ int main(int argc, char * argv[])
     }
     if (exifOverride.size) {
         avifImageSetMetadataExif(image, exifOverride.data, exifOverride.size);
+        // Ignore any Exif parsing failure.
+        (void)avifImageExtractExifOrientationToIrotImir(image);
     }
     if (xmpOverride.size) {
         avifImageSetMetadataXMP(image, xmpOverride.data, xmpOverride.size);

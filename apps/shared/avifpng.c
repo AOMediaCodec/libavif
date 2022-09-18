@@ -123,6 +123,8 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
                 return AVIF_FALSE;
             }
             avifImageSetMetadataExif(avif, exif, exifSize);
+            // Ignore any Exif parsing failure.
+            (void)avifImageExtractExifOrientationToIrotImir(avif);
             *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
         }
     }

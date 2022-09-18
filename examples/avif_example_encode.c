@@ -31,7 +31,7 @@ int main(int argc, char * argv[])
     // * transferCharacteristics
     // * matrixCoefficients
     // * avifImageSetProfileICC()
-    // * avifImageSetMetadataExif()
+    // * avifImageSetMetadataExif() + avifImageExtractExifOrientationToIrotImir()
     // * avifImageSetMetadataXMP()
     // * yuvRange
     // * alphaPremultiplied

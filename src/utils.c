@@ -29,6 +29,12 @@ uint16_t avifNTOHS(uint16_t s)
     return (uint16_t)((data[1] << 0) | (data[0] << 8));
 }
 
+uint16_t avifCTOHS(uint16_t s)
+{
+    const uint8_t * data = (const uint8_t *)&s;
+    return (uint16_t)((data[0] << 0) | (data[1] << 8));
+}
+
 uint32_t avifHTONL(uint32_t l)
 {
     uint32_t result;
@@ -44,6 +50,12 @@ uint32_t avifNTOHL(uint32_t l)
 {
     const uint8_t * data = (const uint8_t *)&l;
     return ((uint32_t)data[3] << 0) | ((uint32_t)data[2] << 8) | ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
+}
+
+uint32_t avifCTOHL(uint32_t l)
+{
+    const uint8_t * data = (const uint8_t *)&l;
+    return ((uint32_t)data[0] << 0) | ((uint32_t)data[1] << 8) | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
 uint64_t avifHTON64(uint64_t l)

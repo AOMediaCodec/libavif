@@ -29,6 +29,11 @@ AvifRgbImage::AvifRgbImage(const avifImage* yuv, int rgbDepth,
   avifRGBImageAllocatePixels(this);
 }
 
+AvifRwData::AvifRwData(AvifRwData&& other) : avifRWData{other} {
+  other.data = nullptr;
+  other.size = 0;
+}
+
 //------------------------------------------------------------------------------
 
 RgbChannelOffsets GetRgbChannelOffsets(avifRGBFormat format) {
@@ -242,9 +247,31 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
                     ignore_exif, ignore_xmp, image.get(), /*outDepth=*/nullptr,
                     /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-    return {nullptr, avifImageDestroy};
+    return {nullptr, nullptr};
   }
   return image;
+}
+
+AvifRwData Encode(const avifImage* image, int speed) {
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  if (!encoder) return {};
+  encoder->speed = speed;
+  testutil::AvifRwData bytes;
+  if (avifEncoderWrite(encoder.get(), image, &bytes) != AVIF_RESULT_OK) {
+    return {};
+  }
+  return bytes;
+}
+
+AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  if (!decoded || !decoder ||
+      (avifDecoderReadMemory(decoder.get(), decoded.get(), bytes, num_bytes) !=
+       AVIF_RESULT_OK)) {
+    return {nullptr, nullptr};
+  }
+  return decoded;
 }
 
 //------------------------------------------------------------------------------
