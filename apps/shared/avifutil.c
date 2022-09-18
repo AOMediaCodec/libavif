@@ -227,7 +227,7 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
 avifAppFileFormat avifReadImage(const char * filename,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
-                                avifChromaDownsampling flags,
+                                avifChromaDownsampling chromaDownsampling,
                                 avifBool ignoreICC,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
@@ -245,14 +245,14 @@ avifAppFileFormat avifReadImage(const char * filename,
             *outDepth = image->depth;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, flags, ignoreICC, ignoreExif, ignoreXMP)) {
+        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreICC, ignoreExif, ignoreXMP)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, flags, ignoreICC, ignoreExif, ignoreXMP, outDepth)) {
+        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreICC, ignoreExif, ignoreXMP, outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {

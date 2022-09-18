@@ -266,7 +266,7 @@ static avifAppFileFormat avifInputReadImage(avifInput * input,
                                             avifImage * image,
                                             uint32_t * outDepth,
                                             avifAppSourceTiming * sourceTiming,
-                                            avifChromaDownsampling flags)
+                                            avifChromaDownsampling chromaDownsampling)
 {
     if (sourceTiming) {
         // A source timing of all 0s is a sentinel value hinting that the value is unset / should be
@@ -293,7 +293,7 @@ static avifAppFileFormat avifInputReadImage(avifInput * input,
     const avifAppFileFormat nextInputFormat = avifReadImage(input->files[input->fileIndex].filename,
                                                             input->requestedFormat,
                                                             input->requestedDepth,
-                                                            flags,
+                                                            chromaDownsampling,
                                                             ignoreICC,
                                                             ignoreExif,
                                                             ignoreXMP,
@@ -484,7 +484,7 @@ int main(int argc, char * argv[])
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
-    avifChromaDownsampling flags = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
+    avifChromaDownsampling chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -789,7 +789,7 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
         } else if (!strcmp(arg, "--sharpyuv")) {
-            flags |= AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV;
+            chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV;
         } else if (arg[0] == '-') {
             fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
             syntax();
@@ -854,7 +854,7 @@ int main(int argc, char * argv[])
     uint32_t sourceDepth = 0;
     avifAppSourceTiming firstSourceTiming;
     avifAppFileFormat inputFormat =
-        avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, image, &sourceDepth, &firstSourceTiming, flags);
+        avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, image, &sourceDepth, &firstSourceTiming, chromaDownsampling);
     if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
         returnCode = 1;
@@ -1062,7 +1062,7 @@ int main(int argc, char * argv[])
             gridCells[gridCellIndex] = cellImage;
 
             avifAppFileFormat nextInputFormat =
-                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, cellImage, NULL, NULL, flags);
+                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, cellImage, NULL, NULL, chromaDownsampling);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;
@@ -1221,7 +1221,7 @@ int main(int argc, char * argv[])
             nextImage->alphaPremultiplied = image->alphaPremultiplied;
 
             avifAppFileFormat nextInputFormat =
-                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, nextImage, NULL, NULL, flags);
+                avifInputReadImage(&input, ignoreICC, ignoreExif, ignoreXMP, nextImage, NULL, NULL, chromaDownsampling);
             if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
                 returnCode = 1;
                 goto cleanup;

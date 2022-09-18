@@ -63,7 +63,7 @@ struct y4mFrameIterator;
 avifAppFileFormat avifReadImage(const char * filename,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
-                                avifChromaDownsampling flags,
+                                avifChromaDownsampling chromaDownsampling,
                                 avifBool ignoreICC,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
