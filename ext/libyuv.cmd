@@ -14,7 +14,7 @@
 git clone --single-branch https://chromium.googlesource.com/libyuv/libyuv
 
 cd libyuv
-git checkout 9b17af9b
+git checkout f71c8355
 
 mkdir build
 cd build

@@ -63,6 +63,11 @@ unsigned int avifLibYUVVersion(void)
 // These defines are used to create a NULL reference to libyuv functions that
 // did not exist prior to a particular version of libyuv.
 // Versions prior to 1755 are considered too old and not used (see CMakeLists.txt).
+#if LIBYUV_VERSION < 1841
+// I420ToRGB24MatrixFilter() was added in libyuv version 1841.
+// See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3900298.
+#define I420ToRGB24MatrixFilter NULL
+#endif
 #if LIBYUV_VERSION < 1840
 #define ABGRToJ400 NULL
 #endif
@@ -561,10 +566,10 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                             enum FilterMode);
         YUVToRGBMatrixFilter lutYuvToRgbMatrixFilter[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
             // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
-            { NULL, NULL, NULL, NULL, NULL },                                     // RGB
+            { NULL, NULL, NULL, I420ToRGB24MatrixFilter, NULL },                  // RGB
             { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL }, // RGBA
             { NULL, NULL, NULL, NULL, NULL },                                     // ARGB
-            { NULL, NULL, NULL, NULL, NULL },                                     // BGR
+            { NULL, NULL, NULL, I420ToRGB24MatrixFilter, NULL },                  // BGR
             { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL }, // BGRA
             { NULL, NULL, NULL, NULL, NULL },                                     // ABGR
             { NULL, NULL, NULL, NULL, NULL },                                     // RGB_565
