@@ -1589,6 +1589,12 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteZeros(&s, 3); // unsigned int(26) reserved; (two zero bits are written along with ccstValue).
             avifRWStreamFinishBox(&s, ccst);
 
+            if (item->alpha) {
+                avifBoxMarker auxi = avifRWStreamWriteFullBox(&s, "auxi", AVIF_BOX_SIZE_TBD, 0, 0);
+                avifRWStreamWriteChars(&s, alphaURN, alphaURNSize); //  string aux_track_type;
+                avifRWStreamFinishBox(&s, auxi);
+            }
+
             avifRWStreamFinishBox(&s, av01);
             avifRWStreamFinishBox(&s, stsd);
 
