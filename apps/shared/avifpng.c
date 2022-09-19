@@ -439,7 +439,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     }
 
     png_set_IHDR(png, info, avif->width, avif->height, rgb.depth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-    if (avif->icc.data && (avif->icc.size > 0)) {
+    if (avif->icc.data && (avif->icc.size > 0) && (avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
         png_set_iCCP(png, info, "libavif", 0, (png_iccp_datap)avif->icc.data, (png_uint_32)avif->icc.size);
     }
     png_write_info(png, info);
