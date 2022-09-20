@@ -1480,10 +1480,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamFinishBox(&s, mdhd);
 
             avifBoxMarker hdlrTrak = avifRWStreamWriteFullBox(&s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteU32(&s, 0);              // unsigned int(32) pre_defined = 0;
-            avifRWStreamWriteChars(&s, "pict", 4);    // unsigned int(32) handler_type;
-            avifRWStreamWriteZeros(&s, 12);           // const unsigned int(32)[3] reserved = 0;
-            avifRWStreamWriteChars(&s, "libavif", 8); // string name; (writing null terminator)
+            avifRWStreamWriteU32(&s, 0);                                  // unsigned int(32) pre_defined = 0;
+            avifRWStreamWriteChars(&s, item->alpha ? "auxv" : "pict", 4); // unsigned int(32) handler_type;
+            avifRWStreamWriteZeros(&s, 12);                               // const unsigned int(32)[3] reserved = 0;
+            avifRWStreamWriteChars(&s, "libavif", 8);                     // string name; (writing null terminator)
             avifRWStreamFinishBox(&s, hdlrTrak);
 
             avifBoxMarker minf = avifRWStreamWriteBox(&s, "minf", AVIF_BOX_SIZE_TBD);
