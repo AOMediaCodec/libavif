@@ -381,7 +381,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
 
-    int rgbDepth = requestedDepth;
+    volatile int rgbDepth = requestedDepth;
     if (rgbDepth == 0) {
         if (avif->depth > 8) {
             rgbDepth = 16;
@@ -390,18 +390,26 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         }
     }
 
-    avifRGBImageSetDefaults(&rgb, avif);
-    rgb.chromaUpsampling = chromaUpsampling;
-    rgb.depth = rgbDepth;
-    int colorType = PNG_COLOR_TYPE_RGBA;
-    if (!avif->alphaPlane) {
-        colorType = PNG_COLOR_TYPE_RGB;
-        rgb.format = AVIF_RGB_FORMAT_RGB;
-    }
-    avifRGBImageAllocatePixels(&rgb);
-    if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
-        fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
-        goto cleanup;
+    avifBool monochrome8bit = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
+                              (rgbDepth == 8);
+
+    int colorType;
+    if (monochrome8bit) {
+        colorType = PNG_COLOR_TYPE_GRAY;
+    } else {
+        avifRGBImageSetDefaults(&rgb, avif);
+        rgb.chromaUpsampling = chromaUpsampling;
+        rgb.depth = rgbDepth;
+        colorType = PNG_COLOR_TYPE_RGBA;
+        if (!avif->alphaPlane) {
+            colorType = PNG_COLOR_TYPE_RGB;
+            rgb.format = AVIF_RGB_FORMAT_RGB;
+        }
+        avifRGBImageAllocatePixels(&rgb);
+        if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
+            goto cleanup;
+        }
     }
 
     f = fopen(outputFilename, "wb");
@@ -438,18 +446,26 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         png_set_compression_level(png, compressionLevel);
     }
 
-    png_set_IHDR(png, info, avif->width, avif->height, rgb.depth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png, info, avif->width, avif->height, rgbDepth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
         png_set_iCCP(png, info, "libavif", 0, (png_iccp_datap)avif->icc.data, (png_uint_32)avif->icc.size);
     }
     png_write_info(png, info);
 
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
-    for (uint32_t y = 0; y < rgb.height; ++y) {
-        rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
+    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * avif->height);
+    if (monochrome8bit) {
+        uint8_t * yPlane = avif->yuvPlanes[AVIF_CHAN_Y];
+        uint32_t yRowBytes = avif->yuvRowBytes[AVIF_CHAN_Y];
+        for (uint32_t y = 0; y < avif->height; ++y) {
+            rowPointers[y] = &yPlane[y * yRowBytes];
+        }
+    } else {
+        for (uint32_t y = 0; y < rgb.height; ++y) {
+            rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
+        }
     }
 
-    if (rgb.depth > 8) {
+    if (rgbDepth > 8) {
         png_set_swap(png);
     }
 
