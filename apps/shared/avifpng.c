@@ -460,7 +460,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             rowPointers[y] = &yPlane[y * yRowBytes];
         }
     } else {
-        for (uint32_t y = 0; y < rgb.height; ++y) {
+        for (uint32_t y = 0; y < avif->height; ++y) {
             rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
         }
     }
