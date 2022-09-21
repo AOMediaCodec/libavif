@@ -491,7 +491,7 @@ AVIF_API void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, si
 
 // Attempts to parse the image->exif payload for Exif orientation and sets image->transformFlags, image->irot and
 // image->imir on success. Returns AVIF_RESULT_INVALID_EXIF_PAYLOAD on failure.
-avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image);
+AVIF_API avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image);
 
 AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
 AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);           // Ignores already-freed planes
