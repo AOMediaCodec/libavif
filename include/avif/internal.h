@@ -366,7 +366,9 @@ __attribute__((__format__(__printf__, 2, 3)))
 void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...);
 
 // ---------------------------------------------------------------------------
-// avifStream (network byte order; big-endian unless specified)
+// avifStream
+//
+// In network byte order (big-endian) unless otherwise specified.
 
 typedef size_t avifBoxMarker;
 
