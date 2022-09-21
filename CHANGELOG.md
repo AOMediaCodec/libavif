@@ -14,7 +14,7 @@ signatures changed. It is necessary to recompile your code. Also check the
 return values of avifImageCopy() and avifImageAllocatePlanes().
 
 ### Changed
-* Update aom.cmd: v3.4.0
+* Update aom.cmd: v3.5.0
 * Update rav1e.cmd: v0.5.1
 * Update svt.cmd/svt.sh: v1.2.1
 * Update libgav1.cmd: v0.18.0
