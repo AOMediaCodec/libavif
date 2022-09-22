@@ -560,57 +560,60 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
     } else {
         int uPlaneIndex = isYVU ? AVIF_CHAN_V : AVIF_CHAN_U;
         int vPlaneIndex = isYVU ? AVIF_CHAN_U : AVIF_CHAN_V;
-        // Lookup table for YUV To RGB Matrix (with filter).
-        typedef int (*YUVToRGBMatrixFilter)(const uint8_t *,
-                                            int,
-                                            const uint8_t *,
-                                            int,
-                                            const uint8_t *,
-                                            int,
-                                            uint8_t *,
-                                            int,
-                                            const struct YuvConstants *,
-                                            int,
-                                            int,
-                                            enum FilterMode);
-        YUVToRGBMatrixFilter lutYuvToRgbMatrixFilter[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
-            // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
-            { NULL, NULL, I422ToRGB24MatrixFilter, I420ToRGB24MatrixFilter, NULL }, // RGB
-            { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL },   // RGBA
-            { NULL, NULL, NULL, NULL, NULL },                                       // ARGB
-            { NULL, NULL, I422ToRGB24MatrixFilter, I420ToRGB24MatrixFilter, NULL }, // BGR
-            { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL },   // BGRA
-            { NULL, NULL, NULL, NULL, NULL },                                       // ABGR
-            { NULL, NULL, NULL, NULL, NULL },                                       // RGB_565
-        };
-        YUVToRGBMatrixFilter yuvToRgbMatrixFilter = lutYuvToRgbMatrixFilter[rgb->format][image->yuvFormat];
-        if (yuvToRgbMatrixFilter != NULL) {
-            const enum FilterMode filter = ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_FASTEST) ||
-                                            (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST))
-                                               ? kFilterNone
-                                               : kFilterBilinear;
-            if (yuvToRgbMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
-                                     image->yuvRowBytes[AVIF_CHAN_Y],
-                                     image->yuvPlanes[uPlaneIndex],
-                                     image->yuvRowBytes[uPlaneIndex],
-                                     image->yuvPlanes[vPlaneIndex],
-                                     image->yuvRowBytes[vPlaneIndex],
-                                     rgb->pixels,
-                                     rgb->rowBytes,
-                                     matrix,
-                                     image->width,
-                                     image->height,
-                                     filter) != 0) {
-                return AVIF_RESULT_REFORMAT_FAILED;
+        if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
+            // Lookup table for YUV To RGB Matrix (with filter).
+            typedef int (*YUVToRGBMatrixFilter)(const uint8_t *,
+                                                int,
+                                                const uint8_t *,
+                                                int,
+                                                const uint8_t *,
+                                                int,
+                                                uint8_t *,
+                                                int,
+                                                const struct YuvConstants *,
+                                                int,
+                                                int,
+                                                enum FilterMode);
+            YUVToRGBMatrixFilter lutYuvToRgbMatrixFilter[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
+                // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
+                { NULL, NULL, I422ToRGB24MatrixFilter, I420ToRGB24MatrixFilter, NULL }, // RGB
+                { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL },   // RGBA
+                { NULL, NULL, NULL, NULL, NULL },                                       // ARGB
+                { NULL, NULL, I422ToRGB24MatrixFilter, I420ToRGB24MatrixFilter, NULL }, // BGR
+                { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL },   // BGRA
+                { NULL, NULL, NULL, NULL, NULL },                                       // ABGR
+                { NULL, NULL, NULL, NULL, NULL },                                       // RGB_565
+            };
+            YUVToRGBMatrixFilter yuvToRgbMatrixFilter = lutYuvToRgbMatrixFilter[rgb->format][image->yuvFormat];
+            if (yuvToRgbMatrixFilter != NULL) {
+                const enum FilterMode filter = ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_FASTEST) ||
+                                                (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST))
+                                                   ? kFilterNone
+                                                   : kFilterBilinear;
+                if (yuvToRgbMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
+                                         image->yuvRowBytes[AVIF_CHAN_Y],
+                                         image->yuvPlanes[uPlaneIndex],
+                                         image->yuvRowBytes[uPlaneIndex],
+                                         image->yuvPlanes[vPlaneIndex],
+                                         image->yuvRowBytes[vPlaneIndex],
+                                         rgb->pixels,
+                                         rgb->rowBytes,
+                                         matrix,
+                                         image->width,
+                                         image->height,
+                                         filter) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
+                }
+                return AVIF_RESULT_OK;
             }
-            return AVIF_RESULT_OK;
-        }
 
-        // Only proceed with the nearest-neighbor filter if explicitly specified or left as default.
-        if ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BEST_QUALITY) || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR)) {
-            return AVIF_RESULT_NOT_IMPLEMENTED;
+            // Only proceed with the nearest-neighbor filter if explicitly specified or left as default.
+            if ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BEST_QUALITY) ||
+                (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR)) {
+                return AVIF_RESULT_NOT_IMPLEMENTED;
+            }
         }
-        // Lookup table for YUV To RGB Matrix (nearest-neighbor filter).
+        // Lookup table for YUV To RGB Matrix (4:4:4 or nearest-neighbor filter).
         typedef int (
             *YUVToRGBMatrix)(const uint8_t *, int, const uint8_t *, int, const uint8_t *, int, uint8_t *, int, const struct YuvConstants *, int, int);
         YUVToRGBMatrix lutYuvToRgbMatrix[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
@@ -661,132 +664,138 @@ avifResult avifImageYUVToRGBLibYUVHighBitDepth(const avifImage * image,
     // In addition, swapping U and V in any of these calls, along with using the Yvu matrix instead of Yuv matrix,
     // swaps B and R in these orderings as well. This table summarizes the lookup tables that follow:
     //
-    // libavif format        libyuv Func     UV matrix (and UV argument ordering)
-    // --------------------  -------------   ------------------------------------
-    // AVIF_RGB_FORMAT_RGB   n/a             n/a
-    // AVIF_RGB_FORMAT_RGBA  *ToARGBMatrix   matrixYVU
-    // AVIF_RGB_FORMAT_ARGB  n/a             n/a
-    // AVIF_RGB_FORMAT_BGR   n/a             n/a
-    // AVIF_RGB_FORMAT_BGRA  *ToARGBMatrix   matrixYUV
-    // AVIF_RGB_FORMAT_ABGR  n/a             n/a
-    // AVIF_RGB_FORMAT_565   n/a             n/a
+    // libavif format            libyuv Func      UV matrix (and UV argument ordering)
+    // --------------------      -------------    ------------------------------------
+    // AVIF_RGB_FORMAT_RGB       n/a              n/a
+    // AVIF_RGB_FORMAT_RGBA      *ToARGBMatrix    matrixYVU
+    // AVIF_RGB_FORMAT_ARGB      n/a              n/a
+    // AVIF_RGB_FORMAT_BGR       n/a              n/a
+    // AVIF_RGB_FORMAT_BGRA      *ToARGBMatrix    matrixYUV
+    // AVIF_RGB_FORMAT_ABGR      n/a              n/a
+    // AVIF_RGB_FORMAT_RGB_565   n/a              n/a
 
     avifBool isYVU = lutIsYVU[rgb->format];
     const struct YuvConstants * matrix = isYVU ? matrixYVU : matrixYUV;
-    int uPlaneIndex = isYVU ? AVIF_CHAN_V : AVIF_CHAN_U;
-    int vPlaneIndex = isYVU ? AVIF_CHAN_U : AVIF_CHAN_V;
+    if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+    } else {
+        int uPlaneIndex = isYVU ? AVIF_CHAN_V : AVIF_CHAN_U;
+        int vPlaneIndex = isYVU ? AVIF_CHAN_U : AVIF_CHAN_V;
+        if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
+            // Lookup table for YUV To RGB Matrix (with filter).
+            typedef int (*YUVToRGBMatrixFilter)(const uint16_t *,
+                                                int,
+                                                const uint16_t *,
+                                                int,
+                                                const uint16_t *,
+                                                int,
+                                                uint8_t *,
+                                                int,
+                                                const struct YuvConstants *,
+                                                int,
+                                                int,
+                                                enum FilterMode);
+            // First dimension is for the YUV bit depth.
+            YUVToRGBMatrixFilter lutYuvToRgbMatrixFilter[2][AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
+                // 10bpc
+                {
+                    // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
+                    { NULL, NULL, NULL, NULL, NULL },                                     // RGB
+                    { NULL, NULL, I210ToARGBMatrixFilter, I010ToARGBMatrixFilter, NULL }, // RGBA
+                    { NULL, NULL, NULL, NULL, NULL },                                     // ARGB
+                    { NULL, NULL, NULL, NULL, NULL },                                     // BGR
+                    { NULL, NULL, I210ToARGBMatrixFilter, I010ToARGBMatrixFilter, NULL }, // BGRA
+                    { NULL, NULL, NULL, NULL, NULL },                                     // ABGR
+                    { NULL, NULL, NULL, NULL, NULL },                                     // RGB_565
+                },
+                // 12bpc
+                {
+                    // { NONE, YUV444, YUV422, YUV420, YUV400 } // AVIF_RGB_FORMAT_
+                    { NULL, NULL, NULL, NULL, NULL }, // RGB
+                    { NULL, NULL, NULL, NULL, NULL }, // RGBA
+                    { NULL, NULL, NULL, NULL, NULL }, // ARGB
+                    { NULL, NULL, NULL, NULL, NULL }, // BGR
+                    { NULL, NULL, NULL, NULL, NULL }, // BGRA
+                    { NULL, NULL, NULL, NULL, NULL }, // ABGR
+                    { NULL, NULL, NULL, NULL, NULL }, // RGB_565
+                },
+            };
+            YUVToRGBMatrixFilter yuvToRgbMatrixFilter = lutYuvToRgbMatrixFilter[depthIndex][rgb->format][image->yuvFormat];
+            if (yuvToRgbMatrixFilter != NULL) {
+                const enum FilterMode filter = ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_FASTEST) ||
+                                                (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST))
+                                                   ? kFilterNone
+                                                   : kFilterBilinear;
+                if (yuvToRgbMatrixFilter((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
+                                         image->yuvRowBytes[AVIF_CHAN_Y] / 2,
+                                         (const uint16_t *)image->yuvPlanes[uPlaneIndex],
+                                         image->yuvRowBytes[uPlaneIndex] / 2,
+                                         (const uint16_t *)image->yuvPlanes[vPlaneIndex],
+                                         image->yuvRowBytes[vPlaneIndex] / 2,
+                                         rgb->pixels,
+                                         rgb->rowBytes,
+                                         matrix,
+                                         image->width,
+                                         image->height,
+                                         filter) != 0) {
+                    return AVIF_RESULT_REFORMAT_FAILED;
+                }
+                return AVIF_RESULT_OK;
+            }
 
-    // Lookup table for YUV To RGB Matrix (with filter).
-    typedef int (*YUVToRGBMatrixFilter)(const uint16_t *,
-                                        int,
-                                        const uint16_t *,
-                                        int,
-                                        const uint16_t *,
-                                        int,
-                                        uint8_t *,
-                                        int,
-                                        const struct YuvConstants *,
-                                        int,
-                                        int,
-                                        enum FilterMode);
-    // First dimension is for the YUV bit depth.
-    YUVToRGBMatrixFilter lutYuvToRgbMatrixFilter[2][AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
-        // 10bpc
-        {
-            // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
-            { NULL, NULL, NULL, NULL, NULL },                                     // RGB
-            { NULL, NULL, I210ToARGBMatrixFilter, I010ToARGBMatrixFilter, NULL }, // RGBA
-            { NULL, NULL, NULL, NULL, NULL },                                     // ARGB
-            { NULL, NULL, NULL, NULL, NULL },                                     // BGR
-            { NULL, NULL, I210ToARGBMatrixFilter, I010ToARGBMatrixFilter, NULL }, // BGRA
-            { NULL, NULL, NULL, NULL, NULL },                                     // ABGR
-            { NULL, NULL, NULL, NULL, NULL },                                     // RGB_565
-        },
-        // 12bpc
-        {
-            // { NONE, YUV444, YUV422, YUV420, YUV400 } // AVIF_RGB_FORMAT_
-            { NULL, NULL, NULL, NULL, NULL }, // RGB
-            { NULL, NULL, NULL, NULL, NULL }, // RGBA
-            { NULL, NULL, NULL, NULL, NULL }, // ARGB
-            { NULL, NULL, NULL, NULL, NULL }, // BGR
-            { NULL, NULL, NULL, NULL, NULL }, // BGRA
-            { NULL, NULL, NULL, NULL, NULL }, // ABGR
-            { NULL, NULL, NULL, NULL, NULL }, // RGB_565
-        },
-    };
-    YUVToRGBMatrixFilter yuvToRgbMatrixFilter = lutYuvToRgbMatrixFilter[depthIndex][rgb->format][image->yuvFormat];
-    if (yuvToRgbMatrixFilter != NULL) {
-        const enum FilterMode filter =
-            ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_FASTEST) || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST))
-                ? kFilterNone
-                : kFilterBilinear;
-        if (yuvToRgbMatrixFilter((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                                 image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                                 (const uint16_t *)image->yuvPlanes[uPlaneIndex],
-                                 image->yuvRowBytes[uPlaneIndex] / 2,
-                                 (const uint16_t *)image->yuvPlanes[vPlaneIndex],
-                                 image->yuvRowBytes[vPlaneIndex] / 2,
-                                 rgb->pixels,
-                                 rgb->rowBytes,
-                                 matrix,
-                                 image->width,
-                                 image->height,
-                                 filter) != 0) {
-            return AVIF_RESULT_REFORMAT_FAILED;
+            // Only proceed with the nearest-neighbor filter if explicitly specified or left as default.
+            if ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BEST_QUALITY) ||
+                (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR)) {
+                return AVIF_RESULT_NOT_IMPLEMENTED;
+            }
         }
-        return AVIF_RESULT_OK;
-    }
-
-    // Only proceed with the nearest-neighbor filter if explicitly specified or left as default.
-    if ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BEST_QUALITY) || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_BILINEAR)) {
-        return AVIF_RESULT_NOT_IMPLEMENTED;
-    }
-    // Lookup table for YUV To RGB Matrix (nearest-neighbor filter).
-    typedef int (
-        *YUVToRGBMatrix)(const uint16_t *, int, const uint16_t *, int, const uint16_t *, int, uint8_t *, int, const struct YuvConstants *, int, int);
-    // First dimension is for the YUV bit depth.
-    YUVToRGBMatrix lutYuvToRgbMatrix[2][AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
-        // 10bpc
-        {
-            // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
-            { NULL, NULL, NULL, NULL, NULL },                                     // RGB
-            { NULL, I410ToARGBMatrix, I210ToARGBMatrix, I010ToARGBMatrix, NULL }, // RGBA
-            { NULL, NULL, NULL, NULL, NULL },                                     // ARGB
-            { NULL, NULL, NULL, NULL, NULL },                                     // BGR
-            { NULL, I410ToARGBMatrix, I210ToARGBMatrix, I010ToARGBMatrix, NULL }, // BGRA
-            { NULL, NULL, NULL, NULL, NULL },                                     // ABGR
-            { NULL, NULL, NULL, NULL, NULL },                                     // RGB_565
-        },
-        // 12bpc
-        {
-            // { NONE, YUV444, YUV422, YUV420, YUV400 }   // AVIF_RGB_FORMAT_
-            { NULL, NULL, NULL, NULL, NULL },             // RGB
-            { NULL, NULL, NULL, I012ToARGBMatrix, NULL }, // RGBA
-            { NULL, NULL, NULL, NULL, NULL },             // ARGB
-            { NULL, NULL, NULL, NULL, NULL },             // BGR
-            { NULL, NULL, NULL, I012ToARGBMatrix, NULL }, // BGRA
-            { NULL, NULL, NULL, NULL, NULL },             // ABGR
-            { NULL, NULL, NULL, NULL, NULL },             // RGB_565
-        },
-    };
-    YUVToRGBMatrix yuvToRgbMatrix = lutYuvToRgbMatrix[depthIndex][rgb->format][image->yuvFormat];
-    if (yuvToRgbMatrix != NULL) {
-        if (yuvToRgbMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
-                           image->yuvRowBytes[AVIF_CHAN_Y] / 2,
-                           (const uint16_t *)image->yuvPlanes[uPlaneIndex],
-                           image->yuvRowBytes[uPlaneIndex] / 2,
-                           (const uint16_t *)image->yuvPlanes[vPlaneIndex],
-                           image->yuvRowBytes[vPlaneIndex] / 2,
-                           rgb->pixels,
-                           rgb->rowBytes,
-                           matrix,
-                           image->width,
-                           image->height) != 0) {
-            return AVIF_RESULT_REFORMAT_FAILED;
+        // Lookup table for YUV To RGB Matrix (4:4:4 or nearest-neighbor filter).
+        typedef int (
+            *YUVToRGBMatrix)(const uint16_t *, int, const uint16_t *, int, const uint16_t *, int, uint8_t *, int, const struct YuvConstants *, int, int);
+        // First dimension is for the YUV bit depth.
+        YUVToRGBMatrix lutYuvToRgbMatrix[2][AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
+            // 10bpc
+            {
+                // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
+                { NULL, NULL, NULL, NULL, NULL },                                     // RGB
+                { NULL, I410ToARGBMatrix, I210ToARGBMatrix, I010ToARGBMatrix, NULL }, // RGBA
+                { NULL, NULL, NULL, NULL, NULL },                                     // ARGB
+                { NULL, NULL, NULL, NULL, NULL },                                     // BGR
+                { NULL, I410ToARGBMatrix, I210ToARGBMatrix, I010ToARGBMatrix, NULL }, // BGRA
+                { NULL, NULL, NULL, NULL, NULL },                                     // ABGR
+                { NULL, NULL, NULL, NULL, NULL },                                     // RGB_565
+            },
+            // 12bpc
+            {
+                // { NONE, YUV444, YUV422, YUV420, YUV400 }   // AVIF_RGB_FORMAT_
+                { NULL, NULL, NULL, NULL, NULL },             // RGB
+                { NULL, NULL, NULL, I012ToARGBMatrix, NULL }, // RGBA
+                { NULL, NULL, NULL, NULL, NULL },             // ARGB
+                { NULL, NULL, NULL, NULL, NULL },             // BGR
+                { NULL, NULL, NULL, I012ToARGBMatrix, NULL }, // BGRA
+                { NULL, NULL, NULL, NULL, NULL },             // ABGR
+                { NULL, NULL, NULL, NULL, NULL },             // RGB_565
+            },
+        };
+        YUVToRGBMatrix yuvToRgbMatrix = lutYuvToRgbMatrix[depthIndex][rgb->format][image->yuvFormat];
+        if (yuvToRgbMatrix != NULL) {
+            if (yuvToRgbMatrix((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
+                               image->yuvRowBytes[AVIF_CHAN_Y] / 2,
+                               (const uint16_t *)image->yuvPlanes[uPlaneIndex],
+                               image->yuvRowBytes[uPlaneIndex] / 2,
+                               (const uint16_t *)image->yuvPlanes[vPlaneIndex],
+                               image->yuvRowBytes[vPlaneIndex] / 2,
+                               rgb->pixels,
+                               rgb->rowBytes,
+                               matrix,
+                               image->width,
+                               image->height) != 0) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+            return AVIF_RESULT_OK;
         }
-        return AVIF_RESULT_OK;
     }
 
+    // This function didn't do anything; use the built-in YUV conversion
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 
