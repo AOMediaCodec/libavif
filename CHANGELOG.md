@@ -18,7 +18,7 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 * Update rav1e.cmd: v0.5.1
 * Update svt.cmd/svt.sh: v1.2.1
 * Update libgav1.cmd: v0.18.0
-* Update libyuv.cmd: f71c8355 (version 1841)
+* Update libyuv.cmd: f9fda6e7 (version 1844)
 * avifImageCopy() and avifImageAllocatePlanes() now return avifResult instead of
   void to report invalid parameters or memory allocation failures.
 * avifImageRGBToYUV() now uses libyuv fast paths by default. It may slightly
