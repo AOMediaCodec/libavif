@@ -63,6 +63,15 @@ unsigned int avifLibYUVVersion(void)
 // These defines are used to create a NULL reference to libyuv functions that
 // did not exist prior to a particular version of libyuv.
 // Versions prior to 1755 are considered too old and not used (see CMakeLists.txt).
+#if LIBYUV_VERSION < 1844
+// I444ToRGB24Matrix() and I422ToRGB24MatrixFilter() were added in libyuv version 1844.
+//
+// Note: Between the following two commits, libyuv version jumped from 1841 to 1844, down to 1843,
+// and back to 1844. See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3906082 and
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3906091.
+#define I444ToRGB24Matrix NULL
+#define I422ToRGB24MatrixFilter NULL
+#endif
 #if LIBYUV_VERSION < 1841
 // I420ToRGB24MatrixFilter() was added in libyuv version 1841.
 // See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3900298.
@@ -566,13 +575,13 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
                                             enum FilterMode);
         YUVToRGBMatrixFilter lutYuvToRgbMatrixFilter[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
             // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
-            { NULL, NULL, NULL, I420ToRGB24MatrixFilter, NULL },                  // RGB
-            { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL }, // RGBA
-            { NULL, NULL, NULL, NULL, NULL },                                     // ARGB
-            { NULL, NULL, NULL, I420ToRGB24MatrixFilter, NULL },                  // BGR
-            { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL }, // BGRA
-            { NULL, NULL, NULL, NULL, NULL },                                     // ABGR
-            { NULL, NULL, NULL, NULL, NULL },                                     // RGB_565
+            { NULL, NULL, I422ToRGB24MatrixFilter, I420ToRGB24MatrixFilter, NULL }, // RGB
+            { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL },   // RGBA
+            { NULL, NULL, NULL, NULL, NULL },                                       // ARGB
+            { NULL, NULL, I422ToRGB24MatrixFilter, I420ToRGB24MatrixFilter, NULL }, // BGR
+            { NULL, NULL, I422ToARGBMatrixFilter, I420ToARGBMatrixFilter, NULL },   // BGRA
+            { NULL, NULL, NULL, NULL, NULL },                                       // ABGR
+            { NULL, NULL, NULL, NULL, NULL },                                       // RGB_565
         };
         YUVToRGBMatrixFilter yuvToRgbMatrixFilter = lutYuvToRgbMatrixFilter[rgb->format][image->yuvFormat];
         if (yuvToRgbMatrixFilter != NULL) {
@@ -606,10 +615,10 @@ avifResult avifImageYUVToRGBLibYUV8bpc(const avifImage * image,
             *YUVToRGBMatrix)(const uint8_t *, int, const uint8_t *, int, const uint8_t *, int, uint8_t *, int, const struct YuvConstants *, int, int);
         YUVToRGBMatrix lutYuvToRgbMatrix[AVIF_RGB_FORMAT_COUNT][AVIF_PIXEL_FORMAT_COUNT] = {
             // { NONE, YUV444, YUV422, YUV420, YUV400 }                           // AVIF_RGB_FORMAT_
-            { NULL, NULL, NULL, I420ToRGB24Matrix, NULL },                        // RGB
+            { NULL, I444ToRGB24Matrix, NULL, I420ToRGB24Matrix, NULL },           // RGB
             { NULL, I444ToARGBMatrix, I422ToARGBMatrix, I420ToARGBMatrix, NULL }, // RGBA
             { NULL, NULL, I422ToRGBAMatrix, I420ToRGBAMatrix, NULL },             // ARGB
-            { NULL, NULL, NULL, I420ToRGB24Matrix, NULL },                        // BGR
+            { NULL, I444ToRGB24Matrix, NULL, I420ToRGB24Matrix, NULL },           // BGR
             { NULL, I444ToARGBMatrix, I422ToARGBMatrix, I420ToARGBMatrix, NULL }, // BGRA
             { NULL, NULL, I422ToRGBAMatrix, I420ToRGBAMatrix, NULL },             // ABGR
             { NULL, NULL, I422ToRGB565Matrix, I420ToRGB565Matrix, NULL },         // RGB_565
