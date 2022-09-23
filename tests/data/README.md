@@ -33,6 +33,25 @@ beginning)
 
 The structure can be displayed using `exiv2 -pS <file>`.
 
+### File [dog_exif_extended_xmp_icc.jpg](dog_exif_extended_xmp_icc.jpg)
+
+![](dog_exif_extended_xmp_icc.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Personal photo.
+
+| address | marker      | length | data                                         |
+|--------:|-------------|-------:|----------------------------------------------|
+|       0 | 0xffd8 SOI  |        |                                              |
+|       2 | 0xffe1 APP1 |    884 | `Exif..II*......................`            |
+|     888 | 0xffe1 APP1 |    353 | `http://ns.adobe.com/xap/1.0/.<x:`           |
+|    1243 | 0xffe1 APP1 |  32417 | `http://ns.adobe.com/xmp/extensio`           |
+|   33662 | 0xffe0 APP0 |     16 | `JFIF.........`                              |
+|         |             |        | ...                                          |
+|   33818 | 0xffe2 APP2 |    612 | `ICC_PROFILE......T........mntrRG chunk 1/1` |
+|         |             |        | ...                                          |
+
 ### File [paris_exif_xmp_icc.jpg](paris_exif_xmp_icc.jpg)
 
 ![](paris_exif_xmp_icc.jpg)

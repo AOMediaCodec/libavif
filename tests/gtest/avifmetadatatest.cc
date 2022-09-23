@@ -310,6 +310,15 @@ TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
 
 //------------------------------------------------------------------------------
 
+TEST(MetadataTest, ExtendedXMP) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "dog_exif_extended_xmp_icc.jpg");
+  ASSERT_NE(image, nullptr);
+  ASSERT_NE(image->xmp.size, 0u);
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace libavif
 
