@@ -3,7 +3,6 @@
 
 #include "avifutil.h"
 
-#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,22 +15,18 @@
 // overflowing int32_t.
 static int64_t calcGCD(int64_t a, int64_t b)
 {
-    assert(b != 0);
     if (a < 0) {
         a *= -1;
     }
     if (b < 0) {
         b *= -1;
     }
-    for (;;) {
+    while (b != 0) {
         int64_t r = a % b;
-        if (r == 0) {
-            break;
-        }
         a = b;
         b = r;
     }
-    return b;
+    return a;
 }
 
 static void printClapFraction(const char * name, int32_t n, int32_t d)
