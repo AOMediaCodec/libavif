@@ -3,6 +3,7 @@
 
 #include "avifutil.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,21 +12,24 @@
 #include "avifpng.h"
 #include "y4m.h"
 
-static int32_t calcGCD(int32_t a, int32_t b)
+// |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT_MIN without
+// overflowing int32_t.
+static int64_t calcGCD(int64_t a, int64_t b)
 {
+    assert(b != 0);
     if (a < 0) {
         a *= -1;
     }
     if (b < 0) {
         b *= -1;
     }
-    while (a > 0) {
-        if (a < b) {
-            int32_t t = a;
-            a = b;
-            b = t;
+    for (;;) {
+        int64_t r = a % b;
+        if (r == 0) {
+            break;
         }
-        a = a - b;
+        a = b;
+        b = r;
     }
     return b;
 }
@@ -33,10 +37,10 @@ static int32_t calcGCD(int32_t a, int32_t b)
 static void printClapFraction(const char * name, int32_t n, int32_t d)
 {
     printf("%s: %d/%d", name, n, d);
-    int32_t gcd = calcGCD(n, d);
+    int64_t gcd = calcGCD(n, d);
     if (gcd > 1) {
-        int32_t rn = n / gcd;
-        int32_t rd = d / gcd;
+        int32_t rn = (int32_t)(n / gcd);
+        int32_t rd = (int32_t)(d / gcd);
         printf(" (%d/%d)", rn, rd);
     }
     printf(", ");
