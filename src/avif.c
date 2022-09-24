@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
@@ -514,19 +515,20 @@ static clapFraction calcCenter(int32_t dim)
 // overflowing int32_t.
 static int64_t calcGCD(int64_t a, int64_t b)
 {
+    assert(b != 0);
     if (a < 0) {
         a *= -1;
     }
     if (b < 0) {
         b *= -1;
     }
-    while (a > 0) {
-        if (a < b) {
-            int64_t t = a;
-            a = b;
-            b = t;
+    for (;;) {
+        int64_t r = a % b;
+        if (r == 0) {
+            break;
         }
-        a = a - b;
+        a = b;
+        b = r;
     }
     return b;
 }
