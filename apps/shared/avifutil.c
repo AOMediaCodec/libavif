@@ -32,13 +32,14 @@ static int64_t calcGCD(int64_t a, int64_t b)
 static void printClapFraction(const char * name, int32_t n, int32_t d)
 {
     printf("%s: %d/%d", name, n, d);
-    int64_t gcd = calcGCD(n, d);
-    if (gcd > 1) {
-        int32_t rn = (int32_t)(n / gcd);
-        int32_t rd = (int32_t)(d / gcd);
-        printf(" (%d/%d)", rn, rd);
+    if (d != 0) {
+        int64_t gcd = calcGCD(n, d);
+        if (gcd > 1) {
+            int32_t rn = (int32_t)(n / gcd);
+            int32_t rd = (int32_t)(d / gcd);
+            printf(" (%d/%d)", rn, rd);
+        }
     }
-    printf(", ");
 }
 
 static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent, avifProgressiveState progressiveState)
@@ -89,8 +90,11 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
         if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
             printf("    * clap (Clean Aperture): ");
             printClapFraction("W", (int32_t)avif->clap.widthN, (int32_t)avif->clap.widthD);
+            printf(", ");
             printClapFraction("H", (int32_t)avif->clap.heightN, (int32_t)avif->clap.heightD);
+            printf(", ");
             printClapFraction("hOff", (int32_t)avif->clap.horizOffN, (int32_t)avif->clap.horizOffD);
+            printf(", ");
             printClapFraction("vOff", (int32_t)avif->clap.vertOffN, (int32_t)avif->clap.vertOffD);
             printf("\n");
 
