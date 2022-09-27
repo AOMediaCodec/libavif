@@ -750,6 +750,15 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
+
+#if defined(AOM_USAGE_ALL_INTRA) && defined(AOM_CTRL_AV1E_SET_SKIP_POSTPROC_FILTERING)
+        if (cfg->g_usage == AOM_USAGE_ALL_INTRA) {
+            // Enable AV1E_SET_SKIP_POSTPROC_FILTERING for still-picture encoding, which is
+            // different from libaom's default.
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_SKIP_POSTPROC_FILTERING, 1);
+        }
+#endif
+
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
