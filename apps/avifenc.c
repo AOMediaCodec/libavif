@@ -342,23 +342,23 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
 
 static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
 {
-    if ((gridSplitImage->width % gridCols) != 0) {
-        fprintf(stderr, "ERROR: Can't split image width (%u) evenly into %u columns.\n", gridSplitImage->width, gridCols);
+    // From MIAF - ISO 23000-22 - Section 7.3.11.4.2:
+    //   "the tile_width/tile_height shall be greater than or equal to 64, and should be a multiple of 64"
+    const uint32_t cellWidth = (gridSplitImage->width + (gridCols * 64) - 1) / (gridCols * 64) * 64;
+    const uint32_t cellHeight = (gridSplitImage->height + (gridRows * 64) - 1) / (gridRows * 64) * 64;
+    if (cellWidth == 0 || cellHeight == 0) {
+        fprintf(stderr, "ERROR: Split cell dimensions are too small (must be at least 64x64)\n");
         return AVIF_FALSE;
     }
-    if ((gridSplitImage->height % gridRows) != 0) {
-        fprintf(stderr, "ERROR: Can't split image height (%u) evenly into %u rows.\n", gridSplitImage->height, gridRows);
-        return AVIF_FALSE;
-    }
-
-    uint32_t cellWidth = gridSplitImage->width / gridCols;
-    uint32_t cellHeight = gridSplitImage->height / gridRows;
-    if ((cellWidth < 64) || (cellHeight < 64)) {
-        fprintf(stderr, "ERROR: Split cell dimensions are too small (must be at least 64x64, and were %ux%u)\n", cellWidth, cellHeight);
-        return AVIF_FALSE;
-    }
-    if (((cellWidth % 2) != 0) || ((cellHeight % 2) != 0)) {
-        fprintf(stderr, "ERROR: Odd split cell dimensions are unsupported (%ux%u)\n", cellWidth, cellHeight);
+    // From MIAF - ISO 23000-22 - Section 7.3.11.4.2:
+    //   "when the images are in the 4:2:2 chroma sampling format the horizontal tile offsets and widths, and the output width, shall be even numbers;"
+    //   "when the images are in the 4:2:0 chroma sampling format both the horizontal and vertical tile offsets and widths,
+    //    and the output width and height, shall be even numbers."
+    assert(((cellWidth % 2) == 0) && ((cellHeight % 2) == 0));
+    if ((((gridSplitImage->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (gridSplitImage->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) &&
+         (gridSplitImage->width % 2)) ||
+        ((gridSplitImage->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) && (gridSplitImage->height % 2))) {
+        fprintf(stderr, "ERROR: Odd image sizes in subsampled dimensions are unsupported\n");
         return AVIF_FALSE;
     }
 
@@ -368,46 +368,21 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
             avifImage * cellImage = avifImageCreateEmpty();
             gridCells[gridIndex] = cellImage;
 
-            const avifResult copyResult = avifImageCopy(cellImage, gridSplitImage, 0);
-            if (copyResult != AVIF_RESULT_OK) {
-                fprintf(stderr, "ERROR: Image copy failed: %s\n", avifResultToString(copyResult));
+            // HEIF - ISO - Section 6.6.2.3.1:
+            //   "The reconstructed image is formed by tiling the input images into a grid with a column width
+            //    (potentially excluding the right-most column) equal to tile_width and a row height (potentially
+            //    excluding the bottom-most row) equal to tile_height, without gap or overlap, and then
+            //    trimming on the right and the bottom to the indicated output_width and output_height."
+            avifCropRect rect = { gridX * cellWidth, gridY * cellHeight, cellWidth, cellHeight };
+            // "Excluding right-most column and bottom-most row" rather than "trimming on the right and the bottom".
+            if (gridX + 1 == gridCols) {
+                rect.width = gridSplitImage->width - rect.x;
+            }
+            if (gridY + 1 == gridRows) {
+                rect.height = gridSplitImage->height - rect.y;
+            }
+            if (avifImageSetViewRect(cellImage, gridSplitImage, &rect) != AVIF_RESULT_OK) {
                 return AVIF_FALSE;
-            }
-            cellImage->width = cellWidth;
-            cellImage->height = cellHeight;
-
-            const uint32_t bytesPerPixel = avifImageUsesU16(cellImage) ? 2 : 1;
-
-            const uint32_t bytesPerRowY = bytesPerPixel * cellWidth;
-            const uint32_t srcRowBytesY = gridSplitImage->yuvRowBytes[AVIF_CHAN_Y];
-            cellImage->yuvPlanes[AVIF_CHAN_Y] =
-                &gridSplitImage->yuvPlanes[AVIF_CHAN_Y][(gridX * bytesPerRowY) + (gridY * cellHeight) * srcRowBytesY];
-            cellImage->yuvRowBytes[AVIF_CHAN_Y] = srcRowBytesY;
-
-            if (gridSplitImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
-                avifPixelFormatInfo info;
-                avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &info);
-
-                const uint32_t uvWidth = (cellWidth + info.chromaShiftX) >> info.chromaShiftX;
-                const uint32_t uvHeight = (cellHeight + info.chromaShiftY) >> info.chromaShiftY;
-                const uint32_t bytesPerRowUV = bytesPerPixel * uvWidth;
-
-                const uint32_t srcRowBytesU = gridSplitImage->yuvRowBytes[AVIF_CHAN_U];
-                cellImage->yuvPlanes[AVIF_CHAN_U] =
-                    &gridSplitImage->yuvPlanes[AVIF_CHAN_U][(gridX * bytesPerRowUV) + (gridY * uvHeight) * srcRowBytesU];
-                cellImage->yuvRowBytes[AVIF_CHAN_U] = srcRowBytesU;
-
-                const uint32_t srcRowBytesV = gridSplitImage->yuvRowBytes[AVIF_CHAN_V];
-                cellImage->yuvPlanes[AVIF_CHAN_V] =
-                    &gridSplitImage->yuvPlanes[AVIF_CHAN_V][(gridX * bytesPerRowUV) + (gridY * uvHeight) * srcRowBytesV];
-                cellImage->yuvRowBytes[AVIF_CHAN_V] = srcRowBytesV;
-            }
-
-            if (gridSplitImage->alphaPlane) {
-                const uint32_t bytesPerRowA = bytesPerPixel * cellWidth;
-                const uint32_t srcRowBytesA = gridSplitImage->alphaRowBytes;
-                cellImage->alphaPlane = &gridSplitImage->alphaPlane[(gridX * bytesPerRowA) + (gridY * cellHeight) * srcRowBytesA];
-                cellImage->alphaRowBytes = srcRowBytesA;
             }
         }
     }

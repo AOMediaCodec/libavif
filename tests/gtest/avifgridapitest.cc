@@ -1,7 +1,7 @@
 // Copyright 2022 Google LLC. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <tuple>
+#include <fstream>
 #include <vector>
 
 #include "avif/avif.h"
@@ -15,139 +15,235 @@ using testing::ValuesIn;
 namespace libavif {
 namespace {
 
-// Pair of cell count and cell size for a single dimension.
 struct Cell {
-  int count, size;
+  int width, height;
 };
 
-class GridApiTest
-    : public testing::TestWithParam<
-          std::tuple</*horizontal=*/Cell, /*vertical=*/Cell, /*bit_depth=*/int,
-                     /*yuv_format=*/avifPixelFormat, /*create_alpha=*/bool,
-                     /*expected_success=*/bool>> {};
-
-TEST_P(GridApiTest, EncodeDecode) {
-  const Cell horizontal = std::get<0>(GetParam());
-  const Cell vertical = std::get<1>(GetParam());
-  const int bit_depth = std::get<2>(GetParam());
-  const avifPixelFormat yuv_format = std::get<3>(GetParam());
-  const bool create_alpha = std::get<4>(GetParam());
-  const bool expected_success = std::get<5>(GetParam());
-
+avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
+                            avifPixelFormat yuv_format) {
   // Construct a grid.
   std::vector<testutil::AvifImagePtr> cell_images;
-  cell_images.reserve(horizontal.count * vertical.count);
-  for (int i = 0; i < horizontal.count * vertical.count; ++i) {
-    cell_images.emplace_back(testutil::CreateImage(
-        horizontal.size, vertical.size, bit_depth, yuv_format,
-        create_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV));
-    if (cell_images.back() == nullptr && !expected_success) {
-      return;  // Bad dimensions may have been already caught.
+  cell_images.reserve(cell_rows.size() * cell_rows.front().size());
+  for (const std::vector<Cell>& cell_row : cell_rows) {
+    assert(cell_row.size() == cell_rows.front().size());
+    for (const Cell& cell : cell_row) {
+      cell_images.emplace_back(testutil::CreateImage(
+          cell.width, cell.height, /*depth=*/8, yuv_format, AVIF_PLANES_ALL));
+      if (!cell_images.back()) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+      }
+      testutil::FillImageGradient(cell_images.back().get());
     }
-    ASSERT_NE(cell_images.back(), nullptr);
-    testutil::FillImageGradient(cell_images.back().get());
   }
 
   // Encode the grid image.
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
-  ASSERT_NE(encoder, nullptr);
+  if (!encoder) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
   encoder->speed = AVIF_SPEED_FASTEST;
-  // Just here to match libavif API.
+  encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
+  encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
+  encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+  encoder->minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+  // cell_image_ptrs exists only to match libavif API.
   std::vector<avifImage*> cell_image_ptrs(cell_images.size());
   for (size_t i = 0; i < cell_images.size(); ++i) {
     cell_image_ptrs[i] = cell_images[i].get();
   }
-  const avifResult result = avifEncoderAddImageGrid(
-      encoder.get(), horizontal.count, vertical.count, cell_image_ptrs.data(),
+  avifResult result = avifEncoderAddImageGrid(
+      encoder.get(), static_cast<uint32_t>(cell_rows.front().size()),
+      static_cast<uint32_t>(cell_rows.size()), cell_image_ptrs.data(),
       AVIF_ADD_IMAGE_FLAG_SINGLE);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
 
-  if (expected_success) {
-    ASSERT_EQ(result, AVIF_RESULT_OK);
-    testutil::AvifRwData encoded_avif;
-    ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded_avif), AVIF_RESULT_OK);
+  testutil::AvifRwData encoded_avif;
+  result = avifEncoderFinish(encoder.get(), &encoded_avif);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
+  std::ofstream("/home/yguyon/tmp/a.avif", std::ios::binary)
+      .write(reinterpret_cast<char*>(encoded_avif.data), encoded_avif.size);
 
-    // Decode the grid image.
-    testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
-    ASSERT_NE(image, nullptr);
-    testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
-    ASSERT_NE(decoder, nullptr);
-    ASSERT_EQ(avifDecoderReadMemory(decoder.get(), image.get(),
-                                    encoded_avif.data, encoded_avif.size),
-              AVIF_RESULT_OK);
-  } else {
-    ASSERT_TRUE(result == AVIF_RESULT_INVALID_IMAGE_GRID ||
-                result == AVIF_RESULT_NO_CONTENT);
+  // Decode the grid image.
+  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  if (!image || !decoder) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
+  result = avifDecoderReadMemory(decoder.get(), image.get(), encoded_avif.data,
+                                 encoded_avif.size);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
+
+  // Reconstruct the input image.
+  testutil::AvifImagePtr grid =
+      testutil::CreateImage((int)image->width, (int)image->height, /*depth=*/8,
+                            yuv_format, AVIF_PLANES_ALL);
+  testutil::AvifImagePtr view(avifImageCreateEmpty(), avifImageDestroy);
+  if (!view) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
+  avifCropRect rect = {};
+  auto it = cell_images.cbegin();
+  for (const std::vector<Cell>& cell_row : cell_rows) {
+    rect.x = 0;
+    for (const Cell& cell : cell_row) {
+      rect.width = cell.width;
+      rect.height = cell.height;
+      result = avifImageSetViewRect(view.get(), grid.get(), &rect);
+      if (result != AVIF_RESULT_OK) {
+        return result;
+      }
+      testutil::CopyImageSamples(*it->get(), view.get());
+      assert(!view->imageOwnsYUVPlanes);
+      ++it;
+      rect.x += rect.width;
+    }
+    rect.y += rect.height;
+  }
+  if ((rect.x != image->width) || (rect.y != image->height) ||
+      !testutil::AreImagesEqual(*image, *image)) {
+    return AVIF_RESULT_UNKNOWN_ERROR;
+  }
+  return AVIF_RESULT_OK;
+}
+
+TEST(GridApiTest, SingleCell) {
+  for (avifPixelFormat pixel_format :
+       {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
+        AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
+    // Rules on grids do not apply to a single cell.
+    EXPECT_EQ(EncodeDecodeGrid({{{1, 1}}}, pixel_format), AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{1, 64}}}, pixel_format), AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 1}}}, pixel_format), AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 64}}}, pixel_format), AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{127, 127}}}, pixel_format), AVIF_RESULT_OK);
   }
 }
 
-// A cell cannot be smaller than 64px in any dimension if there are several
-// cells. A cell cannot have an odd size in any dimension if there are several
-// cells and chroma subsampling. Image size must be a multiple of cell size.
-constexpr Cell kValidCells[] = {{1, 64}, {1, 66}, {2, 64}, {3, 68}};
-constexpr Cell kInvalidCells[] = {{0, 0}, {0, 1}, {1, 0}, {2, 1},
-                                  {2, 2}, {2, 3}, {2, 63}};
-constexpr int kBitDepths[] = {8, 10, 12};
-constexpr avifPixelFormat kPixelFormats[] = {
-    AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
-    AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400};
+TEST(GridApiTest, CellsOfSameDimensions) {
+  for (avifPixelFormat pixel_format :
+       {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
+        AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - the tile_width shall be greater than or equal to 64, and should be a
+    //     multiple of 64
+    //   - the tile_height shall be greater than or equal to 64, and should be a
+    //     multiple of 64
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 64}, {64, 64}, {64, 64}}}, pixel_format),
+              AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{100, 110}},  //
+                                {{100, 110}},  //
+                                {{100, 110}}},
+                               pixel_format),
+              AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 64}, {64, 64}, {64, 64}},
+                                {{64, 64}, {64, 64}, {64, 64}},
+                                {{64, 64}, {64, 64}, {64, 64}}},
+                               pixel_format),
+              AVIF_RESULT_OK);
 
-INSTANTIATE_TEST_SUITE_P(Valid, GridApiTest,
-                         Combine(/*horizontal=*/ValuesIn(kValidCells),
-                                 /*vertical=*/ValuesIn(kValidCells),
-                                 ValuesIn(kBitDepths), ValuesIn(kPixelFormats),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(true)));
+    EXPECT_EQ(EncodeDecodeGrid({{{2, 64}, {2, 64}}}, pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 62}, {64, 62}}}, pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 2}},  //
+                                {{64, 2}}},
+                               pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    EXPECT_EQ(EncodeDecodeGrid({{{2, 64}},  //
+                                {{2, 64}}},
+                               pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+  }
 
-INSTANTIATE_TEST_SUITE_P(InvalidVertically, GridApiTest,
-                         Combine(/*horizontal=*/ValuesIn(kValidCells),
-                                 /*vertical=*/ValuesIn(kInvalidCells),
-                                 ValuesIn(kBitDepths), ValuesIn(kPixelFormats),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(false)));
-INSTANTIATE_TEST_SUITE_P(InvalidHorizontally, GridApiTest,
-                         Combine(/*horizontal=*/ValuesIn(kInvalidCells),
-                                 /*vertical=*/ValuesIn(kValidCells),
-                                 ValuesIn(kBitDepths), ValuesIn(kPixelFormats),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(false)));
-INSTANTIATE_TEST_SUITE_P(InvalidBoth, GridApiTest,
-                         Combine(/*horizontal=*/ValuesIn(kInvalidCells),
-                                 /*vertical=*/ValuesIn(kInvalidCells),
-                                 ValuesIn(kBitDepths), ValuesIn(kPixelFormats),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(false)));
+  // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+  //   - when the images are in the 4:2:2 chroma sampling format the horizontal
+  //     tile offsets and widths, and the output width, shall be even numbers;
+  EXPECT_EQ(EncodeDecodeGrid({{{64, 65}, {64, 65}}}, AVIF_PIXEL_FORMAT_YUV422),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(EncodeDecodeGrid({{{65, 64}, {65, 64}}}, AVIF_PIXEL_FORMAT_YUV422),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+  //   - when the images are in the 4:2:0 chroma sampling format both the
+  //     horizontal and vertical tile offsets and widths, and the output width
+  //     and height, shall be even numbers.
+  EXPECT_EQ(EncodeDecodeGrid({{{64, 65}, {64, 65}}}, AVIF_PIXEL_FORMAT_YUV420),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+  EXPECT_EQ(EncodeDecodeGrid({{{65, 64}, {65, 64}}}, AVIF_PIXEL_FORMAT_YUV420),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+}
 
-// Special case depending on the cell count and the chroma subsampling.
-INSTANTIATE_TEST_SUITE_P(ValidOddHeight, GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{1, 64}),
-                                 /*vertical=*/Values(Cell{1, 65}, Cell{2, 65}),
-                                 ValuesIn(kBitDepths),
-                                 Values(AVIF_PIXEL_FORMAT_YUV444,
-                                        AVIF_PIXEL_FORMAT_YUV422,
-                                        AVIF_PIXEL_FORMAT_YUV400),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(true)));
-INSTANTIATE_TEST_SUITE_P(InvalidOddHeight, GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{1, 64}),
-                                 /*vertical=*/Values(Cell{2, 65}),
-                                 ValuesIn(kBitDepths),
-                                 Values(AVIF_PIXEL_FORMAT_YUV420),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(false)));
+TEST(GridApiTest, CellsOfDifferentDimensions2) {
+  EXPECT_EQ(EncodeDecodeGrid({{{64, 65}, {64, 65}}}, AVIF_PIXEL_FORMAT_YUV444),
+            AVIF_RESULT_OK);
+}
 
-// Special case depending on the cell count and the cell size.
-INSTANTIATE_TEST_SUITE_P(ValidOddDimensions, GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{1, 1}),
-                                 /*vertical=*/Values(Cell{1, 65}),
-                                 ValuesIn(kBitDepths), ValuesIn(kPixelFormats),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(true)));
-INSTANTIATE_TEST_SUITE_P(InvalidOddDimensions, GridApiTest,
-                         Combine(/*horizontal=*/Values(Cell{2, 1}),
-                                 /*vertical=*/Values(Cell{1, 65}, Cell{2, 65}),
-                                 ValuesIn(kBitDepths), ValuesIn(kPixelFormats),
-                                 /*create_alpha=*/Values(false, true),
-                                 /*expected_success=*/Values(false)));
+TEST(GridApiTest, CellsOfDifferentDimensions) {
+  for (avifPixelFormat pixel_format :
+       {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
+        AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
+    // Right-most cells are thinner.
+    EXPECT_EQ(
+        EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}}}, pixel_format),
+        AVIF_RESULT_OK);
+    // Bottom-most cells are shorter.
+    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}},
+                                {{100, 100}, {100, 100}},
+                                {{100, 66}, {100, 66}}},
+                               pixel_format),
+              AVIF_RESULT_OK)
+        << pixel_format;
+    // Right-most cells are thinner and bottom-most cells are shorter.
+    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}},
+                                {{100, 100}, {100, 100}, {66, 100}},
+                                {{100, 66}, {100, 66}, {66, 66}}},
+                               pixel_format),
+              AVIF_RESULT_OK);
+
+    // Right-most cells are larger.
+    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {222, 100}},
+                                {{100, 100}, {100, 100}, {222, 100}},
+                                {{100, 100}, {100, 100}, {222, 100}}},
+                               pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    // Bottom-most cells are taller.
+    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {100, 100}},
+                                {{100, 100}, {100, 100}, {100, 100}},
+                                {{100, 222}, {100, 222}, {100, 222}}},
+                               pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    // One cell dimension is off.
+    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {100, 100}},
+                                {{100, 100}, {66 /* here */, 100}, {100, 100}},
+                                {{100, 100}, {100, 100}, {100, 100}}},
+                               pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}},
+                                {{100, 100}, {100, 100}, {66, 100}},
+                                {{100, 66}, {100, 66}, {66, 100 /* here */}}},
+                               pixel_format),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+  }
+
+  // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+  //   - when the images are in the 4:2:2 chroma sampling format the horizontal
+  //     tile offsets and widths, and the output width, shall be even numbers;
+  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {66, 65}}}, AVIF_PIXEL_FORMAT_YUV422),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {65, 66}}}, AVIF_PIXEL_FORMAT_YUV422),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+  //   - when the images are in the 4:2:0 chroma sampling format both the
+  //     horizontal and vertical tile offsets and widths, and the output width
+  //     and height, shall be even numbers.
+  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {66, 65}}}, AVIF_PIXEL_FORMAT_YUV420),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {65, 66}}}, AVIF_PIXEL_FORMAT_YUV420),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+}
 
 }  // namespace
 }  // namespace libavif

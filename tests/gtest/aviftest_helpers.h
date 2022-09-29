@@ -68,6 +68,7 @@ bool AreByteSequencesEqual(const avifRWData& data1, const avifRWData& data2);
 // account in the comparison.
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha = false);
+void CopyImageSamples(const avifImage& from, avifImage* to);
 
 //------------------------------------------------------------------------------
 // Shorter versions of libavif functions

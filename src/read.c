@@ -1291,13 +1291,18 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     assert(decodedTileCount > oldDecodedTileCount);
 
     avifTile * firstTile = &data->tiles.tile[firstTileIndex];
+    avifTile * topRightTile = &data->tiles.tile[firstTileIndex + grid->columns - 1];
+    avifTile * bottomLeftTile = &data->tiles.tile[firstTileIndex + (grid->rows - 1) * grid->columns];
     avifBool firstTileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
 
     // Check for tile consistency: All tiles in a grid image should match in the properties checked below.
     for (unsigned int i = AVIF_MAX(1, oldDecodedTileCount); i < decodedTileCount; ++i) {
         avifTile * tile = &data->tiles.tile[firstTileIndex + i];
+        const uint32_t expectedTileWidth = ((i + 1) % grid->columns) ? firstTile->image->width : topRightTile->image->width;
+        const uint32_t expectedCellHeight = (i < ((grid->rows - 1) * grid->columns)) ? firstTile->image->height
+                                                                                     : bottomLeftTile->image->height;
         avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]);
-        if ((tile->image->width != firstTile->image->width) || (tile->image->height != firstTile->image->height) ||
+        if ((tile->image->width != expectedTileWidth) || (tile->image->height != expectedCellHeight) ||
             (tile->image->depth != firstTile->image->depth) || (tile->image->yuvFormat != firstTile->image->yuvFormat) ||
             (tile->image->yuvRange != firstTile->image->yuvRange) || (uvPresent != firstTileUVPresent) ||
             (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
