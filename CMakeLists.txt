@@ -145,13 +145,13 @@ endif()
 include(CheckCCompilerFlag)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    add_definitions(-Wall -Wextra -Wshorten-64-to-32)
+    add_compile_options(-Wall -Wextra -Wshorten-64-to-32)
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
-    add_definitions(-Wall -Wextra)
+    add_compile_options(-Wall -Wextra)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     message(STATUS "libavif: Enabling warnings for MSVC")
-    add_definitions(
+    add_compile_options(
         /W4
         /wd4324 # Disable: structure was padded due to alignment specifier
         /wd4996 # Disable: potentially unsafe stdlib methods
@@ -171,9 +171,9 @@ endif()
 if(AVIF_ENABLE_WERROR)
     # Warnings as errors
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        add_definitions(-Werror)
+        add_compile_options(-Werror)
     elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-        add_definitions(/WX)
+        add_compile_options(/WX)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
@@ -182,7 +182,7 @@ endif()
 if(AVIF_ENABLE_COVERAGE)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         message(STATUS "libavif: Enabling coverage for Clang")
-        add_definitions(-fprofile-instr-generate -fcoverage-mapping -O0)
+        add_compile_options(-fprofile-instr-generate -fcoverage-mapping -O0)
         set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fprofile-instr-generate -fcoverage-mapping")
     else()
         # TODO: Add support for other compilers
