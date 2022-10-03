@@ -251,6 +251,9 @@ static const uint8_t * avifJPEGFindSubstr(const uint8_t * str, size_t strLength,
 #define AVIF_ALTERNATIVE_XMP_NOTE_TAG "<xmpNote:HasExtendedXMP>"
 #define AVIF_ALTERNATIVE_XMP_NOTE_TAG_LENGTH 24
 
+// Offset in APP1 segment (skip tag + guid + size + offset).
+#define AVIF_OFFSET_TILL_EXTENDED_XMP (tagExtendedXMP.size + AVIF_EXTENDED_XMP_GUID_LENGTH + 4 + 4)
+
 // Note on setjmp() and volatile variables:
 //
 // K & R, The C Programming Language 2nd Ed, p. 254 says:
@@ -411,9 +414,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                     goto cleanup;
                 }
 
-                // Offset in marker->data segment (skip tag + guid + size + offset).
-                const size_t offsetTillExtendedXMP = tagExtendedXMP.size + AVIF_EXTENDED_XMP_GUID_LENGTH + 4 + 4;
-                if (marker->data_length < offsetTillExtendedXMP) {
+                if (marker->data_length < AVIF_OFFSET_TILL_EXTENDED_XMP) {
                     fprintf(stderr, "XMP extraction failed: truncated extended XMP segment\n");
                     goto cleanup;
                 }
@@ -427,7 +428,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                     }
                 }
                 // Size of the current extended segment.
-                const size_t extendedXMPSize = marker->data_length - offsetTillExtendedXMP;
+                const size_t extendedXMPSize = marker->data_length - AVIF_OFFSET_TILL_EXTENDED_XMP;
                 // Expected size of the sum of all extended segments.
                 // According to Adobe XMP Specification Part 3 section 1.1.3.1:
                 //   "full length of the ExtendedXMP serialization as a 32-bit unsigned integer"
@@ -438,11 +439,11 @@ avifBool avifJPEGRead(const char * inputFilename,
                 //   "offset of this portion as a 32-bit unsigned integer"
                 const uint32_t extendedXMPOffset =
                     avifJPEGReadUint32BigEndian(&marker->data[tagExtendedXMP.size + AVIF_EXTENDED_XMP_GUID_LENGTH + 4]);
-                if ((uint64_t)standardXMPSize + totalExtendedXMPSize > SIZE_MAX) {
+                if (((uint64_t)standardXMPSize + totalExtendedXMPSize) > SIZE_MAX) {
                     fprintf(stderr, "XMP extraction failed: total XMP size is too large\n");
                     goto cleanup;
                 }
-                if ((extendedXMPSize == 0) || ((uint64_t)extendedXMPOffset + extendedXMPSize > totalExtendedXMPSize)) {
+                if ((extendedXMPSize == 0) || (((uint64_t)extendedXMPOffset + extendedXMPSize) > totalExtendedXMPSize)) {
                     fprintf(stderr, "XMP extraction failed: invalid extended XMP segment size or offset\n");
                     goto cleanup;
                 }
@@ -451,7 +452,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                         fprintf(stderr, "XMP extraction failed: extended XMP segment GUID mismatch\n");
                         goto cleanup;
                     }
-                    if (totalExtendedXMPSize != totalXMP.size - standardXMPSize) {
+                    if (totalExtendedXMPSize != (totalXMP.size - standardXMPSize)) {
                         fprintf(stderr, "XMP extraction failed: extended XMP total size mismatch\n");
                         goto cleanup;
                     }
@@ -469,7 +470,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                 }
                 // According to Adobe XMP Specification Part 3 section 1.1.3.1:
                 //   "A robust JPEG reader should tolerate the marker segments in any order."
-                memcpy(&totalXMP.data[standardXMPSize + extendedXMPOffset], &marker->data[offsetTillExtendedXMP], extendedXMPSize);
+                memcpy(&totalXMP.data[standardXMPSize + extendedXMPOffset], &marker->data[AVIF_OFFSET_TILL_EXTENDED_XMP], extendedXMPSize);
 
                 // Make sure no previously read data was overwritten by the current segment.
                 if (memchr(&extendedXMPReadBytes.data[extendedXMPOffset], 1, extendedXMPSize)) {
@@ -495,9 +496,10 @@ avifBool avifJPEGRead(const char * inputFilename,
             memcpy(xmpNote + AVIF_XMP_NOTE_TAG_LENGTH, extendedXMPGUID, AVIF_EXTENDED_XMP_GUID_LENGTH);
             if (!avifJPEGFindSubstr(standardXMPData, standardXMPSize, xmpNote, sizeof(xmpNote))) {
                 // Try the alternative before returning an error.
-                memcpy(xmpNote, AVIF_ALTERNATIVE_XMP_NOTE_TAG, AVIF_ALTERNATIVE_XMP_NOTE_TAG_LENGTH);
-                memcpy(xmpNote + AVIF_ALTERNATIVE_XMP_NOTE_TAG_LENGTH, extendedXMPGUID, AVIF_EXTENDED_XMP_GUID_LENGTH);
-                if (!avifJPEGFindSubstr(standardXMPData, standardXMPSize, xmpNote, sizeof(xmpNote))) {
+                uint8_t alternativeXmpNote[AVIF_ALTERNATIVE_XMP_NOTE_TAG_LENGTH + AVIF_EXTENDED_XMP_GUID_LENGTH];
+                memcpy(alternativeXmpNote, AVIF_ALTERNATIVE_XMP_NOTE_TAG, AVIF_ALTERNATIVE_XMP_NOTE_TAG_LENGTH);
+                memcpy(alternativeXmpNote + AVIF_ALTERNATIVE_XMP_NOTE_TAG_LENGTH, extendedXMPGUID, AVIF_EXTENDED_XMP_GUID_LENGTH);
+                if (!avifJPEGFindSubstr(standardXMPData, standardXMPSize, alternativeXmpNote, sizeof(alternativeXmpNote))) {
                     fprintf(stderr, "XMP extraction failed: standard and extended XMP GUID mismatch\n");
                     goto cleanup;
                 }

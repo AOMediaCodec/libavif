@@ -93,8 +93,6 @@ The goal is to have a large XMP blob so that it can only be stored as multiple e
 |   136627 | 0xffe1 APP1 |   4791 | http://ns.adobe.com/xmp/extensio |
 |          |             |        | ...                              |
 
-https://en.wikipedia.org/wiki/De_finibus_bonorum_et_malorum
-
 ### File [paris_icc_exif_xmp.png](paris_icc_exif_xmp.png)
 
 ![](paris_icc_exif_xmp.png)
