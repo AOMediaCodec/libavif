@@ -234,6 +234,50 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
          AreByteSequencesEqual(image1.xmp, image2.xmp);
 }
 
+void CopyImageSamples(const avifImage& from, avifImage* to) {
+  assert(from.width == to->width);
+  assert(from.height == to->height);
+  assert(from.depth == to->depth);
+  assert(from.yuvFormat == to->yuvFormat);
+  assert(from.yuvRange == to->yuvRange);
+
+  avifPixelFormatInfo info;
+  avifGetPixelFormatInfo(from.yuvFormat, &info);
+
+  for (int c = 0; c < 4; c++) {
+    const uint8_t* from_row =
+        (c == AVIF_CHAN_A) ? from.alphaPlane : from.yuvPlanes[c];
+    uint8_t* to_row = (c == AVIF_CHAN_A) ? to->alphaPlane : to->yuvPlanes[c];
+    assert(!from_row == !to_row);
+    if (!from_row) {
+      continue;
+    }
+    const uint32_t from_row_bytes =
+        (c == AVIF_CHAN_A) ? from.alphaRowBytes : from.yuvRowBytes[c];
+    const uint32_t to_row_bytes =
+        (c == AVIF_CHAN_A) ? to->alphaRowBytes : to->yuvRowBytes[c];
+    const uint32_t plane_width =
+        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
+            ? from.width
+            : ((from.width + info.chromaShiftX) >> info.chromaShiftX);
+    const uint32_t plane_height =
+        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
+            ? from.height
+            : ((from.height + info.chromaShiftY) >> info.chromaShiftY);
+    for (uint32_t y = 0; y < plane_height; ++y) {
+      if (avifImageUsesU16(&from)) {
+        std::copy(reinterpret_cast<const uint16_t*>(from_row),
+                  reinterpret_cast<const uint16_t*>(from_row) + plane_width,
+                  reinterpret_cast<uint16_t*>(to_row));
+      } else {
+        std::copy(from_row, from_row + plane_width, to_row);
+      }
+      from_row += from_row_bytes;
+      to_row += to_row_bytes;
+    }
+  }
+}
+
 //------------------------------------------------------------------------------
 
 AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
