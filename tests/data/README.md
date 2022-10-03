@@ -33,6 +33,25 @@ beginning)
 
 The structure can be displayed using `exiv2 -pS <file>`.
 
+### File [dog_exif_extended_xmp_icc.jpg](dog_exif_extended_xmp_icc.jpg)
+
+![](dog_exif_extended_xmp_icc.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Personal photo.
+
+| address | marker      | length | data                                         |
+|--------:|-------------|-------:|----------------------------------------------|
+|       0 | 0xffd8 SOI  |        |                                              |
+|       2 | 0xffe1 APP1 |    884 | `Exif..II*......................`            |
+|     888 | 0xffe1 APP1 |    353 | `http://ns.adobe.com/xap/1.0/.<x:`           |
+|    1243 | 0xffe1 APP1 |  32417 | `http://ns.adobe.com/xmp/extensio`           |
+|   33662 | 0xffe0 APP0 |     16 | `JFIF.........`                              |
+|         |             |        | ...                                          |
+|   33818 | 0xffe2 APP2 |    612 | `ICC_PROFILE......T........mntrRG chunk 1/1` |
+|         |             |        | ...                                          |
+
 ### File [paris_exif_xmp_icc.jpg](paris_exif_xmp_icc.jpg)
 
 ![](paris_exif_xmp_icc.jpg)
@@ -49,6 +68,30 @@ Source: Personal photo edited with Gimp 2.10.
 |    1156 | 0xffe1 APP1 |   3929 | `http://ns.adobe.com/xap/1.0/.<?x`           |
 |    5087 | 0xffe2 APP2 |    612 | `ICC_PROFILE......T........mntrRG chunk 1/1` |
 |         |             |        | ...                                          |
+
+### File [paris_extended_xmp.jpg](paris_extended_xmp.jpg)
+
+![](paris_extended_xmp.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Metadata was extracted from `paris_exif_xmp_icc.jpg` with
+`exiftool -tagsfromfile paris_exif_xmp_icc.jpg paris_exif_xmp_icc.xmp`. The text of the first book of
+[De finibus bonorum et malorum](https://en.wikipedia.org/wiki/De_finibus_bonorum_et_malorum) was manually inserted in
+that file under the tag `xmp:Label` and the second book under the tag `xmp:Nickname` (any `<` or `>` removed to avoid
+conflicts with XMP). The file was reconstructed with
+`exiftool -tagsfromfile paris_exif_xmp_icc.xmp -Exif= -icc_profile= paris_exif_xmp_icc.jpg -o paris_extended_xmp.jpg`.
+The goal is to have a large XMP blob so that it can only be stored as multiple extended XMP chunks.
+
+|  address | marker      | length | data                             |
+|---------:|-------------|-------:|----------------------------------|
+|        0 | 0xffd8 SOI  |        |                                  |
+|        2 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                  |
+|       20 | 0xffe1 APP1 |   5531 | http://ns.adobe.com/xap/1.0/.<?x |
+|     5553 | 0xffe1 APP1 |  65535 | http://ns.adobe.com/xmp/extensio |
+|    71090 | 0xffe1 APP1 |  65535 | http://ns.adobe.com/xmp/extensio |
+|   136627 | 0xffe1 APP1 |   4791 | http://ns.adobe.com/xmp/extensio |
+|          |             |        | ...                              |
 
 ### File [paris_icc_exif_xmp.png](paris_icc_exif_xmp.png)
 

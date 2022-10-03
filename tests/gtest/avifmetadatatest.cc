@@ -310,6 +310,22 @@ TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
 
 //------------------------------------------------------------------------------
 
+TEST(MetadataTest, ExtendedXMP) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "dog_exif_extended_xmp_icc.jpg");
+  ASSERT_NE(image, nullptr);
+  ASSERT_NE(image->xmp.size, 0u);
+}
+
+TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_extended_xmp.jpg");
+  ASSERT_NE(image, nullptr);
+  ASSERT_GT(image->xmp.size, size_t{65536 * 2});
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace libavif
 
