@@ -131,7 +131,7 @@ static void avifImageSetDefaults(avifImage * image)
     image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
 }
 
-avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat)
+avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat)
 {
     avifImage * image = (avifImage *)avifAlloc(sizeof(avifImage));
     avifImageSetDefaults(image);
