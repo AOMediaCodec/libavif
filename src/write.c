@@ -974,6 +974,25 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
     }
 
+    if (encoder->data->frames.count == 1) {
+        // We will be writing an image sequence. When writing the AV1SampleEntry (derived from
+        // VisualSampleEntry) in the stsd box, we need to cast imageMetadata->width and
+        // imageMetadata->height to uint16_t:
+        //     class VisualSampleEntry(codingname) extends SampleEntry (codingname){
+        //        ...
+        //        unsigned int(16) width;
+        //        unsigned int(16) height;
+        //        ...
+        //     }
+        // Check whether it is safe to cast width and height to uint16_t. The maximum width and
+        // height of an AV1 frame are 65536, which just exceeds uint16_t.
+        assert(encoder->data->items.count > 0);
+        const avifImage * imageMetadata = encoder->data->imageMetadata;
+        if ((imageMetadata->width > 65535) || (imageMetadata->height > 65535)) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
 
