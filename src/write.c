@@ -178,8 +178,9 @@ typedef struct avifEncoderItem
     uint32_t gridCols; // if non-zero (legal range [1-256]), this is a grid item
     uint32_t gridRows; // if non-zero (legal range [1-256]), this is a grid item
 
-    uint32_t outputWidth;  // displayed dimensions of the item
-    uint32_t outputHeight; // (only present on type==av01)
+    // displayed dimensions of the item (only present on type==av01)
+    uint32_t outputWidth;
+    uint32_t outputHeight;
 
     uint16_t dimgFromID; // if non-zero, make an iref from dimgFromID -> this id
 
@@ -729,7 +730,7 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
 
 // Copies the pixel from srcPlane to the already allocated dstPlane,
 // filling any extra row or column with border pixel values.
-static void avifPlaneCopyAndPad(uint8_t * dstPlane,
+static void avifCopyAndPadPlane(uint8_t * dstPlane,
                                 uint32_t dstRowBytes,
                                 uint32_t dstWidth,
                                 uint32_t dstHeight,
@@ -739,6 +740,8 @@ static void avifPlaneCopyAndPad(uint8_t * dstPlane,
                                 uint32_t srcHeight,
                                 uint32_t sampleByteCount)
 {
+    assert(dstWidth >= srcWidth);
+    assert(dstHeight >= srcHeight);
     for (uint32_t j = 0; j < srcHeight; ++j) {
         const uint8_t * srcRow = &srcPlane[j * srcRowBytes];
         uint8_t * dstRow = &dstPlane[j * dstRowBytes];
@@ -760,15 +763,15 @@ static void avifPlaneCopyAndPad(uint8_t * dstPlane,
 
     // Pad rows.
     for (uint32_t j = srcHeight; j < dstHeight; ++j) {
-        uint8_t * dstRow = &dstPlane[j * srcRowBytes];
-        memcpy(dstRow, dstRow - srcRowBytes, srcRowBytes);
+        uint8_t * dstRow = &dstPlane[j * dstRowBytes];
+        memcpy(dstRow, dstRow - dstRowBytes, dstRowBytes);
     }
 }
 
 // Same as avifImageCopy() but pads the dstImage with border pixel values to reach dstWidth and dstHeight.
 static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
 {
-    avifImage * dstImage = avifImageCreate((int)dstWidth, (int)dstHeight, (int)srcImage->depth, srcImage->yuvFormat);
+    avifImage * dstImage = avifImageCreate(dstWidth, dstHeight, srcImage->depth, srcImage->yuvFormat);
 
     if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
@@ -792,7 +795,7 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
                 dstImage->yuvRowBytes[yuvPlane] = 0;
                 continue;
             }
-            avifPlaneCopyAndPad(dstImage->yuvPlanes[yuvPlane],
+            avifCopyAndPadPlane(dstImage->yuvPlanes[yuvPlane],
                                 dstImage->yuvRowBytes[yuvPlane],
                                 (yuvPlane == AVIF_CHAN_Y) ? dstImage->width : dstUvWidth,
                                 (yuvPlane == AVIF_CHAN_Y) ? dstImage->height : dstUvHeight,
@@ -810,7 +813,7 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
             avifImageDestroy(dstImage);
             return NULL;
         }
-        avifPlaneCopyAndPad(dstImage->alphaPlane,
+        avifCopyAndPadPlane(dstImage->alphaPlane,
                             dstImage->alphaRowBytes,
                             dstImage->width,
                             dstImage->height,
