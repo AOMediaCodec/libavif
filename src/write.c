@@ -178,7 +178,7 @@ typedef struct avifEncoderItem
     uint32_t gridCols; // if non-zero (legal range [1-256]), this is a grid item
     uint32_t gridRows; // if non-zero (legal range [1-256]), this is a grid item
 
-    // the reconstructed grid item will be trimmed to these dimensions (only present on grid items)
+    // the reconstructed image of a grid item will be trimmed to these dimensions (only present on grid items)
     uint32_t gridWidth;
     uint32_t gridHeight;
 
@@ -849,12 +849,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     const avifImage * firstCell = cellImages[0];
-    const avifImage * topRightCell = cellImages[gridCols - 1];
-    const avifImage * bottomLeftCell = cellImages[cellCount - gridCols];
+    const avifImage * bottomRightCell = cellImages[cellCount - 1];
     if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
         return AVIF_RESULT_UNSUPPORTED_DEPTH;
     }
-    if (!firstCell->width || !firstCell->height || !topRightCell->width || !bottomLeftCell->height) {
+    if (!firstCell->width || !firstCell->height || !bottomRightCell->width || !bottomRightCell->height) {
         return AVIF_RESULT_NO_CONTENT;
     }
 
@@ -866,22 +865,22 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     //   excluding the bottom-most row) equal to tile_height, without gap or overlap, and then
     //   trimming on the right and the bottom to the indicated output_width and output_height.
     // Consider the combined input cellImages as the user's final output intent.
-    // Right and bottom cells may be padded below to enforce all tiles to be tileWidth by tileHeight,
+    // Right and bottom cells may be padded below so that all tiles are tileWidth by tileHeight,
     // and the output cropped to gridWidth by gridHeight.
     const uint32_t tileWidth = firstCell->width;
     const uint32_t tileHeight = firstCell->height;
-    const uint32_t gridWidth = (gridCols - 1) * tileWidth + topRightCell->width;
-    const uint32_t gridHeight = (gridRows - 1) * tileHeight + bottomLeftCell->height;
+    const uint32_t gridWidth = (gridCols - 1) * tileWidth + bottomRightCell->width;
+    const uint32_t gridHeight = (gridRows - 1) * tileHeight + bottomRightCell->height;
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
-        const uint32_t expectedCellWidth = ((cellIndex + 1) % gridCols) ? tileWidth : topRightCell->width;
-        const uint32_t expectedCellHeight = (cellIndex < (cellCount - gridCols)) ? tileHeight : bottomLeftCell->height;
+        const uint32_t expectedCellWidth = ((cellIndex + 1) % gridCols) ? tileWidth : bottomRightCell->width;
+        const uint32_t expectedCellHeight = (cellIndex < (cellCount - gridCols)) ? tileHeight : bottomRightCell->height;
         if ((cellImage->width != expectedCellWidth) || (cellImage->height != expectedCellHeight)) {
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
     }
 
-    if ((topRightCell->width > tileWidth) || (bottomLeftCell->height > tileHeight)) {
+    if ((bottomRightCell->width > tileWidth) || (bottomRightCell->height > tileHeight)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
     if ((cellCount > 1) &&
