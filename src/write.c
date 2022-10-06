@@ -178,6 +178,10 @@ typedef struct avifEncoderItem
     uint32_t gridCols; // if non-zero (legal range [1-256]), this is a grid item
     uint32_t gridRows; // if non-zero (legal range [1-256]), this is a grid item
 
+    // the reconstructed image of a grid item will be trimmed to these dimensions (only present on grid items)
+    uint32_t gridWidth;
+    uint32_t gridHeight;
+
     uint16_t dimgFromID; // if non-zero, make an iref from dimgFromID -> this id
 
     struct ipmaArray ipma;
@@ -653,7 +657,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamFinishBox(s, meta);
 }
 
-static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t gridRows, const avifImage * firstCell)
+static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t gridRows, uint32_t gridWidth, uint32_t gridHeight)
 {
     // ISO/IEC 23008-12 6.6.2.3.2
     // aligned(8) class ImageGrid {
@@ -666,8 +670,6 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
     //     unsigned int(FieldLength) output_height;
     // }
 
-    uint32_t gridWidth = firstCell->width * gridCols;
-    uint32_t gridHeight = firstCell->height * gridRows;
     uint8_t gridFlags = ((gridWidth > 65535) || (gridHeight > 65535)) ? 1 : 0;
 
     avifRWStream s;
@@ -726,6 +728,104 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
     return AVIF_RESULT_OK;
 }
 
+// Copies the pixel from srcPlane to the already allocated dstPlane,
+// filling any extra row or column with border pixel values.
+static void avifCopyAndPadPlane(uint8_t * dstPlane,
+                                uint32_t dstRowBytes,
+                                uint32_t dstWidth,
+                                uint32_t dstHeight,
+                                const uint8_t * srcPlane,
+                                uint32_t srcRowBytes,
+                                uint32_t srcWidth,
+                                uint32_t srcHeight,
+                                uint32_t sampleByteCount)
+{
+    assert(dstWidth >= srcWidth);
+    assert(dstHeight >= srcHeight);
+    for (uint32_t j = 0; j < srcHeight; ++j) {
+        const uint8_t * srcRow = &srcPlane[j * (size_t)srcRowBytes];
+        uint8_t * dstRow = &dstPlane[j * (size_t)dstRowBytes];
+        // Copy srcWidth samples. srcRowBytes might be unrelated.
+        memcpy(dstRow, srcRow, (size_t)srcWidth * sampleByteCount);
+
+        // Pad columns.
+        if (dstWidth > srcWidth) {
+            if (sampleByteCount == 1) {
+                memset(&dstRow[srcWidth], dstRow[srcWidth - 1], dstWidth - srcWidth);
+            } else { // sampleByteCount == 2
+                uint16_t * dstRow16 = (uint16_t *)dstRow;
+                for (uint32_t x = srcWidth; x < dstWidth; ++x) {
+                    dstRow16[x] = dstRow16[srcWidth - 1];
+                }
+            }
+        }
+    }
+
+    // Pad rows.
+    for (uint32_t j = srcHeight; j < dstHeight; ++j) {
+        uint8_t * dstRow = &dstPlane[j * (size_t)dstRowBytes];
+        memcpy(dstRow, dstRow - dstRowBytes, (size_t)dstWidth * sampleByteCount);
+    }
+}
+
+// Same as avifImageCopy() but pads the dstImage with border pixel values to reach dstWidth and dstHeight.
+static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
+{
+    avifImage * dstImage = avifImageCreate(dstWidth, dstHeight, srcImage->depth, srcImage->yuvFormat);
+
+    if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
+        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
+        if (allocationResult != AVIF_RESULT_OK) {
+            avifImageDestroy(dstImage);
+            return NULL;
+        }
+
+        avifPixelFormatInfo formatInfo;
+        avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
+        const uint32_t srcUvWidth = (srcImage->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
+        const uint32_t srcUvHeight = (srcImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
+        const uint32_t dstUvWidth = (dstImage->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
+        const uint32_t dstUvHeight = (dstImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
+        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+            if (!srcImage->yuvRowBytes[yuvPlane]) {
+                // Plane is absent. If we're copying from a source without
+                // them, mimic the source image's state by removing our copy.
+                avifFree(dstImage->yuvPlanes[yuvPlane]);
+                dstImage->yuvPlanes[yuvPlane] = NULL;
+                dstImage->yuvRowBytes[yuvPlane] = 0;
+                continue;
+            }
+            avifCopyAndPadPlane(dstImage->yuvPlanes[yuvPlane],
+                                dstImage->yuvRowBytes[yuvPlane],
+                                (yuvPlane == AVIF_CHAN_Y) ? dstImage->width : dstUvWidth,
+                                (yuvPlane == AVIF_CHAN_Y) ? dstImage->height : dstUvHeight,
+                                srcImage->yuvPlanes[yuvPlane],
+                                srcImage->yuvRowBytes[yuvPlane],
+                                (yuvPlane == AVIF_CHAN_Y) ? srcImage->width : srcUvWidth,
+                                (yuvPlane == AVIF_CHAN_Y) ? srcImage->height : srcUvHeight,
+                                avifImageUsesU16(srcImage) ? 2 : 1);
+        }
+    }
+
+    if (srcImage->alphaPlane) {
+        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
+        if (allocationResult != AVIF_RESULT_OK) {
+            avifImageDestroy(dstImage);
+            return NULL;
+        }
+        avifCopyAndPadPlane(dstImage->alphaPlane,
+                            dstImage->alphaRowBytes,
+                            dstImage->width,
+                            dstImage->height,
+                            srcImage->alphaPlane,
+                            srcImage->alphaRowBytes,
+                            srcImage->width,
+                            srcImage->height,
+                            avifImageUsesU16(srcImage) ? 2 : 1);
+    }
+    return dstImage;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -749,32 +849,51 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     const avifImage * firstCell = cellImages[0];
+    const avifImage * bottomRightCell = cellImages[cellCount - 1];
     if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
         return AVIF_RESULT_UNSUPPORTED_DEPTH;
     }
-
-    if (!firstCell->width || !firstCell->height) {
+    if (!firstCell->width || !firstCell->height || !bottomRightCell->width || !bottomRightCell->height) {
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    if ((cellCount > 1) && !avifAreGridDimensionsValid(firstCell->yuvFormat,
-                                                       gridCols * firstCell->width,
-                                                       gridRows * firstCell->height,
-                                                       firstCell->width,
-                                                       firstCell->height,
-                                                       &encoder->diag)) {
+    // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
+    //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
+    // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
+    //   The reconstructed image is formed by tiling the input images into a grid with a column width
+    //   (potentially excluding the right-most column) equal to tile_width and a row height (potentially
+    //   excluding the bottom-most row) equal to tile_height, without gap or overlap, and then
+    //   trimming on the right and the bottom to the indicated output_width and output_height.
+    // Consider the combined input cellImages as the user's final output intent.
+    // Right and bottom cells may be padded below so that all tiles are tileWidth by tileHeight,
+    // and the output cropped to gridWidth by gridHeight.
+    const uint32_t tileWidth = firstCell->width;
+    const uint32_t tileHeight = firstCell->height;
+    const uint32_t gridWidth = (gridCols - 1) * tileWidth + bottomRightCell->width;
+    const uint32_t gridHeight = (gridRows - 1) * tileHeight + bottomRightCell->height;
+    for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
+        const avifImage * cellImage = cellImages[cellIndex];
+        const uint32_t expectedCellWidth = ((cellIndex + 1) % gridCols) ? tileWidth : bottomRightCell->width;
+        const uint32_t expectedCellHeight = (cellIndex < (cellCount - gridCols)) ? tileHeight : bottomRightCell->height;
+        if ((cellImage->width != expectedCellWidth) || (cellImage->height != expectedCellHeight)) {
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+    }
+
+    if ((bottomRightCell->width > tileWidth) || (bottomRightCell->height > tileHeight)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+    if ((cellCount > 1) &&
+        !avifAreGridDimensionsValid(firstCell->yuvFormat, gridWidth, gridHeight, tileWidth, tileHeight, &encoder->diag)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
-        // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
-        //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
         // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
         //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
         //   same decoder configuration (see 7.3.6.2).
-        if ((cellImage->width != firstCell->width) || (cellImage->height != firstCell->height) ||
-            (cellImage->depth != firstCell->depth) || (cellImage->yuvFormat != firstCell->yuvFormat) ||
+        if ((cellImage->depth != firstCell->depth) || (cellImage->yuvFormat != firstCell->yuvFormat) ||
             (cellImage->yuvRange != firstCell->yuvRange) || (cellImage->colorPrimaries != firstCell->colorPrimaries) ||
             (cellImage->transferCharacteristics != firstCell->transferCharacteristics) ||
             (cellImage->matrixCoefficients != firstCell->matrixCoefficients) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane) ||
@@ -818,7 +937,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Use as many tiles as allowed by the minimum tile area requirement and impose a maximum
         // of 8 tiles.
         const int threads = 8;
-        avifSetTileConfiguration(threads, firstCell->width, firstCell->height, &encoder->data->tileRowsLog2, &encoder->data->tileColsLog2);
+        avifSetTileConfiguration(threads, tileWidth, tileHeight, &encoder->data->tileRowsLog2, &encoder->data->tileColsLog2);
     }
 
     // -----------------------------------------------------------------------
@@ -848,9 +967,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         uint16_t gridColorID = 0;
         if (cellCount > 1) {
             avifEncoderItem * gridColorItem = avifEncoderDataCreateItem(encoder->data, "grid", "Color", 6, 0);
-            avifWriteGridPayload(&gridColorItem->metadataPayload, gridCols, gridRows, firstCell);
+            avifWriteGridPayload(&gridColorItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight);
             gridColorItem->gridCols = gridCols;
             gridColorItem->gridRows = gridRows;
+            gridColorItem->gridWidth = gridWidth;
+            gridColorItem->gridHeight = gridHeight;
 
             gridColorID = gridColorItem->id;
             encoder->data->primaryItemID = gridColorID;
@@ -899,12 +1020,14 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             uint16_t gridAlphaID = 0;
             if (cellCount > 1) {
                 avifEncoderItem * gridAlphaItem = avifEncoderDataCreateItem(encoder->data, "grid", "Alpha", 6, 0);
-                avifWriteGridPayload(&gridAlphaItem->metadataPayload, gridCols, gridRows, firstCell);
+                avifWriteGridPayload(&gridAlphaItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight);
                 gridAlphaItem->alpha = AVIF_TRUE;
                 gridAlphaItem->irefToID = encoder->data->primaryItemID;
                 gridAlphaItem->irefType = "auxl";
                 gridAlphaItem->gridCols = gridCols;
                 gridAlphaItem->gridRows = gridRows;
+                gridAlphaItem->gridWidth = gridWidth;
+                gridAlphaItem->gridHeight = gridHeight;
                 gridAlphaID = gridAlphaItem->id;
 
                 if (encoder->data->imageMetadata->alphaPremultiplied) {
@@ -1004,6 +1127,14 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
+            avifImage * paddedCellImage = NULL;
+            if ((cellImage->width != tileWidth) || (cellImage->height != tileHeight)) {
+                paddedCellImage = avifImageCopyAndPad(cellImage, tileWidth, tileHeight);
+                if (!paddedCellImage) {
+                    return AVIF_RESULT_OUT_OF_MEMORY;
+                }
+                cellImage = paddedCellImage;
+            }
             avifResult encodeResult = item->codec->encodeImage(item->codec,
                                                                encoder,
                                                                cellImage,
@@ -1013,6 +1144,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                encoderChanges,
                                                                addImageFlags,
                                                                item->encodeOutput);
+            if (paddedCellImage) {
+                avifImageDestroy(paddedCellImage);
+            }
             if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                 encodeResult = item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
             }
@@ -1313,8 +1447,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         uint32_t imageWidth = imageMetadata->width;
         uint32_t imageHeight = imageMetadata->height;
         if (isGrid) {
-            imageWidth = imageMetadata->width * item->gridCols;
-            imageHeight = imageMetadata->height * item->gridRows;
+            imageWidth = item->gridWidth;
+            imageHeight = item->gridHeight;
         }
 
         // Properties all av01 items need
