@@ -78,9 +78,9 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
   }
 
   // Reconstruct the input image by merging all cells into a single avifImage.
-  testutil::AvifImagePtr grid =
-      testutil::CreateImage((int)image->width, (int)image->height, /*depth=*/8,
-                            yuv_format, AVIF_PLANES_ALL);
+  testutil::AvifImagePtr grid = testutil::CreateImage(
+      static_cast<int>(image->width), static_cast<int>(image->height),
+      /*depth=*/8, yuv_format, AVIF_PLANES_ALL);
   testutil::AvifImagePtr view(avifImageCreateEmpty(), avifImageDestroy);
   if (!view) {
     return AVIF_RESULT_OUT_OF_MEMORY;
@@ -183,14 +183,13 @@ TEST(GridApiTest, CellsOfDifferentDimensions) {
     EXPECT_EQ(
         EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}}}, pixel_format),
         AVIF_RESULT_OK);
-    // Bottom-most cells are smaller.
+    // Bottom-most cells are shorter.
     EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}},
                                 {{100, 100}, {100, 100}},
                                 {{100, 66}, {100, 66}}},
                                pixel_format),
-              AVIF_RESULT_OK)
-        << pixel_format;
-    // Right-most cells are narrower and bottom-most cells are smaller.
+              AVIF_RESULT_OK);
+    // Right-most cells are narrower and bottom-most cells are shorter.
     EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}},
                                 {{100, 100}, {100, 100}, {66, 100}},
                                 {{100, 66}, {100, 66}, {66, 66}}},

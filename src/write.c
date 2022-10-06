@@ -743,8 +743,8 @@ static void avifCopyAndPadPlane(uint8_t * dstPlane,
     assert(dstWidth >= srcWidth);
     assert(dstHeight >= srcHeight);
     for (uint32_t j = 0; j < srcHeight; ++j) {
-        const uint8_t * srcRow = &srcPlane[j * srcRowBytes];
-        uint8_t * dstRow = &dstPlane[j * dstRowBytes];
+        const uint8_t * srcRow = &srcPlane[j * (size_t)srcRowBytes];
+        uint8_t * dstRow = &dstPlane[j * (size_t)dstRowBytes];
         // Copy srcWidth samples. srcRowBytes might be unrelated.
         memcpy(dstRow, srcRow, (size_t)srcWidth * sampleByteCount);
 
@@ -763,8 +763,8 @@ static void avifCopyAndPadPlane(uint8_t * dstPlane,
 
     // Pad rows.
     for (uint32_t j = srcHeight; j < dstHeight; ++j) {
-        uint8_t * dstRow = &dstPlane[j * dstRowBytes];
-        memcpy(dstRow, dstRow - dstRowBytes, dstRowBytes);
+        uint8_t * dstRow = &dstPlane[j * (size_t)dstRowBytes];
+        memcpy(dstRow, dstRow - dstRowBytes, (size_t)dstWidth * sampleByteCount);
     }
 }
 
@@ -854,8 +854,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
         return AVIF_RESULT_UNSUPPORTED_DEPTH;
     }
-    if (!firstCell->width || !firstCell->height || !topRightCell->width || !topRightCell->height || !bottomLeftCell->width ||
-        !bottomLeftCell->height) {
+    if (!firstCell->width || !firstCell->height || !topRightCell->width || !bottomLeftCell->height) {
         return AVIF_RESULT_NO_CONTENT;
     }
 
@@ -1427,12 +1426,19 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
         }
 
+        uint32_t imageWidth = imageMetadata->width;
+        uint32_t imageHeight = imageMetadata->height;
+        if (isGrid) {
+            imageWidth = item->gridWidth;
+            imageHeight = item->gridHeight;
+        }
+
         // Properties all av01 items need
 
         avifItemPropertyDedupStart(dedup);
         avifBoxMarker ispe = avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0);
-        avifRWStreamWriteU32(&dedup->s, isGrid ? item->gridWidth : imageMetadata->width);   // unsigned int(32) image_width;
-        avifRWStreamWriteU32(&dedup->s, isGrid ? item->gridHeight : imageMetadata->height); // unsigned int(32) image_height;
+        avifRWStreamWriteU32(&dedup->s, imageWidth);  // unsigned int(32) image_width;
+        avifRWStreamWriteU32(&dedup->s, imageHeight); // unsigned int(32) image_height;
         avifRWStreamFinishBox(&dedup->s, ispe);
         ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
 
