@@ -390,10 +390,10 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         }
     }
 
-    avifBool monochrome8bit = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
-                              (rgbDepth == 8);
+    volatile avifBool monochrome8bit = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
+                                       (rgbDepth == 8);
 
-    int colorType;
+    volatile int colorType;
     if (monochrome8bit) {
         colorType = PNG_COLOR_TYPE_GRAY;
     } else {
