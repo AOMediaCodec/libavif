@@ -96,7 +96,7 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
       if (result != AVIF_RESULT_OK) {
         return result;
       }
-      testutil::CopyImageSamples(*it->get(), view.get());
+      testutil::CopyImageSamples(**it, view.get());
       assert(!view->imageOwnsYUVPlanes);
       ++it;
       rect.x += rect.width;
