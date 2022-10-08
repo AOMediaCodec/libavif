@@ -409,6 +409,44 @@ avifBool avifImageUsesU16(const avifImage * image)
     return (image->depth > 8);
 }
 
+uint32_t avifImagePlaneWidth(const avifImage * image, int channel)
+{
+    if (channel == AVIF_CHAN_Y) {
+        return image->width;
+    }
+    if ((channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
+        avifPixelFormatInfo formatInfo;
+        avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
+        if (formatInfo.monochrome) {
+            return 0;
+        }
+        return (image->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
+    }
+    if ((channel == 3) || (image->alphaPlane)) {
+        return image->width;
+    }
+    return 0;
+}
+
+uint32_t avifImagePlaneHeight(const avifImage * image, int channel)
+{
+    if (channel == AVIF_CHAN_Y) {
+        return image->height;
+    }
+    if ((channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
+        avifPixelFormatInfo formatInfo;
+        avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
+        if (formatInfo.monochrome) {
+            return 0;
+        }
+        return (image->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
+    }
+    if ((channel == 3) || (image->alphaPlane)) {
+        return image->height;
+    }
+    return 0;
+}
+
 avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
 {
     if (width > (imageSizeLimit / height)) {
