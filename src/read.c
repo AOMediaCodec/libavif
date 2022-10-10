@@ -1483,7 +1483,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
             AVIF_CHECKERR(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset),
                           AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) exif_tiff_header_offset;
 
-            avifImageSetMetadataExif(image, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream));
+            avifRWDataSet(&image->exif, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream));
         } else if (!decoder->ignoreXMP && !memcmp(item->type, "mime", 4) &&
                    !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
             avifROData xmpContents;
