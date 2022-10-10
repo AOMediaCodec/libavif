@@ -534,7 +534,7 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // If libavif is built with a version of libyuv offering a fast conversion between RGB and YUV for
 // the given inputs, libavif will use it. See reformat_libyuv.c for the details.
 // libyuv is faster but may have slightly less precision than built-in conversion, so avoidLibYUV
-// should be set to AVIF_TRUE when AVIF_CHROMA_UPSAMPLING_BEST_QUALITY or
+// can be set to AVIF_TRUE when AVIF_CHROMA_UPSAMPLING_BEST_QUALITY or
 // AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY is used, to get the most precise but slowest results.
 
 // Note to libavif maintainers: The lookup tables in avifImageYUVToRGBLibYUV
@@ -1094,7 +1094,7 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs,
-// to be consumed by the codec at the next avifEncoderAddImage() call.
+// to be consumed by the codec in the next avifEncoderAddImage() call.
 // See the codec documentation to know if a setting is persistent or applied only to the next frame.
 // key must be non-NULL, but passing a NULL value will delete the pending key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
