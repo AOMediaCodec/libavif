@@ -209,6 +209,9 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, 
 
 // Validates the first bytes of the Exif payload and finds the TIFF header offset.
 avifResult avifGetExifTiffHeaderOffset(const avifRWData * exif, uint32_t * offset);
+// Attempts to parse the image->exif payload for Exif orientation and sets image->transformFlags, image->irot and
+// image->imir on success. Returns AVIF_RESULT_INVALID_EXIF_PAYLOAD on failure.
+avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image);
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput

@@ -29,6 +29,8 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
   upsampling chroma from 4:2:0 or 4:2:2 and has no impact on the use of libyuv.
   Set avifRGBImage::avoidLibYUV accordingly to control the use of libyuv.
 * Exif and XMP metadata is imported from PNG and JPEG files.
+* avifImageSetMetadataExif() parses the Exif metadata and converts any Exif
+  orientation found into transformFlags, irot and imir values.
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that
@@ -40,9 +42,6 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 * Add imageDimensionLimit field to avifDecoder struct
 * Add autoTiling field to avifEncoder struct
 * Add AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV value to avifChromaDownsampling enum
-* Add avifImageExtractExifOrientationToIrotImir() which parses the Exif metadata
-  of an image and converts any Exif orientation found into transformFlags, irot
-  and imir values.
 * avifdec: Add --dimension-limit, which specifies the image dimension limit
   (width or height) that should be tolerated
 * avifenc: Add --sharpyuv, which enables "sharp" RGB to YUV420 conversion, which

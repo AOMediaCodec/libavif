@@ -388,8 +388,6 @@ avifBool avifJPEGRead(const char * inputFilename,
                     goto cleanup;
                 }
                 avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size);
-                // Ignore any Exif parsing failure.
-                (void)avifImageExtractExifOrientationToIrotImir(avif);
                 found = AVIF_TRUE;
             }
         }
