@@ -409,6 +409,31 @@ avifBool avifImageUsesU16(const avifImage * image)
     return (image->depth > 8);
 }
 
+uint8_t * avifImagePlaneRow(const avifImage * image, int channel, uint32_t y)
+{
+    uint8_t * plane = NULL;
+    if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
+        plane = image->yuvPlanes[channel];
+    } else if (channel == 3) {
+        plane = image->alphaPlane;
+    }
+    if (plane) {
+        plane += (size_t)avifImagePlaneRowBytes(image, channel) * y;
+    }
+    return plane;
+}
+
+uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel)
+{
+    if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
+        return image->yuvRowBytes[channel];
+    }
+    if ((channel == 3) && (image->alphaPlane)) {
+        return image->alphaRowBytes;
+    }
+    return 0;
+}
+
 uint32_t avifImagePlaneWidth(const avifImage * image, int channel)
 {
     if (channel == AVIF_CHAN_Y) {
