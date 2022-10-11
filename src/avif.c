@@ -422,7 +422,7 @@ uint32_t avifImagePlaneWidth(const avifImage * image, int channel)
         }
         return (image->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
     }
-    if ((channel == 3) || (image->alphaPlane)) {
+    if ((channel == 3) && (image->alphaPlane)) {
         return image->width;
     }
     return 0;
@@ -441,7 +441,7 @@ uint32_t avifImagePlaneHeight(const avifImage * image, int channel)
         }
         return (image->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
     }
-    if ((channel == 3) || (image->alphaPlane)) {
+    if ((channel == 3) && (image->alphaPlane)) {
         return image->height;
     }
     return 0;
