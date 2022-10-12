@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2022-10-12
+
 There are incompatible ABI changes in this release. The alphaRange member was
 removed from avifImage struct. The chromaDownsampling and avoidLibYUV members
 were added to the avifRGBImage struct. The imageDimensionLimit member was added
@@ -13,7 +15,41 @@ to the avifDecoder struct. avifImageCopy() and avifImageAllocatePlanes()
 signatures changed. It is necessary to recompile your code. Also check the
 return values of avifImageCopy() and avifImageAllocatePlanes().
 
+### Added
+* Add man pages for avifenc and avifdec
+* Add the avifChannelIndex type alias for enum avifChannelIndex
+* Add avifChromaDownsampling enum
+* Add chromaDownsampling field to avifRGBImage struct
+* Add support for AVIF_RGB_FORMAT_RGB_565
+* Add imageDimensionLimit field to avifDecoder struct
+* Add autoTiling field to avifEncoder struct
+* Add AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV value to avifChromaDownsampling enum
+* Add new avifResult codes AVIF_RESULT_CANNOT_CHANGE_SETTING and
+  AVIF_RESULT_INCOMPATIBLE_IMAGE
+* Add new enum constants AVIF_PIXEL_FORMAT_COUNT and AVIF_RGB_FORMAT_COUNT
+* avifdec: Add --dimension-limit, which specifies the image dimension limit
+  (width or height) that should be tolerated
+* avifenc: Add --sharpyuv, which enables "sharp" RGB to YUV420 conversion, which
+  reduces artifacts caused by 420 chroma downsampling. Needs libsharpyuv (part
+  of the libwebp repository) at compile time.
+* avifenc: Add --ignore-exif and --ignore-xmp flags.
+* avifenc: Add --autotiling, which sets --tilerowslog2 and --tilecolslog2
+  automatically.
+* avifenc: Input Exif orientation is converted to irot/imir by default.
+
 ### Changed
+* Fix memory leaks of metadata on avifenc exit
+* Update the handling of 'lsel' and progressive decoding to AVIF spec v1.1.0
+* Treat an absent lsel and layer_id == 0xFFFF equivalently for backward
+  compatibility with earlier drafts of AVIF spec v1.1.0
+* Set libavif's own default value of cfg.rc_end_usage for libaom
+* Fix https://github.com/AOMediaCodec/libavif/issues/953
+* Set the libaom-specific option -a tune=ssim by default
+* Bump cmake_minimum_required from 3.5 to 3.13
+* Fix https://crbug.com/oss-fuzz/48135
+* Use several new libyuv functions in reformat_libyuv.c
+* Fix SVT-AV1's issue 1957 related to uninitialized variables crashing the encoder
+* Fix https://github.com/AOMediaCodec/libavif/issues/787
 * Update aom.cmd: v3.5.0
 * Update rav1e.cmd: v0.5.1
 * Update svt.cmd/svt.sh: v1.2.1
@@ -28,29 +64,29 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 * avifRGBImage::chromaUpsampling now only applies to conversions that need
   upsampling chroma from 4:2:0 or 4:2:2 and has no impact on the use of libyuv.
   Set avifRGBImage::avoidLibYUV accordingly to control the use of libyuv.
+* avifenc: Set the YUV format to 4:0:0 for grayscale PNGs
+* Support updating encoder settings and codec-specific options during encoding
+* Disable AVIF_STRICT_CLAP_VALID and AVIF_STRICT_PIXI_REQUIRED in the JNI wrapper
+* avifdec: Return proper exit code in "info" mode
+* In avifenc and avifdec, treat all arguments that start with '-' as options
+* Fix https://github.com/AOMediaCodec/libavif/issues/1086
 * Exif and XMP metadata is imported from PNG and JPEG files.
 * avifImageSetMetadataExif() parses the Exif metadata and converts any Exif
   orientation found into transformFlags, irot and imir values.
+* Write 'auxi' box for animated images with alpha channel
+* Write 'auxv' as handler_type for alpha channel track
+* Use PNG_COLOR_TYPE_GRAY for 8-bit grayscale output
+* Replace repeated subtraction by modulo in calcGCD (fix b/246649620)
+* Change avifImageCreate to take uint32_t instead of int parameters
+* When writing an image sequence, check if it's safe to cast width and height to
+  uint16_t
+* Allow clamped grid cells in avifEncoderAddImageGrid()
 
 ### Removed
 * alphaRange field was removed from the avifImage struct. It it presumed that
   alpha plane is always full range.
-
-### Added
-* Add avifChromaDownsampling enum
-* Add chromaDownsampling field to avifRGBImage struct
-* Add imageDimensionLimit field to avifDecoder struct
-* Add autoTiling field to avifEncoder struct
-* Add AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV value to avifChromaDownsampling enum
-* avifdec: Add --dimension-limit, which specifies the image dimension limit
-  (width or height) that should be tolerated
-* avifenc: Add --sharpyuv, which enables "sharp" RGB to YUV420 conversion, which
-  reduces artifacts caused by 420 chroma downsampling. Needs libsharpyuv (part
-  of the libwebp repository) at compile time.
-* avifenc: Add --ignore-exif and --ignore-xmp flags.
-* avifenc: Add --autotiling, which sets --tilerowslog2 and --tilecolslog2
-  automatically.
-* avifenc: Input Exif orientation is converted to irot/imir by default.
+* The avifCodecConfigurationBox struct becomes a private type for libavif
+  internal use
 
 ## [0.10.1] - 2022-04-11
 
@@ -828,7 +864,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/AOMediaCodec/libavif/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/AOMediaCodec/libavif/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/AOMediaCodec/libavif/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/AOMediaCodec/libavif/compare/v0.9.2...v0.9.3
