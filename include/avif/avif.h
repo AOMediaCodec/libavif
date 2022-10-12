@@ -17,7 +17,7 @@ extern "C" {
 // AVIF_BUILDING_SHARED_LIBS should only be defined when libavif is being built
 // as a shared library.
 // AVIF_DLL should be defined if libavif is a shared library. If you are using
-// libavif as CMake dependency, through CMake package config file or through
+// libavif as a CMake dependency, through a CMake package config file or through
 // pkg-config, this is defined automatically.
 //
 // Here's what AVIF_API will be defined as in shared build:
@@ -567,7 +567,7 @@ AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
 typedef enum avifChromaUpsampling
 {
     AVIF_CHROMA_UPSAMPLING_AUTOMATIC = 0,    // Chooses best trade off of speed/quality (uses BILINEAR libyuv if available,
-                                             // or fallbacks to NEAREST libyuv if available, or fallbacks to BILINEAR built-in)
+                                             // or falls back to NEAREST libyuv if available, or falls back to BILINEAR built-in)
     AVIF_CHROMA_UPSAMPLING_FASTEST = 1,      // Chooses speed over quality (same as NEAREST)
     AVIF_CHROMA_UPSAMPLING_BEST_QUALITY = 2, // Chooses the best quality upsampling, given settings (same as BILINEAR)
     AVIF_CHROMA_UPSAMPLING_NEAREST = 3,      // Uses nearest-neighbor filter
