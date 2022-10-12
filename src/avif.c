@@ -267,13 +267,6 @@ void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSi
     avifRWDataSet(&image->icc, icc, iccSize);
 }
 
-void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
-{
-    avifRWDataSet(&image->exif, exif, exifSize);
-    // Ignore any Exif parsing failure.
-    (void)avifImageExtractExifOrientationToIrotImir(image);
-}
-
 void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize)
 {
     avifRWDataSet(&image->xmp, xmp, xmpSize);
