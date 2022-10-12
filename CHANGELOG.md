@@ -9,11 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.11.0] - 2022-10-12
 
 There are incompatible ABI changes in this release. The alphaRange member was
-removed from avifImage struct. The chromaDownsampling and avoidLibYUV members
-were added to the avifRGBImage struct. The imageDimensionLimit member was added
-to the avifDecoder struct. avifImageCopy() and avifImageAllocatePlanes()
-signatures changed. It is necessary to recompile your code. Also check the
-return values of avifImageCopy() and avifImageAllocatePlanes().
+removed from the avifImage struct. The chromaDownsampling and avoidLibYUV
+members were added to the avifRGBImage struct. The imageDimensionLimit member
+was added to the avifDecoder struct. avifImageCopy() and
+avifImageAllocatePlanes() signatures changed. It is necessary to recompile your
+code. Also check the return values of avifImageCopy() and
+avifImageAllocatePlanes().
 
 ### Added
 * Add man pages for avifenc and avifdec
@@ -23,7 +24,6 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 * Add support for AVIF_RGB_FORMAT_RGB_565
 * Add imageDimensionLimit field to avifDecoder struct
 * Add autoTiling field to avifEncoder struct
-* Add AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV value to avifChromaDownsampling enum
 * Add new avifResult codes AVIF_RESULT_CANNOT_CHANGE_SETTING and
   AVIF_RESULT_INCOMPATIBLE_IMAGE
 * Add new enum constants AVIF_PIXEL_FORMAT_COUNT and AVIF_RGB_FORMAT_COUNT
@@ -48,7 +48,8 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
 * Bump cmake_minimum_required from 3.5 to 3.13
 * Fix https://crbug.com/oss-fuzz/48135
 * Use several new libyuv functions in reformat_libyuv.c
-* Fix SVT-AV1's issue 1957 related to uninitialized variables crashing the encoder
+* Fix SVT-AV1's issue 1957 related to uninitialized variables crashing the
+  encoder
 * Fix https://github.com/AOMediaCodec/libavif/issues/787
 * Update aom.cmd: v3.5.0
 * Update rav1e.cmd: v0.5.1
@@ -66,7 +67,8 @@ return values of avifImageCopy() and avifImageAllocatePlanes().
   Set avifRGBImage::avoidLibYUV accordingly to control the use of libyuv.
 * avifenc: Set the YUV format to 4:0:0 for grayscale PNGs
 * Support updating encoder settings and codec-specific options during encoding
-* Disable AVIF_STRICT_CLAP_VALID and AVIF_STRICT_PIXI_REQUIRED in the JNI wrapper
+* Disable AVIF_STRICT_CLAP_VALID and AVIF_STRICT_PIXI_REQUIRED in the JNI
+  wrapper
 * avifdec: Return proper exit code in "info" mode
 * In avifenc and avifdec, treat all arguments that start with '-' as options
 * Fix https://github.com/AOMediaCodec/libavif/issues/1086
