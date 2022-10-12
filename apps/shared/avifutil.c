@@ -11,7 +11,7 @@
 #include "avifpng.h"
 #include "y4m.h"
 
-// |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT_MIN without
+// |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT32_MIN without
 // overflowing int32_t.
 static int64_t calcGCD(int64_t a, int64_t b)
 {
