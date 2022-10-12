@@ -117,3 +117,10 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
     image->imir.mode = 0;  // ignored
     return AVIF_RESULT_OK;
 }
+
+void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
+{
+    avifRWDataSet(&image->exif, exif, exifSize);
+    // Ignore any Exif parsing failure.
+    (void)avifImageExtractExifOrientationToIrotImir(image);
+}
