@@ -19,20 +19,11 @@ set -e
 
 # build env
 apt update
-DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl python3-pip
-pip3 install meson
+DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl meson cargo nasm
 
 # Rust env
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
+export PATH="$HOME/.cargo/bin:$PATH"
 cargo install cargo-c
-
-# NASM
-cd
-curl -L https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar xvz
-cd nasm-2.15.05
-./configure --prefix=/usr && make -j2 && make install
-nasm --version
 
 # aom
 cd
