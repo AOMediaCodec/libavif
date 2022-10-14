@@ -13,11 +13,6 @@
 
 namespace libavif {
 namespace testutil {
-namespace {
-
-constexpr int AVIF_CHAN_A = AVIF_CHAN_V + 1;
-
-}  // namespace
 
 //------------------------------------------------------------------------------
 
@@ -75,11 +70,12 @@ AvifImagePtr CreateImage(int width, int height, int depth,
 }
 
 void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
-  for (int c = 0; c < 4; c++) {
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
+    uint8_t* row = avifImagePlane(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
-      uint8_t* row = avifImagePlaneRow(image, c, y);
       if (avifImageUsesU16(image)) {
         std::fill(reinterpret_cast<uint16_t*>(row),
                   reinterpret_cast<uint16_t*>(row) + plane_width,
@@ -87,16 +83,18 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
       } else {
         std::fill(row, row + plane_width, static_cast<uint8_t>(yuva[c]));
       }
+      row += avifImagePlaneRowBytes(image, c);
     }
   }
 }
 
 void FillImageGradient(avifImage* image) {
-  for (int c = 0; c < 4; c++) {
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
+    uint8_t* row = avifImagePlane(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
-      uint8_t* row = avifImagePlaneRow(image, c, y);
       for (uint32_t x = 0; x < plane_width; ++x) {
         const uint32_t value = (x + y) * ((1u << image->depth) - 1u) /
                                std::max(1u, plane_width + plane_height - 2);
@@ -106,6 +104,7 @@ void FillImageGradient(avifImage* image) {
           row[x] = static_cast<uint8_t>(value);
         }
       }
+      row += avifImagePlaneRowBytes(image, c);
     }
   }
 }
@@ -156,10 +155,11 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
   }
   assert(image1.width * image1.height > 0);
 
-  for (int c = 0; c < 4; c++) {
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     if (ignore_alpha && c == AVIF_CHAN_A) continue;
-    const uint8_t* row1 = avifImagePlaneRow(&image1, c, /*y=*/0);
-    const uint8_t* row2 = avifImagePlaneRow(&image2, c, /*y=*/0);
+    const uint8_t* row1 = avifImagePlane(&image1, c);
+    const uint8_t* row2 = avifImagePlane(&image2, c);
     if (!row1 != !row2) {
       return false;
     }
@@ -196,9 +196,10 @@ void CopyImageSamples(const avifImage& from, avifImage* to) {
   assert(from.yuvFormat == to->yuvFormat);
   assert(from.yuvRange == to->yuvRange);
 
-  for (int c = 0; c < 4; c++) {
-    const uint8_t* from_row = avifImagePlaneRow(&from, c, /*y=*/0);
-    uint8_t* to_row = avifImagePlaneRow(to, c, /*y=*/0);
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    const uint8_t* from_row = avifImagePlane(&from, c);
+    uint8_t* to_row = avifImagePlane(to, c);
     assert(!from_row == !to_row);
     if (!from_row) {
       continue;
