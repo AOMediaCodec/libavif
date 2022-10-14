@@ -4,7 +4,7 @@
 #include <array>
 #include <tuple>
 
-#include "avif/internal.h"
+#include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
@@ -305,12 +305,18 @@ TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
       0,   0,   0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  // tag, type, count, valueOffset
       0,   0,   0, 8  // Invalid IFD offset, infinitely looping back to 0th IFD.
   };
-  avifRWDataSet(&image->exif, kBadExifPayload,
-                sizeof(kBadExifPayload) / sizeof(kBadExifPayload[0]));
-  // avifImageExtractExifOrientationToIrotImir() does not verify  the whole
-  // payload, only the parts necessary to extract Exif orientation.
-  ASSERT_EQ(avifImageExtractExifOrientationToIrotImir(image.get()),
-            AVIF_RESULT_OK);
+  // avifImageSetMetadataExif() calls
+  // avifImageExtractExifOrientationToIrotImir() internally.
+  // The avifImageExtractExifOrientationToIrotImir() call should not enter an
+  // infinite loop.
+  //
+  // TODO(wtc): When we change avifImageSetMetadataExif() to return avifResult,
+  // assert that the avifImageSetMetadataExif() call returns AVIF_RESULT_OK
+  // because avifImageExtractExifOrientationToIrotImir() does not verify the
+  // whole payload, only the parts necessary to extract Exif orientation.
+  avifImageSetMetadataExif(
+      image.get(), kBadExifPayload,
+      sizeof(kBadExifPayload) / sizeof(kBadExifPayload[0]));
 }
 
 //------------------------------------------------------------------------------
