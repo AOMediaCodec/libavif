@@ -75,6 +75,7 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
     uint8_t* row = avifImagePlane(image, c);
+    const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       if (avifImageUsesU16(image)) {
         std::fill(reinterpret_cast<uint16_t*>(row),
@@ -83,7 +84,7 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
       } else {
         std::fill(row, row + plane_width, static_cast<uint8_t>(yuva[c]));
       }
-      row += avifImagePlaneRowBytes(image, c);
+      row += row_bytes;
     }
   }
 }
@@ -94,6 +95,7 @@ void FillImageGradient(avifImage* image) {
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
     uint8_t* row = avifImagePlane(image, c);
+    const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       for (uint32_t x = 0; x < plane_width; ++x) {
         const uint32_t value = (x + y) * ((1u << image->depth) - 1u) /
@@ -104,7 +106,7 @@ void FillImageGradient(avifImage* image) {
           row[x] = static_cast<uint8_t>(value);
         }
       }
-      row += avifImagePlaneRowBytes(image, c);
+      row += row_bytes;
     }
   }
 }
@@ -163,9 +165,8 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     if (!row1 != !row2) {
       return false;
     }
-    if (!row1) {
-      continue;
-    }
+    const uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
+    const uint32_t row_bytes2 = avifImagePlaneRowBytes(&image2, c);
     const uint32_t plane_width = avifImagePlaneWidth(&image1, c);
     const uint32_t plane_height = avifImagePlaneHeight(&image1, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
@@ -180,8 +181,8 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
           return false;
         }
       }
-      row1 += avifImagePlaneRowBytes(&image1, c);
-      row2 += avifImagePlaneRowBytes(&image2, c);
+      row1 += row_bytes1;
+      row2 += row_bytes2;
     }
   }
   return AreByteSequencesEqual(image1.icc, image2.icc) &&
@@ -201,9 +202,8 @@ void CopyImageSamples(const avifImage& from, avifImage* to) {
     const uint8_t* from_row = avifImagePlane(&from, c);
     uint8_t* to_row = avifImagePlane(to, c);
     assert(!from_row == !to_row);
-    if (!from_row) {
-      continue;
-    }
+    const uint32_t from_row_bytes = avifImagePlaneRowBytes(&from, c);
+    const uint32_t to_row_bytes = avifImagePlaneRowBytes(to, c);
     const uint32_t plane_width = avifImagePlaneWidth(&from, c);
     const uint32_t plane_height = avifImagePlaneHeight(&from, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
@@ -214,8 +214,8 @@ void CopyImageSamples(const avifImage& from, avifImage* to) {
       } else {
         std::copy(from_row, from_row + plane_width, to_row);
       }
-      from_row += avifImagePlaneRowBytes(&from, c);
-      to_row += avifImagePlaneRowBytes(to, c);
+      from_row += from_row_bytes;
+      to_row += to_row_bytes;
     }
   }
 }

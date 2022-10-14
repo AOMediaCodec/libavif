@@ -425,7 +425,7 @@ uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel)
     if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
         return image->yuvRowBytes[channel];
     }
-    if ((channel == AVIF_CHAN_A) && (image->alphaPlane)) {
+    if (channel == AVIF_CHAN_A) {
         return image->alphaRowBytes;
     }
     return 0;
