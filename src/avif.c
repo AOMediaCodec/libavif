@@ -409,7 +409,7 @@ avifBool avifImageUsesU16(const avifImage * image)
     return (image->depth > 8);
 }
 
-uint8_t * avifImagePlane(const avifImage * image, avifChannelIndex channel)
+uint8_t * avifImagePlane(const avifImage * image, int channel)
 {
     if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
         return image->yuvPlanes[channel];
@@ -420,7 +420,7 @@ uint8_t * avifImagePlane(const avifImage * image, avifChannelIndex channel)
     return NULL;
 }
 
-uint32_t avifImagePlaneRowBytes(const avifImage * image, avifChannelIndex channel)
+uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel)
 {
     if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
         return image->yuvRowBytes[channel];
@@ -431,7 +431,7 @@ uint32_t avifImagePlaneRowBytes(const avifImage * image, avifChannelIndex channe
     return 0;
 }
 
-uint32_t avifImagePlaneWidth(const avifImage * image, avifChannelIndex channel)
+uint32_t avifImagePlaneWidth(const avifImage * image, int channel)
 {
     if (channel == AVIF_CHAN_Y) {
         return image->width;
@@ -450,7 +450,7 @@ uint32_t avifImagePlaneWidth(const avifImage * image, avifChannelIndex channel)
     return 0;
 }
 
-uint32_t avifImagePlaneHeight(const avifImage * image, avifChannelIndex channel)
+uint32_t avifImagePlaneHeight(const avifImage * image, int channel)
 {
     if (channel == AVIF_CHAN_Y) {
         return image->height;

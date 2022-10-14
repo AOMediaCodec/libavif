@@ -1110,10 +1110,11 @@ AVIF_API void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const cha
 
 // Helpers
 AVIF_API avifBool avifImageUsesU16(const avifImage * image);
-AVIF_API uint8_t * avifImagePlane(const avifImage * image, avifChannelIndex channel);
-AVIF_API uint32_t avifImagePlaneRowBytes(const avifImage * image, avifChannelIndex channel);
-AVIF_API uint32_t avifImagePlaneWidth(const avifImage * image, avifChannelIndex channel);
-AVIF_API uint32_t avifImagePlaneHeight(const avifImage * image, avifChannelIndex channel);
+// channel can be an avifChannelIndex.
+AVIF_API uint8_t * avifImagePlane(const avifImage * image, int channel);
+AVIF_API uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel);
+AVIF_API uint32_t avifImagePlaneWidth(const avifImage * image, int channel);
+AVIF_API uint32_t avifImagePlaneHeight(const avifImage * image, int channel);
 
 // Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
