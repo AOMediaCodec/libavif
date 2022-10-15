@@ -126,13 +126,15 @@ struct PartialData {
 
 // Implementation of avifIOReadFunc simulating a stream from an array. See
 // avifIOReadFunc documentation. io->data is expected to point to PartialData.
-avifResult PartialRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
-                       size_t size, avifROData* out) {
+avifResult PartialRead(struct avifIO* io, uint32_t read_flags,
+                       uint64_t offset64, size_t size, avifROData* out) {
   PartialData* data = reinterpret_cast<PartialData*>(io->data);
-  if ((read_flags != 0) || !data || (data->full_size < offset)) {
+  if ((read_flags != 0) || !data || (data->full_size < offset64)) {
     return AVIF_RESULT_IO_ERROR;
   }
-  if (data->full_size < (offset + size)) {
+  const size_t offset = static_cast<size_t>(offset64);
+  // Use |offset| instead of |offset64| from this point on.
+  if (size > (data->full_size - offset)) {
     size = data->full_size - offset;
   }
   if (data->available.size < (offset + size)) {
