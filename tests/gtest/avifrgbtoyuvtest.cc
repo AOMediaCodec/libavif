@@ -312,8 +312,10 @@ constexpr avifRGBFormat kAllRgbFormats[] = {
 // avifMatrixCoefficients-typed constants for testing::Values() to work on MSVC.
 constexpr avifMatrixCoefficients kMatrixCoefficientsBT601 =
     AVIF_MATRIX_COEFFICIENTS_BT601;
+#if defined(AVIF_LIBSHARPYUV_ENABLED)
 constexpr avifMatrixCoefficients kMatrixCoefficientsBT709 =
     AVIF_MATRIX_COEFFICIENTS_BT709;
+#endif
 constexpr avifMatrixCoefficients kMatrixCoefficientsIdentity =
     AVIF_MATRIX_COEFFICIENTS_IDENTITY;
 
@@ -429,6 +431,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, RGBToYUVTest,
 
 // Can be used to print the drift of all RGB to YUV conversion possibilities.
 // Also used for coverage.
+#if defined(AVIF_LIBSHARPYUV_ENABLED)
 INSTANTIATE_TEST_SUITE_P(
     SharpYuv8Bit, RGBToYUVTest,
     Combine(
@@ -474,6 +477,7 @@ INSTANTIATE_TEST_SUITE_P(
                                                // color shift.
         /*min_psnr=*/Values(34.)  // SharpYuv distortion is acceptable.
         ));
+#endif  // defined(AVIF_LIBSHARPYUV_ENABLED)
 
 // Can be used to print the drift of all RGB to YUV conversion possibilities.
 // Also used for coverage.
