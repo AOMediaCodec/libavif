@@ -203,7 +203,13 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
             ModifyImageChannel(&src_rgb, offsets.b, kBlueNoise);
           }
 
-          ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
+          const avifResult result = avifImageRGBToYUV(yuv.get(), &src_rgb);
+          if (result == AVIF_RESULT_NOT_IMPLEMENTED &&
+              src_rgb.chromaDownsampling ==
+                  AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV) {
+            GTEST_SKIP() << "libsharpyuv unavailable, skip test.";
+          }
+          ASSERT_EQ(result, AVIF_RESULT_OK);
           ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
           GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                                  &sq_diff_sum, &max_abs_diff);
@@ -290,7 +296,12 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
         testutil::FillImageChannel(&src_rgb, offsets.a, rgb_max);
       }
 
-      ASSERT_EQ(avifImageRGBToYUV(yuv.get(), &src_rgb), AVIF_RESULT_OK);
+      const avifResult result = avifImageRGBToYUV(yuv.get(), &src_rgb);
+      if (result == AVIF_RESULT_NOT_IMPLEMENTED &&
+          src_rgb.chromaDownsampling == AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV) {
+        GTEST_SKIP() << "libsharpyuv unavailable, skip test.";
+      }
+      ASSERT_EQ(result, AVIF_RESULT_OK);
       ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &dst_rgb), AVIF_RESULT_OK);
       GetDiffSumAndSqDiffSum(src_rgb, dst_rgb, &diff_sum, &abs_diff_sum,
                              &sq_diff_sum, &max_abs_diff);
