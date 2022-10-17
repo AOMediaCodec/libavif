@@ -93,29 +93,31 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
     add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
-    add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
-    target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifmetadatatest COMMAND avifmetadatatest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
     add_executable(avifrgbtoyuvtest gtest/avifrgbtoyuvtest.cc)
     target_link_libraries(avifrgbtoyuvtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifrgbtoyuvtest COMMAND avifrgbtoyuvtest)
 
-    if(NOT BUILD_SHARED_LIBS)
-        # Test the internal function avifSetTileConfiguration(), which is not exported from the
-        # shared library.
-        add_executable(aviftilingtest gtest/aviftilingtest.cc)
-        target_link_libraries(aviftilingtest avif ${GTEST_BOTH_LIBRARIES})
-        target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
-        add_test(NAME aviftilingtest COMMAND aviftilingtest)
-    endif()
-
     add_executable(avify4mtest gtest/avify4mtest.cc)
     target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avify4mtest COMMAND avify4mtest)
+
+    if(NOT BUILD_SHARED_LIBS)
+        # These use or test internal functions that are not exported by the shared library.
+
+        add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
+        target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_LIBRARIES})
+        target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifmetadatatest COMMAND avifmetadatatest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
+        add_executable(aviftilingtest gtest/aviftilingtest.cc)
+        target_link_libraries(aviftilingtest avif ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME aviftilingtest COMMAND aviftilingtest)
+    else()
+        message(STATUS "Some tests are disabled because BUILD_SHARED_LIBS is ON.")
+    endif()
 else()
     message(STATUS "Most tests are disabled because AVIF_ENABLE_GTEST is OFF.")
 endif()
