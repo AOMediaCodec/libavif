@@ -6,7 +6,7 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  build-shared:
+  build-shared-local:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,7 +27,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ext
-        key: ${{ runner.os }}-shared-${{ hashFiles('ext/*.cmd') }}
+        key: ${{ runner.os }}-shared-local-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.12
       with:
