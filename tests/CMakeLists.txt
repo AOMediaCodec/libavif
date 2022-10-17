@@ -118,7 +118,7 @@ if(AVIF_ENABLE_GTEST)
     add_test(NAME avify4mtest COMMAND avify4mtest)
 
     if(NOT libsharpyuv_FOUND)
-        message(STATUS "Some tests are disabled because libsharpyuv is unavailable.")
+        message(STATUS "Some tests are skipped because libsharpyuv is unavailable.")
     endif()
 else()
     message(STATUS "Most tests are disabled because AVIF_ENABLE_GTEST is OFF.")
