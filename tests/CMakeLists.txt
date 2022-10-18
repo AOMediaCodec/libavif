@@ -117,6 +117,15 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avify4mtest COMMAND avify4mtest)
 
+    if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE OR NOT AVIF_CODEC_AOM_DECODE)
+        # These tests are supported with aom being the encoder and decoder. If aom is unavailable,
+        # these tests are disabled because other codecs may not implement all the necessary features.
+        # For example, SVT-AV1 requires 8-bit, 4:2:0 images with even dimensions of at least 64x64 px.
+        set_tests_properties(avifallocationtest avifgridapitest avifmetadatatest avifincrtest PROPERTIES DISABLED True)
+
+        message(STATUS "Some tests are disabled because aom is unavailable for encoding or decoding.")
+    endif()
+
     if(NOT libsharpyuv_FOUND)
         message(STATUS "Some tests are skipped because libsharpyuv is unavailable.")
     endif()
@@ -135,4 +144,20 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+    add_test(NAME test_cmd_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_lossless.sh ${CMAKE_BINARY_DIR}
+                                            ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
+    add_test(NAME test_cmd_metadata COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_metadata.sh ${CMAKE_BINARY_DIR}
+                                            ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
+
+    if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
+        # Only aom encoder supports lossless encoding.
+        set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
+
+        # SVT-AV1 does not support the images with odd dimensions that are used in this test.
+        set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
+
+        message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
+    endif()
 endif()
