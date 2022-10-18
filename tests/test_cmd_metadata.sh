@@ -43,8 +43,8 @@ AVIFENC="${BINARY_DIR}/avifenc"
 INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
 INPUT_JPG="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
 # Output file names.
-ENCODED_FILE="avif_test_cmd_encoded.avif"
-ENCODED_FILE_NO_METADATA="avif_test_cmd_encoded_no_metadata.avif"
+ENCODED_FILE="avif_test_cmd_metadata_encoded.avif"
+ENCODED_FILE_NO_METADATA="avif_test_cmd_metadata_encoded_no_metadata.avif"
 
 # Cleanup
 cleanup() {

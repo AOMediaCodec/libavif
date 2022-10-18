@@ -42,11 +42,11 @@ AVIFDEC="${BINARY_DIR}/avifdec"
 ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Input file paths.
-INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
+INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
 # Output file names.
-ENCODED_FILE="avif_test_cmd_encoded.avif"
-DECODED_FILE="avif_test_cmd_decoded.png"
-DECODED_FILE_LOSSLESS="avif_test_cmd_decoded_lossless.png"
+ENCODED_FILE="avif_test_cmd_lossless_encoded.avif"
+DECODED_FILE="avif_test_cmd_lossless_decoded.png"
+DECODED_FILE_LOSSLESS="avif_test_cmd_lossless_decoded_lossless.png"
 
 # Cleanup
 cleanup() {
@@ -58,12 +58,12 @@ trap cleanup EXIT
 
 pushd ${TMP_DIR}
   # Generate test data.
-  "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 "${INPUT_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
 
   # Lossless test. The decoded pixels should be the same as the original image.
   echo "Testing basic lossless"
-  # TODO(yguyon): Make this test pass with INPUT_Y4M instead of DECODED_FILE.
+  # TODO(yguyon): Make this test pass with INPUT_PNG instead of DECODED_FILE.
   "${AVIFENC}" -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
   "${ARE_IMAGES_EQUAL}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}" 0
