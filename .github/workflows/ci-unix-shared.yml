@@ -1,3 +1,8 @@
+# This is a copy of ci.yml for building shared libraries. It differs from ci.yml as follows:
+#
+#   * The os matrix consists of ubuntu-latest only.
+#   * Does not build dav1d, rav1e, SVT-AV1 nor libgav1.
+
 name: CI (shared libraries)
 on: [push, pull_request]
 jobs:
