@@ -120,7 +120,7 @@ if(AVIF_ENABLE_GTEST)
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE OR NOT AVIF_CODEC_AOM_DECODE)
         # These tests are supported with aom being the encoder and decoder. If aom is unavailable,
         # these tests are disabled because other codecs may not implement all the necessary features.
-        # For example, SVT-AV1 requires 8-bit, 4:2:0 images with even dimensions of at least 64x64 px.
+        # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
         set_tests_properties(avifallocationtest avifgridapitest avifmetadatatest avifincrtest PROPERTIES DISABLED True)
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding or decoding.")
@@ -156,7 +156,9 @@ if(AVIF_BUILD_APPS)
         set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
 
         # SVT-AV1 does not support the images with odd dimensions that are used in this test.
-        set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
+        if(NOT AVIF_CODEC_RAV1E)
+            set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
+        endif()
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
     endif()

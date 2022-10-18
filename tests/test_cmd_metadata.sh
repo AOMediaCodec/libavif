@@ -56,7 +56,7 @@ trap cleanup EXIT
 
 pushd ${TMP_DIR}
   # Metadata test.
-  echo "Testing metadata enc/dec"
+  echo "Testing metadata enc"
   for INPUT in "${INPUT_PNG}" "${INPUT_JPG}"; do
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE}"
     # Ignoring a metadata chunk should produce a different output file.
