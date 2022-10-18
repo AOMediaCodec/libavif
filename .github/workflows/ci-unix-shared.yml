@@ -40,26 +40,26 @@ jobs:
         version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
     - name: Set shared libs
-      if: steps.cache-ext.outputs.cache-hit != 'true'
+      # if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: >
         sed -i'' -e 's/-DBUILD_SHARED_LIBS=OFF/-DBUILD_SHARED_LIBS=ON/g' *.cmd
 
         sed -i'' -e 's/ninja yuv/ninja yuv_shared/g' libyuv.cmd
     - name: Build aom
-      if: steps.cache-ext.outputs.cache-hit != 'true'
+      # if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash aom.cmd
     - name: Build libyuv
-      if: steps.cache-ext.outputs.cache-hit != 'true'
+      # if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash libyuv.cmd
     - name: Build libsharpyuv
-      if: steps.cache-ext.outputs.cache-hit != 'true'
+      # if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash libsharpyuv.cmd
     - name: Build GoogleTest
-      if: steps.cache-ext.outputs.cache-hit != 'true'
+      # if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash googletest.cmd
 
