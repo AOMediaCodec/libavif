@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2022-10-19
+
+### Changed
+* avifincrtest_helpers: Cast 64-bit offset to size_t
+* avifmetadatatest: don't include avif/internal.h
+* avifrgbtoyuvtest: skip if no libsharpyuv
+* Disable tests that may fail if the codec is not aom (#1176)
+
 ## [0.11.0] - 2022-10-12
 
 There are incompatible ABI changes in this release. The alphaRange member was
@@ -866,7 +874,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/AOMediaCodec/libavif/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/AOMediaCodec/libavif/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/AOMediaCodec/libavif/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/AOMediaCodec/libavif/compare/v0.9.3...v0.10.0
