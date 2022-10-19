@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 #
-# tests for command lines
+# tests for command lines (lossless)
 
 # Very verbose but useful for debugging.
 set -ex
@@ -41,39 +41,32 @@ AVIFENC="${BINARY_DIR}/avifenc"
 AVIFDEC="${BINARY_DIR}/avifdec"
 ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
-# Basic calls.
-"${AVIFENC}" --version
-"${AVIFDEC}" --version
-
 # Input file paths.
-INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
+INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
 # Output file names.
-ENCODED_FILE="avif_test_cmd_encoded.avif"
-ENCODED_FILE_WITH_DASH="-avif_test_cmd_encoded.avif"
-DECODED_FILE="avif_test_cmd_decoded.png"
+ENCODED_FILE="avif_test_cmd_lossless_encoded.avif"
+DECODED_FILE="avif_test_cmd_lossless_decoded.png"
+DECODED_FILE_LOSSLESS="avif_test_cmd_lossless_decoded_lossless.png"
 
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_WITH_DASH}" "${DECODED_FILE}"
+    rm -- "${ENCODED_FILE}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}"
   popd
 }
 trap cleanup EXIT
 
 pushd ${TMP_DIR}
-  # Lossy test. The decoded pixels should be different from the original image.
-  echo "Testing basic lossy"
-  "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  # Generate test data.
+  "${AVIFENC}" -s 8 "${INPUT_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M}" "${DECODED_FILE}" 0 && exit 1
 
-  # Argument parsing test with filenames starting with a dash.
-  echo "Testing arguments"
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -- "${ENCODED_FILE_WITH_DASH}"
-  "${AVIFDEC}" --info  -- "${ENCODED_FILE_WITH_DASH}"
-  # Passing a filename starting with a dash without using -- should fail.
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
-  "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
+  # Lossless test. The decoded pixels should be the same as the original image.
+  echo "Testing basic lossless"
+  # TODO(yguyon): Make this test pass with INPUT_PNG instead of DECODED_FILE.
+  "${AVIFENC}" -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
+  "${ARE_IMAGES_EQUAL}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}" 0
 popd
 
 exit 0
