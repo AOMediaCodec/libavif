@@ -751,10 +751,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-#if defined(AOM_USAGE_ALL_INTRA) && defined(AOM_CTRL_AV1E_SET_SKIP_POSTPROC_FILTERING)
+#if defined(AOM_CTRL_AV1E_SET_SKIP_POSTPROC_FILTERING)
         if (cfg->g_usage == AOM_USAGE_ALL_INTRA) {
             // Enable AV1E_SET_SKIP_POSTPROC_FILTERING for still-picture encoding, which is
-            // different from libaom's default.
+            // disabled by default.
             aom_codec_control(&codec->internal->encoder, AV1E_SET_SKIP_POSTPROC_FILTERING, 1);
         }
 #endif
