@@ -61,6 +61,11 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 8 "${INPUT_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
 
+  # Combining some arguments with lossless should fail.
+  for option in "-y 400" "--min 0" "-r limited" "--cicp 2/2/8"; do
+    "${AVIFENC}" $option -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}" && exit 1
+  done
+
   # Lossless test. The decoded pixels should be the same as the original image.
   echo "Testing basic lossless"
   # TODO(yguyon): Make this test pass with INPUT_PNG instead of DECODED_FILE.
