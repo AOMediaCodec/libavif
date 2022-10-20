@@ -31,8 +31,7 @@ jobs:
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.12
       with:
-        # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
-        cmake-version: '3.17.x'
+        cmake-version: '3.13.x'
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@v1
@@ -43,9 +42,9 @@ jobs:
       # if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: >
-        sed -i'' -e 's/-DBUILD_SHARED_LIBS=OFF/-DBUILD_SHARED_LIBS=ON/g' *.cmd
+        sed -i'' -e 's/-DBUILD_SHARED_LIBS=OFF/-DBUILD_SHARED_LIBS=ON/' *.cmd
 
-        sed -i'' -e 's/ninja yuv/ninja yuv_shared/g' libyuv.cmd
+        sed -i'' -e 's/ninja yuv/ninja yuv_shared/' libyuv.cmd
     - name: Build aom
       # if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
