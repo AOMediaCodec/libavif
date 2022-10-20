@@ -19,6 +19,6 @@ git checkout f9fda6e7
 mkdir build
 cd build
 
-cmake -G Ninja -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=Release ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
 ninja yuv
 cd ../..
