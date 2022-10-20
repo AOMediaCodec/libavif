@@ -102,7 +102,10 @@ typedef enum avifChannelIndex
     // These can be used as the index for the yuvPlanes and yuvRowBytes arrays in avifImage.
     AVIF_CHAN_Y = 0,
     AVIF_CHAN_U = 1,
-    AVIF_CHAN_V = 2
+    AVIF_CHAN_V = 2,
+
+    // This may not be used in yuvPlanes and yuvRowBytes, but is available for use with avifImagePlane().
+    AVIF_CHAN_A = 3
 } avifChannelIndex;
 
 // ---------------------------------------------------------------------------
@@ -1103,6 +1106,11 @@ AVIF_API void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const cha
 
 // Helpers
 AVIF_API avifBool avifImageUsesU16(const avifImage * image);
+// channel can be an avifChannelIndex.
+AVIF_API uint8_t * avifImagePlane(const avifImage * image, int channel);
+AVIF_API uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel);
+AVIF_API uint32_t avifImagePlaneWidth(const avifImage * image, int channel);
+AVIF_API uint32_t avifImagePlaneHeight(const avifImage * image, int channel);
 
 // Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
