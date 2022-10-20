@@ -496,8 +496,7 @@ int main(int argc, char * argv[])
     // See: ISO/IEC 23000-22:2019 Amendment 2, or the comment in avifCalcYUVCoefficients()
     avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    const int matrixCoefficientsUnset = 100; // 100 is way above any possible matric coefficient
-    avifMatrixCoefficients matrixCoefficients = matrixCoefficientsUnset;
+    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
     avifChromaDownsampling chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
 
     int argIndex = 1;
@@ -840,7 +839,7 @@ int main(int argc, char * argv[])
             returnCode = 1;
         }
         // Matrix coefficients.
-        if (matrixCoefficients != matrixCoefficientsUnset && matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+        if (cicpExplicitlySet && matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
             fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
             returnCode = 1;
         }
@@ -860,9 +859,6 @@ int main(int argc, char * argv[])
         }
         if (maxQuantizerAlpha == -1) {
             maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-        }
-        if (matrixCoefficients == matrixCoefficientsUnset) {
-            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
         }
     }
 
