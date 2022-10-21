@@ -1,7 +1,7 @@
-name: Clang Format Checker
+name: CI
 on: [push]
 jobs:
-  clang-format-checking:
+  clang-format-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

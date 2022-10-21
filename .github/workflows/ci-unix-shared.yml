@@ -3,10 +3,10 @@
 #   * The os matrix consists of ubuntu-latest only.
 #   * Does not build dav1d, rav1e, SVT-AV1 nor libgav1.
 
-name: CI (shared libraries)
+name: CI
 on: [push, pull_request]
 jobs:
-  build:
+  build-shared:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
