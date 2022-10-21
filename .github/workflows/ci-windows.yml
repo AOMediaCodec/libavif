@@ -13,7 +13,7 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  build:
+  build-static:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

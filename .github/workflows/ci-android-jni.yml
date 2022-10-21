@@ -1,7 +1,7 @@
-name: CI-Android-JNI
+name: CI
 on: [push, pull_request]
 jobs:
-  build:
+  build-android-jni:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
