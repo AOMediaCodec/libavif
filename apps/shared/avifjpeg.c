@@ -185,11 +185,9 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
                         return AVIF_FALSE;
                     }
 
-                    avifPixelFormatInfo info;
-                    avifGetPixelFormatInfo(avif->yuvFormat, &info);
-                    uint32_t uvHeight = (avif->height + info.chromaShiftY) >> info.chromaShiftY;
-                    memset(avif->yuvPlanes[AVIF_CHAN_U], 128, avif->yuvRowBytes[AVIF_CHAN_U] * uvHeight);
-                    memset(avif->yuvPlanes[AVIF_CHAN_V], 128, avif->yuvRowBytes[AVIF_CHAN_V] * uvHeight);
+                    for (int c = AVIF_CHAN_U; c <= AVIF_CHAN_V; ++c) {
+                        memset(avif->yuvPlanes[c], 128, (size_t)avif->yuvRowBytes[c] * avifImagePlaneHeight(avif, c));
+                    }
 
                     return AVIF_TRUE;
                 }
@@ -204,8 +202,9 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
                     return AVIF_FALSE;
                 }
 
-                memcpy(avif->yuvPlanes[AVIF_CHAN_U], avif->yuvPlanes[AVIF_CHAN_Y], (size_t)avif->yuvRowBytes[AVIF_CHAN_U] * avif->height);
-                memcpy(avif->yuvPlanes[AVIF_CHAN_V], avif->yuvPlanes[AVIF_CHAN_Y], (size_t)avif->yuvRowBytes[AVIF_CHAN_V] * avif->height);
+                for (int c = AVIF_CHAN_U; c <= AVIF_CHAN_V; ++c) {
+                    memcpy(avif->yuvPlanes[c], avif->yuvPlanes[AVIF_CHAN_Y], (size_t)avif->yuvRowBytes[c] * avif->height);
+                }
 
                 return AVIF_TRUE;
             }

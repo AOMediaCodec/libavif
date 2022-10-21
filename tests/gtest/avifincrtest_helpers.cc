@@ -33,37 +33,30 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
 
   avifPixelFormatInfo info;
   avifGetPixelFormatInfo(image1.yuvFormat, &info);
-  const uint32_t uv_width =
-      (image1.width + info.chromaShiftX) >> info.chromaShiftX;
   const uint32_t uv_height =
       (row_count + info.chromaShiftY) >> info.chromaShiftY;
-  const uint32_t pixel_byte_count =
+  const size_t pixel_byte_count =
       (image1.depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
-
-  for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV);
-       ++plane) {
-    const uint32_t width = (plane == AVIF_CHAN_Y) ? image1.width : uv_width;
-    const uint32_t width_byte_count = width * pixel_byte_count;
-    const uint32_t height = (plane == AVIF_CHAN_Y) ? row_count : uv_height;
-    const uint8_t* data1 = image1.yuvPlanes[plane];
-    const uint8_t* data2 = image2.yuvPlanes[plane];
-    for (uint32_t y = 0; y < height; ++y) {
-      ASSERT_EQ(std::memcmp(data1, data2, width_byte_count), 0);
-      data1 += image1.yuvRowBytes[plane];
-      data2 += image2.yuvRowBytes[plane];
-    }
-  }
 
   if (image1.alphaPlane) {
     ASSERT_NE(image2.alphaPlane, nullptr);
     ASSERT_EQ(image1.alphaPremultiplied, image2.alphaPremultiplied);
-    const uint32_t width_byte_count = image1.width * pixel_byte_count;
-    const uint8_t* data1 = image1.alphaPlane;
-    const uint8_t* data2 = image2.alphaPlane;
-    for (uint32_t y = 0; y < row_count; ++y) {
-      ASSERT_EQ(std::memcmp(data1, data2, width_byte_count), 0);
-      data1 += image1.alphaRowBytes;
-      data2 += image2.alphaRowBytes;
+  }
+
+  int lastPlane = image1.alphaPlane ? AVIF_CHAN_A : AVIF_CHAN_V;
+  for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
+    const size_t width_byte_count =
+        avifImagePlaneWidth(&image1, plane) * pixel_byte_count;
+    const uint32_t height =
+        (plane == AVIF_CHAN_Y || plane == AVIF_CHAN_A) ? row_count : uv_height;
+    const uint8_t* row1 = avifImagePlane(&image1, plane);
+    const uint8_t* row2 = avifImagePlane(&image2, plane);
+    const uint32_t row1_bytes = avifImagePlaneRowBytes(&image1, plane);
+    const uint32_t row2_bytes = avifImagePlaneRowBytes(&image2, plane);
+    for (uint32_t y = 0; y < height; ++y) {
+      ASSERT_EQ(std::memcmp(row1, row2, width_byte_count), 0);
+      row1 += row1_bytes;
+      row2 += row2_bytes;
     }
   }
 }
