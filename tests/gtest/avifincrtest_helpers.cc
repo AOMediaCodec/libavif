@@ -43,7 +43,7 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
     ASSERT_EQ(image1.alphaPremultiplied, image2.alphaPremultiplied);
   }
 
-  int lastPlane = image1.alphaPlane ? AVIF_CHAN_A : AVIF_CHAN_V;
+  const int lastPlane = image1.alphaPlane ? AVIF_CHAN_A : AVIF_CHAN_V;
   for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
     const size_t width_byte_count =
         avifImagePlaneWidth(&image1, plane) * pixel_byte_count;

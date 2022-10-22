@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
@@ -179,6 +180,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
     avifRWDataSet(&dstImage->exif, srcImage->exif.data, srcImage->exif.size);
     avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
 
+    assert(AVIF_CHAN_A > AVIF_CHAN_V);
     int firstPlane = AVIF_CHAN_A; // No plane by default.
     int lastPlane = AVIF_CHAN_V;
     if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {

@@ -754,6 +754,7 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
     dstImage->width = dstWidth;
     dstImage->height = dstHeight;
 
+    assert(AVIF_CHAN_A > AVIF_CHAN_V);
     int firstPlane = AVIF_CHAN_A; // No plane by default.
     int lastPlane = AVIF_CHAN_V;
     if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
