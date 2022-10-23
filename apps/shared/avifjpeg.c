@@ -185,9 +185,9 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
                         return AVIF_FALSE;
                     }
 
-                    for (int c = AVIF_CHAN_U; c <= AVIF_CHAN_V; ++c) {
-                        memset(avif->yuvPlanes[c], 128, (size_t)avif->yuvRowBytes[c] * avifImagePlaneHeight(avif, c));
-                    }
+                    uint32_t uvHeight = avifImagePlaneHeight(avif, AVIF_CHAN_U);
+                    memset(avif->yuvPlanes[AVIF_CHAN_U], 128, (size_t)avif->yuvRowBytes[AVIF_CHAN_U] * uvHeight);
+                    memset(avif->yuvPlanes[AVIF_CHAN_V], 128, (size_t)avif->yuvRowBytes[AVIF_CHAN_V] * uvHeight);
 
                     return AVIF_TRUE;
                 }
