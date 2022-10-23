@@ -364,15 +364,15 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     const int lastPlane = frame.hasAlpha ? AVIF_CHAN_A : AVIF_CHAN_V;
     for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
         uint32_t planeHeight = avifImagePlaneHeight(avif, plane);
-        uint32_t sampleBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
+        uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
         uint8_t * row = avifImagePlane(avif, plane);
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
         for (uint32_t y = 0; y < planeHeight; ++y) {
-            uint32_t bytesRead = (uint32_t)fread(row, 1, sampleBytes, frame.inputFile);
-            if (bytesRead != sampleBytes) {
+            uint32_t bytesRead = (uint32_t)fread(row, 1, planeWidthBytes, frame.inputFile);
+            if (bytesRead != planeWidthBytes) {
                 fprintf(stderr,
                         "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
-                        sampleBytes,
+                        planeWidthBytes,
                         bytesRead,
                         frame.displayFilename);
                 goto cleanup;
@@ -514,12 +514,12 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
     const int lastPlane = writeAlpha ? AVIF_CHAN_A : AVIF_CHAN_V;
     for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
         uint32_t planeHeight = avifImagePlaneHeight(avif, plane);
-        uint32_t sampleBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
+        uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
         uint8_t * row = avifImagePlane(avif, plane);
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
         for (uint32_t y = 0; y < planeHeight; ++y) {
-            if (fwrite(row, 1, sampleBytes, f) != sampleBytes) {
-                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", sampleBytes, outputFilename);
+            if (fwrite(row, 1, planeWidthBytes, f) != planeWidthBytes) {
+                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeWidthBytes, outputFilename);
                 success = AVIF_FALSE;
                 goto cleanup;
             }
