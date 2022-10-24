@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avifjpeg.h"
+#include "avif/internal.h"
 #include "avifutil.h"
 
 #include <assert.h>
@@ -387,6 +388,9 @@ avifBool avifJPEGRead(const char * inputFilename,
                     fprintf(stderr, "Exif extraction failed: unsupported Exif split into multiple segments or invalid multiple Exif segments\n");
                     goto cleanup;
                 }
+                // Exif orientation, if any, is imported to avif->irot/imir and kept in avif->exif.
+                // libheif has the same behavior, see
+                // https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/heif_enc.cc#L403
                 avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size);
                 found = AVIF_TRUE;
             }
@@ -533,6 +537,12 @@ cleanup:
     return ret;
 }
 
+#define AVIF_JPEG_EXIF_HEADER "Exif\0\0"
+#define AVIF_JPEG_EXIF_HEADER_SIZE 6
+#define AVIF_JPEG_XMP_HEADER "http://ns.adobe.com/xap/1.0/\0"
+#define AVIF_JPEG_XMP_HEADER_SIZE 29
+#define AVIF_JPEG_MAX_MARKER_DATA_LENGTH 65533
+
 avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling)
 {
     avifBool ret = AVIF_FALSE;
@@ -571,7 +581,77 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     jpeg_start_compress(&cinfo, TRUE);
 
     if (avif->icc.data && (avif->icc.size > 0)) {
+        // TODO(yguyon): Use jpeg_write_icc_profile() instead?
         write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
+    }
+
+    if (avif->exif.data && (avif->exif.size > 0)) {
+        size_t exifTiffHeaderOffset;
+        avifResult result = avifGetExifTiffHeaderOffset(avif->exif.data, avif->exif.size, &exifTiffHeaderOffset);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "Error writing JPEG metadata: %s\n", avifResultToString(result));
+            goto cleanup;
+        }
+
+        avifRWData exif = { NULL, 0 };
+        avifRWDataRealloc(&exif, AVIF_JPEG_EXIF_HEADER_SIZE + avif->exif.size - exifTiffHeaderOffset);
+        memcpy(exif.data, AVIF_JPEG_EXIF_HEADER, AVIF_JPEG_EXIF_HEADER_SIZE);
+        memcpy(exif.data + AVIF_JPEG_EXIF_HEADER_SIZE, avif->exif.data + exifTiffHeaderOffset, avif->exif.size - exifTiffHeaderOffset);
+        // Make sure the Exif orientation matches the irot/imir values.
+        // libheif does not have the same behavior. The orientation is applied to samples and orientation data is discarded there,
+        // see https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/encoder_jpeg.cc#L187
+        result = avifSetExifOrientation(&exif, avifImageGetExifOrientationFromIrotImir(avif));
+        if (result != AVIF_RESULT_OK) {
+            // Ignore errors if the orientation is the default one because not being able to set Exif orientation now
+            // means a reader will not be able to parse it later either.
+            if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
+                fprintf(stderr, "Error writing JPEG metadata: %s\n", avifResultToString(result));
+                avifRWDataFree(&exif);
+                goto cleanup;
+            }
+        }
+
+        avifROData remainingExif = { exif.data, exif.size };
+        while (remainingExif.size > AVIF_JPEG_MAX_MARKER_DATA_LENGTH) {
+            jpeg_write_marker(&cinfo, JPEG_APP0 + 1, remainingExif.data, AVIF_JPEG_MAX_MARKER_DATA_LENGTH);
+            remainingExif.data += AVIF_JPEG_MAX_MARKER_DATA_LENGTH;
+            remainingExif.size -= AVIF_JPEG_MAX_MARKER_DATA_LENGTH;
+        }
+        jpeg_write_marker(&cinfo, JPEG_APP0 + 1, remainingExif.data, (unsigned int)remainingExif.size);
+        avifRWDataFree(&exif);
+    } else if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
+        // There is no Exif yet, but we need to store the orientation. Use a hardcoded valid Exif payload.
+        // See specification JEITA CP-3451E, sections 4.5 and 4.6.
+        const uint8_t rot = avifImageGetExifOrientationFromIrotImir(avif);
+        const uint8_t exifWithJustOrientation[] = {
+            'E', 'x', 'i', 'f', 0, 0, // AVIF_JPEG_EXIF_HEADER
+            'I', 'I', 42,  0,         // TIFF header (little endian)
+            8,   0,   0,   0,         // offset to 0th IFD (starting at TIFF header)
+            1,   0,                   // field count
+            18,  1,                   // tag
+            3,   0,                   // type
+            1,   0,   0,   0,         // count
+            rot, 0,   0,   0,         // value offset
+            0,   0,   0,   0          // offset of next IFD (1st IFD is not recorded)
+        };
+        jpeg_write_marker(&cinfo, JPEG_APP0 + 1, exifWithJustOrientation, sizeof(exifWithJustOrientation));
+    }
+
+    if (avif->xmp.data && (avif->xmp.size > 0)) {
+        // See XMP specification part 3.
+        if (avif->xmp.size > 65502) {
+            // Same behavior as libheif, see
+            // https://github.com/strukturag/libheif/blob/18291ddebc23c924440a8a3c9a7267fe3beb5901/examples/encoder_jpeg.cc#L227
+            fprintf(stderr, "Extended XMP writing is not supported for JPEG\n");
+            goto cleanup;
+        }
+
+        avifRWData xmp = { NULL, 0 };
+        avifRWDataRealloc(&xmp, AVIF_JPEG_XMP_HEADER_SIZE + avif->xmp.size);
+        memcpy(xmp.data, AVIF_JPEG_XMP_HEADER, AVIF_JPEG_XMP_HEADER_SIZE);
+        memcpy(xmp.data + AVIF_JPEG_XMP_HEADER_SIZE, avif->xmp.data, avif->xmp.size);
+        jpeg_write_marker(&cinfo, JPEG_APP0 + 1, xmp.data, (unsigned int)xmp.size);
+        avifRWDataFree(&xmp);
     }
 
     while (cinfo.next_scanline < cinfo.image_height) {

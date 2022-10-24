@@ -509,7 +509,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
 
     add_library(
         avif_apps STATIC apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
-                         apps/shared/y4m.c
+                         apps/shared/y4m.c src/diag.c src/exif.c src/stream.c src/utils.c
     )
     target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng

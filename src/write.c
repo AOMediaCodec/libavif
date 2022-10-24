@@ -692,8 +692,8 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
 
 static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
 {
-    uint32_t exifTiffHeaderOffset;
-    const avifResult result = avifGetExifTiffHeaderOffset(exif, &exifTiffHeaderOffset);
+    size_t exifTiffHeaderOffset;
+    const avifResult result = avifGetExifTiffHeaderOffset(exif->data, exif->size, &exifTiffHeaderOffset);
     if (result != AVIF_RESULT_OK) {
         // Couldn't find the TIFF header
         return result;
@@ -706,10 +706,10 @@ static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const av
     exifItem->irefToID = data->primaryItemID;
     exifItem->irefType = "cdsc";
 
-    avifRWDataRealloc(&exifItem->metadataPayload, sizeof(uint32_t) + exif->size);
-    exifTiffHeaderOffset = avifHTONL(exifTiffHeaderOffset);
-    memcpy(exifItem->metadataPayload.data, &exifTiffHeaderOffset, sizeof(uint32_t));
-    memcpy(exifItem->metadataPayload.data + sizeof(uint32_t), exif->data, exif->size);
+    const uint32_t offset32bit = avifHTONL((uint32_t)exifTiffHeaderOffset);
+    avifRWDataRealloc(&exifItem->metadataPayload, sizeof(offset32bit) + exif->size);
+    memcpy(exifItem->metadataPayload.data, &offset32bit, sizeof(offset32bit));
+    memcpy(exifItem->metadataPayload.data + sizeof(offset32bit), exif->data, exif->size);
     return AVIF_RESULT_OK;
 }
 
