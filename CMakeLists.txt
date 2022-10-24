@@ -456,6 +456,21 @@ if(BUILD_SHARED_LIBS)
     endif()
 endif()
 
+# Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
+# The avif_internal target should not be used by external code.
+if(BUILD_SHARED_LIBS)
+    add_library(avif_internal STATIC ${AVIF_SRCS})
+    # Copy most properties from the public avif library target.
+    target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
+    target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
+    target_include_directories(
+        avif_internal PUBLIC "$<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>"
+        PRIVATE "$<TARGET_PROPERTY:avif,INCLUDE_DIRECTORIES>"
+    )
+else()
+    add_library(avif_internal ALIAS avif)
+endif()
+
 option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     set(AVIF_EXAMPLES avif_example_decode_memory avif_example_decode_file avif_example_decode_streaming avif_example_encode)

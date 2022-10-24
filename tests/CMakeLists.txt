@@ -103,14 +103,10 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifrgbtoyuvtest COMMAND avifrgbtoyuvtest)
 
-    if(NOT BUILD_SHARED_LIBS)
-        # Test the internal function avifSetTileConfiguration(), which is not exported from the
-        # shared library.
-        add_executable(aviftilingtest gtest/aviftilingtest.cc)
-        target_link_libraries(aviftilingtest avif ${GTEST_BOTH_LIBRARIES})
-        target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
-        add_test(NAME aviftilingtest COMMAND aviftilingtest)
-    endif()
+    add_executable(aviftilingtest gtest/aviftilingtest.cc)
+    target_link_libraries(aviftilingtest avif_internal ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME aviftilingtest COMMAND aviftilingtest)
 
     add_executable(avify4mtest gtest/avify4mtest.cc)
     target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
