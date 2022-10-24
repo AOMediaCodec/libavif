@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+* Add STATIC library target avif_internal to allow tests to access functions
+  from internal.h when BUILD_SHARED_LIBS is ON.
+
 ## [0.11.1] - 2022-10-19
 
 ### Changed
