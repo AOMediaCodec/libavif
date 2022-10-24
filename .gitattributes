@@ -1,2 +1,3 @@
 * text=auto
 *.sh text eol=lf
+*.y4m -text -diff
