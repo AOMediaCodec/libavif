@@ -9,12 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
   from internal.h when BUILD_SHARED_LIBS is ON.
-* avifImageGetExifOrientationFromIrotImir() and avifSetExifOrientation() were
-  added to internal.h.
 
 ### Changed
-* Exif and XMP metadata is exported to PNG and JPEG files.
-* The signature of avifGetExifTiffHeaderOffset() changed.
+* Exif and XMP metadata is exported to PNG and JPEG files by default.
 
 ### Changed
 * The --grid flag in avifenc can be used for images that are not evenly divided
