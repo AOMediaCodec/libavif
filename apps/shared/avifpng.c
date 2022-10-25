@@ -409,8 +409,8 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    avifRWData exifRawProfile = { NULL, 0 };
-    avifRWData xmpRawProfile = { NULL, 0 };
+    avifRWData exif = { NULL, 0 };
+    avifRWData xmp = { NULL, 0 };
     png_bytep * volatile rowPointers = NULL;
     FILE * volatile f = NULL;
 
@@ -487,37 +487,67 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         png_set_iCCP(png, info, "libavif", 0, (png_iccp_datap)avif->icc.data, (png_uint_32)avif->icc.size);
     }
 
-    const int numTextMetadataChunks = (avif->exif.data && (avif->exif.size > 0)) + (avif->xmp.data && (avif->xmp.size > 0));
-    if (numTextMetadataChunks != 0) {
-        png_text texts[2];
-        if (avif->exif.data && (avif->exif.size > 0)) {
-            if (!avifBytesToRawProfile(&avif->exif, "Exif", &exifRawProfile)) {
-                fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
+    png_text texts[2];
+    int numTextMetadataChunks = 0;
+    if (avif->exif.data && (avif->exif.size > 0)) {
+#ifdef PNG_eXIf_SUPPORTED
+        if (avif->exif.size > UINT32_MAX) {
+            fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
+            goto cleanup;
+        }
+        png_set_eXIf_1(png, info, (png_uint_32)avif->exif.size, avif->exif.data);
+#else
+        if (!avifBytesToRawProfile(&avif->exif, "Exif", &exif)) {
+            fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
+            goto cleanup;
+        }
+        const png_text text = {
+            .compression = PNG_TEXT_COMPRESSION_zTXt,
+            .key = "Raw profile type exif",
+            .text = (char *)exif.data,
+            .text_length = exif.size,
+        };
+        texts[numTextMetadataChunks++] = text;
+#endif // PNG_eXIf_SUPPORTED
+    }
+    if (avif->xmp.data && (avif->xmp.size > 0)) {
+#ifdef PNG_iTXt_SUPPORTED
+        // The iTXt XMP payload may not contain a zero byte according to section 4.2.3.3 of
+        // the PNG specification, version 1.2. Otherwise, use a raw profile.
+        if (!memchr(avif->xmp.data, '\0', avif->xmp.size)) {
+            // Providing the length through png_text.itxt_length does not work.
+            // The given png_text.text string must end with a zero byte.
+            if (avif->xmp.size >= SIZE_MAX) {
+                fprintf(stderr, "Error writing PNG: XMP metadata is too big\n");
                 goto cleanup;
             }
+            avifRWDataRealloc(&xmp, avif->xmp.size + 1);
+            memcpy(xmp.data, avif->xmp.data, avif->xmp.size);
+            xmp.data[avif->xmp.size] = '\0';
             const png_text text = {
-                .compression = PNG_TEXT_COMPRESSION_zTXt,
-                .key = "Raw profile type exif",
-                .text = (char *)exifRawProfile.data,
-                .text_length = exifRawProfile.size,
+                .compression = PNG_ITXT_COMPRESSION_NONE,
+                .key = "XML:com.adobe.xmp",
+                .text = (char *)xmp.data,
+                .text_length = xmp.size,
             };
-            texts[0] = text;
-            // Note: png_set_eXIf_1() could be used but eXIf is likely less compatible than
-            //       the raw profile zTXt method.
-        }
-        if (avif->xmp.data && (avif->xmp.size > 0)) {
-            if (!avifBytesToRawProfile(&avif->xmp, "XMP", &xmpRawProfile)) {
+            texts[numTextMetadataChunks++] = text;
+        } else
+#endif // PNG_iTXt_SUPPORTED
+        {
+            if (!avifBytesToRawProfile(&avif->xmp, "XMP", &xmp)) {
                 fprintf(stderr, "Error writing PNG: XMP metadata is too big\n");
                 goto cleanup;
             }
             const png_text text = {
                 .compression = PNG_TEXT_COMPRESSION_zTXt,
                 .key = "Raw profile type xmp",
-                .text = (char *)xmpRawProfile.data,
-                .text_length = xmpRawProfile.size,
+                .text = (char *)xmp.data,
+                .text_length = xmp.size,
             };
-            texts[numTextMetadataChunks - 1] = text;
+            texts[numTextMetadataChunks++] = text;
         }
+    }
+    if (numTextMetadataChunks != 0) {
         png_set_text(png, info, texts, numTextMetadataChunks);
     }
 
@@ -555,8 +585,8 @@ cleanup:
     if (png) {
         png_destroy_write_struct(&png, &info);
     }
-    avifRWDataFree(&exifRawProfile);
-    avifRWDataFree(&xmpRawProfile);
+    avifRWDataFree(&exif);
+    avifRWDataFree(&xmp);
     if (rowPointers) {
         free(rowPointers);
     }
