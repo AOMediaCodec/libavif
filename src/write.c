@@ -771,7 +771,13 @@ static void avifCopyAndPadPlane(uint8_t * dstPlane,
 // Same as avifImageCopy() but pads the dstImage with border pixel values to reach dstWidth and dstHeight.
 static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
 {
-    avifImage * dstImage = avifImageCreate(dstWidth, dstHeight, srcImage->depth, srcImage->yuvFormat);
+    avifImage * dstImage = avifImageCreateEmpty();
+    // Copy all fields but do not allocate.
+    if (avifImageCopy(dstImage, srcImage, (avifPlanesFlag)0) != AVIF_RESULT_OK) {
+        assert(AVIF_FALSE);
+    }
+    dstImage->width = dstWidth;
+    dstImage->height = dstHeight;
 
     if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
