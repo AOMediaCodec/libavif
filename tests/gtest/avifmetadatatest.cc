@@ -172,12 +172,12 @@ TEST_P(MetadataTest, ReadWriteReadCompare) {
 
   // Writing and reading that same metadata should give the same bytes.
   for (const std::string extension : {".png", ".jpg"}) {
-    const testutil::AvifImagePtr tempImage =
+    const testutil::AvifImagePtr temp_image =
         WriteAndReadImage(*image, file_name + extension);
-    ASSERT_NE(tempImage, nullptr);
-    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->icc, tempImage->icc));
-    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
-    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->xmp, tempImage->xmp));
+    ASSERT_NE(temp_image, nullptr);
+    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->icc, temp_image->icc));
+    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->xmp, temp_image->xmp));
   }
 }
 
@@ -275,24 +275,24 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_EQ(decoded->imir.mode, 0u);
 
   // Exif orientation is kept in JPEG export.
-  testutil::AvifImagePtr tempImage =
+  testutil::AvifImagePtr temp_image =
       WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
-  ASSERT_NE(tempImage, nullptr);
-  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
-  EXPECT_EQ(image->transformFlags, tempImage->transformFlags);
-  EXPECT_EQ(image->irot.angle, tempImage->irot.angle);
-  EXPECT_EQ(image->imir.mode, tempImage->imir.mode);
-  EXPECT_EQ(image->width, tempImage->width);  // Samples are left untouched.
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+  EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
+  EXPECT_EQ(image->irot.angle, temp_image->irot.angle);
+  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
 
   // Exif orientation in PNG export should be ignored or discarded.
-  tempImage = WriteAndReadImage(*image, "paris_exif_orientation_5.png");
-  ASSERT_NE(tempImage, nullptr);
-  EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
+  temp_image = WriteAndReadImage(*image, "paris_exif_orientation_5.png");
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
   EXPECT_EQ(
-      tempImage->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{0});
   // TODO(yguyon): Fix orientation not being applied to PNG samples.
-  EXPECT_EQ(image->width, tempImage->width /* should be height here */);
+  EXPECT_EQ(image->width, temp_image->width /* should be height here */);
 }
 
 TEST(MetadataTest, ExifOrientationAndForcedImir) {
@@ -320,13 +320,13 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
 
   // Exif orientation is set equivalent to irot/imir in JPEG export.
   // Existing Exif orientation is overwritten.
-  const testutil::AvifImagePtr tempImage =
+  const testutil::AvifImagePtr temp_image =
       WriteAndReadImage(*image, "paris_exif_orientation_2.jpg");
-  ASSERT_NE(tempImage, nullptr);
-  EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
-  EXPECT_EQ(image->transformFlags, tempImage->transformFlags);
-  EXPECT_EQ(image->imir.mode, tempImage->imir.mode);
-  EXPECT_EQ(image->width, tempImage->width);  // Samples are left untouched.
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+  EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
+  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
 }
 
 TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
@@ -341,15 +341,15 @@ TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   EXPECT_EQ(image->imir.mode, 0u);
 
   // No Exif metadata to store the orientation: the samples should be rotated.
-  const testutil::AvifImagePtr tempImage =
+  const testutil::AvifImagePtr temp_image =
       WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
-  ASSERT_NE(tempImage, nullptr);
-  EXPECT_EQ(tempImage->exif.size, 0u);
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_EQ(temp_image->exif.size, 0u);
   EXPECT_EQ(
-      tempImage->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{0});
   // TODO(yguyon): Fix orientation not being applied to JPEG samples.
-  EXPECT_EQ(image->width, tempImage->width /* should be height here */);
+  EXPECT_EQ(image->width, temp_image->width /* should be height here */);
 }
 
 TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
@@ -383,13 +383,14 @@ TEST(MetadataTest, ExtendedXMP) {
       testutil::ReadImage(data_path, "dog_exif_extended_xmp_icc.jpg");
   ASSERT_NE(image, nullptr);
   ASSERT_NE(image->xmp.size, 0u);
-  ASSERT_LT(image->xmp.size, size_t{65503});  // Fits in a single JPEG APP1 marker.
+  ASSERT_LT(image->xmp.size,
+            size_t{65503});  // Fits in a single JPEG APP1 marker.
 
-  for (const char * temp_file_name : {"dog.png", "dog.jpg"}) {
-    const testutil::AvifImagePtr tempImage =
+  for (const char* temp_file_name : {"dog.png", "dog.jpg"}) {
+    const testutil::AvifImagePtr temp_image =
         WriteAndReadImage(*image, temp_file_name);
-    ASSERT_NE(tempImage, nullptr);
-    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, tempImage->xmp));
+    ASSERT_NE(temp_image, nullptr);
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, temp_image->xmp));
   }
 }
 
@@ -399,15 +400,15 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
   ASSERT_NE(image, nullptr);
   ASSERT_GT(image->xmp.size, size_t{65536 * 2});
 
-  testutil::AvifImagePtr tempImage =
+  testutil::AvifImagePtr temp_image =
       WriteAndReadImage(*image, "paris_extended_xmp.png");
-  ASSERT_NE(tempImage, nullptr);
-  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, tempImage->xmp));
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, temp_image->xmp));
 
   // Writing more than 65502 bytes of XMP in a JPEG is not supported.
-  tempImage = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
-  ASSERT_NE(tempImage, nullptr);
-  ASSERT_EQ(tempImage->xmp.size, 0u);  // XMP was dropped.
+  temp_image = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
+  ASSERT_NE(temp_image, nullptr);
+  ASSERT_EQ(temp_image->xmp.size, 0u);  // XMP was dropped.
 }
 
 //------------------------------------------------------------------------------
