@@ -390,15 +390,16 @@ cleanup:
 // Does the opposite of avifCopyRawProfile(): writes a payload as a raw profile string.
 static avifBool avifBytesToRawProfile(const avifRWData * bytes, const char * profileName, avifRWData * profile)
 {
+    // The width of the profile length is 8 characters.
     if (bytes->size > 99999999) {
         return AVIF_FALSE;
     }
     size_t position = 1 + strlen(profileName) + 1 + 8 + 1;
     const size_t profileLength = position + bytes->size * 2 + 1;
     avifRWDataRealloc(profile, profileLength);
-    sprintf((char *)profile->data, "\n%s\n%08lu\n", profileName, (unsigned long)bytes->size);
+    snprintf((char *)profile->data, position, "\n%s\n%08lu\n", profileName, (unsigned long)bytes->size);
     for (size_t i = 0; i < bytes->size; ++i, position += 2) {
-        sprintf((char *)profile->data + position, "%02x", bytes->data[i]);
+        snprintf((char *)profile->data + position, 2, "%02x", bytes->data[i]);
     }
     profile->data[position] = '\n';
     return AVIF_TRUE;
