@@ -620,21 +620,8 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         jpeg_write_marker(&cinfo, JPEG_APP0 + 1, remainingExif.data, (unsigned int)remainingExif.size);
         avifRWDataFree(&exif);
     } else if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
-        // There is no Exif yet, but we need to store the orientation. Use a hardcoded valid Exif payload.
-        // See specification JEITA CP-3451E, sections 4.5 and 4.6.
-        const uint8_t rot = avifImageGetExifOrientationFromIrotImir(avif);
-        const uint8_t exifWithJustOrientation[] = {
-            'E', 'x', 'i', 'f', 0, 0, // AVIF_JPEG_EXIF_HEADER
-            'I', 'I', 42,  0,         // TIFF header (little endian)
-            8,   0,   0,   0,         // offset to 0th IFD (starting at TIFF header)
-            1,   0,                   // field count
-            18,  1,                   // tag
-            3,   0,                   // type
-            1,   0,   0,   0,         // count
-            rot, 0,   0,   0,         // value offset
-            0,   0,   0,   0          // offset of next IFD (1st IFD is not recorded)
-        };
-        jpeg_write_marker(&cinfo, JPEG_APP0 + 1, exifWithJustOrientation, sizeof(exifWithJustOrientation));
+        // There is no Exif yet, but we need to store the orientation.
+        // TODO(yguyon): Add a valid Exif payload or rotate the samples.
     }
 
     if (avif->xmp.data && (avif->xmp.size > 0)) {

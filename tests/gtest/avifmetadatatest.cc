@@ -329,7 +329,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   EXPECT_EQ(image->width, tempImage->width);  // Samples are left untouched.
 }
 
-TEST(MetadataTest, ExifGeneratedInJpegBecauseOfIrotImir) {
+TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   const testutil::AvifImagePtr image =
       testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
   ASSERT_NE(image, nullptr);
@@ -340,16 +340,16 @@ TEST(MetadataTest, ExifGeneratedInJpegBecauseOfIrotImir) {
   EXPECT_EQ(image->irot.angle, 1u);
   EXPECT_EQ(image->imir.mode, 0u);
 
-  // Exif metadata is added to JPEG to keep orientation data.
+  // No Exif metadata to store the orientation: the samples should be rotated.
   const testutil::AvifImagePtr tempImage =
       WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
   ASSERT_NE(tempImage, nullptr);
-  EXPECT_GT(tempImage->exif.size, 0u);
-  // irot/imir information is generated from Exif orientation data.
-  EXPECT_EQ(image->transformFlags, tempImage->transformFlags);
-  EXPECT_EQ(image->irot.angle, tempImage->irot.angle);
-  EXPECT_EQ(image->imir.mode, tempImage->imir.mode);
-  EXPECT_EQ(image->width, tempImage->width);  // Samples are left untouched.
+  EXPECT_EQ(tempImage->exif.size, 0u);
+  EXPECT_EQ(
+      tempImage->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      avifTransformFlags{0});
+  // TODO(yguyon): Fix orientation not being applied to JPEG samples.
+  EXPECT_EQ(image->width, tempImage->width /* should be height here */);
 }
 
 TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {

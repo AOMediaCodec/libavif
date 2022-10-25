@@ -535,6 +535,9 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
         }
     }
+    if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
+        // TODO(yguyon): Rotate the samples.
+    }
 
     if (rgbDepth > 8) {
         png_set_swap(png);
