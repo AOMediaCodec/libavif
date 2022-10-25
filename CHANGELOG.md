@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from internal.h when BUILD_SHARED_LIBS is ON.
 
 ### Changed
-* Exif and XMP metadata is exported to PNG and JPEG files by default.
+* Exif and XMP metadata is exported to PNG and JPEG files by default,
+  except XMP payloads longer than 65502 in JPEG.
 
 ### Changed
 * The --grid flag in avifenc can be used for images that are not evenly divided
