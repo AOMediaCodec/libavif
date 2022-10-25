@@ -35,13 +35,10 @@ jobs:
       working-directory: ./ext
       run: sed -i'' -e 's/-DBUILD_SHARED_LIBS=OFF/-DBUILD_SHARED_LIBS=ON/' *.cmd
     - name: Add recent repository for libyuv-dev
-      if: steps.cache-ext.outputs.cache-hit != 'true'
       run: echo "deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
     - name: Update apt
-      if: steps.cache-ext.outputs.cache-hit != 'true'
       run: sudo apt-get update
     - name: Install dependencies
-      if: steps.cache-ext.outputs.cache-hit != 'true'
       run: sudo apt-get install libaom-dev libyuv-dev
       # `sudo apt-get install googletest libgtest-dev` leads to the following:
       #   "libgtest.a(gtest-all.cc.o): undefined reference to `std::__throw_bad_array_new_length()'"
