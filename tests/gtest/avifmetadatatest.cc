@@ -383,6 +383,14 @@ TEST(MetadataTest, ExtendedXMP) {
       testutil::ReadImage(data_path, "dog_exif_extended_xmp_icc.jpg");
   ASSERT_NE(image, nullptr);
   ASSERT_NE(image->xmp.size, 0u);
+  ASSERT_LT(image->xmp.size, size_t{65503});  // Fits in a single JPEG APP1 marker.
+
+  for (const char * temp_file_name : {"dog.png", "dog.jpg"}) {
+    const testutil::AvifImagePtr tempImage =
+        WriteAndReadImage(*image, temp_file_name);
+    ASSERT_NE(tempImage, nullptr);
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, tempImage->xmp));
+  }
 }
 
 TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
@@ -398,7 +406,8 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
 
   // Writing more than 65502 bytes of XMP in a JPEG is not supported.
   tempImage = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
-  EXPECT_EQ(tempImage, nullptr);
+  ASSERT_NE(tempImage, nullptr);
+  ASSERT_EQ(tempImage->xmp.size, 0u);  // XMP was dropped.
 }
 
 //------------------------------------------------------------------------------

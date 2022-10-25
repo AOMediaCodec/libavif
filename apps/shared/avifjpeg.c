@@ -627,18 +627,24 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     if (avif->xmp.data && (avif->xmp.size > 0)) {
         // See XMP specification part 3.
         if (avif->xmp.size > 65502) {
-            // Same behavior as libheif, see
+            // libheif just refuses to export JPEG with long XMP, see
             // https://github.com/strukturag/libheif/blob/18291ddebc23c924440a8a3c9a7267fe3beb5901/examples/encoder_jpeg.cc#L227
-            fprintf(stderr, "Extended XMP writing is not supported for JPEG\n");
-            goto cleanup;
-        }
+            // But libheif also ignores extended XMP at reading, so converting a JPEG with extended XMP to HEIC and back to JPEG
+            // works, with the extended XMP part dropped, even if it had fit into a single JPEG marker.
 
-        avifRWData xmp = { NULL, 0 };
-        avifRWDataRealloc(&xmp, AVIF_JPEG_XMP_HEADER_SIZE + avif->xmp.size);
-        memcpy(xmp.data, AVIF_JPEG_XMP_HEADER, AVIF_JPEG_XMP_HEADER_SIZE);
-        memcpy(xmp.data + AVIF_JPEG_XMP_HEADER_SIZE, avif->xmp.data, avif->xmp.size);
-        jpeg_write_marker(&cinfo, JPEG_APP0 + 1, xmp.data, (unsigned int)xmp.size);
-        avifRWDataFree(&xmp);
+            // In libavif the whole XMP payload is dropped if it exceeds a single JPEG marker size limit, with a warning.
+            // The advantage is that it keeps the whole XMP payload, including the extended part, if it fits into a single JPEG
+            // marker. This is acceptable because section 1.1.3.1 of XMP specification part 3 says
+            //   "It is unusual for XMP to exceed 65502 bytes; typically, it is around 2 KB."
+            fprintf(stderr, "Warning writing JPEG metadata: XMP payload is too big and was dropped\n");
+        } else {
+            avifRWData xmp = { NULL, 0 };
+            avifRWDataRealloc(&xmp, AVIF_JPEG_XMP_HEADER_SIZE + avif->xmp.size);
+            memcpy(xmp.data, AVIF_JPEG_XMP_HEADER, AVIF_JPEG_XMP_HEADER_SIZE);
+            memcpy(xmp.data + AVIF_JPEG_XMP_HEADER_SIZE, avif->xmp.data, avif->xmp.size);
+            jpeg_write_marker(&cinfo, JPEG_APP0 + 1, xmp.data, (unsigned int)xmp.size);
+            avifRWDataFree(&xmp);
+        }
     }
 
     while (cinfo.next_scanline < cinfo.image_height) {

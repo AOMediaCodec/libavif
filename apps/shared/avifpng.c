@@ -399,7 +399,7 @@ static avifBool avifBytesToRawProfile(const avifRWData * bytes, const char * pro
     avifRWDataRealloc(profile, profileLength);
     snprintf((char *)profile->data, position, "\n%s\n%08lu\n", profileName, (unsigned long)bytes->size);
     for (size_t i = 0; i < bytes->size; ++i, position += 2) {
-        snprintf((char *)profile->data + position, 2, "%02x", bytes->data[i]);
+        snprintf((char *)profile->data + position, 3, "%02x", bytes->data[i]);
     }
     profile->data[position] = '\n';
     return AVIF_TRUE;
