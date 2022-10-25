@@ -114,8 +114,8 @@ INSTANTIATE_TEST_SUITE_P(All, AvifMetadataTest,
 //------------------------------------------------------------------------------
 // Jpeg and PNG metadata tests
 
-testutil::AvifImagePtr WriteReadImage(const avifImage& image,
-                                      const std::string& file_name) {
+testutil::AvifImagePtr WriteAndReadImage(const avifImage& image,
+                                         const std::string& file_name) {
   const std::string file_path = testing::TempDir() + file_name;
   if (file_name.substr(file_name.size() - 4) == ".png") {
     if (!avifPNGWrite(file_path.c_str(), &image, /*requestedDepth=*/0,
@@ -173,7 +173,7 @@ TEST_P(MetadataTest, ReadWriteReadCompare) {
   // Writing and reading that same metadata should give the same bytes.
   for (const std::string extension : {".png", ".jpg"}) {
     const testutil::AvifImagePtr tempImage =
-        WriteReadImage(*image, file_name + extension);
+        WriteAndReadImage(*image, file_name + extension);
     ASSERT_NE(tempImage, nullptr);
     ASSERT_TRUE(testutil::AreByteSequencesEqual(image->icc, tempImage->icc));
     ASSERT_TRUE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
@@ -276,7 +276,7 @@ TEST(MetadataTest, ExifOrientation) {
 
   // Exif orientation is kept in JPEG export.
   testutil::AvifImagePtr tempImage =
-      WriteReadImage(*image, "paris_exif_orientation_5.jpg");
+      WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
   ASSERT_NE(tempImage, nullptr);
   EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
   EXPECT_EQ(image->transformFlags, tempImage->transformFlags);
@@ -285,7 +285,7 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_EQ(image->width, tempImage->width);  // Samples are left untouched.
 
   // Exif orientation in PNG export should be ignored or discarded.
-  tempImage = WriteReadImage(*image, "paris_exif_orientation_5.png");
+  tempImage = WriteAndReadImage(*image, "paris_exif_orientation_5.png");
   ASSERT_NE(tempImage, nullptr);
   EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
   EXPECT_EQ(
@@ -321,7 +321,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   // Exif orientation is set equivalent to irot/imir in JPEG export.
   // Existing Exif orientation is overwritten.
   const testutil::AvifImagePtr tempImage =
-      WriteReadImage(*image, "paris_exif_orientation_2.jpg");
+      WriteAndReadImage(*image, "paris_exif_orientation_2.jpg");
   ASSERT_NE(tempImage, nullptr);
   EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, tempImage->exif));
   EXPECT_EQ(image->transformFlags, tempImage->transformFlags);
@@ -342,7 +342,7 @@ TEST(MetadataTest, ExifGeneratedInJpegBecauseOfIrotImir) {
 
   // Exif metadata is added to JPEG to keep orientation data.
   const testutil::AvifImagePtr tempImage =
-      WriteReadImage(*image, "paris_exif_orientation_5.jpg");
+      WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
   ASSERT_NE(tempImage, nullptr);
   EXPECT_GT(tempImage->exif.size, 0u);
   // irot/imir information is generated from Exif orientation data.
@@ -392,12 +392,12 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
   ASSERT_GT(image->xmp.size, size_t{65536 * 2});
 
   testutil::AvifImagePtr tempImage =
-      WriteReadImage(*image, "paris_extended_xmp.png");
+      WriteAndReadImage(*image, "paris_extended_xmp.png");
   ASSERT_NE(tempImage, nullptr);
   EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, tempImage->xmp));
 
   // Writing more than 65502 bytes of XMP in a JPEG is not supported.
-  tempImage = WriteReadImage(*image, "paris_extended_xmp.jpg");
+  tempImage = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
   EXPECT_EQ(tempImage, nullptr);
 }
 
