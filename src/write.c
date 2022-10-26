@@ -774,7 +774,8 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
     avifImage * dstImage = avifImageCreateEmpty();
     // Copy all fields but do not allocate.
     if (avifImageCopy(dstImage, srcImage, (avifPlanesFlag)0) != AVIF_RESULT_OK) {
-        assert(AVIF_FALSE);
+        avifImageDestroy(dstImage);
+        return NULL;
     }
     dstImage->width = dstWidth;
     dstImage->height = dstHeight;
