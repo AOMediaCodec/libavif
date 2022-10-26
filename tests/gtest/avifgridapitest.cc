@@ -241,5 +241,51 @@ TEST(GridApiTest, CellsOfDifferentDimensions) {
             AVIF_RESULT_INVALID_IMAGE_GRID);
 }
 
+//------------------------------------------------------------------------------
+
+TEST(GridApiTest, SameMatrixCoefficients) {
+  testutil::AvifImagePtr cell_0 = testutil::CreateImage(
+      64, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  testutil::AvifImagePtr cell_1 = testutil::CreateImage(
+      1, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+
+  // All input cells have the same non-default properties.
+  cell_0->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+  cell_1->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  const avifImage* cell_image_ptrs[2] = {cell_0.get(), cell_1.get()};
+  ASSERT_EQ(
+      avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/2, /*gridRows=*/1,
+                              cell_image_ptrs, AVIF_ADD_IMAGE_FLAG_SINGLE),
+      AVIF_RESULT_OK);
+  testutil::AvifRwData encoded_avif;
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded_avif), AVIF_RESULT_OK);
+  ASSERT_NE(testutil::Decode(encoded_avif.data, encoded_avif.size), nullptr);
+}
+
+TEST(GridApiTest, DifferentMatrixCoefficients) {
+  testutil::AvifImagePtr cell_0 = testutil::CreateImage(
+      64, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  testutil::AvifImagePtr cell_1 = testutil::CreateImage(
+      1, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+
+  // Some input cells have different properties.
+  cell_0->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+  cell_1->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  // Encoding should fail.
+  const avifImage* cell_image_ptrs[2] = {cell_0.get(), cell_1.get()};
+  ASSERT_EQ(
+      avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/2, /*gridRows=*/1,
+                              cell_image_ptrs, AVIF_ADD_IMAGE_FLAG_SINGLE),
+      AVIF_RESULT_INVALID_IMAGE_GRID);
+}
+
 }  // namespace
 }  // namespace libavif
