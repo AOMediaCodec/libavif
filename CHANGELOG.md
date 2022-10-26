@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add STATIC library target avif_internal to allow tests to access functions
   from internal.h when BUILD_SHARED_LIBS is ON.
 
+### Changed
+* The --grid flag in avifenc can be used for images that are not evenly divided
+  into cells.
+
 ## [0.11.1] - 2022-10-19
 
 ### Changed
