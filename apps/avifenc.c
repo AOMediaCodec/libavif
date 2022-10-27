@@ -341,7 +341,7 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
 }
 
 // Returns the best cell size for a given horizontal or vertical dimension.
-static avifBool avifTryGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint32_t numCells, avifBool isSubsampled, uint32_t * cellSize)
+static avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint32_t numCells, avifBool isSubsampled, uint32_t * cellSize)
 {
     assert(numPixels);
     assert(numCells);
@@ -399,8 +399,8 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
     uint32_t cellWidth, cellHeight;
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &formatInfo);
-    if (!avifTryGetBestCellSize("horizontally", gridSplitImage->width, gridCols, formatInfo.chromaShiftX, &cellWidth) ||
-        !avifTryGetBestCellSize("vertically", gridSplitImage->height, gridRows, formatInfo.chromaShiftY, &cellHeight)) {
+    if (!avifGetBestCellSize("horizontally", gridSplitImage->width, gridCols, formatInfo.chromaShiftX, &cellWidth) ||
+        !avifGetBestCellSize("vertically", gridSplitImage->height, gridRows, formatInfo.chromaShiftY, &cellHeight)) {
         return AVIF_FALSE;
     }
 
