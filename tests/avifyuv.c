@@ -39,6 +39,10 @@ static const char * rgbFormatToString(avifRGBFormat format)
             return "BGRA";
         case AVIF_RGB_FORMAT_ABGR:
             return "ABGR";
+        case AVIF_RGB_FORMAT_RGB_565:
+            return "RGB_565";
+        case AVIF_RGB_FORMAT_COUNT:
+            break;
     }
     return "Unknown";
 }
@@ -340,7 +344,6 @@ int main(int argc, char * argv[])
                         avifImageFreePlanes(image, AVIF_PLANES_ALL);
                         image->depth = yuvDepth;
                         image->yuvRange = yuvRange;
-                        image->alphaRange = AVIF_RANGE_FULL;
                         avifImageRGBToYUV(image, &srcRGB);
 
                         avifRGBImage intermediateRGB;

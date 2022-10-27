@@ -1,0 +1,107 @@
+# This is a copy of ci.yml for Windows. It differs from ci.yml as follows:
+#
+#   * The os matrix consists of windows-latest only.
+#   * Installs Visual Studio in the os image.
+#   * Doesn't install cmake 3.17.x, because only cmake 3.18 or later, with the
+#     following bug fix, detects Visual Studio compilers correctly:
+#     https://gitlab.kitware.com/cmake/cmake/-/issues/20585
+#   * Runs ext/*.cmd as Windows batch files rather than using bash. This is
+#     important for ext/svt.cmd, to prevent it from running ext/svt.sh.
+#   * Builds with local libjpeg (-DAVIF_LOCAL_JPEG=ON).
+#   * Builds with local zlib and libpng (-DAVIF_LOCAL_ZLIBPNG=ON).
+
+name: CI
+on: [push, pull_request]
+jobs:
+  build-static:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Visual Studio shell
+      if: runner.os == 'Windows'
+      uses: egor-tensin/vs-shell@v2
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@v3
+      with:
+        path: ext
+        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
+    - name: Print cmake version
+      run: cmake --version
+    - uses: ilammy/setup-nasm@v1
+      with:
+        version: 2.15.05
+    - uses: seanmiddleditch/gha-setup-ninja@v3
+    - run: pip install meson
+    - name: Build aom
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./aom.cmd
+    - name: Build dav1d
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./dav1d.cmd
+    - name: Build rav1e
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./rav1e.cmd
+    - name: Build SVT-AV1
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./svt.cmd
+    - name: Build libgav1
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libgav1.cmd
+    - name: Build libyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libyuv.cmd
+    - name: Build libjpeg
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libjpeg.cmd
+    - name: Build libsharpyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libsharpyuv.cmd
+    - name: Build zlib and libpng
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./zlibpng.cmd
+    - name: Build GoogleTest
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./googletest.cmd
+
+    - name: Prepare libavif (cmake)
+      run: >
+        mkdir build && cd build
+
+        cmake .. -G Ninja
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
+        -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON
+        -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON
+        -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
+        -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON
+        -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_JPEG=ON
+        -DAVIF_LOCAL_LIBSHARPYUV=ON
+        -DAVIF_LOCAL_ZLIBPNG=ON
+        -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
+    - name: Build libavif (ninja)
+      working-directory: ./build
+      run: ninja
+    - name: Run AVIF Tests
+      working-directory: ./build
+      run: ctest -j $Env:NUMBER_OF_PROCESSORS

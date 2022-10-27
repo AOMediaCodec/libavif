@@ -12,6 +12,8 @@ struct avifCodecInternal
     RaContext * rav1eContext;
     RaChromaSampling chromaSampling;
     int yShift;
+    uint32_t encodeWidth;
+    uint32_t encodeHeight;
 };
 
 static void rav1eCodecDestroyInternal(avifCodec * codec)
@@ -51,9 +53,25 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
+                                        int tileRowsLog2,
+                                        int tileColsLog2,
+                                        avifEncoderChanges encoderChanges,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
+    // rav1e does not support changing encoder settings.
+    if (encoderChanges) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    // rav1e does not support changing image dimensions.
+    if (!codec->internal->rav1eContext) {
+        codec->internal->encodeWidth = image->width;
+        codec->internal->encodeHeight = image->height;
+    } else if ((codec->internal->encodeWidth != image->width) || (codec->internal->encodeHeight != image->height)) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
 
     RaConfig * rav1eConfig = NULL;
@@ -68,7 +86,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
         const avifBool supports400 = rav1eSupports400();
         RaPixelRange rav1eRange;
         if (alpha) {
-            rav1eRange = (image->alphaRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
+            rav1eRange = RA_PIXEL_RANGE_FULL;
             codec->internal->chromaSampling = supports400 ? RA_CHROMA_SAMPLING_CS400 : RA_CHROMA_SAMPLING_CS420;
             codec->internal->yShift = 1;
         } else {
@@ -90,6 +108,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                     codec->internal->yShift = 1;
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
+                case AVIF_PIXEL_FORMAT_COUNT:
                 default:
                     return AVIF_RESULT_UNKNOWN_ERROR;
             }
@@ -133,14 +152,12 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
         if (rav1e_config_parse_int(rav1eConfig, "quantizer", maxQuantizer) == -1) {
             goto cleanup;
         }
-        if (encoder->tileRowsLog2 != 0) {
-            int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+        if (tileRowsLog2 != 0) {
             if (rav1e_config_parse_int(rav1eConfig, "tile_rows", 1 << tileRowsLog2) == -1) {
                 goto cleanup;
             }
         }
-        if (encoder->tileColsLog2 != 0) {
-            int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+        if (tileColsLog2 != 0) {
             if (rav1e_config_parse_int(rav1eConfig, "tile_cols", 1 << tileColsLog2) == -1) {
                 goto cleanup;
             }

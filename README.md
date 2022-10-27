@@ -1,16 +1,23 @@
 # libavif [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/louquillio/libavif?branch=master&svg=true)](https://ci.appveyor.com/project/louquillio/libavif) [![Travis Build Status](https://travis-ci.com/AOMediaCodec/libavif.svg?branch=master)](https://travis-ci.com/AOMediaCodec/libavif)
 
-This library aims to be a friendly, portable C implementation of the AV1 Image File Format, as described here:
+This library aims to be a friendly, portable C implementation of the AV1 Image
+File Format, as described here:
 
 <https://aomediacodec.github.io/av1-avif/>
 
-It is a work-in-progress, but can already encode and decode all AOM supported YUV formats and bit depths (with alpha).
+It is a work-in-progress, but can already encode and decode all AOM supported
+YUV formats and bit depths (with alpha).
 
-For now, it is recommended that you checkout/use [tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of just using the master branch. I will regularly create new versions as bugfixes and features are added.
+For now, it is recommended that you check out/use
+[tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of
+just using the master branch. I will regularly create new versions as bugfixes
+and features are added.
 
 ## Usage
 
-Please see the examples in the examples directory. If you're already building `libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and run the examples too.
+Please see the examples in the "examples" directory. If you're already building
+`libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and
+run the examples too.
 
 ## Build Notes
 
@@ -29,7 +36,7 @@ These libraries (in their C API form) must be externally available
 a child CMake project, the appropriate CMake target must already exist
 by the time libavif's CMake scripts are executed.
 
-## Local / Static Builds
+### Local / Static Builds
 
 The `ext/` subdirectory contains a handful of basic scripts which each pull
 down a known-good copy of an AV1 codec and make a local static library build.
@@ -42,9 +49,51 @@ If you want to build/install shared libraries for AV1 codecs, you can still
 peek inside of each script to see where the current known-good SHA is for each
 codec.
 
+### Tests
+
+A few tests written in C can be built by enabling the `AVIF_BUILD_TESTS` CMake
+option.
+
+The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
+`AVIF_ENABLE_GTEST` CMake options. They require GoogleTest to be built locally
+with ext/googletest.cmd or installed on the system.
+
 ## Prebuilt Library (Windows)
 
-If you're building on Windows with Visual Studio 2019 and want to try out libavif without going through the build process, static library builds for both Debug and Release are available on [AppVeyor](https://ci.appveyor.com/project/louquillio/libavif).
+If you're building on Windows with Visual Studio 2022 and want to try out
+libavif without going through the build process, static library builds for both
+Debug and Release are available on
+[AppVeyor](https://ci.appveyor.com/project/louquillio/libavif).
+
+## Development Notes
+
+libavif is written in C99.
+
+### Formatting
+
+Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the C
+sources from the top-level folder:
+
+```sh
+clang-format -style=file -i \
+  apps/*.c apps/shared/avifjpeg.* apps/shared/avifpng.* \
+  apps/shared/avifutil.* apps/shared/y4m.* examples/*.c \
+  include/avif/*.h src/*.c tests/*.c \
+  tests/gtest/*.h tests/gtest/*.cc tests/oss-fuzz/*.cc
+```
+
+Use [cmake-format](https://github.com/cheshirekow/cmake_format) to format the
+CMakeLists.txt files from the top-level folder:
+
+```sh
+cmake-format -i \
+  CMakeLists.txt \
+  tests/CMakeLists.txt \
+  cmake/Modules/Find*.cmake \
+  contrib/CMakeLists.txt \
+  contrib/gdk-pixbuf/CMakeLists.txt \
+  android_jni/avifandroidjni/src/main/jni/CMakeLists.txt
+```
 
 ---
 

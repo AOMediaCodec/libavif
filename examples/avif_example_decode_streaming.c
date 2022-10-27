@@ -94,9 +94,12 @@ static void avifIOStreamingReaderDestroy(struct avifIO * io)
     avifFree(io);
 }
 
+// Returns null in case of memory allocation failure.
 static avifIOStreamingReader * avifIOCreateStreamingReader(const uint8_t * data, size_t size)
 {
     avifIOStreamingReader * reader = avifAlloc(sizeof(avifIOStreamingReader));
+    if (!reader)
+        return NULL;
     memset(reader, 0, sizeof(avifIOStreamingReader));
 
     // It is legal for io.destroy to be NULL, in which you are responsible for cleaning up
@@ -128,8 +131,7 @@ int main(int argc, char * argv[])
     const char * inputFilename = argv[1];
 
     int returnCode = 1;
-    avifDecoder * decoder = avifDecoderCreate();
-    // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
+    avifDecoder * decoder = NULL;
 
     // Read entire file into fileBuffer
     FILE * f = NULL;
@@ -143,6 +145,7 @@ int main(int argc, char * argv[])
     long fileSize = ftell(f);
     if (fileSize < 0) {
         fprintf(stderr, "Truncated file: %s\n", inputFilename);
+        goto cleanup;
     }
     fseek(f, 0, SEEK_SET);
     fileBuffer = malloc(fileSize);
@@ -152,7 +155,18 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
+    decoder = avifDecoderCreate();
+    if (!decoder) {
+        fprintf(stderr, "Memory allocation failure\n");
+        goto cleanup;
+    }
+    // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
+
     avifIOStreamingReader * io = avifIOCreateStreamingReader(fileBuffer, fileSize);
+    if (!io) {
+        fprintf(stderr, "Memory allocation failure\n");
+        goto cleanup;
+    }
     avifDecoderSetIO(decoder, (avifIO *)io);
 
     for (int pass = 0; pass < 2; ++pass) {
@@ -209,7 +223,9 @@ int main(int argc, char * argv[])
 
     returnCode = 0;
 cleanup:
-    avifDecoderDestroy(decoder); // this calls avifIOStreamingReaderDestroy for us
+    if (decoder) {
+        avifDecoderDestroy(decoder); // this calls avifIOStreamingReaderDestroy for us
+    }
     if (f) {
         fclose(f);
     }

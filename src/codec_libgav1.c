@@ -27,10 +27,13 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
                                       struct avifDecoder * decoder,
                                       const avifDecodeSample * sample,
                                       avifBool alpha,
+                                      avifBool * isLimitedRangeAlpha,
                                       avifImage * image)
 {
     if (codec->internal->gav1Decoder == NULL) {
         codec->internal->gav1Settings.threads = decoder->maxThreads;
+        codec->internal->gav1Settings.operating_point = codec->operatingPoint;
+        codec->internal->gav1Settings.output_all_layers = codec->allLayers;
 
         if (Libgav1DecoderCreate(&codec->internal->gav1Settings, &codec->internal->gav1Decoder) != kLibgav1StatusOk) {
             return AVIF_FALSE;
@@ -48,9 +51,17 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
     // returned by the previous Libgav1DecoderDequeueFrame() call. Clear
     // our pointer to the previous output frame.
     codec->internal->gav1Image = NULL;
+
     const Libgav1DecoderBuffer * nextFrame = NULL;
-    if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
-        return AVIF_FALSE;
+    for (;;) {
+        if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
+            return AVIF_FALSE;
+        }
+        if (nextFrame && (sample->spatialID != AVIF_SPATIAL_ID_UNSET) && (nextFrame->spatial_id != sample->spatialID)) {
+            nextFrame = NULL;
+        } else {
+            break;
+        }
     }
     // Got an image!
 
@@ -106,9 +117,6 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
         image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
 
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(yuvFormat, &formatInfo);
-
         // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
@@ -134,7 +142,7 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = gav1Image->plane[0];
         image->alphaRowBytes = gav1Image->stride[0];
-        image->alphaRange = codec->internal->colorRange;
+        *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 

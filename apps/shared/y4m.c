@@ -215,9 +215,10 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     struct y4mFrameIterator frame;
     frame.width = -1;
     frame.height = -1;
-    frame.depth = -1;
+    // Default to the color space "C420" to match the defaults of aomenc and ffmpeg.
+    frame.depth = 8;
     frame.hasAlpha = AVIF_FALSE;
-    frame.format = AVIF_PIXEL_FORMAT_NONE;
+    frame.format = AVIF_PIXEL_FORMAT_YUV420;
     frame.range = AVIF_RANGE_LIMITED;
     frame.chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     memset(&frame.sourceTiming, 0, sizeof(avifAppSourceTiming));
@@ -229,7 +230,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
 
     if (iter && *iter) {
         // Continue reading FRAMEs from this y4m stream
-        memcpy(&frame, *iter, sizeof(struct y4mFrameIterator));
+        frame = **iter;
     } else {
         // Open a fresh y4m and read its header
 
@@ -338,50 +339,64 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         goto cleanup;
     }
 
-    if ((frame.width < 1) || (frame.height < 1) || ((frame.depth != 8) && (frame.depth != 10) && (frame.depth != 12)) ||
-        (frame.format == AVIF_PIXEL_FORMAT_NONE)) {
+    if ((frame.width < 1) || (frame.height < 1) || ((frame.depth != 8) && (frame.depth != 10) && (frame.depth != 12))) {
         fprintf(stderr, "Failed to parse y4m header (not enough information): %s\n", frame.displayFilename);
         goto cleanup;
     }
 
     if (sourceTiming) {
-        memcpy(sourceTiming, &frame.sourceTiming, sizeof(avifAppSourceTiming));
+        *sourceTiming = frame.sourceTiming;
     }
 
-    avifImageFreePlanes(avif, AVIF_PLANES_YUV | AVIF_PLANES_A);
+    avifImageFreePlanes(avif, AVIF_PLANES_ALL);
     avif->width = frame.width;
     avif->height = frame.height;
     avif->depth = frame.depth;
     avif->yuvFormat = frame.format;
     avif->yuvRange = frame.range;
     avif->yuvChromaSamplePosition = frame.chromaSamplePosition;
-    avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
-
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(avif->yuvFormat, &info);
-
-    uint32_t planeBytes[4];
-    planeBytes[0] = avif->yuvRowBytes[0] * avif->height;
-    planeBytes[1] = avif->yuvRowBytes[1] * ((avif->height + info.chromaShiftY) >> info.chromaShiftY);
-    planeBytes[2] = avif->yuvRowBytes[2] * ((avif->height + info.chromaShiftY) >> info.chromaShiftY);
-    if (frame.hasAlpha) {
-        planeBytes[3] = avif->alphaRowBytes * avif->height;
-    } else {
-        planeBytes[3] = 0;
+    avifResult allocationResult = avifImageAllocatePlanes(avif, frame.hasAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
+    if (allocationResult != AVIF_RESULT_OK) {
+        fprintf(stderr, "Failed to allocate the planes: %s\n", avifResultToString(allocationResult));
+        goto cleanup;
     }
 
-    for (int i = 0; i < 3; ++i) {
-        uint32_t bytesRead = (uint32_t)fread(avif->yuvPlanes[i], 1, planeBytes[i], frame.inputFile);
-        if (bytesRead != planeBytes[i]) {
-            fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %d, got %d): %s\n", planeBytes[i], bytesRead, frame.displayFilename);
-            goto cleanup;
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(avif->yuvFormat, &formatInfo);
+
+    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
+    for (int plane = 0; plane < planeCount; ++plane) {
+        uint32_t planeWidth = (plane > 0) ? ((avif->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX) : avif->width;
+        uint32_t planeHeight = (plane > 0) ? ((avif->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY) : avif->height;
+        uint32_t rowBytes = planeWidth << (avif->depth > 8);
+        uint8_t * row = avif->yuvPlanes[plane];
+        for (uint32_t y = 0; y < planeHeight; ++y) {
+            uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
+            if (bytesRead != rowBytes) {
+                fprintf(stderr,
+                        "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                        rowBytes,
+                        bytesRead,
+                        frame.displayFilename);
+                goto cleanup;
+            }
+            row += avif->yuvRowBytes[plane];
         }
     }
     if (frame.hasAlpha) {
-        avifImageAllocatePlanes(avif, AVIF_PLANES_A);
-        if (fread(avif->alphaPlane, 1, planeBytes[3], frame.inputFile) != planeBytes[3]) {
-            fprintf(stderr, "Failed to read y4m plane (not enough data): %s\n", frame.displayFilename);
-            goto cleanup;
+        uint32_t rowBytes = avif->width << (avif->depth > 8);
+        uint8_t * row = avif->alphaPlane;
+        for (uint32_t y = 0; y < avif->height; ++y) {
+            uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
+            if (bytesRead != rowBytes) {
+                fprintf(stderr,
+                        "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                        rowBytes,
+                        bytesRead,
+                        frame.displayFilename);
+                goto cleanup;
+            }
+            row += avif->alphaRowBytes;
         }
     }
 
@@ -399,7 +414,7 @@ cleanup:
             if (!feof(frame.inputFile)) {
                 // Remember y4m state for next time
                 *iter = malloc(sizeof(struct y4mFrameIterator));
-                memcpy(*iter, &frame, sizeof(struct y4mFrameIterator));
+                **iter = frame;
             }
         }
     }
@@ -442,7 +457,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
                     y4mHeaderFormat = "Cmono XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -461,7 +477,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
                     y4mHeaderFormat = "Cmono10 XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -480,7 +497,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
                     y4mHeaderFormat = "Cmono12 XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -499,8 +517,8 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         rangeString = "XCOLORRANGE=LIMITED";
     }
 
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(avif->yuvFormat, &info);
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(avif->yuvFormat, &formatInfo);
 
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
@@ -515,28 +533,31 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         goto cleanup;
     }
 
-    uint8_t * planes[3];
-    uint32_t planeBytes[3];
-    planes[0] = avif->yuvPlanes[0];
-    planes[1] = avif->yuvPlanes[1];
-    planes[2] = avif->yuvPlanes[2];
-    planeBytes[0] = avif->yuvRowBytes[0] * avif->height;
-    planeBytes[1] = avif->yuvRowBytes[1] * (avif->height >> info.chromaShiftY);
-    planeBytes[2] = avif->yuvRowBytes[2] * (avif->height >> info.chromaShiftY);
-
-    for (int i = 0; i < 3; ++i) {
-        if (fwrite(planes[i], 1, planeBytes[i], f) != planeBytes[i]) {
-            fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeBytes[i], outputFilename);
-            success = AVIF_FALSE;
-            goto cleanup;
+    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
+    for (int plane = 0; plane < planeCount; ++plane) {
+        uint32_t planeWidth = (plane > 0) ? ((avif->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX) : avif->width;
+        uint32_t planeHeight = (plane > 0) ? ((avif->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY) : avif->height;
+        uint32_t rowBytes = planeWidth << (avif->depth > 8);
+        const uint8_t * row = avif->yuvPlanes[plane];
+        for (uint32_t y = 0; y < planeHeight; ++y) {
+            if (fwrite(row, 1, rowBytes, f) != rowBytes) {
+                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", rowBytes, outputFilename);
+                success = AVIF_FALSE;
+                goto cleanup;
+            }
+            row += avif->yuvRowBytes[plane];
         }
     }
     if (writeAlpha) {
-        uint32_t alphaPlaneBytes = avif->alphaRowBytes * avif->height;
-        if (fwrite(avif->alphaPlane, 1, alphaPlaneBytes, f) != alphaPlaneBytes) {
-            fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", alphaPlaneBytes, outputFilename);
-            success = AVIF_FALSE;
-            goto cleanup;
+        uint32_t rowBytes = avif->width << (avif->depth > 8);
+        const uint8_t * row = avif->alphaPlane;
+        for (uint32_t y = 0; y < avif->height; ++y) {
+            if (fwrite(row, 1, rowBytes, f) != rowBytes) {
+                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", rowBytes, outputFilename);
+                success = AVIF_FALSE;
+                goto cleanup;
+            }
+            row += avif->alphaRowBytes;
         }
     }
 

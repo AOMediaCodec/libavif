@@ -79,19 +79,19 @@ avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t facto
         *v = 0;
     } else if (factor == 1) {
         uint8_t tmp;
-        CHECK(avifROStreamRead(stream, &tmp, 1));
+        AVIF_CHECK(avifROStreamRead(stream, &tmp, 1));
         *v = tmp;
     } else if (factor == 2) {
         uint16_t tmp;
-        CHECK(avifROStreamReadU16(stream, &tmp));
+        AVIF_CHECK(avifROStreamReadU16(stream, &tmp));
         *v = tmp;
     } else if (factor == 4) {
         uint32_t tmp;
-        CHECK(avifROStreamReadU32(stream, &tmp));
+        AVIF_CHECK(avifROStreamReadU32(stream, &tmp));
         *v = tmp;
     } else if (factor == 8) {
         uint64_t tmp;
-        CHECK(avifROStreamReadU64(stream, &tmp));
+        AVIF_CHECK(avifROStreamReadU64(stream, &tmp));
         *v = tmp;
     } else {
         // Unsupported factor
@@ -103,21 +103,35 @@ avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t facto
 
 avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v)
 {
-    CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint16_t)));
+    AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint16_t)));
     *v = avifNTOHS(*v);
+    return AVIF_TRUE;
+}
+
+avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avifBool littleEndian)
+{
+    AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint16_t)));
+    *v = littleEndian ? avifCTOHS(*v) : avifNTOHS(*v);
     return AVIF_TRUE;
 }
 
 avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v)
 {
-    CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint32_t)));
+    AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint32_t)));
     *v = avifNTOHL(*v);
+    return AVIF_TRUE;
+}
+
+avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avifBool littleEndian)
+{
+    AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint32_t)));
+    *v = littleEndian ? avifCTOHL(*v) : avifNTOHL(*v);
     return AVIF_TRUE;
 }
 
 avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v)
 {
-    CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint64_t)));
+    AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint64_t)));
     *v = avifNTOH64(*v);
     return AVIF_TRUE;
 }
@@ -159,16 +173,16 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
     size_t startOffset = stream->offset;
 
     uint32_t smallSize;
-    CHECK(avifROStreamReadU32(stream, &smallSize));
-    CHECK(avifROStreamRead(stream, header->type, 4));
+    AVIF_CHECK(avifROStreamReadU32(stream, &smallSize));
+    AVIF_CHECK(avifROStreamRead(stream, header->type, 4));
 
     uint64_t size = smallSize;
     if (size == 1) {
-        CHECK(avifROStreamReadU64(stream, &size));
+        AVIF_CHECK(avifROStreamReadU64(stream, &size));
     }
 
     if (!memcmp(header->type, "uuid", 4)) {
-        CHECK(avifROStreamSkip(stream, 16));
+        AVIF_CHECK(avifROStreamSkip(stream, 16));
     }
 
     size_t bytesRead = stream->offset - startOffset;
@@ -182,7 +196,7 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
 
 avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header)
 {
-    CHECK(avifROStreamReadBoxHeaderPartial(stream, header));
+    AVIF_CHECK(avifROStreamReadBoxHeaderPartial(stream, header));
     if (header->size > avifROStreamRemainingBytes(stream)) {
         avifDiagnosticsPrintf(stream->diag, "%s: Child box too large, possibly truncated data", stream->diagContext);
         return AVIF_FALSE;
@@ -193,7 +207,7 @@ avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header
 avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags)
 {
     uint8_t versionAndFlags[4];
-    CHECK(avifROStreamRead(stream, versionAndFlags, 4));
+    AVIF_CHECK(avifROStreamRead(stream, versionAndFlags, 4));
     if (version) {
         *version = versionAndFlags[0];
     }
@@ -206,7 +220,7 @@ avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * versio
 avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion)
 {
     uint8_t version;
-    CHECK(avifROStreamReadVersionAndFlags(stream, &version, NULL));
+    AVIF_CHECK(avifROStreamReadVersionAndFlags(stream, &version, NULL));
     if (version != enforcedVersion) {
         avifDiagnosticsPrintf(stream->diag, "%s: Expecting box version %u, got version %u", stream->diagContext, enforcedVersion, version);
         return AVIF_FALSE;
@@ -313,10 +327,9 @@ void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker)
 
 void avifRWStreamWriteU8(avifRWStream * stream, uint8_t v)
 {
-    size_t size = sizeof(uint8_t);
-    makeRoom(stream, size);
-    memcpy(stream->raw->data + stream->offset, &v, size);
-    stream->offset += size;
+    makeRoom(stream, 1);
+    stream->raw->data[stream->offset] = v;
+    stream->offset += 1;
 }
 
 void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v)

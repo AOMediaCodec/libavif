@@ -1,0 +1,20 @@
+name: Docker Build
+on:
+  push:
+    branches:
+    tags:
+    paths:
+      - "!**.md"
+  pull_request:
+    paths:
+      - "!**.md"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: build docker image
+        run: docker build  ./tests/docker
