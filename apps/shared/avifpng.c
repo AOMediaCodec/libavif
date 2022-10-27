@@ -502,12 +502,11 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
             goto cleanup;
         }
-        const png_text text = {
-            .compression = PNG_TEXT_COMPRESSION_zTXt,
-            .key = "Raw profile type exif",
-            .text = (char *)exif.data,
-            .text_length = exif.size,
-        };
+        png_text text = {};
+        text.compression = PNG_TEXT_COMPRESSION_zTXt;
+        text.key = "Raw profile type exif";
+        text.text = (char *)exif.data;
+        text.text_length = exif.size;
         texts[numTextMetadataChunks++] = text;
 #endif // PNG_eXIf_SUPPORTED
     }
@@ -525,12 +524,11 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             avifRWDataRealloc(&xmp, avif->xmp.size + 1);
             memcpy(xmp.data, avif->xmp.data, avif->xmp.size);
             xmp.data[avif->xmp.size] = '\0';
-            const png_text text = {
-                .compression = PNG_ITXT_COMPRESSION_NONE,
-                .key = "XML:com.adobe.xmp",
-                .text = (char *)xmp.data,
-                .text_length = xmp.size,
-            };
+            png_text text = {};
+            text.compression = PNG_ITXT_COMPRESSION_NONE;
+            text.key = "XML:com.adobe.xmp";
+            text.text = (char *)xmp.data;
+            text.itxt_length = xmp.size;
             texts[numTextMetadataChunks++] = text;
         } else
 #endif // PNG_iTXt_SUPPORTED
@@ -539,12 +537,11 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
                 fprintf(stderr, "Error writing PNG: XMP metadata is too big\n");
                 goto cleanup;
             }
-            const png_text text = {
-                .compression = PNG_TEXT_COMPRESSION_zTXt,
-                .key = "Raw profile type xmp",
-                .text = (char *)xmp.data,
-                .text_length = xmp.size,
-            };
+            png_text text = {};
+            text.compression = PNG_TEXT_COMPRESSION_zTXt;
+            text.key = "Raw profile type xmp";
+            text.text = (char *)xmp.data;
+            text.text_length = xmp.size;
             texts[numTextMetadataChunks++] = text;
         }
     }
