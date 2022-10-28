@@ -340,25 +340,67 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
-static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
+// Returns the best cell size for a given horizontal or vertical dimension.
+static avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint32_t numCells, avifBool isSubsampled, uint32_t * cellSize)
 {
-    if ((gridSplitImage->width % gridCols) != 0) {
-        fprintf(stderr, "ERROR: Can't split image width (%u) evenly into %u columns.\n", gridSplitImage->width, gridCols);
-        return AVIF_FALSE;
+    assert(numPixels);
+    assert(numCells);
+
+    // ISO/IEC 23008-12:2017, Section 6.6.2.3.1:
+    //   The reconstructed image is formed by tiling the input images into a grid with a column width
+    //   (potentially excluding the right-most column) equal to tile_width and a row height (potentially
+    //   excluding the bottom-most row) equal to tile_height, without gap or overlap, and then
+    //   trimming on the right and the bottom to the indicated output_width and output_height.
+    // The priority could be to use a cell size that is a multiple of 64, but there is not always a valid one,
+    // even though it is recommended by MIAF. Just use ceil(numPixels/numCells) for simplicity and to avoid
+    // as much padding in the right-most and bottom-most cells as possible.
+    // Use uint64_t computation to avoid a potential uint32_t overflow.
+    *cellSize = (uint32_t)(((uint64_t)numPixels + numCells - 1) / numCells);
+
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - the tile_width shall be greater than or equal to 64, and should be a multiple of 64
+    //   - the tile_height shall be greater than or equal to 64, and should be a multiple of 64
+    if (*cellSize < 64) {
+        *cellSize = 64;
+        if ((uint64_t)(numCells - 1) * *cellSize >= (uint64_t)numPixels) {
+            // Some cells would be entirely off-canvas.
+            fprintf(stderr, "ERROR: There are too many cells %s (%u) to have at least 64 pixels per cell.\n", dimensionStr, numCells);
+            return AVIF_FALSE;
+        }
     }
-    if ((gridSplitImage->height % gridRows) != 0) {
-        fprintf(stderr, "ERROR: Can't split image height (%u) evenly into %u rows.\n", gridSplitImage->height, gridRows);
+
+    // The maximum AV1 frame size is 65536 pixels inclusive.
+    if (*cellSize > 65536) {
+        fprintf(stderr, "ERROR: Cell size %u is bigger %s than the maximum AV1 frame size 65536.\n", *cellSize, dimensionStr);
         return AVIF_FALSE;
     }
 
-    uint32_t cellWidth = gridSplitImage->width / gridCols;
-    uint32_t cellHeight = gridSplitImage->height / gridRows;
-    if ((cellWidth < 64) || (cellHeight < 64)) {
-        fprintf(stderr, "ERROR: Split cell dimensions are too small (must be at least 64x64, and were %ux%u)\n", cellWidth, cellHeight);
-        return AVIF_FALSE;
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - when the images are in the 4:2:2 chroma sampling format the horizontal tile offsets and widths,
+    //     and the output width, shall be even numbers;
+    //   - when the images are in the 4:2:0 chroma sampling format both the horizontal and vertical tile
+    //     offsets and widths, and the output width and height, shall be even numbers.
+    if (isSubsampled && (*cellSize & 1)) {
+        ++*cellSize;
+        if ((uint64_t)(numCells - 1) * *cellSize >= (uint64_t)numPixels) {
+            // Some cells would be entirely off-canvas.
+            fprintf(stderr, "ERROR: Odd cell size %u is forbidden on a %s subsampled image.\n", *cellSize - 1, dimensionStr);
+            return AVIF_FALSE;
+        }
     }
-    if (((cellWidth % 2) != 0) || ((cellHeight % 2) != 0)) {
-        fprintf(stderr, "ERROR: Odd split cell dimensions are unsupported (%ux%u)\n", cellWidth, cellHeight);
+
+    // Each pixel is covered by exactly one cell, and each cell contains at least one pixel.
+    assert(((uint64_t)(numCells - 1) * *cellSize < (uint64_t)numPixels) && ((uint64_t)numCells * *cellSize >= (uint64_t)numPixels));
+    return AVIF_TRUE;
+}
+
+static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
+{
+    uint32_t cellWidth, cellHeight;
+    avifPixelFormatInfo formatInfo;
+    avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &formatInfo);
+    if (!avifGetBestCellSize("horizontally", gridSplitImage->width, gridCols, formatInfo.chromaShiftX, &cellWidth) ||
+        !avifGetBestCellSize("vertically", gridSplitImage->height, gridRows, formatInfo.chromaShiftY, &cellHeight)) {
         return AVIF_FALSE;
     }
 
@@ -368,46 +410,17 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
             avifImage * cellImage = avifImageCreateEmpty();
             gridCells[gridIndex] = cellImage;
 
-            const avifResult copyResult = avifImageCopy(cellImage, gridSplitImage, 0);
+            avifCropRect cellRect = { gridX * cellWidth, gridY * cellHeight, cellWidth, cellHeight };
+            if (cellRect.x + cellRect.width > gridSplitImage->width) {
+                cellRect.width = gridSplitImage->width - cellRect.x;
+            }
+            if (cellRect.y + cellRect.height > gridSplitImage->height) {
+                cellRect.height = gridSplitImage->height - cellRect.y;
+            }
+            const avifResult copyResult = avifImageSetViewRect(cellImage, gridSplitImage, &cellRect);
             if (copyResult != AVIF_RESULT_OK) {
-                fprintf(stderr, "ERROR: Image copy failed: %s\n", avifResultToString(copyResult));
+                fprintf(stderr, "ERROR: Cell creation failed: %s\n", avifResultToString(copyResult));
                 return AVIF_FALSE;
-            }
-            cellImage->width = cellWidth;
-            cellImage->height = cellHeight;
-
-            const uint32_t bytesPerPixel = avifImageUsesU16(cellImage) ? 2 : 1;
-
-            const uint32_t bytesPerRowY = bytesPerPixel * cellWidth;
-            const uint32_t srcRowBytesY = gridSplitImage->yuvRowBytes[AVIF_CHAN_Y];
-            cellImage->yuvPlanes[AVIF_CHAN_Y] =
-                &gridSplitImage->yuvPlanes[AVIF_CHAN_Y][(gridX * bytesPerRowY) + (gridY * cellHeight) * srcRowBytesY];
-            cellImage->yuvRowBytes[AVIF_CHAN_Y] = srcRowBytesY;
-
-            if (gridSplitImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
-                avifPixelFormatInfo info;
-                avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &info);
-
-                const uint32_t uvWidth = (cellWidth + info.chromaShiftX) >> info.chromaShiftX;
-                const uint32_t uvHeight = (cellHeight + info.chromaShiftY) >> info.chromaShiftY;
-                const uint32_t bytesPerRowUV = bytesPerPixel * uvWidth;
-
-                const uint32_t srcRowBytesU = gridSplitImage->yuvRowBytes[AVIF_CHAN_U];
-                cellImage->yuvPlanes[AVIF_CHAN_U] =
-                    &gridSplitImage->yuvPlanes[AVIF_CHAN_U][(gridX * bytesPerRowUV) + (gridY * uvHeight) * srcRowBytesU];
-                cellImage->yuvRowBytes[AVIF_CHAN_U] = srcRowBytesU;
-
-                const uint32_t srcRowBytesV = gridSplitImage->yuvRowBytes[AVIF_CHAN_V];
-                cellImage->yuvPlanes[AVIF_CHAN_V] =
-                    &gridSplitImage->yuvPlanes[AVIF_CHAN_V][(gridX * bytesPerRowUV) + (gridY * uvHeight) * srcRowBytesV];
-                cellImage->yuvRowBytes[AVIF_CHAN_V] = srcRowBytesV;
-            }
-
-            if (gridSplitImage->alphaPlane) {
-                const uint32_t bytesPerRowA = bytesPerPixel * cellWidth;
-                const uint32_t srcRowBytesA = gridSplitImage->alphaRowBytes;
-                cellImage->alphaPlane = &gridSplitImage->alphaPlane[(gridX * bytesPerRowA) + (gridY * cellHeight) * srcRowBytesA];
-                cellImage->alphaRowBytes = srcRowBytesA;
             }
         }
     }
@@ -1065,33 +1078,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-
-            // Verify that this cell's properties matches the first cell's properties
-            if ((image->width != cellImage->width) || (image->height != cellImage->height)) {
-                fprintf(stderr,
-                        "ERROR: Image grid dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
-                        image->width,
-                        image->height,
-                        cellImage->width,
-                        cellImage->height,
-                        nextFile->filename);
-                returnCode = 1;
-                goto cleanup;
-            }
-            if (image->depth != cellImage->depth) {
-                fprintf(stderr, "ERROR: Image grid depth mismatch, [%u] vs [%u]: %s\n", image->depth, cellImage->depth, nextFile->filename);
-                returnCode = 1;
-                goto cleanup;
-            }
-            if (image->yuvRange != cellImage->yuvRange) {
-                fprintf(stderr,
-                        "ERROR: Image grid range mismatch, [%s] vs [%s]: %s\n",
-                        (image->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                        (nextImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                        nextFile->filename);
-                returnCode = 1;
-                goto cleanup;
-            }
+            // Let avifEncoderAddImageGrid() verify the grid integrity (valid cell sizes, depths etc.).
         }
 
         if (gridCellIndex == 0) {
