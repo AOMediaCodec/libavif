@@ -5,6 +5,8 @@
 #include <tuple>
 
 #include "avif/avif.h"
+#include "avifjpeg.h"
+#include "avifpng.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
@@ -112,21 +114,33 @@ INSTANTIATE_TEST_SUITE_P(All, AvifMetadataTest,
 //------------------------------------------------------------------------------
 // Jpeg and PNG metadata tests
 
-class MetadataTest
-    : public testing::TestWithParam<
-          std::tuple</*file_name=*/const char*, /*use_icc=*/bool,
-                     /*use_exif=*/bool, /*use_xmp=*/bool, /*expect_icc=*/bool,
-                     /*expect_exif=*/bool, /*expect_xmp=*/bool>> {};
+testutil::AvifImagePtr WriteAndReadImage(const avifImage& image,
+                                         const std::string& file_name) {
+  const std::string file_path = testing::TempDir() + file_name;
+  if (file_name.substr(file_name.size() - 4) == ".png") {
+    if (!avifPNGWrite(file_path.c_str(), &image, /*requestedDepth=*/0,
+                      AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
+                      /*compressionLevel=*/0)) {
+      return {nullptr, nullptr};
+    }
+  } else {
+    if (!avifJPEGWrite(file_path.c_str(), &image, /*jpegQuality=*/100,
+                       AVIF_CHROMA_UPSAMPLING_AUTOMATIC)) {
+      return {nullptr, nullptr};
+    }
+  }
+  return testutil::ReadImage(testing::TempDir().c_str(), file_name.c_str());
+}
 
-// zTXt "Raw profile type exif" at the beginning of a PNG file.
-TEST_P(MetadataTest, Read) {
+class MetadataTest : public testing::TestWithParam<
+                         std::tuple</*file_name=*/const char*, /*use_icc=*/bool,
+                                    /*use_exif=*/bool, /*use_xmp=*/bool>> {};
+
+TEST_P(MetadataTest, ReadWriteReadCompare) {
   const char* file_name = std::get<0>(GetParam());
   const bool use_icc = std::get<1>(GetParam());
   const bool use_exif = std::get<2>(GetParam());
   const bool use_xmp = std::get<3>(GetParam());
-  const bool expect_icc = std::get<4>(GetParam());
-  const bool expect_exif = std::get<5>(GetParam());
-  const bool expect_xmp = std::get<6>(GetParam());
 
   const testutil::AvifImagePtr image = testutil::ReadImage(
       data_path, file_name, AVIF_PIXEL_FORMAT_NONE, 0,
@@ -134,55 +148,45 @@ TEST_P(MetadataTest, Read) {
   ASSERT_NE(image, nullptr);
   EXPECT_NE(image->width * image->height, 0u);
 
-  if (expect_icc) {
+  if (use_icc) {
     EXPECT_NE(image->icc.size, 0u);
     EXPECT_NE(image->icc.data, nullptr);
   } else {
     EXPECT_EQ(image->icc.size, 0u);
     EXPECT_EQ(image->icc.data, nullptr);
   }
-  if (expect_exif) {
+  if (use_exif) {
     EXPECT_NE(image->exif.size, 0u);
     EXPECT_NE(image->exif.data, nullptr);
   } else {
     EXPECT_EQ(image->exif.size, 0u);
     EXPECT_EQ(image->exif.data, nullptr);
   }
-  if (expect_xmp) {
+  if (use_xmp) {
     EXPECT_NE(image->xmp.size, 0u);
     EXPECT_NE(image->xmp.data, nullptr);
   } else {
     EXPECT_EQ(image->xmp.size, 0u);
     EXPECT_EQ(image->xmp.data, nullptr);
   }
+
+  // Writing and reading that same metadata should give the same bytes.
+  for (const std::string extension : {".png", ".jpg"}) {
+    const testutil::AvifImagePtr temp_image =
+        WriteAndReadImage(*image, file_name + extension);
+    ASSERT_NE(temp_image, nullptr);
+    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->icc, temp_image->icc));
+    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+    ASSERT_TRUE(testutil::AreByteSequencesEqual(image->xmp, temp_image->xmp));
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    PngNone, MetadataTest,
-    Combine(Values("paris_icc_exif_xmp.png"),  // iCCP zTXt zTXt IDAT
-            /*use_icc=*/Values(false), /*use_exif=*/Values(false),
-            /*use_xmp=*/Values(false), /*expected_icc=*/Values(false),
-            /*expected_exif=*/Values(false), /*expected_xmp=*/Values(false)));
-INSTANTIATE_TEST_SUITE_P(
-    PngAll, MetadataTest,
-    Combine(Values("paris_icc_exif_xmp.png"),  // iCCP zTXt zTXt IDAT
-            /*use_icc=*/Values(true), /*use_exif=*/Values(true),
-            /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
-            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(true)));
-
-INSTANTIATE_TEST_SUITE_P(
-    PngExifAtEnd, MetadataTest,
-    Combine(Values("paris_icc_exif_xmp_at_end.png"),  // iCCP IDAT eXIf tEXt
-            /*use_icc=*/Values(true), /*use_exif=*/Values(true),
-            /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
-            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(true)));
-
-INSTANTIATE_TEST_SUITE_P(
-    Jpeg, MetadataTest,
-    Combine(Values("paris_exif_xmp_icc.jpg"),  // APP1-Exif, APP1-XMP, APP2-ICC
-            /*use_icc=*/Values(true), /*use_exif=*/Values(true),
-            /*use_xmp=*/Values(true), /*expected_icc=*/Values(true),
-            /*expected_exif=*/Values(true), /*expected_xmp=*/Values(true)));
+    PngJpeg, MetadataTest,
+    Combine(Values("paris_icc_exif_xmp.png",         // iCCP zTXt zTXt IDAT
+                   "paris_icc_exif_xmp_at_end.png",  // iCCP IDAT eXIf tEXt
+                   "paris_exif_xmp_icc.jpg"),  // APP1-Exif, APP1-XMP, APP2-ICC
+            /*use_icc=*/Bool(), /*use_exif=*/Bool(), /*use_xmp=*/Bool()));
 
 // Verify all parsers lead exactly to the same metadata bytes.
 TEST(MetadataTest, Compare) {
@@ -269,6 +273,26 @@ TEST(MetadataTest, ExifOrientation) {
       avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(decoded->irot.angle, 1u);
   EXPECT_EQ(decoded->imir.mode, 0u);
+
+  // Exif orientation is kept in JPEG export.
+  testutil::AvifImagePtr temp_image =
+      WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+  EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
+  EXPECT_EQ(image->irot.angle, temp_image->irot.angle);
+  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
+
+  // Exif orientation in PNG export should be ignored or discarded.
+  temp_image = WriteAndReadImage(*image, "paris_exif_orientation_5.png");
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+  EXPECT_EQ(
+      temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      avifTransformFlags{0});
+  // TODO(yguyon): Fix orientation not being applied to PNG samples.
+  EXPECT_EQ(image->width, temp_image->width /* should be height here */);
 }
 
 TEST(MetadataTest, ExifOrientationAndForcedImir) {
@@ -293,6 +317,39 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   EXPECT_EQ(decoded->transformFlags, avifTransformFlags{AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(decoded->irot.angle, 0u);
   EXPECT_EQ(decoded->imir.mode, image->imir.mode);
+
+  // Exif orientation is set equivalent to irot/imir in JPEG export.
+  // Existing Exif orientation is overwritten.
+  const testutil::AvifImagePtr temp_image =
+      WriteAndReadImage(*image, "paris_exif_orientation_2.jpg");
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+  EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
+  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
+}
+
+TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
+  const testutil::AvifImagePtr image =
+      testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
+  ASSERT_NE(image, nullptr);
+  avifImageSetMetadataExif(image.get(), nullptr, 0);  // Clear Exif.
+  // Orientation is kept in irot/imir.
+  EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+            avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
+  EXPECT_EQ(image->irot.angle, 1u);
+  EXPECT_EQ(image->imir.mode, 0u);
+
+  // No Exif metadata to store the orientation: the samples should be rotated.
+  const testutil::AvifImagePtr temp_image =
+      WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_EQ(temp_image->exif.size, 0u);
+  EXPECT_EQ(
+      temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+      avifTransformFlags{0});
+  // TODO(yguyon): Fix orientation not being applied to JPEG samples.
+  EXPECT_EQ(image->width, temp_image->width /* should be height here */);
 }
 
 TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
@@ -326,6 +383,15 @@ TEST(MetadataTest, ExtendedXMP) {
       testutil::ReadImage(data_path, "dog_exif_extended_xmp_icc.jpg");
   ASSERT_NE(image, nullptr);
   ASSERT_NE(image->xmp.size, 0u);
+  ASSERT_LT(image->xmp.size,
+            size_t{65503});  // Fits in a single JPEG APP1 marker.
+
+  for (const char* temp_file_name : {"dog.png", "dog.jpg"}) {
+    const testutil::AvifImagePtr temp_image =
+        WriteAndReadImage(*image, temp_file_name);
+    ASSERT_NE(temp_image, nullptr);
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, temp_image->xmp));
+  }
 }
 
 TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
@@ -333,6 +399,16 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
       testutil::ReadImage(data_path, "paris_extended_xmp.jpg");
   ASSERT_NE(image, nullptr);
   ASSERT_GT(image->xmp.size, size_t{65536 * 2});
+
+  testutil::AvifImagePtr temp_image =
+      WriteAndReadImage(*image, "paris_extended_xmp.png");
+  ASSERT_NE(temp_image, nullptr);
+  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, temp_image->xmp));
+
+  // Writing more than 65502 bytes of XMP in a JPEG is not supported.
+  temp_image = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
+  ASSERT_NE(temp_image, nullptr);
+  ASSERT_EQ(temp_image->xmp.size, 0u);  // XMP was dropped.
 }
 
 //------------------------------------------------------------------------------
