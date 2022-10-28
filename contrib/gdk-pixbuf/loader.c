@@ -466,7 +466,7 @@ static gboolean avif_image_saver(FILE          *f,
     encoder->maxQuantizer = max_quantizer;
     encoder->minQuantizerAlpha = 0;
     encoder->maxQuantizerAlpha = alpha_quantizer;
-    encoder->speed = 7;
+    encoder->speed = 6;
 
     res = avifEncoderWrite(encoder, avif, &raw);
     avifEncoderDestroy(encoder);
