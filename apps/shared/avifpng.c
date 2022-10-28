@@ -14,6 +14,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if !defined(PNG_eXIf_SUPPORTED) || !defined(PNG_iTXt_SUPPORTED)
+#error "libpng 1.6.31 or above is required."
+#endif
+
 // See libpng-manual.txt, section XI.
 #if PNG_LIBPNG_VER_MAJOR > 1 || (PNG_LIBPNG_VER_MAJOR == 1 && PNG_LIBPNG_VER_MINOR >= 5)
 typedef png_bytep png_iccp_datap;
@@ -117,7 +121,6 @@ static avifBool avifRemoveHeader(const avifROData * header, avifRWData * payload
 // Returns AVIF_FALSE in case of a parsing error.
 static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool * ignoreExif, avifBool * ignoreXMP, avifImage * avif)
 {
-#ifdef PNG_eXIf_SUPPORTED
     if (!*ignoreExif) {
         png_uint_32 exifSize = 0;
         png_bytep exif = NULL;
@@ -140,7 +143,6 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
         }
     }
-#endif // PNG_eXIf_SUPPORTED
 
     // HEIF specification ISO-23008 section A.2.1 allows including and excluding the Exif\0\0 header from AVIF files.
     // The PNG 1.5 extension mentions the omission of this header for the modern standard eXIf chunk.
@@ -154,11 +156,9 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     const png_uint_32 numTextChunks = png_get_text(png, info, &text, NULL);
     for (png_uint_32 i = 0; (!*ignoreExif || !*ignoreXMP) && (i < numTextChunks); ++i, ++text) {
         png_size_t textLength = text->text_length;
-#ifdef PNG_iTXt_SUPPORTED
         if ((text->compression == PNG_ITXT_COMPRESSION_NONE) || (text->compression == PNG_ITXT_COMPRESSION_zTXt)) {
             textLength = text->itxt_length;
         }
-#endif
 
         if (!*ignoreExif && !strcmp(text->key, "Raw profile type exif")) {
             if (!avifCopyRawProfile(text->text, textLength, &avif->exif)) {
@@ -387,30 +387,11 @@ cleanup:
 //------------------------------------------------------------------------------
 // Writing
 
-// Does the opposite of avifCopyRawProfile(): writes a payload as a raw profile string.
-static avifBool avifBytesToRawProfile(const avifRWData * bytes, const char * profileName, avifRWData * profile)
-{
-    // The width of the profile length is 8 characters.
-    if (bytes->size > 99999999) {
-        return AVIF_FALSE;
-    }
-    size_t position = 1 + strlen(profileName) + 1 + 8 + 1;
-    const size_t profileLength = position + bytes->size * 2 + 1;
-    avifRWDataRealloc(profile, profileLength);
-    snprintf((char *)profile->data, position + 1, "\n%s\n%08lu\n", profileName, (unsigned long)bytes->size);
-    for (size_t i = 0; i < bytes->size; ++i, position += 2) {
-        snprintf((char *)profile->data + position, 2 + 1, "%02x", bytes->data[i]);
-    }
-    profile->data[position] = '\n';
-    return AVIF_TRUE;
-}
-
 avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint32_t requestedDepth, avifChromaUpsampling chromaUpsampling, int compressionLevel)
 {
     volatile avifBool writeResult = AVIF_FALSE;
     png_structp png = NULL;
     png_infop info = NULL;
-    avifRWData exif = { NULL, 0 };
     avifRWData xmp = { NULL, 0 };
     png_bytep * volatile rowPointers = NULL;
     FILE * volatile f = NULL;
@@ -491,30 +472,19 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     png_text texts[2];
     int numTextMetadataChunks = 0;
     if (avif->exif.data && (avif->exif.size > 0)) {
-#ifdef PNG_eXIf_SUPPORTED
         if (avif->exif.size > UINT32_MAX) {
             fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
             goto cleanup;
         }
         png_set_eXIf_1(png, info, (png_uint_32)avif->exif.size, avif->exif.data);
-#else
-        if (!avifBytesToRawProfile(&avif->exif, "Exif", &exif)) {
-            fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
-            goto cleanup;
-        }
-        png_text * text = &texts[numTextMetadataChunks++];
-        memset(text, 0, sizeof(*text));
-        text->compression = PNG_TEXT_COMPRESSION_zTXt;
-        text->key = "Raw profile type exif";
-        text->text = (char *)exif.data;
-        text->text_length = exif.size;
-#endif // PNG_eXIf_SUPPORTED
     }
     if (avif->xmp.data && (avif->xmp.size > 0)) {
-#ifdef PNG_iTXt_SUPPORTED
         // The iTXt XMP payload may not contain a zero byte according to section 4.2.3.3 of
-        // the PNG specification, version 1.2. Otherwise, use a raw profile.
-        if (!memchr(avif->xmp.data, '\0', avif->xmp.size)) {
+        // the PNG specification, version 1.2.
+        if (memchr(avif->xmp.data, '\0', avif->xmp.size)) {
+            fprintf(stderr, "Error writing PNG: XMP metadata contains an invalid null character\n");
+            goto cleanup;
+        } else {
             // Providing the length through png_text.itxt_length does not work.
             // The given png_text.text string must end with a zero byte.
             if (avif->xmp.size >= SIZE_MAX) {
@@ -530,19 +500,6 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             text->key = "XML:com.adobe.xmp";
             text->text = (char *)xmp.data;
             text->itxt_length = xmp.size;
-        } else
-#endif // PNG_iTXt_SUPPORTED
-        {
-            if (!avifBytesToRawProfile(&avif->xmp, "XMP", &xmp)) {
-                fprintf(stderr, "Error writing PNG: XMP metadata is too big\n");
-                goto cleanup;
-            }
-            png_text * text = &texts[numTextMetadataChunks++];
-            memset(text, 0, sizeof(*text));
-            text->compression = PNG_TEXT_COMPRESSION_zTXt;
-            text->key = "Raw profile type xmp";
-            text->text = (char *)xmp.data;
-            text->text_length = xmp.size;
         }
     }
     if (numTextMetadataChunks != 0) {
@@ -583,7 +540,6 @@ cleanup:
     if (png) {
         png_destroy_write_struct(&png, &info);
     }
-    avifRWDataFree(&exif);
     avifRWDataFree(&xmp);
     if (rowPointers) {
         free(rowPointers);

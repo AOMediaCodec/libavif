@@ -504,7 +504,7 @@ option(AVIF_ENABLE_GTEST
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
     find_package(ZLIB REQUIRED)
-    find_package(PNG REQUIRED)
+    find_package(PNG 1.6.31 REQUIRED) # 1.6.31 or above for PNG_eXIf_SUPPORTED and PNG_iTXt_SUPPORTED.
     find_package(JPEG REQUIRED)
 
     add_library(
