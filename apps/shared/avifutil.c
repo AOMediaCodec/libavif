@@ -64,17 +64,17 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     printf(" * Matrix Coeffs. : %u\n", avif->matrixCoefficients);
 
     if (avif->icc.size != 0) {
-        printf(" * ICC Profile    : Present (" AVIF_FMT_ZU " bytes)\n", avif->icc.size);
+        printf(" * ICC Profile    : Present (%" AVIF_FMT_ZU " bytes)\n", avif->icc.size);
     } else {
         printf(" * ICC Profile    : Absent\n");
     }
     if (avif->xmp.size != 0) {
-        printf(" * XMP Metadata   : Present (" AVIF_FMT_ZU " bytes)\n", avif->xmp.size);
+        printf(" * XMP Metadata   : Present (%" AVIF_FMT_ZU " bytes)\n", avif->xmp.size);
     } else {
         printf(" * XMP Metadata   : Absent\n");
     }
     if (avif->exif.size != 0) {
-        printf(" * Exif Metadata  : Present (" AVIF_FMT_ZU " bytes)\n", avif->exif.size);
+        printf(" * Exif Metadata  : Present (%" AVIF_FMT_ZU " bytes)\n", avif->exif.size);
     } else {
         printf(" * Exif Metadata  : Absent\n");
     }
