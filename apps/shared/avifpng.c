@@ -39,7 +39,7 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
         }
         if (!isxdigit(hexString[i]) || !isxdigit(hexString[i + 1])) {
             avifRWDataFree(bytes);
-            fprintf(stderr, "Metadata extraction failed: invalid character at " AVIF_FMT_ZU "\n", i);
+            fprintf(stderr, "Metadata extraction failed: invalid character at %" AVIF_FMT_ZU "\n", i);
             return AVIF_FALSE;
         }
         const char twoHexDigits[] = { hexString[i], hexString[i + 1], '\0' };
@@ -50,7 +50,7 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
 
     if (numBytes != numExpectedBytes) {
         avifRWDataFree(bytes);
-        fprintf(stderr, "Metadata extraction failed: expected " AVIF_FMT_ZU " tokens but got " AVIF_FMT_ZU "\n", numExpectedBytes, numBytes);
+        fprintf(stderr, "Metadata extraction failed: expected %" AVIF_FMT_ZU " tokens but got %" AVIF_FMT_ZU "\n", numExpectedBytes, numBytes);
         return AVIF_FALSE;
     }
     return AVIF_TRUE;
@@ -69,7 +69,7 @@ static avifBool avifCopyRawProfile(const char * profile, size_t profileLength, a
     for (size_t i = 1; i < profileLength; ++i) { // i starts at 1 because the first '\n' was already checked above.
         if (profile[i] == '\0') {
             // This should not happen as libpng provides this guarantee but extra safety does not hurt.
-            fprintf(stderr, "Metadata extraction failed: malformed raw profile, unexpected null character at " AVIF_FMT_ZU "\n", i);
+            fprintf(stderr, "Metadata extraction failed: malformed raw profile, unexpected null character at %" AVIF_FMT_ZU "\n", i);
             return AVIF_FALSE;
         }
         if (profile[i] == '\n') {

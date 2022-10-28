@@ -23,9 +23,9 @@ extern "C" {
 // Related mingw-w64 commit: bfd33f6c0ec5e652cc9911857dd1492ece8d8383
 
 #if !defined(_UCRT) && (defined(__USE_MINGW_ANSI_STDIO) && __USE_MINGW_ANSI_STDIO == 0)
-#define AVIF_FMT_ZU "%Iu"
+#define AVIF_FMT_ZU "Iu"
 #else
-#define AVIF_FMT_ZU "%zu"
+#define AVIF_FMT_ZU "zu"
 #endif
 
 void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState);

@@ -1275,8 +1275,8 @@ int main(int argc, char * argv[])
     }
 
     printf("Encoded successfully.\n");
-    printf(" * Color AV1 total size: " AVIF_FMT_ZU " bytes\n", encoder->ioStats.colorOBUSize);
-    printf(" * Alpha AV1 total size: " AVIF_FMT_ZU " bytes\n", encoder->ioStats.alphaOBUSize);
+    printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", encoder->ioStats.colorOBUSize);
+    printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", encoder->ioStats.alphaOBUSize);
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
@@ -1284,7 +1284,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
     if (fwrite(raw.data, 1, raw.size, f) != raw.size) {
-        fprintf(stderr, "Failed to write " AVIF_FMT_ZU " bytes: %s\n", raw.size, outputFilename);
+        fprintf(stderr, "Failed to write %" AVIF_FMT_ZU " bytes: %s\n", raw.size, outputFilename);
         returnCode = 1;
     } else {
         printf("Wrote AVIF: %s\n", outputFilename);
