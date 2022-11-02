@@ -15,7 +15,7 @@
 #include <string.h>
 
 #if !defined(PNG_eXIf_SUPPORTED) || !defined(PNG_iTXt_SUPPORTED)
-#error "libpng 1.6.31 or above is required."
+#error "libpng 1.6.32 or above with PNG_eXIf_SUPPORTED and PNG_iTXt_SUPPORTED is required."
 #endif
 
 // See libpng-manual.txt, section XI.
