@@ -814,11 +814,11 @@ int main(int argc, char * argv[])
                     "mode.\n");
             returnCode = 1;
         }
-        input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444; // don't subsample when using
-                                                          // AVIF_MATRIX_COEFFICIENTS_IDENTITY
+        // Don't subsample when using AVIF_MATRIX_COEFFICIENTS_IDENTITY.
+        input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
         // Quantizers.
-        if (minQuantizer != -1 || maxQuantizer != -1 || minQuantizerAlpha != -1 || maxQuantizerAlpha != -1) {
-            fprintf(stderr, "Quantizers cannot be set in lossless mode.\n");
+        if (minQuantizer > 0 || maxQuantizer > 0 || minQuantizerAlpha > 0 || maxQuantizerAlpha > 0) {
+            fprintf(stderr, "Quantizers cannot be set in lossless mode, except to 0.\n");
             returnCode = 1;
         }
         minQuantizer = maxQuantizer = minQuantizerAlpha = maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
@@ -827,12 +827,13 @@ int main(int argc, char * argv[])
             fprintf(stderr, "Codec can only be AOM in lossless mode.\n");
             returnCode = 1;
         }
-        codecChoice = AVIF_CODEC_CHOICE_AOM; // rav1e doesn't support lossless
-                                             // transform yet:
-                                             // https://github.com/xiph/rav1e/issues/151
-                                             // SVT-AV1 doesn't support lossless
-                                             // encoding yet:
-                                             // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
+        // rav1e doesn't support lossless
+        // transform yet:
+        // https://github.com/xiph/rav1e/issues/151
+        // SVT-AV1 doesn't support lossless
+        // encoding yet:
+        // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
+        codecChoice = AVIF_CODEC_CHOICE_AOM;
         // Range.
         if (requestedRange != AVIF_RANGE_FULL) {
             fprintf(stderr, "Range has to be full in lossless mode.\n");
