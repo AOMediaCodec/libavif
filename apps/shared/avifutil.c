@@ -135,6 +135,15 @@ void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows,
 void avifContainerDump(const avifDecoder * decoder)
 {
     avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent, decoder->progressiveState);
+    if (decoder->imageCount > 1) {
+        if (decoder->repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
+            printf(" * Repeat Count   : Infinite\n");
+        } else if (decoder->repetitionCount == AVIF_REPETITION_COUNT_UNKNOWN) {
+            printf(" * Repeat Count   : Unknown\n");
+        } else {
+            printf(" * Repeat Count   : %d\n", decoder->repetitionCount);
+        }
+    }
 }
 
 void avifPrintVersions(void)

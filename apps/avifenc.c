@@ -108,6 +108,7 @@ static void syntax(void)
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
+    printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
     printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
@@ -461,6 +462,7 @@ int main(int argc, char * argv[])
     avifBool cropConversionRequired = AVIF_FALSE;
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
     uint8_t imirMode = 0xff;  // sentinel value indicating "unused"
+    int repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool lossless = AVIF_FALSE;
@@ -783,6 +785,18 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: Invalid imir mode: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
+            }
+        } else if (!strcmp(arg, "--repetition-count")) {
+            NEXTARG();
+            if (!strcmp(arg, "infinite")) {
+                repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
+            } else {
+                repetitionCount = atoi(arg);
+                if (repetitionCount < 0) {
+                    fprintf(stderr, "ERROR: Invalid repetition count: %s\n", arg);
+                    returnCode = 1;
+                    goto cleanup;
+                }
             }
         } else if (!strcmp(arg, "-l") || !strcmp(arg, "--lossless")) {
             lossless = AVIF_TRUE;
@@ -1205,7 +1219,9 @@ int main(int argc, char * argv[])
     encoder->speed = speed;
     encoder->timescale = outputTiming.timescale;
     encoder->keyframeInterval = keyframeInterval;
+    encoder->repetitionCount = repetitionCount;
 
+    avifBool isImageSequence = AVIF_FALSE;
     if (gridDimsCount > 0) {
         avifResult addImageResult =
             avifEncoderAddImageGrid(encoder, gridDims[0], gridDims[1], (const avifImage * const *)gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
@@ -1319,6 +1335,9 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
         }
+        if (nextImageIndex > 0) {
+            isImageSequence = AVIF_TRUE;
+        }
     }
 
     avifResult finishResult = avifEncoderFinish(encoder, &raw);
@@ -1331,6 +1350,13 @@ int main(int argc, char * argv[])
     printf("Encoded successfully.\n");
     printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", encoder->ioStats.colorOBUSize);
     printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", encoder->ioStats.alphaOBUSize);
+    if (isImageSequence) {
+        if (encoder->repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
+            printf(" * Repetition Count: Infinite\n");
+        } else {
+            printf(" * Repetition Count: %d\n", encoder->repetitionCount);
+        }
+    }
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
