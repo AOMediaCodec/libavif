@@ -88,6 +88,12 @@ typedef int avifBool;
 #define AVIF_SPEED_SLOWEST 0
 #define AVIF_SPEED_FASTEST 10
 
+// This value is used to indicate that an animated AVIF file has to be repeated infinitely.
+#define AVIF_REPETITION_COUNT_INFINITE -1
+// This value is used if an animated AVIF file does not have repetitions specified using an EditList box. Applications can choose
+// to handle this case however they want.
+#define AVIF_REPETITION_COUNT_UNKNOWN -2
+
 typedef enum avifPlanesFlag
 {
     AVIF_PLANES_YUV = (1 << 0),
@@ -931,8 +937,13 @@ typedef struct avifDecoder
     avifProgressiveState progressiveState; // See avifProgressiveState declaration
     avifImageTiming imageTiming;           //
     uint64_t timescale;                    // timescale of the media (Hz)
-    double duration;                       // in seconds (durationInTimescales / timescale)
-    uint64_t durationInTimescales;         // duration in "timescales"
+    double duration;                       // duration of a single playback of the image sequence in seconds
+                                           // (durationInTimescales / timescale)
+    uint64_t durationInTimescales;         // duration of a single playback of the image sequence in "timescales"
+    int repetitionCount;                   // number of times the sequence has to be repeated. This can also be one of
+                                           // AVIF_REPETITION_COUNT_INFINITE or AVIF_REPETITION_COUNT_UNKNOWN. Essentially, if
+                                           // repetitionCount is a non-negative integer `n`, then the image sequence should be
+                                           // played back `n + 1` times.
 
     // This is true when avifDecoderParse() detects an alpha plane. Use this to find out if alpha is
     // present after a successful call to avifDecoderParse(), but prior to any call to
@@ -1076,6 +1087,11 @@ typedef struct avifEncoder
     int speed;
     int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
     uint64_t timescale;   // timescale of the media (Hz)
+    int repetitionCount;  // Number of times the image sequence should be repeated. This can also be set to
+                          // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.  Only applicable for image sequences.
+                          // Essentially, if repetitionCount is a non-negative integer `n`, then the image sequence should be
+                          // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
+
     // changeable encoder settings
     int minQuantizer;
     int maxQuantizer;

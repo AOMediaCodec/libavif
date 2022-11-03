@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 There are incompatible ABI changes in this release. The clli member was added
-to the avifImage struct.
+to the avifImage struct. The repetitionCount member was added to the avifEncoder
+and avifDecoder structs.
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
   from internal.h when BUILD_SHARED_LIBS is ON.
 * Add clli metadata read and write support
+* repetitionCount member added to avifEncoder and avifDecoder struct to specify
+  the number of repetitions for animated image sequences.
 
 ### Changed
 * Exif and XMP metadata is exported to PNG and JPEG files by default,

@@ -473,6 +473,9 @@ typedef struct avifSequenceHeader
 } avifSequenceHeader;
 avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
 
+#define AVIF_UNKNOWN_DURATION64 UINT64_MAX
+#define AVIF_UNKNOWN_DURATION32 UINT32_MAX
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

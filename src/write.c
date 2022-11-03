@@ -1533,10 +1533,26 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             /* clang-format on */
         };
 
-        uint64_t durationInTimescales = 0;
+        if (encoder->repetitionCount < 0 && encoder->repetitionCount != AVIF_REPETITION_COUNT_INFINITE) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+
+        uint64_t framesDurationInTimescales = 0;
         for (uint32_t frameIndex = 0; frameIndex < encoder->data->frames.count; ++frameIndex) {
             const avifEncoderFrame * frame = &encoder->data->frames.frame[frameIndex];
-            durationInTimescales += frame->durationInTimescales;
+            framesDurationInTimescales += frame->durationInTimescales;
+        }
+        uint64_t durationInTimescales;
+        if (encoder->repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
+            durationInTimescales = AVIF_UNKNOWN_DURATION64;
+        } else {
+            uint64_t loopCount = encoder->repetitionCount + 1;
+            assert(framesDurationInTimescales != 0);
+            if (loopCount > UINT64_MAX / framesDurationInTimescales) {
+                // The multiplication will overflow uint64_t.
+                return AVIF_RESULT_INVALID_ARGUMENT;
+            }
+            durationInTimescales = framesDurationInTimescales * loopCount;
         }
 
         // -------------------------------------------------------------------
@@ -1601,6 +1617,17 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 avifRWStreamFinishBox(&s, tref);
             }
 
+            avifBoxMarker edts = avifRWStreamWriteBox(&s, "edts", AVIF_BOX_SIZE_TBD);
+            uint32_t elstFlags = (encoder->repetitionCount != 0);
+            avifBoxMarker elst = avifRWStreamWriteFullBox(&s, "elst", AVIF_BOX_SIZE_TBD, 1, elstFlags);
+            avifRWStreamWriteU32(&s, 1);                          // unsigned int(32) entry_count;
+            avifRWStreamWriteU64(&s, framesDurationInTimescales); // unsigned int(64) segment_duration;
+            avifRWStreamWriteU64(&s, 0);                          // unsigned int(64) media_time;
+            avifRWStreamWriteU16(&s, 1);                          // unsigned int(16) media_rate_integer;
+            avifRWStreamWriteU16(&s, 0);                          // unsigned int(16) media_rate_fraction = 0;
+            avifRWStreamFinishBox(&s, elst);
+            avifRWStreamFinishBox(&s, edts);
+
             if (!item->alpha) {
                 avifEncoderWriteTrackMetaBox(encoder, &s);
             }
@@ -1611,7 +1638,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteU64(&s, now);                          // unsigned int(64) creation_time;
             avifRWStreamWriteU64(&s, now);                          // unsigned int(64) modification_time;
             avifRWStreamWriteU32(&s, (uint32_t)encoder->timescale); // unsigned int(32) timescale;
-            avifRWStreamWriteU64(&s, durationInTimescales);         // unsigned int(64) duration;
+            avifRWStreamWriteU64(&s, framesDurationInTimescales);   // unsigned int(64) duration;
             avifRWStreamWriteU16(&s, 21956);                        // bit(1) pad = 0; unsigned int(5)[3] language; ("und")
             avifRWStreamWriteU16(&s, 0);                            // unsigned int(16) pre_defined = 0;
             avifRWStreamFinishBox(&s, mdhd);
