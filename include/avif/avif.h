@@ -480,9 +480,11 @@ typedef struct avifImage
     avifImageRotation irot;
     avifImageMirror imir;
 
-    // CLLI information - Content light level information. Used to represent
-    // maximum and average light level of an image. Useful for tone mapping
-    // HDR images, especially when using SMPTE2084 (PQ).
+    // CLLI information:
+	// Content Light Level Information. Used to represent maximum and average light level of an
+    // image. Useful for tone mapping HDR images, especially when using transfer characteristics
+    // SMPTE2084 (PQ). The default value of (0, 0) means the content light level information is
+    // unknown or unavailable.
     avifContentLightLevelInformationBox clli;
 
     // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
