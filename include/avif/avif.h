@@ -427,9 +427,9 @@ AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * cla
 typedef struct avifContentLightLevelInformationBox
 {
     // 'clli' from ISO/IEC 23000-22:2019 (MIAF) 7.4.4.2.2
-    
-    uint16_t maxCLL;           // unsigned int(16) max_content_light_level
-    uint16_t maxPALL;          // unsigned int(16) max_pic_average_light_level
+
+    uint16_t maxCLL;  // unsigned int(16) max_content_light_level
+    uint16_t maxPALL; // unsigned int(16) max_pic_average_light_level
 } avifContentLightLevelInformationBox;
 
 // ---------------------------------------------------------------------------
@@ -481,7 +481,7 @@ typedef struct avifImage
     avifImageMirror imir;
 
     // CLLI information:
-	// Content Light Level Information. Used to represent maximum and average light level of an
+    // Content Light Level Information. Used to represent maximum and average light level of an
     // image. Useful for tone mapping HDR images, especially when using transfer characteristics
     // SMPTE2084 (PQ). The default value of (0, 0) means the content light level information is
     // unknown or unavailable.

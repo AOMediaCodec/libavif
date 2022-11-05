@@ -1764,11 +1764,10 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[clli]");
 
-    avifContentLightLevelInformationBox *clli = &prop->u.clli;
+    avifContentLightLevelInformationBox * clli = &prop->u.clli;
 
     AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxCLL));
     AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxPALL));
-
     return AVIF_TRUE;
 }
 
@@ -2057,8 +2056,8 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap",
-                                                     "irot", "imir", "pixi", "a1op", "lsel", "a1lx", "clli" };
+            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap", "irot",
+                                                     "imir", "pixi", "a1op", "lsel", "a1lx", "clli" };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
             avifBool supportedType = AVIF_FALSE;
             for (size_t i = 0; i < supportedTypesCount; ++i) {

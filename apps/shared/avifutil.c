@@ -121,7 +121,9 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
         }
     }
     printf(" * Progressive    : %s\n", avifProgressiveStateToString(progressiveState));
-    printf(" * CLLI           : %u, %u\n", (uint32_t)avif->clli.maxCLL, (uint32_t)avif->clli.maxPALL);
+    if (avif->clli.maxCLL > 0 || avif->clli.maxPALL > 0) {
+        printf(" * CLLI           : %u, %u\n", (uint32_t)avif->clli.maxCLL, (uint32_t)avif->clli.maxPALL);
+    }
 }
 
 void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)
