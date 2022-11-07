@@ -424,12 +424,27 @@ AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * cla
                                                       avifPixelFormat yuvFormat,
                                                       avifDiagnostics * diag);
 
+// ---------------------------------------------------------------------------
+// avifContentLightLevelInformationBox
+
 typedef struct avifContentLightLevelInformationBox
 {
-    // 'clli' from ISO/IEC 23000-22:2019 (MIAF) 7.4.4.2.2
+    // 'clli' from ISO/IEC 23000-22:2019 (MIAF) 7.4.4.2.2. The SEI message semantics written above
+    //  each entry were originally described in ISO/IEC 23008-2.
 
-    uint16_t maxCLL;  // unsigned int(16) max_content_light_level
-    uint16_t maxPALL; // unsigned int(16) max_pic_average_light_level
+    // max_content_light_level, when not equal to 0, indicates an upper bound on the maximum light
+    // level among all individual samples in a 4:4:4 representation of red, green, and blue colour
+    // primary intensities (in the linear light domain) for the pictures of the CLVS, in units of
+    // candelas per square metre. When equal to 0, no such upper bound is indicated by
+    // max_content_light_level.
+    uint16_t maxCLL;
+
+    // max_pic_average_light_level, when not equal to 0, indicates an upper bound on the maximum
+    // average light level among the samples in a 4:4:4 representation of red, green, and blue
+    // colour primary intensities (in the linear light domain) for any individual picture of the
+    // CLVS, in units of candelas per square metre. When equal to 0, no such upper bound is
+    // indicated by max_pic_average_light_level.
+    uint16_t maxPALL;
 } avifContentLightLevelInformationBox;
 
 // ---------------------------------------------------------------------------
@@ -484,7 +499,7 @@ typedef struct avifImage
     // Content Light Level Information. Used to represent maximum and average light level of an
     // image. Useful for tone mapping HDR images, especially when using transfer characteristics
     // SMPTE2084 (PQ). The default value of (0, 0) means the content light level information is
-    // unknown or unavailable.
+    // unknown or unavailable, and will cause libavif to avoid writing a clli box for it.
     avifContentLightLevelInformationBox clli;
 
     // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read

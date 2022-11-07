@@ -1766,8 +1766,8 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
 
     avifContentLightLevelInformationBox * clli = &prop->u.clli;
 
-    AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxCLL));
-    AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxPALL));
+    AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxCLL));  // unsigned int(16) max_content_light_level
+    AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxPALL)); // unsigned int(16) max_pic_average_light_level
     return AVIF_TRUE;
 }
 
