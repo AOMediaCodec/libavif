@@ -248,6 +248,12 @@ TEST(GridApiTest, SameMatrixCoefficients) {
       64, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
   testutil::AvifImagePtr cell_1 = testutil::CreateImage(
       1, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  ASSERT_NE(cell_0, nullptr);
+  ASSERT_NE(cell_1, nullptr);
+
+  // The pixels do not matter but avoid use-of-uninitialized-value errors.
+  testutil::FillImageGradient(cell_0.get());
+  testutil::FillImageGradient(cell_1.get());
 
   // All input cells have the same non-default properties.
   cell_0->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
@@ -271,6 +277,12 @@ TEST(GridApiTest, DifferentMatrixCoefficients) {
       64, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
   testutil::AvifImagePtr cell_1 = testutil::CreateImage(
       1, 64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  ASSERT_NE(cell_0, nullptr);
+  ASSERT_NE(cell_1, nullptr);
+
+  // The pixels do not matter but avoid use-of-uninitialized-value errors.
+  testutil::FillImageGradient(cell_0.get());
+  testutil::FillImageGradient(cell_1.get());
 
   // Some input cells have different properties.
   cell_0->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
