@@ -18,13 +18,6 @@
 #error "libpng 1.6.32 or above with PNG_eXIf_SUPPORTED and PNG_iTXt_SUPPORTED is required."
 #endif
 
-// See libpng-manual.txt, section XI.
-#if PNG_LIBPNG_VER_MAJOR > 1 || (PNG_LIBPNG_VER_MAJOR == 1 && PNG_LIBPNG_VER_MINOR >= 5)
-typedef png_bytep png_iccp_datap;
-#else
-typedef png_charp png_iccp_datap;
-#endif
-
 //------------------------------------------------------------------------------
 // Reading
 
@@ -277,7 +270,7 @@ avifBool avifPNGRead(const char * inputFilename,
         int iccpCompression = 0;
         unsigned char * iccpData = NULL;
         png_uint_32 iccpDataLen = 0;
-        if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, (png_iccp_datap *)&iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+        if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
             avifImageSetProfileICC(avif, iccpData, iccpDataLen);
         }
         // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
@@ -466,7 +459,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
     png_set_IHDR(png, info, avif->width, avif->height, rgbDepth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (avif->icc.data && (avif->icc.size > 0)) {
-        png_set_iCCP(png, info, "libavif", 0, (png_iccp_datap)avif->icc.data, (png_uint_32)avif->icc.size);
+        png_set_iCCP(png, info, "libavif", 0, avif->icc.data, (png_uint_32)avif->icc.size);
     }
 
     png_text texts[2];
