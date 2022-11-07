@@ -130,6 +130,7 @@ typedef struct avifProperty
         avifOperatingPointSelectorProperty a1op;
         avifLayerSelectorProperty lsel;
         avifAV1LayeredImageIndexingProperty a1lx;
+        avifContentLightLevelInformationBox clli;
     } u;
 } avifProperty;
 AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
@@ -1759,6 +1760,17 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, uint64_t rawO
     return AVIF_TRUE;
 }
 
+static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+{
+    BEGIN_STREAM(s, raw, rawLen, diag, "Box[clli]");
+
+    avifContentLightLevelInformationBox * clli = &prop->u.clli;
+
+    AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxCLL));  // unsigned int(16) max_content_light_level
+    AVIF_CHECK(avifROStreamReadU16(&s, &clli->maxPALL)); // unsigned int(16) max_pic_average_light_level
+    return AVIF_TRUE;
+}
+
 static avifBool avifParseAV1CodecConfigurationBox(const uint8_t * raw, size_t rawLen, avifCodecConfigurationBox * av1C, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[av1C]");
@@ -1956,6 +1968,8 @@ static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties
             AVIF_CHECK(avifParseLayerSelectorProperty(prop, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "a1lx", 4)) {
             AVIF_CHECK(avifParseAV1LayeredImageIndexingProperty(prop, avifROStreamCurrent(&s), header.size, diag));
+        } else if (!memcmp(header.type, "clli", 4)) {
+            AVIF_CHECK(avifParseContentLightLevelInformationBox(prop, avifROStreamCurrent(&s), header.size, diag));
         }
 
         AVIF_CHECK(avifROStreamSkip(&s, header.size));
@@ -2042,8 +2056,8 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap",
-                                                     "irot", "imir", "pixi", "a1op", "lsel", "a1lx" };
+            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "pasp", "clap", "irot",
+                                                     "imir", "pixi", "a1op", "lsel", "a1lx", "clli" };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
             avifBool supportedType = AVIF_FALSE;
             for (size_t i = 0; i < supportedTypesCount; ++i) {
@@ -3758,6 +3772,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     } else {
         // An av1C box is mandatory in all valid AVIF configurations. Bail out.
         return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+
+    const avifProperty * clliProp = avifPropertyArrayFind(colorProperties, "clli");
+    if (clliProp) {
+        decoder->image->clli = clliProp->u.clli;
     }
 
     return avifDecoderFlush(decoder);

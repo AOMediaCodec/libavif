@@ -527,6 +527,20 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
         ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
     }
 
+    // Write Content Light Level Information, if present
+    if (imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) {
+        if (dedup) {
+            avifItemPropertyDedupStart(dedup);
+        }
+        avifBoxMarker clli = avifRWStreamWriteBox(s, "clli", AVIF_BOX_SIZE_TBD);
+        avifRWStreamWriteU16(s, imageMetadata->clli.maxCLL);  // unsigned int(16) max_content_light_level;
+        avifRWStreamWriteU16(s, imageMetadata->clli.maxPALL); // unsigned int(16) max_pic_average_light_level;
+        avifRWStreamFinishBox(s, clli);
+        if (dedup) {
+            ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
+        }
+    }
+
     // Write (Optional) Transformations
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
         if (dedup) {
