@@ -600,11 +600,12 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         // Make sure the Exif orientation matches the irot/imir values.
         // libheif does not have the same behavior. The orientation is applied to samples and orientation data is discarded there,
         // see https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/encoder_jpeg.cc#L187
-        result = avifSetExifOrientation(&exif, avifImageGetExifOrientationFromIrotImir(avif));
+        const uint8_t orientation = avifImageGetExifOrientationFromIrotImir(avif);
+        result = avifSetExifOrientation(&exif, orientation);
         if (result != AVIF_RESULT_OK) {
             // Ignore errors if the orientation is the default one because not being able to set Exif orientation now
             // means a reader will not be able to parse it later either.
-            if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
+            if (orientation != 1) {
                 fprintf(stderr, "Error writing JPEG metadata: %s\n", avifResultToString(result));
                 avifRWDataFree(&exif);
                 goto cleanup;
