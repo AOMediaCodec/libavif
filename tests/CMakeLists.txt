@@ -50,9 +50,7 @@ if(AVIF_ENABLE_GTEST)
 
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
-        set(GTEST_LIBRARIES
-            ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest${AVIF_LIBRARY_SUFFIX}
-        )
+        set(GTEST_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest${AVIF_LIBRARY_SUFFIX})
         set(GTEST_MAIN_LIBRARIES
             ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest_main${AVIF_LIBRARY_SUFFIX}
         )
