@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avifpng.h"
-#include "avif/internal.h"
+#include "avifexif.h"
 #include "avifutil.h"
 
 #include "png.h"

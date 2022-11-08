@@ -187,6 +187,15 @@ AVIF_API void avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len);
 AVIF_API void avifRWDataFree(avifRWData * raw);
 
 // ---------------------------------------------------------------------------
+// Metadata
+
+// Validates the first bytes of the Exif payload and finds the TIFF header offset (up to UINT32_MAX).
+AVIF_API avifResult avifGetExifTiffHeaderOffset(const uint8_t * exif, size_t exifSize, size_t * offset);
+// Returns the offset to the Exif 8-bit orientation value and AVIF_RESULT_OK, or an error.
+// If the offset is set to exifSize, there was no parsing error but no orientation tag was found.
+AVIF_API avifResult avifGetExifOrientationOffset(const uint8_t * exif, size_t exifSize, size_t * offset);
+
+// ---------------------------------------------------------------------------
 // avifPixelFormat
 //
 // Note to libavif maintainers: The lookup tables in avifImageYUVToRGBLibYUV
