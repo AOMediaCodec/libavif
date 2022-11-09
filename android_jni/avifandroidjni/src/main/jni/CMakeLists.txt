@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC. All rights reserved.
+# Copyright 2022 Google LLC
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.13)
