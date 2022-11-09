@@ -446,10 +446,10 @@ int main(int argc, char * argv[])
 
     int returnCode = 0;
     int jobs = 1;
-    int minQuantizer = 24;
-    int maxQuantizer = 26;
-    int minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
-    int maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+    int minQuantizer = -1;
+    int maxQuantizer = -1;
+    int minQuantizerAlpha = -1;
+    int maxQuantizerAlpha = -1;
     int tileRowsLog2 = -1;
     int tileColsLog2 = -1;
     avifBool autoTiling = AVIF_FALSE;
@@ -786,19 +786,6 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "-l") || !strcmp(arg, "--lossless")) {
             lossless = AVIF_TRUE;
-
-            // Set defaults, and warn later on if anything looks incorrect
-            input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444; // don't subsample when using AVIF_MATRIX_COEFFICIENTS_IDENTITY
-            minQuantizer = AVIF_QUANTIZER_LOSSLESS;           // lossless
-            maxQuantizer = AVIF_QUANTIZER_LOSSLESS;           // lossless
-            minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;      // lossless
-            maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;      // lossless
-            codecChoice = AVIF_CODEC_CHOICE_AOM;              // rav1e doesn't support lossless transform yet:
-                                                              // https://github.com/xiph/rav1e/issues/151
-                                                              // SVT-AV1 doesn't support lossless encoding yet:
-                                                              // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
-            requestedRange = AVIF_RANGE_FULL;                 // avoid limited range
-            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY; // this is key for lossless
         } else if (!strcmp(arg, "-p") || !strcmp(arg, "--premultiply")) {
             premultiplyAlpha = AVIF_TRUE;
         } else if (!strcmp(arg, "--sharpyuv")) {
@@ -816,6 +803,62 @@ int main(int argc, char * argv[])
         }
 
         ++argIndex;
+    }
+
+    // Check lossy/lossless parameters and set to default if needed.
+    if (lossless) {
+        // Pixel format.
+        if (input.requestedFormat != AVIF_PIXEL_FORMAT_NONE && input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) {
+            fprintf(stderr,
+                    "When set, the pixel format can only be 444 in lossless "
+                    "mode.\n");
+            returnCode = 1;
+        }
+        // Don't subsample when using AVIF_MATRIX_COEFFICIENTS_IDENTITY.
+        input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
+        // Quantizers.
+        if (minQuantizer > 0 || maxQuantizer > 0 || minQuantizerAlpha > 0 || maxQuantizerAlpha > 0) {
+            fprintf(stderr, "Quantizers cannot be set in lossless mode, except to 0.\n");
+            returnCode = 1;
+        }
+        minQuantizer = maxQuantizer = minQuantizerAlpha = maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+        // Codec.
+        if (codecChoice != AVIF_CODEC_CHOICE_AUTO && codecChoice != AVIF_CODEC_CHOICE_AOM) {
+            fprintf(stderr, "Codec can only be AOM in lossless mode.\n");
+            returnCode = 1;
+        }
+        // rav1e doesn't support lossless transform yet:
+        // https://github.com/xiph/rav1e/issues/151
+        // SVT-AV1 doesn't support lossless encoding yet:
+        // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
+        codecChoice = AVIF_CODEC_CHOICE_AOM;
+        // Range.
+        if (requestedRange != AVIF_RANGE_FULL) {
+            fprintf(stderr, "Range has to be full in lossless mode.\n");
+            returnCode = 1;
+        }
+        // Matrix coefficients.
+        if (cicpExplicitlySet && matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
+            fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
+            returnCode = 1;
+        }
+        matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+        if (returnCode == 1)
+            goto cleanup;
+    } else {
+        // Set lossy defaults.
+        if (minQuantizer == -1) {
+            minQuantizer = 24;
+        }
+        if (maxQuantizer == -1) {
+            maxQuantizer = 26;
+        }
+        if (minQuantizerAlpha == -1) {
+            minQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+        }
+        if (maxQuantizerAlpha == -1) {
+            maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
+        }
     }
 
     stdinFile.filename = "(stdin)";
