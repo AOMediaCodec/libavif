@@ -827,11 +827,9 @@ int main(int argc, char * argv[])
             fprintf(stderr, "Codec can only be AOM in lossless mode.\n");
             returnCode = 1;
         }
-        // rav1e doesn't support lossless
-        // transform yet:
+        // rav1e doesn't support lossless transform yet:
         // https://github.com/xiph/rav1e/issues/151
-        // SVT-AV1 doesn't support lossless
-        // encoding yet:
+        // SVT-AV1 doesn't support lossless encoding yet:
         // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
         codecChoice = AVIF_CODEC_CHOICE_AOM;
         // Range.
