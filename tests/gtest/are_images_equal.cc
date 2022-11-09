@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC. All rights reserved.
+// Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 // Compares two files and returns whether they are the same once decoded.
 

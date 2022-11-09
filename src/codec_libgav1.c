@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC. All rights reserved.
+// Copyright 2020 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
