@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
     return 1;
   }
   if (!libavif::testutil::AreImagesEqual(*decoded[0], *decoded[1],
-                                         std::stoi(argv[3]))) {
+                                         std::stoi(argv[3]) != 0)) {
     std::cerr << "Images " << argv[1] << " and " << argv[2] << " are different."
               << std::endl;
     return 1;
