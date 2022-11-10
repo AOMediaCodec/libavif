@@ -73,10 +73,9 @@ pushd ${TMP_DIR}
 
   # Lossless test. The decoded pixels should be the same as the original image.
   echo "Testing basic lossless"
-  # TODO(yguyon): Make this test pass with INPUT_PNG instead of DECODED_FILE.
-  "${AVIFENC}" -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 10 -l "${INPUT_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
-  "${ARE_IMAGES_EQUAL}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}" 0
+  "${ARE_IMAGES_EQUAL}" "${INPUT_PNG}" "${DECODED_FILE_LOSSLESS}" 0
 popd
 
 exit 0
