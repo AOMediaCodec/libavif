@@ -22,7 +22,7 @@ avifResult avifGetExifTiffHeaderOffset(const uint8_t * exif, size_t exifSize, si
 
 // Returns the offset to the Exif 8-bit orientation value and AVIF_RESULT_OK, or an error.
 // If the offset is set to exifSize, there was no parsing error but no orientation tag was found.
-static avifResult avifGetExifOrientationOffset(const uint8_t * exif, size_t exifSize, size_t * offset)
+avifResult avifGetExifOrientationOffset(const uint8_t * exif, size_t exifSize, size_t * offset)
 {
     const avifResult result = avifGetExifTiffHeaderOffset(exif, exifSize, offset);
     if (result != AVIF_RESULT_OK) {
@@ -140,64 +140,6 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
     image->irot.angle = 0; // ignored
     image->imir.mode = 0;  // ignored
     return AVIF_RESULT_OK;
-}
-
-uint8_t avifImageGetExifOrientationFromIrotImir(const avifImage * image)
-{
-    if ((image->transformFlags & AVIF_TRANSFORM_IROT) && (image->irot.angle == 1)) {
-        if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
-            if (image->imir.mode) {
-                return 7; // 90 degrees anti-clockwise then swap left and right.
-            }
-            return 5; // 90 degrees anti-clockwise then swap top and bottom.
-        }
-        return 6; // 90 degrees anti-clockwise.
-    }
-    if ((image->transformFlags & AVIF_TRANSFORM_IROT) && (image->irot.angle == 2)) {
-        if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
-            if (image->imir.mode) {
-                return 4; // 180 degrees anti-clockwise then swap left and right.
-            }
-            return 2; // 180 degrees anti-clockwise then swap top and bottom.
-        }
-        return 3; // 180 degrees anti-clockwise.
-    }
-    if ((image->transformFlags & AVIF_TRANSFORM_IROT) && (image->irot.angle == 3)) {
-        if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
-            if (image->imir.mode) {
-                return 5; // 270 degrees anti-clockwise then swap left and right.
-            }
-            return 7; // 270 degrees anti-clockwise then swap top and bottom.
-        }
-        return 8; // 270 degrees anti-clockwise.
-    }
-    if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
-        if (image->imir.mode) {
-            return 2; // Swap left and right.
-        }
-        return 4; // Swap top and bottom.
-    }
-    return 1; // Default orientation ("top-left", no-op).
-}
-
-avifResult avifSetExifOrientation(avifRWData * exif, uint8_t orientation)
-{
-    size_t offset;
-    const avifResult result = avifGetExifOrientationOffset(exif->data, exif->size, &offset);
-    if (result != AVIF_RESULT_OK) {
-        return result;
-    }
-    if (offset < exif->size) {
-        exif->data[offset] = orientation;
-        return AVIF_RESULT_OK;
-    }
-    // No Exif orientation was found.
-    if (orientation == 1) {
-        // The default orientation is 1, so if the given orientation is 1 too, do nothing.
-        return AVIF_RESULT_OK;
-    }
-    // Adding an orientation tag to an Exif payload is involved.
-    return AVIF_RESULT_NOT_IMPLEMENTED;
 }
 
 void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
