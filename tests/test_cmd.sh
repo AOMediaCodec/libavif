@@ -74,6 +74,8 @@ pushd ${TMP_DIR}
   # Passing a filename starting with a dash without using -- should fail.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
   "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
+  "${AVIFENC}" -s 10 --min 24 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" -s 10 --max 26 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
 popd
 
 exit 0

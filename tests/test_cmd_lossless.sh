@@ -62,12 +62,12 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
 
   # Combining some arguments with lossless should fail.
-  for option in "-y 400" "--min 1" "-r limited" "--cicp 2/2/8"; do
+  for option in "-y 400" "--min 0 --max 1" "-r limited" "--cicp 2/2/8"; do
     "${AVIFENC}" $option -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}" && exit 1
   done
 
   # Combining some arguments with lossless should work.
-  for option in "-y 444" "--min 0" "-r full"; do
+  for option in "-y 444" "--min 0 --max 0" "-r full"; do
     "${AVIFENC}" $option -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}"
   done
 
