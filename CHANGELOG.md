@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * The --grid flag in avifenc can be used for images that are not evenly divided
   into cells.
 * Apps must be built with libpng version 1.6.32 or above.
+* Update svt.cmd/svt.sh: v1.3.0
 
 ## [0.11.1] - 2022-10-19
 
