@@ -39,15 +39,17 @@ foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
 
-################################################################################
-# GoogleTest
-
-if(AVIF_ENABLE_GTEST)
+if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 11)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers avif_apps)
+endif()
 
+################################################################################
+# GoogleTest
+
+if(AVIF_ENABLE_GTEST)
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
         set(GTEST_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest${AVIF_LIBRARY_SUFFIX})
