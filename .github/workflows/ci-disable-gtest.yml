@@ -28,7 +28,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ext
-        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
+        key: ${{ runner.os }}-disable-gtest-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.12
       with:
