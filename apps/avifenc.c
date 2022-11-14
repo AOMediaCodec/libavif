@@ -805,6 +805,17 @@ int main(int argc, char * argv[])
         ++argIndex;
     }
 
+    if ((minQuantizer < 0) != (maxQuantizer < 0)) {
+        fprintf(stderr, "--min and --max must be either both specified or both unspecified.\n");
+        returnCode = 1;
+        goto cleanup;
+    }
+    if ((minQuantizerAlpha < 0) != (maxQuantizerAlpha < 0)) {
+        fprintf(stderr, "--minalpha and --maxalpha must be either both specified or both unspecified.\n");
+        returnCode = 1;
+        goto cleanup;
+    }
+
     // Check lossy/lossless parameters and set to default if needed.
     if (lossless) {
         // Pixel format.
