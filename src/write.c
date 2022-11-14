@@ -1674,63 +1674,12 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamFinishBox(&s, dref);
             avifRWStreamFinishBox(&s, dinf);
 
+            // The boxes within the "stbl" box are ordered using the following recommendation in ISO/IEC 14496-12, Section 6.2.3:
+            // 4) It is recommended that the boxes within the Sample Table Box be in the following order: Sample Description
+            // (stsd), Time to Sample (stts), Sample to Chunk (stsc), Sample Size (stsz), Chunk Offset (stco).
+            //
+            // Any boxes not listed in the above line are placed in the end (after the "stco" box).
             avifBoxMarker stbl = avifRWStreamWriteBox(&s, "stbl", AVIF_BOX_SIZE_TBD);
-
-            avifBoxMarker stco = avifRWStreamWriteFullBox(&s, "stco", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteU32(&s, 1);           // unsigned int(32) entry_count;
-            avifEncoderItemAddMdatFixup(item, &s); //
-            avifRWStreamWriteU32(&s, 1);           // unsigned int(32) chunk_offset; (set later)
-            avifRWStreamFinishBox(&s, stco);
-
-            avifBoxMarker stsc = avifRWStreamWriteFullBox(&s, "stsc", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) entry_count;
-            avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) first_chunk;
-            avifRWStreamWriteU32(&s, item->encodeOutput->samples.count); // unsigned int(32) samples_per_chunk;
-            avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) sample_description_index;
-            avifRWStreamFinishBox(&s, stsc);
-
-            avifBoxMarker stsz = avifRWStreamWriteFullBox(&s, "stsz", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteU32(&s, 0);                                 // unsigned int(32) sample_size;
-            avifRWStreamWriteU32(&s, item->encodeOutput->samples.count); // unsigned int(32) sample_count;
-            for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
-                avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
-                avifRWStreamWriteU32(&s, (uint32_t)sample->data.size); // unsigned int(32) entry_size;
-            }
-            avifRWStreamFinishBox(&s, stsz);
-
-            avifBoxMarker stss = avifRWStreamWriteFullBox(&s, "stss", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteU32(&s, syncSamplesCount); // unsigned int(32) entry_count;
-            for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
-                avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
-                if (sample->sync) {
-                    avifRWStreamWriteU32(&s, sampleIndex + 1); // unsigned int(32) sample_number;
-                }
-            }
-            avifRWStreamFinishBox(&s, stss);
-
-            avifBoxMarker stts = avifRWStreamWriteFullBox(&s, "stts", AVIF_BOX_SIZE_TBD, 0, 0);
-            size_t sttsEntryCountOffset = avifRWStreamOffset(&s);
-            uint32_t sttsEntryCount = 0;
-            avifRWStreamWriteU32(&s, 0); // unsigned int(32) entry_count;
-            for (uint32_t sampleCount = 0, frameIndex = 0; frameIndex < encoder->data->frames.count; ++frameIndex) {
-                avifEncoderFrame * frame = &encoder->data->frames.frame[frameIndex];
-                ++sampleCount;
-                if (frameIndex < (encoder->data->frames.count - 1)) {
-                    avifEncoderFrame * nextFrame = &encoder->data->frames.frame[frameIndex + 1];
-                    if (frame->durationInTimescales == nextFrame->durationInTimescales) {
-                        continue;
-                    }
-                }
-                avifRWStreamWriteU32(&s, sampleCount);                           // unsigned int(32) sample_count;
-                avifRWStreamWriteU32(&s, (uint32_t)frame->durationInTimescales); // unsigned int(32) sample_delta;
-                sampleCount = 0;
-                ++sttsEntryCount;
-            }
-            size_t prevOffset = avifRWStreamOffset(&s);
-            avifRWStreamSetOffset(&s, sttsEntryCountOffset);
-            avifRWStreamWriteU32(&s, sttsEntryCount);
-            avifRWStreamSetOffset(&s, prevOffset);
-            avifRWStreamFinishBox(&s, stts);
 
             avifBoxMarker stsd = avifRWStreamWriteFullBox(&s, "stsd", AVIF_BOX_SIZE_TBD, 0, 0);
             avifRWStreamWriteU32(&s, 1); // unsigned int(32) entry_count;
@@ -1771,6 +1720,62 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             avifRWStreamFinishBox(&s, av01);
             avifRWStreamFinishBox(&s, stsd);
+
+            avifBoxMarker stts = avifRWStreamWriteFullBox(&s, "stts", AVIF_BOX_SIZE_TBD, 0, 0);
+            size_t sttsEntryCountOffset = avifRWStreamOffset(&s);
+            uint32_t sttsEntryCount = 0;
+            avifRWStreamWriteU32(&s, 0); // unsigned int(32) entry_count;
+            for (uint32_t sampleCount = 0, frameIndex = 0; frameIndex < encoder->data->frames.count; ++frameIndex) {
+                avifEncoderFrame * frame = &encoder->data->frames.frame[frameIndex];
+                ++sampleCount;
+                if (frameIndex < (encoder->data->frames.count - 1)) {
+                    avifEncoderFrame * nextFrame = &encoder->data->frames.frame[frameIndex + 1];
+                    if (frame->durationInTimescales == nextFrame->durationInTimescales) {
+                        continue;
+                    }
+                }
+                avifRWStreamWriteU32(&s, sampleCount);                           // unsigned int(32) sample_count;
+                avifRWStreamWriteU32(&s, (uint32_t)frame->durationInTimescales); // unsigned int(32) sample_delta;
+                sampleCount = 0;
+                ++sttsEntryCount;
+            }
+            size_t prevOffset = avifRWStreamOffset(&s);
+            avifRWStreamSetOffset(&s, sttsEntryCountOffset);
+            avifRWStreamWriteU32(&s, sttsEntryCount);
+            avifRWStreamSetOffset(&s, prevOffset);
+            avifRWStreamFinishBox(&s, stts);
+
+            avifBoxMarker stsc = avifRWStreamWriteFullBox(&s, "stsc", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) entry_count;
+            avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) first_chunk;
+            avifRWStreamWriteU32(&s, item->encodeOutput->samples.count); // unsigned int(32) samples_per_chunk;
+            avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) sample_description_index;
+            avifRWStreamFinishBox(&s, stsc);
+
+            avifBoxMarker stsz = avifRWStreamWriteFullBox(&s, "stsz", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifRWStreamWriteU32(&s, 0);                                 // unsigned int(32) sample_size;
+            avifRWStreamWriteU32(&s, item->encodeOutput->samples.count); // unsigned int(32) sample_count;
+            for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
+                avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
+                avifRWStreamWriteU32(&s, (uint32_t)sample->data.size); // unsigned int(32) entry_size;
+            }
+            avifRWStreamFinishBox(&s, stsz);
+
+            avifBoxMarker stco = avifRWStreamWriteFullBox(&s, "stco", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifRWStreamWriteU32(&s, 1);           // unsigned int(32) entry_count;
+            avifEncoderItemAddMdatFixup(item, &s); //
+            avifRWStreamWriteU32(&s, 1);           // unsigned int(32) chunk_offset; (set later)
+            avifRWStreamFinishBox(&s, stco);
+
+            avifBoxMarker stss = avifRWStreamWriteFullBox(&s, "stss", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifRWStreamWriteU32(&s, syncSamplesCount); // unsigned int(32) entry_count;
+            for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
+                avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
+                if (sample->sync) {
+                    avifRWStreamWriteU32(&s, sampleIndex + 1); // unsigned int(32) sample_number;
+                }
+            }
+            avifRWStreamFinishBox(&s, stss);
 
             avifRWStreamFinishBox(&s, stbl);
 
