@@ -188,6 +188,15 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         if (allocationResult != AVIF_RESULT_OK) {
             return allocationResult;
         }
+        for (int yuvPlane = 1; yuvPlane < 3; ++yuvPlane) {
+            if (!srcImage->yuvRowBytes[yuvPlane]) {
+                // plane is absent. If we're copying from a source without
+                // them, mimic the source image's state by removing our copy.
+                avifFree(dstImage->yuvPlanes[yuvPlane]);
+                dstImage->yuvPlanes[yuvPlane] = NULL;
+                dstImage->yuvRowBytes[yuvPlane] = 0;
+            }
+        }
         firstPlane = AVIF_CHAN_Y;
     }
     if ((planes & AVIF_PLANES_A) && srcImage->alphaPlane) {
@@ -198,12 +207,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         lastPlane = AVIF_CHAN_A;
     }
     for (int plane = firstPlane; plane <= lastPlane; ++plane) {
-        if ((plane != AVIF_CHAN_A) && !srcImage->yuvRowBytes[plane]) {
-            // plane is absent. If we're copying from a source without
-            // them, mimic the source image's state by removing our copy.
-            avifFree(dstImage->yuvPlanes[plane]);
-            dstImage->yuvPlanes[plane] = NULL;
-            dstImage->yuvRowBytes[plane] = 0;
+        if (!avifImagePlane(dstImage, plane)) {
             continue;
         }
 
