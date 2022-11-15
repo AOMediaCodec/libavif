@@ -70,6 +70,11 @@ if(AVIF_ENABLE_GTEST)
         find_package(GTest REQUIRED)
     endif()
 
+    add_executable(avif16bittest gtest/avif16bittest.cc)
+    target_link_libraries(avif16bittest avif_internal aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avif16bittest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avif16bittest COMMAND avif16bittest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(avifallocationtest gtest/avifallocationtest.cc)
     target_link_libraries(avifallocationtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifallocationtest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -282,8 +287,18 @@ if(AVIF_CODEC_AVM)
         set_tests_properties(aviftest PROPERTIES DISABLED True)
         if(AVIF_ENABLE_GTEST)
             set_tests_properties(
-                avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
-                avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
+                avif16bittest
+                avifallocationtest
+                avifbasictest
+                avifchangesettingtest
+                avifcllitest
+                avifgridapitest
+                avifincrtest
+                avifiostatstest
+                avifmetadatatest
+                avifprogressivetest
+                avify4mtest
+                PROPERTIES DISABLED True
             )
         endif()
 

@@ -33,6 +33,9 @@ AVIF_ARRAY_DECLARE(avifOffsetFixupArray, avifOffsetFixup, fixup);
 static const char alphaURN[] = AVIF_URN_ALPHA0;
 static const size_t alphaURNSize = sizeof(alphaURN);
 
+static const char subdepth8lsbURN[] = AVIF_URN_SUBDEPTH_8LSB;
+static const size_t subdepth8lsbURNSize = sizeof(subdepth8lsbURN);
+
 static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
@@ -165,6 +168,7 @@ typedef struct avifEncoderItem
                                           // TODO(yguyon): Rename or add av2C
     uint32_t cellIndex;                   // Which row-major cell index corresponds to this item. only present on image items
     avifBool alpha;
+    avifSubdepthMode subdepthMode;
     avifBool hiddenImage; // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
 
     const char * infeName;
@@ -903,16 +907,18 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
                                            uint32_t gridWidth,
                                            uint32_t gridHeight,
                                            avifBool alpha,
+                                           avifSubdepthMode subdepthMode,
                                            uint16_t * topLevelItemID)
 {
     const uint32_t cellCount = gridCols * gridRows;
-    const char * infeName = alpha ? "Alpha" : "Color";
+    const char * infeName = alpha ? "Alpha" : ((subdepthMode == AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS) ? "8lsb " : "Color");
     const size_t infeNameSize = 6;
 
     if (cellCount > 1) {
         avifEncoderItem * gridItem = avifEncoderDataCreateItem(encoder->data, "grid", infeName, infeNameSize, 0);
         avifWriteGridPayload(&gridItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight);
         gridItem->alpha = alpha;
+        gridItem->subdepthMode = subdepthMode;
         gridItem->gridCols = gridCols;
         gridItem->gridRows = gridRows;
         gridItem->gridWidth = gridWidth;
@@ -929,6 +935,7 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
         item->codec->csOptions = encoder->csOptions;
         item->codec->diag = &encoder->diag;
         item->alpha = alpha;
+        item->subdepthMode = subdepthMode;
         item->extraLayerCount = encoder->extraLayerCount;
 
         if (cellCount > 1) {
@@ -1007,7 +1014,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
     const avifImage * firstCell = cellImages[0];
     const avifImage * bottomRightCell = cellImages[cellCount - 1];
-    if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
+    if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12) && (firstCell->depth != 16)) {
         return AVIF_RESULT_UNSUPPORTED_DEPTH;
     }
     if (!firstCell->width || !firstCell->height || !bottomRightCell->width || !bottomRightCell->height) {
@@ -1148,9 +1155,25 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             return copyResult;
         }
 
+        avifSubdepthMode subdepthMode = AVIF_SUBDEPTH_NONE;
+        if (firstCell->depth == 16) {
+            // AV1 does not support 16 bits per channel per sample.
+            // Split the input samples into AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS items
+            // and AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS items.
+            subdepthMode = AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS;
+            // Check that all input images have the same depth.
+            for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+                avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+                if (item->codec && (cellImages[item->cellIndex]->depth != 16)) {
+                    return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+                }
+            }
+        }
+
         // Prepare all AV1 items
         uint16_t colorItemID;
-        AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, /*alpha=*/AVIF_FALSE, &colorItemID));
+        AVIF_CHECKRES(
+            avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, /*alpha=*/AVIF_FALSE, subdepthMode, &colorItemID));
         encoder->data->primaryItemID = colorItemID;
 
         encoder->data->alphaPresent = (firstCell->alphaPlane != NULL);
@@ -1176,7 +1199,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
         if (encoder->data->alphaPresent) {
             uint16_t alphaItemID;
-            AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, /*alpha=*/AVIF_TRUE, &alphaItemID));
+            AVIF_CHECKRES(
+                avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, /*alpha=*/AVIF_TRUE, subdepthMode, &alphaItemID));
             avifEncoderItem * alphaItem = avifEncoderDataFindItemByID(encoder->data, alphaItemID);
             assert(alphaItem);
             alphaItem->irefType = "auxl";
@@ -1186,6 +1210,51 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 assert(colorItem);
                 colorItem->irefType = "prem";
                 colorItem->irefToID = alphaItemID;
+            }
+        }
+
+        if (subdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) {
+            // There are multiple possible grid patterns for bit depth extension items:
+            //  - one 8lsb item per 8msb color cell and one 8lsb item per 8msb alpha cell
+            //  - one 8lsb grid per 8msb color grid and one 8lsb item per 8msb alpha cell
+            //  - one 8lsb grid per 8msb color grid and one 8lsb grid per 8msb alpha grid
+            //  - one 8lsb grid per 8msb color grid and one alpha grid per 8lsb color grid (implemented)
+            //  - etc.
+            uint16_t subdepthColorItemID;
+            AVIF_CHECKRES(avifEncoderAddImageItems(encoder,
+                                                   gridCols,
+                                                   gridRows,
+                                                   gridWidth,
+                                                   gridHeight,
+                                                   /*alpha=*/AVIF_FALSE,
+                                                   AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS,
+                                                   &subdepthColorItemID));
+            avifEncoderItem * subdepthColorItem = avifEncoderDataFindItemByID(encoder->data, subdepthColorItemID);
+            assert(subdepthColorItem);
+            subdepthColorItem->irefToID = colorItemID;
+            subdepthColorItem->irefType = "auxl";
+
+            if (encoder->data->alphaPresent) {
+                uint16_t subdepthAlphaItemID;
+                AVIF_CHECKRES(avifEncoderAddImageItems(encoder,
+                                                       gridCols,
+                                                       gridRows,
+                                                       gridWidth,
+                                                       gridHeight,
+                                                       /*alpha=*/AVIF_TRUE,
+                                                       AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS,
+                                                       &subdepthAlphaItemID));
+                avifEncoderItem * subdepthAlphaItem = avifEncoderDataFindItemByID(encoder->data, subdepthAlphaItemID);
+                assert(subdepthAlphaItem);
+                subdepthAlphaItem->irefType = "auxl";
+                subdepthAlphaItem->irefToID = subdepthColorItemID;
+                if (encoder->data->imageMetadata->alphaPremultiplied) {
+                    // Find it again, maybe subdepthColorItem was invalidated by avifEncoderAddImageItems().
+                    subdepthColorItem = avifEncoderDataFindItemByID(encoder->data, subdepthColorItemID);
+                    assert(subdepthColorItem);
+                    subdepthColorItem->irefType = "prem";
+                    subdepthColorItem->irefToID = subdepthAlphaItemID;
+                }
             }
         }
 
@@ -1250,6 +1319,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
+
+            // Padding
             avifImage * paddedCellImage = NULL;
             if ((cellImage->width != tileWidth) || (cellImage->height != tileHeight)) {
                 paddedCellImage = avifImageCopyAndPad(cellImage, tileWidth, tileHeight);
@@ -1258,7 +1329,52 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 }
                 cellImage = paddedCellImage;
             }
-            const int quantizer = item->alpha ? encoder->data->quantizerAlpha : encoder->data->quantizer;
+
+            // Subdepth
+            avifImage * subdepthCellImage = NULL;
+            int * encoderMinQuantizer = item->alpha ? &encoder->minQuantizerAlpha : &encoder->minQuantizer;
+            int * encoderMaxQuantizer = item->alpha ? &encoder->maxQuantizerAlpha : &encoder->maxQuantizer;
+            int originalMinQuantizer = *encoderMinQuantizer;
+            int originalMaxQuantizer = *encoderMaxQuantizer;
+
+            if (item->subdepthMode != AVIF_SUBDEPTH_NONE) {
+                subdepthCellImage = avifImageCreate(cellImage->width, cellImage->height, 8, cellImage->yuvFormat);
+                if (!subdepthCellImage) {
+                    if (paddedCellImage) {
+                        avifImageDestroy(paddedCellImage);
+                    }
+                    return AVIF_RESULT_OUT_OF_MEMORY;
+                }
+                const avifPlanesFlag planes = item->alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV;
+                const avifResult allocationResult = avifImageAllocatePlanes(subdepthCellImage, planes);
+                if (allocationResult != AVIF_RESULT_OK) {
+                    if (subdepthCellImage) {
+                        avifImageDestroy(subdepthCellImage);
+                    }
+                    if (paddedCellImage) {
+                        avifImageDestroy(paddedCellImage);
+                    }
+                    return allocationResult;
+                }
+                if (avifImageCopySamplesExtended(subdepthCellImage, item->subdepthMode, cellImage, AVIF_SUBDEPTH_NONE, planes) !=
+                    AVIF_RESULT_OK) {
+                    assert(AVIF_FALSE);
+                }
+                cellImage = subdepthCellImage;
+            }
+
+            int quantizer = item->alpha ? encoder->data->quantizerAlpha : encoder->data->quantizer;
+            if (item->subdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) {
+                // Encoding the least significant bits of a sample does not make any sense if the
+                // other bits are lossily compressed. Encode the most significant bits losslessly.
+                *encoderMinQuantizer = AVIF_QUANTIZER_LOSSLESS;
+                quantizer = AVIF_QUANTIZER_LOSSLESS;
+                *encoderMaxQuantizer = AVIF_QUANTIZER_LOSSLESS;
+                if (!avifEncoderDetectChanges(encoder, &encoderChanges)) {
+                    assert(AVIF_FALSE);
+                }
+            }
+
             // If alpha channel is present, set disableLaggedOutput to AVIF_TRUE. If the encoder supports it, this enables
             // avifEncoderDataShouldForceKeyframeForAlpha to force a keyframe in the alpha channel whenever a keyframe has been
             // encoded in the color channel for animated images.
@@ -1273,6 +1389,15 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                /*disableLaggedOutput=*/encoder->data->alphaPresent,
                                                                addImageFlags,
                                                                item->encodeOutput);
+            if (item->subdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) {
+                avifEncoderBackupSettings(encoder);
+                // Revert overridden quality setting.
+                *encoderMinQuantizer = originalMinQuantizer;
+                *encoderMaxQuantizer = originalMaxQuantizer;
+            }
+            if (subdepthCellImage) {
+                avifImageDestroy(subdepthCellImage);
+            }
             if (paddedCellImage) {
                 avifImageDestroy(paddedCellImage);
             }
@@ -1632,10 +1757,18 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         avifItemPropertyDedupStart(dedup);
         uint8_t channelCount = (item->alpha || (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
+        uint8_t depth;
+        if ((item->subdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) ||
+            (item->subdepthMode == AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS)) {
+            depth = 8;
+        } else {
+            assert(item->subdepthMode == AVIF_SUBDEPTH_NONE);
+            depth = (uint8_t)imageMetadata->depth;
+        }
         avifBoxMarker pixi = avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0);
         avifRWStreamWriteU8(&dedup->s, channelCount); // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
-            avifRWStreamWriteU8(&dedup->s, (uint8_t)imageMetadata->depth); // unsigned int (8) bits_per_channel;
+            avifRWStreamWriteU8(&dedup->s, depth); // unsigned int (8) bits_per_channel;
         }
         avifRWStreamFinishBox(&dedup->s, pixi);
         ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
@@ -1651,7 +1784,15 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             avifItemPropertyDedupStart(dedup);
             avifBoxMarker auxC = avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize); //  string aux_type;
+            avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize); // string aux_type;
+            avifRWStreamFinishBox(&dedup->s, auxC);
+            ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
+        } else if (item->subdepthMode == AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS) {
+            // Subdepth specific properties
+
+            avifItemPropertyDedupStart(dedup);
+            avifBoxMarker auxC = avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifRWStreamWriteChars(&dedup->s, subdepth8lsbURN, subdepth8lsbURNSize); // string aux_type;
             avifRWStreamFinishBox(&dedup->s, auxC);
             ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
         } else {

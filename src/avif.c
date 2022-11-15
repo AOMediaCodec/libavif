@@ -184,11 +184,43 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
     dstImage->imir = srcImage->imir;
 }
 
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
-    assert(srcImage->depth == dstImage->depth);
-    if (planes & AVIF_PLANES_YUV) {
-        assert((srcImage->yuvFormat == dstImage->yuvFormat) && (srcImage->yuvRange == dstImage->yuvRange));
+    return avifImageCopySamplesExtended(dstImage, AVIF_SUBDEPTH_NONE, srcImage, AVIF_SUBDEPTH_NONE, planes);
+}
+
+avifResult avifImageCopySamplesExtended(avifImage * dstImage,
+                                        avifSubdepthMode dstSubdepthMode,
+                                        const avifImage * srcImage,
+                                        avifSubdepthMode srcSubdepthMode,
+                                        avifPlanesFlags planes)
+{
+    if (!(planes & AVIF_PLANES_YUV) && !(planes & AVIF_PLANES_A)) {
+        // Early exit.
+        return AVIF_RESULT_OK;
+    }
+    AVIF_CHECKERR((srcSubdepthMode == AVIF_SUBDEPTH_NONE) || (dstSubdepthMode == AVIF_SUBDEPTH_NONE), AVIF_RESULT_UNSUPPORTED_DEPTH);
+    AVIF_CHECKERR((srcSubdepthMode == AVIF_SUBDEPTH_NONE) || (dstSubdepthMode == AVIF_SUBDEPTH_NONE), AVIF_RESULT_UNSUPPORTED_DEPTH);
+    if (((srcImage->depth != 8) && (srcImage->depth != 10) && (srcImage->depth != 12) && (srcImage->depth != 16)) ||
+        ((dstImage->depth != 8) && (dstImage->depth != 10) && (dstImage->depth != 12) && (dstImage->depth != 16))) {
+        return AVIF_RESULT_UNSUPPORTED_DEPTH;
+    }
+    if ((srcSubdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) || (srcSubdepthMode == AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS)) {
+        if (srcImage->depth != 8) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+        if (dstImage->depth == 8) {
+            return avifImageCopySamplesExtended(dstImage, AVIF_SUBDEPTH_NONE, srcImage, AVIF_SUBDEPTH_NONE, planes);
+        }
+    } else if ((dstSubdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) || (dstSubdepthMode == AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS)) {
+        if (dstImage->depth != 8) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+        if (srcImage->depth == 8) {
+            return avifImageCopySamplesExtended(dstImage, AVIF_SUBDEPTH_NONE, srcImage, AVIF_SUBDEPTH_NONE, planes);
+        }
+    } else if ((srcSubdepthMode != AVIF_SUBDEPTH_NONE) || (dstSubdepthMode != AVIF_SUBDEPTH_NONE)) {
+        return AVIF_RESULT_UNSUPPORTED_DEPTH; // Only 8MSB and 8LSB are supported.
     }
     const size_t bytesPerPixel = avifImageUsesU16(srcImage) ? 2 : 1;
 
@@ -206,20 +238,62 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
         uint8_t * dstRow = avifImagePlane(dstImage, c);
         const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, c);
         const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, c);
-        assert(!srcRow == !dstRow);
+        AVIF_CHECKERR(!srcRow == !dstRow, AVIF_RESULT_INVALID_ARGUMENT);
         if (!srcRow) {
             continue;
         }
-        assert(planeWidth == avifImagePlaneWidth(dstImage, c));
-        assert(planeHeight == avifImagePlaneHeight(dstImage, c));
+        AVIF_CHECKERR(planeWidth == avifImagePlaneWidth(dstImage, c), AVIF_RESULT_INVALID_ARGUMENT);
+        AVIF_CHECKERR(planeHeight == avifImagePlaneHeight(dstImage, c), AVIF_RESULT_INVALID_ARGUMENT);
 
-        const size_t planeWidthBytes = planeWidth * bytesPerPixel;
-        for (uint32_t y = 0; y < planeHeight; ++y) {
-            memcpy(dstRow, srcRow, planeWidthBytes);
-            srcRow += srcRowBytes;
-            dstRow += dstRowBytes;
+        if ((srcSubdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) || (srcSubdepthMode == AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS)) {
+            // Copy samples that represent a part of the final bits to their place in the reconstructed buffer.
+            uint32_t srcShift;
+            uint16_t dstMask;
+            if (srcSubdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) {
+                srcShift = dstImage->depth - 8;
+                dstMask = (1u << (dstImage->depth - 8)) - 1u;
+            } else {
+                srcShift = 0;
+                dstMask = ((1u << (dstImage->depth - 8)) - 1u) << 8;
+            }
+            for (uint32_t y = 0; y < planeHeight; ++y) {
+                uint16_t * dstRow16 = (uint16_t *)dstRow;
+                for (uint32_t x = 0; x < planeWidth; ++x) {
+                    dstRow16[x] = (dstRow16[x] & dstMask) | (srcRow[x] << srcShift);
+                }
+                srcRow += srcRowBytes;
+                dstRow += dstRowBytes;
+            }
+        } else if ((dstSubdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) ||
+                   (dstSubdepthMode == AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS)) {
+            // Copy the most or least significant bits of the source samples to a buffer with a lesser bit depth.
+            uint32_t srcShift;
+            uint16_t srcMask;
+            if (dstSubdepthMode == AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS) {
+                srcShift = srcImage->depth - 8;
+                srcMask = (1u << 8) - 1u;
+            } else {
+                srcShift = 0;
+                srcMask = (1u << 8) - 1u;
+            }
+            for (uint32_t y = 0; y < planeHeight; ++y) {
+                const uint16_t * srcRow16 = (uint16_t *)srcRow;
+                for (uint32_t x = 0; x < planeWidth; ++x) {
+                    dstRow[x] = (uint8_t)((srcRow16[x] >> srcShift) & srcMask);
+                }
+                srcRow += srcRowBytes;
+                dstRow += dstRowBytes;
+            }
+        } else {
+            const size_t planeWidthBytes = planeWidth * bytesPerPixel;
+            for (uint32_t y = 0; y < planeHeight; ++y) {
+                memcpy(dstRow, srcRow, planeWidthBytes);
+                srcRow += srcRowBytes;
+                dstRow += dstRowBytes;
+            }
         }
     }
+    return AVIF_RESULT_OK;
 }
 
 avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
@@ -248,7 +322,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             return allocationResult;
         }
     }
-    avifImageCopySamples(dstImage, srcImage, planes);
+    AVIF_CHECKRES(avifImageCopySamples(dstImage, srcImage, planes));
     return AVIF_RESULT_OK;
 }
 

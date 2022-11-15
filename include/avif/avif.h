@@ -834,6 +834,9 @@ typedef enum avifStrictFlag
     // https://crbug.com/1246678.
     AVIF_STRICT_ALPHA_ISPE_REQUIRED = (1 << 2),
 
+    // TODO(yguyon): Generalize AVIF_STRICT_ALPHA_ISPE_REQUIRED to bit depth extension
+    //               or add AVIF_STRICT_SUBDEPTH_ISPE_REQUIRED
+
     // Maximum strictness; enables all bits above. This is avifDecoder's default.
     AVIF_STRICT_ENABLED = AVIF_STRICT_PIXI_REQUIRED | AVIF_STRICT_CLAP_VALID | AVIF_STRICT_ALPHA_ISPE_REQUIRED
 } avifStrictFlag;

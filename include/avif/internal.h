@@ -43,6 +43,9 @@ extern "C" {
 #define AVIF_URN_ALPHA0 "urn:mpeg:mpegB:cicp:systems:auxiliary:alpha"
 #define AVIF_URN_ALPHA1 "urn:mpeg:hevc:2015:auxid:1"
 
+// TODO(yguyon): Add reference to specification
+#define AVIF_URN_SUBDEPTH_8LSB "urn:mpeg:mpegB:cicp:systems:auxiliary:8lsb"
+
 #define AVIF_CONTENT_TYPE_XMP "application/rdf+xml"
 
 // ---------------------------------------------------------------------------
@@ -92,7 +95,29 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // Copies the samples from srcImage to dstImage. dstImage must be allocated.
 // srcImage and dstImage must have the same width, height, and depth.
 // If the AVIF_PLANES_YUV bit is set in planes, then srcImage and dstImage must have the same yuvFormat and yuvRange.
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+
+// ---------------------------------------------------------------------------
+// Subdepth
+
+typedef enum avifSubdepthMode
+{
+    // The image can be encoded as is with an AV1 codec.
+    AVIF_SUBDEPTH_NONE,
+    // The image is split into two images because its bit depth is not supported by AV1.
+    AVIF_SUBDEPTH_8_MOST_SIGNIFICANT_BITS,
+    AVIF_SUBDEPTH_8_LEAST_SIGNIFICANT_BITS
+} avifSubdepthMode;
+
+// Same as avifImageCopySamples() with source and destination bit masks and shifts.
+avifResult avifImageCopySamplesExtended(avifImage * dstImage,
+                                        enum avifSubdepthMode dstSubdepthMode,
+                                        const avifImage * srcImage,
+                                        enum avifSubdepthMode srcSubdepthMode,
+                                        avifPlanesFlags planes);
+
+// ---------------------------------------------------------------------------
+// Alpha
 
 typedef struct avifAlphaParams
 {
