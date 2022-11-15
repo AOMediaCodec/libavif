@@ -1,5 +1,5 @@
-# This is a copy of ci-unix-shared-local.yml for building shared libraries, but
-# using installed dependencies instead of locally built ones.
+# This is a copy of ci-unix-shared-local.yml for building shared libraries
+# with an additional build configuration (using installed deps and dav1d).
 
 name: CI
 on: [push, pull_request]
@@ -39,7 +39,7 @@ jobs:
     - name: Update apt
       run: sudo apt-get update
     - name: Install dependencies
-      run: sudo apt-get install libaom-dev libyuv-dev
+      run: sudo apt-get install libaom-dev libdav1d-dev libyuv-dev
       # `sudo apt-get install googletest libgtest-dev` leads to the following:
       #   "libgtest.a(gtest-all.cc.o): undefined reference to `std::__throw_bad_array_new_length()'"
       # so build it locally instead.
@@ -55,6 +55,8 @@ jobs:
         cmake .. -G Ninja
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
         -DAVIF_CODEC_AOM=ON
+        -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
+        -DAVIF_CODEC_DAV1D=ON
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
     - name: Build libavif (ninja)
