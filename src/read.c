@@ -3697,6 +3697,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
     }
 
+    const avifProperty * clliProp = avifPropertyArrayFind(colorProperties, "clli");
+    if (clliProp) {
+        decoder->image->clli = clliProp->u.clli;
+    }
+
     // Transformations
     const avifProperty * paspProp = avifPropertyArrayFind(colorProperties, "pasp");
     if (paspProp) {
@@ -3772,11 +3777,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     } else {
         // An av1C box is mandatory in all valid AVIF configurations. Bail out.
         return AVIF_RESULT_BMFF_PARSE_FAILED;
-    }
-
-    const avifProperty * clliProp = avifPropertyArrayFind(colorProperties, "clli");
-    if (clliProp) {
-        decoder->image->clli = clliProp->u.clli;
     }
 
     return avifDecoderFlush(decoder);

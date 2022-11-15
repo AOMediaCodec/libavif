@@ -490,6 +490,13 @@ typedef struct avifImage
     avifTransferCharacteristics transferCharacteristics;
     avifMatrixCoefficients matrixCoefficients;
 
+    // CLLI information:
+    // Content Light Level Information. Used to represent maximum and average light level of an
+    // image. Useful for tone mapping HDR images, especially when using transfer characteristics
+    // SMPTE2084 (PQ). The default value of (0, 0) means the content light level information is
+    // unknown or unavailable, and will cause libavif to avoid writing a clli box for it.
+    avifContentLightLevelInformationBox clli;
+
     // Transformations - These metadata values are encoded/decoded when transformFlags are set
     // appropriately, but do not impact/adjust the actual pixel buffers used (images won't be
     // pre-cropped or mirrored upon decode). Basic explanations from the standards are offered in
@@ -503,13 +510,6 @@ typedef struct avifImage
     avifCleanApertureBox clap;
     avifImageRotation irot;
     avifImageMirror imir;
-
-    // CLLI information:
-    // Content Light Level Information. Used to represent maximum and average light level of an
-    // image. Useful for tone mapping HDR images, especially when using transfer characteristics
-    // SMPTE2084 (PQ). The default value of (0, 0) means the content light level information is
-    // unknown or unavailable, and will cause libavif to avoid writing a clli box for it.
-    avifContentLightLevelInformationBox clli;
 
     // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
     avifRWData exif;
