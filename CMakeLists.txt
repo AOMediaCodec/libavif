@@ -53,6 +53,7 @@ option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
        "Enable experimental gain map code (for HDR images that look good both on HDR and SDR displays)" OFF
 )
 option(AVIF_ENABLE_EXPERIMENTAL_AVIR "Enable experimental reduced header" OFF)
+option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample transform code" OFF)
 
 set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "")
 set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "")
@@ -339,6 +340,10 @@ if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_AVIR)
 endif()
 
+if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+endif()
+
 set(AVIF_SRCS
     src/alpha.c
     src/avif.c
@@ -361,6 +366,9 @@ set(AVIF_SRCS
 )
 if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     list(APPEND AVIF_SRCS src/gainmap.c)
+endif()
+if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    list(APPEND AVIF_SRCS src/sampletransform.c)
 endif()
 
 if(AVIF_ENABLE_COMPLIANCE_WARDEN)
