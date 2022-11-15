@@ -156,6 +156,62 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // Ignores the gainMap field (which exists only if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
+// ---------------------------------------------------------------------------
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+// Mapping used in the coding of Sample Transform metadata.
+typedef enum avifSampleTransformIntermediateBitDepth
+{
+    AVIF_SAMPLE_TRANSFORM_INTERMEDIATE_BIT_DEPTH_8 = 0,  // Signed 8-bit.
+    AVIF_SAMPLE_TRANSFORM_INTERMEDIATE_BIT_DEPTH_16 = 1, // Signed 16-bit.
+    AVIF_SAMPLE_TRANSFORM_INTERMEDIATE_BIT_DEPTH_32 = 2, // Signed 32-bit.
+    AVIF_SAMPLE_TRANSFORM_INTERMEDIATE_BIT_DEPTH_64 = 3  // Signed 64-bit.
+} avifSampleTransformIntermediateBitDepth;
+
+// Meaning of an operation in Sample Transform metadata.
+// For a constant_operator, L is the constant (left operand) and R is the sample (right operand).
+// For an operator, L is the intermediate overall result (left operand)
+// and R is the last sub-expression result (right operand).
+typedef enum avifSampleTransformOperation
+{
+    AVIF_SAMPLE_TRANSFORM_SUM = 0,             // S = L + R
+    AVIF_SAMPLE_TRANSFORM_PRODUCT = 1,         // S = L * R
+    AVIF_SAMPLE_TRANSFORM_DIVIDE = 2,          // S = floor(L / R)
+    AVIF_SAMPLE_TRANSFORM_DIVIDE_REVERSED = 3, // S = floor(R / L)
+    AVIF_SAMPLE_TRANSFORM_POW = 4,             // S = pow(L, R)
+    AVIF_SAMPLE_TRANSFORM_POW_REVERSED = 5,    // S = pow(R, L)
+    AVIF_SAMPLE_TRANSFORM_LOG = 6,             // S = log(L, R)
+    AVIF_SAMPLE_TRANSFORM_LOG_REVERSED = 7,    // S = log(R, L)
+    AVIF_SAMPLE_TRANSFORM_AND = 8,             // S = L & R
+    AVIF_SAMPLE_TRANSFORM_OR = 9,              // S = L | R
+    AVIF_SAMPLE_TRANSFORM_XOR = 10,            // S = L ^ R
+    AVIF_SAMPLE_TRANSFORM_NOR = 11,            // S = !(L | R)
+    AVIF_SAMPLE_TRANSFORM_MIN = 12,            // S = min(L, R)
+    AVIF_SAMPLE_TRANSFORM_MAX = 13             // S = max(L, R)
+} avifSampleTransformOperation;
+
+// Performs the following for each sample in the selected planes of the result image:
+//   result = leftOperand (operation) rightOperand
+// result, leftOperand and rightOperand must be allocated and have the same planes and dimensions.
+// result can be point to leftOperand and/or rightOperand (in-place allowed).
+avifResult avifImageTransformImageAndImageSamples(avifImage * result,
+                                                  avifSampleTransformIntermediateBitDepth intermediateBitDepth,
+                                                  const avifImage * leftOperand,
+                                                  avifSampleTransformOperation operation,
+                                                  const avifImage * rightOperand,
+                                                  avifPlanesFlags planes);
+// Same but leftOperand is a constant instead of a sample.
+avifResult avifImageTransformConstantAndImageSamples(avifImage * result,
+                                                     avifSampleTransformIntermediateBitDepth intermediateBitDepth,
+                                                     int32_t leftOperand,
+                                                     avifSampleTransformOperation operation,
+                                                     const avifImage * rightOperand,
+                                                     avifPlanesFlags planes);
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+
+// ---------------------------------------------------------------------------
+// Alpha
+
 typedef struct avifAlphaParams
 {
     uint32_t width;
@@ -317,6 +373,11 @@ typedef enum avifItemCategory
     AVIF_ITEM_ALPHA,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     AVIF_ITEM_GAIN_MAP,
+#endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    AVIF_ITEM_SAMPLE_TRANSFORM,          // Sample Transform derived image item 'sato'.
+    AVIF_ITEM_BIT_DEPTH_EXTENSION_COLOR, // Second input image item of AVIF_ITEM_SAMPLE_TRANSFORM. First is AVIF_ITEM_COLOR.
+    AVIF_ITEM_BIT_DEPTH_EXTENSION_ALPHA, // Auxiliary image item of AVIF_ITEM_SAMPLE_TRANSFORM_COLOR.
 #endif
     AVIF_ITEM_CATEGORY_COUNT
 } avifItemCategory;
