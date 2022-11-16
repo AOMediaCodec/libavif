@@ -348,8 +348,8 @@ static avifBool aomOptionParseEnum(const char * str, const struct aomOptionEnumL
 static const struct aomOptionEnumList endUsageEnum[] = { //
     { "vbr", AOM_VBR },                                  // Variable Bit Rate (VBR) mode
     { "cbr", AOM_CBR },                                  // Constant Bit Rate (CBR) mode
-    { "cq", AOM_CQ },                                    // Constrained Quality (CQ)  mode
-    { "q", AOM_Q },                                      // Constrained Quality (CQ)  mode
+    { "cq", AOM_CQ },                                    // Constrained Quality (CQ) mode
+    { "q", AOM_Q },                                      // Constant Quality (Q) mode
     { NULL, 0 }
 };
 
