@@ -119,7 +119,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
         svt_config->logical_processors = encoder->maxThreads;
-        svt_config->enable_adaptive_quantization = AVIF_FALSE;
+        svt_config->enable_adaptive_quantization = 2;
         // disable 2-pass
 #if SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->rc_stats_buffer = (SvtAv1FixedBuf) { NULL, 0 };
@@ -128,13 +128,15 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf) { NULL, 0 };
 #endif
 
+        svt_config->rate_control_mode = 0; // CRF because enable_adaptive_quantization is 2
         if (alpha) {
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
             svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
         } else {
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-            svt_config->qp = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
+            svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
         }
+        svt_config->qp = (svt_config->min_qp_allowed + svt_config->max_qp_allowed) / 2;
 
         if (tileRowsLog2 != 0) {
             svt_config->tile_rows = tileRowsLog2;
