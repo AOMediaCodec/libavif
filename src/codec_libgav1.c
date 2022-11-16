@@ -117,9 +117,6 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
         image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
 
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(yuvFormat, &formatInfo);
-
         // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
