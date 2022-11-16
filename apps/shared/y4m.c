@@ -361,9 +361,8 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         goto cleanup;
     }
 
-    const int lastPlane = frame.hasAlpha ? AVIF_CHAN_A : AVIF_CHAN_V;
-    for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
-        uint32_t planeHeight = avifImagePlaneHeight(avif, plane);
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
         uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
         uint8_t * row = avifImagePlane(avif, plane);
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
@@ -513,7 +512,7 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
 
     const int lastPlane = writeAlpha ? AVIF_CHAN_A : AVIF_CHAN_V;
     for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
-        uint32_t planeHeight = avifImagePlaneHeight(avif, plane);
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
         uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
         uint8_t * row = avifImagePlane(avif, plane);
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);

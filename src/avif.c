@@ -180,40 +180,34 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
     avifRWDataSet(&dstImage->exif, srcImage->exif.data, srcImage->exif.size);
     avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
 
-    assert(AVIF_CHAN_A > AVIF_CHAN_V);
-    int firstPlane = AVIF_CHAN_A; // No plane by default.
-    int lastPlane = AVIF_CHAN_V;
     if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
         if (allocationResult != AVIF_RESULT_OK) {
             return allocationResult;
         }
-        for (int yuvPlane = 1; yuvPlane < 3; ++yuvPlane) {
-            if (!srcImage->yuvRowBytes[yuvPlane]) {
+        for (int uvPlane = AVIF_CHAN_U; uvPlane <= AVIF_CHAN_V; ++uvPlane) {
+            if (!srcImage->yuvRowBytes[uvPlane]) {
                 // plane is absent. If we're copying from a source without
                 // them, mimic the source image's state by removing our copy.
-                avifFree(dstImage->yuvPlanes[yuvPlane]);
-                dstImage->yuvPlanes[yuvPlane] = NULL;
-                dstImage->yuvRowBytes[yuvPlane] = 0;
+                avifFree(dstImage->yuvPlanes[uvPlane]);
+                dstImage->yuvPlanes[uvPlane] = NULL;
+                dstImage->yuvRowBytes[uvPlane] = 0;
             }
         }
-        firstPlane = AVIF_CHAN_Y;
     }
     if ((planes & AVIF_PLANES_A) && srcImage->alphaPlane) {
         const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
         if (allocationResult != AVIF_RESULT_OK) {
             return allocationResult;
         }
-        lastPlane = AVIF_CHAN_A;
     }
-    for (int plane = firstPlane; plane <= lastPlane; ++plane) {
-        if (!avifImagePlane(dstImage, plane)) {
-            continue;
-        }
-
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
         uint32_t planeHeight = avifImagePlaneHeight(dstImage, plane);
         uint8_t * srcRow = avifImagePlane(srcImage, plane);
         uint8_t * dstRow = avifImagePlane(dstImage, plane);
+        if (!dstRow) {
+            continue;
+        }
         uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, plane);
         uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, plane);
         uint32_t planeWidthBytes = avifImagePlaneWidth(dstImage, plane) << (dstImage->depth > 8);
@@ -240,7 +234,7 @@ avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage
     dstImage->height = rect->height;
     const uint32_t pixelBytes = (srcImage->depth > 8) ? 2 : 1;
     if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        for (int yuvPlane = AVIF_CHAN_Y; yuvPlane <= AVIF_CHAN_V; ++yuvPlane) {
             if (srcImage->yuvRowBytes[yuvPlane]) {
                 const size_t planeX = (yuvPlane == AVIF_CHAN_Y) ? rect->x : (rect->x >> formatInfo.chromaShiftX);
                 const size_t planeY = (yuvPlane == AVIF_CHAN_Y) ? rect->y : (rect->y >> formatInfo.chromaShiftY);

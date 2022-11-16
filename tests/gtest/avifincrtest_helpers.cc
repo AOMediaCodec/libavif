@@ -34,7 +34,8 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
   avifPixelFormatInfo info;
   avifGetPixelFormatInfo(image1.yuvFormat, &info);
   const uint32_t uv_height =
-      (row_count + info.chromaShiftY) >> info.chromaShiftY;
+      info.monochrome ? 0
+                      : ((row_count + info.chromaShiftY) >> info.chromaShiftY);
   const size_t pixel_byte_count =
       (image1.depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
 
@@ -43,8 +44,8 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
     ASSERT_EQ(image1.alphaPremultiplied, image2.alphaPremultiplied);
   }
 
-  const int lastPlane = image1.alphaPlane ? AVIF_CHAN_A : AVIF_CHAN_V;
-  for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
+  const int last_plane = image1.alphaPlane ? AVIF_CHAN_A : AVIF_CHAN_V;
+  for (int plane = AVIF_CHAN_Y; plane <= last_plane; ++plane) {
     const size_t width_byte_count =
         avifImagePlaneWidth(&image1, plane) * pixel_byte_count;
     const uint32_t height =
