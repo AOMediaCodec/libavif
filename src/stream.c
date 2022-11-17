@@ -177,6 +177,25 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
     AVIF_CHECK(avifROStreamRead(stream, header->type, 4));
 
     uint64_t size = smallSize;
+    // Size values 0 and 1 are placeholders. See ISO/IEC 14496-12:2020, Section 4.2.2.
+    if (size == 0) {
+        // The box takes all the space left till the end of the full stream.
+        // (stream->raw->size - offset) cannot be relied upon because there is no guarantee here
+        // that the stream is fully received. Only allow an unknown box size for a MediaDataBox
+        // as suggested in ISO/IEC 14496-12:2020, Section 4.2.2.
+        if (!memcmp(header->type, "mdat", 4)) {
+            header->size = AVIF_BOX_SIZE_TBD;
+        } else {
+            avifDiagnosticsPrintf(stream->diag,
+                                  "%s: Box \"%c%c%c%c\" cannot extend to end of stream",
+                                  stream->diagContext,
+                                  header->type[0],
+                                  header->type[1],
+                                  header->type[2],
+                                  header->type[3]);
+            return AVIF_FALSE;
+        }
+    }
     if (size == 1) {
         AVIF_CHECK(avifROStreamReadU64(stream, &size));
     }

@@ -158,6 +158,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifreadimagetest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifreadimagetest COMMAND avifreadimagetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
+    add_executable(avifreducedheadertest gtest/avifreducedheadertest.cc)
+    target_link_libraries(avifreducedheadertest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifreducedheadertest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifreducedheadertest COMMAND avifreducedheadertest)
+
     add_executable(avifrgbtoyuvtest gtest/avifrgbtoyuvtest.cc)
     target_link_libraries(avifrgbtoyuvtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -274,7 +279,7 @@ if(AVIF_CODEC_AVM)
         if(AVIF_ENABLE_GTEST)
             set_tests_properties(
                 avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
-                avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
+                avifmetadatatest avifprogressivetest avifreducedheadertest avify4mtest PROPERTIES DISABLED True
             )
         endif()
 

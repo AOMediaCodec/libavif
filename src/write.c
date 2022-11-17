@@ -409,6 +409,8 @@ avifEncoder * avifEncoderCreate(void)
         return NULL;
     }
     memset(encoder, 0, sizeof(avifEncoder));
+    encoder->headerStrategy = AVIF_ENCODER_FULL_HEADER;
+    encoder->codecChoice = AVIF_CODEC_CHOICE_AUTO;
     encoder->maxThreads = 1;
     encoder->speed = AVIF_SPEED_DEFAULT;
     encoder->keyframeInterval = 0;
@@ -1388,6 +1390,39 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifRWStreamStart(&s, output);
 
     // -----------------------------------------------------------------------
+    // Decide whether to go for reduced header or full header
+
+    // The reduced container header ("avif" brand version 1) is only available with still images.
+    if ((encoder->headerStrategy == AVIF_ENCODER_MINIMIZE_HEADER) && (encoder->data->frames.count == 1)) {
+        avifBool allItemsMatchDefaultItems = AVIF_TRUE;
+        for (uint32_t itemIndex = 0; allItemsMatchDefaultItems && (itemIndex < encoder->data->items.count); ++itemIndex) {
+            avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+            // Only regular Color or Alpha images can be default items.
+            allItemsMatchDefaultItems &= !memcmp(item->type, "av01", 4) && !item->cellIndex && !item->hiddenImage && !item->dimgFromID;
+            if (itemIndex == 0) {
+                // Only consider the first item as a default Color item, although it could be after alpha.
+                allItemsMatchDefaultItems &= (item->id == encoder->data->primaryItemID) && !item->alpha && !item->irefToID;
+            } else if (itemIndex == 1) {
+                // Alpha.
+                allItemsMatchDefaultItems &= item->alpha && (item->irefToID == encoder->data->primaryItemID);
+            } else {
+                allItemsMatchDefaultItems = AVIF_FALSE; // Only one or two items can be default items.
+            }
+        }
+
+        // We could skip some boxes even if !allItemsMatchDefaultItems but this is way simpler.
+        if (allItemsMatchDefaultItems) {
+            avifBoxMarker ftyp = avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD);
+            avifRWStreamWriteChars(&s, "avif", 4); // unsigned int(32) major_brand;
+            avifRWStreamWriteU32(&s, 1);           // unsigned int(32) minor_version;
+            avifRWStreamWriteChars(&s, "avif", 4); // unsigned int(32) compatible_brands[];
+            avifRWStreamFinishBox(&s, ftyp);
+            // Skip the whole meta box.
+            goto writeMdat;
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Write ftyp
 
     // Layered sequence is not supported for now.
@@ -1989,6 +2024,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         avifRWStreamFinishBox(&s, moov);
     }
+
+writeMdat:
 
     // -----------------------------------------------------------------------
     // Write mdat

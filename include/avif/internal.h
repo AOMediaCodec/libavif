@@ -431,6 +431,7 @@ typedef size_t avifBoxMarker;
 
 typedef struct avifBoxHeader
 {
+    // Size of the box in bytes, excluding the number of bytes read to know the size and the type.
     size_t size;
     uint8_t type[4];
 } avifBoxHeader;
@@ -487,7 +488,8 @@ void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
 void avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
 void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
 
-// This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
+// This is to make it clear that the box size is currently unknown, and will be determined later
+// (with a call to avifRWStreamFinishBox() during writing or when the stream is completely decoded during reading).
 #define AVIF_BOX_SIZE_TBD 0
 
 // Used for both av1C and av2C.

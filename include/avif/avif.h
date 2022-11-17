@@ -177,6 +177,18 @@ typedef enum avifResult
 AVIF_API const char * avifResultToString(avifResult result);
 
 // ---------------------------------------------------------------------------
+// avifEncoderHeaderStrategy
+
+typedef enum avifEncoderHeaderStrategy
+{
+    // Encodes as "avif" brand version 0 and all its required boxes for maximum compatibility.
+    AVIF_ENCODER_FULL_HEADER,
+    // Encodes as "avif" brand version 1 which requires fewer boxes by default, to reduce the encoded file size.
+    // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
+    AVIF_ENCODER_MINIMIZE_HEADER,
+} avifEncoderHeaderStrategy;
+
+// ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
 
 typedef struct avifROData
@@ -1132,6 +1144,9 @@ typedef struct avifScalingMode
 //   call to avifEncoderAddImage().
 typedef struct avifEncoder
 {
+    // Defaults to AVIF_ENCODER_FULL_HEADER
+    avifEncoderHeaderStrategy headerStrategy;
+
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 

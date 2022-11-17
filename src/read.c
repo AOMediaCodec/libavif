@@ -799,6 +799,37 @@ error:
     return NULL;
 }
 
+// Returns the smallest item ID that is not already associated with an existing item.
+// Returns 0 in case of error.
+static uint32_t avifMetaFirstUnusedItemID(avifMeta * meta)
+{
+    uint8_t * usedItemID = avifAlloc((size_t)meta->items.count + 1);
+    if (!usedItemID) {
+        return 0;
+    }
+    usedItemID[0] = AVIF_TRUE; // Index 0 is invalid and should not be considered.
+    memset(usedItemID + 1, AVIF_FALSE, (size_t)meta->items.count);
+
+    for (uint32_t i = 0; i < meta->items.count; ++i) {
+        const uint32_t id = meta->items.item[i].id;
+        if (id <= meta->items.count) {
+            assert(!usedItemID[id]);
+            usedItemID[id] = AVIF_TRUE;
+        }
+    }
+
+    for (uint32_t i = 1; i <= meta->items.count; ++i) {
+        if (!usedItemID[i]) {
+            avifFree(usedItemID);
+            return i;
+        }
+    }
+
+    avifFree(usedItemID);
+    // There are N items using all IDs in [1:N] so ID N+1 is available.
+    return meta->items.count + 1;
+}
+
 // A group of AVIF tiles in an image item, such as a single tile or a grid of multiple tiles.
 typedef struct avifTileInfo
 {
@@ -831,6 +862,7 @@ typedef struct avifDecoderData
     avifCodec * codec;
     avifCodec * codecAlpha;
     uint8_t majorBrand[4];                     // From the file's ftyp, used by AVIF_DECODER_SOURCE_AUTO
+    uint32_t minorVersion;                     // From the file's ftyp, used to allow or forbid some boxes to be implicit
     avifDiagnostics * diag;                    // Shallow copy; owned by avifDecoder
     const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
     avifBool cicpSet;                          // True if avifDecoder's image has had its CICP set correctly yet.
@@ -3139,7 +3171,9 @@ static avifResult avifParse(avifDecoder * decoder)
             }
             ftypSeen = AVIF_TRUE;
             memcpy(data->majorBrand, ftyp.majorBrand, 4); // Remember the major brand for future AVIF_DECODER_SOURCE_AUTO decisions
-            needsMeta = avifFileTypeHasBrand(&ftyp, "avif");
+            data->minorVersion = ftyp.minorVersion;
+            // Version 1 of the "avif" major brand allows some boxes to be implicit, including the "meta" one.
+            needsMeta = avifFileTypeHasBrand(&ftyp, "avif") && (memcmp(ftyp.majorBrand, "avif", 4) || ftyp.minorVersion == 0);
             needsMoov = avifFileTypeHasBrand(&ftyp, "avis");
         } else if (!memcmp(header.type, "meta", 4)) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -3165,6 +3199,234 @@ static avifResult avifParse(avifDecoder * decoder)
     }
     if ((needsMeta && !metaSeen) || (needsMoov && !moovSeen)) {
         return AVIF_RESULT_TRUNCATED_DATA;
+    }
+    return AVIF_RESULT_OK;
+}
+
+// Reads and returns the obuSize in bytes of the OBU at parseOffset bytes from the beginning of the AVIF stream.
+// obuHeaderSize is the number of bytes read to know the OBU size.
+// Taken from avifBitsReadUleb128() in obu.c and adapted to decoder->io->read().
+static avifBool avifParseOBUleb128(avifDecoder * decoder, uint64_t parseOffset, uint64_t * obuHeaderSize, uint64_t * obuSize)
+{
+    *obuSize = 0;
+    uint32_t more;
+    uint32_t i = 0;
+
+    do {
+        avifROData bytes;
+        AVIF_CHECKRES(decoder->io->read(decoder->io, 0, parseOffset + *obuHeaderSize, 1, &bytes));
+        AVIF_CHECKERR(bytes.size == 1, AVIF_RESULT_IO_ERROR); // TODO(yguyon): or AVIF_RESULT_WAITING_ON_IO? AVIF_RESULT_TRUNCATED_DATA?
+        *obuHeaderSize += 1;
+        more = bytes.data[0] & 0x80;
+        *obuSize |= ((uint64_t)(bytes.data[0] & 0x7F)) << i;
+        i += 7;
+    } while (more && i < 56);
+
+    if (*obuSize > UINT32_MAX || more) {
+        return AVIF_FALSE;
+    }
+
+    return AVIF_TRUE;
+}
+
+// A still image AV1 Temporal Unit is usually made of a Temporal Delimiter OBU, a Sequence Header OBU,
+// a Frame Header OBU and a Frame OBU. Each temporal unit must have exactly one shown (reconstructed) frame.
+// See AV1 specification section 7.5.
+typedef struct avifTemporalUnit
+{
+    uint64_t offset;                   // In bytes. Relative to the beginning of the AVIF stream.
+    size_t size;                       // In bytes. Sum of the sizes of the OBUs in this Temporal Unit.
+    avifSequenceHeader sequenceHeader; // Sequence Header OBU content.
+} avifTemporalUnit;
+
+// AV1 Temporal Units are parsed only to create implicit boxes, which are allowed only for still images.
+// TODO(yguyon): Make sure the new spec covers only the 2 first implicit AV1 Image Item Data chunks (color + alpha).
+#define AVIF_MAX_TEMPORAL_UNIT_COUNT 2
+
+// Defined in AV1 specification section 6.2.2.
+#define AVIF_AV1_OBU_SEQUENCE_HEADER 1
+#define AVIF_AV1_OBU_TEMPORAL_DELIMITER 2
+
+// Saves the ongoing temporalUnit into one of the final temporalUnits.
+static void avifSaveTemporalUnit(avifTemporalUnit * temporalUnit,
+                                 uint64_t offsetOfNextByte,
+                                 avifTemporalUnit temporalUnits[AVIF_MAX_TEMPORAL_UNIT_COUNT],
+                                 uint32_t * temporalUnitCount)
+{
+    // Save the previous AV1 Temporal Unit if any, if valid and if useful.
+    if (temporalUnit->offset && (offsetOfNextByte > temporalUnit->offset) && temporalUnit->sequenceHeader.maxWidth &&
+        temporalUnit->sequenceHeader.maxHeight && (*temporalUnitCount < 2)) {
+        temporalUnit->size = (size_t)(offsetOfNextByte - temporalUnit->offset);
+        temporalUnits[*temporalUnitCount] = *temporalUnit;
+        ++*temporalUnitCount;
+    }
+    // Start a new AV1 Temporal Unit.
+    memset(temporalUnit, 0, sizeof(*temporalUnit));
+    temporalUnit->offset = offsetOfNextByte;
+}
+
+// Reads and parses an AV1 stream, located at [parseOffset:parseSize[ in bytes, relative to the beginning of the AVIF stream.
+// Outputs the found temporalUnits.
+static avifResult avifParseOBUs(avifDecoder * decoder,
+                                uint64_t parseOffset,
+                                size_t parseSize,
+                                avifTemporalUnit temporalUnits[AVIF_MAX_TEMPORAL_UNIT_COUNT],
+                                uint32_t * temporalUnitCount)
+{
+    assert((parseSize == AVIF_BOX_SIZE_TBD) || (parseOffset <= parseSize));
+
+    avifTemporalUnit temporalUnit; // The ongoing AV1 Temporal Unit.
+    memset(&temporalUnit, 0, sizeof(temporalUnit));
+    for (uint32_t numTemporalDelimiters = 0; numTemporalDelimiters <= AVIF_MAX_TEMPORAL_UNIT_COUNT;) {
+        if (parseSize != AVIF_BOX_SIZE_TBD) {
+            if (parseOffset == parseSize) {
+                // The entire AV1 stream was covered exactly and without error.
+                avifSaveTemporalUnit(&temporalUnit, parseOffset, temporalUnits, temporalUnitCount);
+                return AVIF_RESULT_OK;
+            }
+            if (parseOffset > parseSize) {
+                // Bytes are missing or corrupted.
+                return AVIF_RESULT_TRUNCATED_DATA;
+            }
+        }
+
+        // Read one OBU.
+        uint64_t obuHeaderSize = 1;
+        avifROData bytes;
+        avifResult result = decoder->io->read(decoder->io, 0, parseOffset, (size_t)obuHeaderSize, &bytes);
+        if ((result == AVIF_RESULT_OK) && (bytes.size < obuHeaderSize)) {
+            // Consider one missing byte as an error, and not a valid "0-byte buffer", according to
+            // the description of avifIOReadFunc.
+            result = AVIF_RESULT_WAITING_ON_IO; // TODO(yguyon): or AVIF_RESULT_IO_ERROR? AVIF_RESULT_TRUNCATED_DATA?
+        }
+        if (result != AVIF_RESULT_OK) {
+            if ((result == AVIF_RESULT_WAITING_ON_IO) && (parseSize == AVIF_BOX_SIZE_TBD)) {
+                // Special case: it is unknown whether more OBU data will come, and it could change the final output.
+                // Try saving the ongoing AV1 Temporal Unit, and if there are AVIF_MAX_TEMPORAL_UNIT_COUNT of them,
+                // consider the parsing as successful.
+                avifSaveTemporalUnit(&temporalUnit, parseOffset, temporalUnits, temporalUnitCount);
+                if (*temporalUnitCount == AVIF_MAX_TEMPORAL_UNIT_COUNT) {
+                    return AVIF_RESULT_OK;
+                }
+                // The parsing cannot be considered as finished yet, because there might be exactly one AV1 Temporal Unit
+                // missing, or nothing missing. Consider it as the AV1 Alpha Image Item Data, and either:
+                //   - The color AV1 Image Item Data is returned, displaying an opaque image.
+                //     This behavior is invalid because receiving the full stream would change the output (adding alpha).
+                //   - The color AV1 Image Item Data is not returned, until the AV1 Alpha Image Item Data is available.
+                //     This behavior is invalid because no image will be ever output if there is no alpha.
+                // TODO(yguyon): Do one of the following:
+                //                 - Make sure the new "avif" brand version 1 specification forbids "mdat"
+                //                   boxes with an unspecified size (running till the end of the stream).
+                //                   This way parseSize != AVIF_BOX_SIZE_TBD and we can rely on it to know
+                //                   if more OBU data is to come.
+                //                 - Make sure the new "avif" brand version 1 specification requires that
+                //                   "there shall always be an implicit alpha item, even if opaque, if there
+                //                    is an implicit color item", at least if "mdat" has an unspecified size.
+                return AVIF_RESULT_NOT_IMPLEMENTED;
+            }
+
+            assert(parseOffset != parseSize);
+            // Bytes are missing or corrupted for sure, return an error.
+            return result;
+        }
+        const uint8_t obu_header = bytes.data[0];
+        // obu_forbidden_bit f(1)
+        const uint8_t obu_type = ((obu_header >> 3) & 0xF);          // f(4)
+        const avifBool obu_extension_flag = (obu_header & (1 << 2)); // f(1)
+        const avifBool obu_has_size_field = (obu_header & (1 << 1)); // f(1)
+        // obu_reserved_1bit f(1)
+        if (obu_extension_flag) {
+            obuHeaderSize += 1;
+        }
+
+        if (obu_type == AVIF_AV1_OBU_TEMPORAL_DELIMITER) {
+            avifSaveTemporalUnit(&temporalUnit, parseOffset, temporalUnits, temporalUnitCount);
+            ++numTemporalDelimiters;
+        }
+
+        if (!obu_has_size_field) {
+            // This OBU cannot be skipped easily and there should not be any other OBU afterwards, so stop here.
+            if (parseSize != AVIF_BOX_SIZE_TBD) {
+                // Consider the remaining bytes as OBU data belonging to the ongoing AV1 Temporal Unit.
+                avifSaveTemporalUnit(&temporalUnit, /*offsetOfNextByte=*/parseSize, temporalUnits, temporalUnitCount);
+            }
+            return AVIF_RESULT_OK;
+        }
+        uint64_t obuSize;
+        if (!avifParseOBUleb128(decoder, parseOffset, &obuHeaderSize, &obuSize)) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+
+        if (obu_type == AVIF_AV1_OBU_SEQUENCE_HEADER) {
+            // AV1 specification section 5.5.1. shows that the sequence_header_obu is between 4 and 12 bytes long
+            // if reduced_still_picture_header is set to 1. We are only interested in sequence header OBUs of
+            // still images, so refuse anything else.
+            if ((obuSize < 4) || (obuSize > 12)) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            // Refuse any sequence header OBU past the first one in the same temporal unit,
+            // as specified in the AV1-AVIF specification, section 2.1 "AV1 Image Item":
+            //   "The AV1 Image Item Data shall have exactly one Sequence Header OBU."
+            if (temporalUnit.sequenceHeader.maxWidth) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            AVIF_CHECKRES(decoder->io->read(decoder->io, 0, parseOffset, (size_t)(obuHeaderSize + obuSize), &bytes));
+            AVIF_CHECKERR(bytes.size == obuHeaderSize + obuSize,
+                          AVIF_RESULT_WAITING_ON_IO); // TODO(yguyon): or AVIF_RESULT_IO_ERROR? AVIF_RESULT_TRUNCATED_DATA?
+            AVIF_CHECKERR(avifSequenceHeaderParse(&temporalUnit.sequenceHeader, &bytes, AVIF_CODEC_TYPE_AV1),
+                          AVIF_RESULT_BMFF_PARSE_FAILED);
+        }
+        parseOffset += obuHeaderSize + obuSize;
+    }
+    return AVIF_RESULT_OK;
+}
+
+// Reads and parses the top-level boxes until "mdat" is reached.
+// Outputs the temporalUnits found in the AV1 streams within.
+static avifResult avifParseMdat(avifDecoder * decoder, avifTemporalUnit temporalUnits[AVIF_MAX_TEMPORAL_UNIT_COUNT], uint32_t * temporalUnitCount)
+{
+    avifResult readResult;
+    uint64_t parseOffset = 0;
+
+    for (;;) {
+        // Read just enough to get the next box header (a max of 32 bytes).
+        avifROData headerContents;
+        if ((decoder->io->sizeHint != 0) && (parseOffset > decoder->io->sizeHint)) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        readResult = decoder->io->read(decoder->io, 0, parseOffset, 32, &headerContents);
+        if (readResult != AVIF_RESULT_OK) {
+            return readResult;
+        }
+        if (!headerContents.size) {
+            // If we got AVIF_RESULT_OK from the reader but received 0 bytes,
+            // we've reached the end of the file with no errors.
+            break;
+        }
+        if (headerContents.size < 8) {
+            // A valid ISOBMFF box cannot be shorter than 8 bytes. See ISO/IEC 14496-12:2020, Section 4.2.2.
+            return AVIF_RESULT_TRUNCATED_DATA;
+        }
+
+        // Parse the header, and find out how many bytes it actually was.
+        BEGIN_STREAM(headerStream, headerContents.data, headerContents.size, &decoder->diag, "File-level box header");
+        avifBoxHeader header;
+        AVIF_CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        parseOffset += headerStream.offset;
+        assert((decoder->io->sizeHint == 0) || (parseOffset <= decoder->io->sizeHint));
+
+        if (!memcmp(header.type, "mdat", 4)) {
+            // TODO(yguyon): Only call avifParseOBUs() on "mdat" box content that is not covered
+            //               by resources explicitly specified by an ItemLocationBox ("iloc").
+            const size_t parseSize = (header.size == AVIF_BOX_SIZE_TBD) ? AVIF_BOX_SIZE_TBD : (size_t)(parseOffset + header.size);
+            return avifParseOBUs(decoder, parseOffset, parseSize, temporalUnits, temporalUnitCount);
+            // TODO(yguyon): Handle multiple mdat boxes or say why it is not needed here.
+        } else if (header.size > (UINT64_MAX - parseOffset)) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        parseOffset += header.size;
     }
     return AVIF_RESULT_OK;
 }
@@ -3405,6 +3667,221 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
     return AVIF_RESULT_OK;
 }
 
+// Returns the first item with a data extent beginning at offset.
+// offset is in bytes and relative to the beginning of the AVIF stream.
+static avifDecoderItem * avifFindItemByOffset(avifDecoder * decoder, uint64_t offset)
+{
+    avifDecoderData * data = decoder->data;
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        if (item->idatStored) {
+            // TODO(yguyon): Handle OBUs stored in meta>idat
+            continue;
+        }
+        for (uint32_t extentIndex = 0; extentIndex < item->extents.count; ++extentIndex) {
+            const avifExtent * extent = &item->extents.extent[extentIndex];
+            if (extent->offset == offset) {
+                return item;
+            }
+        }
+    }
+    return NULL;
+}
+
+// Returns the first item with a data extent sharing at least one byte with the range [offset:offset+size[.
+// offset is in bytes and relative to the beginning of the AVIF stream.
+static avifDecoderItem * avifFindItemOverlapping(avifDecoder * decoder, uint64_t offset, size_t size)
+{
+    avifDecoderData * data = decoder->data;
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        if (item->idatStored) {
+            // TODO(yguyon): Handle OBUs stored in meta>idat
+            continue;
+        }
+        for (uint32_t extentIndex = 0; extentIndex < item->extents.count; ++extentIndex) {
+            const avifExtent * extent = &item->extents.extent[extentIndex];
+            if ((extent->offset < offset + size) && (extent->offset + extent->size > offset)) {
+                return item;
+            }
+        }
+    }
+    return NULL;
+}
+
+static avifResult avifParseAV1Bitstream(avifDecoder * decoder)
+{
+    // Parse the mdat payload for OBUs.
+    avifTemporalUnit temporalUnits[AVIF_MAX_TEMPORAL_UNIT_COUNT];
+    uint32_t temporalUnitCount = 0;
+    // Ignore any parsing error and only rely on successfully extracted temporalUnits.
+    (void)avifParseMdat(decoder, temporalUnits, &temporalUnitCount);
+
+    // Now that temporalUnits were extracted from the "mdat" box, see if any Implicit AV1 Image Item can be deduced.
+    for (avifTemporalUnit * temporalUnit = temporalUnits; temporalUnit < temporalUnits + temporalUnitCount; ++temporalUnit) {
+        // See if the AV1 Temporal Unit is already referenced as an item.
+        avifDecoderItem * item = avifFindItemByOffset(decoder, temporalUnit->offset);
+        // TODO(yguyon): Once avifParseMdat() only parses data not explicitly referenced by "iloc",
+        //               just check for any overlappingItem and get rid of avifFindItemByOffset().
+        //               Also do this loop for explicitly referenced items that may lack other boxes.
+
+        // Discard the AV1 Temporal Unit if another item overlaps its data.
+        const avifDecoderItem * overlappingItem = avifFindItemOverlapping(decoder, temporalUnit->offset, temporalUnit->size);
+        if (overlappingItem && (overlappingItem != item)) {
+            // The AV1 Temporal Unit was either badly parsed, corrupted or not even an AV1 Temporal Unit.
+            // TODO(yguyon): Return an error here instead of silently moving on.
+            continue;
+        }
+
+        // Create a new item corresponding to the AV1 Temporal Unit we discovered.
+        // TODO(yguyon): Once avifParseMdat() only parses data not explicitly referenced by "iloc", remove that part.
+        if (!item) {
+            const uint32_t itemID = avifMetaFirstUnusedItemID(decoder->data->meta);
+            if (!itemID) {
+                return AVIF_RESULT_OUT_OF_MEMORY;
+            }
+            item = avifMetaFindItem(decoder->data->meta, itemID); // Create a new item of type "\0\0\0\0".
+            if (!item) {
+                return AVIF_RESULT_OUT_OF_MEMORY;
+            }
+        }
+        if (memcmp(item->type, "\0\0\0\0", 4) && memcmp(item->type, "av01", 4)) {
+            // The item does not reference an AV1 Temporal Unit. Discard the AV1 Temporal Unit.
+            continue;
+        }
+
+        // Fill missing properties for this item ID.
+        if (!memcmp(item->type, "\0\0\0\0", 4)) {
+            memcpy(item->type, "av01", 4);
+        }
+        if (!item->size) {
+            item->size = temporalUnit->size;
+        }
+        if (!item->extents.count) {
+            avifExtent * extent = (avifExtent *)avifArrayPushPtr(&item->extents);
+            extent->offset = temporalUnit->offset;
+            extent->size = temporalUnit->size;
+        }
+        if (!avifPropertyArrayFind(&item->properties, "av1C")) {
+            avifProperty * prop = (avifProperty *)avifArrayPushPtr(&item->properties);
+            memcpy(prop->type, "av1C", 4);
+            prop->u.av1C = temporalUnit->sequenceHeader.av1C;
+        }
+        if (!avifPropertyArrayFind(&item->properties, "pixi")) {
+            avifProperty * prop = (avifProperty *)avifArrayPushPtr(&item->properties);
+            memcpy(prop->type, "pixi", 4);
+            prop->u.pixi.planeCount = (temporalUnit->sequenceHeader.yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+            memset(prop->u.pixi.planeDepths, (uint8_t)temporalUnit->sequenceHeader.bitDepth, sizeof(prop->u.pixi.planeDepths));
+        }
+        if (!avifPropertyArrayFind(&item->properties, "ispe")) {
+            avifProperty * prop = (avifProperty *)avifArrayPushPtr(&item->properties);
+            memcpy(prop->type, "ispe", 4);
+            prop->u.ispe.width = temporalUnit->sequenceHeader.maxWidth;
+            prop->u.ispe.height = temporalUnit->sequenceHeader.maxHeight;
+        }
+        if (!avifPropertyArrayFind(&item->properties, "colr")) {
+            avifProperty * prop = (avifProperty *)avifArrayPushPtr(&item->properties);
+            memcpy(prop->type, "colr", 4);
+            prop->u.colr.hasNCLX = AVIF_TRUE;
+            prop->u.colr.colorPrimaries = temporalUnit->sequenceHeader.colorPrimaries;
+            prop->u.colr.transferCharacteristics = temporalUnit->sequenceHeader.transferCharacteristics;
+            prop->u.colr.matrixCoefficients = temporalUnit->sequenceHeader.matrixCoefficients;
+            prop->u.colr.range = temporalUnit->sequenceHeader.range;
+        }
+    }
+    return AVIF_RESULT_OK;
+}
+
+static void avifAssociateImplicitPrimaryColorItem(avifDecoder * decoder)
+{
+    if (decoder->data->meta->primaryItemID != 0) {
+        return; // Already set.
+    }
+    uint8_t minPlaneCountOfPrimaryItem = 1;
+    // TODO(yguyon): If there are two implicit items with 1 and 3 channels, should it consider them
+    //               as alpha+color or just monochrome+ignored?
+
+    for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &decoder->data->meta->items.item[itemIndex];
+        if (memcmp(item->type, "av01", 4)) {
+            continue;
+        }
+        if (item->thumbnailForID || item->auxForID || item->descForID || item->dimgForID || item->premByID ||
+            item->hasUnsupportedEssentialProperty) {
+            continue;
+        }
+        const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
+        if (!pixiProp || (pixiProp->u.pixi.planeCount < minPlaneCountOfPrimaryItem)) {
+            continue;
+        }
+        // item is a primary item candidate.
+        if (!decoder->data->meta->primaryItemID || (pixiProp->u.pixi.planeCount > minPlaneCountOfPrimaryItem)) {
+            minPlaneCountOfPrimaryItem = pixiProp->u.pixi.planeCount;
+            decoder->data->meta->primaryItemID = item->id;
+        } else {
+            assert(pixiProp->u.pixi.planeCount == minPlaneCountOfPrimaryItem);
+            decoder->data->meta->primaryItemID = AVIF_MIN(decoder->data->meta->primaryItemID, item->id);
+        }
+    }
+}
+
+static void avifAssociateImplicitAlpha(avifDecoder * decoder)
+{
+    const uint32_t colorItemID = decoder->data->meta->primaryItemID;
+    if (colorItemID == 0) {
+        // No primary color item to refer to, there is no point in looking further
+        // for an Implicit AV1 Alpha Image Item.
+        return;
+    }
+
+    for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &decoder->data->meta->items.item[itemIndex];
+        const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
+        if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType) && (item->auxForID == colorItemID)) {
+            // There is already an alpha item.
+            return;
+        }
+    }
+
+    for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &decoder->data->meta->items.item[itemIndex];
+        if ((item->id == colorItemID) || memcmp(item->type, "av01", 4)) {
+            continue;
+        }
+        const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
+        if (!pixiProp || (pixiProp->u.pixi.planeCount != 1)) {
+            continue;
+        }
+        const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
+        if (auxCProp && !isAlphaURN(auxCProp->u.auxC.auxType)) {
+            continue;
+        }
+
+        // item is an implicit alpha item candidate so far.
+        avifBool itemIsAssociatedToAnother = item->thumbnailForID || (item->auxForID && (item->auxForID != colorItemID)) ||
+                                             item->descForID || item->dimgForID || item->premByID ||
+                                             item->hasUnsupportedEssentialProperty;
+        for (uint32_t otherItemIndex = 0; !itemIsAssociatedToAnother && (otherItemIndex < decoder->data->meta->items.count);
+             ++otherItemIndex) {
+            avifDecoderItem * otherItem = &decoder->data->meta->items.item[otherItemIndex];
+            itemIsAssociatedToAnother = (otherItem->thumbnailForID == item->id) || (otherItem->auxForID == item->id) ||
+                                        (otherItem->descForID == item->id) || (otherItem->dimgForID == item->id) ||
+                                        (otherItem->premByID == item->id);
+        }
+        if (itemIsAssociatedToAnother) {
+            continue;
+        }
+
+        // Make item an alpha item of colorItemID through auxl and auxC boxes.
+        item->auxForID = colorItemID;
+        if (!auxCProp) {
+            avifProperty * prop = (avifProperty *)avifArrayPushPtr(&item->properties);
+            memcpy(prop->type, "auxC", 4);
+            memcpy(prop->u.auxC.auxType, AVIF_URN_ALPHA0, 44);
+        }
+    }
+}
+
 avifResult avifDecoderParse(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
@@ -3430,6 +3907,14 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     avifResult parseResult = avifParse(decoder);
     if (parseResult != AVIF_RESULT_OK) {
         return parseResult;
+    }
+
+    // Create Implicit AV1 Image Items as defined by AV1-AVIF specification version TODO(yguyon): Put new version number.
+    if (!memcmp(decoder->data->majorBrand, "avif", 4) && (decoder->data->minorVersion >= 1)) {
+        AVIF_CHECKRES(avifParseAV1Bitstream(decoder));
+        avifAssociateImplicitPrimaryColorItem(decoder);
+        // Leave checks for primary item presence to avifDecoderReset().
+        avifAssociateImplicitAlpha(decoder);
     }
 
     // Walk the decoded items (if any) and harvest ispe
