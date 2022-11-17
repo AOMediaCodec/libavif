@@ -770,25 +770,26 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
             return NULL;
         }
     }
+    const avifBool usesU16 = avifImageUsesU16(srcImage);
     for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
         const uint8_t * srcRow = avifImagePlane(srcImage, plane);
         const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, plane);
         const uint32_t srcPlaneWidth = avifImagePlaneWidth(srcImage, plane);
         const uint32_t srcPlaneHeight = avifImagePlaneHeight(srcImage, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
-        const size_t srcPlaneWidthBytes = (size_t)srcPlaneWidth << avifImageUsesU16(srcImage);
+        const size_t srcPlaneWidthBytes = (size_t)srcPlaneWidth << usesU16;
 
         uint8_t * dstRow = avifImagePlane(dstImage, plane);
         const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, plane);
         const uint32_t dstPlaneWidth = avifImagePlaneWidth(dstImage, plane);
         const uint32_t dstPlaneHeight = avifImagePlaneHeight(dstImage, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
-        const size_t dstPlaneWidthBytes = (size_t)dstPlaneWidth << avifImageUsesU16(srcImage);
+        const size_t dstPlaneWidthBytes = (size_t)dstPlaneWidth << usesU16;
 
         for (uint32_t j = 0; j < srcPlaneHeight; ++j) {
             memcpy(dstRow, srcRow, srcPlaneWidthBytes);
 
             // Pad columns.
             if (dstPlaneWidth > srcPlaneWidth) {
-                if (avifImageUsesU16(srcImage)) {
+                if (usesU16) {
                     uint16_t * dstRow16 = (uint16_t *)dstRow;
                     for (uint32_t x = srcPlaneWidth; x < dstPlaneWidth; ++x) {
                         dstRow16[x] = dstRow16[srcPlaneWidth - 1];
