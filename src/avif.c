@@ -202,15 +202,15 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         }
     }
     for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
-        uint32_t planeHeight = avifImagePlaneHeight(dstImage, plane);
         uint8_t * srcRow = avifImagePlane(srcImage, plane);
-        uint8_t * dstRow = avifImagePlane(dstImage, plane);
-        if (!dstRow) {
+        if (!srcRow) {
             continue;
         }
+        uint8_t * dstRow = avifImagePlane(dstImage, plane);
         uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, plane);
         uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, plane);
         uint32_t planeWidthBytes = avifImagePlaneWidth(dstImage, plane) << (dstImage->depth > 8);
+        uint32_t planeHeight = avifImagePlaneHeight(dstImage, plane);
         for (uint32_t j = 0; j < planeHeight; ++j) {
             memcpy(dstRow, srcRow, planeWidthBytes);
             srcRow += srcRowBytes;
