@@ -278,9 +278,14 @@ if(AVIF_CODEC_DAV1D)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_dav1d.c)
 
     if(AVIF_LOCAL_DAV1D)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d${AVIF_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+            # On windows, meson will produce a libdav1d.a instead of the expected libdav1d.dll/.lib.
+            # See https://github.com/mesonbuild/meson/issues/8153.
+            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
+        endif()
+        if(NOT EXISTS "${LIB_FILENAME}")
+            message(FATAL_ERROR "libavif: ${LIB_FILENAME}/.a is missing, bailing out")
         endif()
 
         set(AVIF_CODEC_INCLUDES
