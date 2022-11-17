@@ -73,6 +73,7 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
     uint8_t* row = avifImagePlane(image, c);
     const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
@@ -93,6 +94,7 @@ void FillImageGradient(avifImage* image) {
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
     uint8_t* row = avifImagePlane(image, c);
     const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
@@ -168,6 +170,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     const uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
     const uint32_t row_bytes2 = avifImagePlaneRowBytes(&image2, c);
     const uint32_t plane_width = avifImagePlaneWidth(&image1, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
     const uint32_t plane_height = avifImagePlaneHeight(&image1, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       if (avifImageUsesU16(&image1)) {
@@ -205,6 +208,7 @@ void CopyImageSamples(const avifImage& from, avifImage* to) {
     const uint32_t from_row_bytes = avifImagePlaneRowBytes(&from, c);
     const uint32_t to_row_bytes = avifImagePlaneRowBytes(to, c);
     const uint32_t plane_width = avifImagePlaneWidth(&from, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
     const uint32_t plane_height = avifImagePlaneHeight(&from, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       if (avifImageUsesU16(&from)) {

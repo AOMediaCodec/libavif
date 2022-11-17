@@ -185,11 +185,9 @@ static avifBool avifJPEGReadCopy(avifImage * avif, struct jpeg_decompress_struct
                         return AVIF_FALSE;
                     }
 
-                    avifPixelFormatInfo info;
-                    avifGetPixelFormatInfo(avif->yuvFormat, &info);
-                    uint32_t uvHeight = (avif->height + info.chromaShiftY) >> info.chromaShiftY;
-                    memset(avif->yuvPlanes[AVIF_CHAN_U], 128, avif->yuvRowBytes[AVIF_CHAN_U] * uvHeight);
-                    memset(avif->yuvPlanes[AVIF_CHAN_V], 128, avif->yuvRowBytes[AVIF_CHAN_V] * uvHeight);
+                    uint32_t uvHeight = avifImagePlaneHeight(avif, AVIF_CHAN_U);
+                    memset(avif->yuvPlanes[AVIF_CHAN_U], 128, (size_t)avif->yuvRowBytes[AVIF_CHAN_U] * uvHeight);
+                    memset(avif->yuvPlanes[AVIF_CHAN_V], 128, (size_t)avif->yuvRowBytes[AVIF_CHAN_V] * uvHeight);
 
                     return AVIF_TRUE;
                 }

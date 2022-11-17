@@ -3,6 +3,7 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
@@ -184,39 +185,36 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         if (allocationResult != AVIF_RESULT_OK) {
             return allocationResult;
         }
-
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
-        uint32_t uvHeight = (dstImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-            uint32_t planeHeight = (yuvPlane == AVIF_CHAN_Y) ? dstImage->height : uvHeight;
-
-            if (!srcImage->yuvRowBytes[yuvPlane]) {
+        for (int uvPlane = AVIF_CHAN_U; uvPlane <= AVIF_CHAN_V; ++uvPlane) {
+            if (!srcImage->yuvRowBytes[uvPlane]) {
                 // plane is absent. If we're copying from a source without
                 // them, mimic the source image's state by removing our copy.
-                avifFree(dstImage->yuvPlanes[yuvPlane]);
-                dstImage->yuvPlanes[yuvPlane] = NULL;
-                dstImage->yuvRowBytes[yuvPlane] = 0;
-                continue;
-            }
-
-            for (uint32_t j = 0; j < planeHeight; ++j) {
-                uint8_t * srcRow = &srcImage->yuvPlanes[yuvPlane][j * srcImage->yuvRowBytes[yuvPlane]];
-                uint8_t * dstRow = &dstImage->yuvPlanes[yuvPlane][j * dstImage->yuvRowBytes[yuvPlane]];
-                memcpy(dstRow, srcRow, dstImage->yuvRowBytes[yuvPlane]);
+                avifFree(dstImage->yuvPlanes[uvPlane]);
+                dstImage->yuvPlanes[uvPlane] = NULL;
+                dstImage->yuvRowBytes[uvPlane] = 0;
             }
         }
     }
-
     if ((planes & AVIF_PLANES_A) && srcImage->alphaPlane) {
         const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
         if (allocationResult != AVIF_RESULT_OK) {
             return allocationResult;
         }
-        for (uint32_t j = 0; j < dstImage->height; ++j) {
-            uint8_t * srcAlphaRow = &srcImage->alphaPlane[j * srcImage->alphaRowBytes];
-            uint8_t * dstAlphaRow = &dstImage->alphaPlane[j * dstImage->alphaRowBytes];
-            memcpy(dstAlphaRow, srcAlphaRow, dstImage->alphaRowBytes);
+    }
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+        uint8_t * dstRow = avifImagePlane(dstImage, plane);
+        if (!dstRow) {
+            continue;
+        }
+        uint8_t * srcRow = avifImagePlane(srcImage, plane);
+        uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, plane);
+        uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, plane);
+        uint32_t planeWidthBytes = avifImagePlaneWidth(dstImage, plane) << (dstImage->depth > 8);
+        uint32_t planeHeight = avifImagePlaneHeight(dstImage, plane);
+        for (uint32_t j = 0; j < planeHeight; ++j) {
+            memcpy(dstRow, srcRow, planeWidthBytes);
+            srcRow += srcRowBytes;
+            dstRow += dstRowBytes;
         }
     }
     return AVIF_RESULT_OK;
@@ -236,7 +234,7 @@ avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage
     dstImage->height = rect->height;
     const uint32_t pixelBytes = (srcImage->depth > 8) ? 2 : 1;
     if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        for (int yuvPlane = AVIF_CHAN_Y; yuvPlane <= AVIF_CHAN_V; ++yuvPlane) {
             if (srcImage->yuvRowBytes[yuvPlane]) {
                 const size_t planeX = (yuvPlane == AVIF_CHAN_Y) ? rect->x : (rect->x >> formatInfo.chromaShiftX);
                 const size_t planeY = (yuvPlane == AVIF_CHAN_Y) ? rect->y : (rect->y >> formatInfo.chromaShiftY);
@@ -309,18 +307,13 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
         }
 
         if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
-            if (!image->yuvPlanes[AVIF_CHAN_U]) {
-                image->yuvRowBytes[AVIF_CHAN_U] = (uint32_t)uvRowBytes;
-                image->yuvPlanes[AVIF_CHAN_U] = avifAlloc(uvSize);
-                if (!image->yuvPlanes[AVIF_CHAN_U]) {
-                    return AVIF_RESULT_OUT_OF_MEMORY;
-                }
-            }
-            if (!image->yuvPlanes[AVIF_CHAN_V]) {
-                image->yuvRowBytes[AVIF_CHAN_V] = (uint32_t)uvRowBytes;
-                image->yuvPlanes[AVIF_CHAN_V] = avifAlloc(uvSize);
-                if (!image->yuvPlanes[AVIF_CHAN_V]) {
-                    return AVIF_RESULT_OUT_OF_MEMORY;
+            for (int uvPlane = AVIF_CHAN_U; uvPlane <= AVIF_CHAN_V; ++uvPlane) {
+                if (!image->yuvPlanes[uvPlane]) {
+                    image->yuvRowBytes[uvPlane] = (uint32_t)uvRowBytes;
+                    image->yuvPlanes[uvPlane] = avifAlloc(uvSize);
+                    if (!image->yuvPlanes[uvPlane]) {
+                        return AVIF_RESULT_OUT_OF_MEMORY;
+                    }
                 }
             }
         }

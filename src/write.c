@@ -742,46 +742,6 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
     return AVIF_RESULT_OK;
 }
 
-// Copies the pixel from srcPlane to the already allocated dstPlane,
-// filling any extra row or column with border pixel values.
-static void avifCopyAndPadPlane(uint8_t * dstPlane,
-                                uint32_t dstRowBytes,
-                                uint32_t dstWidth,
-                                uint32_t dstHeight,
-                                const uint8_t * srcPlane,
-                                uint32_t srcRowBytes,
-                                uint32_t srcWidth,
-                                uint32_t srcHeight,
-                                uint32_t sampleByteCount)
-{
-    assert(dstWidth >= srcWidth);
-    assert(dstHeight >= srcHeight);
-    for (uint32_t j = 0; j < srcHeight; ++j) {
-        const uint8_t * srcRow = &srcPlane[j * (size_t)srcRowBytes];
-        uint8_t * dstRow = &dstPlane[j * (size_t)dstRowBytes];
-        // Copy srcWidth samples. srcRowBytes might be unrelated.
-        memcpy(dstRow, srcRow, (size_t)srcWidth * sampleByteCount);
-
-        // Pad columns.
-        if (dstWidth > srcWidth) {
-            if (sampleByteCount == 1) {
-                memset(&dstRow[srcWidth], dstRow[srcWidth - 1], dstWidth - srcWidth);
-            } else { // sampleByteCount == 2
-                uint16_t * dstRow16 = (uint16_t *)dstRow;
-                for (uint32_t x = srcWidth; x < dstWidth; ++x) {
-                    dstRow16[x] = dstRow16[srcWidth - 1];
-                }
-            }
-        }
-    }
-
-    // Pad rows.
-    for (uint32_t j = srcHeight; j < dstHeight; ++j) {
-        uint8_t * dstRow = &dstPlane[j * (size_t)dstRowBytes];
-        memcpy(dstRow, dstRow - dstRowBytes, (size_t)dstWidth * sampleByteCount);
-    }
-}
-
 // Same as avifImageCopy() but pads the dstImage with border pixel values to reach dstWidth and dstHeight.
 static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
 {
@@ -791,6 +751,8 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
         avifImageDestroy(dstImage);
         return NULL;
     }
+    assert(dstWidth >= srcImage->width);
+    assert(dstHeight >= srcImage->height);
     dstImage->width = dstWidth;
     dstImage->height = dstHeight;
 
@@ -800,49 +762,50 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
             avifImageDestroy(dstImage);
             return NULL;
         }
-
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
-        const uint32_t srcUvWidth = (srcImage->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
-        const uint32_t srcUvHeight = (srcImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
-        const uint32_t dstUvWidth = (dstImage->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
-        const uint32_t dstUvHeight = (dstImage->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
-            if (!srcImage->yuvRowBytes[yuvPlane]) {
-                // Plane is absent. If we're copying from a source without
-                // them, mimic the source image's state by removing our copy.
-                avifFree(dstImage->yuvPlanes[yuvPlane]);
-                dstImage->yuvPlanes[yuvPlane] = NULL;
-                dstImage->yuvRowBytes[yuvPlane] = 0;
-                continue;
-            }
-            avifCopyAndPadPlane(dstImage->yuvPlanes[yuvPlane],
-                                dstImage->yuvRowBytes[yuvPlane],
-                                (yuvPlane == AVIF_CHAN_Y) ? dstImage->width : dstUvWidth,
-                                (yuvPlane == AVIF_CHAN_Y) ? dstImage->height : dstUvHeight,
-                                srcImage->yuvPlanes[yuvPlane],
-                                srcImage->yuvRowBytes[yuvPlane],
-                                (yuvPlane == AVIF_CHAN_Y) ? srcImage->width : srcUvWidth,
-                                (yuvPlane == AVIF_CHAN_Y) ? srcImage->height : srcUvHeight,
-                                avifImageUsesU16(srcImage) ? 2 : 1);
-        }
     }
-
     if (srcImage->alphaPlane) {
         const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
         if (allocationResult != AVIF_RESULT_OK) {
             avifImageDestroy(dstImage);
             return NULL;
         }
-        avifCopyAndPadPlane(dstImage->alphaPlane,
-                            dstImage->alphaRowBytes,
-                            dstImage->width,
-                            dstImage->height,
-                            srcImage->alphaPlane,
-                            srcImage->alphaRowBytes,
-                            srcImage->width,
-                            srcImage->height,
-                            avifImageUsesU16(srcImage) ? 2 : 1);
+    }
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+        const uint8_t * srcRow = avifImagePlane(srcImage, plane);
+        const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, plane);
+        const uint32_t srcPlaneWidth = avifImagePlaneWidth(srcImage, plane);
+        const uint32_t srcPlaneHeight = avifImagePlaneHeight(srcImage, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
+        const size_t srcPlaneWidthBytes = (size_t)srcPlaneWidth << avifImageUsesU16(srcImage);
+
+        uint8_t * dstRow = avifImagePlane(dstImage, plane);
+        const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, plane);
+        const uint32_t dstPlaneWidth = avifImagePlaneWidth(dstImage, plane);
+        const uint32_t dstPlaneHeight = avifImagePlaneHeight(dstImage, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
+        const size_t dstPlaneWidthBytes = (size_t)dstPlaneWidth << avifImageUsesU16(srcImage);
+
+        for (uint32_t j = 0; j < srcPlaneHeight; ++j) {
+            memcpy(dstRow, srcRow, srcPlaneWidthBytes);
+
+            // Pad columns.
+            if (dstPlaneWidth > srcPlaneWidth) {
+                if (avifImageUsesU16(srcImage)) {
+                    uint16_t * dstRow16 = (uint16_t *)dstRow;
+                    for (uint32_t x = srcPlaneWidth; x < dstPlaneWidth; ++x) {
+                        dstRow16[x] = dstRow16[srcPlaneWidth - 1];
+                    }
+                } else {
+                    memset(&dstRow[srcPlaneWidth], dstRow[srcPlaneWidth - 1], dstPlaneWidth - srcPlaneWidth);
+                }
+            }
+            srcRow += srcRowBytes;
+            dstRow += dstRowBytes;
+        }
+
+        // Pad rows.
+        for (uint32_t j = srcPlaneHeight; j < dstPlaneHeight; ++j) {
+            memcpy(dstRow, dstRow - dstRowBytes, dstPlaneWidthBytes);
+            dstRow += dstRowBytes;
+        }
     }
     return dstImage;
 }
