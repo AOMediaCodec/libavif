@@ -514,7 +514,7 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
     for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
         uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
         uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
-        uint8_t * row = avifImagePlane(avif, plane);
+        const uint8_t * row = avifImagePlane(avif, plane);
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
         for (uint32_t y = 0; y < planeHeight; ++y) {
             if (fwrite(row, 1, planeWidthBytes, f) != planeWidthBytes) {

@@ -1406,14 +1406,14 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             if (alpha) {
                 // A
                 for (unsigned int j = 0; j < heightToCopy; ++j) {
-                    uint8_t * src = &tile->image->alphaPlane[j * tile->image->alphaRowBytes];
+                    const uint8_t * src = &tile->image->alphaPlane[j * tile->image->alphaRowBytes];
                     uint8_t * dst = &dstImage->alphaPlane[(yaColOffset * pixelBytes) + ((yaRowOffset + j) * dstImage->alphaRowBytes)];
                     memcpy(dst, src, yaRowBytes);
                 }
             } else {
                 // Y
                 for (unsigned int j = 0; j < heightToCopy; ++j) {
-                    uint8_t * src = &tile->image->yuvPlanes[AVIF_CHAN_Y][j * tile->image->yuvRowBytes[AVIF_CHAN_Y]];
+                    const uint8_t * src = &tile->image->yuvPlanes[AVIF_CHAN_Y][j * tile->image->yuvRowBytes[AVIF_CHAN_Y]];
                     uint8_t * dst =
                         &dstImage->yuvPlanes[AVIF_CHAN_Y][(yaColOffset * pixelBytes) + ((yaRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_Y])];
                     memcpy(dst, src, yaRowBytes);
@@ -1429,12 +1429,12 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                 size_t uvRowOffset = yaRowOffset >> formatInfo.chromaShiftY;
                 size_t uvRowBytes = yaRowBytes >> formatInfo.chromaShiftX;
                 for (unsigned int j = 0; j < heightToCopy; ++j) {
-                    uint8_t * srcU = &tile->image->yuvPlanes[AVIF_CHAN_U][j * tile->image->yuvRowBytes[AVIF_CHAN_U]];
+                    const uint8_t * srcU = &tile->image->yuvPlanes[AVIF_CHAN_U][j * tile->image->yuvRowBytes[AVIF_CHAN_U]];
                     uint8_t * dstU =
                         &dstImage->yuvPlanes[AVIF_CHAN_U][(uvColOffset * pixelBytes) + ((uvRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_U])];
                     memcpy(dstU, srcU, uvRowBytes);
 
-                    uint8_t * srcV = &tile->image->yuvPlanes[AVIF_CHAN_V][j * tile->image->yuvRowBytes[AVIF_CHAN_V]];
+                    const uint8_t * srcV = &tile->image->yuvPlanes[AVIF_CHAN_V][j * tile->image->yuvRowBytes[AVIF_CHAN_V]];
                     uint8_t * dstV =
                         &dstImage->yuvPlanes[AVIF_CHAN_V][(uvColOffset * pixelBytes) + ((uvRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_V])];
                     memcpy(dstV, srcV, uvRowBytes);
@@ -3815,7 +3815,7 @@ static avifResult avifImageLimitedToFullAlpha(avifImage * image)
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
-    uint8_t * alphaPlane = image->alphaPlane;
+    const uint8_t * alphaPlane = image->alphaPlane;
     const uint32_t alphaRowBytes = image->alphaRowBytes;
 
     // We cannot do the range conversion in place since it will modify the
@@ -3829,17 +3829,17 @@ static avifResult avifImageLimitedToFullAlpha(avifImage * image)
 
     if (image->depth > 8) {
         for (uint32_t j = 0; j < image->height; ++j) {
-            uint8_t * srcRow = &alphaPlane[j * alphaRowBytes];
+            const uint8_t * srcRow = &alphaPlane[j * alphaRowBytes];
             uint8_t * dstRow = &image->alphaPlane[j * image->alphaRowBytes];
             for (uint32_t i = 0; i < image->width; ++i) {
-                int srcAlpha = *((uint16_t *)&srcRow[i * 2]);
+                int srcAlpha = *((const uint16_t *)&srcRow[i * 2]);
                 int dstAlpha = avifLimitedToFullY(image->depth, srcAlpha);
                 *((uint16_t *)&dstRow[i * 2]) = (uint16_t)dstAlpha;
             }
         }
     } else {
         for (uint32_t j = 0; j < image->height; ++j) {
-            uint8_t * srcRow = &alphaPlane[j * alphaRowBytes];
+            const uint8_t * srcRow = &alphaPlane[j * alphaRowBytes];
             uint8_t * dstRow = &image->alphaPlane[j * image->alphaRowBytes];
             for (uint32_t i = 0; i < image->width; ++i) {
                 int srcAlpha = srcRow[i];
