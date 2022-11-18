@@ -104,4 +104,4 @@ jobs:
       run: ninja
     - name: Run AVIF Tests
       working-directory: ./build
-      run: ctest -j $Env:NUMBER_OF_PROCESSORS
+      run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
