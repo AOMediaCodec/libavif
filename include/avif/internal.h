@@ -78,7 +78,7 @@ typedef struct avifAlphaParams
     uint32_t height;
 
     uint32_t srcDepth;
-    uint8_t * srcPlane;
+    const uint8_t * srcPlane;
     uint32_t srcRowBytes;
     uint32_t srcOffsetBytes;
     uint32_t srcPixelBytes;

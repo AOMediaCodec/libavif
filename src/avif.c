@@ -206,7 +206,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         if (!dstRow) {
             continue;
         }
-        uint8_t * srcRow = avifImagePlane(srcImage, plane);
+        const uint8_t * srcRow = avifImagePlane(srcImage, plane);
         uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, plane);
         uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, plane);
         uint32_t planeWidthBytes = avifImagePlaneWidth(dstImage, plane) << (dstImage->depth > 8);
