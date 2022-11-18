@@ -89,4 +89,4 @@ jobs:
       run: ninja
     - name: Run AVIF Tests
       working-directory: ./build
-      run: ctest -j $(getconf _NPROCESSORS_ONLN)
+      run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
