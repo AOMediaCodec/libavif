@@ -2806,17 +2806,21 @@ static avifBool avifParseEditListBox(avifTrack * track, const uint8_t * raw, siz
     track->isRepeating = AVIF_TRUE;
     uint32_t entry_count;
     avifROStreamReadU32(&s, &entry_count); // unsigned int(32) entry_count;
-    if (entry_count > 1) {
-        avifDiagnosticsPrintf(diag, "Box[elst] contains an entry_count > 1 [%d]", entry_count);
+    if (entry_count != 1) {
+        avifDiagnosticsPrintf(diag, "Box[elst] contains an entry_count != 1 [%d]", entry_count);
         return AVIF_FALSE;
     }
 
     if (version == 1) {
         avifROStreamReadU64(&s, &track->segmentDuration); // unsigned int(64) segment_duration;
-    } else {
+    } else if (version == 0) {
         uint32_t segmentDuration;
         avifROStreamReadU32(&s, &segmentDuration); // unsigned int(32) segment_duration;
         track->segmentDuration = segmentDuration;
+    } else {
+        // Unsupported version
+        avifDiagnosticsPrintf(diag, "Box[elst] has an unsupported version [%u]", version);
+        return AVIF_FALSE;
     }
     if (track->segmentDuration == 0) {
         avifDiagnosticsPrintf(diag, "Box[elst] Invalid value for segment_duration (0).");
