@@ -91,6 +91,7 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
 }
 
 void FillImageGradient(avifImage* image) {
+  assert(image->yuvRange == AVIF_RANGE_FULL);
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
