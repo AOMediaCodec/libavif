@@ -21,6 +21,8 @@ to the avifImage struct.
   into cells.
 * Apps must be built with libpng version 1.6.32 or above.
 * Update svt.cmd/svt.sh: v1.3.0
+* avifImageCopy() no longer accepts source U and V channels to be NULL for
+  non-4:0:0 input if Y is not NULL and if AVIF_PLANES_YUV is specified.
 
 ## [0.11.1] - 2022-10-19
 
