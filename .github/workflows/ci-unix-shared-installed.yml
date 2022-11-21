@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v3
@@ -35,11 +35,19 @@ jobs:
       working-directory: ./ext
       run: sed -i'' -e 's/-DBUILD_SHARED_LIBS=OFF/-DBUILD_SHARED_LIBS=ON/' *.cmd
     - name: Add recent repository for libyuv-dev
+      if: runner.os == 'Linux'
       run: echo "deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
     - name: Update apt
+      if: runner.os == 'Linux'
       run: sudo apt-get update
-    - name: Install dependencies
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
       run: sudo apt-get install libaom-dev libdav1d-dev libyuv-dev
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: brew install aom dav1d
+      # TODO(yguyon): Install libyuv
+
       # `sudo apt-get install googletest libgtest-dev` leads to the following:
       #   "libgtest.a(gtest-all.cc.o): undefined reference to `std::__throw_bad_array_new_length()'"
       # so build it locally instead.
