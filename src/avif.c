@@ -182,7 +182,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
 
     if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         if ((srcImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) &&
-            (!srcImage->yuvRowBytes[AVIF_CHAN_U] || !srcImage->yuvRowBytes[AVIF_CHAN_V])) {
+            (!srcImage->yuvPlanes[AVIF_CHAN_U] || !srcImage->yuvPlanes[AVIF_CHAN_V])) {
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
         const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
