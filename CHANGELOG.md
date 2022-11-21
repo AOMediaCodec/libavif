@@ -14,7 +14,7 @@ and avifDecoder structs.
 * Add STATIC library target avif_internal to allow tests to access functions
   from internal.h when BUILD_SHARED_LIBS is ON.
 * Add clli metadata read and write support
-* repetitionCount member added to avifEncoder and avifDecoder struct to specify
+* Add repetitionCount member to avifEncoder and avifDecoder structs to specify
   the number of repetitions for animated image sequences.
 
 ### Changed

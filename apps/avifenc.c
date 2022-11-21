@@ -1256,6 +1256,7 @@ int main(int argc, char * argv[])
         int nextImageIndex = -1;
         while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
             ++nextImageIndex;
+            isImageSequence = AVIF_TRUE;
 
             uint64_t nextDurationInTimescales = nextFile->duration ? nextFile->duration : outputTiming.duration;
 
@@ -1334,9 +1335,6 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-        }
-        if (nextImageIndex > 0) {
-            isImageSequence = AVIF_TRUE;
         }
     }
 
