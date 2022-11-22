@@ -1545,7 +1545,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         }
         uint64_t durationInTimescales;
         if (encoder->repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
-            durationInTimescales = AVIF_UNKNOWN_DURATION64;
+            durationInTimescales = AVIF_INDEFINITE_DURATION64;
         } else {
             uint64_t loopCount = encoder->repetitionCount + 1;
             assert(framesDurationInTimescales != 0);
@@ -1623,9 +1623,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifBoxMarker elst = avifRWStreamWriteFullBox(&s, "elst", AVIF_BOX_SIZE_TBD, 1, elstFlags);
             avifRWStreamWriteU32(&s, 1);                          // unsigned int(32) entry_count;
             avifRWStreamWriteU64(&s, framesDurationInTimescales); // unsigned int(64) segment_duration;
-            avifRWStreamWriteU64(&s, 0);                          // unsigned int(64) media_time;
-            avifRWStreamWriteU16(&s, 1);                          // unsigned int(16) media_rate_integer;
-            avifRWStreamWriteU16(&s, 0);                          // unsigned int(16) media_rate_fraction = 0;
+            avifRWStreamWriteU64(&s, 0);                          // int(64) media_time;
+            avifRWStreamWriteU16(&s, 1);                          // int(16) media_rate_integer;
+            avifRWStreamWriteU16(&s, 0);                          // int(16) media_rate_fraction = 0;
             avifRWStreamFinishBox(&s, elst);
             avifRWStreamFinishBox(&s, edts);
 

@@ -2472,7 +2472,7 @@ static avifBool avifParseTrackHeaderBox(avifTrack * track,
         AVIF_CHECK(avifROStreamReadU32(&s, &trackID));       // unsigned int(32) track_ID;
         AVIF_CHECK(avifROStreamReadU32(&s, &ignored32));     // const unsigned int(32) reserved = 0;
         AVIF_CHECK(avifROStreamReadU32(&s, &trackDuration)); // unsigned int(32) duration;
-        track->trackDuration = (trackDuration == AVIF_UNKNOWN_DURATION32) ? AVIF_UNKNOWN_DURATION64 : trackDuration;
+        track->trackDuration = (trackDuration == AVIF_INDEFINITE_DURATION32) ? AVIF_INDEFINITE_DURATION64 : trackDuration;
     } else {
         // Unsupported version
         avifDiagnosticsPrintf(diag, "Box[tkhd] has an unsupported version [%u]", version);
@@ -2884,9 +2884,9 @@ static avifBool avifParseTrackBox(avifDecoderData * data, uint64_t rawOffset, co
     if (!edtsBoxSeen) {
         track->repetitionCount = AVIF_REPETITION_COUNT_UNKNOWN;
     } else if (track->isRepeating) {
-        if (track->trackDuration == AVIF_UNKNOWN_DURATION64) {
-            // If isRepeating is true and track duration is unknown, then set the repetition count to infinite (Section 9.6.1 of
-            // ISO/IEC 23008-12 Part 12).
+        if (track->trackDuration == AVIF_INDEFINITE_DURATION64) {
+            // If isRepeating is true and the track duration is unknown/indefinite, then set the repetition count to infinite
+            // (Section 9.6.1 of ISO/IEC 23008-12 Part 12).
             track->repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
         } else {
             // Section 9.6.1. of ISO/IEC 23008-12 Part 12: 1, the entire edit list is repeated a sufficient number of times to
