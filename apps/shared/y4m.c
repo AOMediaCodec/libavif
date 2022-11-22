@@ -202,71 +202,36 @@ static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayF
     return -1;
 }
 
-// Limits each sample value to fit into avif->depth bits and avif->yuvRange.
+// Limits each sample value to fit into avif->depth bits.
 // Returns AVIF_TRUE if any sample was clamped this way.
 static avifBool y4mClampSamples(avifImage * avif)
 {
-    avifBool samplesWereClamped = AVIF_FALSE;
-    if (avifImageUsesU16(avif)) {
-        const uint16_t maxSampleValue = (uint16_t)((1u << avif->depth) - 1u);
-        uint16_t minSampleValues[4] = { 0, 0, 0, 0 };
-        uint16_t maxSampleValues[4] = { maxSampleValue, maxSampleValue, maxSampleValue, maxSampleValue };
-        if (avif->yuvRange == AVIF_RANGE_LIMITED) {
-            minSampleValues[AVIF_CHAN_Y] = 16 << (avif->depth - 8);
-            minSampleValues[AVIF_CHAN_U] = 16 << (avif->depth - 8);
-            minSampleValues[AVIF_CHAN_V] = 16 << (avif->depth - 8);
-            maxSampleValues[AVIF_CHAN_Y] = 235 << (avif->depth - 8);
-            maxSampleValues[AVIF_CHAN_U] = 240 << (avif->depth - 8);
-            maxSampleValues[AVIF_CHAN_V] = 240 << (avif->depth - 8);
-            // Alpha is never in limited range.
-        }
-
-        for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
-            uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
-            uint32_t planeWidth = avifImagePlaneWidth(avif, plane);
-            uint8_t * row = avifImagePlane(avif, plane);
-            uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
-            for (uint32_t y = 0; y < planeHeight; ++y) {
-                uint16_t * row16 = (uint16_t *)row;
-                for (uint32_t x = 0; x < planeWidth; ++x) {
-                    if (row16[x] < minSampleValues[plane]) {
-                        row16[x] = minSampleValues[plane];
-                        samplesWereClamped = AVIF_TRUE;
-                    } else if (row16[x] > maxSampleValues[plane]) {
-                        row16[x] = maxSampleValues[plane];
-                        samplesWereClamped = AVIF_TRUE;
-                    }
-                }
-                row += rowBytes;
-            }
-        }
-    } else {
+    if (!avifImageUsesU16(avif)) {
         assert(avif->depth == 8);
-        if (avif->yuvRange == AVIF_RANGE_FULL) {
-            return AVIF_FALSE;
-        }
+        return AVIF_FALSE;
+    }
+    assert(avif->depth < 16); // Otherwise it could be skipped too.
 
-        // Alpha is never in limited range.
-        const uint8_t minSampleValues[3] = { 16, 16, 16 };
-        const uint8_t maxSampleValues[3] = { 235, 240, 240 };
+    // AV1 encoders and decoders do not care whether the samples are full range or limited range
+    // for the internal computation: it is only passed as an informative tag, so ignore avif->yuvRange.
+    const uint16_t maxSampleValue = (uint16_t)((1u << avif->depth) - 1u);
 
-        for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_V; ++plane) {
-            uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
-            uint32_t planeWidth = avifImagePlaneWidth(avif, plane);
-            uint8_t * row = avifImagePlane(avif, plane);
-            uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
-            for (uint32_t y = 0; y < planeHeight; ++y) {
-                for (uint32_t x = 0; x < planeWidth; ++x) {
-                    if (row[x] < minSampleValues[plane]) {
-                        row[x] = minSampleValues[plane];
-                        samplesWereClamped = AVIF_TRUE;
-                    } else if (row[x] > maxSampleValues[plane]) {
-                        row[x] = maxSampleValues[plane];
-                        samplesWereClamped = AVIF_TRUE;
-                    }
+    avifBool samplesWereClamped = AVIF_FALSE;
+    // Alpha is never in limited range.
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_V; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
+        uint32_t planeWidth = avifImagePlaneWidth(avif, plane);
+        uint8_t * row = avifImagePlane(avif, plane);
+        uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
+        for (uint32_t y = 0; y < planeHeight; ++y) {
+            uint16_t * row16 = (uint16_t *)row;
+            for (uint32_t x = 0; x < planeWidth; ++x) {
+                if (row16[x] > maxSampleValue) {
+                    row16[x] = maxSampleValue;
+                    samplesWereClamped = AVIF_TRUE;
                 }
-                row += rowBytes;
             }
+            row += rowBytes;
         }
     }
     return samplesWereClamped;
@@ -451,8 +416,8 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         }
     }
 
-    // libavif API does not guarantee the absence of undefined behavior if samples exceed the specified
-    // avif->depth and avif->range. Avoid that by making sure input values are within the correct range.
+    // libavif API does not guarantee the absence of undefined behavior if samples exceed the specified avif->depth.
+    // Avoid that by making sure input values are within the correct range.
     if (y4mClampSamples(avif)) {
         fprintf(stderr, "WARNING: some samples were clamped to fit into %u bits per channel per sample\n", avif->depth);
     }
