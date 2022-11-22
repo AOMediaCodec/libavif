@@ -706,7 +706,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             minQuantizer = encoder->minQuantizer;
             maxQuantizer = encoder->maxQuantizer;
         }
-        quantizer = AVIF_CLAMP(quantizer, 0, 63);
         minQuantizer = AVIF_CLAMP(minQuantizer, 0, 63);
         maxQuantizer = AVIF_CLAMP(maxQuantizer, 0, 63);
         if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {

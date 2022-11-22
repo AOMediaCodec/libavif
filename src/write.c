@@ -830,13 +830,14 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
 
 static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantizer)
 {
-    quality = AVIF_CLAMP(quality, -1, 100);
     int quantizer;
     if (quality == AVIF_QUALITY_DEFAULT) {
         // In older libavif releases, avifEncoder didn't have the quality and qualityAlpha fields.
         // Supply a default value for quantizer.
         quantizer = (minQuantizer + maxQuantizer) / 2;
+        quantizer = AVIF_CLAMP(quantizer, 0, 63);
     } else {
+        quality = AVIF_CLAMP(quality, 0, 100);
         quantizer = ((100 - quality) * 63 + 50) / 100;
     }
     return quantizer;
