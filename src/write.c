@@ -211,7 +211,8 @@ typedef struct avifEncoderData
     int tileRowsLog2;
     int tileColsLog2;
     avifEncoder lastEncoder;
-    // lastQuantizer and lastQuantizerAlpha are the quantizer and quantizerAlpha values used last time
+    // lastQuantizer and lastQuantizerAlpha are the quantizer and quantizerAlpha values used last
+    // time
     int lastQuantizer;
     int lastQuantizerAlpha;
     // lastTileRowsLog2 and lastTileColsLog2 are the actual tiling values used last time

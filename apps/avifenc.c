@@ -147,7 +147,7 @@ static void syntax(void)
 // This is *very* arbitrary, I just want to set people's expectations a bit
 static const char * qualityString(int quality)
 {
-    if (quality == 100) {
+    if (quality == AVIF_QUALITY_LOSSLESS) {
         return "Lossless";
     }
     if (quality >= 80) {
@@ -436,6 +436,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
     return AVIF_TRUE;
 }
 
+#define INVALID_QUALITY -1
 #define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
 #define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
 
@@ -458,8 +459,8 @@ int main(int argc, char * argv[])
 
     int returnCode = 0;
     int jobs = 1;
-    int quality = -1;
-    int qualityAlpha = -1;
+    int quality = INVALID_QUALITY;
+    int qualityAlpha = INVALID_QUALITY;
     int minQuantizer = -1;
     int maxQuantizer = -1;
     int minQuantizerAlpha = -1;
@@ -873,7 +874,8 @@ int main(int argc, char * argv[])
         // Don't subsample when using AVIF_MATRIX_COEFFICIENTS_IDENTITY.
         input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
         // Quality.
-        if ((quality >= 0 && quality != AVIF_QUALITY_LOSSLESS) || (qualityAlpha >= 0 && qualityAlpha != AVIF_QUALITY_LOSSLESS)) {
+        if ((quality != INVALID_QUALITY && quality != AVIF_QUALITY_LOSSLESS) ||
+            (qualityAlpha != INVALID_QUALITY && qualityAlpha != AVIF_QUALITY_LOSSLESS)) {
             fprintf(stderr, "Quality cannot be set in lossless mode, except to %d.\n", AVIF_QUALITY_LOSSLESS);
             returnCode = 1;
         }
@@ -909,30 +911,30 @@ int main(int argc, char * argv[])
             goto cleanup;
     } else {
         // Set lossy defaults.
-        if (minQuantizer < 0) {
-            assert(maxQuantizer < 0);
-            if (quality < 0) {
+        if (minQuantizer == -1) {
+            assert(maxQuantizer == -1);
+            if (quality == INVALID_QUALITY) {
                 quality = DEFAULT_QUALITY;
             }
             minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
             maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
         } else {
-            assert(maxQuantizer >= 0);
-            if (quality < 0) {
+            assert(maxQuantizer != -1);
+            if (quality == INVALID_QUALITY) {
                 const int quantizer = (minQuantizer + maxQuantizer) / 2;
                 quality = ((63 - quantizer) * 100 + 31) / 63;
             }
         }
-        if (minQuantizerAlpha < 0) {
-            assert(maxQuantizerAlpha < 0);
-            if (qualityAlpha < 0) {
+        if (minQuantizerAlpha == -1) {
+            assert(maxQuantizerAlpha == -1);
+            if (qualityAlpha == INVALID_QUALITY) {
                 qualityAlpha = DEFAULT_QUALITY_ALPHA;
             }
             minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
             maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
         } else {
-            assert(maxQuantizerAlpha >= 0);
-            if (qualityAlpha < 0) {
+            assert(maxQuantizerAlpha != -1);
+            if (qualityAlpha == INVALID_QUALITY) {
                 const int quantizerAlpha = (minQuantizerAlpha + maxQuantizerAlpha) / 2;
                 qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
             }

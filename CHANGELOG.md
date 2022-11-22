@@ -17,7 +17,11 @@ avifEncoder struct.
 * Add clli metadata read and write support
 * Add repetitionCount member to avifEncoder and avifDecoder structs to specify
   the number of repetitions for animated image sequences.
-* Add quality and qualityAlpha to avifEncoder
+* Add quality and qualityAlpha to avifEncoder. Note: minQuantizer,
+  maxQuantizer, minQuantizerAlpha, and maxQuantizerAlpha are deprecated. Code
+  should be updated to set quality (and qualityAlpha if applicable) and leave
+  minQuantizer, maxQuantizer, minQuantizerAlpha, and maxQuantizerAlpha
+  initialized to the default values.
 
 ### Changed
 * Exif and XMP metadata is exported to PNG and JPEG files by default,
@@ -28,6 +32,12 @@ avifEncoder struct.
 * Update svt.cmd/svt.sh: v1.3.0
 * avifImageCopy() no longer accepts source U and V channels to be NULL for
   non-4:0:0 input if Y is not NULL and if AVIF_PLANES_YUV is specified.
+* The default values of the maxQuantizer and maxQuantizerAlpha members of
+  avifEncoder changed from AVIF_QUANTIZER_LOSSLESS (0) to
+  AVIF_QUANTIZER_WORST_QUALITY (63). The behavior changed if minQuantizer and
+  maxQuantizer are left initialized to the default values. Code should be
+  updated to set the quality member. Similarly for the alpha quantizers and
+  qualityAlpha.
 
 ## [0.11.1] - 2022-10-19
 

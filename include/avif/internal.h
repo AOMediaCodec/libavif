@@ -310,8 +310,8 @@ typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
 // encoder->tileRowsLog2, encoder->tileColsLog2, and encoder->autoTiling. The caller of
 // avifCodecEncodeImageFunc is responsible for automatic tiling if encoder->autoTiling is set to
 // AVIF_TRUE. The actual tiling values are passed to avifCodecEncodeImageFunc as parameters.
-// Similarly, avifCodecEncodeImageFunc should use |quantizer| instead of encoder->quality and
-// encoder->qualityAlpha.
+// Similarly, avifCodecEncodeImageFunc should use the quantizer parameter instead of
+// encoder->quality and encoder->qualityAlpha.
 //
 // Note: The caller of avifCodecEncodeImageFunc always passes encoder->data->tileRowsLog2 and
 // encoder->data->tileColsLog2 as the tileRowsLog2 and tileColsLog2 arguments. Because
