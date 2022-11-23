@@ -2848,6 +2848,10 @@ static avifBool avifParseEditBox(avifTrack * track, const uint8_t * raw, size_t 
         }
         AVIF_CHECK(avifROStreamSkip(&s, header.size));
     }
+    if (!elstBoxSeen) {
+        avifDiagnosticsPrintf(diag, "Box[edts] contains no [elst] Box.");
+        return AVIF_FALSE;
+    }
     return AVIF_TRUE;
 }
 
