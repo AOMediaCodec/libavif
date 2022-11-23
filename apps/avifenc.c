@@ -1099,8 +1099,8 @@ int main(int argc, char * argv[])
         usingAOM = AVIF_TRUE;
     }
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
-    avifBool losslessColorQuality = (quality == AVIF_QUALITY_LOSSLESS);
-    avifBool losslessAlphaQuality = (qualityAlpha == AVIF_QUALITY_LOSSLESS);
+    avifBool usingLosslessColor = (quality == AVIF_QUALITY_LOSSLESS);
+    avifBool usingLosslessAlpha = (qualityAlpha == AVIF_QUALITY_LOSSLESS);
     avifBool depthMatches = (sourceDepth == image->depth);
     avifBool using400 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     avifBool using444 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
@@ -1108,7 +1108,7 @@ int main(int argc, char * argv[])
     avifBool usingIdentityMatrix = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY);
 
     // Guess if the enduser is asking for lossless and enable it so that warnings can be emitted
-    if (!lossless && losslessColorQuality && (!hasAlpha || losslessAlphaQuality)) {
+    if (!lossless && usingLosslessColor && (!hasAlpha || usingLosslessAlpha)) {
         // The enduser is probably expecting lossless. Turn it on and emit warnings
         printf("Quality set to %d, assuming --lossless to enable warnings on potential lossless issues.\n", AVIF_QUALITY_LOSSLESS);
         lossless = AVIF_TRUE;
@@ -1121,14 +1121,14 @@ int main(int argc, char * argv[])
             lossless = AVIF_FALSE;
         }
 
-        if (!losslessColorQuality) {
+        if (!usingLosslessColor) {
             fprintf(stderr,
                     "WARNING: [--lossless] Color quality (-q or --qcolor) not set to %d. Color output might not be lossless.\n",
                     AVIF_QUALITY_LOSSLESS);
             lossless = AVIF_FALSE;
         }
 
-        if (hasAlpha && !losslessAlphaQuality) {
+        if (hasAlpha && !usingLosslessAlpha) {
             fprintf(stderr,
                     "WARNING: [--lossless] Alpha present and alpha quality (--qalpha) not set to %d. Alpha output might not be lossless.\n",
                     AVIF_QUALITY_LOSSLESS);
