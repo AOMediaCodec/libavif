@@ -73,14 +73,18 @@ TEST_P(Y4mTest, OutOfRange) {
       create_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, yuv_range);
   ASSERT_NE(image, nullptr);
 
-  // Insert out-of-range values on purpose if possible.
+  // Insert values that may be out-of-range on purpose compared to the specified
+  // bit_depth and yuv_range.
   const uint32_t yuva8[] = {255, 0, 255, 255};
   const uint32_t yuva16[] = {0, (1u << 16) - 1u, 0, (1u << 16) - 1u};
   testutil::FillImagePlain(image.get(),
                            avifImageUsesU16(image.get()) ? yuva16 : yuva8);
   ASSERT_TRUE(y4mWrite(file_path.str().c_str(), image.get()));
 
-  // y4mRead() should clamp the values to respect the specified depth and range.
+  // y4mRead() should clamp the values to respect the specified depth in order
+  // to avoid computation with unexpected sample values. However, it does not
+  // respect the limited ("video") range because the libavif API just passes
+  // that tag along, it is ignored by the compression algorithm.
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),

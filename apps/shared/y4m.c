@@ -217,8 +217,7 @@ static avifBool y4mClampSamples(avifImage * avif)
     const uint16_t maxSampleValue = (uint16_t)((1u << avif->depth) - 1u);
 
     avifBool samplesWereClamped = AVIF_FALSE;
-    // Alpha is never in limited range.
-    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_V; ++plane) {
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
         uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
         uint32_t planeWidth = avifImagePlaneWidth(avif, plane);
         uint8_t * row = avifImagePlane(avif, plane);
@@ -419,7 +418,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     // libavif API does not guarantee the absence of undefined behavior if samples exceed the specified avif->depth.
     // Avoid that by making sure input values are within the correct range.
     if (y4mClampSamples(avif)) {
-        fprintf(stderr, "WARNING: some samples were clamped to fit into %u bits per channel per sample\n", avif->depth);
+        fprintf(stderr, "WARNING: some samples were clamped to fit into %u bits per sample\n", avif->depth);
     }
 
     result = AVIF_TRUE;
