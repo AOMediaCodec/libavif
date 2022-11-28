@@ -12,6 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
+        # TODO(yguyon): Add macos-latest when the following bug is fixed:
+        #               https://bugs.chromium.org/p/libyuv/issues/detail?id=947
 
     steps:
     - uses: actions/checkout@v3
