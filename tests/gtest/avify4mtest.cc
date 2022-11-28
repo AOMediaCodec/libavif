@@ -92,7 +92,7 @@ TEST_P(Y4mTest, OutOfRange) {
 
   // Pass it through the libavif API to make sure reading a bad y4m does not
   // trigger undefined behavior.
-  const testutil::AvifRwData encoded = testutil::Encode(image.get());
+  const testutil::AvifRwData encoded = testutil::Encode(decoded.get());
   EXPECT_NE(testutil::Decode(encoded.data, encoded.size), nullptr);
 }
 
