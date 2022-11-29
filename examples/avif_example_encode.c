@@ -77,15 +77,15 @@ int main(int argc, char * argv[])
     encoder = avifEncoderCreate();
     // Configure your encoder here (see avif/avif.h):
     // * maxThreads
-    // * minQuantizer
-    // * maxQuantizer
-    // * minQuantizerAlpha
-    // * maxQuantizerAlpha
+    // * quality
+    // * qualityAlpha
     // * tileRowsLog2
     // * tileColsLog2
     // * speed
     // * keyframeInterval
     // * timescale
+    encoder->quality = 60;
+    encoder->qualityAlpha = AVIF_QUALITY_LOSSLESS;
 
     // Call avifEncoderAddImage() for each image in your sequence
     // Only set AVIF_ADD_IMAGE_FLAG_SINGLE if you're not encoding a sequence

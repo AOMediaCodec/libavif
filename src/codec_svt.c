@@ -48,6 +48,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifBool alpha,
                                       int tileRowsLog2,
                                       int tileColsLog2,
+                                      int quantizer,
                                       avifEncoderChanges encoderChanges,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
@@ -136,7 +137,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
             svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
         }
-        svt_config->qp = (svt_config->min_qp_allowed + svt_config->max_qp_allowed) / 2;
+        svt_config->qp = quantizer;
 
         if (tileRowsLog2 != 0) {
             svt_config->tile_rows = tileRowsLog2;
