@@ -392,6 +392,7 @@ avifEncoder * avifEncoderCreate(void)
     encoder->speed = AVIF_SPEED_DEFAULT;
     encoder->keyframeInterval = 0;
     encoder->timescale = 1;
+    encoder->repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     encoder->quality = AVIF_QUALITY_DEFAULT;
     encoder->qualityAlpha = AVIF_QUALITY_DEFAULT;
     encoder->minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
@@ -430,6 +431,7 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     lastEncoder->speed = encoder->speed;
     lastEncoder->keyframeInterval = encoder->keyframeInterval;
     lastEncoder->timescale = encoder->timescale;
+    lastEncoder->repetitionCount = encoder->repetitionCount;
     lastEncoder->minQuantizer = encoder->minQuantizer;
     lastEncoder->maxQuantizer = encoder->maxQuantizer;
     lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
@@ -455,7 +457,7 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
 
     if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->maxThreads != encoder->maxThreads) ||
         (lastEncoder->speed != encoder->speed) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
-        (lastEncoder->timescale != encoder->timescale)) {
+        (lastEncoder->timescale != encoder->timescale) || (lastEncoder->repetitionCount != encoder->repetitionCount)) {
         return AVIF_FALSE;
     }
 
