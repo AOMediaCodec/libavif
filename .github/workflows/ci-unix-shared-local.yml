@@ -11,9 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
-        # TODO(yguyon): Add macos-latest when the following bug is fixed:
-        #               https://bugs.chromium.org/p/libyuv/issues/detail?id=947
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v3
@@ -33,7 +31,8 @@ jobs:
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.12
       with:
-        cmake-version: '3.13.x'
+        # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
+        cmake-version: '3.17.x'
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@v1
