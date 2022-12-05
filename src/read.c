@@ -950,7 +950,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, const a
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
                 startOffset += remainingOffset;
-                extentSize -= remainingOffset;
+                extentSize -= (size_t)remainingOffset;
                 remainingOffset = 0;
             }
         }
