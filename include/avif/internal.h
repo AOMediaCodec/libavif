@@ -117,7 +117,6 @@ typedef struct avifReformatState
 
     uint32_t yuvChannelBytes;
     uint32_t rgbChannelBytes;
-    uint32_t rgbChannelCount;
     uint32_t rgbPixelBytes;
     uint32_t rgbOffsetBytesR;
     uint32_t rgbOffsetBytesG;
