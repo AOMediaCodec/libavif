@@ -36,7 +36,6 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
-static avifBool avifImageIsOpaque(const avifImage * image);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 
 // ---------------------------------------------------------------------------
@@ -1917,34 +1916,6 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
         return addImageResult;
     }
     return avifEncoderFinish(encoder, output);
-}
-
-static avifBool avifImageIsOpaque(const avifImage * image)
-{
-    if (!image->alphaPlane) {
-        return AVIF_TRUE;
-    }
-
-    int maxChannel = (1 << image->depth) - 1;
-    if (avifImageUsesU16(image)) {
-        for (uint32_t j = 0; j < image->height; ++j) {
-            for (uint32_t i = 0; i < image->width; ++i) {
-                uint16_t * p = (uint16_t *)&image->alphaPlane[(i * 2) + (j * image->alphaRowBytes)];
-                if (*p != maxChannel) {
-                    return AVIF_FALSE;
-                }
-            }
-        }
-    } else {
-        for (uint32_t j = 0; j < image->height; ++j) {
-            for (uint32_t i = 0; i < image->width; ++i) {
-                if (image->alphaPlane[i + (j * image->alphaRowBytes)] != maxChannel) {
-                    return AVIF_FALSE;
-                }
-            }
-        }
-    }
-    return AVIF_TRUE;
 }
 
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)

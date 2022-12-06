@@ -151,7 +151,7 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     }
 
     state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_NO_OP;
-    if (image->alphaPlane) {
+    if (!avifImageIsOpaque(image)) {
         if (!avifRGBFormatHasAlpha(rgb->format) || rgb->ignoreAlpha) {
             // if we are converting some image with alpha into a format without alpha, we should do 'premultiply alpha' before
             // discarding alpha plane. This has the same effect of rendering this image on a black background, which makes sense.

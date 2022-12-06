@@ -412,7 +412,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         rgb.chromaUpsampling = chromaUpsampling;
         rgb.depth = rgbDepth;
         colorType = PNG_COLOR_TYPE_RGBA;
-        if (!avif->alphaPlane) {
+        if (avifImageIsOpaque(avif)) {
             colorType = PNG_COLOR_TYPE_RGB;
             rgb.format = AVIF_RGB_FORMAT_RGB;
         }

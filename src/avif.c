@@ -392,6 +392,34 @@ avifBool avifImageUsesU16(const avifImage * image)
     return (image->depth > 8);
 }
 
+avifBool avifImageIsOpaque(const avifImage * image)
+{
+    if (!image->alphaPlane) {
+        return AVIF_TRUE;
+    }
+
+    const uint32_t opaqueValue = (1u << image->depth) - 1u;
+    const uint8_t * row = image->alphaPlane;
+    for (uint32_t y = 0; y < image->height; ++y) {
+        if (avifImageUsesU16(image)) {
+            const uint16_t * row16 = (const uint16_t *)row;
+            for (uint32_t x = 0; x < image->width; ++x) {
+                if (row16[x] != opaqueValue) {
+                    return AVIF_FALSE;
+                }
+            }
+        } else {
+            for (uint32_t x = 0; x < image->width; ++x) {
+                if (row[x] != opaqueValue) {
+                    return AVIF_FALSE;
+                }
+            }
+        }
+        row += image->alphaRowBytes;
+    }
+    return AVIF_TRUE;
+}
+
 uint8_t * avifImagePlane(const avifImage * image, int channel)
 {
     if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
