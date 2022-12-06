@@ -67,6 +67,7 @@ struct avifCodecInternal
     // Whether 'tuning' (of the specified distortion metric) was set with an
     // avifEncoderSetCodecSpecificOption(encoder, "tune", value) call.
     avifBool tuningSet;
+    uint32_t currentLayer;
 #endif
 };
 
@@ -507,6 +508,33 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
     return AVIF_TRUE;
 }
 
+struct aomScalingModeMapList
+{
+    avifFraction avifMode;
+    AOM_SCALING_MODE aomMode;
+};
+
+static const struct aomScalingModeMapList scalingModeMap[] = {
+    { { 1, 1 }, AOME_NORMAL },    { { 1, 2 }, AOME_ONETWO },    { { 1, 4 }, AOME_ONEFOUR },  { { 1, 8 }, AOME_ONEEIGHT },
+    { { 3, 4 }, AOME_THREEFOUR }, { { 3, 5 }, AOME_THREEFIVE }, { { 4, 5 }, AOME_FOURFIVE },
+};
+
+static const int scalingModeMapSize = sizeof(scalingModeMap) / sizeof(scalingModeMap[0]);
+
+static avifBool avifFindAOMScalingMode(const avifFraction * avifMode, AOM_SCALING_MODE * aomMode)
+{
+    avifFraction simplifiedFraction = *avifMode;
+    avifFractionSimplify(&simplifiedFraction);
+    for (int i = 0; i < scalingModeMapSize; ++i) {
+        if (scalingModeMap[i].avifMode.n == simplifiedFraction.n && scalingModeMap[i].avifMode.d == simplifiedFraction.d) {
+            *aomMode = scalingModeMap[i].aomMode;
+            return AVIF_TRUE;
+        }
+    }
+
+    return AVIF_FALSE;
+}
+
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
 
 static avifResult aomCodecEncodeImage(avifCodec * codec,
@@ -522,6 +550,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
+
+    // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AOM
+    // encoder, config should be applied for each frame, so we don't care about changes on these
+    // two fields.
+    encoderChanges &= ~AVIF_ENCODER_CHANGE_SCALING_MODE;
 
     if (!codec->internal->encoderInitialized) {
         // Map encoder speed to AOM usage + CpuUsed:
@@ -673,6 +706,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // Tell libaom that all frames will be key frames.
             cfg->kf_max_dist = 0;
         }
+        if (encoder->extraLayerCount > 0) {
+            // For layered image, disable lagged encoding to always get output
+            // frame for each input frame.
+            cfg->g_lag_in_frames = 0;
+        }
         if (encoder->maxThreads > 1) {
             cfg->g_threads = encoder->maxThreads;
         }
@@ -751,6 +789,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
         if (tileColsLog2 != 0) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+        }
+        if (encoder->extraLayerCount > 0) {
+            int layerCount = encoder->extraLayerCount + 1;
+            if (aom_codec_control(&codec->internal->encoder, AOME_SET_NUMBER_SPATIAL_LAYERS, layerCount) != AOM_CODEC_OK) {
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            };
         }
         if (aomCpuUsed != -1) {
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed) != AOM_CODEC_OK) {
@@ -836,6 +880,30 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
             }
         }
+    }
+
+    if (codec->internal->currentLayer > encoder->extraLayerCount) {
+        avifDiagnosticsPrintf(codec->diag,
+                              "Too many layers sent. Expected %u layers, but got %u layers.",
+                              encoder->extraLayerCount + 1,
+                              codec->internal->currentLayer + 1);
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    if (encoder->extraLayerCount > 0) {
+        aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, codec->internal->currentLayer);
+        ++codec->internal->currentLayer;
+    }
+
+    aom_scaling_mode_t aomScalingMode;
+    if (!avifFindAOMScalingMode(&encoder->scalingMode.horizontal, &aomScalingMode.h_scaling_mode)) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    if (!avifFindAOMScalingMode(&encoder->scalingMode.vertical, &aomScalingMode.v_scaling_mode)) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    if ((aomScalingMode.h_scaling_mode != AOME_NORMAL) || (aomScalingMode.v_scaling_mode != AOME_NORMAL)) {
+        // AOME_SET_SCALEMODE only applies to next frame (layer), so we have to set it every time.
+        aom_codec_control(&codec->internal->encoder, AOME_SET_SCALEMODE, &aomScalingMode);
     }
 
     aom_image_t aomImage;
@@ -988,6 +1056,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
         encodeFlags |= AOM_EFLAG_FORCE_KF;
     }
+    if (codec->internal->currentLayer > 0) {
+        encodeFlags |= AOM_EFLAG_NO_REF_GF | AOM_EFLAG_NO_REF_ARF | AOM_EFLAG_NO_REF_BWD | AOM_EFLAG_NO_REF_ARF2 |
+                       AOM_EFLAG_NO_UPD_GF | AOM_EFLAG_NO_UPD_ARF;
+    }
     aom_codec_err_t encodeErr = aom_codec_encode(&codec->internal->encoder, &aomImage, 0, 1, encodeFlags);
     avifFree(monoUVPlane);
     if (aomImageAllocated) {
@@ -1012,8 +1084,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
-        // Flush and clean up encoder resources early to save on overhead when encoding alpha or grid images
+    if ((addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) ||
+        ((encoder->extraLayerCount > 0) && (encoder->extraLayerCount + 1 == codec->internal->currentLayer))) {
+        // Flush and clean up encoder resources early to save on overhead when encoding alpha or grid images,
+        // as encoding is finished now. For layered image, encoding finishes when the last layer is encoded.
 
         if (!aomCodecEncodeFinish(codec, output)) {
             return AVIF_RESULT_UNKNOWN_ERROR;

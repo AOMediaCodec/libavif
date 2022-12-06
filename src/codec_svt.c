@@ -65,6 +65,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
     }
 
+    // SVT-AV1 does not support encoding layered image.
+    if (encoder->extraLayerCount > 0) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     EbColorFormat color_format = EB_YUV420;
     EbBufferHeaderType * input_buffer = NULL;

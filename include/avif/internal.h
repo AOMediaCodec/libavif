@@ -72,6 +72,11 @@ void avifArrayPush(void * arrayStruct, void * element);
 void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
 
+void avifFractionSimplify(avifFraction * f);
+avifBool avifFractionCD(avifFraction * a, avifFraction * b);
+avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
+avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
+
 void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
@@ -288,6 +293,7 @@ typedef enum avifEncoderChange
     AVIF_ENCODER_CHANGE_TILE_COLS_LOG2 = (1u << 5),
     AVIF_ENCODER_CHANGE_QUANTIZER = (1u << 6),
     AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA = (1u << 7),
+    AVIF_ENCODER_CHANGE_SCALING_MODE = (1u << 8),
 
     AVIF_ENCODER_CHANGE_CODEC_SPECIFIC = (1u << 31)
 } avifEncoderChange;
