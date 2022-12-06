@@ -29,6 +29,19 @@ License: [Creative Commons Attribution license (reuse allowed)](https://creative
 Source: ["Cosmos Laundromat" movie](https://www.youtube.com/watch?v=Y-rmzh0PI3c) (frame at around 1 minute past the
 beginning)
 
+### Files with high bit depth per channel
+
+#### File [weld_16b.png](weld_16b.png)
+
+![](weld_16b.png)
+
+License: "Irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use
+raw files from Signature Edits for free, including for commercial purposes, without permission from or attributing the
+photographer or Signature Edits."
+
+Source: Picture from https://www.signatureedits.com/free-raw-photos/, rescaled, modified color balance and converted
+with GIMP+Darktable to 16b PNG, metadata removed with `exiftool -All=`.
+
 ## Metadata
 
 The structure can be displayed using `exiv2 -pS <file>`.

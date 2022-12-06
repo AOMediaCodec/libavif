@@ -113,6 +113,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifopaquetest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifopaquetest COMMAND avifopaquetest)
 
+    add_executable(avifpng16btest gtest/avifpng16btest.cc)
+    target_link_libraries(avifpng16btest aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifpng16btest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifpng16btest COMMAND avifpng16btest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(avifrgbtoyuvtest gtest/avifrgbtoyuvtest.cc)
     target_link_libraries(avifrgbtoyuvtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
