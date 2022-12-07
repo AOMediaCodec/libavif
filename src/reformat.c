@@ -466,7 +466,11 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
             *unormFloatTableUV = *unormFloatTableY;
         } else {
             *unormFloatTableUV = avifAlloc(cpCount * sizeof(**unormFloatTableUV));
-            AVIF_CHECK(*unormFloatTableUV);
+            if (!*unormFloatTableUV) {
+                avifFree(*unormFloatTableY);
+                *unormFloatTableY = NULL;
+                return AVIF_FALSE;
+            }
             for (uint32_t cp = 0; cp < cpCount; ++cp) {
                 // Review this when implementing YCgCo limited range support.
                 (*unormFloatTableUV)[cp] = ((float)cp - state->biasUV) / state->rangeUV;
