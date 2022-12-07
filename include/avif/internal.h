@@ -135,10 +135,6 @@ typedef struct avifReformatState
 
     avifPixelFormatInfo formatInfo;
 
-    // LUTs for going from YUV limited/full unorm -> full range RGB FP32
-    float unormFloatTableY[1 << 12];
-    float unormFloatTableUV[1 << 12];
-
     avifReformatMode mode;
     // Used by avifImageYUVToRGB() only. avifImageRGBToYUV() uses a local variable (alphaMode) instead.
     avifAlphaMultiplyMode toRGBAlphaMode;
