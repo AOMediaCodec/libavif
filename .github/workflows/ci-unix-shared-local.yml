@@ -29,7 +29,7 @@ jobs:
         path: ext
         key: ${{ runner.os }}-shared-local-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
+      uses: jwlawson/actions-setup-cmake@v1.13
       with:
         # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
         cmake-version: '3.17.x'
