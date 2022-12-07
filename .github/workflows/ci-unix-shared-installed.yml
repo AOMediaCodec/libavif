@@ -24,7 +24,7 @@ jobs:
         path: ext
         key: ${{ runner.os }}-shared-installed-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
+      uses: jwlawson/actions-setup-cmake@v1.13
       with:
         cmake-version: '3.13.x'
     - name: Print cmake version
