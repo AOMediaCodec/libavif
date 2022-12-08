@@ -1175,6 +1175,7 @@ AVIF_API void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const cha
 
 // Helpers
 AVIF_API avifBool avifImageUsesU16(const avifImage * image);
+AVIF_API avifBool avifImageIsOpaque(const avifImage * image);
 // channel can be an avifChannelIndex.
 AVIF_API uint8_t * avifImagePlane(const avifImage * image, int channel);
 AVIF_API uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel);
