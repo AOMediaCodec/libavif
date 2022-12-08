@@ -166,8 +166,8 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     const uint8_t* row1 = avifImagePlane(&image1, c);
     const uint8_t* row2 = avifImagePlane(&image2, c);
     if (!row1 != !row2) {
-      // Maybe one image contains an opaque alpha channel while the other is
-      // absent, but they should still be considered equal.
+      // Maybe one image contains an opaque alpha channel while the other has no
+      // alpha channel, but they should still be considered equal.
       if (c == AVIF_CHAN_A && avifImageIsOpaque(&image1) &&
           avifImageIsOpaque(&image2)) {
         continue;
