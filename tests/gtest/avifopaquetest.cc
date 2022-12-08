@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/avif.h"
-#include "avifpng.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
