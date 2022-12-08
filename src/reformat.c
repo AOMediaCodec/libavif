@@ -448,6 +448,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 }
 
 // Allocates and fills look-up tables for going from YUV limited/full unorm -> full range RGB FP32.
+// Review this when implementing YCgCo limited range support.
 static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float ** unormFloatTableUV, int depth, const avifReformatState * state)
 {
     const size_t cpCount = (size_t)1 << depth;
@@ -471,7 +472,6 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
                 return AVIF_FALSE;
             }
             for (uint32_t cp = 0; cp < cpCount; ++cp) {
-                // Review this when implementing YCgCo limited range support.
                 (*unormFloatTableUV)[cp] = ((float)cp - state->biasUV) / state->rangeUV;
             }
         }
