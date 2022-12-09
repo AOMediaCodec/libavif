@@ -135,23 +135,6 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     state->rangeY = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (219 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
     state->rangeUV = (float)((state->yuvRange == AVIF_RANGE_LIMITED) ? (224 << (state->yuvDepth - 8)) : state->yuvMaxChannel);
 
-    state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_NO_OP;
-    if (image->alphaPlane) {
-        if (!avifRGBFormatHasAlpha(rgb->format) || rgb->ignoreAlpha) {
-            // if we are converting some image with alpha into a format without alpha, we should do 'premultiply alpha' before
-            // discarding alpha plane. This has the same effect of rendering this image on a black background, which makes sense.
-            if (!image->alphaPremultiplied) {
-                state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY;
-            }
-        } else {
-            if (!image->alphaPremultiplied && rgb->alphaPremultiplied) {
-                state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY;
-            } else if (image->alphaPremultiplied && !rgb->alphaPremultiplied) {
-                state->toRGBAlphaMode = AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY;
-            }
-        }
-    }
-
     return AVIF_TRUE;
 }
 
@@ -510,7 +493,10 @@ static void avifStoreRGB8Pixel(avifRGBFormat format, uint8_t R, uint8_t G, uint8
 }
 
 // Note: This function handles alpha (un)multiply.
-static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBImage * rgb, avifReformatState * state)
+static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
+                                              avifRGBImage * rgb,
+                                              const avifReformatState * state,
+                                              avifAlphaMultiplyMode alphaMultiplyMode)
 {
     // Aliases for some state
     const float kr = state->kr;
@@ -540,7 +526,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
     // If toRGBAlphaMode is active (not no-op), assert that the alpha plane is present. The end of
     // the avifPrepareReformatState() function should ensure this, but this assert makes it clear
     // to clang's analyzer.
-    assert((state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
+    assert((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
 
     for (uint32_t j = 0; j < image->height; ++j) {
         const uint32_t uvJ = j >> state->formatInfo.chromaShiftY;
@@ -724,7 +710,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
             float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            if (state->toRGBAlphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
+            if (alphaMultiplyMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                 // Calculate A
                 uint16_t unormA;
                 if (image->depth == 8) {
@@ -735,7 +721,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                 const float A = unormA / ((float)state->yuvMaxChannel);
                 const float Ac = AVIF_CLAMP(A, 0.0f, 1.0f);
 
-                if (state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
+                if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
                     if (Ac == 0.0f) {
                         Rc = 0.0f;
                         Gc = 0.0f;
@@ -746,7 +732,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         Bc *= Ac;
                     }
                 } else {
-                    // state->toRGBAlphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
+                    // alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
                     if (Ac == 0.0f) {
                         Rc = 0.0f;
                         Gc = 0.0f;
@@ -1256,7 +1242,23 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
-    avifAlphaMultiplyMode alphaMultiplyMode = state.toRGBAlphaMode;
+    avifAlphaMultiplyMode alphaMultiplyMode = AVIF_ALPHA_MULTIPLY_MODE_NO_OP;
+    if (image->alphaPlane) {
+        if (!avifRGBFormatHasAlpha(rgb->format) || rgb->ignoreAlpha) {
+            // if we are converting some image with alpha into a format without alpha, we should do 'premultiply alpha' before
+            // discarding alpha plane. This has the same effect of rendering this image on a black background, which makes sense.
+            if (!image->alphaPremultiplied) {
+                alphaMultiplyMode = AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY;
+            }
+        } else {
+            if (!image->alphaPremultiplied && rgb->alphaPremultiplied) {
+                alphaMultiplyMode = AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY;
+            } else if (image->alphaPremultiplied && !rgb->alphaPremultiplied) {
+                alphaMultiplyMode = AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY;
+            }
+        }
+    }
+
     avifBool convertedWithLibYUV = AVIF_FALSE;
     if (!rgb->avoidLibYUV && ((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || avifRGBFormatHasAlpha(rgb->format))) {
         avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
@@ -1370,7 +1372,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 
         if (convertResult == AVIF_RESULT_NOT_IMPLEMENTED) {
             // If we get here, there is no fast path for this combination. Time to be slow!
-            convertResult = avifImageYUVAnyToRGBAnySlow(image, rgb, &state);
+            convertResult = avifImageYUVAnyToRGBAnySlow(image, rgb, &state, alphaMultiplyMode);
 
             // The slow path also handles alpha (un)multiply, so forget the operation here.
             alphaMultiplyMode = AVIF_ALPHA_MULTIPLY_MODE_NO_OP;
