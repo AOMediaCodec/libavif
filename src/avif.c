@@ -162,6 +162,7 @@ static void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImag
     dstImage->colorPrimaries = srcImage->colorPrimaries;
     dstImage->transferCharacteristics = srcImage->transferCharacteristics;
     dstImage->matrixCoefficients = srcImage->matrixCoefficients;
+    dstImage->clli = srcImage->clli;
 
     dstImage->transformFlags = srcImage->transformFlags;
     dstImage->pasp = srcImage->pasp;
