@@ -17,8 +17,8 @@ TEST(ClliTest, Simple) {
 
   for (int max_content_light_level : {0, 1, 65535}) {
     for (int max_pic_average_light_level : {0, 1, 65535}) {
-      image->clli.maxCLL = max_content_light_level;
-      image->clli.maxPALL = max_pic_average_light_level;
+      image->clli.maxCLL = static_cast<uint16_t>(max_content_light_level);
+      image->clli.maxPALL = static_cast<uint16_t>(max_pic_average_light_level);
 
       const testutil::AvifRwData encoded = testutil::Encode(image.get());
       const testutil::AvifImagePtr decoded =
