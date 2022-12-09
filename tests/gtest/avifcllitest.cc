@@ -15,9 +15,10 @@ TEST(ClliTest, Simple) {
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());  // The pixels do not matter.
 
-  for (uint16_t max_content_light_level : {0, 1, 65535}) {
-    for (uint16_t max_pic_average_light_level : {0, 1, 65535}) {
-      image->clli = {max_content_light_level, max_pic_average_light_level};
+  for (int max_content_light_level : {0, 1, 65535}) {
+    for (int max_pic_average_light_level : {0, 1, 65535}) {
+      image->clli.maxCLL = max_content_light_level;
+      image->clli.maxPALL = max_pic_average_light_level;
 
       const testutil::AvifRwData encoded = testutil::Encode(image.get());
       const testutil::AvifImagePtr decoded =
