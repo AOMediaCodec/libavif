@@ -136,8 +136,6 @@ typedef struct avifReformatState
     avifPixelFormatInfo formatInfo;
 
     avifReformatMode mode;
-    // Used by avifImageYUVToRGB() only. avifImageRGBToYUV() uses a local variable (alphaMode) instead.
-    avifAlphaMultiplyMode toRGBAlphaMode;
 } avifReformatState;
 
 // Returns:
