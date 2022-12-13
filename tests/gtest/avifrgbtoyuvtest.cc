@@ -111,33 +111,15 @@ constexpr uint8_t kBlueNoise[kModifierSize] = {
 
 //------------------------------------------------------------------------------
 
-class RGBToYUVTest
-    : public testing::TestWithParam<std::tuple<
-          /*rgb_depth=*/int, /*yuv_depth=*/int, avifRGBFormat, avifPixelFormat,
-          avifRange, avifMatrixCoefficients, avifChromaDownsampling,
-          /*add_noise=*/bool, /*rgb_step=*/uint32_t,
-          /*max_abs_average_diff=*/double, /*min_psnr=*/double>> {};
-
 // Converts from RGB to YUV and back to RGB for all RGB combinations, separated
 // by a color step for reasonable timing. If add_noise is true, also applies
 // some noise to the input samples to exercise chroma subsampling.
-TEST_P(RGBToYUVTest, ConvertWholeRange) {
-  const int rgb_depth = std::get<0>(GetParam());
-  const int yuv_depth = std::get<1>(GetParam());
-  const avifRGBFormat rgb_format = std::get<2>(GetParam());
-  const avifPixelFormat yuv_format = std::get<3>(GetParam());
-  const avifRange yuv_range = std::get<4>(GetParam());
-  const avifMatrixCoefficients matrix_coefficients = std::get<5>(GetParam());
-  const avifChromaDownsampling chroma_downsampling = std::get<6>(GetParam());
-  // Whether to add noise to the input RGB samples. Should only impact
-  // subsampled chroma (4:2:2 and 4:2:0).
-  const bool add_noise = std::get<7>(GetParam());
-  // Testing each RGB combination would be more accurate but results are similar
-  // with faster settings.
-  const uint32_t rgb_step = std::get<8>(GetParam());
-  // Thresholds to pass.
-  const double max_abs_average_diff = std::get<9>(GetParam());
-  const double min_psnr = std::get<10>(GetParam());
+void ConvertWholeRange(int rgb_depth, int yuv_depth, avifRGBFormat rgb_format,
+                       avifPixelFormat yuv_format, avifRange yuv_range,
+                       avifMatrixCoefficients matrix_coefficients,
+                       avifChromaDownsampling chroma_downsampling,
+                       bool add_noise, uint32_t rgb_step,
+                       double max_abs_average_diff, double min_psnr, bool log) {
   // Deduced constants.
   const bool is_monochrome =
       (yuv_format == AVIF_PIXEL_FORMAT_YUV400);  // If so, only test grey input.
@@ -233,32 +215,27 @@ TEST_P(RGBToYUVTest, ConvertWholeRange) {
   EXPECT_LE(std::abs(average_diff), max_abs_average_diff);
   EXPECT_GE(psnr, min_psnr);
 
-  // Print stats for convenience and easier threshold tuning.
-  static constexpr const char* kAvifRgbFormatToString[] = {
-      "RGB", "RGBA", "ARGB", "BGR", "BGRA", "ABGR"};
-  std::cout << " RGB " << rgb_depth << " bits, YUV " << yuv_depth << " bits, "
-            << kAvifRgbFormatToString[rgb_format] << ", "
-            << avifPixelFormatToString(yuv_format) << ", "
-            << (yuv_range ? "full" : "lmtd") << ", MC " << matrix_coefficients
-            << ", " << (add_noise ? "noisy" : "plain") << ", avg "
-            << average_diff << ", abs avg " << average_abs_diff << ", max "
-            << max_abs_diff << ", PSNR " << psnr << "dB" << std::endl;
+  if (log) {
+    // Print stats for convenience and easier threshold tuning.
+    static constexpr const char* kAvifRgbFormatToString[] = {
+        "RGB", "RGBA", "ARGB", "BGR", "BGRA", "ABGR"};
+    std::cout << " RGB " << rgb_depth << " bits, YUV " << yuv_depth << " bits, "
+              << kAvifRgbFormatToString[rgb_format] << ", "
+              << avifPixelFormatToString(yuv_format) << ", "
+              << (yuv_range ? "full" : "lmtd") << ", MC " << matrix_coefficients
+              << ", " << (add_noise ? "noisy" : "plain") << ", avg "
+              << average_diff << ", abs avg " << average_abs_diff << ", max "
+              << max_abs_diff << ", PSNR " << psnr << "dB" << std::endl;
+  }
 }
 
 // Converts from RGB to YUV and back to RGB for multiple buffer dimensions to
 // exercise stride computation and subsampling edge cases.
-TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
-  const int rgb_depth = std::get<0>(GetParam());
-  const int yuv_depth = std::get<1>(GetParam());
-  const avifRGBFormat rgb_format = std::get<2>(GetParam());
-  const avifPixelFormat yuv_format = std::get<3>(GetParam());
-  const avifRange yuv_range = std::get<4>(GetParam());
-  const avifMatrixCoefficients matrix_coefficients = std::get<5>(GetParam());
-  const avifChromaDownsampling chroma_downsampling = std::get<6>(GetParam());
-  // Whether to add noise to the input RGB samples.
-  const bool add_noise = std::get<7>(GetParam());
-  // Threshold to pass.
-  const double min_psnr = std::get<9>(GetParam());
+void ConvertWholeBuffer(int rgb_depth, int yuv_depth, avifRGBFormat rgb_format,
+                        avifPixelFormat yuv_format, avifRange yuv_range,
+                        avifMatrixCoefficients matrix_coefficients,
+                        avifChromaDownsampling chroma_downsampling,
+                        bool add_noise, double min_psnr) {
   // Deduced constants.
   const bool is_monochrome =
       (yuv_format == AVIF_PIXEL_FORMAT_YUV400);  // If so, only test grey input.
@@ -316,11 +293,166 @@ TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
             min_psnr);
 }
 
-constexpr avifRGBFormat kAllRgbFormats[] = {
-    AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
-    AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR};
+//------------------------------------------------------------------------------
+// Exhaustive settings
+// These tests would generate too many GoogleTest instances as parameterized
+// tests (TEST_P) so loops are used instead.
+
+TEST(RGBToYUVTest, ExhaustiveSettings) {
+  // Coverage of all configurations with all min/max input combinations.
+  for (int rgb_depth : {8, 10, 12}) {
+    for (int yuv_depth : {8, 10, 12}) {
+      for (avifRGBFormat rgb_format :
+           {AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB,
+            AVIF_RGB_FORMAT_BGR, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR}) {
+        for (avifPixelFormat yuv_format :
+             {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
+              AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
+          for (avifRange yuv_range : {AVIF_RANGE_LIMITED, AVIF_RANGE_FULL}) {
+            for (decltype(AVIF_MATRIX_COEFFICIENTS_IDENTITY)
+                     matrix_coefficients : {AVIF_MATRIX_COEFFICIENTS_IDENTITY,
+                                            AVIF_MATRIX_COEFFICIENTS_BT601}) {
+              if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+                  yuv_format != AVIF_PIXEL_FORMAT_YUV444) {
+                // See avifPrepareReformatState().
+                continue;
+              }
+              for (avifChromaDownsampling chroma_downsampling :
+                   {AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                    AVIF_CHROMA_DOWNSAMPLING_FASTEST,
+                    AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY,
+                    AVIF_CHROMA_DOWNSAMPLING_AVERAGE,
+                    AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV}) {
+                if (chroma_downsampling == AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV &&
+                    yuv_depth > 12) {
+                  // SharpYuvConvert() only supports YUV bit depths up to 12.
+                  continue;
+                }
+                ConvertWholeRange(
+                    rgb_depth, yuv_depth, rgb_format, yuv_format, yuv_range,
+                    static_cast<avifMatrixCoefficients>(matrix_coefficients),
+                    chroma_downsampling,
+                    /*add_noise=*/true,
+                    // Just try min and max values.
+                    /*rgb_step=*/(1u << rgb_depth) - 1u,
+                    // Barely check the results, this is mostly for coverage.
+                    /*max_abs_average_diff=*/(1u << rgb_depth) - 1u,
+                    /*min_psnr=*/5.0,
+                    // Avoid spam.
+                    /*log=*/false);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST(RGBToYUVTest, AllMatrixCoefficients) {
+  // Coverage of all configurations with all min/max input combinations.
+  for (int rgb_depth : {8, 10, 12}) {
+    for (int yuv_depth : {8, 10, 12}) {
+      for (avifPixelFormat yuv_format :
+           {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
+            AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
+        for (avifRange yuv_range : {AVIF_RANGE_LIMITED, AVIF_RANGE_FULL}) {
+          for (decltype(AVIF_MATRIX_COEFFICIENTS_IDENTITY) matrix_coefficients :
+               {
+                   AVIF_MATRIX_COEFFICIENTS_BT709,
+                   AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED,
+                   AVIF_MATRIX_COEFFICIENTS_FCC,
+                   AVIF_MATRIX_COEFFICIENTS_BT470BG,
+                   AVIF_MATRIX_COEFFICIENTS_BT601,
+                   AVIF_MATRIX_COEFFICIENTS_SMPTE240,
+                   AVIF_MATRIX_COEFFICIENTS_YCGCO,
+                   AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
+                   AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL
+                   // These are unsupported. See avifPrepareReformatState().
+                   // AVIF_MATRIX_COEFFICIENTS_BT2020_CL
+                   // AVIF_MATRIX_COEFFICIENTS_SMPTE2085
+                   // AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL
+                   // AVIF_MATRIX_COEFFICIENTS_ICTCP
+               }) {
+            if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO &&
+                yuv_range == AVIF_RANGE_LIMITED) {
+              // See avifPrepareReformatState().
+              continue;
+            }
+            for (avifChromaDownsampling chroma_downsampling :
+                 {AVIF_CHROMA_DOWNSAMPLING_FASTEST,
+                  AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY}) {
+              ConvertWholeRange(
+                  rgb_depth, yuv_depth, AVIF_RGB_FORMAT_RGBA, yuv_format,
+                  yuv_range,
+                  static_cast<avifMatrixCoefficients>(matrix_coefficients),
+                  chroma_downsampling,
+                  /*add_noise=*/true,
+                  // Just try min and max values.
+                  /*rgb_step=*/(1u << rgb_depth) - 1u,
+                  // Barely check the results, this is mostly for coverage.
+                  /*max_abs_average_diff=*/(1u << rgb_depth) - 1u,
+                  /*min_psnr=*/5.0,
+                  // Avoid spam.
+                  /*log=*/false);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+// Selected configurations
+
+class RGBToYUVTest
+    : public testing::TestWithParam<std::tuple<
+          /*rgb_depth=*/int, /*yuv_depth=*/int, avifRGBFormat, avifPixelFormat,
+          avifRange, avifMatrixCoefficients, avifChromaDownsampling,
+          /*add_noise=*/bool, /*rgb_step=*/uint32_t,
+          /*max_abs_average_diff=*/double, /*min_psnr=*/double>> {};
+
+TEST_P(RGBToYUVTest, ConvertWholeRange) {
+  ConvertWholeRange(
+      /*rgb_depth=*/std::get<0>(GetParam()),
+      /*yuv_depth=*/std::get<1>(GetParam()),
+      /*rgb_format=*/std::get<2>(GetParam()),
+      /*yuv_format=*/std::get<3>(GetParam()),
+      /*yuv_range=*/std::get<4>(GetParam()),
+      /*matrix_coefficients=*/std::get<5>(GetParam()),
+      /*chroma_downsampling=*/std::get<6>(GetParam()),
+      // Whether to add noise to the input RGB samples.
+      // Should only impact subsampled chroma (4:2:2 and 4:2:0).
+      /*add_noise=*/std::get<7>(GetParam()),
+      // Testing each RGB combination would be more accurate but results are
+      // similar with faster settings.
+      /*rgb_step=*/std::get<8>(GetParam()),
+      // Thresholds to pass.
+      /*max_abs_average_diff=*/std::get<9>(GetParam()),
+      /*min_psnr=*/std::get<10>(GetParam()),
+      // Useful to see surrounding results when there is a failure.
+      /*log=*/true);
+}
+
+TEST_P(RGBToYUVTest, ConvertWholeBuffer) {
+  ConvertWholeBuffer(
+      /*rgb_depth=*/std::get<0>(GetParam()),
+      /*yuv_depth=*/std::get<1>(GetParam()),
+      /*rgb_format=*/std::get<2>(GetParam()),
+      /*yuv_format=*/std::get<3>(GetParam()),
+      /*yuv_range=*/std::get<4>(GetParam()),
+      /*matrix_coefficients=*/std::get<5>(GetParam()),
+      /*chroma_downsampling=*/std::get<6>(GetParam()),
+      // Whether to add noise to the input RGB samples.
+      /*add_noise=*/std::get<7>(GetParam()),
+      // Threshold to pass.
+      /*min_psnr=*/std::get<10>(GetParam()));
+}
 
 // avifMatrixCoefficients-typed constants for testing::Values() to work on MSVC.
+// typedef or using decltype(AVIF_MATRIX_COEFFICIENTS_IDENTITY) does not work
+// (GTest template "declared using unnamed type, is used but never defined").
 constexpr avifMatrixCoefficients kMatrixCoefficientsBT601 =
     AVIF_MATRIX_COEFFICIENTS_BT601;
 constexpr avifMatrixCoefficients kMatrixCoefficientsBT709 =
@@ -348,7 +480,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(Identity8b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(8),
                                  /*yuv_depth=*/Values(8, 10, 12),
-                                 ValuesIn(kAllRgbFormats),
+                                 Values(AVIF_RGB_FORMAT_RGBA),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsIdentity),
@@ -360,7 +492,7 @@ INSTANTIATE_TEST_SUITE_P(Identity8b, RGBToYUVTest,
 INSTANTIATE_TEST_SUITE_P(Identity10b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(10),
                                  /*yuv_depth=*/Values(10, 12),
-                                 ValuesIn(kAllRgbFormats),
+                                 Values(AVIF_RGB_FORMAT_RGBA),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsIdentity),
@@ -372,7 +504,7 @@ INSTANTIATE_TEST_SUITE_P(Identity10b, RGBToYUVTest,
 INSTANTIATE_TEST_SUITE_P(Identity12b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(12),
                                  /*yuv_depth=*/Values(12),
-                                 ValuesIn(kAllRgbFormats),
+                                 Values(AVIF_RGB_FORMAT_RGBA),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsIdentity),
@@ -387,7 +519,7 @@ INSTANTIATE_TEST_SUITE_P(
     PlainAnySubsampling8b, RGBToYUVTest,
     Combine(
         /*rgb_depth=*/Values(8),
-        /*yuv_depth=*/Values(8), ValuesIn(kAllRgbFormats),
+        /*yuv_depth=*/Values(8), Values(AVIF_RGB_FORMAT_RGBA),
         Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                AVIF_PIXEL_FORMAT_YUV420),
         Values(AVIF_RANGE_FULL), Values(kMatrixCoefficientsBT601),
@@ -404,7 +536,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(8),
                                  /*yuv_depth=*/Values(8, 10, 12),
-                                 ValuesIn(kAllRgbFormats),
+                                 Values(AVIF_RGB_FORMAT_RGBA),
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsBT601),
@@ -416,7 +548,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless8b, RGBToYUVTest,
 INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(10),
                                  /*yuv_depth=*/Values(10, 12),
-                                 ValuesIn(kAllRgbFormats),
+                                 Values(AVIF_RGB_FORMAT_RGBA),
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsBT601),
@@ -428,7 +560,7 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless10b, RGBToYUVTest,
 INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, RGBToYUVTest,
                          Combine(/*rgb_depth=*/Values(12),
                                  /*yuv_depth=*/Values(12),
-                                 ValuesIn(kAllRgbFormats),
+                                 Values(AVIF_RGB_FORMAT_RGBA),
                                  Values(AVIF_PIXEL_FORMAT_YUV400),
                                  Values(AVIF_RANGE_FULL),
                                  Values(kMatrixCoefficientsBT601),
@@ -438,13 +570,12 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless12b, RGBToYUVTest,
                                  /*max_abs_average_diff=*/Values(0.),
                                  /*min_psnr=*/Values(99.)));
 
-// Can be used to print the drift of all RGB to YUV conversion possibilities.
-// Also used for coverage.
+// Coverage for reformat_libsharpyuv.c.
 INSTANTIATE_TEST_SUITE_P(
     SharpYuv8Bit, RGBToYUVTest,
     Combine(
         /*rgb_depth=*/Values(8),
-        /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+        /*yuv_depth=*/Values(8, 10, 12), Values(AVIF_RGB_FORMAT_RGBA),
         Values(AVIF_PIXEL_FORMAT_YUV420),
         Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
         Values(kMatrixCoefficientsBT601, kMatrixCoefficientsBT709),
@@ -459,7 +590,7 @@ INSTANTIATE_TEST_SUITE_P(
     SharpYuv10Bit, RGBToYUVTest,
     Combine(
         /*rgb_depth=*/Values(10),
-        /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+        /*yuv_depth=*/Values(8, 10, 12), Values(AVIF_RGB_FORMAT_RGBA),
         Values(AVIF_PIXEL_FORMAT_YUV420),
         Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
         Values(kMatrixCoefficientsBT601),
@@ -474,7 +605,7 @@ INSTANTIATE_TEST_SUITE_P(
     SharpYuv12Bit, RGBToYUVTest,
     Combine(
         /*rgb_depth=*/Values(12),
-        /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+        /*yuv_depth=*/Values(8, 10, 12), Values(AVIF_RGB_FORMAT_RGBA),
         Values(AVIF_PIXEL_FORMAT_YUV420),
         Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
         Values(kMatrixCoefficientsBT601),
@@ -491,7 +622,10 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     All8b, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(8),
-            /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+            /*yuv_depth=*/Values(8, 10, 12),
+            Values(AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA,
+                   AVIF_RGB_FORMAT_ARGB, AVIF_RGB_FORMAT_BGR,
+                   AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
@@ -505,7 +639,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     All10b, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(10),
-            /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+            /*yuv_depth=*/Values(8, 10, 12), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
@@ -519,7 +653,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     All12b, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(12),
-            /*yuv_depth=*/Values(8, 10, 12), ValuesIn(kAllRgbFormats),
+            /*yuv_depth=*/Values(8, 10, 12), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420),
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
@@ -531,14 +665,12 @@ INSTANTIATE_TEST_SUITE_P(
                                                    // of high rgb_step.
             /*min_psnr=*/Values(52.)));
 
-// TODO: Test other matrix coefficients than identity and bt.601.
-
 // This was used to estimate the quality loss of libyuv for RGB-to-YUV.
 // Disabled because it takes a few minutes.
 INSTANTIATE_TEST_SUITE_P(
     DISABLED_All8bTo8b, RGBToYUVTest,
     Combine(/*rgb_depth=*/Values(8),
-            /*yuv_depth=*/Values(8), ValuesIn(kAllRgbFormats),
+            /*yuv_depth=*/Values(8), Values(AVIF_RGB_FORMAT_RGBA),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400),
             Values(AVIF_RANGE_FULL, AVIF_RANGE_LIMITED),
