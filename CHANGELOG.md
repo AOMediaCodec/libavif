@@ -30,7 +30,7 @@ avifEncoder struct.
 * The --grid flag in avifenc can be used for images that are not evenly divided
   into cells.
 * Apps must be built with libpng version 1.6.32 or above.
-* Update svt.cmd/svt.sh: v1.3.0
+* Update svt.cmd/svt.sh: v1.4.1
 * avifImageCopy() no longer accepts source U and V channels to be NULL for
   non-4:0:0 input if Y is not NULL and if AVIF_PLANES_YUV is specified.
 * The default values of the maxQuantizer and maxQuantizerAlpha members of
