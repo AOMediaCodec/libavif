@@ -16,7 +16,7 @@ struct YUVBlock
 
 static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
-    if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12)) {
+    if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12) && (image->depth != 16)) {
         return AVIF_FALSE;
     }
     if ((rgb->depth != 8) && (rgb->depth != 10) && (rgb->depth != 12) && (rgb->depth != 16)) {
