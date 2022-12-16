@@ -31,9 +31,9 @@ beginning)
 
 ### Files with high bit depth per channel
 
-#### File [weld_16b.png](weld_16b.png)
+#### File [weld_16bit.png](weld_16bit.png)
 
-![](weld_16b.png)
+![](weld_16bit.png)
 
 License: "Irrevocable, nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use
 raw files from Signature Edits for free, including for commercial purposes, without permission from or attributing the

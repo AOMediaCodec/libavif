@@ -65,7 +65,7 @@ double GetSampleValueSpread(const avifImage& image, avifChannelIndex channel) {
 TEST(BitDepthTest, Png16b) {
   // Read 16-bit image.
   testutil::AvifImagePtr original =
-      ReadImageLosslessBitDepth(std::string(data_path) + "weld_16b.png", 16);
+      ReadImageLosslessBitDepth(std::string(data_path) + "weld_16bit.png", 16);
   ASSERT_NE(original, nullptr);
   // More than 75% of possible sample values are present in each channel.
   // This is a "true" 16-bit image, not 8-bit samples shifted left by 8 bits.
@@ -75,7 +75,7 @@ TEST(BitDepthTest, Png16b) {
 
   // Write and read it as a 16-bit PNG.
   const std::string file_path =
-      testing::TempDir() + "avifpng16btest_weld_16b.png";
+      testing::TempDir() + "avifpng16bittest_weld_16bit.png";
   ASSERT_TRUE(avifPNGWrite(file_path.c_str(), original.get(), original->depth,
                            AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
                            /*compressionLevel=*/0));

@@ -39,8 +39,9 @@ avifEncoder struct.
   maxQuantizer are left initialized to the default values. Code should be
   updated to set the quality member. Similarly for the alpha quantizers and
   qualityAlpha.
-* avifImageRGBToYUV() and avifImageYUVToRGB() handle bit depths 8, 10, 12 and
-  now also 16. Files read by apps/shared/ can output 16-bit avifImage instances.
+* avifImageRGBToYUV() and avifImageYUVToRGB() handle avifImage bit depths 8, 10,
+  12 and now also 16. Files read by apps/shared/ can output 16-bit avifImage
+  instances.
 
 ## [0.11.1] - 2022-10-19
 
