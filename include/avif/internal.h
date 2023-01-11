@@ -72,6 +72,10 @@ void avifArrayPush(void * arrayStruct, void * element);
 void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
 
+void avifImageSetDefaults(avifImage * image);
+// Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
+void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
+
 typedef struct avifAlphaParams
 {
     uint32_t width;

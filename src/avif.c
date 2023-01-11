@@ -123,7 +123,7 @@ const char * avifProgressiveStateToString(avifProgressiveState progressiveState)
     return "Unknown";
 }
 
-static void avifImageSetDefaults(avifImage * image)
+void avifImageSetDefaults(avifImage * image)
 {
     memset(image, 0, sizeof(avifImage));
     image->yuvRange = AVIF_RANGE_FULL;
@@ -148,8 +148,7 @@ avifImage * avifImageCreateEmpty(void)
     return avifImageCreate(0, 0, 0, AVIF_PIXEL_FORMAT_NONE);
 }
 
-// Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
-static void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
+void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
 {
     dstImage->width = srcImage->width;
     dstImage->height = srcImage->height;
