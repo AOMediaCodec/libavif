@@ -162,8 +162,8 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
             decoder_model_info_present_flag = avifBitsRead(bits, 1);
             if (decoder_model_info_present_flag) { // decoder_model_info()
                 buffer_delay_length = avifBitsRead(bits, 5) + 1;
-                avifBitsRead(bits, 32); // num_units_in_decoding_tick
-                avifBitsRead(bits, 10); // buffer_removal_time_length_minus_1, frame_presentation_time_length_minus_1
+                avifBitsRead(bits, 32);            // num_units_in_decoding_tick
+                avifBitsRead(bits, 10);            // buffer_removal_time_length_minus_1, frame_presentation_time_length_minus_1
             }
         }
 
@@ -325,7 +325,7 @@ static avifBool parseSequenceHeader(avifBits * bits, avifSequenceHeader * header
     if (!mono_chrome) {
         avifBitsRead(bits, 1); // separate_uv_delta_q
     }
-    avifBitsRead(bits, 1); // film_grain_params_present
+    avifBitsRead(bits, 1);     // film_grain_params_present
 
     return !bits->error;
 }
@@ -344,7 +344,7 @@ avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData *
         const uint32_t obu_type = avifBitsRead(&bits, 4);
         const uint32_t obu_extension_flag = avifBitsRead(&bits, 1);
         const uint32_t obu_has_size_field = avifBitsRead(&bits, 1);
-        avifBitsRead(&bits, 1); // obu_reserved_1bit
+        avifBitsRead(&bits, 1);     // obu_reserved_1bit
 
         if (obu_extension_flag) {   // obu_extension_header()
             avifBitsRead(&bits, 8); // temporal_id, spatial_id, extension_header_reserved_3bits

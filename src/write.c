@@ -163,7 +163,7 @@ typedef struct avifEncoderItem
     avifCodecConfigurationBox av1C;       // Harvested in avifEncoderFinish(), if encodeOutput has samples
     uint32_t cellIndex;                   // Which row-major cell index corresponds to this item. ignored on non-av01 types
     avifBool alpha;
-    avifBool hiddenImage; // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
+    avifBool hiddenImage;                 // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
 
     const char * infeName;
     size_t infeNameSize;
@@ -711,8 +711,8 @@ static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t 
     avifRWStreamWriteU8(&s, (uint8_t)(gridRows - 1)); // unsigned int(8) rows_minus_one;
     avifRWStreamWriteU8(&s, (uint8_t)(gridCols - 1)); // unsigned int(8) columns_minus_one;
     if (gridFlags & 1) {
-        avifRWStreamWriteU32(&s, gridWidth);  // unsigned int(FieldLength) output_width;
-        avifRWStreamWriteU32(&s, gridHeight); // unsigned int(FieldLength) output_height;
+        avifRWStreamWriteU32(&s, gridWidth);          // unsigned int(FieldLength) output_width;
+        avifRWStreamWriteU32(&s, gridHeight);         // unsigned int(FieldLength) output_height;
     } else {
         uint16_t tmpWidth = (uint16_t)gridWidth;
         uint16_t tmpHeight = (uint16_t)gridHeight;
@@ -1488,7 +1488,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifItemPropertyDedupStart(dedup);
         uint8_t channelCount = (item->alpha || (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
         avifBoxMarker pixi = avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0);
-        avifRWStreamWriteU8(&dedup->s, channelCount); // unsigned int (8) num_channels;
+        avifRWStreamWriteU8(&dedup->s, channelCount);                      // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
             avifRWStreamWriteU8(&dedup->s, (uint8_t)imageMetadata->depth); // unsigned int (8) bits_per_channel;
         }
@@ -1611,8 +1611,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifRWStreamWriteU16(&s, 0);                            // const bit(16) reserved = 0;
         avifRWStreamWriteZeros(&s, 8);                          // const unsigned int(32)[2] reserved = 0;
         avifRWStreamWrite(&s, unityMatrix, sizeof(unityMatrix));
-        avifRWStreamWriteZeros(&s, 24);                       // bit(32)[6] pre_defined = 0;
-        avifRWStreamWriteU32(&s, encoder->data->items.count); // unsigned int(32) next_track_ID;
+        avifRWStreamWriteZeros(&s, 24);                         // bit(32)[6] pre_defined = 0;
+        avifRWStreamWriteU32(&s, encoder->data->items.count);   // unsigned int(32) next_track_ID;
         avifRWStreamFinishBox(&s, mvhd);
 
         // -------------------------------------------------------------------
@@ -1713,7 +1713,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifBoxMarker stbl = avifRWStreamWriteBox(&s, "stbl", AVIF_BOX_SIZE_TBD);
 
             avifBoxMarker stsd = avifRWStreamWriteFullBox(&s, "stsd", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteU32(&s, 1); // unsigned int(32) entry_count;
+            avifRWStreamWriteU32(&s, 1);                               // unsigned int(32) entry_count;
             avifBoxMarker av01 = avifRWStreamWriteBox(&s, "av01", AVIF_BOX_SIZE_TBD);
             avifRWStreamWriteZeros(&s, 6);                             // const unsigned int(8)[6] reserved = 0;
             avifRWStreamWriteU16(&s, 1);                               // unsigned int(16) data_reference_index;
@@ -1740,7 +1740,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                                       (1 << 6) | // unsigned int(1) intra_pred_used;
                                       (15 << 2); // unsigned int(4) max_ref_per_pic;
             avifRWStreamWriteU8(&s, ccstValue);
-            avifRWStreamWriteZeros(&s, 3); // unsigned int(26) reserved; (two zero bits are written along with ccstValue).
+            avifRWStreamWriteZeros(&s, 3);       // unsigned int(26) reserved; (two zero bits are written along with ccstValue).
             avifRWStreamFinishBox(&s, ccst);
 
             if (item->alpha) {

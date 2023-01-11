@@ -214,9 +214,9 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
     if (!fileExt) {
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
-    ++fileExt; // skip past the dot
+    ++fileExt;                                // skip past the dot
 
-    char lowercaseExt[8]; // This only needs to fit up to "jpeg", so this is plenty
+    char lowercaseExt[8];                     // This only needs to fit up to "jpeg", so this is plenty
     const size_t fileExtLen = strlen(fileExt);
     if (fileExtLen >= sizeof(lowercaseExt)) { // >= accounts for NULL terminator
         return AVIF_APP_FILE_FORMAT_UNKNOWN;

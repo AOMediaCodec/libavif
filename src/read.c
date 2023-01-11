@@ -2257,7 +2257,7 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
         itemID = tmp;
     } else {
         assert(version == 3);
-        AVIF_CHECK(avifROStreamReadU32(&s, &itemID)); // unsigned int(32) item_ID;
+        AVIF_CHECK(avifROStreamReadU32(&s, &itemID));          // unsigned int(32) item_ID;
     }
     uint16_t itemProtectionIndex;                              // unsigned int(16) item_protection_index;
     AVIF_CHECK(avifROStreamReadU16(&s, &itemProtectionIndex)); //

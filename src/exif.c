@@ -128,7 +128,7 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
                 image->irot.angle = 1;
                 image->imir.mode = 0; // ignored
                 return AVIF_RESULT_OK;
-            default: // reserved
+            default:                  // reserved
                 break;
         }
     }

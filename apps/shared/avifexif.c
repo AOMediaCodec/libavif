@@ -11,35 +11,35 @@ uint8_t avifImageGetExifOrientationFromIrotImir(const avifImage * image)
             if (image->imir.mode) {
                 return 7; // 90 degrees anti-clockwise then swap left and right.
             }
-            return 5; // 90 degrees anti-clockwise then swap top and bottom.
+            return 5;     // 90 degrees anti-clockwise then swap top and bottom.
         }
-        return 6; // 90 degrees anti-clockwise.
+        return 6;         // 90 degrees anti-clockwise.
     }
     if ((image->transformFlags & AVIF_TRANSFORM_IROT) && (image->irot.angle == 2)) {
         if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
             if (image->imir.mode) {
                 return 4; // 180 degrees anti-clockwise then swap left and right.
             }
-            return 2; // 180 degrees anti-clockwise then swap top and bottom.
+            return 2;     // 180 degrees anti-clockwise then swap top and bottom.
         }
-        return 3; // 180 degrees anti-clockwise.
+        return 3;         // 180 degrees anti-clockwise.
     }
     if ((image->transformFlags & AVIF_TRANSFORM_IROT) && (image->irot.angle == 3)) {
         if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
             if (image->imir.mode) {
                 return 5; // 270 degrees anti-clockwise then swap left and right.
             }
-            return 7; // 270 degrees anti-clockwise then swap top and bottom.
+            return 7;     // 270 degrees anti-clockwise then swap top and bottom.
         }
-        return 8; // 270 degrees anti-clockwise.
+        return 8;         // 270 degrees anti-clockwise.
     }
     if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
         if (image->imir.mode) {
             return 2; // Swap left and right.
         }
-        return 4; // Swap top and bottom.
+        return 4;     // Swap top and bottom.
     }
-    return 1; // Default orientation ("top-left", no-op).
+    return 1;         // Default orientation ("top-left", no-op).
 }
 
 avifResult avifSetExifOrientation(avifRWData * exif, uint8_t orientation)

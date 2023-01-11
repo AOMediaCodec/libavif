@@ -180,7 +180,7 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             } else if (!*ignoreXMP && avifRemoveHeader(&xmpApp1Header, &metadata)) {
                 avifRWDataFree(&avif->xmp);
                 avif->xmp = metadata;
-                *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
+                *ignoreXMP = AVIF_TRUE;    // Ignore any other XMP chunk.
             } else {
                 avifRWDataFree(&metadata); // Discard chunk.
             }
