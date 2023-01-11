@@ -1617,7 +1617,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             }
         }
 
-        uint16_t dataReferenceIndex;                                      // unsigned int(16) data_ref rence_index;
+        uint16_t dataReferenceIndex;                                      // unsigned int(16) data_reference_index;
         AVIF_CHECK(avifROStreamReadU16(&s, &dataReferenceIndex));         //
         uint64_t baseOffset;                                              // unsigned int(base_offset_size*8) base_offset;
         AVIF_CHECK(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize)); //
@@ -1929,7 +1929,7 @@ static avifBool avifParseAV1LayeredImageIndexingProperty(avifProperty * prop, co
         }
     }
 
-    // Layer sizes will be validated layer (when the item's size is known)
+    // Layer sizes will be validated later (when the item's size is known)
     return AVIF_TRUE;
 }
 
