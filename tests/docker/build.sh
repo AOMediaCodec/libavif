@@ -2,7 +2,7 @@
 
 # Tests system-wide libavif shared library installation correct behavior, using Ubuntu in Docker. Run:
 #
-#     docker run -it ubuntu
+#     docker run -it ubuntu:rolling
 #
 # ... then run this script inside of there. When it finishes, avifenc and avifdec should
 # be in /usr/bin and offer all codecs chosen in the last cmake command in this script.
@@ -19,11 +19,10 @@ set -e
 
 # build env
 apt update
-DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim meson cargo nasm
+DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim meson cargo cargo-c nasm
 
 # Rust env
 export PATH="$HOME/.cargo/bin:$PATH"
-cargo install cargo-c
 
 # aom
 cd
