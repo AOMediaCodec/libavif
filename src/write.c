@@ -1484,8 +1484,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         uint32_t imageWidth = cellWidth;
         uint32_t imageHeight = cellHeight;
         if (isGrid) {
-            imageWidth *= item->gridWidth;
-            imageHeight *= item->gridHeight;
+            imageWidth = item->gridWidth;
+            imageHeight = item->gridHeight;
         }
 
         // Properties all av01 items need

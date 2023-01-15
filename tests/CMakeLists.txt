@@ -80,6 +80,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifalphapremtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifalphapremtest COMMAND avifalphapremtest)
 
+    add_executable(avifchangedimensiontest gtest/avifchangedimensiontest.cc)
+    target_link_libraries(avifchangedimensiontest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifchangedimensiontest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifchangedimensiontest COMMAND avifchangedimensiontest)
+
     add_executable(avifchangesettingtest gtest/avifchangesettingtest.cc)
     target_link_libraries(avifchangesettingtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifchangesettingtest PRIVATE ${GTEST_INCLUDE_DIRS})

@@ -675,6 +675,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // Tell libaom that all frames will be key frames.
             cfg->kf_max_dist = 0;
         }
+        if ((encoder->width || encoder->height) && (cfg->g_lag_in_frames > 1)) {
+            // libaom do not allow changing frame dimension if g_lag_in_frames > 1.
+            cfg->g_lag_in_frames = 1;
+        }
         if (encoder->maxThreads > 1) {
             cfg->g_threads = encoder->maxThreads;
         }
