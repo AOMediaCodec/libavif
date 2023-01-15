@@ -28,6 +28,10 @@ TEST_P(ChangeDimensionTest, EncodeDecode) {
     GTEST_SKIP() << "Codec unavailable, skip test.";
   }
 
+  if (avifLibYUVVersion() == 0) {
+    GTEST_SKIP() << "libyuv unavailable, skip test.";
+  }
+
   const uint32_t size_first = std::get<0>(GetParam());
   const uint32_t size_second = std::get<1>(GetParam());
   const int speed = std::get<2>(GetParam());
