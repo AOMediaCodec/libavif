@@ -1,0 +1,93 @@
+# This is a copy of ci.yml with gtest disabled. It differs from ci.yml as follows:
+#
+#   * The os matrix consists of ubuntu-latest only.
+#   * Does not build libgav1. (Building libgav1 would enable CXX in CMakeLists.txt.)
+#   * Disables gtest.
+
+name: CI
+on: [push, pull_request]
+jobs:
+  build-disable-gtest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set GCC & G++ 10 compiler (on Linux)
+      if: runner.os == 'Linux'
+      run: echo "CC=gcc-10" >> $GITHUB_ENV && echo "CXX=g++-10" >> $GITHUB_ENV
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@v3
+      with:
+        path: ext
+        key: ${{ runner.os }}-disable-gtest-${{ hashFiles('ext/*.cmd') }}
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.13
+      with:
+        # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
+        cmake-version: '3.17.x'
+    - name: Print cmake version
+      run: cmake --version
+    - uses: ilammy/setup-nasm@v1
+      with:
+        version: 2.15.05
+    - uses: seanmiddleditch/gha-setup-ninja@v3
+    - run: pip install meson
+    - name: Build aom
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash aom.cmd
+    - name: Build dav1d
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash dav1d.cmd
+    - name: Build rav1e
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash rav1e.cmd
+    - name: Build SVT-AV1
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash svt.cmd
+    - name: Build libyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash libyuv.cmd
+    - name: Build libsharpyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash libsharpyuv.cmd
+
+    - name: Prepare libavif (cmake)
+      run: >
+        mkdir build && cd build
+
+        cmake .. -G Ninja
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
+        -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON
+        -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON
+        -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
+        -DAVIF_LOCAL_LIBYUV=ON
+        -DAVIF_LOCAL_LIBSHARPYUV=ON
+        -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF
+    - name: Build libavif (ninja)
+      working-directory: ./build
+      run: ninja
+    - name: Run AVIF Tests
+      working-directory: ./build
+      run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure

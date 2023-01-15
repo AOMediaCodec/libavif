@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC. All rights reserved.
+// Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 package org.aomedia.avif.android;

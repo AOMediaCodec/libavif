@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC. All rights reserved.
+// Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "aviftest_helpers.h"
@@ -6,16 +6,13 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <string>
 
 #include "avif/avif.h"
+#include "avifutil.h"
 
 namespace libavif {
 namespace testutil {
-namespace {
-
-constexpr int AVIF_CHAN_A = AVIF_CHAN_V + 1;
-
-}  // namespace
 
 //------------------------------------------------------------------------------
 
@@ -25,6 +22,11 @@ AvifRgbImage::AvifRgbImage(const avifImage* yuv, int rgbDepth,
   depth = rgbDepth;
   format = rgbFormat;
   avifRGBImageAllocatePixels(this);
+}
+
+AvifRwData::AvifRwData(AvifRwData&& other) : avifRWData{other} {
+  other.data = nullptr;
+  other.size = 0;
 }
 
 //------------------------------------------------------------------------------
@@ -68,24 +70,13 @@ AvifImagePtr CreateImage(int width, int height, int depth,
 }
 
 void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
-  avifPixelFormatInfo info;
-  avifGetPixelFormatInfo(image->yuvFormat, &info);
-
-  for (int c = 0; c < 4; c++) {
-    uint8_t* row = (c == AVIF_CHAN_A) ? image->alphaPlane : image->yuvPlanes[c];
-    if (!row) {
-      continue;
-    }
-    const uint32_t row_bytes =
-        (c == AVIF_CHAN_A) ? image->alphaRowBytes : image->yuvRowBytes[c];
-    const uint32_t plane_width =
-        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
-            ? image->width
-            : ((image->width + info.chromaShiftX) >> info.chromaShiftX);
-    const uint32_t plane_height =
-        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
-            ? image->height
-            : ((image->height + info.chromaShiftY) >> info.chromaShiftY);
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    const uint32_t plane_width = avifImagePlaneWidth(image, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
+    const uint32_t plane_height = avifImagePlaneHeight(image, c);
+    uint8_t* row = avifImagePlane(image, c);
+    const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       if (avifImageUsesU16(image)) {
         std::fill(reinterpret_cast<uint16_t*>(row),
@@ -100,24 +91,14 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
 }
 
 void FillImageGradient(avifImage* image) {
-  avifPixelFormatInfo info;
-  avifGetPixelFormatInfo(image->yuvFormat, &info);
-
-  for (int c = 0; c < 4; c++) {
-    uint8_t* row = (c == AVIF_CHAN_A) ? image->alphaPlane : image->yuvPlanes[c];
-    if (!row) {
-      continue;
-    }
-    const uint32_t row_bytes =
-        (c == AVIF_CHAN_A) ? image->alphaRowBytes : image->yuvRowBytes[c];
-    const uint32_t plane_width =
-        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
-            ? image->width
-            : ((image->width + info.chromaShiftX) >> info.chromaShiftX);
-    const uint32_t plane_height =
-        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
-            ? image->height
-            : ((image->height + info.chromaShiftY) >> info.chromaShiftY);
+  assert(image->yuvRange == AVIF_RANGE_FULL);
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    const uint32_t plane_width = avifImagePlaneWidth(image, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
+    const uint32_t plane_height = avifImagePlaneHeight(image, c);
+    uint8_t* row = avifImagePlane(image, c);
+    const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       for (uint32_t x = 0; x < plane_width; ++x) {
         const uint32_t value = (x + y) * ((1u << image->depth) - 1u) /
@@ -159,6 +140,16 @@ void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
 
 //------------------------------------------------------------------------------
 
+bool AreByteSequencesEqual(const uint8_t data1[], size_t data1_length,
+                           const uint8_t data2[], size_t data2_length) {
+  if (data1_length != data2_length) return false;
+  return data1_length == 0 || std::equal(data1, data1 + data1_length, data2);
+}
+
+bool AreByteSequencesEqual(const avifRWData& data1, const avifRWData& data2) {
+  return AreByteSequencesEqual(data1.data, data1.size, data2.data, data2.size);
+}
+
 // Returns true if image1 and image2 are identical.
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha) {
@@ -169,38 +160,30 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
   }
   assert(image1.width * image1.height > 0);
 
-  avifPixelFormatInfo info;
-  avifGetPixelFormatInfo(image1.yuvFormat, &info);
-
-  for (int c = 0; c < 4; c++) {
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     if (ignore_alpha && c == AVIF_CHAN_A) continue;
-    uint8_t* row1 =
-        (c == AVIF_CHAN_A) ? image1.alphaPlane : image1.yuvPlanes[c];
-    uint8_t* row2 =
-        (c == AVIF_CHAN_A) ? image2.alphaPlane : image2.yuvPlanes[c];
+    const uint8_t* row1 = avifImagePlane(&image1, c);
+    const uint8_t* row2 = avifImagePlane(&image2, c);
     if (!row1 != !row2) {
+      // Maybe one image contains an opaque alpha channel while the other has no
+      // alpha channel, but they should still be considered equal.
+      if (c == AVIF_CHAN_A && avifImageIsOpaque(&image1) &&
+          avifImageIsOpaque(&image2)) {
+        continue;
+      }
       return false;
     }
-    if (!row1) {
-      continue;
-    }
-    const uint32_t row_bytes1 =
-        (c == AVIF_CHAN_A) ? image1.alphaRowBytes : image1.yuvRowBytes[c];
-    const uint32_t row_bytes2 =
-        (c == AVIF_CHAN_A) ? image2.alphaRowBytes : image2.yuvRowBytes[c];
-    const uint32_t plane_width =
-        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
-            ? image1.width
-            : ((image1.width + info.chromaShiftX) >> info.chromaShiftX);
-    const uint32_t plane_height =
-        (c == AVIF_CHAN_Y || c == AVIF_CHAN_A)
-            ? image1.height
-            : ((image1.height + info.chromaShiftY) >> info.chromaShiftY);
+    const uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
+    const uint32_t row_bytes2 = avifImagePlaneRowBytes(&image2, c);
+    const uint32_t plane_width = avifImagePlaneWidth(&image1, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
+    const uint32_t plane_height = avifImagePlaneHeight(&image1, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       if (avifImageUsesU16(&image1)) {
-        if (!std::equal(reinterpret_cast<uint16_t*>(row1),
-                        reinterpret_cast<uint16_t*>(row1) + plane_width,
-                        reinterpret_cast<uint16_t*>(row2))) {
+        if (!std::equal(reinterpret_cast<const uint16_t*>(row1),
+                        reinterpret_cast<const uint16_t*>(row1) + plane_width,
+                        reinterpret_cast<const uint16_t*>(row2))) {
           return false;
         }
       } else {
@@ -212,8 +195,84 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
       row2 += row_bytes2;
     }
   }
-  return true;
+  return AreByteSequencesEqual(image1.icc, image2.icc) &&
+         AreByteSequencesEqual(image1.exif, image2.exif) &&
+         AreByteSequencesEqual(image1.xmp, image2.xmp);
 }
+
+void CopyImageSamples(const avifImage& from, avifImage* to) {
+  assert(from.width == to->width);
+  assert(from.height == to->height);
+  assert(from.depth == to->depth);
+  assert(from.yuvFormat == to->yuvFormat);
+  assert(from.yuvRange == to->yuvRange);
+
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    const uint8_t* from_row = avifImagePlane(&from, c);
+    uint8_t* to_row = avifImagePlane(to, c);
+    assert(!from_row == !to_row);
+    const uint32_t from_row_bytes = avifImagePlaneRowBytes(&from, c);
+    const uint32_t to_row_bytes = avifImagePlaneRowBytes(to, c);
+    const uint32_t plane_width = avifImagePlaneWidth(&from, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
+    const uint32_t plane_height = avifImagePlaneHeight(&from, c);
+    for (uint32_t y = 0; y < plane_height; ++y) {
+      if (avifImageUsesU16(&from)) {
+        std::copy(reinterpret_cast<const uint16_t*>(from_row),
+                  reinterpret_cast<const uint16_t*>(from_row) + plane_width,
+                  reinterpret_cast<uint16_t*>(to_row));
+      } else {
+        std::copy(from_row, from_row + plane_width, to_row);
+      }
+      from_row += from_row_bytes;
+      to_row += to_row_bytes;
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+
+AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
+                       avifPixelFormat requested_format, int requested_depth,
+                       avifChromaDownsampling chroma_downsampling,
+                       avifBool ignore_icc, avifBool ignore_exif,
+                       avifBool ignore_xmp) {
+  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  if (!image ||
+      avifReadImage((std::string(folder_path) + file_name).c_str(),
+                    requested_format, requested_depth, chroma_downsampling,
+                    ignore_icc, ignore_exif, ignore_xmp, image.get(),
+                    /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+                    /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+    return {nullptr, nullptr};
+  }
+  return image;
+}
+
+AvifRwData Encode(const avifImage* image, int speed) {
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  if (!encoder) return {};
+  encoder->speed = speed;
+  testutil::AvifRwData bytes;
+  if (avifEncoderWrite(encoder.get(), image, &bytes) != AVIF_RESULT_OK) {
+    return {};
+  }
+  return bytes;
+}
+
+AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  if (!decoded || !decoder ||
+      (avifDecoderReadMemory(decoder.get(), decoded.get(), bytes, num_bytes) !=
+       AVIF_RESULT_OK)) {
+    return {nullptr, nullptr};
+  }
+  return decoded;
+}
+
+//------------------------------------------------------------------------------
 
 static avifResult avifIOLimitedReaderRead(avifIO* io, uint32_t readFlags,
                                           uint64_t offset, size_t size,
@@ -252,5 +311,6 @@ avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp) {
 }
 
 //------------------------------------------------------------------------------
+
 }  // namespace testutil
 }  // namespace libavif

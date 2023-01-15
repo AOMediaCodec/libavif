@@ -1,0 +1,90 @@
+# This is a copy of ci.yml for building shared libraries. It differs from ci.yml as follows:
+#
+#   * The os matrix consists of ubuntu-latest only.
+#   * Does not build rav1e, SVT-AV1 nor libgav1.
+
+name: CI
+on: [push, pull_request]
+jobs:
+  build-shared-local:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set GCC & G++ 10 compiler (on Linux)
+      if: runner.os == 'Linux'
+      run: echo "CC=gcc-10" >> $GITHUB_ENV && echo "CXX=g++-10" >> $GITHUB_ENV
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@v3
+      with:
+        path: ext
+        key: ${{ runner.os }}-shared-local-${{ hashFiles('ext/*.cmd') }}
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.13
+      with:
+        # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
+        cmake-version: '3.17.x'
+    - name: Print cmake version
+      run: cmake --version
+    - uses: ilammy/setup-nasm@v1
+      with:
+        version: 2.15.05
+    - uses: seanmiddleditch/gha-setup-ninja@v3
+    - run: pip install meson
+    - name: Set shared libs
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: >
+        sed -i'' -e 's/-DBUILD_SHARED_LIBS=OFF/-DBUILD_SHARED_LIBS=ON/' *.cmd
+
+        sed -i'' -e 's/--default-library=static/--default-library=shared/' dav1d.cmd
+
+        sed -i'' -e 's/ninja yuv/ninja yuv_shared/' libyuv.cmd
+    - name: Build aom
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash aom.cmd
+    - name: Build dav1d
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash dav1d.cmd
+    - name: Build libyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash libyuv.cmd
+    - name: Build libsharpyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash libsharpyuv.cmd
+    - name: Build GoogleTest
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash googletest.cmd
+
+    - name: Prepare libavif (cmake)
+      run: >
+        mkdir build && cd build
+
+        cmake .. -G Ninja
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
+        -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON
+        -DAVIF_LOCAL_LIBYUV=ON
+        -DAVIF_LOCAL_LIBSHARPYUV=ON
+        -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
+    - name: Build libavif (ninja)
+      working-directory: ./build
+      run: ninja
+    - name: Run AVIF Tests
+      working-directory: ./build
+      run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure

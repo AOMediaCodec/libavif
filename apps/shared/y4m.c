@@ -5,6 +5,7 @@
 
 #include "y4m.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -201,6 +202,40 @@ static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayF
     return -1;
 }
 
+// Limits each sample value to fit into avif->depth bits.
+// Returns AVIF_TRUE if any sample was clamped this way.
+static avifBool y4mClampSamples(avifImage * avif)
+{
+    if (!avifImageUsesU16(avif)) {
+        assert(avif->depth == 8);
+        return AVIF_FALSE;
+    }
+    assert(avif->depth < 16); // Otherwise it could be skipped too.
+
+    // AV1 encoders and decoders do not care whether the samples are full range or limited range
+    // for the internal computation: it is only passed as an informative tag, so ignore avif->yuvRange.
+    const uint16_t maxSampleValue = (uint16_t)((1u << avif->depth) - 1u);
+
+    avifBool samplesWereClamped = AVIF_FALSE;
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
+        uint32_t planeWidth = avifImagePlaneWidth(avif, plane);
+        uint8_t * row = avifImagePlane(avif, plane);
+        uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
+        for (uint32_t y = 0; y < planeHeight; ++y) {
+            uint16_t * row16 = (uint16_t *)row;
+            for (uint32_t x = 0; x < planeWidth; ++x) {
+                if (row16[x] > maxSampleValue) {
+                    row16[x] = maxSampleValue;
+                    samplesWereClamped = AVIF_TRUE;
+                }
+            }
+            row += rowBytes;
+        }
+    }
+    return samplesWereClamped;
+}
+
 #define ADVANCE(BYTES)    \
     do {                  \
         p += BYTES;       \
@@ -361,43 +396,29 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         goto cleanup;
     }
 
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(avif->yuvFormat, &formatInfo);
-
-    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
-    for (int plane = 0; plane < planeCount; ++plane) {
-        uint32_t planeWidth = (plane > 0) ? ((avif->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX) : avif->width;
-        uint32_t planeHeight = (plane > 0) ? ((avif->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY) : avif->height;
-        uint32_t rowBytes = planeWidth << (avif->depth > 8);
-        uint8_t * row = avif->yuvPlanes[plane];
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
+        uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
+        uint8_t * row = avifImagePlane(avif, plane);
+        uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
         for (uint32_t y = 0; y < planeHeight; ++y) {
-            uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
-            if (bytesRead != rowBytes) {
+            uint32_t bytesRead = (uint32_t)fread(row, 1, planeWidthBytes, frame.inputFile);
+            if (bytesRead != planeWidthBytes) {
                 fprintf(stderr,
                         "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
-                        rowBytes,
+                        planeWidthBytes,
                         bytesRead,
                         frame.displayFilename);
                 goto cleanup;
             }
-            row += avif->yuvRowBytes[plane];
+            row += rowBytes;
         }
     }
-    if (frame.hasAlpha) {
-        uint32_t rowBytes = avif->width << (avif->depth > 8);
-        uint8_t * row = avif->alphaPlane;
-        for (uint32_t y = 0; y < avif->height; ++y) {
-            uint32_t bytesRead = (uint32_t)fread(row, 1, rowBytes, frame.inputFile);
-            if (bytesRead != rowBytes) {
-                fprintf(stderr,
-                        "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
-                        rowBytes,
-                        bytesRead,
-                        frame.displayFilename);
-                goto cleanup;
-            }
-            row += avif->alphaRowBytes;
-        }
+
+    // libavif API does not guarantee the absence of undefined behavior if samples exceed the specified avif->depth.
+    // Avoid that by making sure input values are within the correct range.
+    if (y4mClampSamples(avif)) {
+        fprintf(stderr, "WARNING: some samples were clamped to fit into %u bits per sample\n", avif->depth);
     }
 
     result = AVIF_TRUE;
@@ -517,9 +538,6 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         rangeString = "XCOLORRANGE=LIMITED";
     }
 
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(avif->yuvFormat, &formatInfo);
-
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "Cannot open file for write: %s\n", outputFilename);
@@ -533,31 +551,19 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         goto cleanup;
     }
 
-    const int planeCount = formatInfo.monochrome ? 1 : AVIF_PLANE_COUNT_YUV;
-    for (int plane = 0; plane < planeCount; ++plane) {
-        uint32_t planeWidth = (plane > 0) ? ((avif->width + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX) : avif->width;
-        uint32_t planeHeight = (plane > 0) ? ((avif->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY) : avif->height;
-        uint32_t rowBytes = planeWidth << (avif->depth > 8);
-        const uint8_t * row = avif->yuvPlanes[plane];
+    const int lastPlane = writeAlpha ? AVIF_CHAN_A : AVIF_CHAN_V;
+    for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
+        uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
+        const uint8_t * row = avifImagePlane(avif, plane);
+        uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
         for (uint32_t y = 0; y < planeHeight; ++y) {
-            if (fwrite(row, 1, rowBytes, f) != rowBytes) {
-                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", rowBytes, outputFilename);
+            if (fwrite(row, 1, planeWidthBytes, f) != planeWidthBytes) {
+                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeWidthBytes, outputFilename);
                 success = AVIF_FALSE;
                 goto cleanup;
             }
-            row += avif->yuvRowBytes[plane];
-        }
-    }
-    if (writeAlpha) {
-        uint32_t rowBytes = avif->width << (avif->depth > 8);
-        const uint8_t * row = avif->alphaPlane;
-        for (uint32_t y = 0; y < avif->height; ++y) {
-            if (fwrite(row, 1, rowBytes, f) != rowBytes) {
-                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", rowBytes, outputFilename);
-                success = AVIF_FALSE;
-                goto cleanup;
-            }
-            row += avif->alphaRowBytes;
+            row += rowBytes;
         }
     }
 

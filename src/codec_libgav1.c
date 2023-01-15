@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC. All rights reserved.
+// Copyright 2020 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
@@ -116,9 +116,6 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->colorPrimaries = (avifColorPrimaries)gav1Image->color_primary;
         image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
         image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
-
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(yuvFormat, &formatInfo);
 
         // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);

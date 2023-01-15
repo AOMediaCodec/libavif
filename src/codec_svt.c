@@ -46,6 +46,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
+                                      int tileRowsLog2,
+                                      int tileColsLog2,
+                                      int quantizer,
                                       avifEncoderChanges encoderChanges,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
@@ -119,7 +122,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->forced_max_frame_width = encoder->width;
         svt_config->forced_max_frame_height = encoder->height;
         svt_config->logical_processors = encoder->maxThreads;
-        svt_config->enable_adaptive_quantization = AVIF_FALSE;
+        svt_config->enable_adaptive_quantization = 2;
         // disable 2-pass
 #if SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->rc_stats_buffer = (SvtAv1FixedBuf) { NULL, 0 };
@@ -128,19 +131,21 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->rc_twopass_stats_in = (SvtAv1FixedBuf) { NULL, 0 };
 #endif
 
+        svt_config->rate_control_mode = 0; // CRF because enable_adaptive_quantization is 2
         if (alpha) {
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
             svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
         } else {
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-            svt_config->qp = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
+            svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
         }
+        svt_config->qp = quantizer;
 
-        if (encoder->tileRowsLog2 != 0) {
-            svt_config->tile_rows = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+        if (tileRowsLog2 != 0) {
+            svt_config->tile_rows = tileRowsLog2;
         }
-        if (encoder->tileColsLog2 != 0) {
-            svt_config->tile_columns = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+        if (tileColsLog2 != 0) {
+            svt_config->tile_columns = tileColsLog2;
         }
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             int speed = AVIF_CLAMP(encoder->speed, 0, 8);

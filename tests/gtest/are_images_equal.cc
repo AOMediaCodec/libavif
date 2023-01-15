@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC. All rights reserved.
+// Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 // Compares two files and returns whether they are the same once decoded.
 
@@ -31,8 +31,10 @@ int main(int argc, char** argv) {
     // Make sure no color conversion happens.
     decoded[i]->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
     if (avifReadImage(argv[i + 1], requestedFormat, kRequestedDepth,
-                      decoded[i].get(), &depth[i], nullptr,
-                      nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+                      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                      /*ignoreICC=*/AVIF_FALSE, /*ignoreExif=*/AVIF_FALSE,
+                      /*ignoreXMP=*/AVIF_FALSE, decoded[i].get(), &depth[i],
+                      nullptr, nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
       return 2;
     }
@@ -44,7 +46,7 @@ int main(int argc, char** argv) {
     return 1;
   }
   if (!libavif::testutil::AreImagesEqual(*decoded[0], *decoded[1],
-                                         std::stoi(argv[3]))) {
+                                         std::stoi(argv[3]) != 0)) {
     std::cerr << "Images " << argv[1] << " and " << argv[2] << " are different."
               << std::endl;
     return 1;

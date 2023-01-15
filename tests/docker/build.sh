@@ -2,7 +2,7 @@
 
 # Tests system-wide libavif shared library installation correct behavior, using Ubuntu in Docker. Run:
 #
-#     docker run -it ubuntu
+#     docker run -it ubuntu:rolling
 #
 # ... then run this script inside of there. When it finishes, avifenc and avifdec should
 # be in /usr/bin and offer all codecs chosen in the last cmake command in this script.
@@ -19,24 +19,14 @@ set -e
 
 # build env
 apt update
-DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim curl python3-pip
-pip3 install meson
+DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim meson cargo cargo-c nasm
 
 # Rust env
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
-cargo install cargo-c
-
-# NASM
-cd
-curl -L https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar xvz
-cd nasm-2.15.05
-./configure --prefix=/usr && make -j2 && make install
-nasm --version
+export PATH="$HOME/.cargo/bin:$PATH"
 
 # aom
 cd
-git clone -b v3.4.0 --depth 1 https://aomedia.googlesource.com/aom
+git clone -b v3.5.0 --depth 1 https://aomedia.googlesource.com/aom
 cd aom
 mkdir build.avif
 cd build.avif
@@ -69,7 +59,7 @@ cargo cinstall --prefix=/usr --release
 
 # SVT-AV1
 cd
-git clone -b v1.2.1 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v1.4.1 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 cd SVT-AV1
 cd Build
 cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release ..

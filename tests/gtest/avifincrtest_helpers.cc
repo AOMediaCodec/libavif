@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC. All rights reserved.
+// Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avifincrtest_helpers.h"
@@ -33,37 +33,31 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
 
   avifPixelFormatInfo info;
   avifGetPixelFormatInfo(image1.yuvFormat, &info);
-  const uint32_t uv_width =
-      (image1.width + info.chromaShiftX) >> info.chromaShiftX;
   const uint32_t uv_height =
-      (row_count + info.chromaShiftY) >> info.chromaShiftY;
-  const uint32_t pixel_byte_count =
+      info.monochrome ? 0
+                      : ((row_count + info.chromaShiftY) >> info.chromaShiftY);
+  const size_t pixel_byte_count =
       (image1.depth > 8) ? sizeof(uint16_t) : sizeof(uint8_t);
-
-  for (int plane = 0; plane < (info.monochrome ? 1 : AVIF_PLANE_COUNT_YUV);
-       ++plane) {
-    const uint32_t width = (plane == AVIF_CHAN_Y) ? image1.width : uv_width;
-    const uint32_t width_byte_count = width * pixel_byte_count;
-    const uint32_t height = (plane == AVIF_CHAN_Y) ? row_count : uv_height;
-    const uint8_t* data1 = image1.yuvPlanes[plane];
-    const uint8_t* data2 = image2.yuvPlanes[plane];
-    for (uint32_t y = 0; y < height; ++y) {
-      ASSERT_EQ(std::memcmp(data1, data2, width_byte_count), 0);
-      data1 += image1.yuvRowBytes[plane];
-      data2 += image2.yuvRowBytes[plane];
-    }
-  }
 
   if (image1.alphaPlane) {
     ASSERT_NE(image2.alphaPlane, nullptr);
     ASSERT_EQ(image1.alphaPremultiplied, image2.alphaPremultiplied);
-    const uint32_t width_byte_count = image1.width * pixel_byte_count;
-    const uint8_t* data1 = image1.alphaPlane;
-    const uint8_t* data2 = image2.alphaPlane;
-    for (uint32_t y = 0; y < row_count; ++y) {
-      ASSERT_EQ(std::memcmp(data1, data2, width_byte_count), 0);
-      data1 += image1.alphaRowBytes;
-      data2 += image2.alphaRowBytes;
+  }
+
+  const int last_plane = image1.alphaPlane ? AVIF_CHAN_A : AVIF_CHAN_V;
+  for (int plane = AVIF_CHAN_Y; plane <= last_plane; ++plane) {
+    const size_t width_byte_count =
+        avifImagePlaneWidth(&image1, plane) * pixel_byte_count;
+    const uint32_t height =
+        (plane == AVIF_CHAN_Y || plane == AVIF_CHAN_A) ? row_count : uv_height;
+    const uint8_t* row1 = avifImagePlane(&image1, plane);
+    const uint8_t* row2 = avifImagePlane(&image2, plane);
+    const uint32_t row1_bytes = avifImagePlaneRowBytes(&image1, plane);
+    const uint32_t row2_bytes = avifImagePlaneRowBytes(&image2, plane);
+    for (uint32_t y = 0; y < height; ++y) {
+      ASSERT_EQ(std::memcmp(row1, row2, width_byte_count), 0);
+      row1 += row1_bytes;
+      row2 += row2_bytes;
     }
   }
 }
@@ -118,23 +112,45 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
 struct PartialData {
   avifROData available;
   size_t full_size;
+
+  // Only used as nonpersistent input.
+  std::unique_ptr<uint8_t[]> nonpersistent_bytes;
+  size_t num_nonpersistent_bytes;
 };
 
 // Implementation of avifIOReadFunc simulating a stream from an array. See
 // avifIOReadFunc documentation. io->data is expected to point to PartialData.
-avifResult PartialRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
-                       size_t size, avifROData* out) {
-  const PartialData* data = (PartialData*)io->data;
-  if ((read_flags != 0) || !data || (data->full_size < offset)) {
+avifResult PartialRead(struct avifIO* io, uint32_t read_flags,
+                       uint64_t offset64, size_t size, avifROData* out) {
+  PartialData* data = reinterpret_cast<PartialData*>(io->data);
+  if ((read_flags != 0) || !data || (data->full_size < offset64)) {
     return AVIF_RESULT_IO_ERROR;
   }
-  if (data->full_size < (offset + size)) {
+  const size_t offset = static_cast<size_t>(offset64);
+  // Use |offset| instead of |offset64| from this point on.
+  if (size > (data->full_size - offset)) {
     size = data->full_size - offset;
   }
   if (data->available.size < (offset + size)) {
     return AVIF_RESULT_WAITING_ON_IO;
   }
-  out->data = data->available.data + offset;
+  if (io->persistent) {
+    out->data = data->available.data + offset;
+  } else {
+    // Dedicated buffer containing just the available bytes and nothing more.
+    std::unique_ptr<uint8_t[]> bytes(new uint8_t[size]);
+    std::copy(data->available.data + offset,
+              data->available.data + offset + size, bytes.get());
+    out->data = bytes.get();
+    // Flip the previously returned bytes to make sure the values changed.
+    for (size_t i = 0; i < data->num_nonpersistent_bytes; ++i) {
+      data->nonpersistent_bytes[i] = ~data->nonpersistent_bytes[i];
+    }
+    // Free the memory to invalidate the old pointer. Only do that after
+    // allocating the new bytes to make sure to have a different pointer.
+    data->nonpersistent_bytes = std::move(bytes);
+    data->num_nonpersistent_bytes = size;
+  }
   out->size = size;
   return AVIF_RESULT_OK;
 }
@@ -258,8 +274,9 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
   }
 
   // Emulate a byte-by-byte stream.
-  PartialData data = {/*available=*/{encoded_avif.data, 0},
-                      /*fullSize=*/encoded_avif.size};
+  PartialData data = {
+      /*available=*/{encoded_avif.data, 0}, /*fullSize=*/encoded_avif.size,
+      /*nonpersistent_bytes=*/nullptr, /*num_nonpersistent_bytes=*/0};
   avifIO io = {
       /*destroy=*/nullptr, PartialRead,
       /*write=*/nullptr,   give_size_hint ? encoded_avif.size : 0,
@@ -269,7 +286,7 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
   ASSERT_NE(decoder, nullptr);
   avifDecoderSetIO(decoder.get(), &io);
   decoder->allowIncremental = AVIF_TRUE;
-  const size_t step = std::max(static_cast<size_t>(1), data.full_size / 10000);
+  const size_t step = std::max<size_t>(1, data.full_size / 10000);
 
   // Parsing is not incremental.
   avifResult parse_result = avifDecoderParse(decoder.get());

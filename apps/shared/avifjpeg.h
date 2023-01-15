@@ -10,8 +10,15 @@
 extern "C" {
 #endif
 
-avifBool avifJPEGRead(const char * inputFilename, avifImage * avif, avifPixelFormat requestedFormat, uint32_t requestedDepth);
-avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifYUVToRGBFlags conversionFlags);
+avifBool avifJPEGRead(const char * inputFilename,
+                      avifImage * avif,
+                      avifPixelFormat requestedFormat,
+                      uint32_t requestedDepth,
+                      avifChromaDownsampling chromaDownsampling,
+                      avifBool ignoreICC,
+                      avifBool ignoreExif,
+                      avifBool ignoreXMP);
+avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling);
 
 #ifdef __cplusplus
 } // extern "C"

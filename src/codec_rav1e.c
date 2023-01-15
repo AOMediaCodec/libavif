@@ -53,6 +53,9 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
+                                        int tileRowsLog2,
+                                        int tileColsLog2,
+                                        int quantizer,
                                         avifEncoderChanges encoderChanges,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
@@ -142,27 +145,23 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
         }
 
         int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-        int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
         if (alpha) {
             minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
-            maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
         }
         minQuantizer = (minQuantizer * 255) / 63; // Rescale quantizer values as rav1e's QP range is [0,255]
-        maxQuantizer = (maxQuantizer * 255) / 63;
+        quantizer = (quantizer * 255) / 63;
         if (rav1e_config_parse_int(rav1eConfig, "min_quantizer", minQuantizer) == -1) {
             goto cleanup;
         }
-        if (rav1e_config_parse_int(rav1eConfig, "quantizer", maxQuantizer) == -1) {
+        if (rav1e_config_parse_int(rav1eConfig, "quantizer", quantizer) == -1) {
             goto cleanup;
         }
-        if (encoder->tileRowsLog2 != 0) {
-            int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
+        if (tileRowsLog2 != 0) {
             if (rav1e_config_parse_int(rav1eConfig, "tile_rows", 1 << tileRowsLog2) == -1) {
                 goto cleanup;
             }
         }
-        if (encoder->tileColsLog2 != 0) {
-            int tileColsLog2 = AVIF_CLAMP(encoder->tileColsLog2, 0, 6);
+        if (tileColsLog2 != 0) {
             if (rav1e_config_parse_int(rav1eConfig, "tile_cols", 1 << tileColsLog2) == -1) {
                 goto cleanup;
             }

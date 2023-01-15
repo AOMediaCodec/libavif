@@ -130,6 +130,7 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->timescale = 1;
+  ASSERT_EQ(encoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   encoder->minQuantizer = 63;
   encoder->maxQuantizer = 63;
 
@@ -138,6 +139,16 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
             AVIF_RESULT_OK);
 
   encoder->timescale = 2;
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME),
+            AVIF_RESULT_CANNOT_CHANGE_SETTING);
+
+  encoder->timescale = 1;
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME),
+            AVIF_RESULT_OK);
+
+  encoder->repetitionCount = 0;
   ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME),
             AVIF_RESULT_CANNOT_CHANGE_SETTING);

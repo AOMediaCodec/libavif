@@ -47,6 +47,7 @@ static void syntax(void)
     printf("                        Default: %u, set to a smaller value to further restrict.\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
     printf("  --dimension-limit C : Specifies the image dimension limit (width or height) that should be tolerated.\n");
     printf("                        Default: %u, set to 0 to ignore.\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
+    printf("    --                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     avifPrintVersions();
 }
@@ -61,7 +62,7 @@ int main(int argc, char * argv[])
     int pngCompressionLevel = -1; // -1 is a sentinel to avifPNGWrite() to skip calling png_set_compression_level()
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool infoOnly = AVIF_FALSE;
-    avifYUVToRGBFlags upsamplingFlags = AVIF_YUV_TO_RGB_DEFAULT;
+    avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
     avifBool allowProgressive = AVIF_FALSE;
@@ -79,7 +80,25 @@ int main(int argc, char * argv[])
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
 
-        if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
+        if (!strcmp(arg, "--")) {
+            // Stop parsing flags, everything after this is positional arguments
+            ++argIndex;
+            // Parse additional positional arguments if any.
+            while (argIndex < argc) {
+                arg = argv[argIndex];
+                if (!inputFilename) {
+                    inputFilename = arg;
+                } else if (!outputFilename) {
+                    outputFilename = arg;
+                } else {
+                    fprintf(stderr, "Too many positional arguments: %s\n\n", arg);
+                    syntax();
+                    return 1;
+                }
+                ++argIndex;
+            }
+            break;
+        } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntax();
             return 0;
         } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
@@ -134,15 +153,15 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-u") || !strcmp(arg, "--upsampling")) {
             NEXTARG();
             if (!strcmp(arg, "automatic")) {
-                upsamplingFlags = AVIF_YUV_TO_RGB_DEFAULT;
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
             } else if (!strcmp(arg, "fastest")) {
-                upsamplingFlags = AVIF_CHROMA_UPSAMPLING_NEAREST;
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_FASTEST;
             } else if (!strcmp(arg, "best")) {
-                upsamplingFlags = AVIF_YUV_TO_RGB_AVOID_LIBYUV | AVIF_CHROMA_UPSAMPLING_BILINEAR;
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BEST_QUALITY;
             } else if (!strcmp(arg, "nearest")) {
-                upsamplingFlags = AVIF_CHROMA_UPSAMPLING_NEAREST;
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_NEAREST;
             } else if (!strcmp(arg, "bilinear")) {
-                upsamplingFlags = AVIF_CHROMA_UPSAMPLING_BILINEAR;
+                chromaUpsampling = AVIF_CHROMA_UPSAMPLING_BILINEAR;
             } else {
                 fprintf(stderr, "ERROR: invalid upsampling: %s\n", arg);
                 return 1;
@@ -176,6 +195,10 @@ int main(int argc, char * argv[])
                 return 1;
             }
             imageDimensionLimit = (uint32_t)value;
+        } else if (arg[0] == '-') {
+            fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
+            syntax();
+            return 1;
         } else {
             // Positional argument
             if (!inputFilename) {
@@ -183,7 +206,7 @@ int main(int argc, char * argv[])
             } else if (!outputFilename) {
                 outputFilename = arg;
             } else {
-                fprintf(stderr, "Too many positional arguments: %s\n", arg);
+                fprintf(stderr, "Too many positional arguments: %s\n\n", arg);
                 syntax();
                 return 1;
             }
@@ -324,11 +347,11 @@ int main(int argc, char * argv[])
         if (rawColor) {
             decoder->image->alphaPremultiplied = AVIF_TRUE;
         }
-        if (!avifJPEGWrite(outputFilename, decoder->image, jpegQuality, upsamplingFlags)) {
+        if (!avifJPEGWrite(outputFilename, decoder->image, jpegQuality, chromaUpsampling)) {
             returnCode = 1;
         }
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGWrite(outputFilename, decoder->image, requestedDepth, upsamplingFlags, pngCompressionLevel)) {
+        if (!avifPNGWrite(outputFilename, decoder->image, requestedDepth, chromaUpsampling, pngCompressionLevel)) {
             returnCode = 1;
         }
     } else {

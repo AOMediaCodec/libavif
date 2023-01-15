@@ -24,7 +24,9 @@ install:
  - dav1d.cmd
  - libjpeg.cmd
  - zlibpng.cmd
+ - set "CC=clang-cl" && set "CXX=clang-cl"
  - libyuv.cmd
+ - set "CC=" && set "CXX="
  - cd ..
  # Configure with CMake
  - mkdir build

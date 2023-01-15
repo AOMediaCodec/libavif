@@ -11,7 +11,7 @@ endif()
 # Specify search path for CMake modules to be loaded by include() and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C VERSION 0.10.1)
+project(libavif LANGUAGES C VERSION 0.11.1)
 
 # Set C99 as the default
 set(CMAKE_C_STANDARD 99)
@@ -23,7 +23,7 @@ set(CMAKE_C_STANDARD 99)
 #     Increment MINOR. Set PATCH to 0
 #   If the source code was changed, but there were no interface changes:
 #     Increment PATCH.
-set(LIBRARY_VERSION_MAJOR 14)
+set(LIBRARY_VERSION_MAJOR 15)
 set(LIBRARY_VERSION_MINOR 0)
 set(LIBRARY_VERSION_PATCH 1)
 set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH}")
@@ -70,6 +70,14 @@ else()
     set(XCRUN)
 endif()
 
+if(BUILD_SHARED_LIBS)
+    set(AVIF_LIBRARY_PREFIX "${CMAKE_SHARED_LIBRARY_PREFIX}")
+    set(AVIF_LIBRARY_SUFFIX "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+else()
+    set(AVIF_LIBRARY_PREFIX "${CMAKE_STATIC_LIBRARY_PREFIX}")
+    set(AVIF_LIBRARY_SUFFIX "${CMAKE_STATIC_LIBRARY_SUFFIX}")
+endif()
+
 # ---------------------------------------------------------------------------------------
 # This insanity is for people embedding libavif or making fully static or Windows builds.
 # Any proper unix environment should ignore these entire following blocks.
@@ -87,7 +95,7 @@ if(AVIF_LOCAL_ZLIBPNG)
     set(PREV_ANDROID ${ANDROID})
     set(ANDROID TRUE)
     set(PNG_BUILD_ZLIB "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE STRING "" FORCE)
-    set(PNG_SHARED OFF CACHE BOOL "")
+    set(PNG_SHARED ${BUILD_SHARED_LIBS} CACHE BOOL "")
     set(PNG_TESTS OFF CACHE BOOL "")
     add_subdirectory(ext/libpng)
     set(PNG_PNG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libpng")
@@ -110,9 +118,7 @@ if(AVIF_LOCAL_JPEG)
 endif()
 option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBYUV)
-    set(LIB_FILENAME
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${CMAKE_STATIC_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
-    )
+    set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${AVIF_LIBRARY_PREFIX}yuv${AVIF_LIBRARY_SUFFIX}")
     if(NOT EXISTS "${LIB_FILENAME}")
         message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBYUV): ${LIB_FILENAME} is missing, bailing out")
     endif()
@@ -123,12 +129,15 @@ if(AVIF_LOCAL_LIBYUV)
         set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include" PARENT_SCOPE)
         set(LIBYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
+    if(BUILD_SHARED_LIBS)
+        # Fix "libyuv.so: undefined reference to `jpeg_read_raw_data'" errors.
+        find_package(JPEG REQUIRED)
+        set(LIBYUV_LIBRARY ${LIBYUV_LIBRARY} ${JPEG_LIBRARY})
+    endif()
 endif()
 option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBSHARPYUV)
-    set(LIB_FILENAME
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}"
-    )
+    set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${AVIF_LIBRARY_SUFFIX}")
     message(STATUS "AVIF_LOCAL_LIBSHARPYUV LIB_FILENAME ${LIB_FILENAME}")
     if(NOT EXISTS "${LIB_FILENAME}")
         message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBSHARPYUV): ${LIB_FILENAME} is missing, bailing out")
@@ -147,13 +156,13 @@ endif()
 include(CheckCCompilerFlag)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    add_definitions(-Wall -Wextra -Wshorten-64-to-32)
+    add_compile_options(-Wall -Wextra -Wshorten-64-to-32)
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
-    add_definitions(-Wall -Wextra)
+    add_compile_options(-Wall -Wextra)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     message(STATUS "libavif: Enabling warnings for MSVC")
-    add_definitions(
+    add_compile_options(
         /W4
         /wd4324 # Disable: structure was padded due to alignment specifier
         /wd4996 # Disable: potentially unsafe stdlib methods
@@ -173,9 +182,9 @@ endif()
 if(AVIF_ENABLE_WERROR)
     # Warnings as errors
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        add_definitions(-Werror)
+        add_compile_options(-Werror)
     elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-        add_definitions(/WX)
+        add_compile_options(/WX)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
@@ -184,7 +193,7 @@ endif()
 if(AVIF_ENABLE_COVERAGE)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         message(STATUS "libavif: Enabling coverage for Clang")
-        add_definitions(-fprofile-instr-generate -fcoverage-mapping -O0)
+        add_compile_options(-fprofile-instr-generate -fcoverage-mapping -O0)
         set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fprofile-instr-generate -fcoverage-mapping")
     else()
         # TODO: Add support for other compilers
@@ -197,6 +206,7 @@ set(AVIF_SRCS
     src/avif.c
     src/colr.c
     src/diag.c
+    src/exif.c
     src/io.c
     src/mem.c
     src/obu.c
@@ -250,7 +260,7 @@ else()
 endif()
 
 find_package(libsharpyuv QUIET) # not required
-if (libsharpyuv_FOUND)
+if(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
     set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
@@ -268,9 +278,18 @@ if(AVIF_CODEC_DAV1D)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_dav1d.c)
 
     if(AVIF_LOCAL_DAV1D)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d${AVIF_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+            if("${AVIF_LIBRARY_SUFFIX}" STREQUAL ".a")
+                message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+            else()
+                # On windows, meson will produce a libdav1d.a instead of the expected libdav1d.dll/.lib.
+                # See https://github.com/mesonbuild/meson/issues/8153.
+                set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
+                if(NOT EXISTS "${LIB_FILENAME}")
+                    message(FATAL_ERROR "libavif: ${LIB_FILENAME} (or libdav1d${AVIF_LIBRARY_SUFFIX}) is missing, bailing out")
+                endif()
+            endif()
         endif()
 
         set(AVIF_CODEC_INCLUDES
@@ -305,7 +324,7 @@ if(AVIF_CODEC_LIBGAV1)
         if(DEFINED ANDROID_ABI)
             set(AVIF_LIBGAV1_BUILD_DIR "${AVIF_LIBGAV1_BUILD_DIR}/${ANDROID_ABI}")
         endif()
-        set(LIB_FILENAME "${AVIF_LIBGAV1_BUILD_DIR}/libgav1${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(LIB_FILENAME "${AVIF_LIBGAV1_BUILD_DIR}/libgav1${AVIF_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
         endif()
@@ -330,7 +349,7 @@ if(AVIF_CODEC_RAV1E)
 
     if(AVIF_LOCAL_RAV1E)
         set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${CMAKE_STATIC_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${AVIF_LIBRARY_PREFIX}rav1e${AVIF_LIBRARY_SUFFIX}"
         )
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/build.libavif/usr/lib), bailing out")
@@ -363,7 +382,7 @@ if(AVIF_CODEC_SVT)
 
     if(AVIF_LOCAL_SVT)
         set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${CMAKE_STATIC_LIBRARY_PREFIX}SvtAv1Enc${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${AVIF_LIBRARY_PREFIX}SvtAv1Enc${AVIF_LIBRARY_SUFFIX}"
         )
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: compiled svt library is missing (in ext/SVT-AV1/Bin/Release), bailing out")
@@ -402,9 +421,7 @@ if(AVIF_CODEC_AOM)
     endif()
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_aom.c)
     if(AVIF_LOCAL_AOM)
-        set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${CMAKE_STATIC_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        )
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${AVIF_LIBRARY_PREFIX}aom${AVIF_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
         endif()
@@ -444,6 +461,21 @@ if(BUILD_SHARED_LIBS)
     endif()
 endif()
 
+# Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
+# The avif_internal target should not be used by external code.
+if(BUILD_SHARED_LIBS)
+    add_library(avif_internal STATIC ${AVIF_SRCS})
+    # Copy most properties from the public avif library target.
+    target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
+    target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
+    target_include_directories(
+        avif_internal PUBLIC "$<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>"
+        PRIVATE "$<TARGET_PROPERTY:avif,INCLUDE_DIRECTORIES>"
+    )
+else()
+    add_library(avif_internal ALIAS avif)
+endif()
+
 option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     set(AVIF_EXAMPLES avif_example_decode_memory avif_example_decode_file avif_example_decode_streaming avif_example_encode)
@@ -477,12 +509,12 @@ option(AVIF_ENABLE_GTEST
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
     find_package(ZLIB REQUIRED)
-    find_package(PNG REQUIRED)
+    find_package(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).
     find_package(JPEG REQUIRED)
 
     add_library(
-        avif_apps OBJECT apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
-                         apps/shared/y4m.c
+        avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c
+                         apps/shared/avifutil.c apps/shared/y4m.c
     )
     target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
@@ -575,6 +607,17 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
         )
     endif()
 
+    # Handle both relative and absolute paths (e.g. NixOS) for a relocatable package
+    if(IS_ABSOLUTE "${CMAKE_INSTALL_INCLUDEDIR}")
+        set(PC_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+    else()
+        set(PC_INCLUDEDIR "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
+    endif()
+    if(IS_ABSOLUTE "${CMAKE_INSTALL_LIBDIR}")
+        set(PC_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
+    else()
+        set(PC_LIBDIR "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
+    endif()
     configure_file(libavif.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc @ONLY)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endif()

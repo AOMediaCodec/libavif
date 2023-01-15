@@ -448,7 +448,7 @@ static gboolean avif_image_saver(FILE          *f,
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
 
-    res = avifImageRGBToYUV(avif, &rgb, AVIF_CONVERSION_AUTO);
+    res = avifImageRGBToYUV(avif, &rgb);
     if ( res != AVIF_RESULT_OK ) {
         g_set_error(error,
                     GDK_PIXBUF_ERROR,
@@ -466,7 +466,7 @@ static gboolean avif_image_saver(FILE          *f,
     encoder->maxQuantizer = max_quantizer;
     encoder->minQuantizerAlpha = 0;
     encoder->maxQuantizerAlpha = alpha_quantizer;
-    encoder->speed = 7;
+    encoder->speed = 6;
 
     res = avifEncoderWrite(encoder, avif, &raw);
     avifEncoderDestroy(encoder);

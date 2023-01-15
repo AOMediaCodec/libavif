@@ -1,7 +1,7 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  build:
+  build-static:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -16,6 +16,11 @@ jobs:
     - uses: actions/setup-python@v4
       with:
         python-version: '3.x'
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
 
     - name: Cache external dependencies
       id: cache-ext
@@ -24,7 +29,7 @@ jobs:
         path: ext
         key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
+      uses: jwlawson/actions-setup-cmake@v1.13
       with:
         # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
         cmake-version: '3.17.x'
@@ -89,4 +94,4 @@ jobs:
       run: ninja
     - name: Run AVIF Tests
       working-directory: ./build
-      run: ctest -j 2
+      run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure

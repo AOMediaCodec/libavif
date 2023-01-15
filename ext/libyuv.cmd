@@ -6,15 +6,22 @@
 
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
+: # We recommend building libyuv with clang-cl on Windows, because most of libyuv's assembly code is
+: # written in GCC inline assembly syntax, which MSVC doesn't support. Run this if you have clang-cl
+: # installed:
+: #     set "CC=clang-cl" && set "CXX=clang-cl"
 
 git clone --single-branch https://chromium.googlesource.com/libyuv/libyuv
 
 cd libyuv
-git checkout 9b17af9b
+: # When changing the commit below to a newer version of libyuv, it is best to make sure it is being used by chromium,
+: # because the test suite of chromium provides additional test coverage of libyuv.
+: # It can be looked up at https://source.chromium.org/chromium/chromium/src/+/main:DEPS?q=libyuv.
+git checkout 4a3c79cb
 
 mkdir build
 cd build
 
-cmake -G Ninja -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=Release ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
 ninja yuv
 cd ../..

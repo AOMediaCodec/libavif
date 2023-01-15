@@ -69,6 +69,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **-p**, **\--premultiply**
 :   Premultiply color by the alpha channel and signal this in the AVIF.
 
+**\--sharpyuv**
+:   Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if
+    output is not 420.
+
 **\--stdin**
 :   Read y4m frames from stdin instead of files.
     No input filenames allowed, must be set before specifying the output
@@ -118,6 +122,9 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     Possible values are in the range **0**-**6**.
     Default is 0.
 
+**\--autotiling**
+:   Set **\--tilerowslog2** and **\--tilecolslog2** automatically.
+
 **-g**, **\--grid** *M***x***N*
 :   Encode a single-image grid AVIF with _M_ cols and _N_ rows.
     Either supply MxN images of the same width, height and depth, or a single
@@ -148,13 +155,16 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
         - **svt**
 
 **\--exif** _FILENAME_
-:   Provide an Exif metadata payload to be associated with the primary item.
+:   Provide an Exif metadata payload to be associated with the primary item
+    (implies --ignore-exif).
 
 **\--xmp** _FILENAME_
-:   Provide an XMP metadata payload to be associated with the primary item.
+:   Provide an XMP metadata payload to be associated with the primary item
+    (implies --ignore-xmp).
 
 **\--icc** _FILENAME_
-:   Provide an ICC profile payload to be associated with the primary item.
+:   Provide an ICC profile payload to be associated with the primary item
+    (implies --ignore-icc).
 
 **-a**, **\--advanced** _KEY_[_=VALUE_]
 :   Pass an advanced, codec-specific key/value string pair directly to the
@@ -180,6 +190,14 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Set the forced keyframe interval (maximum frames between keyframes).
     Set to **0** to disable.
     Default is 0.
+
+**\--ignore-exif**
+:   If the input file contains embedded Exif metadata, ignore it (no-op if
+    absent).
+
+**\--ignore-xmp**
+:   If the input file contains embedded XMP metadata, ignore it (no-op if
+    absent).
 
 **\--ignore-icc**
 :   If the input file contains an embedded ICC profile, ignore it (no-op if
@@ -225,6 +243,9 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
     :   - **0** (top-to-bottom)
         - **1** (left-to-right)
+
+**\--**
+:   Signals the end of options. Everything after this is interpreted as file names.
 
 # EXAMPLES
 

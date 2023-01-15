@@ -1,7 +1,7 @@
 prefix=@CMAKE_INSTALL_PREFIX@
-exec_prefix=@CMAKE_INSTALL_PREFIX@
-libdir=@CMAKE_INSTALL_FULL_LIBDIR@
-includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
+exec_prefix=${prefix}
+libdir=@PC_LIBDIR@
+includedir=@PC_INCLUDEDIR@
 
 Name: @PROJECT_NAME@
 Description: Library for encoding and decoding .avif files
