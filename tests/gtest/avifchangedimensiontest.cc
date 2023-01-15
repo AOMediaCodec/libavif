@@ -17,7 +17,8 @@ namespace {
 
 class ChangeDimensionTest
     : public testing::TestWithParam<std::tuple<
-          /*speed=*/int, /*depth=*/int, /*maxThreads*/ int, /*tiling*/ bool,
+          /*size_first*/ uint32_t, /*size_second*/ uint32_t, /*speed=*/int,
+          /*depth=*/int, /*maxThreads*/ int, /*tiling*/ bool,
           /*end_usage=*/std::string, /*tune=*/std::string, /*denoise=*/bool>> {
 };
 
@@ -27,29 +28,31 @@ TEST_P(ChangeDimensionTest, EncodeDecode) {
     GTEST_SKIP() << "Codec unavailable, skip test.";
   }
 
-  const int speed = std::get<0>(GetParam());
-  const int depth = std::get<1>(GetParam());
-  const int maxThreads = std::get<2>(GetParam());
-  const bool tiling = std::get<3>(GetParam());
-  const std::string end_usage = std::get<4>(GetParam());
-  const std::string tune = std::get<5>(GetParam());
-  const bool denoise = std::get<6>(GetParam());
+  const uint32_t size_first = std::get<0>(GetParam());
+  const uint32_t size_second = std::get<1>(GetParam());
+  const int speed = std::get<2>(GetParam());
+  const int depth = std::get<3>(GetParam());
+  const int maxThreads = std::get<4>(GetParam());
+  const bool tiling = std::get<5>(GetParam());
+  const std::string end_usage = std::get<6>(GetParam());
+  const std::string tune = std::get<7>(GetParam());
+  const bool denoise = std::get<8>(GetParam());
 
-  uint32_t size_small = 64;
-  uint32_t size_display = 128;
-  if (maxThreads > 1) {
-    size_small = 512;
-    size_display = 768;
-  }
+  char versionBuffer[256];
+  avifCodecVersions(versionBuffer);
+  bool will_fail = (versionBuffer < std::string("v3.6.0")) &&
+                   ((size_first < size_second) || (depth > 8));
+
+  uint32_t size_display = std::max(size_first, size_second);
 
   testutil::AvifImagePtr first = testutil::CreateImage(
-      int(size_small), int(size_small), depth, AVIF_PIXEL_FORMAT_YUV420,
+      int(size_first), int(size_first), depth, AVIF_PIXEL_FORMAT_YUV420,
       AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(first, nullptr);
   testutil::FillImageGradient(first.get());
 
   testutil::AvifImagePtr second = testutil::CreateImage(
-      int(size_display), int(size_display), depth, AVIF_PIXEL_FORMAT_YUV420,
+      int(size_second), int(size_second), depth, AVIF_PIXEL_FORMAT_YUV420,
       AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(second, nullptr);
   testutil::FillImageGradient(second.get());
@@ -82,15 +85,18 @@ TEST_P(ChangeDimensionTest, EncodeDecode) {
     }
 
     ASSERT_EQ(avifEncoderAddImage(encoder.get(), first.get(), 1, 0),
-              AVIF_RESULT_OK)
-        << encoder->diag.error;
+              AVIF_RESULT_OK);
+
+    if (will_fail) {
+      ASSERT_EQ(avifEncoderAddImage(encoder.get(), second.get(), 1, 0),
+                AVIF_RESULT_INCOMPATIBLE_IMAGE);
+      return;
+    }
 
     ASSERT_EQ(avifEncoderAddImage(encoder.get(), second.get(), 1, 0),
-              AVIF_RESULT_OK)
-        << encoder->diag.error;
+              AVIF_RESULT_OK);
 
-    ASSERT_EQ(avifEncoderFinish(encoder.get(), &encodedAvif), AVIF_RESULT_OK)
-        << encoder->diag.error;
+    ASSERT_EQ(avifEncoderFinish(encoder.get(), &encodedAvif), AVIF_RESULT_OK);
   }
 
   // Decode
@@ -99,39 +105,49 @@ TEST_P(ChangeDimensionTest, EncodeDecode) {
     ASSERT_NE(decoder, nullptr);
 
     avifDecoderSetIOMemory(decoder.get(), encodedAvif.data, encodedAvif.size);
-    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
-        << decoder->diag.error;
-    ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK)
-        << decoder->diag.error;
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
     // libavif scales frames automatically.
     ASSERT_EQ(decoder->image->width, size_display);
     ASSERT_EQ(decoder->image->height, size_display);
-    ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK)
-        << decoder->diag.error;
+    ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
     ASSERT_EQ(decoder->image->width, size_display);
     ASSERT_EQ(decoder->image->height, size_display);
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    AOM, ChangeDimensionTest,
-    Combine(/*speed=*/Values(6, 10),  // Test both GOOD_QUALITY and REALTIME
-            /*depth=*/Values(8, 10),
-            /*maxThreads*/ Values(1),
-            /*tiling*/ Bool(),
-            /*end_usage=*/Values("q", "cbr"),
-            /*tune=*/Values("ssim", "psnr"),
-            /*denoise=*/Bool()));
+INSTANTIATE_TEST_SUITE_P(AOMDecreasing, ChangeDimensionTest,
+                         Combine(/*size_first*/ Values(128),
+                                 /*size_second*/ Values(64),
+                                 /*speed=*/Values(6, 10),
+                                 /*depth=*/Values(8, 10),
+                                 /*maxThreads*/ Values(1),
+                                 /*tiling*/ Bool(),
+                                 /*end_usage=*/Values("q", "cbr"),
+                                 /*tune=*/Values("ssim", "psnr"),
+                                 /*denoise=*/Bool()));
 
-INSTANTIATE_TEST_SUITE_P(
-    AOMMultiThread, ChangeDimensionTest,
-    Combine(/*speed=*/Values(6, 10),  // Test both GOOD_QUALITY and REALTIME
-            /*depth=*/Values(8, 10),
-            /*maxThreads*/ Values(8),
-            /*tiling*/ Values(true),
-            /*end_usage=*/Values("q"),
-            /*tune=*/Values("ssim"),
-            /*denoise=*/Values(true)));
+INSTANTIATE_TEST_SUITE_P(AOMIncreasing, ChangeDimensionTest,
+                         Combine(/*size_first*/ Values(64),
+                                 /*size_second*/ Values(128),
+                                 /*speed=*/Values(6, 10),
+                                 /*depth=*/Values(8, 10),
+                                 /*maxThreads*/ Values(1),
+                                 /*tiling*/ Bool(),
+                                 /*end_usage=*/Values("q", "cbr"),
+                                 /*tune=*/Values("ssim", "psnr"),
+                                 /*denoise=*/Bool()));
+
+INSTANTIATE_TEST_SUITE_P(AOMIncreasingMultiThread, ChangeDimensionTest,
+                         Combine(/*size_first*/ Values(512),
+                                 /*size_second*/ Values(768),
+                                 /*speed=*/Values(6, 10),
+                                 /*depth=*/Values(8, 10),
+                                 /*maxThreads*/ Values(8),
+                                 /*tiling*/ Values(true),
+                                 /*end_usage=*/Values("q"),
+                                 /*tune=*/Values("ssim"),
+                                 /*denoise=*/Values(true)));
 
 }  // namespace
 }  // namespace libavif

@@ -522,6 +522,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
+    const int aomVersion = aom_codec_version();
 
     if (!codec->internal->encoderInitialized) {
         // Map encoder speed to AOM usage + CpuUsed:
@@ -560,7 +561,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
         // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
         static const int aomVersion_2_0_0 = (2 << 16);
-        const int aomVersion = aom_codec_version();
         if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
             // Due to a known issue with libaom v1.0.0-errata1-avif, 10bpc and
             // 12bpc image encodes will call the wrong variant of
@@ -783,6 +783,25 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     } else {
         avifBool dimensionsChanged = AVIF_FALSE;
         if ((cfg->g_w != image->width) || (cfg->g_h != image->height)) {
+            static const int aomVersion_3_6_0 = (3 << 16) + (6 << 8);
+            if (aomVersion < aomVersion_3_6_0) {
+                // Due to a bug in libaom before v3.6.0 encoding 10bpc and 12bpc images
+                // with changing dimension will crash the encoder.
+                if (image->depth > 8) {
+                    return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+                }
+
+                // There exists a bug in libaom's buffer allocation logic before v3.6.0
+                // where it allocates buffers based on g_w and g_h of first frame instead of
+                // g_forced_max_frame_width and g_forced_max_frame_height, so encoding frames
+                // of increasing size will crash the encoder.
+                //
+                // This check is stricter than it needs to be, but we don't track the size of
+                // first image but only the last successful encoded one.
+                if ((cfg->g_w < image->width) || (cfg->g_h < image->height)) {
+                    return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+                }
+            }
             cfg->g_w = image->width;
             cfg->g_h = image->height;
             dimensionsChanged = AVIF_TRUE;
