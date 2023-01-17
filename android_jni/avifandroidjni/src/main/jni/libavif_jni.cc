@@ -112,12 +112,18 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   return true;
 }
 
-FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap) {
+FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
+     jint threads) {
+  if (threads < 0) {
+    LOGE("Invalid value for threads (%d).", threads);
+    return false;
+  }
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
-  if (!CreateDecoderAndParse(&decoder, buffer, length,
-                             android_getCpuCount())) {
+  if (!CreateDecoderAndParse(
+      &decoder, buffer, length,
+      (threads == 0) ? android_getCpuCount() : threads)) {
     return false;
   }
   avifResult res = avifDecoderNextImage(decoder.decoder);
