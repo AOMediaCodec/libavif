@@ -81,17 +81,16 @@ TEST_F(ProgressiveTest, QualityChange) {
   TestDecode(kImageSize, kImageSize);
 }
 
-TEST_F(ProgressiveTest, DimensionChange) {
+// TODO(wtc): Investigate why the following assertion in libaom failed:
+//   av1/encoder/mcomp.c:1717: av1_full_pixel_search: Assertion
+//   `ms_params->ms_buffers.ref->stride == ms_params->search_sites->stride'
+//   failed.
+// ms_params->ms_buffers.ref->stride is 832, and
+// ms_params->search_sites->stride is 0.
+TEST_F(ProgressiveTest, DISABLED_DimensionChange) {
   if (avifLibYUVVersion() == 0) {
     GTEST_SKIP() << "libyuv not available, skip test.";
   }
-  // TODO(wtc): Investigate why the following assertion in libaom failed:
-  //   av1/encoder/mcomp.c:1717: av1_full_pixel_search: Assertion
-  //   `ms_params->ms_buffers.ref->stride == ms_params->search_sites->stride'
-  //   failed.
-  // ms_params->ms_buffers.ref->stride is 832, and
-  // ms_params->search_sites->stride is 0.
-  GTEST_SKIP() << "Skip test because of an assertion failure in libaom";
 
   encoder_->extraLayerCount = 1;
   encoder_->minQuantizer = 0;
