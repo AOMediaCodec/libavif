@@ -37,8 +37,6 @@ static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 // can't be more than 4 unique tuples right now.
 #define MAX_IPMA_VERSION_AND_FLAGS_SEEN 4
 
-#define MAX_AV1_LAYER_COUNT 4
-
 // ---------------------------------------------------------------------------
 // Box data structures
 
@@ -577,7 +575,7 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
         sample->itemID = item->id;
         sample->offset = 0;
         sample->size = sampleSize;
-        assert(lselProp->u.lsel.layerID < MAX_AV1_LAYER_COUNT);
+        assert(lselProp->u.lsel.layerID < AVIF_MAX_AV1_LAYER_COUNT);
         sample->spatialID = (uint8_t)lselProp->u.lsel.layerID;
         sample->sync = AVIF_TRUE;
     } else if (allowProgressive && item->progressive) {
@@ -1899,7 +1897,7 @@ static avifBool avifParseLayerSelectorProperty(avifProperty * prop, const uint8_
 
     avifLayerSelectorProperty * lsel = &prop->u.lsel;
     AVIF_CHECK(avifROStreamReadU16(&s, &lsel->layerID));
-    if ((lsel->layerID != 0xFFFF) && (lsel->layerID >= MAX_AV1_LAYER_COUNT)) {
+    if ((lsel->layerID != 0xFFFF) && (lsel->layerID >= AVIF_MAX_AV1_LAYER_COUNT)) {
         avifDiagnosticsPrintf(diag, "Box[lsel] contains an unsupported layer [%u]", lsel->layerID);
         return AVIF_FALSE;
     }

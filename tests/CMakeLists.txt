@@ -118,6 +118,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifpng16bittest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifpng16bittest COMMAND avifpng16bittest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
+    add_executable(avifprogressivetest gtest/avifprogressivetest.cc)
+    target_link_libraries(avifprogressivetest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifprogressivetest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifprogressivetest COMMAND avifprogressivetest)
+
     add_executable(avifreadimagetest gtest/avifreadimagetest.cc)
     target_link_libraries(avifreadimagetest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifreadimagetest PRIVATE ${GTEST_INCLUDE_DIRS})
