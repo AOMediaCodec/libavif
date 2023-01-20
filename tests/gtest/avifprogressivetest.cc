@@ -82,6 +82,10 @@ TEST_F(ProgressiveTest, QualityChange) {
 }
 
 TEST_F(ProgressiveTest, DimensionChange) {
+  if (avifLibYUVVersion() == 0) {
+    GTEST_SKIP() << "libyuv not available, skip test.";
+  }
+
   encoder_->extraLayerCount = 1;
   encoder_->minQuantizer = 0;
   encoder_->maxQuantizer = 0;
