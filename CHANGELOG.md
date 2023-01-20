@@ -23,6 +23,7 @@ avifEncoder struct.
   minQuantizer, maxQuantizer, minQuantizerAlpha, and maxQuantizerAlpha
   initialized to the default values.
 * Add the public API function avifImageIsOpaque() in avif.h.
+* Add experimental API for progressive AVIF encoding.
 
 ### Changed
 * Exif and XMP metadata is exported to PNG and JPEG files by default,

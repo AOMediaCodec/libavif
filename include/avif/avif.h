@@ -1117,13 +1117,13 @@ typedef struct avifEncoder
     // settings (see Notes above)
     int maxThreads;
     int speed;
-    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
-    uint64_t timescale;   // timescale of the media (Hz)
-    int repetitionCount;  // Number of times the image sequence should be repeated. This can also be set to
-                          // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.  Only applicable for image sequences.
-                          // Essentially, if repetitionCount is a non-negative integer `n`, then the image sequence should be
-                          // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
-    uint32_t extraLayerCount;
+    int keyframeInterval;     // How many frames between automatic forced keyframes; 0 to disable (default).
+    uint64_t timescale;       // timescale of the media (Hz)
+    int repetitionCount;      // Number of times the image sequence should be repeated. This can also be set to
+                              // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.  Only applicable for image sequences.
+                              // Essentially, if repetitionCount is a non-negative integer `n`, then the image sequence should be
+                              // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
+    uint32_t extraLayerCount; // EXPERIMENTAL: Non-zero value encodes layered image.
 
     // changeable encoder settings
     int quality;
