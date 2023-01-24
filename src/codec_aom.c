@@ -915,7 +915,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     }
     if (encoder->extraLayerCount > 0) {
         aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, codec->internal->currentLayer);
-        ++codec->internal->currentLayer;
     }
 
     aom_scaling_mode_t aomScalingMode;
@@ -1103,7 +1102,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     }
 
     if ((addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) ||
-        ((encoder->extraLayerCount > 0) && (encoder->extraLayerCount + 1 == codec->internal->currentLayer))) {
+        ((encoder->extraLayerCount > 0) && (encoder->extraLayerCount == codec->internal->currentLayer))) {
         // Flush and clean up encoder resources early to save on overhead when encoding alpha or grid images,
         // as encoding is finished now. For layered image, encoding finishes when the last layer is encoded.
 
@@ -1112,6 +1111,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
         aom_codec_destroy(&codec->internal->encoder);
         codec->internal->encoderInitialized = AVIF_FALSE;
+    }
+    if (encoder->extraLayerCount > 0) {
+        ++codec->internal->currentLayer;
     }
     return AVIF_RESULT_OK;
 }
