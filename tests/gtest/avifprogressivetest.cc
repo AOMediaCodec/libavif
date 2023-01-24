@@ -10,6 +10,8 @@ namespace {
 
 class ProgressiveTest : public testing::Test {
  protected:
+  static constexpr uint32_t kImageSize = 256;
+
   void SetUp() override {
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
         nullptr) {
@@ -48,8 +50,6 @@ class ProgressiveTest : public testing::Test {
     // TODO(wtc): Check decoder_->image and image_ are similar, and better
     // quality layer is more similar.
   }
-
-  static constexpr uint32_t kImageSize = 256;
 
   testutil::AvifEncoderPtr encoder_{avifEncoderCreate(), avifEncoderDestroy};
   testutil::AvifDecoderPtr decoder_{avifDecoderCreate(), avifDecoderDestroy};
