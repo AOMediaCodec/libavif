@@ -802,6 +802,30 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
+        // Set color_config() in the sequence header OBU.
+        if (alpha) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+        } else {
+            // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED,
+            // AOM_CICP_MC_UNSPECIFIED, AOM_CSP_UNKNOWN, and 0 (studio/limited range). Call
+            // aom_codec_control() only if the values are not the defaults.
+            if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries);
+            }
+            if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics);
+            }
+            if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients);
+            }
+            if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
+            }
+            if (image->yuvRange != AVIF_RANGE_LIMITED) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, (int)image->yuvRange);
+            }
+        }
+
 #if defined(AOM_CTRL_AV1E_SET_SKIP_POSTPROC_FILTERING)
         if (cfg->g_usage == AOM_USAGE_ALL_INTRA) {
             // Enable AV1E_SET_SKIP_POSTPROC_FILTERING for still-picture encoding, which is
@@ -957,7 +981,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
     if (alpha) {
         aomImage.range = AOM_CR_FULL_RANGE;
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage.range);
         monochromeRequested = AVIF_TRUE;
         if (aomImageAllocated) {
             const uint32_t bytesPerRow = ((image->depth > 8) ? 2 : 1) * image->width;
@@ -973,8 +996,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
         // Ignore UV planes when monochrome
     } else {
-        aomImage.range = (image->yuvRange == AVIF_RANGE_FULL) ? AOM_CR_FULL_RANGE : AOM_CR_STUDIO_RANGE;
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, aomImage.range);
         int yuvPlaneCount = 3;
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             yuvPlaneCount = 1; // Ignore UV planes when monochrome
@@ -1008,10 +1029,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aomImage.tc = (aom_transfer_characteristics_t)image->transferCharacteristics;
         aomImage.mc = (aom_matrix_coefficients_t)image->matrixCoefficients;
         aomImage.csp = (aom_chroma_sample_position_t)image->yuvChromaSamplePosition;
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, aomImage.cp);
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, aomImage.tc);
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, aomImage.mc);
-        aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, aomImage.csp);
+        aomImage.range = (aom_color_range_t)image->yuvRange;
     }
 
     unsigned char * monoUVPlane = NULL;
