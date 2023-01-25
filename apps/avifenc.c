@@ -137,6 +137,7 @@ static void syntax(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
+    printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
     printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
@@ -597,11 +598,14 @@ typedef struct
     avifCodecChoice codecChoice;
     int jobs;
     int quality;
+    avifBool qualityIsConstrained; // true if quality explicitly set by the user
     int qualityAlpha;
+    avifBool qualityAlphaIsConstrained; // true if qualityAlpha explicitly set by the user
     int minQuantizer;
     int maxQuantizer;
     int minQuantizerAlpha;
     int maxQuantizerAlpha;
+    int targetSize;
     int tileRowsLog2;
     int tileColsLog2;
     avifBool autoTiling;
@@ -634,13 +638,13 @@ typedef struct
     avifCodecSpecificOptions codecSpecificOptions;
 } avifSettings;
 
-static avifBool avifEncodeImages(const avifSettings * settings,
-                                 avifInput * input,
-                                 const avifInputFile * firstFile,
-                                 const avifImage * firstImage,
-                                 const avifImage * const * gridCells,
-                                 avifRWData * encoded,
-                                 avifIOStats * ioStats)
+static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
+                                             avifInput * input,
+                                             const avifInputFile * firstFile,
+                                             const avifImage * firstImage,
+                                             const avifImage * const * gridCells,
+                                             avifRWData * encoded,
+                                             avifIOStats * ioStats)
 {
     avifBool success = AVIF_FALSE;
     avifRWDataFree(encoded);
@@ -836,6 +840,92 @@ cleanup:
 #define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
 #define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
 
+static avifBool avifEncodeImages(avifSettings * settings,
+                                 avifInput * input,
+                                 const avifInputFile * firstFile,
+                                 const avifImage * firstImage,
+                                 const avifImage * const * gridCells,
+                                 avifRWData * encoded,
+                                 avifIOStats * ioStats)
+{
+    if (settings->targetSize == -1) {
+        return avifEncodeImagesFixedQuality(settings, input, firstFile, firstImage, gridCells, encoded, ioStats);
+    }
+
+    if (settings->qualityIsConstrained && settings->qualityAlphaIsConstrained) {
+        fprintf(stderr, "ERROR: --target_size is used with constrained --qcolor and --qalpha\n");
+        return AVIF_FALSE;
+    }
+
+    printf("Starting a binary search to find the %s generating the encoded image size closest to %d bytes, please wait...\n",
+           settings->qualityAlphaIsConstrained ? "color quality"
+                                               : (settings->qualityIsConstrained ? "alpha quality" : "color and alpha qualities"),
+           settings->targetSize);
+    const size_t targetSize = (size_t)settings->targetSize;
+
+    // TODO(yguyon): Use quantizer instead of quality because quantizer range is smaller (faster binary search).
+    int closestQuality = INVALID_QUALITY;
+    avifRWData closestEncoded = { NULL, 0 };
+    size_t closestSizeDiff = 0;
+    avifIOStats closestIoStats = { 0, 0 };
+
+    int minQuality = AVIF_QUALITY_WORST; // inclusive
+    int maxQuality = AVIF_QUALITY_BEST;  // inclusive
+    while (minQuality <= maxQuality) {
+        const int quality = (minQuality + maxQuality) / 2;
+        if (!settings->qualityIsConstrained) {
+            settings->quality = quality;
+        }
+        if (!settings->qualityAlphaIsConstrained) {
+            settings->qualityAlpha = quality;
+        }
+
+        if (!avifEncodeImagesFixedQuality(settings, input, firstFile, firstImage, gridCells, encoded, ioStats)) {
+            avifRWDataFree(&closestEncoded);
+            return AVIF_FALSE;
+        }
+        printf("Encoded image of size %d bytes.\n", (int)encoded->size);
+
+        if (encoded->size == targetSize) {
+            return AVIF_TRUE;
+        }
+
+        size_t sizeDiff;
+        if (encoded->size > targetSize) {
+            sizeDiff = encoded->size - targetSize;
+            maxQuality = quality - 1;
+        } else {
+            sizeDiff = targetSize - encoded->size;
+            minQuality = quality + 1;
+        }
+
+        if ((closestQuality == INVALID_QUALITY) || (sizeDiff < closestSizeDiff)) {
+            closestQuality = quality;
+            avifRWDataFree(&closestEncoded);
+            closestEncoded = *encoded;
+            encoded->size = 0;
+            encoded->data = NULL;
+            closestSizeDiff = sizeDiff;
+            closestIoStats = *ioStats;
+        }
+    }
+
+    if (!settings->qualityIsConstrained) {
+        settings->quality = closestQuality;
+    }
+    if (!settings->qualityAlphaIsConstrained) {
+        settings->qualityAlpha = closestQuality;
+    }
+    avifRWDataFree(encoded);
+    *encoded = closestEncoded;
+    *ioStats = closestIoStats;
+    printf("Kept the encoded image of size %d bytes generated with color quality %d and alpha quality %d.\n",
+           (int)encoded->size,
+           settings->quality,
+           settings->qualityAlpha);
+    return AVIF_TRUE;
+}
+
 int main(int argc, char * argv[])
 {
     if (argc < 2) {
@@ -864,6 +954,7 @@ int main(int argc, char * argv[])
     settings.maxQuantizer = -1;
     settings.minQuantizerAlpha = -1;
     settings.maxQuantizerAlpha = -1;
+    settings.targetSize = -1;
     settings.tileRowsLog2 = -1;
     settings.tileColsLog2 = -1;
     settings.autoTiling = AVIF_FALSE;
@@ -971,6 +1062,7 @@ int main(int argc, char * argv[])
             if (settings.quality > AVIF_QUALITY_BEST) {
                 settings.quality = AVIF_QUALITY_BEST;
             }
+            settings.qualityIsConstrained = AVIF_TRUE;
         } else if (!strcmp(arg, "--qalpha")) {
             NEXTARG();
             settings.qualityAlpha = atoi(arg);
@@ -980,6 +1072,7 @@ int main(int argc, char * argv[])
             if (settings.qualityAlpha > AVIF_QUALITY_BEST) {
                 settings.qualityAlpha = AVIF_QUALITY_BEST;
             }
+            settings.qualityAlphaIsConstrained = AVIF_TRUE;
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
             settings.minQuantizer = atoi(arg);
@@ -1015,6 +1108,12 @@ int main(int argc, char * argv[])
             }
             if (settings.maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
                 settings.maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+            }
+        } else if (!strcmp(arg, "--target-size")) {
+            NEXTARG();
+            settings.targetSize = atoi(arg);
+            if (settings.targetSize < 0) {
+                settings.targetSize = -1;
             }
         } else if (!strcmp(arg, "--tilerowslog2")) {
             NEXTARG();
@@ -1368,6 +1467,9 @@ int main(int argc, char * argv[])
                    image->matrixCoefficients);
         }
     }
+
+    // --target-size requires multiple encodings of the same files. Cache the input images.
+    input.cacheEnabled = (settings.targetSize != -1);
 
     const avifInputFile * firstFile = avifInputGetFile(&input, /*imageIndex=*/0);
     uint32_t sourceDepth = 0;
