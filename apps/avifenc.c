@@ -34,6 +34,15 @@ typedef struct avifInputFile
 } avifInputFile;
 static avifInputFile stdinFile;
 
+typedef struct
+{
+    int fileIndex;
+    avifImage * image;
+    uint32_t fileBitDepth;
+    avifBool fileIsRGB;
+    avifAppSourceTiming sourceTiming;
+} avifInputCacheEntry;
+
 typedef struct avifInput
 {
     avifInputFile * files;
@@ -43,6 +52,10 @@ typedef struct avifInput
     avifPixelFormat requestedFormat;
     int requestedDepth;
     avifBool useStdin;
+
+    avifBool cacheEnabled;
+    avifInputCacheEntry * cache;
+    int cacheCount;
 } avifInput;
 
 typedef struct
@@ -251,8 +264,36 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat 
     return AVIF_TRUE;
 }
 
-static avifInputFile * avifInputGetNextFile(avifInput * input)
+static avifBool avifInputAddCachedImage(avifInput * input)
 {
+    avifImage * newImage = avifImageCreateEmpty();
+    if (!newImage) {
+        return AVIF_FALSE;
+    }
+    avifInputCacheEntry * newCachedImages = malloc((input->cacheCount + 1) * sizeof(*input->cache));
+    if (!newCachedImages) {
+        avifImageDestroy(newImage);
+        return AVIF_FALSE;
+    }
+    avifInputCacheEntry * oldCachedImages = input->cache;
+    input->cache = newCachedImages;
+    if (input->cacheCount) {
+        memcpy(input->cache, oldCachedImages, input->cacheCount * sizeof(*input->cache));
+    }
+    memset(&input->cache[input->cacheCount], 0, sizeof(input->cache[input->cacheCount]));
+    input->cache[input->cacheCount].fileIndex = input->fileIndex;
+    input->cache[input->cacheCount].image = newImage;
+    ++input->cacheCount;
+    free(oldCachedImages);
+    return AVIF_TRUE;
+}
+
+static const avifInputFile * avifInputGetFile(const avifInput * input, int imageIndex)
+{
+    if (imageIndex < input->cacheCount) {
+        return &input->files[input->cache[imageIndex].fileIndex];
+    }
+
     if (input->useStdin) {
         ungetc(fgetc(stdin), stdin); // Kick stdin to force EOF
 
@@ -267,66 +308,124 @@ static avifInputFile * avifInputGetNextFile(avifInput * input)
     }
     return &input->files[input->fileIndex];
 }
-static avifBool avifInputHasRemainingData(const avifInput * input)
+
+static avifBool avifInputHasRemainingData(const avifInput * input, int imageIndex)
 {
+    if (imageIndex < input->cacheCount) {
+        return AVIF_TRUE;
+    }
+
     if (input->useStdin) {
         return !feof(stdin);
     }
     return (input->fileIndex < input->filesCount);
 }
 
-static avifAppFileFormat avifInputReadImage(avifInput * input,
-                                            avifBool ignoreICC,
-                                            avifBool ignoreExif,
-                                            avifBool ignoreXMP,
-                                            avifImage * image,
-                                            uint32_t * outDepth,
-                                            avifAppSourceTiming * sourceTiming,
-                                            avifChromaDownsampling chromaDownsampling)
+static avifBool avifInputReadImage(avifInput * input,
+                                   int imageIndex,
+                                   avifBool ignoreICC,
+                                   avifBool ignoreExif,
+                                   avifBool ignoreXMP,
+                                   avifImage * image,
+                                   uint32_t * outDepth,
+                                   avifBool * sourceIsRGB,
+                                   avifAppSourceTiming * sourceTiming,
+                                   avifChromaDownsampling chromaDownsampling)
 {
-    if (sourceTiming) {
+    if (imageIndex < input->cacheCount) {
+        const avifInputCacheEntry * cached = &input->cache[imageIndex];
+        const avifCropRect rect = { 0, 0, cached->image->width, cached->image->height };
+        if (avifImageSetViewRect(image, cached->image, &rect) != AVIF_RESULT_OK) {
+            assert(AVIF_FALSE);
+        }
+        if (outDepth) {
+            *outDepth = cached->fileBitDepth;
+        }
+        if (sourceIsRGB) {
+            *sourceIsRGB = cached->fileIsRGB;
+        }
+        if (sourceTiming) {
+            *sourceTiming = cached->sourceTiming;
+        }
+        return AVIF_TRUE;
+    }
+
+    avifImage * dstImage = image;
+    uint32_t * dstDepth = outDepth;
+    avifBool * dstSourceIsRGB = sourceIsRGB;
+    avifAppSourceTiming * dstSourceTiming = sourceTiming;
+    if (input->cacheEnabled) {
+        if (!avifInputAddCachedImage(input)) {
+            fprintf(stderr, "ERROR: Out of memory");
+            return AVIF_FALSE;
+        }
+        assert(imageIndex + 1 == input->cacheCount);
+        dstImage = input->cache[imageIndex].image;
+        // Copy CICP, clap etc.
+        if (avifImageCopy(dstImage, image, /*planes=*/0) != AVIF_RESULT_OK) {
+            assert(AVIF_FALSE);
+        }
+        dstDepth = &input->cache[imageIndex].fileBitDepth;
+        dstSourceIsRGB = &input->cache[imageIndex].fileIsRGB;
+        dstSourceTiming = &input->cache[imageIndex].sourceTiming;
+    }
+
+    if (dstSourceTiming) {
         // A source timing of all 0s is a sentinel value hinting that the value is unset / should be
         // ignored. This is memset here as many of the paths in avifInputReadImage() do not set these
         // values. See the declaration for avifAppSourceTiming for more information.
-        memset(sourceTiming, 0, sizeof(avifAppSourceTiming));
+        memset(dstSourceTiming, 0, sizeof(avifAppSourceTiming));
     }
 
     if (input->useStdin) {
         if (feof(stdin)) {
-            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+            return AVIF_FALSE;
         }
-        if (!y4mRead(NULL, image, sourceTiming, &input->frameIter)) {
-            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        if (!y4mRead(NULL, dstImage, dstSourceTiming, &input->frameIter)) {
+            fprintf(stderr, "ERROR: Cannot read y4m through standard input");
+            return AVIF_FALSE;
         }
-        assert(image->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
-        return AVIF_APP_FILE_FORMAT_Y4M;
-    }
+        assert(dstImage->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
+        if (dstSourceIsRGB) {
+            *dstSourceIsRGB = AVIF_FALSE;
+        }
+    } else {
+        if (input->fileIndex >= input->filesCount) {
+            return AVIF_FALSE;
+        }
 
-    if (input->fileIndex >= input->filesCount) {
-        return AVIF_APP_FILE_FORMAT_UNKNOWN;
-    }
-
-    const avifAppFileFormat nextInputFormat = avifReadImage(input->files[input->fileIndex].filename,
+        const avifAppFileFormat inputFormat = avifReadImage(input->files[input->fileIndex].filename,
                                                             input->requestedFormat,
                                                             input->requestedDepth,
                                                             chromaDownsampling,
                                                             ignoreICC,
                                                             ignoreExif,
                                                             ignoreXMP,
-                                                            image,
-                                                            outDepth,
-                                                            sourceTiming,
+                                                            dstImage,
+                                                            dstDepth,
+                                                            dstSourceTiming,
                                                             &input->frameIter);
-    if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-        return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+            fprintf(stderr, "Cannot determine input file format: %s\n", input->files[input->fileIndex].filename);
+            return AVIF_FALSE;
+        }
+        if (dstSourceIsRGB) {
+            *dstSourceIsRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
+        }
+
+        if (!input->frameIter) {
+            ++input->fileIndex;
+        }
+
+        assert(dstImage->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
     }
 
-    if (!input->frameIter) {
-        ++input->fileIndex;
+    if (input->cacheEnabled) {
+        // Reuse the just created cache entry.
+        assert(imageIndex < input->cacheCount);
+        return avifInputReadImage(input, imageIndex, ignoreICC, ignoreExif, ignoreXMP, image, outDepth, sourceIsRGB, sourceTiming, chromaDownsampling);
     }
-
-    assert(image->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
-    return nextInputFormat;
+    return AVIF_TRUE;
 }
 
 static avifBool readEntireFile(const char * filename, avifRWData * raw)
@@ -599,8 +698,10 @@ static avifBool avifEncodeImages(const avifSettings * settings,
             goto cleanup;
         }
     } else {
+        int imageIndex = 1; // firstImage with imageIndex 0 is already available.
+
         avifAddImageFlags addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
-        if (!avifInputHasRemainingData(input)) {
+        if (!avifInputHasRemainingData(input, imageIndex)) {
             addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }
 
@@ -619,15 +720,12 @@ static avifBool avifEncodeImages(const avifSettings * settings,
 
         // Not generating a single-image grid: Use all remaining input files as subsequent frames.
 
-        avifInputFile * nextFile;
-        int nextImageIndex = -1;
-        while ((nextFile = avifInputGetNextFile(input)) != NULL) {
-            ++nextImageIndex;
-
+        const avifInputFile * nextFile;
+        while ((nextFile = avifInputGetFile(input, imageIndex)) != NULL) {
             uint64_t nextDurationInTimescales = nextFile->duration ? nextFile->duration : settings->outputTiming.duration;
 
             printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
-                   nextImageIndex + 1,
+                   imageIndex,
                    nextDurationInTimescales,
                    settings->outputTiming.timescale,
                    nextFile->filename);
@@ -646,15 +744,18 @@ static avifBool avifEncodeImages(const avifSettings * settings,
             nextImage->yuvRange = firstImage->yuvRange;
             nextImage->alphaPremultiplied = firstImage->alphaPremultiplied;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(input,
-                                                                   settings->ignoreICC,
-                                                                   settings->ignoreExif,
-                                                                   settings->ignoreXMP,
-                                                                   nextImage,
-                                                                   NULL,
-                                                                   NULL,
-                                                                   settings->chromaDownsampling);
-            if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+            // Ignore ICC, Exif and XMP because only the metadata of the first frame is taken into
+            // account by the libavif API.
+            if (!avifInputReadImage(input,
+                                    imageIndex,
+                                    /*ignoreICC=*/AVIF_TRUE,
+                                    /*ignoreExif=*/AVIF_TRUE,
+                                    /*ignoreXMP=*/AVIF_TRUE,
+                                    nextImage,
+                                    /*outDepth=*/NULL,
+                                    /*sourceIsRGB=*/NULL,
+                                    /*sourceTiming=*/NULL,
+                                    settings->chromaDownsampling)) {
                 goto cleanup;
             }
 
@@ -706,6 +807,7 @@ static avifBool avifEncodeImages(const avifSettings * settings,
                 fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
                 goto cleanup;
             }
+            ++imageIndex;
         }
     }
 
@@ -1267,23 +1369,23 @@ int main(int argc, char * argv[])
         }
     }
 
-    avifInputFile * firstFile = avifInputGetNextFile(&input);
+    const avifInputFile * firstFile = avifInputGetFile(&input, /*imageIndex=*/0);
     uint32_t sourceDepth = 0;
+    avifBool sourceWasRGB = AVIF_FALSE;
     avifAppSourceTiming firstSourceTiming;
-    avifAppFileFormat inputFormat = avifInputReadImage(&input,
-                                                       settings.ignoreICC,
-                                                       settings.ignoreExif,
-                                                       settings.ignoreXMP,
-                                                       image,
-                                                       &sourceDepth,
-                                                       &firstSourceTiming,
-                                                       settings.chromaDownsampling);
-    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-        fprintf(stderr, "Cannot determine input file format: %s\n", firstFile->filename);
+    if (!avifInputReadImage(&input,
+                            /*imageIndex=*/0,
+                            settings.ignoreICC,
+                            settings.ignoreExif,
+                            settings.ignoreXMP,
+                            image,
+                            &sourceDepth,
+                            &sourceWasRGB,
+                            &firstSourceTiming,
+                            settings.chromaDownsampling)) {
         returnCode = 1;
         goto cleanup;
     }
-    avifBool sourceWasRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
 
     // Check again for y4m input (y4m input ignores input.requestedFormat and retains the format in file).
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
@@ -1457,14 +1559,13 @@ int main(int argc, char * argv[])
         gridCells = calloc(gridCellCount, sizeof(avifImage *));
         gridCells[0] = image; // take ownership of image
 
-        uint32_t gridCellIndex = 0;
-        avifInputFile * nextFile;
-        while ((nextFile = avifInputGetNextFile(&input)) != NULL) {
-            if (!gridCellIndex) {
+        int imageIndex = 1; // The first grid cell was loaded into image (imageIndex 0).
+        const avifInputFile * nextFile;
+        while ((nextFile = avifInputGetFile(&input, imageIndex)) != NULL) {
+            if (imageIndex == 1) {
                 printf("Loading additional cells for grid image (%u cells)...\n", gridCellCount);
             }
-            ++gridCellIndex;
-            if (gridCellIndex >= gridCellCount) {
+            if (imageIndex >= (int)gridCellCount) {
                 // We have enough, warn and continue
                 fprintf(stderr,
                         "WARNING: [--grid] More than %u images were supplied for this %ux%u grid. The rest will be ignored.\n",
@@ -1485,24 +1586,29 @@ int main(int argc, char * argv[])
             cellImage->matrixCoefficients = image->matrixCoefficients;
             cellImage->yuvRange = image->yuvRange;
             cellImage->alphaPremultiplied = image->alphaPremultiplied;
-            gridCells[gridCellIndex] = cellImage;
+            gridCells[imageIndex] = cellImage;
 
-            avifAppFileFormat nextInputFormat = avifInputReadImage(&input,
-                                                                   settings.ignoreICC,
-                                                                   settings.ignoreExif,
-                                                                   settings.ignoreXMP,
-                                                                   cellImage,
-                                                                   NULL,
-                                                                   NULL,
-                                                                   settings.chromaDownsampling);
-            if (nextInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+            // Ignore ICC, Exif and XMP because only the metadata of the first frame is taken into
+            // account by the libavif API.
+            if (!avifInputReadImage(&input,
+                                    imageIndex,
+                                    /*ignoreICC=*/AVIF_TRUE,
+                                    /*ignoreExif=*/AVIF_TRUE,
+                                    /*ignoreXMP=*/AVIF_TRUE,
+                                    cellImage,
+                                    /*outDepth=*/NULL,
+                                    /*sourceIsRGB=*/NULL,
+                                    /*sourceTiming=*/NULL,
+                                    settings.chromaDownsampling)) {
                 returnCode = 1;
                 goto cleanup;
             }
             // Let avifEncoderAddImageGrid() verify the grid integrity (valid cell sizes, depths etc.).
+
+            ++imageIndex;
         }
 
-        if (gridCellIndex == 0) {
+        if (imageIndex == 1) {
             printf("Single image input for a grid image. Attempting to split into %u cells...\n", gridCellCount);
             gridSplitImage = image;
             gridCells[0] = NULL;
@@ -1511,14 +1617,12 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            gridCellIndex = gridCellCount - 1;
-        }
-
-        if (gridCellIndex != gridCellCount - 1) {
+        } else if (imageIndex != (int)gridCellCount) {
             fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
             returnCode = 1;
             goto cleanup;
         }
+        // TODO(yguyon): Check if it is possible to use frames from a single input file as grid cells. Maybe forbid it.
     }
 
     const char * lossyHint = " (Lossy)";
@@ -1593,7 +1697,14 @@ cleanup:
     avifRWDataFree(&exifOverride);
     avifRWDataFree(&xmpOverride);
     avifRWDataFree(&iccOverride);
-    free((void *)input.files);
+    while (input.cacheCount) {
+        --input.cacheCount;
+        if (input.cache[input.cacheCount].image) {
+            avifImageDestroy(input.cache[input.cacheCount].image);
+        }
+    }
+    free(input.cache);
+    free(input.files);
     while (settings.codecSpecificOptions.count) {
         --settings.codecSpecificOptions.count;
         free(settings.codecSpecificOptions.keys[settings.codecSpecificOptions.count]);
