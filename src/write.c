@@ -1140,7 +1140,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // If the first image in the sequence had an alpha plane (even if fully opaque), all
         // subsequent images must have alpha as well.
         if ((imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||
-            (imageMetadata->yuvRange != firstCell->yuvRange) || (imageMetadata->colorPrimaries != firstCell->colorPrimaries) ||
+            (imageMetadata->yuvRange != firstCell->yuvRange) ||
+            (imageMetadata->yuvChromaSamplePosition != firstCell->yuvChromaSamplePosition) ||
+            (imageMetadata->colorPrimaries != firstCell->colorPrimaries) ||
             (imageMetadata->transferCharacteristics != firstCell->transferCharacteristics) ||
             (imageMetadata->matrixCoefficients != firstCell->matrixCoefficients) ||
             (imageMetadata->alphaPremultiplied != firstCell->alphaPremultiplied) ||
