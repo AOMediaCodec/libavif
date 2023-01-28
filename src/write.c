@@ -1137,6 +1137,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Another frame in an image sequence, or layer in a layered image
 
         const avifImage * imageMetadata = encoder->data->imageMetadata;
+        // Image metadata that are copied to the av1C and nclx boxes are not allowed to change.
         // If the first image in the sequence had an alpha plane (even if fully opaque), all
         // subsequent images must have alpha as well.
         if ((imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||

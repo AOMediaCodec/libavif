@@ -18,10 +18,10 @@ void TestEncodeDecode(avifCodecChoice codec,
     GTEST_SKIP() << "Codec unavailable, skip test.";
   }
 
-  const uint32_t image_size = 512;
-  testutil::AvifImagePtr image =
-      testutil::CreateImage(image_size, image_size, 8, AVIF_PIXEL_FORMAT_YUV420,
-                            AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  constexpr uint32_t kImageSize = 512;
+  testutil::AvifImagePtr image = testutil::CreateImage(
+      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
+      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
@@ -117,10 +117,10 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
     GTEST_SKIP() << "Codec unavailable, skip test.";
   }
 
-  const uint32_t image_size = 512;
-  testutil::AvifImagePtr image =
-      testutil::CreateImage(image_size, image_size, 8, AVIF_PIXEL_FORMAT_YUV420,
-                            AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  constexpr uint32_t kImageSize = 512;
+  testutil::AvifImagePtr image = testutil::CreateImage(
+      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
+      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
@@ -154,20 +154,14 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
             AVIF_RESULT_CANNOT_CHANGE_SETTING);
 }
 
-TEST(ChangeSettingTest, UnchangeableImageMetadata) {
-  const uint32_t image_size = 512;
-  // The first image is full range.
-  testutil::AvifImagePtr image1 =
-      testutil::CreateImage(image_size, image_size, 8, AVIF_PIXEL_FORMAT_YUV420,
-                            AVIF_PLANES_YUV, AVIF_RANGE_FULL);
-  ASSERT_NE(image1, nullptr);
-  testutil::FillImageGradient(image1.get());
-  // The second image is limited range.
-  testutil::AvifImagePtr image2 =
-      testutil::CreateImage(image_size, image_size, 8, AVIF_PIXEL_FORMAT_YUV420,
-                            AVIF_PLANES_YUV, AVIF_RANGE_LIMITED);
-  ASSERT_NE(image2, nullptr);
-  testutil::FillImageGradient(image2.get());
+TEST(ChangeSettingTest, UnchangeableImageColorRange) {
+  constexpr uint32_t kImageSize = 512;
+  testutil::AvifImagePtr image = testutil::CreateImage(
+      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
+      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  const uint32_t yuva[] = {128, 128, 128, 255};
+  testutil::FillImagePlain(image.get(), yuva);
 
   // Encode
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
@@ -176,25 +170,52 @@ TEST(ChangeSettingTest, UnchangeableImageMetadata) {
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->timescale = 1;
   ASSERT_EQ(encoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
-  encoder->minQuantizer = 63;
-  encoder->maxQuantizer = 63;
+  encoder->quality = AVIF_QUALITY_WORST;
 
-  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image1.get(), 1,
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
 
-  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image1.get(), 1,
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
 
-  ASSERT_EQ(image1->yuvChromaSamplePosition,
-            AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN);
-  image1->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
-  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image1.get(), 1,
+  image->yuvRange = AVIF_RANGE_LIMITED;
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_INCOMPATIBLE_IMAGE);
+}
 
-  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image2.get(), 1,
+TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
+  constexpr uint32_t kImageSize = 512;
+  testutil::AvifImagePtr image = testutil::CreateImage(
+      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
+      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  const uint32_t yuva[] = {128, 128, 128, 255};
+  testutil::FillImagePlain(image.get(), yuva);
+
+  // Encode
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  ASSERT_NE(encoder, nullptr);
+  encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->timescale = 1;
+  ASSERT_EQ(encoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
+  encoder->quality = AVIF_QUALITY_WORST;
+
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(image->yuvChromaSamplePosition,
+            AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN);
+  image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_INCOMPATIBLE_IMAGE);
 }
