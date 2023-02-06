@@ -133,6 +133,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifrgbtoyuvtest COMMAND avifrgbtoyuvtest)
 
+    add_executable(aviftargetsizetest gtest/aviftargetsizetest.cc)
+    target_link_libraries(aviftargetsizetest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(aviftargetsizetest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME aviftargetsizetest COMMAND aviftargetsizetest)
+
     add_executable(aviftilingtest gtest/aviftilingtest.cc)
     target_link_libraries(aviftilingtest avif_internal ${GTEST_BOTH_LIBRARIES})
     target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})

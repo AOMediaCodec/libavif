@@ -231,6 +231,9 @@ typedef struct avifEncoderData
     uint16_t primaryItemID;
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
+    // Cached encoded image from avifEncoderAddImage() when avifEncoder.targetSize>0.
+    // To be returned by the next call to avifEncoderFinish().
+    avifRWData cachedOutput;
 } avifEncoderData;
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
@@ -300,6 +303,7 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
     avifImageDestroy(data->imageMetadata);
     avifArrayDestroy(&data->items);
     avifArrayDestroy(&data->frames);
+    avifRWDataFree(&data->cachedOutput);
     avifFree(data);
 }
 
@@ -405,6 +409,7 @@ avifEncoder * avifEncoderCreate(void)
     encoder->repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     encoder->quality = AVIF_QUALITY_DEFAULT;
     encoder->qualityAlpha = AVIF_QUALITY_DEFAULT;
+    encoder->targetSize = 0;
     encoder->minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     encoder->maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
     encoder->minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
@@ -854,10 +859,10 @@ static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantize
         // In older libavif releases, avifEncoder didn't have the quality and qualityAlpha fields.
         // Supply a default value for quantizer.
         quantizer = (minQuantizer + maxQuantizer) / 2;
-        quantizer = AVIF_CLAMP(quantizer, 0, 63);
+        quantizer = AVIF_CLAMP(quantizer, AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
     } else {
-        quality = AVIF_CLAMP(quality, 0, 100);
-        quantizer = ((100 - quality) * 63 + 50) / 100;
+        quality = AVIF_CLAMP(quality, AVIF_QUALITY_WORST, AVIF_QUALITY_BEST);
+        quantizer = ((AVIF_QUALITY_BEST - quality) * AVIF_QUANTIZER_WORST_QUALITY + AVIF_QUALITY_BEST / 2) / AVIF_QUALITY_BEST;
     }
     return quantizer;
 }
@@ -1219,10 +1224,173 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
+// Same as avifEncoderAddImageInternal()+avifEncoderFinish() but with a local copy of the encoder instance.
+static avifResult avifEncoderWriteInternal(const avifEncoder * encoderSettings,
+                                           uint32_t gridCols,
+                                           uint32_t gridRows,
+                                           const avifImage * const * cellImages,
+                                           uint64_t durationInTimescales,
+                                           avifAddImageFlags addImageFlags,
+                                           avifRWData * output,
+                                           avifIOStats * ioStats,
+                                           avifDiagnostics * diag)
+{
+    // Duplicating an avifEncoder instance that already encoded something is too involved.
+    AVIF_CHECKERR(encoderSettings->data->frames.count == 0, AVIF_RESULT_NOT_IMPLEMENTED);
+
+    avifEncoder * encoder = avifEncoderCreate();
+    AVIF_CHECKERR(encoder != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    encoder->codecChoice = encoderSettings->codecChoice;
+    encoder->maxThreads = encoderSettings->maxThreads;
+    encoder->speed = encoderSettings->speed;
+    encoder->keyframeInterval = encoderSettings->keyframeInterval;
+    encoder->timescale = encoderSettings->timescale;
+    encoder->repetitionCount = encoderSettings->repetitionCount;
+    encoder->extraLayerCount = encoderSettings->extraLayerCount;
+    encoder->quality = encoderSettings->quality;
+    encoder->qualityAlpha = encoderSettings->qualityAlpha;
+    encoder->targetSize = encoderSettings->targetSize;
+    encoder->minQuantizer = encoderSettings->minQuantizer;
+    encoder->maxQuantizer = encoderSettings->maxQuantizer;
+    encoder->minQuantizerAlpha = encoderSettings->minQuantizerAlpha;
+    encoder->maxQuantizerAlpha = encoderSettings->maxQuantizerAlpha;
+    encoder->tileRowsLog2 = encoderSettings->tileRowsLog2;
+    encoder->tileColsLog2 = encoderSettings->tileColsLog2;
+    encoder->autoTiling = encoderSettings->autoTiling;
+    encoder->ioStats = encoderSettings->ioStats;
+    encoder->diag = encoderSettings->diag;
+
+    // avifEncoderData should be untouched thanks to the frames.count==0 check above.
+    // No need to copy encoderSettings->data to encoder->data.
+
+    for (uint32_t i = 0; i < encoderSettings->csOptions->count; ++i) {
+        const avifCodecSpecificOption * entry = &encoderSettings->csOptions->entries[i];
+        avifCodecSpecificOptionsSet(encoder->csOptions, entry->key, entry->value);
+    }
+
+    avifResult result = avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, durationInTimescales, addImageFlags);
+    if (result == AVIF_RESULT_OK) {
+        result = avifEncoderFinish(encoder, output);
+    }
+    *ioStats = encoder->ioStats;
+    *diag = encoder->diag;
+    avifEncoderDestroy(encoder);
+    return result;
+}
+
+static avifResult avifEncoderAddImageInternalTargetSize(avifEncoder * encoder,
+                                                        uint32_t gridCols,
+                                                        uint32_t gridRows,
+                                                        const avifImage * const * cellImages,
+                                                        uint64_t durationInTimescales,
+                                                        avifAddImageFlags addImageFlags)
+{
+    if (encoder->targetSize == 0) {
+        return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, durationInTimescales, addImageFlags);
+    }
+
+    // Setting avifEncoder.targetSize for one call to avifEncoderAddImage() without knowing if there will
+    // be another frame is ambiguous. The user may expect the whole animation to match the targetSize, or
+    // may expect that it applies to each frame. Allowing avifEncoder.targetSize>0 for animations would also
+    // make the code more complicated, because all input frames would be stored until avifEncoderFinish().
+    // For simplicity, it is reserved to single-frame images.
+    AVIF_CHECKERR(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE, AVIF_RESULT_INVALID_ARGUMENT);
+
+    if ((encoder->quality != AVIF_QUALITY_DEFAULT) && (encoder->qualityAlpha != AVIF_QUALITY_DEFAULT)) {
+        // If both quality and qualityAlpha are forced to a given value (not AVIF_QUALITY_DEFAULT),
+        // there is no binary search to do.
+        return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, durationInTimescales, addImageFlags);
+    }
+
+    // avifCodecEncodeImageFunc() uses a quantizer argument instead of the avifEncoder.quality one.
+    // The quantizer range [0:63] being smaller than the quality range [0:100], it would be faster
+    // to operate the binary search below directly on the quantizer setting rather than on the quality one.
+    // For simplicity, it uses the quality for now.
+
+    // Use the encoder instance as a "current settings" holder.
+    const avifBool searchForQuality = encoder->quality == AVIF_QUALITY_DEFAULT;
+    const avifBool searchForQualityAlpha = encoder->qualityAlpha == AVIF_QUALITY_DEFAULT;
+
+    int closestQuality = AVIF_QUALITY_DEFAULT;
+    avifRWData closestEncoded = AVIF_DATA_EMPTY;
+    size_t closestSizeDiff = 0;
+    avifIOStats closestIoStats = { 0, 0 };
+
+    int minQuality = AVIF_QUALITY_WORST; // inclusive
+    int maxQuality = AVIF_QUALITY_BEST;  // inclusive
+    while (minQuality <= maxQuality) {
+        const int quality = (minQuality + maxQuality) / 2;
+        if (searchForQuality) {
+            encoder->quality = quality;
+        }
+        if (searchForQualityAlpha) {
+            encoder->qualityAlpha = quality;
+        }
+
+        avifRWData encoded = AVIF_DATA_EMPTY;
+        avifIOStats ioStats = { 0, 0 };
+        const avifResult result = avifEncoderWriteInternal(encoder,
+                                                           gridCols,
+                                                           gridRows,
+                                                           cellImages,
+                                                           durationInTimescales,
+                                                           addImageFlags,
+                                                           &encoded,
+                                                           &ioStats,
+                                                           &encoder->diag);
+        if (result != AVIF_RESULT_OK) {
+            avifRWDataFree(&encoded);
+            avifRWDataFree(&closestEncoded);
+            return result;
+        }
+
+        size_t sizeDiff;
+        if (encoded.size > encoder->targetSize) {
+            sizeDiff = encoded.size - encoder->targetSize;
+            maxQuality = quality - 1;
+        } else {
+            sizeDiff = encoder->targetSize - encoded.size;
+            minQuality = quality + 1;
+        }
+
+        if ((closestQuality == AVIF_QUALITY_DEFAULT) || (sizeDiff < closestSizeDiff)) {
+            closestQuality = quality;
+            avifRWDataFree(&closestEncoded);
+            closestEncoded = encoded;
+            encoded.size = 0;
+            encoded.data = NULL;
+            closestSizeDiff = sizeDiff;
+            closestIoStats = ioStats;
+        } else {
+            avifRWDataFree(&encoded);
+        }
+
+        if (sizeDiff == 0) {
+            break;
+        }
+    }
+
+    // Output the used quality directly in the avifEncoder struct.
+    if (searchForQuality) {
+        encoder->quality = closestQuality;
+    }
+    if (searchForQualityAlpha) {
+        encoder->qualityAlpha = closestQuality;
+    }
+    encoder->data->cachedOutput = closestEncoded;
+    closestEncoded.size = 0;
+    closestEncoded.data = NULL;
+    encoder->ioStats = closestIoStats;
+    // Prevent any other call to avifEncoderAddImageInternal().
+    encoder->data->singleImage = AVIF_TRUE;
+    // Only avifEncoderFinish() can be called from now on.
+    return AVIF_RESULT_OK;
+}
+
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
+    return avifEncoderAddImageInternalTargetSize(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
 }
 
 avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
@@ -1238,7 +1406,7 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
     if (encoder->extraLayerCount == 0) {
         addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE; // image grids cannot be image sequences
     }
-    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, 1, addImageFlags);
+    return avifEncoderAddImageInternalTargetSize(encoder, gridCols, gridRows, cellImages, 1, addImageFlags);
 }
 
 static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
@@ -1260,6 +1428,14 @@ static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOff
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
     avifDiagnosticsClearError(&encoder->diag);
+
+    if (encoder->data->cachedOutput.size) {
+        *output = encoder->data->cachedOutput;
+        encoder->data->cachedOutput.data = NULL;
+        encoder->data->cachedOutput.size = 0;
+        return AVIF_RESULT_OK;
+    }
+
     if (encoder->data->items.count == 0) {
         return AVIF_RESULT_NO_CONTENT;
     }

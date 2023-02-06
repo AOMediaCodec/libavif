@@ -1091,6 +1091,11 @@ typedef struct avifScalingMode
 //   * NOTE: Please see the "Understanding maxThreads" comment block above
 // * Quality range: [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST]
 // * Quantizer range: [AVIF_QUANTIZER_BEST_QUALITY - AVIF_QUANTIZER_WORST_QUALITY]
+// * If targetSize is set to a number of bytes strictly greater than 0, multiple values of quality and
+//   qualityAlpha are tested to find the settings leading to an encoded image with a size as close to
+//   targetSize as possible.
+//   Only modifies quality if it was not set. Only modifies qualityAlpha if it was not set.
+//   This feature is only available with AVIF_ADD_IMAGE_FLAG_SINGLE and is 7 times slower.
 // * In older versions of libavif, the avifEncoder struct doesn't have the quality and qualityAlpha
 //   fields. For backward compatibility, if the quality field is not set, the default value of
 //   quality is based on the average of minQuantizer and maxQuantizer. Similarly the default value
@@ -1128,6 +1133,7 @@ typedef struct avifEncoder
     // changeable encoder settings
     int quality;
     int qualityAlpha;
+    size_t targetSize;
     int minQuantizer;
     int maxQuantizer;
     int minQuantizerAlpha;
