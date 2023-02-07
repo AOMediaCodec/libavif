@@ -135,6 +135,9 @@ void avifImageSetDefaults(avifImage * image)
 avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat)
 {
     avifImage * image = (avifImage *)avifAlloc(sizeof(avifImage));
+    if (!image) {
+        return NULL;
+    }
     avifImageSetDefaults(image);
     image->width = width;
     image->height = height;
@@ -836,10 +839,14 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, 
 // ---------------------------------------------------------------------------
 // avifCodecSpecificOption
 
+// Returns NULL in case of AVIF_RESULT_OUT_OF_MEMORY error.
 static char * avifStrdup(const char * str)
 {
     size_t len = strlen(str);
     char * dup = avifAlloc(len + 1);
+    if (!dup) {
+        return NULL;
+    }
     memcpy(dup, str, len + 1);
     return dup;
 }
@@ -847,7 +854,7 @@ static char * avifStrdup(const char * str)
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void)
 {
     avifCodecSpecificOptions * ava = avifAlloc(sizeof(avifCodecSpecificOptions));
-    if (!avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4)) {
+    if (!ava || !avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4)) {
         goto error;
     }
     return ava;
@@ -879,7 +886,7 @@ void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
     avifFree(csOptions);
 }
 
-void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value)
+avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value)
 {
     // Check to see if a key must be replaced
     for (uint32_t i = 0; i < csOptions->count; ++i) {
@@ -889,6 +896,7 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
                 // Update the value
                 avifFree(entry->value);
                 entry->value = avifStrdup(value);
+                AVIF_CHECKERR(entry->value, AVIF_RESULT_OUT_OF_MEMORY);
             } else {
                 // Delete the value
                 avifFree(entry->key);
@@ -898,16 +906,20 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
                     memmove(&csOptions->entries[i], &csOptions->entries[i + 1], (csOptions->count - i) * (size_t)csOptions->elementSize);
                 }
             }
-            return;
+            return AVIF_RESULT_OK;
         }
     }
 
     if (value) {
         // Add a new key
         avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
+        AVIF_CHECKERR(entry, AVIF_RESULT_OUT_OF_MEMORY);
         entry->key = avifStrdup(key);
+        AVIF_CHECKERR(entry->key, AVIF_RESULT_OUT_OF_MEMORY);
         entry->value = avifStrdup(value);
+        AVIF_CHECKERR(entry->value, AVIF_RESULT_OUT_OF_MEMORY);
     }
+    return AVIF_RESULT_OK;
 }
 
 // ---------------------------------------------------------------------------

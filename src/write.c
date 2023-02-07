@@ -235,11 +235,18 @@ typedef struct avifEncoderData
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
 
+// Returns NULL in case of AVIF_RESULT_OUT_OF_MEMORY error.
 static avifEncoderData * avifEncoderDataCreate()
 {
     avifEncoderData * data = (avifEncoderData *)avifAlloc(sizeof(avifEncoderData));
+    if (!data) {
+        return NULL;
+    }
     memset(data, 0, sizeof(avifEncoderData));
     data->imageMetadata = avifImageCreateEmpty();
+    if (!data->imageMetadata) {
+        goto error;
+    }
     if (!avifArrayCreate(&data->items, sizeof(avifEncoderItem), 8)) {
         goto error;
     }
@@ -397,6 +404,9 @@ static const avifScalingMode noScaling = { { 1, 1 }, { 1, 1 } };
 avifEncoder * avifEncoderCreate(void)
 {
     avifEncoder * encoder = (avifEncoder *)avifAlloc(sizeof(avifEncoder));
+    if (!encoder) {
+        return NULL;
+    }
     memset(encoder, 0, sizeof(avifEncoder));
     encoder->maxThreads = 1;
     encoder->speed = AVIF_SPEED_DEFAULT;
@@ -415,6 +425,10 @@ avifEncoder * avifEncoderCreate(void)
     encoder->scalingMode = noScaling;
     encoder->data = avifEncoderDataCreate();
     encoder->csOptions = avifCodecSpecificOptionsCreate();
+    if (!encoder->data || !encoder->csOptions) {
+        avifEncoderDestroy(encoder);
+        return NULL;
+    }
     return encoder;
 }
 
@@ -425,9 +439,9 @@ void avifEncoderDestroy(avifEncoder * encoder)
     avifFree(encoder);
 }
 
-void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
+avifResult avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
-    avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
+    return avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
 }
 
 static void avifEncoderBackupSettings(avifEncoder * encoder)
@@ -779,9 +793,13 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
 }
 
 // Same as avifImageCopy() but pads the dstImage with border pixel values to reach dstWidth and dstHeight.
+// Returns NULL in case of AVIF_RESULT_OUT_OF_MEMORY error.
 static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
 {
     avifImage * dstImage = avifImageCreateEmpty();
+    if (!dstImage) {
+        return NULL;
+    }
     // Copy all fields but do not allocate.
     if (avifImageCopy(dstImage, srcImage, (avifPlanesFlag)0) != AVIF_RESULT_OK) {
         avifImageDestroy(dstImage);

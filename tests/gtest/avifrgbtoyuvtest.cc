@@ -132,6 +132,7 @@ void ConvertWholeRange(int rgb_depth, int yuv_depth, avifRGBFormat rgb_format,
   static constexpr int height = 4;
   std::unique_ptr<avifImage, decltype(&avifImageDestroy)> yuv(
       avifImageCreate(width, height, yuv_depth, yuv_format), avifImageDestroy);
+  ASSERT_NE(yuv, nullptr);
   yuv->matrixCoefficients = matrix_coefficients;
   yuv->yuvRange = yuv_range;
   testutil::AvifRgbImage src_rgb(yuv.get(), rgb_depth, rgb_format);
@@ -249,6 +250,7 @@ void ConvertWholeBuffer(int rgb_depth, int yuv_depth, avifRGBFormat rgb_format,
       std::unique_ptr<avifImage, decltype(&avifImageDestroy)> yuv(
           avifImageCreate(width, height, yuv_depth, yuv_format),
           avifImageDestroy);
+      ASSERT_NE(yuv, nullptr);
       yuv->matrixCoefficients = matrix_coefficients;
       yuv->yuvRange = yuv_range;
       testutil::AvifRgbImage src_rgb(yuv.get(), rgb_depth, rgb_format);

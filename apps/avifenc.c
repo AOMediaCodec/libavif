@@ -417,6 +417,10 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
         for (uint32_t gridX = 0; gridX < gridCols; ++gridX) {
             uint32_t gridIndex = gridX + (gridY * gridCols);
             avifImage * cellImage = avifImageCreateEmpty();
+            if (!cellImage) {
+                fprintf(stderr, "ERROR: Cell creation failed: out-of-memory\n");
+                return AVIF_FALSE;
+            }
             gridCells[gridIndex] = cellImage;
 
             avifCropRect cellRect = { gridX * cellWidth, gridY * cellHeight, cellWidth, cellHeight };
@@ -514,6 +518,12 @@ int main(int argc, char * argv[])
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
     avifChromaDownsampling chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
+
+    if (!encoder) {
+        fprintf(stderr, "ERROR: Out-of-memory\n");
+        returnCode = 1;
+        goto cleanup;
+    }
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -769,7 +779,11 @@ int main(int argc, char * argv[])
                 value = ""; // Pass in a non-NULL, empty string. Codecs can use the
                             // mere existence of a key as a boolean value.
             }
-            avifEncoderSetCodecSpecificOption(encoder, tempBuffer, value);
+            if (avifEncoderSetCodecSpecificOption(encoder, tempBuffer, value) != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Failed to set codec specific option: %s=%s\n", tempBuffer, value);
+                returnCode = 1;
+                goto cleanup;
+            }
             free(tempBuffer);
         } else if (!strcmp(arg, "--ignore-exif")) {
             ignoreExif = AVIF_TRUE;
@@ -964,6 +978,11 @@ int main(int argc, char * argv[])
 #endif
 
     image = avifImageCreateEmpty();
+    if (!image) {
+        fprintf(stderr, "ERROR: Out-of-memory\n");
+        returnCode = 1;
+        goto cleanup;
+    }
 
     // Set these in advance so any upcoming RGB -> YUV use the proper coefficients
     image->colorPrimaries = colorPrimaries;
@@ -1188,6 +1207,11 @@ int main(int argc, char * argv[])
             }
 
             avifImage * cellImage = avifImageCreateEmpty();
+            if (!cellImage) {
+                fprintf(stderr, "ERROR: Out-of-memory\n");
+                returnCode = 1;
+                goto cleanup;
+            }
             cellImage->colorPrimaries = image->colorPrimaries;
             cellImage->transferCharacteristics = image->transferCharacteristics;
             cellImage->matrixCoefficients = image->matrixCoefficients;
@@ -1323,6 +1347,11 @@ int main(int argc, char * argv[])
                 avifImageDestroy(nextImage);
             }
             nextImage = avifImageCreateEmpty();
+            if (!nextImage) {
+                fprintf(stderr, "ERROR: Out-of-memory\n");
+                returnCode = 1;
+                goto cleanup;
+            }
             nextImage->colorPrimaries = image->colorPrimaries;
             nextImage->transferCharacteristics = image->transferCharacteristics;
             nextImage->matrixCoefficients = image->matrixCoefficients;

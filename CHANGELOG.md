@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 There are incompatible ABI changes in this release. The clli member was added
 to the avifImage struct. The repetitionCount member was added to the avifEncoder
 and avifDecoder structs. The quality and qualityAlpha members were added to the
-avifEncoder struct.
+avifEncoder struct. Check that functions returning pointers do not return NULL
+before accessing those pointers. Check the return value of
+avifEncoderSetCodecSpecificOption().
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
@@ -45,6 +47,10 @@ avifEncoder struct.
   instances.
 * Update aom.cmd: v3.6.0
 * Update rav1e.cmd: v0.6.3
+* avifImageCreate(), avifImageCreateEmpty(), avifEncoderCreate() and other
+  internal functions now return NULL in case of AVIF_RESULT_OUT_OF_MEMORY.
+* avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
+  report memory allocation failures.
 
 ## [0.11.1] - 2022-10-19
 
