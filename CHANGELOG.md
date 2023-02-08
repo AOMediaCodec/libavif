@@ -43,6 +43,7 @@ avifEncoder struct.
 * avifImageRGBToYUV() and avifImageYUVToRGB() handle avifImage bit depths 8, 10,
   12 and now also 16. Files read by apps/shared/ can output 16-bit avifImage
   instances.
+* Update rav1e.cmd: v0.6.3
 
 ## [0.11.1] - 2022-10-19
 
