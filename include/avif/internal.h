@@ -273,7 +273,7 @@ typedef struct avifCodecSpecificOption
 } avifCodecSpecificOption;
 AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
 
-// Returns NULL in case of AVIF_RESULT_OUT_OF_MEMORY error.
+// Returns NULL if a memory allocation failed.
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
 void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);

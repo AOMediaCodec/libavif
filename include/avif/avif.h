@@ -539,7 +539,7 @@ typedef struct avifImage
     avifRWData xmp;
 } avifImage;
 
-// If avifImageCreate() or avifImageCreateEmpty() returns NULL, an AVIF_RESULT_OUT_OF_MEMORY error happened.
+// avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
 AVIF_API avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
 AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes); // deep copy
@@ -1149,7 +1149,7 @@ typedef struct avifEncoder
     struct avifCodecSpecificOptions * csOptions;
 } avifEncoder;
 
-// If avifEncoderCreate() returns NULL, an AVIF_RESULT_OUT_OF_MEMORY error happened.
+// avifEncoderCreate() returns NULL if a memory allocation failed.
 AVIF_API avifEncoder * avifEncoderCreate(void);
 AVIF_API avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output);
 AVIF_API void avifEncoderDestroy(avifEncoder * encoder);

@@ -235,7 +235,7 @@ typedef struct avifEncoderData
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
 
-// Returns NULL in case of AVIF_RESULT_OUT_OF_MEMORY error.
+// Returns NULL if a memory allocation failed.
 static avifEncoderData * avifEncoderDataCreate()
 {
     avifEncoderData * data = (avifEncoderData *)avifAlloc(sizeof(avifEncoderData));
@@ -793,7 +793,7 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
 }
 
 // Same as avifImageCopy() but pads the dstImage with border pixel values to reach dstWidth and dstHeight.
-// Returns NULL in case of AVIF_RESULT_OUT_OF_MEMORY error.
+// Returns NULL if a memory allocation failed.
 static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
 {
     avifImage * dstImage = avifImageCreateEmpty();

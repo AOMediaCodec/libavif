@@ -134,6 +134,15 @@ void avifImageSetDefaults(avifImage * image)
 
 avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat)
 {
+    // width and height are checked by avifImageAllocatePlanes().
+    if (depth > 16) {
+        // avifImage only supports up to 16 bits per sample. See avifImageUsesU16().
+        return NULL;
+    }
+    if ((yuvFormat < AVIF_PIXEL_FORMAT_NONE) || (yuvFormat > AVIF_PIXEL_FORMAT_YUV400)) {
+        return NULL;
+    }
+
     avifImage * image = (avifImage *)avifAlloc(sizeof(avifImage));
     if (!image) {
         return NULL;
@@ -839,7 +848,7 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, 
 // ---------------------------------------------------------------------------
 // avifCodecSpecificOption
 
-// Returns NULL in case of AVIF_RESULT_OUT_OF_MEMORY error.
+// Returns NULL if a memory allocation failed.
 static char * avifStrdup(const char * str)
 {
     size_t len = strlen(str);

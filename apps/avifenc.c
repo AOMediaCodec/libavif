@@ -418,7 +418,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
             uint32_t gridIndex = gridX + (gridY * gridCols);
             avifImage * cellImage = avifImageCreateEmpty();
             if (!cellImage) {
-                fprintf(stderr, "ERROR: Cell creation failed: out-of-memory\n");
+                fprintf(stderr, "ERROR: Cell creation failed: out of memory\n");
                 return AVIF_FALSE;
             }
             gridCells[gridIndex] = cellImage;
@@ -520,7 +520,7 @@ int main(int argc, char * argv[])
     avifChromaDownsampling chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
 
     if (!encoder) {
-        fprintf(stderr, "ERROR: Out-of-memory\n");
+        fprintf(stderr, "ERROR: Out of memory\n");
         returnCode = 1;
         goto cleanup;
     }
@@ -979,7 +979,7 @@ int main(int argc, char * argv[])
 
     image = avifImageCreateEmpty();
     if (!image) {
-        fprintf(stderr, "ERROR: Out-of-memory\n");
+        fprintf(stderr, "ERROR: Out of memory\n");
         returnCode = 1;
         goto cleanup;
     }
@@ -1208,7 +1208,7 @@ int main(int argc, char * argv[])
 
             avifImage * cellImage = avifImageCreateEmpty();
             if (!cellImage) {
-                fprintf(stderr, "ERROR: Out-of-memory\n");
+                fprintf(stderr, "ERROR: Out of memory\n");
                 returnCode = 1;
                 goto cleanup;
             }
@@ -1348,7 +1348,7 @@ int main(int argc, char * argv[])
             }
             nextImage = avifImageCreateEmpty();
             if (!nextImage) {
-                fprintf(stderr, "ERROR: Out-of-memory\n");
+                fprintf(stderr, "ERROR: Out of memory\n");
                 returnCode = 1;
                 goto cleanup;
             }

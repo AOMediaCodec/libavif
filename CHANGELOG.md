@@ -48,7 +48,7 @@ avifEncoderSetCodecSpecificOption().
 * Update aom.cmd: v3.6.0
 * Update rav1e.cmd: v0.6.3
 * avifImageCreate(), avifImageCreateEmpty(), avifEncoderCreate() and other
-  internal functions now return NULL in case of AVIF_RESULT_OUT_OF_MEMORY.
+  internal functions now return NULL if a memory allocation failed.
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
   report memory allocation failures.
 
