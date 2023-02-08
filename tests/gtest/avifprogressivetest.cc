@@ -86,7 +86,7 @@ TEST_F(ProgressiveTest, QualityChange) {
 //   av1/encoder/mcomp.c:1717: av1_full_pixel_search: Assertion
 //   `ms_params->ms_buffers.ref->stride == ms_params->search_sites->stride'
 //   failed.
-// See https://aomedia-review.googlesource.com/c/aom/+/169541.
+// See https://aomedia.googlesource.com/aom/+/945edd671.
 TEST_F(ProgressiveTest, DimensionChange) {
   if (avifLibYUVVersion() == 0) {
     GTEST_SKIP() << "libyuv not available, skip test.";
