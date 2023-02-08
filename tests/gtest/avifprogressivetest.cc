@@ -2,11 +2,17 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/avif.h"
+#include "avifjpeg.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
 namespace libavif {
 namespace {
+
+//------------------------------------------------------------------------------
+
+// Used to pass the data folder path to the GoogleTest suites.
+const char* data_path = nullptr;
 
 class ProgressiveTest : public testing::Test {
  protected:
@@ -169,5 +175,67 @@ TEST_F(ProgressiveTest, TooFewLayers) {
             AVIF_RESULT_INVALID_ARGUMENT);
 }
 
+TEST_F(ProgressiveTest, DimensionChangeLargeImageMultiThread) {
+  encoder_->speed = 6;
+  encoder_->maxThreads = 2;
+  encoder_->extraLayerCount = 1;
+
+  image_ = testutil::CreateImage(1920, 1080, 8, AVIF_PIXEL_FORMAT_YUV420,
+                                 AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+
+  encoder_->scalingMode = {{1, 2}, {1, 2}};
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  encoder_->scalingMode = {{1, 1}, {1, 1}};
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(1920, 1080);
+}
+
+TEST_F(ProgressiveTest, DimensionChangeLargeImageSlowSpeedDifferentImage) {
+  encoder_->speed = 2;
+  encoder_->maxThreads = 1;
+  encoder_->extraLayerCount = 1;
+
+  auto layer1 = testutil::ReadImage(
+      data_path, "dog_blur_1080p.jpg", AVIF_PIXEL_FORMAT_YUV420, 8,
+      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, false, false, false);
+  auto layer2 = testutil::ReadImage(
+      data_path, "dog_1080p.jpg", AVIF_PIXEL_FORMAT_YUV420, 8,
+      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, false, false, false);
+
+  encoder_->scalingMode = {{1, 2}, {1, 2}};
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), layer1.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  encoder_->scalingMode = {{1, 1}, {1, 1}};
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), layer2.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(1920, 1080);
+}
+
 }  // namespace
 }  // namespace libavif
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  if (argc != 2) {
+    std::cerr << "There must be exactly one argument containing the path to "
+                 "the test data folder"
+              << std::endl;
+    return 1;
+  }
+  libavif::data_path = argv[1];
+  return RUN_ALL_TESTS();
+}
