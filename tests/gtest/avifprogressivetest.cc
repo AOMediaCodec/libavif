@@ -81,13 +81,13 @@ TEST_F(ProgressiveTest, QualityChange) {
   TestDecode(kImageSize, kImageSize);
 }
 
-// TODO(wtc): Investigate why the following assertion in libaom failed:
+// NOTE: This test requires libaom v3.6.0 or later, otherwise the following
+// assertion in libaom fails:
 //   av1/encoder/mcomp.c:1717: av1_full_pixel_search: Assertion
 //   `ms_params->ms_buffers.ref->stride == ms_params->search_sites->stride'
 //   failed.
-// ms_params->ms_buffers.ref->stride is 832, and
-// ms_params->search_sites->stride is 0.
-TEST_F(ProgressiveTest, DISABLED_DimensionChange) {
+// See https://aomedia.googlesource.com/aom/+/945edd671.
+TEST_F(ProgressiveTest, DimensionChange) {
   if (avifLibYUVVersion() == 0) {
     GTEST_SKIP() << "libyuv not available, skip test.";
   }
