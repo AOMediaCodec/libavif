@@ -304,7 +304,9 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
         avifRWDataFree(&item->metadataPayload);
         avifArrayDestroy(&item->mdatFixups);
     }
-    avifImageDestroy(data->imageMetadata);
+    if (data->imageMetadata) {
+        avifImageDestroy(data->imageMetadata);
+    }
     avifArrayDestroy(&data->items);
     avifArrayDestroy(&data->frames);
     avifFree(data);
@@ -434,8 +436,12 @@ avifEncoder * avifEncoderCreate(void)
 
 void avifEncoderDestroy(avifEncoder * encoder)
 {
-    avifCodecSpecificOptionsDestroy(encoder->csOptions);
-    avifEncoderDataDestroy(encoder->data);
+    if (encoder->csOptions) {
+        avifCodecSpecificOptionsDestroy(encoder->csOptions);
+    }
+    if (encoder->data) {
+        avifEncoderDataDestroy(encoder->data);
+    }
     avifFree(encoder);
 }
 

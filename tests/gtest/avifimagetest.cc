@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <cstdint>

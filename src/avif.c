@@ -134,7 +134,7 @@ void avifImageSetDefaults(avifImage * image)
 
 avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat)
 {
-    // width and height are checked by avifImageAllocatePlanes().
+    // width and height are checked when actually used, for example by avifImageAllocatePlanes().
     if (depth > 16) {
         // avifImage only supports up to 16 bits per sample. See avifImageUsesU16().
         return NULL;
@@ -886,10 +886,6 @@ void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
 
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
 {
-    if (!csOptions) {
-        return;
-    }
-
     avifCodecSpecificOptionsClear(csOptions);
     avifArrayDestroy(csOptions);
     avifFree(csOptions);

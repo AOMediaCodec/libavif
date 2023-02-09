@@ -151,7 +151,7 @@ int main(int argc, char * argv[])
 
                         avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
                         if (!image) {
-                            fprintf(stderr, "Out of memory\n");
+                            printf("ERROR: Out of memory\n");
                             return 1;
                         }
                         image->colorPrimaries = cicp->cp;
@@ -303,7 +303,7 @@ int main(int argc, char * argv[])
 
         avifImage * image = avifImageCreate(originalWidth, originalHeight, 8, AVIF_PIXEL_FORMAT_YUV444);
         if (!image) {
-            fprintf(stderr, "Out of memory\n");
+            printf("ERROR: Out of memory\n");
             return 1;
         }
 

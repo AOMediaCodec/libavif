@@ -487,7 +487,6 @@ int main(int argc, char * argv[])
     avifBool ignoreExif = AVIF_FALSE;
     avifBool ignoreXMP = AVIF_FALSE;
     avifBool ignoreICC = AVIF_FALSE;
-    avifEncoder * encoder = avifEncoderCreate();
     avifImage * image = NULL;
     avifImage * nextImage = NULL;
     avifRWData raw = AVIF_DATA_EMPTY;
@@ -519,6 +518,7 @@ int main(int argc, char * argv[])
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
     avifChromaDownsampling chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
 
+    avifEncoder * encoder = avifEncoderCreate();
     if (!encoder) {
         fprintf(stderr, "ERROR: Out of memory\n");
         returnCode = 1;
@@ -779,12 +779,13 @@ int main(int argc, char * argv[])
                 value = ""; // Pass in a non-NULL, empty string. Codecs can use the
                             // mere existence of a key as a boolean value.
             }
-            if (avifEncoderSetCodecSpecificOption(encoder, tempBuffer, value) != AVIF_RESULT_OK) {
-                fprintf(stderr, "ERROR: Failed to set codec specific option: %s=%s\n", tempBuffer, value);
+            avifResult result = avifEncoderSetCodecSpecificOption(encoder, tempBuffer, value);
+            free(tempBuffer);
+            if (result != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Failed to set codec specific option: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
-            free(tempBuffer);
         } else if (!strcmp(arg, "--ignore-exif")) {
             ignoreExif = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-xmp")) {
