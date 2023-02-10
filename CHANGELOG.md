@@ -22,6 +22,8 @@ avifEncoder struct.
   should be updated to set quality (and qualityAlpha if applicable) and leave
   minQuantizer, maxQuantizer, minQuantizerAlpha, and maxQuantizerAlpha
   initialized to the default values.
+* Add targetSize to avifEncoder. It can be used to get an encoded image with a
+  number of bytes as close as possible to the specified one.
 * Add the public API function avifImageIsOpaque() in avif.h.
 * Add experimental API for progressive AVIF encoding.
 

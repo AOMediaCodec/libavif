@@ -1293,7 +1293,7 @@ static avifResult avifEncoderAddImageInternalTargetSize(avifEncoder * encoder,
     // be another frame is ambiguous. The user may expect the whole animation to match the targetSize, or
     // may expect that it applies to each frame. Allowing avifEncoder.targetSize>0 for animations would also
     // make the code more complicated, because all input frames would be stored until avifEncoderFinish().
-    // For simplicity, it is reserved to single-frame images.
+    // For simplicity, it is limited to single-frame images.
     AVIF_CHECKERR(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE, AVIF_RESULT_INVALID_ARGUMENT);
 
     if ((encoder->quality != AVIF_QUALITY_DEFAULT) && (encoder->qualityAlpha != AVIF_QUALITY_DEFAULT)) {
