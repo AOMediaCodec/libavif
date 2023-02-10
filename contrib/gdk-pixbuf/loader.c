@@ -128,6 +128,7 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
     if (ret != AVIF_RESULT_OK) {
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
                     "Failed to convert YUV to RGB: %s", avifResultToString(ret));
+        g_object_unref(output);
         return FALSE;
     }
 
@@ -236,6 +237,7 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
                             GDK_PIXBUF_ERROR,
                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
                             "Transformed AVIF has zero width or height");
+        g_object_unref(output);
         return FALSE;
     }
 
