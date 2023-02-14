@@ -95,6 +95,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifgridapitest COMMAND avifgridapitest)
 
+    add_executable(avifimagetest gtest/avifimagetest.cc)
+    target_link_libraries(avifimagetest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifimagetest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifimagetest COMMAND avifimagetest)
+
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
     target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
     target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})

@@ -33,15 +33,20 @@ void TestEncodeDecode(avifCodecChoice codec,
   encoder->timescale = 1;
 
   for (const auto& option : init_cs_options) {
-    avifEncoderSetCodecSpecificOption(encoder.get(), option.first.c_str(),
-                                      option.second.c_str());
+    ASSERT_EQ(avifEncoderSetCodecSpecificOption(
+                  encoder.get(), option.first.c_str(), option.second.c_str()),
+              AVIF_RESULT_OK);
   }
 
   if (use_cq) {
     encoder->minQuantizer = 0;
     encoder->maxQuantizer = 63;
-    avifEncoderSetCodecSpecificOption(encoder.get(), "end-usage", "q");
-    avifEncoderSetCodecSpecificOption(encoder.get(), "cq-level", "63");
+    ASSERT_EQ(
+        avifEncoderSetCodecSpecificOption(encoder.get(), "end-usage", "q"),
+        AVIF_RESULT_OK);
+    ASSERT_EQ(
+        avifEncoderSetCodecSpecificOption(encoder.get(), "cq-level", "63"),
+        AVIF_RESULT_OK);
   } else {
     encoder->minQuantizer = 63;
     encoder->maxQuantizer = 63;
@@ -52,7 +57,8 @@ void TestEncodeDecode(avifCodecChoice codec,
             AVIF_RESULT_OK);
 
   if (use_cq) {
-    avifEncoderSetCodecSpecificOption(encoder.get(), "cq-level", "0");
+    ASSERT_EQ(avifEncoderSetCodecSpecificOption(encoder.get(), "cq-level", "0"),
+              AVIF_RESULT_OK);
   } else {
     encoder->minQuantizer = 0;
     encoder->maxQuantizer = 0;

@@ -272,10 +272,12 @@ typedef struct avifCodecSpecificOption
     char * value; // Free-form string to be interpreted by the codec
 } avifCodecSpecificOption;
 AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
+
+// Returns NULL if a memory allocation failed.
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
 void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
-void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
+avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
 
 // ---------------------------------------------------------------------------
 // avifCodec (abstraction layer to use different AV1 implementations)

@@ -26,6 +26,10 @@ int main(int argc, char * argv[])
     memset(&rgb, 0, sizeof(rgb));
 
     avifImage * image = avifImageCreate(128, 128, 8, AVIF_PIXEL_FORMAT_YUV444); // these values dictate what goes into the final AVIF
+    if (!image) {
+        fprintf(stderr, "Out of memory\n");
+        goto cleanup;
+    }
     // Configure image here: (see avif/avif.h)
     // * colorPrimaries
     // * transferCharacteristics
@@ -75,6 +79,10 @@ int main(int argc, char * argv[])
     }
 
     encoder = avifEncoderCreate();
+    if (!encoder) {
+        fprintf(stderr, "Out of memory\n");
+        goto cleanup;
+    }
     // Configure your encoder here (see avif/avif.h):
     // * maxThreads
     // * quality

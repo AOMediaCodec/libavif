@@ -150,6 +150,10 @@ int main(int argc, char * argv[])
                         int maxDrift = 0;
 
                         avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
+                        if (!image) {
+                            printf("ERROR: Out of memory\n");
+                            return 1;
+                        }
                         image->colorPrimaries = cicp->cp;
                         image->transferCharacteristics = cicp->tc;
                         image->matrixCoefficients = cicp->mc;
@@ -298,6 +302,10 @@ int main(int argc, char * argv[])
         avifBool showAllResults = AVIF_TRUE;
 
         avifImage * image = avifImageCreate(originalWidth, originalHeight, 8, AVIF_PIXEL_FORMAT_YUV444);
+        if (!image) {
+            printf("ERROR: Out of memory\n");
+            return 1;
+        }
 
         for (int yuvDepthIndex = 0; yuvDepthIndex < yuvDepthsCount; ++yuvDepthIndex) {
             uint32_t yuvDepth = yuvDepths[yuvDepthIndex];
