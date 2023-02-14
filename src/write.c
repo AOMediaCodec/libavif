@@ -409,11 +409,11 @@ avifEncoder * avifEncoderCreate(void)
     encoder->repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     encoder->quality = AVIF_QUALITY_DEFAULT;
     encoder->qualityAlpha = AVIF_QUALITY_DEFAULT;
-    encoder->targetSize = 0;
     encoder->minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     encoder->maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
     encoder->minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
     encoder->maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+    encoder->targetSize = 0;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
     encoder->autoTiling = AVIF_FALSE;
@@ -1249,11 +1249,11 @@ static avifResult avifEncoderWriteInternal(const avifEncoder * encoderSettings,
     encoder->extraLayerCount = encoderSettings->extraLayerCount;
     encoder->quality = encoderSettings->quality;
     encoder->qualityAlpha = encoderSettings->qualityAlpha;
-    encoder->targetSize = encoderSettings->targetSize;
     encoder->minQuantizer = encoderSettings->minQuantizer;
     encoder->maxQuantizer = encoderSettings->maxQuantizer;
     encoder->minQuantizerAlpha = encoderSettings->minQuantizerAlpha;
     encoder->maxQuantizerAlpha = encoderSettings->maxQuantizerAlpha;
+    encoder->targetSize = encoderSettings->targetSize;
     encoder->tileRowsLog2 = encoderSettings->tileRowsLog2;
     encoder->tileColsLog2 = encoderSettings->tileColsLog2;
     encoder->autoTiling = encoderSettings->autoTiling;
