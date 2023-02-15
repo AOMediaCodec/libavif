@@ -252,6 +252,12 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
         }
     }
 
+    if (image->icc.size != 0) {
+        gchar *icc_base64 = g_base64_encode((const guchar *)image->icc.data, image->icc.size);
+        gdk_pixbuf_set_option(output, "icc-profile", icc_base64);
+        g_free(icc_base64);
+    }
+
     if (context->pixbuf) {
         g_object_unref(context->pixbuf);
         context->pixbuf = NULL;
