@@ -425,6 +425,8 @@ avifEncoder * avifEncoderCreate(void)
     encoder->tileColsLog2 = 0;
     encoder->autoTiling = AVIF_FALSE;
     encoder->scalingMode = noScaling;
+    encoder->ioStats.quality = AVIF_QUALITY_DEFAULT;
+    encoder->ioStats.qualityAlpha = AVIF_QUALITY_DEFAULT;
     encoder->data = avifEncoderDataCreate();
     encoder->csOptions = avifCodecSpecificOptionsCreate();
     if (!encoder->data || !encoder->csOptions) {
@@ -871,7 +873,7 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
     return dstImage;
 }
 
-static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantizer)
+int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantizer)
 {
     int quantizer;
     if (quality == AVIF_QUALITY_DEFAULT) {
@@ -884,6 +886,12 @@ static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantize
         quantizer = ((100 - quality) * 63 + 50) / 100;
     }
     return quantizer;
+}
+
+int avifQuantizerToQuality(int quantizer)
+{
+    quantizer = AVIF_CLAMP(quantizer, 0, 63);
+    return ((63 - quantizer) * 100 + 15) / 63;
 }
 
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
@@ -1001,6 +1009,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // Map quality and qualityAlpha to quantizer and quantizerAlpha
     encoder->data->quantizer = avifQualityToQuantizer(encoder->quality, encoder->minQuantizer, encoder->maxQuantizer);
     encoder->data->quantizerAlpha = avifQualityToQuantizer(encoder->qualityAlpha, encoder->minQuantizerAlpha, encoder->maxQuantizerAlpha);
+
+    encoder->ioStats.quality = avifQuantizerToQuality(encoder->data->quantizer);
+    if (firstCell->alphaPlane) {
+        encoder->ioStats.qualityAlpha = avifQuantizerToQuality(encoder->data->quantizerAlpha);
+    } else {
+        encoder->ioStats.qualityAlpha = AVIF_QUALITY_DEFAULT;
+    }
 
     // -----------------------------------------------------------------------
     // Handle automatic tiling

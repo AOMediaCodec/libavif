@@ -3748,9 +3748,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
         }
 
-        decoder->ioStats.colorOBUSize = colorItem->size;
-        decoder->ioStats.alphaOBUSize = alphaItem ? alphaItem->size : 0;
-
         decoder->image->width = colorItem->width;
         decoder->image->height = colorItem->height;
         decoder->alphaPresent = (alphaItem != NULL);
@@ -3776,6 +3773,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!sample->size) {
                 // Every sample must have some data
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            if (tile->input->alpha) {
+                decoder->ioStats.alphaOBUSize += sample->size;
+            } else {
+                decoder->ioStats.colorOBUSize += sample->size;
             }
         }
     }

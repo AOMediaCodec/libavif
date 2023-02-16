@@ -188,6 +188,10 @@ avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageS
 // unit tests.
 void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int * tileRowsLog2, int * tileColsLog2);
 
+// Mapping between quantizer and quality.
+int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantizer);
+int avifQuantizerToQuality(int quantizer);
+
 // ---------------------------------------------------------------------------
 // Scaling
 
