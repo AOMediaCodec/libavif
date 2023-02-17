@@ -550,6 +550,7 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
                                           // setting this to match image->alphaPremultiplied or forcing this to true
                                           // after calling avifRGBImageSetDefaults(),
     rgb->isFloat = AVIF_FALSE;
+    rgb->maxThreads = 1;
 }
 
 void avifRGBImageAllocatePixels(avifRGBImage * rgb)
