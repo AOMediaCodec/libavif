@@ -200,6 +200,26 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
          AreByteSequencesEqual(image1.xmp, image2.xmp);
 }
 
+bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
+  if (image1.width != image2.width || image1.height != image2.height ||
+      image1.depth != image2.depth || image1.format != image2.format ||
+      image1.alphaPremultiplied != image2.alphaPremultiplied ||
+      image1.isFloat != image2.isFloat) {
+    return false;
+  }
+  const uint8_t* row1 = image1.pixels;
+  const uint8_t* row2 = image2.pixels;
+  const unsigned int row_width = image1.width * avifRGBImagePixelSize(&image1);
+  for (unsigned int y = 0; y < image1.height; ++y) {
+    if (!std::equal(row1, row1 + row_width, row2)) {
+      return false;
+    }
+    row1 += image1.rowBytes;
+    row2 += image2.rowBytes;
+  }
+  return true;
+}
+
 void CopyImageSamples(const avifImage& from, avifImage* to) {
   assert(from.width == to->width);
   assert(from.height == to->height);

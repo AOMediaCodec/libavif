@@ -73,6 +73,9 @@ bool AreByteSequencesEqual(const avifRWData& data1, const avifRWData& data2);
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha = false);
 
+// Returns true if both images have the same features and pixel values.
+bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2);
+
 //------------------------------------------------------------------------------
 // Shorter versions of libavif functions
 

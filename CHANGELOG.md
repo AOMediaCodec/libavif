@@ -11,7 +11,8 @@ to the avifImage struct. The repetitionCount member was added to the avifEncoder
 and avifDecoder structs. The quality and qualityAlpha members were added to the
 avifEncoder struct. Check that functions returning pointers do not return NULL
 before accessing those pointers. Check the return value of
-avifEncoderSetCodecSpecificOption().
+avifEncoderSetCodecSpecificOption(). The maxThreads member was added to the
+avifRGBImage struct.
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
@@ -26,6 +27,7 @@ avifEncoderSetCodecSpecificOption().
   initialized to the default values.
 * Add the public API function avifImageIsOpaque() in avif.h.
 * Add experimental API for progressive AVIF encoding.
+* Add API for multi-threaded YUV to RGB color conversion.
 
 ### Changed
 * Exif and XMP metadata is exported to PNG and JPEG files by default,
