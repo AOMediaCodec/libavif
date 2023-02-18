@@ -6,13 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-There are incompatible ABI changes in this release. The clli member was added
-to the avifImage struct. The repetitionCount member was added to the avifEncoder
-and avifDecoder structs. The quality and qualityAlpha members were added to the
-avifEncoder struct. Check that functions returning pointers do not return NULL
-before accessing those pointers. Check the return value of
-avifEncoderSetCodecSpecificOption(). The maxThreads member was added to the
-avifRGBImage struct.
+List of incompatible ABI changes in this release:
+
+* The clli member was added to the avifImage struct.
+* The repetitionCount member was added to the avifEncoder and avifDecoder
+  structs.
+* The quality and qualityAlpha members were added to the avifEncoder struct.
+* Check that functions returning pointers do not return NULL before accessing
+  those pointers.
+* Check the return value of avifEncoderSetCodecSpecificOption().
+* The maxThreads member was added to the avifRGBImage struct.
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
