@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <array>
+#include <iostream>
+#include <ostream>
 
 #include "avif/avif.h"
 #include "avif/internal.h"
@@ -36,19 +38,19 @@ bool GetIoStatsFromEncode(avifIOStats& encoder_io_stats, int quality,
   encoder->qualityAlpha = qualityAlpha;
   for (int frame = 0; frame < num_frames; ++frame) {
     if (encode_as_grid) {
-      const avifCropRect left_rect{0, 0, image->width / 2, image->height};
+      const avifCropRect left_rect = {0, 0, image->width / 2, image->height};
       testutil::AvifImagePtr left_cell(avifImageCreateEmpty(),
                                        avifImageDestroy);
       AVIF_CHECK(avifImageSetViewRect(left_cell.get(), image.get(),
                                       &left_rect) == AVIF_RESULT_OK);
-      const avifCropRect right_rect{image->width / 2, 0, image->width / 2,
-                                    image->height};
+      const avifCropRect right_rect = {image->width / 2, 0, image->width / 2,
+                                       image->height};
       testutil::AvifImagePtr right_cell(avifImageCreateEmpty(),
                                         avifImageDestroy);
       AVIF_CHECK(avifImageSetViewRect(right_cell.get(), image.get(),
                                       &right_rect) == AVIF_RESULT_OK);
-      const std::array<avifImage*, 2> pointers{left_cell.get(),
-                                               right_cell.get()};
+      const std::array<avifImage*, 2> pointers = {left_cell.get(),
+                                                  right_cell.get()};
       AVIF_CHECK(avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/2,
                                          /*gridRows=*/1, pointers.data(),
                                          AVIF_ADD_IMAGE_FLAG_NONE) ==
