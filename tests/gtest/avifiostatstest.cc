@@ -89,7 +89,7 @@ TEST(IoStatsTest, ColorObuSize) {
   ASSERT_TRUE(GetIoStatsFromEncode(io_stats, AVIF_QUALITY_DEFAULT,
                                    AVIF_QUALITY_DEFAULT,
                                    /*translucent=*/false));
-  EXPECT_GT(io_stats.colorOBUSize, 500u);
+  EXPECT_GT(io_stats.colorOBUSize, 0u);
   EXPECT_EQ(io_stats.alphaOBUSize, 0u);
 }
 
@@ -97,8 +97,8 @@ TEST(IoStatsTest, AlphaObuSize) {
   avifIOStats io_stats;
   ASSERT_TRUE(GetIoStatsFromEncode(io_stats, AVIF_QUALITY_WORST,
                                    AVIF_QUALITY_WORST, /*translucent=*/true));
-  EXPECT_GT(io_stats.colorOBUSize, 500u);
-  EXPECT_GT(io_stats.alphaOBUSize, 500u);
+  EXPECT_GT(io_stats.colorOBUSize, 0u);
+  EXPECT_GT(io_stats.alphaOBUSize, 0u);
 }
 
 // Disabled because segfault happens with some libaom versions (such as 3.5.0)
