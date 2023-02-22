@@ -108,6 +108,11 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
     add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
+    add_executable(avifiostatstest gtest/avifiostatstest.cc)
+    target_link_libraries(avifiostatstest avif_internal aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifiostatstest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifiostatstest COMMAND avifiostatstest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
     target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})

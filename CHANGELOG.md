@@ -56,6 +56,7 @@ List of incompatible ABI changes in this release:
   internal functions now return NULL if a memory allocation failed.
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
   report memory allocation failures.
+* At decoding, avifIOStats now returns the same values as at encoding.
 
 ## [0.11.1] - 2022-10-19
 
