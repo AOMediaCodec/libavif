@@ -51,6 +51,7 @@ List of incompatible ABI changes in this release:
   12 and now also 16. Files read by apps/shared/ can output 16-bit avifImage
   instances.
 * Update aom.cmd: v3.6.0
+* Update dav1d.cmd: 1.1.0
 * Update rav1e.cmd: v0.6.3
 * avifImageCreate(), avifImageCreateEmpty(), avifEncoderCreate() and other
   internal functions now return NULL if a memory allocation failed.
