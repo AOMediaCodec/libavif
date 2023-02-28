@@ -29,6 +29,14 @@ extern "C" {
             return ERR;       \
     } while (0)
 
+// Forward any error to the caller now or continue execution.
+#define AVIF_CHECKRES(A)                 \
+    do {                                 \
+        const avifResult result__ = (A); \
+        if (result__ != AVIF_RESULT_OK)  \
+            return result__;             \
+    } while (0)
+
 // ---------------------------------------------------------------------------
 // URNs and Content-Types
 
