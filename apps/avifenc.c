@@ -456,6 +456,18 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
+// Returns NULL if a memory allocation failed.
+static char * avifStrdup(const char * str)
+{
+    size_t len = strlen(str);
+    char * dup = avifAlloc(len + 1);
+    if (!dup) {
+        return NULL;
+    }
+    memcpy(dup, str, len + 1);
+    return dup;
+}
+
 static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, const char * keyValue)
 {
     avifBool success = AVIF_FALSE;
@@ -478,7 +490,7 @@ static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, 
     const char * value = strchr(keyValue, '=');
     if (value) {
         // Remove equals sign.
-        options->values[options->count] = strdup(value);
+        options->values[options->count] = avifStrdup(value + 1);
         const size_t keyLength = strlen(keyValue) - strlen(value);
         options->keys[options->count] = malloc(keyLength + 1);
         if (!options->values[options->count] || !options->keys[options->count]) {
@@ -488,9 +500,9 @@ static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, 
         options->keys[options->count][keyLength] = '\0';
     } else {
         // Pass in a non-NULL, empty string. Codecs can use the mere existence of a key as a boolean value.
-        options->values[options->count] = strdup("");
-        options->keys[options->count] = strdup(keyValue);
-        if (!options->keys[options->count]) {
+        options->values[options->count] = avifStrdup("");
+        options->keys[options->count] = avifStrdup(keyValue);
+        if (!options->values[options->count] || !options->keys[options->count]) {
             goto cleanup;
         }
     }
@@ -919,8 +931,8 @@ static avifBool avifEncodeImages(avifSettings * settings,
     avifRWDataFree(encoded);
     *encoded = closestEncoded;
     *ioStats = closestIoStats;
-    printf("Kept the encoded image of size %d bytes generated with color quality %d and alpha quality %d.\n",
-           (int)encoded->size,
+    printf("Kept the encoded image of size %" AVIF_FMT_ZU " bytes generated with color quality %d and alpha quality %d.\n",
+           encoded->size,
            settings->quality,
            settings->qualityAlpha);
     return AVIF_TRUE;
