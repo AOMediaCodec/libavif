@@ -66,16 +66,16 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_BIGGEST_FILE}"
   BIGGEST_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
 
-  test ${SMALLEST_FILE_SIZE} -lt ${DEFAULT_QUALITY_FILE_SIZE} || exit 1
-  test ${DEFAULT_QUALITY_FILE_SIZE} -lt ${BIGGEST_FILE_SIZE} || exit 1
+  [[ ${SMALLEST_FILE_SIZE} -lt ${DEFAULT_QUALITY_FILE_SIZE} ]] || exit 1
+  [[ ${DEFAULT_QUALITY_FILE_SIZE} -lt ${BIGGEST_FILE_SIZE} ]] || exit 1
 
   # Check that min/max file sizes match lowest/highest qualities.
   "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}" -q 0
-  test $(wc -c < "${ENCODED_FILE}") -eq ${SMALLEST_FILE_SIZE} || exit 1
+  [[ $(wc -c < "${ENCODED_FILE}") -eq ${SMALLEST_FILE_SIZE} ]] || exit 1
   "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}" -q 100
-  test $(wc -c < "${ENCODED_FILE}") -eq ${BIGGEST_FILE_SIZE} || exit 1
+  [[ $(wc -c < "${ENCODED_FILE}") -eq ${BIGGEST_FILE_SIZE} ]] || exit 1
   # Negative test.
-  test $(wc -c < "${ENCODED_FILE}") -eq ${SMALLEST_FILE_SIZE} && exit 1
+  [[ $(wc -c < "${ENCODED_FILE}") -eq ${SMALLEST_FILE_SIZE} ]] && exit 1
 
   # Same as above but with a grid made of two tiles.
   TILE0="${DECODED_SMALLEST_FILE}"
@@ -90,8 +90,8 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 9 --grid 2x1 "${TILE0}" "${TILE1}" -o "${ENCODED_FILE}" --target-size 999999999
   BIGGEST_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
 
-  test ${SMALLEST_FILE_SIZE} -lt ${DEFAULT_QUALITY_FILE_SIZE} || exit 1
-  test ${DEFAULT_QUALITY_FILE_SIZE} -lt ${BIGGEST_FILE_SIZE} || exit 1
+  [[ ${SMALLEST_FILE_SIZE} -lt ${DEFAULT_QUALITY_FILE_SIZE} ]] || exit 1
+  [[ ${DEFAULT_QUALITY_FILE_SIZE} -lt ${BIGGEST_FILE_SIZE} ]] || exit 1
 
   # The remaining tests in this file use animations that may trigger segmentation faults
   # with libaom versions older than 3.6.0. Skip the tests if that is the case.
@@ -102,8 +102,8 @@ pushd ${TMP_DIR}
   AOM_VERSION=$(echo "${AOM_VERSION}" | grep -o "[0-9]*\.[0-9]*") # "X.Y"
   AOM_MAJOR_VERSION=$(echo "${AOM_VERSION}" | cut -d "." -f 1)
   AOM_MINOR_VERSION=$(echo "${AOM_VERSION}" | cut -d "." -f 2)
-  test ${AOM_MAJOR_VERSION} -ge 3 || exit 0 # older than 3.0.0
-  test ${AOM_MAJOR_VERSION} -ge 4 || test ${AOM_MINOR_VERSION} -ge 6 || exit 0 # older than 3.5.0
+  [[ ${AOM_MAJOR_VERSION} -ge 3 ]] || exit 0 # older than 3.0.0
+  [[ ${AOM_MAJOR_VERSION} -ge 4 ]] || [[ ${AOM_MINOR_VERSION} -ge 6 ]] || exit 0 # older than 3.5.0
 
   # Same as above but with an animation made of two frames.
   FRAME0="${DECODED_SMALLEST_FILE}"
@@ -118,8 +118,8 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 9 "${FRAME0}" "${FRAME1}" -o "${ENCODED_FILE}" --target-size 999999999
   BIGGEST_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
 
-  test ${SMALLEST_FILE_SIZE} -lt ${DEFAULT_QUALITY_FILE_SIZE} || exit 1
-  test ${DEFAULT_QUALITY_FILE_SIZE} -lt ${BIGGEST_FILE_SIZE} || exit 1
+  [[ ${SMALLEST_FILE_SIZE} -lt ${DEFAULT_QUALITY_FILE_SIZE} ]] || exit 1
+  [[ ${DEFAULT_QUALITY_FILE_SIZE} -lt ${BIGGEST_FILE_SIZE} ]] || exit 1
 popd
 
 exit 0
