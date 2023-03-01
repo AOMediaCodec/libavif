@@ -175,6 +175,9 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+    add_test(NAME test_cmd_animation COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_animation.sh ${CMAKE_BINARY_DIR}
+                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
     add_test(NAME test_cmd_grid COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_grid.sh ${CMAKE_BINARY_DIR}
                                         ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
