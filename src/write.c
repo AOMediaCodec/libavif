@@ -886,15 +886,17 @@ static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantize
     return quantizer;
 }
 
-// Adds the items for a single cell or a grid of cells.
-// Outputs the mainItemID, being the only cell if there is exactly one, or the grid item for multiple cells.
+// Adds the items for a single cell or a grid of cells. Outputs the topLevelItemID which is
+// the only item if there is exactly one cell, or the grid item for multiple cells.
+// Note: The topLevelItemID output argument has the type uint16_t* instead of avifEncoderItem** because
+//       the avifEncoderItem pointer may be invalidated by a call to avifEncoderDataCreateItem().
 static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
                                            uint32_t gridCols,
                                            uint32_t gridRows,
                                            uint32_t gridWidth,
                                            uint32_t gridHeight,
                                            avifBool alpha,
-                                           uint16_t * mainItemID)
+                                           uint16_t * topLevelItemID)
 {
     const uint32_t cellCount = gridCols * gridRows;
     const char * infeName = alpha ? "Alpha" : "Color";
@@ -908,31 +910,27 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
         gridItem->gridRows = gridRows;
         gridItem->gridWidth = gridWidth;
         gridItem->gridHeight = gridHeight;
-        *mainItemID = gridItem->id;
+        *topLevelItemID = gridItem->id;
     }
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", infeName, infeNameSize, cellIndex);
+        AVIF_CHECKERR(item, AVIF_RESULT_OUT_OF_MEMORY);
         item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-        if (!item->codec) {
-            // Just bail out early, we're not surviving this function without an encoder compiled in
-            return AVIF_RESULT_NO_CODEC_AVAILABLE;
-        }
+        // Just bail out early, we're not surviving this function without an encoder compiled in
+        AVIF_CHECKERR(item->codec, AVIF_RESULT_NO_CODEC_AVAILABLE);
         item->codec->csOptions = encoder->csOptions;
         item->codec->diag = &encoder->diag;
         item->alpha = alpha;
         item->extraLayerCount = encoder->extraLayerCount;
 
         if (cellCount > 1) {
-            item->dimgFromID = *mainItemID;
+            item->dimgFromID = *topLevelItemID;
             item->hiddenImage = AVIF_TRUE;
         } else {
-            *mainItemID = item->id;
+            *topLevelItemID = item->id;
         }
     }
-
-    // The mainItemID output argument has the type uint16_t* instead of avifEncoderItem*
-    // because the pointer may be invalidated by a call to avifEncoderDataCreateItem().
     return AVIF_RESULT_OK;
 }
 
