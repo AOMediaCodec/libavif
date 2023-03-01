@@ -489,7 +489,8 @@ static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, 
 
     const char * value = strchr(keyValue, '=');
     if (value) {
-        // Remove equals sign.
+        // Keep the parts on the left and on the right of the equal sign,
+        // but not the equal sign itself.
         options->values[options->count] = avifStrdup(value + 1);
         const size_t keyLength = strlen(keyValue) - strlen(value);
         options->keys[options->count] = malloc(keyLength + 1);
@@ -896,7 +897,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
             avifRWDataFree(&closestEncoded);
             return AVIF_FALSE;
         }
-        printf("Encoded image of size %d bytes.\n", (int)encoded->size);
+        printf("Encoded image of size %" AVIF_FMT_ZU " bytes.\n", encoded->size);
 
         if (encoded->size == targetSize) {
             return AVIF_TRUE;
