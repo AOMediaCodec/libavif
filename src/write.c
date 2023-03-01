@@ -886,6 +886,54 @@ static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantize
     return quantizer;
 }
 
+// Adds the items for a single cell or a grid of cells. Outputs the topLevelItemID which is
+// the only item if there is exactly one cell, or the grid item for multiple cells.
+// Note: The topLevelItemID output argument has the type uint16_t* instead of avifEncoderItem** because
+//       the avifEncoderItem pointer may be invalidated by a call to avifEncoderDataCreateItem().
+static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
+                                           uint32_t gridCols,
+                                           uint32_t gridRows,
+                                           uint32_t gridWidth,
+                                           uint32_t gridHeight,
+                                           avifBool alpha,
+                                           uint16_t * topLevelItemID)
+{
+    const uint32_t cellCount = gridCols * gridRows;
+    const char * infeName = alpha ? "Alpha" : "Color";
+    const size_t infeNameSize = 6;
+
+    if (cellCount > 1) {
+        avifEncoderItem * gridItem = avifEncoderDataCreateItem(encoder->data, "grid", infeName, infeNameSize, 0);
+        avifWriteGridPayload(&gridItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight);
+        gridItem->alpha = alpha;
+        gridItem->gridCols = gridCols;
+        gridItem->gridRows = gridRows;
+        gridItem->gridWidth = gridWidth;
+        gridItem->gridHeight = gridHeight;
+        *topLevelItemID = gridItem->id;
+    }
+
+    for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
+        avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", infeName, infeNameSize, cellIndex);
+        AVIF_CHECKERR(item, AVIF_RESULT_OUT_OF_MEMORY);
+        item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+        // Just bail out early, we're not surviving this function without an encoder compiled in
+        AVIF_CHECKERR(item->codec, AVIF_RESULT_NO_CODEC_AVAILABLE);
+        item->codec->csOptions = encoder->csOptions;
+        item->codec->diag = &encoder->diag;
+        item->alpha = alpha;
+        item->extraLayerCount = encoder->extraLayerCount;
+
+        if (cellCount > 1) {
+            item->dimgFromID = *topLevelItemID;
+            item->hiddenImage = AVIF_TRUE;
+        } else {
+            *topLevelItemID = item->id;
+        }
+    }
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -1037,38 +1085,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
         // Prepare all AV1 items
-
-        uint16_t gridColorID = 0;
-        if (cellCount > 1) {
-            avifEncoderItem * gridColorItem = avifEncoderDataCreateItem(encoder->data, "grid", "Color", 6, 0);
-            avifWriteGridPayload(&gridColorItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight);
-            gridColorItem->gridCols = gridCols;
-            gridColorItem->gridRows = gridRows;
-            gridColorItem->gridWidth = gridWidth;
-            gridColorItem->gridHeight = gridHeight;
-
-            gridColorID = gridColorItem->id;
-            encoder->data->primaryItemID = gridColorID;
-        }
-
-        for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-            avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", "Color", 6, cellIndex);
-            item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-            if (!item->codec) {
-                // Just bail out early, we're not surviving this function without an encoder compiled in
-                return AVIF_RESULT_NO_CODEC_AVAILABLE;
-            }
-            item->codec->csOptions = encoder->csOptions;
-            item->codec->diag = &encoder->diag;
-            item->extraLayerCount = encoder->extraLayerCount;
-
-            if (cellCount > 1) {
-                item->dimgFromID = gridColorID;
-                item->hiddenImage = AVIF_TRUE;
-            } else {
-                encoder->data->primaryItemID = item->id;
-            }
-        }
+        uint16_t colorItemID;
+        AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, /*alpha=*/AVIF_FALSE, &colorItemID));
+        encoder->data->primaryItemID = colorItemID;
 
         encoder->data->alphaPresent = (firstCell->alphaPlane != NULL);
         if (encoder->data->alphaPresent && (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
@@ -1092,52 +1111,17 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
         if (encoder->data->alphaPresent) {
-            uint16_t gridAlphaID = 0;
-            if (cellCount > 1) {
-                avifEncoderItem * gridAlphaItem = avifEncoderDataCreateItem(encoder->data, "grid", "Alpha", 6, 0);
-                avifWriteGridPayload(&gridAlphaItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight);
-                gridAlphaItem->alpha = AVIF_TRUE;
-                gridAlphaItem->irefToID = encoder->data->primaryItemID;
-                gridAlphaItem->irefType = "auxl";
-                gridAlphaItem->gridCols = gridCols;
-                gridAlphaItem->gridRows = gridRows;
-                gridAlphaItem->gridWidth = gridWidth;
-                gridAlphaItem->gridHeight = gridHeight;
-                gridAlphaID = gridAlphaItem->id;
-
-                if (encoder->data->imageMetadata->alphaPremultiplied) {
-                    avifEncoderItem * primaryItem = avifEncoderDataFindItemByID(encoder->data, encoder->data->primaryItemID);
-                    assert(primaryItem);
-                    primaryItem->irefType = "prem";
-                    primaryItem->irefToID = gridAlphaID;
-                }
-            }
-
-            for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-                avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", "Alpha", 6, cellIndex);
-                item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-                if (!item->codec) {
-                    return AVIF_RESULT_NO_CODEC_AVAILABLE;
-                }
-                item->codec->csOptions = encoder->csOptions;
-                item->codec->diag = &encoder->diag;
-                item->alpha = AVIF_TRUE;
-                item->extraLayerCount = encoder->extraLayerCount;
-
-                if (cellCount > 1) {
-                    item->dimgFromID = gridAlphaID;
-                    item->hiddenImage = AVIF_TRUE;
-                } else {
-                    item->irefToID = encoder->data->primaryItemID;
-                    item->irefType = "auxl";
-
-                    if (encoder->data->imageMetadata->alphaPremultiplied) {
-                        avifEncoderItem * primaryItem = avifEncoderDataFindItemByID(encoder->data, encoder->data->primaryItemID);
-                        assert(primaryItem);
-                        primaryItem->irefType = "prem";
-                        primaryItem->irefToID = item->id;
-                    }
-                }
+            uint16_t alphaItemID;
+            AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, /*alpha=*/AVIF_TRUE, &alphaItemID));
+            avifEncoderItem * alphaItem = avifEncoderDataFindItemByID(encoder->data, alphaItemID);
+            assert(alphaItem);
+            alphaItem->irefType = "auxl";
+            alphaItem->irefToID = colorItemID;
+            if (encoder->data->imageMetadata->alphaPremultiplied) {
+                avifEncoderItem * colorItem = avifEncoderDataFindItemByID(encoder->data, colorItemID);
+                assert(colorItem);
+                colorItem->irefType = "prem";
+                colorItem->irefToID = alphaItemID;
             }
         }
 
