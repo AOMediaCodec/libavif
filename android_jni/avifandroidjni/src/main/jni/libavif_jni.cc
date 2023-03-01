@@ -25,6 +25,7 @@ namespace {
 jfieldID global_info_width;
 jfieldID global_info_height;
 jfieldID global_info_depth;
+jfieldID global_info_alpha_present;
 
 // RAII wrapper class that properly frees the decoder related objects on
 // destruction.
@@ -89,6 +90,7 @@ jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
   global_info_width = env->GetFieldID(info_class, "width", "I");
   global_info_height = env->GetFieldID(info_class, "height", "I");
   global_info_depth = env->GetFieldID(info_class, "depth", "I");
+  global_info_alpha_present = env->GetFieldID(info_class, "alphaPresent", "Z");
   return JNI_VERSION_1_6;
 }
 
@@ -109,6 +111,7 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   env->SetIntField(info, global_info_width, decoder.decoder->image->width);
   env->SetIntField(info, global_info_height, decoder.decoder->image->height);
   env->SetIntField(info, global_info_depth, decoder.decoder->image->depth);
+  env->SetBooleanField(info, global_info_alpha_present, decoder.decoder->alphaPresent);
   return true;
 }
 
