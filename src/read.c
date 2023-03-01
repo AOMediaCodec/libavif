@@ -3389,6 +3389,41 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
     return AVIF_RESULT_OK;
 }
 
+// Searches for the primary color item or the auxiliary alpha item.
+// Returns the target item if found, or NULL.
+static avifDecoderItem * avifDecoderFindItem(avifDecoder * decoder, avifBool alpha, uint32_t parentItemID)
+{
+    for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &decoder->data->meta->items.item[itemIndex];
+        if (!item->size) {
+            continue;
+        }
+        if (item->hasUnsupportedEssentialProperty) {
+            // An essential property isn't supported by libavif; ignore the item.
+            continue;
+        }
+        if (memcmp(item->type, "av01", 4) && memcmp(item->type, "grid", 4)) {
+            // Probably exif or some other data.
+            continue;
+        }
+        if (item->thumbnailForID != 0) {
+            // It's a thumbnail, skip it.
+            continue;
+        }
+        if (!alpha && item->id == decoder->data->meta->primaryItemID) {
+            return item;
+        }
+        if (alpha && (item->auxForID == parentItemID)) {
+            // Is this an alpha auxiliary item of the parent item?
+            const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
+            if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType)) {
+                return item;
+            }
+        }
+    }
+    return NULL;
+}
+
 avifResult avifDecoderReset(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
@@ -3561,103 +3596,45 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     } else {
         // Create from items
 
-        avifDecoderItem * colorItem = NULL;
-        avifDecoderItem * alphaItem = NULL;
-
         if (data->meta->primaryItemID == 0) {
             // A primary item is required
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not specified");
             return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
         }
 
-        // Find the colorOBU (primary) item
-        for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-            avifDecoderItem * item = &data->meta->items.item[itemIndex];
-            if (!item->size) {
-                continue;
-            }
-            if (item->hasUnsupportedEssentialProperty) {
-                // An essential property isn't supported by libavif; ignore the item.
-                continue;
-            }
-            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
-            if (memcmp(item->type, "av01", 4) && !isGrid) {
-                // probably exif or some other data
-                continue;
-            }
-            if (item->thumbnailForID != 0) {
-                // It's a thumbnail, skip it
-                continue;
-            }
-            if (item->id != data->meta->primaryItemID) {
-                // This is not the primary item, skip it
-                continue;
-            }
-
-            if (isGrid) {
-                avifROData readData;
-                avifResult readResult = avifDecoderItemRead(item, decoder->io, &readData, 0, 0, data->diag);
-                if (readResult != AVIF_RESULT_OK) {
-                    return readResult;
-                }
-                if (!avifParseImageGridBox(&data->colorGrid,
-                                           readData.data,
-                                           readData.size,
-                                           decoder->imageSizeLimit,
-                                           decoder->imageDimensionLimit,
-                                           data->diag)) {
-                    return AVIF_RESULT_INVALID_IMAGE_GRID;
-                }
-            }
-
-            colorItem = item;
-            break;
-        }
-
+        // Primary color item
+        avifDecoderItem * colorItem = avifDecoderFindItem(decoder, /*alpha=*/AVIF_FALSE, /*parentItemID=*/0);
         if (!colorItem) {
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not found");
             return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
         }
         colorProperties = &colorItem->properties;
 
-        // Find the alphaOBU item, if any
-        for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-            avifDecoderItem * item = &data->meta->items.item[itemIndex];
-            if (!item->size) {
-                continue;
-            }
-            if (item->hasUnsupportedEssentialProperty) {
-                // An essential property isn't supported by libavif; ignore the item.
-                continue;
-            }
-            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
-            if (memcmp(item->type, "av01", 4) && !isGrid) {
-                // probably exif or some other data
-                continue;
-            }
+        // Alpha auxiliary item
+        avifDecoderItem * alphaItem = avifDecoderFindItem(decoder, /*alpha=*/AVIF_TRUE, /*parentItemID=*/colorItem->id);
 
-            // Is this an alpha auxiliary item of whatever we chose for colorItem?
-            const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
-            if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType) && (item->auxForID == colorItem->id)) {
-                if (isGrid) {
-                    avifROData readData;
-                    avifResult readResult = avifDecoderItemRead(item, decoder->io, &readData, 0, 0, data->diag);
-                    if (readResult != AVIF_RESULT_OK) {
-                        return readResult;
-                    }
-                    if (!avifParseImageGridBox(&data->alphaGrid,
-                                               readData.data,
-                                               readData.size,
-                                               decoder->imageSizeLimit,
-                                               decoder->imageDimensionLimit,
-                                               data->diag)) {
-                        return AVIF_RESULT_INVALID_IMAGE_GRID;
-                    }
-                }
-
-                alphaItem = item;
-                break;
-            }
+        // Grids
+        if (!memcmp(colorItem->type, "grid", 4)) {
+            avifROData readData;
+            AVIF_CHECKRES(avifDecoderItemRead(colorItem, decoder->io, &readData, 0, 0, decoder->data->diag));
+            AVIF_CHECKERR(avifParseImageGridBox(&data->colorGrid,
+                                                readData.data,
+                                                readData.size,
+                                                decoder->imageSizeLimit,
+                                                decoder->imageDimensionLimit,
+                                                data->diag),
+                          AVIF_RESULT_INVALID_IMAGE_GRID);
+        }
+        if (alphaItem && !memcmp(alphaItem->type, "grid", 4)) {
+            avifROData readData;
+            AVIF_CHECKRES(avifDecoderItemRead(alphaItem, decoder->io, &readData, 0, 0, decoder->data->diag));
+            AVIF_CHECKERR(avifParseImageGridBox(&data->alphaGrid,
+                                                readData.data,
+                                                readData.size,
+                                                decoder->imageSizeLimit,
+                                                decoder->imageDimensionLimit,
+                                                data->diag),
+                          AVIF_RESULT_INVALID_IMAGE_GRID);
         }
 
         // Find Exif and/or XMP metadata, if any
