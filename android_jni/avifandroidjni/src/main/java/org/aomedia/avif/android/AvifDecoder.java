@@ -25,6 +25,7 @@ public class AvifDecoder {
     public int width;
     public int height;
     public int depth;
+    public boolean alphaPresent;
   }
 
   /**
