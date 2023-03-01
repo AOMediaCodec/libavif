@@ -28,6 +28,8 @@ List of incompatible ABI changes in this release:
   should be updated to set quality (and qualityAlpha if applicable) and leave
   minQuantizer, maxQuantizer, minQuantizerAlpha, and maxQuantizerAlpha
   initialized to the default values.
+* The --targetSize flag in avifenc was added to adapt the quality so that the
+  output file size is as close to the given number of bytes as possible.
 * Add the public API function avifImageIsOpaque() in avif.h.
 * Add experimental API for progressive AVIF encoding.
 * Add API for multi-threaded YUV to RGB color conversion.
