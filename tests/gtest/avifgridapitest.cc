@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "avif/avif.h"
+#include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
@@ -94,7 +95,7 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
       if (result != AVIF_RESULT_OK) {
         return result;
       }
-      testutil::CopyImageSamples(**it, view.get());
+      avifImageCopySamples(/*dstImage=*/view.get(), it->get(), AVIF_PLANES_ALL);
       assert(!view->imageOwnsYUVPlanes);
       ++it;
       rect.x += rect.width;

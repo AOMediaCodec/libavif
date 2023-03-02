@@ -50,10 +50,6 @@ AvifImagePtr CreateImage(int width, int height, int depth,
                          avifPixelFormat yuv_format, avifPlanesFlags planes,
                          avifRange yuv_range = AVIF_RANGE_FULL);
 
-// Copy the pixel values from an image to another. They must share the same
-// features (dimensions, depth etc.).
-void CopyImageSamples(const avifImage& from, avifImage* to);
-
 // Set all pixels of each plane of an image.
 void FillImagePlain(avifImage* image, const uint32_t yuva[4]);
 void FillImageGradient(avifImage* image);

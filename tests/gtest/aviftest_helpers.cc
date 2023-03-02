@@ -220,37 +220,6 @@ bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
   return true;
 }
 
-void CopyImageSamples(const avifImage& from, avifImage* to) {
-  assert(from.width == to->width);
-  assert(from.height == to->height);
-  assert(from.depth == to->depth);
-  assert(from.yuvFormat == to->yuvFormat);
-  assert(from.yuvRange == to->yuvRange);
-
-  for (avifChannelIndex c :
-       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
-    const uint8_t* from_row = avifImagePlane(&from, c);
-    uint8_t* to_row = avifImagePlane(to, c);
-    assert(!from_row == !to_row);
-    const uint32_t from_row_bytes = avifImagePlaneRowBytes(&from, c);
-    const uint32_t to_row_bytes = avifImagePlaneRowBytes(to, c);
-    const uint32_t plane_width = avifImagePlaneWidth(&from, c);
-    // 0 for A if no alpha and 0 for UV if 4:0:0.
-    const uint32_t plane_height = avifImagePlaneHeight(&from, c);
-    for (uint32_t y = 0; y < plane_height; ++y) {
-      if (avifImageUsesU16(&from)) {
-        std::copy(reinterpret_cast<const uint16_t*>(from_row),
-                  reinterpret_cast<const uint16_t*>(from_row) + plane_width,
-                  reinterpret_cast<uint16_t*>(to_row));
-      } else {
-        std::copy(from_row, from_row + plane_width, to_row);
-      }
-      from_row += from_row_bytes;
-      to_row += to_row_bytes;
-    }
-  }
-}
-
 //------------------------------------------------------------------------------
 
 AvifImagePtr ReadImage(const char* folder_path, const char* file_name,

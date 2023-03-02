@@ -208,17 +208,41 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             return allocationResult;
         }
     }
-    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
-        uint8_t * dstRow = avifImagePlane(dstImage, plane);
-        if (!dstRow) {
+    if (avifImageCopySamples(dstImage, srcImage, planes) != AVIF_RESULT_OK) {
+        assert(AVIF_FALSE);
+    }
+    return AVIF_RESULT_OK;
+}
+
+avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+{
+    AVIF_CHECKERR(srcImage->depth == dstImage->depth, AVIF_RESULT_INVALID_ARGUMENT);
+    const size_t bytesPerPixel = avifImageUsesU16(srcImage) ? 2 : 1;
+
+    const avifBool skipColor = !(planes & AVIF_PLANES_YUV);
+    const avifBool skipAlpha = !(planes & AVIF_PLANES_A);
+    for (int c = AVIF_CHAN_Y; c <= AVIF_CHAN_A; ++c) {
+        const avifBool isColor = c != AVIF_CHAN_A;
+        const avifBool isAlpha = c == AVIF_CHAN_A;
+        if ((skipColor && isColor) || (skipAlpha && isAlpha)) {
             continue;
         }
-        const uint8_t * srcRow = avifImagePlane(srcImage, plane);
-        uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, plane);
-        uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, plane);
-        uint32_t planeWidthBytes = avifImagePlaneWidth(dstImage, plane) << (dstImage->depth > 8);
-        uint32_t planeHeight = avifImagePlaneHeight(dstImage, plane);
-        for (uint32_t j = 0; j < planeHeight; ++j) {
+
+        const uint32_t planeWidth = avifImagePlaneWidth(srcImage, c);
+        const uint32_t planeHeight = avifImagePlaneHeight(srcImage, c);
+        const uint8_t * srcRow = avifImagePlane(srcImage, c);
+        uint8_t * dstRow = avifImagePlane(dstImage, c);
+        const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, c);
+        const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, c);
+        AVIF_CHECKERR(planeWidth == avifImagePlaneWidth(dstImage, c), AVIF_RESULT_INVALID_ARGUMENT);
+        AVIF_CHECKERR(planeHeight == avifImagePlaneHeight(dstImage, c), AVIF_RESULT_INVALID_ARGUMENT);
+        AVIF_CHECKERR(!srcRow == !dstRow, AVIF_RESULT_INVALID_ARGUMENT);
+        if (!srcRow) {
+            continue;
+        }
+
+        const size_t planeWidthBytes = planeWidth * bytesPerPixel;
+        for (uint32_t y = 0; y < planeHeight; ++y) {
             memcpy(dstRow, srcRow, planeWidthBytes);
             srcRow += srcRowBytes;
             dstRow += dstRowBytes;
