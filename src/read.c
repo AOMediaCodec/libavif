@@ -3389,12 +3389,13 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
     return AVIF_RESULT_OK;
 }
 
-// Searches for the primary color item or the auxiliary alpha item.
+// If alpha is AVIF_TRUE, searches for the primary color item (parentItemID is ignored in this case).
+// If alpha is AVIF_FALSE, searches for the auxiliary alpha item whose parent item ID is parentItemID.
 // Returns the target item if found, or NULL.
-static avifDecoderItem * avifDecoderFindItem(avifDecoder * decoder, avifBool alpha, uint32_t parentItemID)
+static avifDecoderItem * avifDecoderDataFindItem(avifDecoderData * data, avifBool alpha, uint32_t parentItemID)
 {
-    for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &decoder->data->meta->items.item[itemIndex];
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &data->meta->items.item[itemIndex];
         if (!item->size) {
             continue;
         }
@@ -3410,11 +3411,11 @@ static avifDecoderItem * avifDecoderFindItem(avifDecoder * decoder, avifBool alp
             // It's a thumbnail, skip it.
             continue;
         }
-        if (!alpha && item->id == decoder->data->meta->primaryItemID) {
+        if (!alpha && (item->id == data->meta->primaryItemID)) {
             return item;
         }
         if (alpha && (item->auxForID == parentItemID)) {
-            // Is this an alpha auxiliary item of the parent item?
+            // Is this an alpha auxiliary item of the parent color item?
             const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
             if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType)) {
                 return item;
@@ -3602,21 +3603,15 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
         }
 
-        // Primary color item
-        avifDecoderItem * colorItem = avifDecoderFindItem(decoder, /*alpha=*/AVIF_FALSE, /*parentItemID=*/0);
+        avifDecoderItem * colorItem = avifDecoderDataFindItem(data, /*alpha=*/AVIF_FALSE, /*parentItemID=*/0);
         if (!colorItem) {
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not found");
             return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
         }
         colorProperties = &colorItem->properties;
-
-        // Alpha auxiliary item
-        avifDecoderItem * alphaItem = avifDecoderFindItem(decoder, /*alpha=*/AVIF_TRUE, /*parentItemID=*/colorItem->id);
-
-        // Grids
         if (!memcmp(colorItem->type, "grid", 4)) {
             avifROData readData;
-            AVIF_CHECKRES(avifDecoderItemRead(colorItem, decoder->io, &readData, 0, 0, decoder->data->diag));
+            AVIF_CHECKRES(avifDecoderItemRead(colorItem, decoder->io, &readData, 0, 0, data->diag));
             AVIF_CHECKERR(avifParseImageGridBox(&data->colorGrid,
                                                 readData.data,
                                                 readData.size,
@@ -3625,9 +3620,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                 data->diag),
                           AVIF_RESULT_INVALID_IMAGE_GRID);
         }
+
+        avifDecoderItem * alphaItem = avifDecoderDataFindItem(data, /*alpha=*/AVIF_TRUE, /*parentItemID=*/colorItem->id);
         if (alphaItem && !memcmp(alphaItem->type, "grid", 4)) {
             avifROData readData;
-            AVIF_CHECKRES(avifDecoderItemRead(alphaItem, decoder->io, &readData, 0, 0, decoder->data->diag));
+            AVIF_CHECKRES(avifDecoderItemRead(alphaItem, decoder->io, &readData, 0, 0, data->diag));
             AVIF_CHECKERR(avifParseImageGridBox(&data->alphaGrid,
                                                 readData.data,
                                                 readData.size,
