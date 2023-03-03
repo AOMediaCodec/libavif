@@ -99,6 +99,9 @@ typedef int avifBool;
 // to handle this case however they want.
 #define AVIF_REPETITION_COUNT_UNKNOWN -2
 
+// The number of spatial layers in AV1, with spatial_id = 0..3.
+#define AVIF_MAX_AV1_LAYER_COUNT 4
+
 typedef enum avifPlanesFlag
 {
     AVIF_PLANES_YUV = (1 << 0),
@@ -345,6 +348,15 @@ typedef struct avifDiagnostics
 AVIF_API void avifDiagnosticsClearError(avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
+// Fraction utility
+
+typedef struct avifFraction
+{
+    int32_t n;
+    int32_t d;
+} avifFraction;
+
+// ---------------------------------------------------------------------------
 // Optional transformation structs
 
 typedef enum avifTransformFlag
@@ -527,6 +539,7 @@ typedef struct avifImage
     avifRWData xmp;
 } avifImage;
 
+// avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
 AVIF_API avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
 AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes); // deep copy
@@ -652,6 +665,9 @@ typedef struct avifRGBImage
                           // the alpha bits as if they were all 1.
     avifBool alphaPremultiplied; // indicates if RGB value is pre-multiplied by alpha. Default: false
     avifBool isFloat; // indicates if RGBA values are in half float (f16) format. Valid only when depth == 16. Default: false
+    int maxThreads; // Number of threads to be used for the YUV to RGB conversion. Note that this value is ignored for RGB to YUV
+                    // conversion. Setting this to zero has the same effect as setting it to one. Negative values are invalid.
+                    // Default: 1.
 
     uint8_t * pixels;
     uint32_t rowBytes;
@@ -805,7 +821,9 @@ typedef uint32_t avifStrictFlags;
 // Useful stats related to a read/write
 typedef struct avifIOStats
 {
+    // Size in bytes of the AV1 image item or track data containing color samples.
     size_t colorOBUSize;
+    // Size in bytes of the AV1 image item or track data containing alpha samples.
     size_t alphaOBUSize;
 } avifIOStats;
 
@@ -1067,6 +1085,12 @@ AVIF_API avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, ui
 struct avifEncoderData;
 struct avifCodecSpecificOptions;
 
+typedef struct avifScalingMode
+{
+    avifFraction horizontal;
+    avifFraction vertical;
+} avifScalingMode;
+
 // Notes:
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
@@ -1087,6 +1111,8 @@ struct avifCodecSpecificOptions;
 //   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
 //   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
 //   a combination of settings are tweaked to simulate this speed range.
+// * Extra layer count: [0 - (AVIF_MAX_AV1_LAYER_COUNT-1)]. Non-zero value indicates a layered
+//   (progressive) image.
 // * Width and height: width and height of encoded image. Default value 0 means infer from first frame.
 //   For grid image, this is the size of one cell. Value must not be smaller than the largest frame
 //   to be encoded.
@@ -1100,12 +1126,13 @@ typedef struct avifEncoder
     // settings (see Notes above)
     int maxThreads;
     int speed;
-    int keyframeInterval; // How many frames between automatic forced keyframes; 0 to disable (default).
-    uint64_t timescale;   // timescale of the media (Hz)
-    int repetitionCount;  // Number of times the image sequence should be repeated. This can also be set to
-                          // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.  Only applicable for image sequences.
-                          // Essentially, if repetitionCount is a non-negative integer `n`, then the image sequence should be
-                          // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
+    int keyframeInterval;     // How many frames between automatic forced keyframes; 0 to disable (default).
+    uint64_t timescale;       // timescale of the media (Hz)
+    int repetitionCount;      // Number of times the image sequence should be repeated. This can also be set to
+                              // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.  Only applicable for image sequences.
+                              // Essentially, if repetitionCount is a non-negative integer `n`, then the image sequence should be
+                              // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
+    uint32_t extraLayerCount; // EXPERIMENTAL: Non-zero value encodes layered image.
 
     uint32_t width;
     uint32_t height;
@@ -1119,6 +1146,7 @@ typedef struct avifEncoder
     int tileRowsLog2;
     int tileColsLog2;
     avifBool autoTiling;
+    avifScalingMode scalingMode;
 
     // stats from the most recent write
     avifIOStats ioStats;
@@ -1131,6 +1159,7 @@ typedef struct avifEncoder
     struct avifCodecSpecificOptions * csOptions;
 } avifEncoder;
 
+// avifEncoderCreate() returns NULL if a memory allocation failed.
 AVIF_API avifEncoder * avifEncoderCreate(void);
 AVIF_API avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output);
 AVIF_API void avifEncoderDestroy(avifEncoder * encoder);
@@ -1142,26 +1171,36 @@ typedef enum avifAddImageFlag
     // Force this frame to be a keyframe (sync frame).
     AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME = (1 << 0),
 
-    // Use this flag when encoding a single image. Signals "still_picture" to AV1 encoders, which
-    // tweaks various compression rules. This is enabled automatically when using the
-    // avifEncoderWrite() single-image encode path.
+    // Use this flag when encoding a single frame, single layer image.
+    // Signals "still_picture" to AV1 encoders, which tweaks various compression rules.
+    // This is enabled automatically when using the avifEncoderWrite() single-image encode path.
     AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
 } avifAddImageFlag;
 typedef uint32_t avifAddImageFlags;
 
-// Multi-function alternative to avifEncoderWrite() for image sequences.
+// Multi-function alternative to avifEncoderWrite() for advanced features.
 //
 // Usage / function call order is:
 // * avifEncoderCreate()
-// * Set encoder->timescale (Hz) correctly
-// * avifEncoderAddImage() ... [repeatedly; at least once]
-//   OR
-// * avifEncoderAddImageGrid() [exactly once, AVIF_ADD_IMAGE_FLAG_SINGLE is assumed]
+// - Still image:
+//   * avifEncoderAddImage() [exactly once]
+// - Still image grid:
+//   * avifEncoderAddImageGrid() [exactly once, AVIF_ADD_IMAGE_FLAG_SINGLE is assumed]
+// - Image sequence:
+//   * Set encoder->timescale (Hz) correctly
+//   * avifEncoderAddImage() ... [repeatedly; at least once]
+// - Still layered image:
+//   * Set encoder->extraLayerCount correctly
+//   * avifEncoderAddImage() ... [exactly encoder->extraLayerCount+1 times]
+// - Still layered grid:
+//   * Set encoder->extraLayerCount correctly
+//   * avifEncoderAddImageGrid() ... [exactly encoder->extraLayerCount+1 times]
 // * avifEncoderFinish()
 // * avifEncoderDestroy()
 //
 
-// durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags.
+// durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags,
+// or if we are encoding a layered image.
 AVIF_API avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             uint32_t gridCols,
@@ -1176,7 +1215,7 @@ AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output
 // key must be non-NULL, but passing a NULL value will delete the pending key, if it exists.
 // Setting an incorrect or unknown option for the current codec will cause errors of type
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().
-AVIF_API void avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
+AVIF_API avifResult avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
 
 // Helpers
 AVIF_API avifBool avifImageUsesU16(const avifImage * image);

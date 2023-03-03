@@ -33,6 +33,7 @@ TEST(AlphaMultiplyTest, OpaqueIsNoOp) {
 
     // View on YUV (no alpha), to make sure the color values are identical.
     testutil::AvifImagePtr no_alpha(avifImageCreateEmpty(), avifImageDestroy);
+    ASSERT_NE(no_alpha, nullptr);
     const avifCropRect rect = {0, 0, opaque_alpha->width, opaque_alpha->height};
     ASSERT_EQ(avifImageSetViewRect(no_alpha.get(), opaque_alpha.get(), &rect),
               AVIF_RESULT_OK);

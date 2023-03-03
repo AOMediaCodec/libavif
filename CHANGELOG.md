@@ -6,10 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-There are incompatible ABI changes in this release. The clli member was added
-to the avifImage struct. The repetitionCount member was added to the avifEncoder
-and avifDecoder structs. The quality and qualityAlpha members were added to the
-avifEncoder struct.
+List of incompatible ABI changes in this release:
+
+* The clli member was added to the avifImage struct.
+* The repetitionCount member was added to the avifEncoder and avifDecoder
+  structs.
+* The quality and qualityAlpha members were added to the avifEncoder struct.
+* Check that functions returning pointers do not return NULL before accessing
+  those pointers.
+* Check the return value of avifEncoderSetCodecSpecificOption().
+* The maxThreads member was added to the avifRGBImage struct.
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
@@ -22,7 +28,11 @@ avifEncoder struct.
   should be updated to set quality (and qualityAlpha if applicable) and leave
   minQuantizer, maxQuantizer, minQuantizerAlpha, and maxQuantizerAlpha
   initialized to the default values.
+* The --targetSize flag in avifenc was added to adapt the quality so that the
+  output file size is as close to the given number of bytes as possible.
 * Add the public API function avifImageIsOpaque() in avif.h.
+* Add experimental API for progressive AVIF encoding.
+* Add API for multi-threaded YUV to RGB color conversion.
 
 ### Changed
 * Exif and XMP metadata is exported to PNG and JPEG files by default,
@@ -42,6 +52,14 @@ avifEncoder struct.
 * avifImageRGBToYUV() and avifImageYUVToRGB() handle avifImage bit depths 8, 10,
   12 and now also 16. Files read by apps/shared/ can output 16-bit avifImage
   instances.
+* Update aom.cmd: v3.6.0
+* Update dav1d.cmd: 1.1.0
+* Update rav1e.cmd: v0.6.3
+* avifImageCreate(), avifImageCreateEmpty(), avifEncoderCreate() and other
+  internal functions now return NULL if a memory allocation failed.
+* avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
+  report memory allocation failures.
+* At decoding, avifIOStats now returns the same values as at encoding.
 
 ## [0.11.1] - 2022-10-19
 

@@ -37,8 +37,6 @@ static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 // can't be more than 4 unique tuples right now.
 #define MAX_IPMA_VERSION_AND_FLAGS_SEEN 4
 
-#define MAX_AV1_LAYER_COUNT 4
-
 // ---------------------------------------------------------------------------
 // Box data structures
 
@@ -577,7 +575,7 @@ static avifBool avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput * d
         sample->itemID = item->id;
         sample->offset = 0;
         sample->size = sampleSize;
-        assert(lselProp->u.lsel.layerID < MAX_AV1_LAYER_COUNT);
+        assert(lselProp->u.lsel.layerID < AVIF_MAX_AV1_LAYER_COUNT);
         sample->spatialID = (uint8_t)lselProp->u.lsel.layerID;
         sample->sync = AVIF_TRUE;
     } else if (allowProgressive && item->progressive) {
@@ -1899,7 +1897,7 @@ static avifBool avifParseLayerSelectorProperty(avifProperty * prop, const uint8_
 
     avifLayerSelectorProperty * lsel = &prop->u.lsel;
     AVIF_CHECK(avifROStreamReadU16(&s, &lsel->layerID));
-    if ((lsel->layerID != 0xFFFF) && (lsel->layerID >= MAX_AV1_LAYER_COUNT)) {
+    if ((lsel->layerID != 0xFFFF) && (lsel->layerID >= AVIF_MAX_AV1_LAYER_COUNT)) {
         avifDiagnosticsPrintf(diag, "Box[lsel] contains an unsupported layer [%u]", lsel->layerID);
         return AVIF_FALSE;
     }
@@ -3391,6 +3389,42 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
     return AVIF_RESULT_OK;
 }
 
+// If alpha is AVIF_FALSE, searches for the primary color item (parentItemID is ignored in this case).
+// If alpha is AVIF_TRUE, searches for the auxiliary alpha item whose parent item ID is parentItemID.
+// Returns the target item if found, or NULL.
+static avifDecoderItem * avifDecoderDataFindItem(avifDecoderData * data, avifBool alpha, uint32_t parentItemID)
+{
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        if (!item->size) {
+            continue;
+        }
+        if (item->hasUnsupportedEssentialProperty) {
+            // An essential property isn't supported by libavif; ignore the item.
+            continue;
+        }
+        if (memcmp(item->type, "av01", 4) && memcmp(item->type, "grid", 4)) {
+            // Probably exif or some other data.
+            continue;
+        }
+        if (item->thumbnailForID != 0) {
+            // It's a thumbnail, skip it.
+            continue;
+        }
+        if (!alpha && (item->id == data->meta->primaryItemID)) {
+            return item;
+        }
+        if (alpha && (item->auxForID == parentItemID)) {
+            // Is this an alpha auxiliary item of the parent color item?
+            const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
+            if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType)) {
+                return item;
+            }
+        }
+    }
+    return NULL;
+}
+
 avifResult avifDecoderReset(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
@@ -3410,6 +3444,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         avifImageDestroy(decoder->image);
     }
     decoder->image = avifImageCreateEmpty();
+    AVIF_CHECKERR(decoder->image, AVIF_RESULT_OUT_OF_MEMORY);
     decoder->progressiveState = AVIF_PROGRESSIVE_STATE_UNAVAILABLE;
     data->cicpSet = AVIF_FALSE;
 
@@ -3562,103 +3597,41 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     } else {
         // Create from items
 
-        avifDecoderItem * colorItem = NULL;
-        avifDecoderItem * alphaItem = NULL;
-
         if (data->meta->primaryItemID == 0) {
             // A primary item is required
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not specified");
             return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
         }
 
-        // Find the colorOBU (primary) item
-        for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-            avifDecoderItem * item = &data->meta->items.item[itemIndex];
-            if (!item->size) {
-                continue;
-            }
-            if (item->hasUnsupportedEssentialProperty) {
-                // An essential property isn't supported by libavif; ignore the item.
-                continue;
-            }
-            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
-            if (memcmp(item->type, "av01", 4) && !isGrid) {
-                // probably exif or some other data
-                continue;
-            }
-            if (item->thumbnailForID != 0) {
-                // It's a thumbnail, skip it
-                continue;
-            }
-            if (item->id != data->meta->primaryItemID) {
-                // This is not the primary item, skip it
-                continue;
-            }
-
-            if (isGrid) {
-                avifROData readData;
-                avifResult readResult = avifDecoderItemRead(item, decoder->io, &readData, 0, 0, data->diag);
-                if (readResult != AVIF_RESULT_OK) {
-                    return readResult;
-                }
-                if (!avifParseImageGridBox(&data->colorGrid,
-                                           readData.data,
-                                           readData.size,
-                                           decoder->imageSizeLimit,
-                                           decoder->imageDimensionLimit,
-                                           data->diag)) {
-                    return AVIF_RESULT_INVALID_IMAGE_GRID;
-                }
-            }
-
-            colorItem = item;
-            break;
-        }
-
+        avifDecoderItem * colorItem = avifDecoderDataFindItem(data, /*alpha=*/AVIF_FALSE, /*parentItemID=*/0);
         if (!colorItem) {
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not found");
             return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
         }
         colorProperties = &colorItem->properties;
+        if (!memcmp(colorItem->type, "grid", 4)) {
+            avifROData readData;
+            AVIF_CHECKRES(avifDecoderItemRead(colorItem, decoder->io, &readData, 0, 0, data->diag));
+            AVIF_CHECKERR(avifParseImageGridBox(&data->colorGrid,
+                                                readData.data,
+                                                readData.size,
+                                                decoder->imageSizeLimit,
+                                                decoder->imageDimensionLimit,
+                                                data->diag),
+                          AVIF_RESULT_INVALID_IMAGE_GRID);
+        }
 
-        // Find the alphaOBU item, if any
-        for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-            avifDecoderItem * item = &data->meta->items.item[itemIndex];
-            if (!item->size) {
-                continue;
-            }
-            if (item->hasUnsupportedEssentialProperty) {
-                // An essential property isn't supported by libavif; ignore the item.
-                continue;
-            }
-            avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
-            if (memcmp(item->type, "av01", 4) && !isGrid) {
-                // probably exif or some other data
-                continue;
-            }
-
-            // Is this an alpha auxiliary item of whatever we chose for colorItem?
-            const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
-            if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType) && (item->auxForID == colorItem->id)) {
-                if (isGrid) {
-                    avifROData readData;
-                    avifResult readResult = avifDecoderItemRead(item, decoder->io, &readData, 0, 0, data->diag);
-                    if (readResult != AVIF_RESULT_OK) {
-                        return readResult;
-                    }
-                    if (!avifParseImageGridBox(&data->alphaGrid,
-                                               readData.data,
-                                               readData.size,
-                                               decoder->imageSizeLimit,
-                                               decoder->imageDimensionLimit,
-                                               data->diag)) {
-                        return AVIF_RESULT_INVALID_IMAGE_GRID;
-                    }
-                }
-
-                alphaItem = item;
-                break;
-            }
+        avifDecoderItem * alphaItem = avifDecoderDataFindItem(data, /*alpha=*/AVIF_TRUE, /*parentItemID=*/colorItem->id);
+        if (alphaItem && !memcmp(alphaItem->type, "grid", 4)) {
+            avifROData readData;
+            AVIF_CHECKRES(avifDecoderItemRead(alphaItem, decoder->io, &readData, 0, 0, data->diag));
+            AVIF_CHECKERR(avifParseImageGridBox(&data->alphaGrid,
+                                                readData.data,
+                                                readData.size,
+                                                decoder->imageSizeLimit,
+                                                decoder->imageDimensionLimit,
+                                                data->diag),
+                          AVIF_RESULT_INVALID_IMAGE_GRID);
         }
 
         // Find Exif and/or XMP metadata, if any
@@ -3749,9 +3722,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
         }
 
-        decoder->ioStats.colorOBUSize = colorItem->size;
-        decoder->ioStats.alphaOBUSize = alphaItem ? alphaItem->size : 0;
-
         decoder->image->width = colorItem->width;
         decoder->image->height = colorItem->height;
         decoder->alphaPresent = (alphaItem != NULL);
@@ -3777,6 +3747,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!sample->size) {
                 // Every sample must have some data
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            if (tile->input->alpha) {
+                decoder->ioStats.alphaOBUSize += sample->size;
+            } else {
+                decoder->ioStats.colorOBUSize += sample->size;
             }
         }
     }

@@ -29,6 +29,14 @@ extern "C" {
             return ERR;       \
     } while (0)
 
+// Forward any error to the caller now or continue execution.
+#define AVIF_CHECKRES(A)                 \
+    do {                                 \
+        const avifResult result__ = (A); \
+        if (result__ != AVIF_RESULT_OK)  \
+            return result__;             \
+    } while (0)
+
 // ---------------------------------------------------------------------------
 // URNs and Content-Types
 
@@ -71,6 +79,11 @@ void * avifArrayPushPtr(void * arrayStruct);
 void avifArrayPush(void * arrayStruct, void * element);
 void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
+
+void avifFractionSimplify(avifFraction * f);
+avifBool avifFractionCD(avifFraction * a, avifFraction * b);
+avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
+avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
 
 void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
@@ -267,10 +280,12 @@ typedef struct avifCodecSpecificOption
     char * value; // Free-form string to be interpreted by the codec
 } avifCodecSpecificOption;
 AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
+
+// Returns NULL if a memory allocation failed.
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
 void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
-void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
+avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
 
 // ---------------------------------------------------------------------------
 // avifCodec (abstraction layer to use different AV1 implementations)
@@ -288,6 +303,7 @@ typedef enum avifEncoderChange
     AVIF_ENCODER_CHANGE_TILE_COLS_LOG2 = (1u << 5),
     AVIF_ENCODER_CHANGE_QUANTIZER = (1u << 6),
     AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA = (1u << 7),
+    AVIF_ENCODER_CHANGE_SCALING_MODE = (1u << 8),
 
     AVIF_ENCODER_CHANGE_CODEC_SPECIFIC = (1u << 31)
 } avifEncoderChange;

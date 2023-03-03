@@ -134,7 +134,19 @@ void avifImageSetDefaults(avifImage * image)
 
 avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat)
 {
+    // width and height are checked when actually used, for example by avifImageAllocatePlanes().
+    if (depth > 16) {
+        // avifImage only supports up to 16 bits per sample. See avifImageUsesU16().
+        return NULL;
+    }
+    if ((yuvFormat < AVIF_PIXEL_FORMAT_NONE) || (yuvFormat > AVIF_PIXEL_FORMAT_YUV400)) {
+        return NULL;
+    }
+
     avifImage * image = (avifImage *)avifAlloc(sizeof(avifImage));
+    if (!image) {
+        return NULL;
+    }
     avifImageSetDefaults(image);
     image->width = width;
     image->height = height;
@@ -538,6 +550,7 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
                                           // setting this to match image->alphaPremultiplied or forcing this to true
                                           // after calling avifRGBImageSetDefaults(),
     rgb->isFloat = AVIF_FALSE;
+    rgb->maxThreads = 1;
 }
 
 void avifRGBImageAllocatePixels(avifRGBImage * rgb)
@@ -563,15 +576,9 @@ void avifRGBImageFreePixels(avifRGBImage * rgb)
 // ---------------------------------------------------------------------------
 // avifCropRect
 
-typedef struct clapFraction
+static avifFraction calcCenter(int32_t dim)
 {
-    int32_t n;
-    int32_t d;
-} clapFraction;
-
-static clapFraction calcCenter(int32_t dim)
-{
-    clapFraction f;
+    avifFraction f;
     f.n = dim >> 1;
     f.d = 1;
     if ((dim % 2) != 0) {
@@ -581,93 +588,9 @@ static clapFraction calcCenter(int32_t dim)
     return f;
 }
 
-// |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT32_MIN without
-// overflowing int32_t.
-static int64_t calcGCD(int64_t a, int64_t b)
-{
-    if (a < 0) {
-        a *= -1;
-    }
-    if (b < 0) {
-        b *= -1;
-    }
-    while (b != 0) {
-        int64_t r = a % b;
-        a = b;
-        b = r;
-    }
-    return a;
-}
-
-static void clapFractionSimplify(clapFraction * f)
-{
-    int64_t gcd = calcGCD(f->n, f->d);
-    if (gcd > 1) {
-        f->n = (int32_t)(f->n / gcd);
-        f->d = (int32_t)(f->d / gcd);
-    }
-}
-
 static avifBool overflowsInt32(int64_t x)
 {
     return (x < INT32_MIN) || (x > INT32_MAX);
-}
-
-// Make the fractions have a common denominator
-static avifBool clapFractionCD(clapFraction * a, clapFraction * b)
-{
-    clapFractionSimplify(a);
-    clapFractionSimplify(b);
-    if (a->d != b->d) {
-        const int64_t ad = a->d;
-        const int64_t bd = b->d;
-        const int64_t anNew = a->n * bd;
-        const int64_t adNew = a->d * bd;
-        const int64_t bnNew = b->n * ad;
-        const int64_t bdNew = b->d * ad;
-        if (overflowsInt32(anNew) || overflowsInt32(adNew) || overflowsInt32(bnNew) || overflowsInt32(bdNew)) {
-            return AVIF_FALSE;
-        }
-        a->n = (int32_t)anNew;
-        a->d = (int32_t)adNew;
-        b->n = (int32_t)bnNew;
-        b->d = (int32_t)bdNew;
-    }
-    return AVIF_TRUE;
-}
-
-static avifBool clapFractionAdd(clapFraction a, clapFraction b, clapFraction * result)
-{
-    if (!clapFractionCD(&a, &b)) {
-        return AVIF_FALSE;
-    }
-
-    const int64_t resultN = (int64_t)a.n + b.n;
-    if (overflowsInt32(resultN)) {
-        return AVIF_FALSE;
-    }
-    result->n = (int32_t)resultN;
-    result->d = a.d;
-
-    clapFractionSimplify(result);
-    return AVIF_TRUE;
-}
-
-static avifBool clapFractionSub(clapFraction a, clapFraction b, clapFraction * result)
-{
-    if (!clapFractionCD(&a, &b)) {
-        return AVIF_FALSE;
-    }
-
-    const int64_t resultN = (int64_t)a.n - b.n;
-    if (overflowsInt32(resultN)) {
-        return AVIF_FALSE;
-    }
-    result->n = (int32_t)resultN;
-    result->d = a.d;
-
-    clapFractionSimplify(result);
-    return AVIF_TRUE;
 }
 
 static avifBool avifCropRectIsValid(const avifCropRect * cropRect, uint32_t imageW, uint32_t imageH, avifPixelFormat yuvFormat, avifDiagnostics * diag)
@@ -755,32 +678,32 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
         avifDiagnosticsPrintf(diag, "[Strict] image width %u or height %u is greater than INT32_MAX", imageW, imageH);
         return AVIF_FALSE;
     }
-    clapFraction uncroppedCenterX = calcCenter((int32_t)imageW);
-    clapFraction uncroppedCenterY = calcCenter((int32_t)imageH);
+    avifFraction uncroppedCenterX = calcCenter((int32_t)imageW);
+    avifFraction uncroppedCenterY = calcCenter((int32_t)imageH);
 
-    clapFraction horizOff;
+    avifFraction horizOff;
     horizOff.n = horizOffN;
     horizOff.d = horizOffD;
-    clapFraction croppedCenterX;
-    if (!clapFractionAdd(uncroppedCenterX, horizOff, &croppedCenterX)) {
+    avifFraction croppedCenterX;
+    if (!avifFractionAdd(uncroppedCenterX, horizOff, &croppedCenterX)) {
         avifDiagnosticsPrintf(diag, "[Strict] croppedCenterX overflowed");
         return AVIF_FALSE;
     }
 
-    clapFraction vertOff;
+    avifFraction vertOff;
     vertOff.n = vertOffN;
     vertOff.d = vertOffD;
-    clapFraction croppedCenterY;
-    if (!clapFractionAdd(uncroppedCenterY, vertOff, &croppedCenterY)) {
+    avifFraction croppedCenterY;
+    if (!avifFractionAdd(uncroppedCenterY, vertOff, &croppedCenterY)) {
         avifDiagnosticsPrintf(diag, "[Strict] croppedCenterY overflowed");
         return AVIF_FALSE;
     }
 
-    clapFraction halfW;
+    avifFraction halfW;
     halfW.n = clapW;
     halfW.d = 2;
-    clapFraction cropX;
-    if (!clapFractionSub(croppedCenterX, halfW, &cropX)) {
+    avifFraction cropX;
+    if (!avifFractionSub(croppedCenterX, halfW, &cropX)) {
         avifDiagnosticsPrintf(diag, "[Strict] cropX overflowed");
         return AVIF_FALSE;
     }
@@ -789,11 +712,11 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
         return AVIF_FALSE;
     }
 
-    clapFraction halfH;
+    avifFraction halfH;
     halfH.n = clapH;
     halfH.d = 2;
-    clapFraction cropY;
-    if (!clapFractionSub(croppedCenterY, halfH, &cropY)) {
+    avifFraction cropY;
+    if (!avifFractionSub(croppedCenterY, halfH, &cropY)) {
         avifDiagnosticsPrintf(diag, "[Strict] cropY overflowed");
         return AVIF_FALSE;
     }
@@ -831,8 +754,8 @@ avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
         avifDiagnosticsPrintf(diag, "[Strict] image width %u or height %u is greater than INT32_MAX", imageW, imageH);
         return AVIF_FALSE;
     }
-    clapFraction uncroppedCenterX = calcCenter((int32_t)imageW);
-    clapFraction uncroppedCenterY = calcCenter((int32_t)imageH);
+    avifFraction uncroppedCenterX = calcCenter((int32_t)imageW);
+    avifFraction uncroppedCenterY = calcCenter((int32_t)imageH);
 
     if ((cropRect->width > INT32_MAX) || (cropRect->height > INT32_MAX)) {
         avifDiagnosticsPrintf(diag,
@@ -841,14 +764,14 @@ avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
                               cropRect->height);
         return AVIF_FALSE;
     }
-    clapFraction croppedCenterX = calcCenter((int32_t)cropRect->width);
+    avifFraction croppedCenterX = calcCenter((int32_t)cropRect->width);
     const int64_t croppedCenterXN = croppedCenterX.n + (int64_t)cropRect->x * croppedCenterX.d;
     if (overflowsInt32(croppedCenterXN)) {
         avifDiagnosticsPrintf(diag, "[Strict] croppedCenterX overflowed");
         return AVIF_FALSE;
     }
     croppedCenterX.n = (int32_t)croppedCenterXN;
-    clapFraction croppedCenterY = calcCenter((int32_t)cropRect->height);
+    avifFraction croppedCenterY = calcCenter((int32_t)cropRect->height);
     const int64_t croppedCenterYN = croppedCenterY.n + (int64_t)cropRect->y * croppedCenterY.d;
     if (overflowsInt32(croppedCenterYN)) {
         avifDiagnosticsPrintf(diag, "[Strict] croppedCenterY overflowed");
@@ -856,13 +779,13 @@ avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
     }
     croppedCenterY.n = (int32_t)croppedCenterYN;
 
-    clapFraction horizOff;
-    if (!clapFractionSub(croppedCenterX, uncroppedCenterX, &horizOff)) {
+    avifFraction horizOff;
+    if (!avifFractionSub(croppedCenterX, uncroppedCenterX, &horizOff)) {
         avifDiagnosticsPrintf(diag, "[Strict] horizOff overflowed");
         return AVIF_FALSE;
     }
-    clapFraction vertOff;
-    if (!clapFractionSub(croppedCenterY, uncroppedCenterY, &vertOff)) {
+    avifFraction vertOff;
+    if (!avifFractionSub(croppedCenterY, uncroppedCenterY, &vertOff)) {
         avifDiagnosticsPrintf(diag, "[Strict] vertOff overflowed");
         return AVIF_FALSE;
     }
@@ -926,10 +849,14 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, 
 // ---------------------------------------------------------------------------
 // avifCodecSpecificOption
 
+// Returns NULL if a memory allocation failed.
 static char * avifStrdup(const char * str)
 {
     size_t len = strlen(str);
     char * dup = avifAlloc(len + 1);
+    if (!dup) {
+        return NULL;
+    }
     memcpy(dup, str, len + 1);
     return dup;
 }
@@ -937,7 +864,7 @@ static char * avifStrdup(const char * str)
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void)
 {
     avifCodecSpecificOptions * ava = avifAlloc(sizeof(avifCodecSpecificOptions));
-    if (!avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4)) {
+    if (!ava || !avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4)) {
         goto error;
     }
     return ava;
@@ -960,16 +887,12 @@ void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
 
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
 {
-    if (!csOptions) {
-        return;
-    }
-
     avifCodecSpecificOptionsClear(csOptions);
     avifArrayDestroy(csOptions);
     avifFree(csOptions);
 }
 
-void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value)
+avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value)
 {
     // Check to see if a key must be replaced
     for (uint32_t i = 0; i < csOptions->count; ++i) {
@@ -979,6 +902,7 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
                 // Update the value
                 avifFree(entry->value);
                 entry->value = avifStrdup(value);
+                AVIF_CHECKERR(entry->value, AVIF_RESULT_OUT_OF_MEMORY);
             } else {
                 // Delete the value
                 avifFree(entry->key);
@@ -988,16 +912,20 @@ void avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const cha
                     memmove(&csOptions->entries[i], &csOptions->entries[i + 1], (csOptions->count - i) * (size_t)csOptions->elementSize);
                 }
             }
-            return;
+            return AVIF_RESULT_OK;
         }
     }
 
     if (value) {
         // Add a new key
         avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
+        AVIF_CHECKERR(entry, AVIF_RESULT_OUT_OF_MEMORY);
         entry->key = avifStrdup(key);
+        AVIF_CHECKERR(entry->key, AVIF_RESULT_OUT_OF_MEMORY);
         entry->value = avifStrdup(value);
+        AVIF_CHECKERR(entry->value, AVIF_RESULT_OUT_OF_MEMORY);
     }
+    return AVIF_RESULT_OK;
 }
 
 // ---------------------------------------------------------------------------

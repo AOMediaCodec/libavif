@@ -146,3 +146,92 @@ void avifArrayDestroy(void * arrayStruct)
     }
     memset(arr, 0, sizeof(avifArrayInternal));
 }
+
+// |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT32_MIN without
+// overflowing int32_t.
+static int64_t calcGCD(int64_t a, int64_t b)
+{
+    if (a < 0) {
+        a *= -1;
+    }
+    if (b < 0) {
+        b *= -1;
+    }
+    while (b != 0) {
+        int64_t r = a % b;
+        a = b;
+        b = r;
+    }
+    return a;
+}
+
+void avifFractionSimplify(avifFraction * f)
+{
+    int64_t gcd = calcGCD(f->n, f->d);
+    if (gcd > 1) {
+        f->n = (int32_t)(f->n / gcd);
+        f->d = (int32_t)(f->d / gcd);
+    }
+}
+
+static avifBool overflowsInt32(int64_t x)
+{
+    return (x < INT32_MIN) || (x > INT32_MAX);
+}
+
+// Make the fractions have a common denominator
+avifBool avifFractionCD(avifFraction * a, avifFraction * b)
+{
+    avifFractionSimplify(a);
+    avifFractionSimplify(b);
+    if (a->d != b->d) {
+        const int64_t ad = a->d;
+        const int64_t bd = b->d;
+        const int64_t anNew = a->n * bd;
+        const int64_t adNew = a->d * bd;
+        const int64_t bnNew = b->n * ad;
+        const int64_t bdNew = b->d * ad;
+        if (overflowsInt32(anNew) || overflowsInt32(adNew) || overflowsInt32(bnNew) || overflowsInt32(bdNew)) {
+            return AVIF_FALSE;
+        }
+        a->n = (int32_t)anNew;
+        a->d = (int32_t)adNew;
+        b->n = (int32_t)bnNew;
+        b->d = (int32_t)bdNew;
+    }
+    return AVIF_TRUE;
+}
+
+avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result)
+{
+    if (!avifFractionCD(&a, &b)) {
+        return AVIF_FALSE;
+    }
+
+    const int64_t resultN = (int64_t)a.n + b.n;
+    if (overflowsInt32(resultN)) {
+        return AVIF_FALSE;
+    }
+    result->n = (int32_t)resultN;
+    result->d = a.d;
+
+    avifFractionSimplify(result);
+    return AVIF_TRUE;
+}
+
+avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result)
+{
+    if (!avifFractionCD(&a, &b)) {
+        return AVIF_FALSE;
+    }
+
+    const int64_t resultN = (int64_t)a.n - b.n;
+    if (overflowsInt32(resultN)) {
+        return AVIF_FALSE;
+    }
+    result->n = (int32_t)resultN;
+    result->d = a.d;
+
+    avifFractionSimplify(result);
+    return AVIF_TRUE;
+}
