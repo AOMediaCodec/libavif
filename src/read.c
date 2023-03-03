@@ -3389,8 +3389,8 @@ static avifResult avifDecoderFlush(avifDecoder * decoder)
     return AVIF_RESULT_OK;
 }
 
-// If alpha is AVIF_TRUE, searches for the primary color item (parentItemID is ignored in this case).
-// If alpha is AVIF_FALSE, searches for the auxiliary alpha item whose parent item ID is parentItemID.
+// If alpha is AVIF_FALSE, searches for the primary color item (parentItemID is ignored in this case).
+// If alpha is AVIF_TRUE, searches for the auxiliary alpha item whose parent item ID is parentItemID.
 // Returns the target item if found, or NULL.
 static avifDecoderItem * avifDecoderDataFindItem(avifDecoderData * data, avifBool alpha, uint32_t parentItemID)
 {
