@@ -182,38 +182,6 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
     dstImage->imir = srcImage->imir;
 }
 
-avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
-{
-    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
-    avifImageCopyNoAlloc(dstImage, srcImage);
-
-    avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
-
-    avifRWDataSet(&dstImage->exif, srcImage->exif.data, srcImage->exif.size);
-    avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
-
-    if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
-        if ((srcImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) &&
-            (!srcImage->yuvPlanes[AVIF_CHAN_U] || !srcImage->yuvPlanes[AVIF_CHAN_V])) {
-            return AVIF_RESULT_INVALID_ARGUMENT;
-        }
-        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
-        if (allocationResult != AVIF_RESULT_OK) {
-            return allocationResult;
-        }
-    }
-    if ((planes & AVIF_PLANES_A) && srcImage->alphaPlane) {
-        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
-        if (allocationResult != AVIF_RESULT_OK) {
-            return allocationResult;
-        }
-    }
-    if (avifImageCopySamples(dstImage, srcImage, planes) != AVIF_RESULT_OK) {
-        assert(AVIF_FALSE);
-    }
-    return AVIF_RESULT_OK;
-}
-
 avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
     AVIF_CHECKERR(srcImage->depth == dstImage->depth, AVIF_RESULT_INVALID_ARGUMENT);
@@ -247,6 +215,38 @@ avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage
             srcRow += srcRowBytes;
             dstRow += dstRowBytes;
         }
+    }
+    return AVIF_RESULT_OK;
+}
+
+avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+{
+    avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+    avifImageCopyNoAlloc(dstImage, srcImage);
+
+    avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
+
+    avifRWDataSet(&dstImage->exif, srcImage->exif.data, srcImage->exif.size);
+    avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
+
+    if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
+        if ((srcImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) &&
+            (!srcImage->yuvPlanes[AVIF_CHAN_U] || !srcImage->yuvPlanes[AVIF_CHAN_V])) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
+        if (allocationResult != AVIF_RESULT_OK) {
+            return allocationResult;
+        }
+    }
+    if ((planes & AVIF_PLANES_A) && srcImage->alphaPlane) {
+        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
+        if (allocationResult != AVIF_RESULT_OK) {
+            return allocationResult;
+        }
+    }
+    if (avifImageCopySamples(dstImage, srcImage, planes) != AVIF_RESULT_OK) {
+        assert(AVIF_FALSE);
     }
     return AVIF_RESULT_OK;
 }
