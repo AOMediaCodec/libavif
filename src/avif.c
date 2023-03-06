@@ -182,17 +182,17 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
     dstImage->imir = srcImage->imir;
 }
 
-avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
-    AVIF_CHECKERR(srcImage->depth == dstImage->depth, AVIF_RESULT_INVALID_ARGUMENT);
+    assert((srcImage->width == dstImage->width) && (srcImage->height == dstImage->height) && (srcImage->depth == dstImage->depth) &&
+           (srcImage->yuvFormat == dstImage->yuvFormat) && (srcImage->yuvRange == dstImage->yuvRange));
     const size_t bytesPerPixel = avifImageUsesU16(srcImage) ? 2 : 1;
 
     const avifBool skipColor = !(planes & AVIF_PLANES_YUV);
     const avifBool skipAlpha = !(planes & AVIF_PLANES_A);
     for (int c = AVIF_CHAN_Y; c <= AVIF_CHAN_A; ++c) {
-        const avifBool isColor = c != AVIF_CHAN_A;
-        const avifBool isAlpha = c == AVIF_CHAN_A;
-        if ((skipColor && isColor) || (skipAlpha && isAlpha)) {
+        const avifBool alpha = c == AVIF_CHAN_A;
+        if ((skipColor && !alpha) || (skipAlpha && alpha)) {
             continue;
         }
 
@@ -202,9 +202,7 @@ avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage
         uint8_t * dstRow = avifImagePlane(dstImage, c);
         const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, c);
         const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, c);
-        AVIF_CHECKERR(planeWidth == avifImagePlaneWidth(dstImage, c), AVIF_RESULT_INVALID_ARGUMENT);
-        AVIF_CHECKERR(planeHeight == avifImagePlaneHeight(dstImage, c), AVIF_RESULT_INVALID_ARGUMENT);
-        AVIF_CHECKERR(!srcRow == !dstRow, AVIF_RESULT_INVALID_ARGUMENT);
+        assert(!srcRow == !dstRow);
         if (!srcRow) {
             continue;
         }
@@ -216,7 +214,6 @@ avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage
             dstRow += dstRowBytes;
         }
     }
-    return AVIF_RESULT_OK;
 }
 
 avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
@@ -245,9 +242,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             return allocationResult;
         }
     }
-    if (avifImageCopySamples(dstImage, srcImage, planes) != AVIF_RESULT_OK) {
-        assert(AVIF_FALSE);
-    }
+    avifImageCopySamples(dstImage, srcImage, planes);
     return AVIF_RESULT_OK;
 }
 

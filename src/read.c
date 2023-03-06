@@ -1379,6 +1379,10 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     unsigned int colIndex = oldDecodedTileCount % grid->columns;
     // Only the first iteration of the outer for loop uses this initial value of colIndex.
     // Subsequent iterations of the outer for loop initializes colIndex to 0.
+    avifImage srcView;
+    avifImageSetDefaults(&srcView);
+    avifImage dstView;
+    avifImageSetDefaults(&dstView);
     for (; rowIndex < grid->rows; ++rowIndex, colIndex = 0) {
         for (; colIndex < grid->columns; ++colIndex, ++tileIndex) {
             if (tileIndex >= decodedTileCount) {
@@ -1397,13 +1401,12 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                 dstViewRect.height = grid->outputHeight - dstViewRect.y;
             }
             const avifCropRect srcViewRect = { 0, 0, dstViewRect.width, dstViewRect.height };
-            avifImage * srcView = avifImageCreateEmpty();
-            avifImage * dstView = avifImageCreateEmpty();
-            if ((avifImageSetViewRect(dstView, dstImage, &dstViewRect) != AVIF_RESULT_OK) ||
-                (avifImageSetViewRect(srcView, tile->image, &srcViewRect) != AVIF_RESULT_OK) ||
-                (avifImageCopySamples(dstView, srcView, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV) != AVIF_RESULT_OK)) {
+            if ((avifImageSetViewRect(&dstView, dstImage, &dstViewRect) != AVIF_RESULT_OK) ||
+                (avifImageSetViewRect(&srcView, tile->image, &srcViewRect) != AVIF_RESULT_OK)) {
                 assert(AVIF_FALSE);
+                return AVIF_FALSE;
             }
+            avifImageCopySamples(&dstView, &srcView, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
         }
     }
 

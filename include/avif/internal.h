@@ -90,8 +90,8 @@ void avifImageSetDefaults(avifImage * image);
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 
 // Copies the samples from srcImage to dstImage. dstImage must be allocated.
-// srcImage and dstImage must have the same width, height, depth and yuvFormat.
-avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+// srcImage and dstImage must have the same width, height, depth, yuvFormat and yuvRange.
+void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 typedef struct avifAlphaParams
 {
