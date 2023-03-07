@@ -225,6 +225,60 @@ TEST_F(ProgressiveTest, DimensionChangeLargeImageSlowSpeedDifferentImage) {
   TestDecode(1920, 1080);
 }
 
+TEST_F(ProgressiveTest, DimensionChangeExternalLargeImageMultiThread) {
+  encoder_->speed = 3;
+  encoder_->maxThreads = 2;
+  encoder_->extraLayerCount = 1;
+  encoder_->width = 1920;
+  encoder_->height = 1080;
+
+  image_ = testutil::CreateImage(960, 540, 8, AVIF_PIXEL_FORMAT_YUV420,
+                                 AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  testutil::AvifImagePtr image2 =
+      testutil::CreateImage(1920, 1080, 8, AVIF_PIXEL_FORMAT_YUV420,
+                            AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image2.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(1920, 1080);
+}
+
+TEST_F(ProgressiveTest,
+       DimensionChangeExternalLargeImageSlowSpeedDifferentImage) {
+  encoder_->speed = 2;
+  encoder_->maxThreads = 1;
+  encoder_->extraLayerCount = 1;
+  encoder_->width = 1920;
+  encoder_->height = 1080;
+
+  auto layer1 = testutil::ReadImage(
+      data_path, "dog_blur_540p.jpg", AVIF_PIXEL_FORMAT_YUV420, 8,
+      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, false, false, false);
+  auto layer2 = testutil::ReadImage(
+      data_path, "dog_1080p.jpg", AVIF_PIXEL_FORMAT_YUV420, 8,
+      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, false, false, false);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), layer1.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), layer2.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(1920, 1080);
+}
+
 }  // namespace
 }  // namespace libavif
 
