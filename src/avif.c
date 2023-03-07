@@ -184,8 +184,10 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
 
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
-    assert((srcImage->width == dstImage->width) && (srcImage->height == dstImage->height) && (srcImage->depth == dstImage->depth) &&
-           (srcImage->yuvFormat == dstImage->yuvFormat) && (srcImage->yuvRange == dstImage->yuvRange));
+    assert(srcImage->depth == dstImage->depth);
+    if (planes & AVIF_PLANES_YUV) {
+        assert((srcImage->yuvFormat == dstImage->yuvFormat) && (srcImage->yuvRange == dstImage->yuvRange));
+    }
     const size_t bytesPerPixel = avifImageUsesU16(srcImage) ? 2 : 1;
 
     const avifBool skipColor = !(planes & AVIF_PLANES_YUV);
@@ -206,6 +208,8 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
         if (!srcRow) {
             continue;
         }
+        assert(planeWidth == avifImagePlaneWidth(dstImage, c));
+        assert(planeHeight == avifImagePlaneHeight(dstImage, c));
 
         const size_t planeWidthBytes = planeWidth * bytesPerPixel;
         for (uint32_t y = 0; y < planeHeight; ++y) {
