@@ -91,7 +91,7 @@ if(AVIF_ENABLE_GTEST)
     add_test(NAME avifcllitest COMMAND avifcllitest)
 
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
-    target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_link_libraries(avifgridapitest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifgridapitest COMMAND avifgridapitest)
 

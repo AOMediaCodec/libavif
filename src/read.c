@@ -1375,11 +1375,14 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
 
     unsigned int tileIndex = oldDecodedTileCount;
-    size_t pixelBytes = avifImageUsesU16(dstImage) ? 2 : 1;
     unsigned int rowIndex = oldDecodedTileCount / grid->columns;
     unsigned int colIndex = oldDecodedTileCount % grid->columns;
     // Only the first iteration of the outer for loop uses this initial value of colIndex.
     // Subsequent iterations of the outer for loop initializes colIndex to 0.
+    avifImage srcView;
+    avifImageSetDefaults(&srcView);
+    avifImage dstView;
+    avifImageSetDefaults(&dstView);
     for (; rowIndex < grid->rows; ++rowIndex, colIndex = 0) {
         for (; colIndex < grid->columns; ++colIndex, ++tileIndex) {
             if (tileIndex >= decodedTileCount) {
@@ -1388,60 +1391,22 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
             }
             avifTile * tile = &data->tiles.tile[firstTileIndex + tileIndex];
 
-            unsigned int widthToCopy = firstTile->image->width;
-            unsigned int maxX = firstTile->image->width * (colIndex + 1);
-            if (maxX > grid->outputWidth) {
-                widthToCopy -= maxX - grid->outputWidth;
+            avifCropRect dstViewRect = {
+                firstTile->image->width * colIndex, firstTile->image->height * rowIndex, firstTile->image->width, firstTile->image->height
+            };
+            if (dstViewRect.x + dstViewRect.width > grid->outputWidth) {
+                dstViewRect.width = grid->outputWidth - dstViewRect.x;
             }
-
-            unsigned int heightToCopy = firstTile->image->height;
-            unsigned int maxY = firstTile->image->height * (rowIndex + 1);
-            if (maxY > grid->outputHeight) {
-                heightToCopy -= maxY - grid->outputHeight;
+            if (dstViewRect.y + dstViewRect.height > grid->outputHeight) {
+                dstViewRect.height = grid->outputHeight - dstViewRect.y;
             }
-
-            // Y and A channels
-            size_t yaColOffset = (size_t)colIndex * firstTile->image->width;
-            size_t yaRowOffset = (size_t)rowIndex * firstTile->image->height;
-            size_t yaRowBytes = widthToCopy * pixelBytes;
-
-            if (alpha) {
-                // A
-                for (unsigned int j = 0; j < heightToCopy; ++j) {
-                    const uint8_t * src = &tile->image->alphaPlane[j * tile->image->alphaRowBytes];
-                    uint8_t * dst = &dstImage->alphaPlane[(yaColOffset * pixelBytes) + ((yaRowOffset + j) * dstImage->alphaRowBytes)];
-                    memcpy(dst, src, yaRowBytes);
-                }
-            } else {
-                // Y
-                for (unsigned int j = 0; j < heightToCopy; ++j) {
-                    const uint8_t * src = &tile->image->yuvPlanes[AVIF_CHAN_Y][j * tile->image->yuvRowBytes[AVIF_CHAN_Y]];
-                    uint8_t * dst =
-                        &dstImage->yuvPlanes[AVIF_CHAN_Y][(yaColOffset * pixelBytes) + ((yaRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_Y])];
-                    memcpy(dst, src, yaRowBytes);
-                }
-
-                if (!firstTileUVPresent) {
-                    continue;
-                }
-
-                // UV
-                heightToCopy >>= formatInfo.chromaShiftY;
-                size_t uvColOffset = yaColOffset >> formatInfo.chromaShiftX;
-                size_t uvRowOffset = yaRowOffset >> formatInfo.chromaShiftY;
-                size_t uvRowBytes = yaRowBytes >> formatInfo.chromaShiftX;
-                for (unsigned int j = 0; j < heightToCopy; ++j) {
-                    const uint8_t * srcU = &tile->image->yuvPlanes[AVIF_CHAN_U][j * tile->image->yuvRowBytes[AVIF_CHAN_U]];
-                    uint8_t * dstU =
-                        &dstImage->yuvPlanes[AVIF_CHAN_U][(uvColOffset * pixelBytes) + ((uvRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_U])];
-                    memcpy(dstU, srcU, uvRowBytes);
-
-                    const uint8_t * srcV = &tile->image->yuvPlanes[AVIF_CHAN_V][j * tile->image->yuvRowBytes[AVIF_CHAN_V]];
-                    uint8_t * dstV =
-                        &dstImage->yuvPlanes[AVIF_CHAN_V][(uvColOffset * pixelBytes) + ((uvRowOffset + j) * dstImage->yuvRowBytes[AVIF_CHAN_V])];
-                    memcpy(dstV, srcV, uvRowBytes);
-                }
+            const avifCropRect srcViewRect = { 0, 0, dstViewRect.width, dstViewRect.height };
+            if ((avifImageSetViewRect(&dstView, dstImage, &dstViewRect) != AVIF_RESULT_OK) ||
+                (avifImageSetViewRect(&srcView, tile->image, &srcViewRect) != AVIF_RESULT_OK)) {
+                assert(AVIF_FALSE);
+                return AVIF_FALSE;
             }
+            avifImageCopySamples(&dstView, &srcView, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
         }
     }
 
