@@ -763,7 +763,7 @@ error:
     return NULL;
 }
 
-// A group of AVIF tiles, such as a single tile or a grid of multiple tiles.
+// A group of AVIF tiles in an image item, such as a single tile or a grid of multiple tiles.
 typedef struct avifItemTiles
 {
     unsigned int tileCount;
@@ -1290,19 +1290,19 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
 // copied or not-yet-decoded tiles.
 static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                                              avifImage * dstImage,
-                                             const avifItemTiles * group,
+                                             const avifItemTiles * tiles,
                                              unsigned int oldDecodedTileCount,
                                              avifBool alpha)
 {
-    assert(group->decodedTileCount > oldDecodedTileCount);
-    const avifImageGrid * grid = &group->grid;
+    assert(tiles->decodedTileCount > oldDecodedTileCount);
+    const avifImageGrid * grid = &tiles->grid;
 
-    avifTile * firstTile = &data->tiles.tile[group->firstTileIndex];
+    avifTile * firstTile = &data->tiles.tile[tiles->firstTileIndex];
     avifBool firstTileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
 
     // Check for tile consistency: All tiles in a grid image should match in the properties checked below.
-    for (unsigned int i = AVIF_MAX(1, oldDecodedTileCount); i < group->decodedTileCount; ++i) {
-        avifTile * tile = &data->tiles.tile[group->firstTileIndex + i];
+    for (unsigned int i = AVIF_MAX(1, oldDecodedTileCount); i < tiles->decodedTileCount; ++i) {
+        avifTile * tile = &data->tiles.tile[tiles->firstTileIndex + i];
         avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]);
         if ((tile->image->width != firstTile->image->width) || (tile->image->height != firstTile->image->height) ||
             (tile->image->depth != firstTile->image->depth) || (tile->image->yuvFormat != firstTile->image->yuvFormat) ||
@@ -1389,11 +1389,11 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
     avifImageSetDefaults(&dstView);
     for (; rowIndex < grid->rows; ++rowIndex, colIndex = 0) {
         for (; colIndex < grid->columns; ++colIndex, ++tileIndex) {
-            if (tileIndex >= group->decodedTileCount) {
+            if (tileIndex >= tiles->decodedTileCount) {
                 // Tile is not ready yet.
                 return AVIF_TRUE;
             }
-            avifTile * tile = &data->tiles.tile[group->firstTileIndex + tileIndex];
+            avifTile * tile = &data->tiles.tile[tiles->firstTileIndex + tileIndex];
 
             avifCropRect dstViewRect = {
                 firstTile->image->width * colIndex, firstTile->image->height * rowIndex, firstTile->image->width, firstTile->image->height
@@ -3394,11 +3394,11 @@ static avifDecoderItem * avifDecoderDataFindItem(avifDecoderData * data, avifBoo
     return NULL;
 }
 
-static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifItemTiles * group, avifDecoderItem * item, avifBool alpha)
+static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifItemTiles * tiles, avifDecoderItem * item, avifBool alpha)
 {
     const uint32_t previousTileCount = decoder->data->tiles.count;
-    if ((group->grid.rows > 0) && (group->grid.columns > 0)) {
-        AVIF_CHECKERR(avifDecoderGenerateImageGridTiles(decoder, &group->grid, item, alpha), AVIF_RESULT_INVALID_IMAGE_GRID);
+    if ((tiles->grid.rows > 0) && (tiles->grid.columns > 0)) {
+        AVIF_CHECKERR(avifDecoderGenerateImageGridTiles(decoder, &tiles->grid, item, alpha), AVIF_RESULT_INVALID_IMAGE_GRID);
     } else {
         AVIF_CHECKERR(item->size != 0, AVIF_RESULT_NO_AV1_ITEMS_FOUND);
 
@@ -3413,7 +3413,7 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifItemT
                       AVIF_RESULT_BMFF_PARSE_FAILED);
         tile->input->alpha = alpha;
     }
-    group->tileCount = decoder->data->tiles.count - previousTileCount;
+    tiles->tileCount = decoder->data->tiles.count - previousTileCount;
     return AVIF_RESULT_OK;
 }
 
@@ -3568,7 +3568,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         // Image sequence timing
         decoder->imageIndex = -1;
-        decoder->imageCount = colorTile->input->samples.count;
+        decoder->imageCount = (int)colorTile->input->samples.count;
         decoder->timescale = colorTrack->mediaTimescale;
         decoder->durationInTimescales = colorTrack->mediaDuration;
         if (colorTrack->mediaTimescale) {
@@ -3814,10 +3814,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     return avifDecoderFlush(decoder);
 }
 
-static avifResult avifDecoderPrepareTiles(avifDecoder * decoder, uint32_t nextImageIndex, const avifItemTiles * group)
+static avifResult avifDecoderPrepareTiles(avifDecoder * decoder, uint32_t nextImageIndex, const avifItemTiles * tiles)
 {
-    for (unsigned int tileIndex = group->decodedTileCount; tileIndex < group->tileCount; ++tileIndex) {
-        avifTile * tile = &decoder->data->tiles.tile[group->firstTileIndex + tileIndex];
+    for (unsigned int tileIndex = tiles->decodedTileCount; tileIndex < tiles->tileCount; ++tileIndex) {
+        avifTile * tile = &decoder->data->tiles.tile[tiles->firstTileIndex + tileIndex];
 
         // Ensure there's an AV1 codec available before doing anything else
         if (!tile->codec) {
@@ -3879,11 +3879,11 @@ static avifResult avifImageLimitedToFullAlpha(avifImage * image)
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextImageIndex, avifItemTiles * group)
+static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextImageIndex, avifItemTiles * tiles)
 {
-    const unsigned int oldDecodedTileCount = group->decodedTileCount;
-    for (unsigned int tileIndex = oldDecodedTileCount; tileIndex < group->tileCount; ++tileIndex) {
-        avifTile * tile = &decoder->data->tiles.tile[group->firstTileIndex + tileIndex];
+    const unsigned int oldDecodedTileCount = tiles->decodedTileCount;
+    for (unsigned int tileIndex = oldDecodedTileCount; tileIndex < tiles->tileCount; ++tileIndex) {
+        avifTile * tile = &decoder->data->tiles.tile[tiles->firstTileIndex + tileIndex];
 
         const avifDecodeSample * sample = &tile->input->samples.sample[nextImageIndex];
         if (sample->data.size < sample->size) {
@@ -3923,32 +3923,31 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             }
         }
 
-        ++group->decodedTileCount;
+        ++tiles->decodedTileCount;
     }
     return AVIF_RESULT_OK;
 }
 
-avifResult avifDecoderOutputDecodedTiles(avifDecoder * decoder, avifItemTiles * group, avifBool alpha, unsigned int oldDecodedTileCount)
+avifResult avifDecoderOutputDecodedTiles(avifDecoder * decoder, const avifItemTiles * tiles, avifBool alpha, unsigned int oldDecodedTileCount)
 {
-    if (group->decodedTileCount == oldDecodedTileCount) {
+    if (tiles->decodedTileCount == oldDecodedTileCount) {
         // Nothing changed.
         return AVIF_RESULT_OK;
     }
     // There is at least one newly decoded tile.
-    assert(group->decodedTileCount > oldDecodedTileCount);
+    assert(tiles->decodedTileCount > oldDecodedTileCount);
 
     // Grid path.
-    if ((group->grid.rows > 0) && (group->grid.columns > 0)) {
-        assert(group->tileCount == (group->grid.rows * group->grid.columns));
-        AVIF_CHECKERR(avifDecoderDataFillImageGrid(decoder->data, decoder->image, group, oldDecodedTileCount, alpha),
+    if ((tiles->grid.rows > 0) && (tiles->grid.columns > 0)) {
+        assert(tiles->tileCount == (tiles->grid.rows * tiles->grid.columns));
+        AVIF_CHECKERR(avifDecoderDataFillImageGrid(decoder->data, decoder->image, tiles, oldDecodedTileCount, alpha),
                       AVIF_RESULT_INVALID_IMAGE_GRID);
         return AVIF_RESULT_OK;
     }
 
     // Normal (most common) non-grid path.
-    assert(group->tileCount == 1);
-    avifImage * src = decoder->data->tiles.tile[group->firstTileIndex].image;
-    const avifPlanesFlag planes = alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV;
+    assert(tiles->tileCount == 1);
+    avifImage * src = decoder->data->tiles.tile[tiles->firstTileIndex].image;
     if ((decoder->image->width != src->width) || (decoder->image->height != src->height) || (decoder->image->depth != src->depth)) {
         if (alpha) {
             avifDiagnosticsPrintf(&decoder->diag, "decoder->image does not match srcAlpha in width, height, or bit depth");
@@ -3969,7 +3968,7 @@ avifResult avifDecoderOutputDecodedTiles(avifDecoder * decoder, avifItemTiles * 
         decoder->image->matrixCoefficients = src->matrixCoefficients;
     }
 #endif
-    avifImageStealPlanes(decoder->image, src, planes);
+    avifImageStealPlanes(decoder->image, src, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
     return AVIF_RESULT_OK;
 }
 
@@ -4172,19 +4171,19 @@ uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameI
 }
 
 // Returns the number of available rows in decoder->image given a color or alpha subimage.
-static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifItemTiles * group)
+static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifItemTiles * tiles)
 {
-    if (group->decodedTileCount == group->tileCount) {
+    if (tiles->decodedTileCount == tiles->tileCount) {
         return decoder->image->height;
     }
-    if (group->decodedTileCount == 0) {
+    if (tiles->decodedTileCount == 0) {
         return 0;
     }
 
-    if ((group->grid.rows > 0) && (group->grid.columns > 0)) {
+    if ((tiles->grid.rows > 0) && (tiles->grid.columns > 0)) {
         // Grid of AVIF tiles (not to be confused with AV1 tiles).
-        const uint32_t tileHeight = decoder->data->tiles.tile[group->firstTileIndex].height;
-        return AVIF_MIN((group->decodedTileCount / group->grid.columns) * tileHeight, decoder->image->height);
+        const uint32_t tileHeight = decoder->data->tiles.tile[tiles->firstTileIndex].height;
+        return AVIF_MIN((tiles->decodedTileCount / tiles->grid.columns) * tileHeight, decoder->image->height);
     } else {
         // Non-grid image.
         return decoder->image->height;
