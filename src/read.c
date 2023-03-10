@@ -3950,7 +3950,8 @@ avifResult avifDecoderOutputDecodedTiles(avifDecoder * decoder, const avifItemTi
     avifImage * src = decoder->data->tiles.tile[tiles->firstTileIndex].image;
     if ((decoder->image->width != src->width) || (decoder->image->height != src->height) || (decoder->image->depth != src->depth)) {
         if (alpha) {
-            avifDiagnosticsPrintf(&decoder->diag, "decoder->image does not match srcAlpha in width, height, or bit depth");
+            avifDiagnosticsPrintf(&decoder->diag,
+                                  "The color image item does not match the alpha image item in width, height, or bit depth");
             return AVIF_RESULT_DECODE_ALPHA_FAILED;
         }
         avifImageFreePlanes(decoder->image, AVIF_PLANES_ALL);
