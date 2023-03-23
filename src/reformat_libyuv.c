@@ -693,22 +693,18 @@ static avifResult avifImageDownshiftTo8bpc(const avifImage * image, avifImage * 
     }
     // 16384 for 10-bit and 4096 for 12-bit.
     const int scale = 1 << (24 - image->depth);
-    avifPixelFormatInfo pixelInfo;
-    avifGetPixelFormatInfo(image8->yuvFormat, &pixelInfo);
-    for (int plane = 0; plane < (pixelInfo.monochrome ? 1 : 3); ++plane) {
-        int planeWidth = image->width;
-        int planeHeight = image->height;
-        if (plane > 0) {
-            planeWidth = (planeWidth + pixelInfo.chromaShiftX) >> pixelInfo.chromaShiftX;
-            planeHeight = (planeHeight + pixelInfo.chromaShiftY) >> pixelInfo.chromaShiftY;
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_V; ++plane) {
+        const uint32_t planeWidth = avifImagePlaneWidth(image, plane);
+        if (planeWidth == 0) {
+            continue;
         }
-        Convert16To8Plane((const uint16_t *)image->yuvPlanes[plane],
-                          image->yuvRowBytes[plane] / 2,
-                          image8->yuvPlanes[plane],
-                          image8->yuvRowBytes[plane],
+        Convert16To8Plane((const uint16_t *)avifImagePlane(image, plane),
+                          avifImagePlaneRowBytes(image, plane) / 2,
+                          avifImagePlane(image8, plane),
+                          avifImagePlaneRowBytes(image8, plane),
                           scale,
                           planeWidth,
-                          planeHeight);
+                          avifImagePlaneHeight(image, plane));
     }
     return AVIF_RESULT_OK;
 }
