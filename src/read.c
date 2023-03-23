@@ -4182,7 +4182,7 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifTi
     }
 
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
-        // Grid of AVIF info (not to be confused with AV1 tiles).
+        // Grid of AVIF tiles (not to be confused with AV1 tiles).
         const uint32_t tileHeight = decoder->data->tiles.tile[info->firstTileIndex].height;
         return AVIF_MIN((info->decodedTileCount / info->grid.columns) * tileHeight, decoder->image->height);
     } else {
