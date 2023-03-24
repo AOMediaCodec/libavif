@@ -972,8 +972,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             bps = 16;
         }
         aomImage.bps = bps;
-        aomImage.x_chroma_shift = alpha ? 1 : codec->internal->formatInfo.chromaShiftX;
-        aomImage.y_chroma_shift = alpha ? 1 : codec->internal->formatInfo.chromaShiftY;
+        // Monochrome is handled below. Use 4:2:0 for now.
+        aomImage.x_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftX;
+        aomImage.y_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftY;
     }
 
     avifBool monochromeRequested = AVIF_FALSE;
@@ -1001,14 +1002,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             monochromeRequested = AVIF_TRUE;
         }
         if (aomImageAllocated) {
-            int xShift = codec->internal->formatInfo.chromaShiftX;
-            uint32_t uvWidth = (image->width + xShift) >> xShift;
-            int yShift = codec->internal->formatInfo.chromaShiftY;
-            uint32_t uvHeight = (image->height + yShift) >> yShift;
             uint32_t bytesPerPixel = (image->depth > 8) ? 2 : 1;
             for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
-                uint32_t planeWidth = (yuvPlane == AVIF_CHAN_Y) ? image->width : uvWidth;
-                uint32_t planeHeight = (yuvPlane == AVIF_CHAN_Y) ? image->height : uvHeight;
+                uint32_t planeWidth = avifImagePlaneWidth(image, yuvPlane);
+                uint32_t planeHeight = avifImagePlaneHeight(image, yuvPlane);
                 uint32_t bytesPerRow = bytesPerPixel * planeWidth;
 
                 for (uint32_t j = 0; j < planeHeight; ++j) {
@@ -1032,41 +1029,45 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     }
 
     unsigned char * monoUVPlane = NULL;
-    if (monochromeRequested && !codec->internal->monochromeEnabled) {
-        // The user requested monochrome (via alpha or YUV400) but libaom cannot currently support
-        // monochrome (see chroma_check comment above). Manually set UV planes to 0.5.
-
-        // aomImage is always 420 when we're monochrome
-        uint32_t monoUVWidth = (image->width + 1) >> 1;
-        uint32_t monoUVHeight = (image->height + 1) >> 1;
-
-        // Allocate the U plane if necessary.
-        if (!aomImageAllocated) {
-            uint32_t channelSize = avifImageUsesU16(image) ? 2 : 1;
-            uint32_t monoUVRowBytes = channelSize * monoUVWidth;
-            size_t monoUVSize = (size_t)monoUVHeight * monoUVRowBytes;
-
-            monoUVPlane = avifAlloc(monoUVSize);
-            aomImage.planes[1] = monoUVPlane;
-            aomImage.stride[1] = monoUVRowBytes;
-        }
-        // Set the U plane to 0.5.
-        if (image->depth > 8) {
-            const uint16_t half = 1 << (image->depth - 1);
-            for (uint32_t j = 0; j < monoUVHeight; ++j) {
-                uint16_t * dstRow = (uint16_t *)&aomImage.planes[1][(size_t)j * aomImage.stride[1]];
-                for (uint32_t i = 0; i < monoUVWidth; ++i) {
-                    dstRow[i] = half;
-                }
-            }
+    if (monochromeRequested) {
+        if (codec->internal->monochromeEnabled) {
+            aomImage.monochrome = 1;
         } else {
-            const uint8_t half = 128;
-            size_t planeSize = (size_t)monoUVHeight * aomImage.stride[1];
-            memset(aomImage.planes[1], half, planeSize);
+            // The user requested monochrome (via alpha or YUV400) but libaom cannot currently support
+            // monochrome (see chroma_check comment above). Manually set UV planes to 0.5.
+
+            // aomImage is always 420 when we're monochrome
+            uint32_t monoUVWidth = (image->width + 1) >> 1;
+            uint32_t monoUVHeight = (image->height + 1) >> 1;
+
+            // Allocate the U plane if necessary.
+            if (!aomImageAllocated) {
+                uint32_t channelSize = avifImageUsesU16(image) ? 2 : 1;
+                uint32_t monoUVRowBytes = channelSize * monoUVWidth;
+                size_t monoUVSize = (size_t)monoUVHeight * monoUVRowBytes;
+
+                monoUVPlane = avifAlloc(monoUVSize);
+                aomImage.planes[1] = monoUVPlane;
+                aomImage.stride[1] = monoUVRowBytes;
+            }
+            // Set the U plane to 0.5.
+            if (image->depth > 8) {
+                const uint16_t half = 1 << (image->depth - 1);
+                for (uint32_t j = 0; j < monoUVHeight; ++j) {
+                    uint16_t * dstRow = (uint16_t *)&aomImage.planes[1][(size_t)j * aomImage.stride[1]];
+                    for (uint32_t i = 0; i < monoUVWidth; ++i) {
+                        dstRow[i] = half;
+                    }
+                }
+            } else {
+                const uint8_t half = 128;
+                size_t planeSize = (size_t)monoUVHeight * aomImage.stride[1];
+                memset(aomImage.planes[1], half, planeSize);
+            }
+            // Make the V plane the same as the U plane.
+            aomImage.planes[2] = aomImage.planes[1];
+            aomImage.stride[2] = aomImage.stride[1];
         }
-        // Make the V plane the same as the U plane.
-        aomImage.planes[2] = aomImage.planes[1];
-        aomImage.stride[2] = aomImage.stride[1];
     }
 
     aom_enc_frame_flags_t encodeFlags = 0;

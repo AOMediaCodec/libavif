@@ -574,8 +574,10 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
     uint32_t cellWidth, cellHeight;
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &formatInfo);
-    if (!avifGetBestCellSize("horizontally", gridSplitImage->width, gridCols, formatInfo.chromaShiftX, &cellWidth) ||
-        !avifGetBestCellSize("vertically", gridSplitImage->height, gridRows, formatInfo.chromaShiftY, &cellHeight)) {
+    const avifBool isSubsampledX = !formatInfo.monochrome && formatInfo.chromaShiftX;
+    const avifBool isSubsampledY = !formatInfo.monochrome && formatInfo.chromaShiftY;
+    if (!avifGetBestCellSize("horizontally", gridSplitImage->width, gridCols, isSubsampledX, &cellWidth) ||
+        !avifGetBestCellSize("vertically", gridSplitImage->height, gridRows, isSubsampledY, &cellHeight)) {
         return AVIF_FALSE;
     }
 

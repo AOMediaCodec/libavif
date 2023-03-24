@@ -245,11 +245,16 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
   ASSERT_NE(sub_image, nullptr);
   ASSERT_LE(width, image.width);
   ASSERT_LE(height, image.height);
+  // Encode the centered rect of dimensions width*height from the image.
+  avifCropRect rect{/*x=*/(image.width - width) / 2,
+                    /*y=*/(image.height - height) / 2, width, height};
   avifPixelFormatInfo info;
   avifGetPixelFormatInfo(image.yuvFormat, &info);
-  const avifCropRect rect{
-      /*x=*/((image.width - width) / 2) & ~info.chromaShiftX,
-      /*y=*/((image.height - height) / 2) & ~info.chromaShiftX, width, height};
+  if (!info.monochrome) {
+    // Use even coordinates in subsampled dimensions.
+    rect.x &= ~info.chromaShiftX;
+    rect.y &= ~info.chromaShiftY;
+  }
   ASSERT_EQ(avifImageSetViewRect(sub_image.get(), &image, &rect),
             AVIF_RESULT_OK);
   if (create_alpha_if_none && !sub_image->alphaPlane) {

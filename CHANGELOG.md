@@ -60,6 +60,8 @@ List of incompatible ABI changes in this release:
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
   report memory allocation failures.
 * At decoding, avifIOStats now returns the same values as at encoding.
+* avifGetPixelFormatInfo() now returns 0 for chromaShiftX and chromaShiftY when
+  the format is AVIF_PIXEL_FORMAT_YUV400. Previously it returned 1.
 
 ## [0.11.1] - 2022-10-19
 
