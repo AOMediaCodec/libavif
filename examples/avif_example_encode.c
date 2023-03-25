@@ -66,7 +66,11 @@ int main(int argc, char * argv[])
 
         // Alternative: set rgb.pixels and rgb.rowBytes yourself, which should match your chosen rgb.format
         // Be sure to use uint16_t* instead of uint8_t* for rgb.pixels/rgb.rowBytes if (rgb.depth > 8)
-        avifRGBImageAllocatePixels(&rgb);
+        avifResult allocationResult = avifRGBImageAllocatePixels(&rgb);
+        if (allocationResult != AVIF_RESULT_OK) {
+            fprintf(stderr, "Allocation of RGB samples failed: %s\n", avifResultToString(allocationResult));
+            goto cleanup;
+        }
 
         // Fill your RGB(A) data here
         memset(rgb.pixels, 255, rgb.rowBytes * image->height);

@@ -680,7 +680,7 @@ AVIF_API void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * imag
 AVIF_API uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb);
 
 // Convenience functions. If you supply your own pixels/rowBytes, you do not need to use these.
-AVIF_API void avifRGBImageAllocatePixels(avifRGBImage * rgb);
+AVIF_API avifResult avifRGBImageAllocatePixels(avifRGBImage * rgb);
 AVIF_API void avifRGBImageFreePixels(avifRGBImage * rgb);
 
 // The main conversion functions

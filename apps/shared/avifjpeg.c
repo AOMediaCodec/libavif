@@ -366,7 +366,10 @@ avifBool avifJPEGRead(const char * inputFilename,
         rgb.format = AVIF_RGB_FORMAT_RGB;
         rgb.chromaDownsampling = chromaDownsampling;
         rgb.depth = 8;
-        avifRGBImageAllocatePixels(&rgb);
+        if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
+            goto cleanup;
+        }
 
         int row = 0;
         while (cinfo.output_scanline < cinfo.output_height) {
@@ -557,7 +560,10 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     rgb.format = AVIF_RGB_FORMAT_RGB;
     rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
-    avifRGBImageAllocatePixels(&rgb);
+    if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+        fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);
+        goto cleanup;
+    }
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
         goto cleanup;
