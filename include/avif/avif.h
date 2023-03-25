@@ -236,6 +236,9 @@ typedef struct avifPixelFormatInfo
     int chromaShiftY;
 } avifPixelFormatInfo;
 
+// Returns the avifPixelFormatInfo depending on the avifPixelFormat.
+// info does not need to be zero-initialized. Sets all monochrome, chromaShiftX and
+// chromaShiftY fields to 1 if format is AVIF_PIXEL_FORMAT_YUV400.
 AVIF_API void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
 
 // ---------------------------------------------------------------------------
