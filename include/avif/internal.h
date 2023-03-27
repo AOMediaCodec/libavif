@@ -166,11 +166,19 @@ typedef struct avifReformatState
 // * [any other error]           - Return error to caller
 avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb);
 
+// Parameters:
+// * image - input YUV image
+// * rgb - output RGB image
+// * reformatAlpha - if set to AVIF_TRUE, the function will attempt to copy the alpha channel to the output RGB image using
+// libyuv.
+// * alphaReformattedWithLibYUV - Output parameter. If reformatAlpha is set to true and libyuv was able to copy over the alpha
+// channel, then this will be set to AVIF_TRUE. Otherwise, this will be set to AVIF_FALSE. The value in this parameter is valid
+// only if the return value of the function is AVIF_RESULT_OK or AVIF_RESULT_NOT_IMPLEMENTED.
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libyuv
 // * AVIF_RESULT_NOT_IMPLEMENTED - The fast path for this combination is not implemented with libyuv, use built-in YUV conversion
 // * [any other error]           - Return error to caller
-avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb);
+avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifBool reformatAlpha, avifBool * alphaReformattedWithLibYUV);
 
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libsharpyuv

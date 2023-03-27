@@ -1241,8 +1241,13 @@ static avifResult avifRGBImageToF16(avifRGBImage * rgb)
 static avifResult avifImageYUVToRGBImpl(const avifImage * image, avifRGBImage * rgb, avifReformatState * state, avifAlphaMultiplyMode alphaMultiplyMode)
 {
     avifBool convertedWithLibYUV = AVIF_FALSE;
+    // Reformat alpha, if user asks for it, or (un)multiply processing needs it.
+    avifBool reformatAlpha = avifRGBFormatHasAlpha(rgb->format) &&
+                             (!rgb->ignoreAlpha || (alphaMultiplyMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP));
+    // This value is used only when reformatAlpha is true.
+    avifBool alphaReformattedWithLibYUV = AVIF_FALSE;
     if (!rgb->avoidLibYUV && ((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || avifRGBFormatHasAlpha(rgb->format))) {
-        avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb);
+        avifResult libyuvResult = avifImageYUVToRGBLibYUV(image, rgb, reformatAlpha, &alphaReformattedWithLibYUV);
         if (libyuvResult == AVIF_RESULT_OK) {
             convertedWithLibYUV = AVIF_TRUE;
         } else {
@@ -1252,8 +1257,7 @@ static avifResult avifImageYUVToRGBImpl(const avifImage * image, avifRGBImage * 
         }
     }
 
-    // Reformat alpha, if user asks for it, or (un)multiply processing needs it.
-    if (avifRGBFormatHasAlpha(rgb->format) && (!rgb->ignoreAlpha || (alphaMultiplyMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP))) {
+    if (reformatAlpha && !alphaReformattedWithLibYUV) {
         avifAlphaParams params;
 
         params.width = rgb->width;
@@ -1273,9 +1277,7 @@ static avifResult avifImageYUVToRGBImpl(const avifImage * image, avifRGBImage * 
 
             avifReformatAlpha(&params);
         } else {
-            if (!convertedWithLibYUV) { // libyuv fills alpha for us
-                avifFillAlpha(&params);
-            }
+            avifFillAlpha(&params);
         }
     }
 
