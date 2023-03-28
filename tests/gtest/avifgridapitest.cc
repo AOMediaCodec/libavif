@@ -103,7 +103,7 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
     rect.y += rect.height;
   }
   if ((rect.x != image->width) || (rect.y != image->height) ||
-      !testutil::AreImagesEqual(*image, *image)) {
+      !testutil::AreImagesEqual(*image, *grid)) {
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
   return AVIF_RESULT_OK;
