@@ -158,7 +158,11 @@ int main(int argc, char * argv[])
                         image->transferCharacteristics = cicp->tc;
                         image->matrixCoefficients = cicp->mc;
                         image->yuvRange = range;
-                        avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+                        if (avifImageAllocatePlanes(image, AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
+                            avifImageDestroy(image);
+                            printf("ERROR: Out of memory\n");
+                            return 1;
+                        }
 
                         avifRGBImage srcRGB;
                         avifRGBImageSetDefaults(&srcRGB, image);
