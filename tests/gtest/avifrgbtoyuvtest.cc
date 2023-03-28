@@ -10,6 +10,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
+using ::testing::Bool;
 using ::testing::Combine;
 using ::testing::Range;
 using ::testing::Values;
@@ -672,7 +673,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(61),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(1.),  // Not very accurate because
                                                   // of high rgb_step.
@@ -686,7 +687,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(211),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.2),  // Not very accurate because
                                                    // of high rgb_step.
@@ -700,7 +701,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(809),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.3),  // Not very accurate because
                                                    // of high rgb_step.
@@ -714,7 +715,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(16001),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.05),
             /*min_psnr=*/Values(80.)));
@@ -730,7 +731,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_FULL, AVIF_RANGE_LIMITED),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(3),  // way faster and 99% similar to rgb_step=1
             /*max_abs_average_diff=*/Values(10.),
             /*min_psnr=*/Values(10.)));
@@ -816,10 +817,10 @@ INSTANTIATE_TEST_SUITE_P(
             // Test an odd and even number for threads. Not adding all possible
             // thread values to keep the number of test instances low.
             /*threads=*/Values(2, 7),
-            /*avoidLibYUV=*/Values(true, false),
+            /*avoidLibYUV=*/Bool(),
             Values(AVIF_CHROMA_UPSAMPLING_FASTEST,
                    AVIF_CHROMA_UPSAMPLING_BILINEAR),
-            /*has_alpha=*/::testing::Bool()));
+            /*has_alpha=*/Bool()));
 
 // This will generate a large number of test instances and hence it is disabled
 // by default. It can be run manually if necessary.
@@ -832,12 +833,12 @@ INSTANTIATE_TEST_SUITE_P(
             Range(AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_COUNT),
             Range(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_COUNT),
             /*threads=*/Range(0, 9),
-            /*avoidLibYUV=*/Values(true, false),
+            /*avoidLibYUV=*/Bool(),
             Values(AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
                    AVIF_CHROMA_UPSAMPLING_FASTEST,
                    AVIF_CHROMA_UPSAMPLING_NEAREST,
                    AVIF_CHROMA_UPSAMPLING_BILINEAR),
-            /*has_alpha=*/::testing::Bool()));
+            /*has_alpha=*/Bool()));
 
 }  // namespace
 }  // namespace libavif
