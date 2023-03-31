@@ -26,6 +26,10 @@ class ScaleTest
                      /*create_alpha=*/bool>> {};
 
 TEST_P(ScaleTest, Roundtrip) {
+  if (avifLibYUVVersion() == 0) {
+    GTEST_SKIP() << "libyuv not available, skip test.";
+  }
+
   const int bit_depth = std::get<0>(GetParam());
   const avifPixelFormat yuv_format = std::get<1>(GetParam());
   const bool create_alpha = std::get<2>(GetParam());
