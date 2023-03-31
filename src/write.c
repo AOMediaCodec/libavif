@@ -41,20 +41,15 @@ static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
 // ---------------------------------------------------------------------------
 // avifSetTileConfiguration
 
-static int countLeadingZeros(uint32_t n)
-{
-    int count = 32;
-    while (n != 0) {
-        --count;
-        n >>= 1;
-    }
-    return count;
-}
-
 static int floorLog2(uint32_t n)
 {
     assert(n > 0);
-    return 31 ^ countLeadingZeros(n);
+    int count = 0;
+    while (n != 0) {
+        ++count;
+        n >>= 1;
+    }
+    return count - 1;
 }
 
 // Splits tilesLog2 into *tileDim1Log2 and *tileDim2Log2, considering the ratio of dim1 to dim2.
