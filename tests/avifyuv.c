@@ -170,8 +170,12 @@ int main(int argc, char * argv[])
                         dstRGB.format = AVIF_RGB_FORMAT_RGB;
                         dstRGB.depth = rgbDepth;
 
-                        if ((avifRGBImageAllocatePixels(&srcRGB) != AVIF_RESULT_OK) ||
-                            (avifRGBImageAllocatePixels(&dstRGB) != AVIF_RESULT_OK)) {
+                        if ((avifRGBImageAllocatePixels(&srcRGB) != AVIF_RESULT_OK)) {
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Out of memory\n");
+                            return 1;
+                        }
+                        if ((avifRGBImageAllocatePixels(&dstRGB) != AVIF_RESULT_OK)) {
                             avifRGBImageFreePixels(&srcRGB);
                             avifImageDestroy(image);
                             fprintf(stderr, "ERROR: Out of memory\n");
