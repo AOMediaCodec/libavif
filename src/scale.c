@@ -115,8 +115,8 @@ avifBool avifImageScale(avifImage * image,
 
             const uint32_t srcW = (i == AVIF_CHAN_Y) ? srcWidth : srcUVWidth;
             const uint32_t srcH = (i == AVIF_CHAN_Y) ? srcHeight : srcUVHeight;
-            const uint32_t dstW = avifImagePlaneWidth(image, AVIF_CHAN_U);
-            const uint32_t dstH = avifImagePlaneHeight(image, AVIF_CHAN_U);
+            const uint32_t dstW = avifImagePlaneWidth(image, i);
+            const uint32_t dstH = avifImagePlaneHeight(image, i);
             if (image->depth > 8) {
                 uint16_t * const srcPlane = (uint16_t *)srcYUVPlanes[i];
                 const uint32_t srcStride = srcYUVRowBytes[i] / 2;
