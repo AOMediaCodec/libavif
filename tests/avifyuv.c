@@ -151,7 +151,7 @@ int main(int argc, char * argv[])
 
                         avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
                         if (!image) {
-                            printf("ERROR: Out of memory\n");
+                            fprintf(stderr, "ERROR: Out of memory\n");
                             return 1;
                         }
                         image->colorPrimaries = cicp->cp;
@@ -174,7 +174,7 @@ int main(int argc, char * argv[])
                             (avifRGBImageAllocatePixels(&dstRGB) != AVIF_RESULT_OK)) {
                             avifRGBImageFreePixels(&srcRGB);
                             avifImageDestroy(image);
-                            printf("ERROR: Out of memory\n");
+                            fprintf(stderr, "ERROR: Out of memory\n");
                             return 1;
                         }
 
@@ -261,7 +261,10 @@ int main(int argc, char * argv[])
                                             maxDrift = drift;
                                         }
                                     } else {
-                                        printf("ERROR: Encountered a drift greater than or equal to MAX_DRIFT(%d): %d\n", MAX_DRIFT, drift);
+                                        fprintf(stderr,
+                                                "ERROR: Encountered a drift greater than or equal to MAX_DRIFT(%d): %d\n",
+                                                MAX_DRIFT,
+                                                drift);
                                         return 1;
                                     }
                                 }
@@ -309,7 +312,7 @@ int main(int argc, char * argv[])
 
         avifImage * image = avifImageCreate(originalWidth, originalHeight, 8, AVIF_PIXEL_FORMAT_YUV444);
         if (!image) {
-            printf("ERROR: Out of memory\n");
+            fprintf(stderr, "ERROR: Out of memory\n");
             return 1;
         }
 
@@ -321,7 +324,7 @@ int main(int argc, char * argv[])
             srcRGB.depth = yuvDepth;
             if (avifRGBImageAllocatePixels(&srcRGB) != AVIF_RESULT_OK) {
                 avifImageDestroy(image);
-                printf("ERROR: Out of memory\n");
+                fprintf(stderr, "ERROR: Out of memory\n");
                 return 1;
             }
             if (yuvDepth > 8) {
@@ -371,7 +374,7 @@ int main(int argc, char * argv[])
                         if (avifRGBImageAllocatePixels(&intermediateRGB) != AVIF_RESULT_OK) {
                             avifRGBImageFreePixels(&srcRGB);
                             avifImageDestroy(image);
-                            printf("ERROR: Out of memory\n");
+                            fprintf(stderr, "ERROR: Out of memory\n");
                             return 1;
                         }
                         avifImageYUVToRGB(image, &intermediateRGB);
@@ -386,7 +389,7 @@ int main(int argc, char * argv[])
                             avifRGBImageFreePixels(&intermediateRGB);
                             avifRGBImageFreePixels(&srcRGB);
                             avifImageDestroy(image);
-                            printf("ERROR: Out of memory\n");
+                            fprintf(stderr, "ERROR: Out of memory\n");
                             return 1;
                         }
                         avifImageYUVToRGB(image, &dstRGB);
@@ -481,7 +484,7 @@ int main(int argc, char * argv[])
                 driftPixelCounts[i] = 0;
             }
             if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
-                printf("ERROR: Out of memory\n");
+                fprintf(stderr, "ERROR: Out of memory\n");
                 return 1;
             }
 
@@ -512,12 +515,13 @@ int main(int argc, char * argv[])
                         uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
                         int drift = abs((int)pixel[0] - (int)r);
                         if (drift >= MAX_DRIFT) {
-                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
-                                   MAX_DRIFT,
-                                   rgbDepth,
-                                   pixel[0],
-                                   r,
-                                   a);
+                            fprintf(stderr,
+                                    "ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                    MAX_DRIFT,
+                                    rgbDepth,
+                                    pixel[0],
+                                    r,
+                                    a);
                             return 1;
                         }
                         if (maxDrift < drift) {
@@ -528,12 +532,13 @@ int main(int argc, char * argv[])
                         uint16_t * pixel = (uint16_t *)&rgb.pixels[r * sizeof(uint16_t) * 4];
                         int drift = abs((int)pixel[0] - (int)r);
                         if (drift >= MAX_DRIFT) {
-                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
-                                   MAX_DRIFT,
-                                   rgbDepth,
-                                   pixel[0],
-                                   r,
-                                   a);
+                            fprintf(stderr,
+                                    "ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                    MAX_DRIFT,
+                                    rgbDepth,
+                                    pixel[0],
+                                    r,
+                                    a);
                             return 1;
                         }
                         if (maxDrift < drift) {
