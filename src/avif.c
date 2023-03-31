@@ -58,8 +58,8 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 
         case AVIF_PIXEL_FORMAT_YUV400:
             info->monochrome = AVIF_TRUE;
-            // 4:0:0 is stored as monochrome and half chroma subsampling in each dimension in AV1
-            // according to the specification. See sections 5.5.2. and 6.4.2.
+            // 4:0:0 is stored as monochrome and the nonexistent chroma is considered as subsampled in
+            // each dimension according to the AV1 specification. See sections 5.5.2. and 6.4.2.
             info->chromaShiftX = 1;
             info->chromaShiftY = 1;
             break;
