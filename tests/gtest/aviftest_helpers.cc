@@ -260,7 +260,7 @@ double GetPsnr(const avifImage& image1, const avifImage& image2,
                   static_cast<int16_t>(max_sample_value));
       } else {
         std::fill(opaque_alpha_samples.begin(), opaque_alpha_samples.end(),
-                  255);
+                  uint8_t{255});
       }
       if (!row1) {
         row1 = opaque_alpha_samples.data();
