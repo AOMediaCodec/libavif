@@ -972,7 +972,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             bps = 16;
         }
         aomImage.bps = bps;
-        // Monochrome is handled below. Use 4:2:0 for now.
         aomImage.x_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftX;
         aomImage.y_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftY;
     }
