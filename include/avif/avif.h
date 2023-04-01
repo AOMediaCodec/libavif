@@ -237,10 +237,11 @@ typedef struct avifPixelFormatInfo
 } avifPixelFormatInfo;
 
 // Returns the avifPixelFormatInfo depending on the avifPixelFormat.
-// The chromaShiftX and chromaShiftY fields should be ignored when monochrome is AVIF_TRUE.
-// The chromaShiftX and chromaShiftY fields are set to 1 if the format is AVIF_PIXEL_FORMAT_YUV400 to allow
+// When monochrome is AVIF_TRUE, chromaShiftX and chromaShiftY are set to 1 according to the AV1 specification but they should be ignored.
+//
+// Note: This function implements the second table on page 119 of the AV1 specification version 1.0.0 with Errata 1.
+// For monochrome 4:0:0, subsampling_x and subsampling are specified as 1 to allow
 // an AV1 implementation that only supports profile 0 to hardcode subsampling_x and subsampling_y to 1.
-// This function implements the second table on page 119 of the AV1 specification version 1.0.0 with Errata 1.
 AVIF_API void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info);
 
 // ---------------------------------------------------------------------------

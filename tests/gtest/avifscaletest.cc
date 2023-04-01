@@ -56,13 +56,15 @@ TEST_P(ScaleTest, Roundtrip) {
   const uint32_t scaled_height = static_cast<uint32_t>(image->height * 2.14);
   const uint32_t kImageSizeLimit = std::numeric_limits<uint32_t>::max();
   const uint32_t kImageDimensionLimit = std::numeric_limits<uint32_t>::max();
-  avifDiagnostics diag = {0};
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
   ASSERT_TRUE(avifImageScale(scaled_image.get(), scaled_width, scaled_height,
                              kImageSizeLimit, kImageDimensionLimit, &diag))
       << diag.error;
   EXPECT_EQ(scaled_image->width, scaled_width);
   EXPECT_EQ(scaled_image->height, scaled_height);
 
+  avifDiagnosticsClearError(&diag);
   ASSERT_TRUE(avifImageScale(scaled_image.get(), image->width, image->height,
                              kImageSizeLimit, kImageDimensionLimit, &diag))
       << diag.error;

@@ -972,8 +972,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             bps = 16;
         }
         aomImage.bps = bps;
-        aomImage.x_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftX;
-        aomImage.y_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftY;
+        // See avifImageCalcAOMFmt(). libaom doesn't have AOM_IMG_FMT_I400, so we use AOM_IMG_FMT_I420 as a substitute for monochrome.
+        aomImage.x_chroma_shift = alpha ? 1 : codec->internal->formatInfo.chromaShiftX;
+        aomImage.y_chroma_shift = alpha ? 1 : codec->internal->formatInfo.chromaShiftY;
     }
 
     avifBool monochromeRequested = AVIF_FALSE;
