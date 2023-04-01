@@ -339,7 +339,10 @@ avifBool avifPNGRead(const char * inputFilename,
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
-    avifRGBImageAllocatePixels(&rgb);
+    if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+        fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
+        goto cleanup;
+    }
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
     for (uint32_t y = 0; y < rgb.height; ++y) {
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
@@ -416,7 +419,10 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             colorType = PNG_COLOR_TYPE_RGB;
             rgb.format = AVIF_RGB_FORMAT_RGB;
         }
-        avifRGBImageAllocatePixels(&rgb);
+        if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);
+            goto cleanup;
+        }
         if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
             goto cleanup;

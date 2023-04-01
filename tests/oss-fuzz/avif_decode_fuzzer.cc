@@ -50,7 +50,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                             rgb.depth = rgbDepths[rgbDepthsIndex];
                             rgb.chromaUpsampling = upsamplings[upsamplingsIndex];
                             rgb.avoidLibYUV = AVIF_TRUE;
-                            avifRGBImageAllocatePixels(&rgb);
+                            if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+                                continue;
+                            }
                             avifResult rgbResult = avifImageYUVToRGB(decoder->image, &rgb);
                             // Since avifImageRGBToYUV() ignores rgb.chromaUpsampling, we only need
                             // to test avifImageRGBToYUV() with a single upsamplingsIndex.
@@ -61,9 +63,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
                                                                             decoder->image->height,
                                                                             yuvDepths[yuvDepthsIndex],
                                                                             decoder->image->yuvFormat);
-                                    avifResult yuvResult = avifImageRGBToYUV(tempImage, &rgb);
-                                    if (yuvResult != AVIF_RESULT_OK) {
+                                    if (!tempImage) {
+                                        continue;
                                     }
+                                    (void)avifImageRGBToYUV(tempImage, &rgb);
                                     avifImageDestroy(tempImage);
                                 }
                             }

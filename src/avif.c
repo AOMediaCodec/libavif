@@ -579,14 +579,14 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
     rgb->maxThreads = 1;
 }
 
-void avifRGBImageAllocatePixels(avifRGBImage * rgb)
+avifResult avifRGBImageAllocatePixels(avifRGBImage * rgb)
 {
-    if (rgb->pixels) {
-        avifFree(rgb->pixels);
-    }
-
-    rgb->rowBytes = rgb->width * avifRGBImagePixelSize(rgb);
-    rgb->pixels = avifAlloc((size_t)rgb->rowBytes * rgb->height);
+    avifRGBImageFreePixels(rgb);
+    const uint32_t rowBytes = rgb->width * avifRGBImagePixelSize(rgb);
+    rgb->pixels = avifAlloc((size_t)rowBytes * rgb->height);
+    AVIF_CHECKERR(rgb->pixels, AVIF_RESULT_OUT_OF_MEMORY);
+    rgb->rowBytes = rowBytes;
+    return AVIF_RESULT_OK;
 }
 
 void avifRGBImageFreePixels(avifRGBImage * rgb)

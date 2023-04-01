@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <cstdlib>
 #include <string>
 
 #include "avif/avif.h"
@@ -21,7 +22,9 @@ AvifRgbImage::AvifRgbImage(const avifImage* yuv, int rgbDepth,
   avifRGBImageSetDefaults(this, yuv);
   depth = rgbDepth;
   format = rgbFormat;
-  avifRGBImageAllocatePixels(this);
+  if (avifRGBImageAllocatePixels(this) != AVIF_RESULT_OK) {
+    std::abort();
+  }
 }
 
 AvifRwData::AvifRwData(AvifRwData&& other) : avifRWData{other} {

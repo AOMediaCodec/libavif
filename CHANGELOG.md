@@ -16,6 +16,7 @@ List of incompatible ABI changes in this release:
   those pointers.
 * Check the return value of avifEncoderSetCodecSpecificOption().
 * The maxThreads member was added to the avifRGBImage struct.
+* Check the return value of avifRGBImageAllocatePixels().
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
@@ -60,6 +61,8 @@ List of incompatible ABI changes in this release:
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
   report memory allocation failures.
 * At decoding, avifIOStats now returns the same values as at encoding.
+* avifRGBImageAllocatePixels() now returns avifResult instead of void to report
+  memory allocation failures.
 
 ## [0.11.1] - 2022-10-19
 
