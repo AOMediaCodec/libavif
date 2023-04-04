@@ -3342,22 +3342,6 @@ static avifCodec * avifCodecCreateInternal(avifCodecChoice choice)
     return avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE);
 }
 
-static avifResult avifDecoderFlush(avifDecoder * decoder)
-{
-    avifDecoderDataResetCodec(decoder->data);
-
-    for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
-        avifTile * tile = &decoder->data->tiles.tile[i];
-        tile->codec = avifCodecCreateInternal(decoder->codecChoice);
-        if (tile->codec) {
-            tile->codec->diag = &decoder->diag;
-            tile->codec->operatingPoint = tile->operatingPoint;
-            tile->codec->allLayers = tile->input->allLayers;
-        }
-    }
-    return AVIF_RESULT_OK;
-}
-
 // If alpha is AVIF_FALSE, searches for the primary color item (parentItemID is ignored in this case).
 // If alpha is AVIF_TRUE, searches for the auxiliary alpha item whose parent item ID is parentItemID.
 // Returns the target item if found, or NULL.
@@ -3811,7 +3795,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
-    return avifDecoderFlush(decoder);
+    return AVIF_RESULT_OK;
 }
 
 static avifResult avifDecoderPrepareTiles(avifDecoder * decoder, uint32_t nextImageIndex, const avifTileInfo * info)
@@ -3821,7 +3805,11 @@ static avifResult avifDecoderPrepareTiles(avifDecoder * decoder, uint32_t nextIm
 
         // Ensure there's an AV1 codec available before doing anything else
         if (!tile->codec) {
-            return AVIF_RESULT_NO_CODEC_AVAILABLE;
+            tile->codec = avifCodecCreateInternal(decoder->codecChoice);
+            AVIF_CHECKERR(tile->codec, AVIF_RESULT_NO_CODEC_AVAILABLE);
+            tile->codec->diag = &decoder->diag;
+            tile->codec->operatingPoint = tile->operatingPoint;
+            tile->codec->allLayers = tile->input->allLayers;
         }
 
         if (nextImageIndex >= tile->input->samples.count) {
@@ -4114,14 +4102,18 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
         }
         // The next image (decoder->imageIndex + 1) is partially decoded but
         // the previous image (decoder->imageIndex) is requested.
-        // Fall through to flush and start decoding from the nearest key frame.
+        // Fall through to resetting the decoder data and start decoding from
+        // the nearest key frame.
     }
 
     int nearestKeyFrame = (int)avifDecoderNearestKeyframe(decoder, frameIndex);
     if ((nearestKeyFrame > (decoder->imageIndex + 1)) || (requestedIndex <= decoder->imageIndex)) {
-        // If we get here, a decoder flush is necessary
+        // If we get here, we need to start decoding from the nearest key frame.
+        // So discard the unused decoder state and its previous frames. This
+        // will force the setup of a new decoder instance in
+        // avifDecoderNextImage().
         decoder->imageIndex = nearestKeyFrame - 1; // prepare to read nearest keyframe
-        avifDecoderFlush(decoder);
+        avifDecoderDataResetCodec(decoder->data);
     }
     for (;;) {
         avifResult result = avifDecoderNextImage(decoder);
