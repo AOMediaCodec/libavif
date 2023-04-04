@@ -536,7 +536,8 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     assert((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
 
     for (uint32_t j = 0; j < image->height; ++j) {
-        const uint32_t uvJ = j >> state->formatInfo.chromaShiftY;
+        // uvJ is used only when hasColor is true.
+        const uint32_t uvJ = hasColor ? (j >> state->formatInfo.chromaShiftY) : 0;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
         const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
         const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
@@ -551,7 +552,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
         uint8_t * ptrB = &rgb->pixels[state->rgbOffsetBytesB + (j * rgb->rowBytes)];
 
         for (uint32_t i = 0; i < image->width; ++i) {
-            uint32_t uvI = i >> state->formatInfo.chromaShiftX;
             float Y, Cb = 0.5f, Cr = 0.5f;
 
             // Calculate Y
@@ -566,6 +566,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
 
             // Calculate Cb and Cr
             if (hasColor) {
+                const uint32_t uvI = i >> state->formatInfo.chromaShiftX;
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
                     uint16_t unormU, unormV;
 

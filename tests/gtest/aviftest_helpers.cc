@@ -5,11 +5,14 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #include "avif/avif.h"
+#include "avifpng.h"
 #include "avifutil.h"
 
 namespace libavif {
@@ -203,6 +206,100 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
          AreByteSequencesEqual(image1.xmp, image2.xmp);
 }
 
+namespace {
+
+template <typename Sample>
+uint64_t SquaredDiffSum(const Sample* samples1, const Sample* samples2,
+                        uint32_t num_samples) {
+  uint64_t sum = 0;
+  for (uint32_t i = 0; i < num_samples; ++i) {
+    const int32_t diff = static_cast<int32_t>(samples1[i]) - samples2[i];
+    sum += diff * diff;
+  }
+  return sum;
+}
+
+}  // namespace
+
+double GetPsnr(const avifImage& image1, const avifImage& image2,
+               bool ignore_alpha) {
+  if (image1.width != image2.width || image1.height != image2.height ||
+      image1.depth != image2.depth || image1.yuvFormat != image2.yuvFormat ||
+      image1.yuvRange != image2.yuvRange) {
+    return -1;
+  }
+  assert(image1.width * image1.height > 0);
+
+  uint64_t squared_diff_sum = 0;
+  uint32_t num_samples = 0;
+  const uint32_t max_sample_value = (1 << image1.depth) - 1;
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    if (ignore_alpha && c == AVIF_CHAN_A) continue;
+
+    const uint32_t plane_width = std::max(avifImagePlaneWidth(&image1, c),
+                                          avifImagePlaneWidth(&image2, c));
+    const uint32_t plane_height = std::max(avifImagePlaneHeight(&image1, c),
+                                           avifImagePlaneHeight(&image2, c));
+    if (plane_width == 0 || plane_height == 0) continue;
+
+    const uint8_t* row1 = avifImagePlane(&image1, c);
+    const uint8_t* row2 = avifImagePlane(&image2, c);
+    if (!row1 != !row2 && c != AVIF_CHAN_A) {
+      return -1;
+    }
+    uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
+    uint32_t row_bytes2 = avifImagePlaneRowBytes(&image2, c);
+
+    // Consider missing alpha planes as samples set to the maximum value.
+    std::vector<uint8_t> opaque_alpha_samples;
+    if (!row1 != !row2) {
+      opaque_alpha_samples.resize(std::max(row_bytes1, row_bytes2));
+      if (avifImageUsesU16(&image1)) {
+        uint16_t* opaque_alpha_samples_16b =
+            reinterpret_cast<uint16_t*>(opaque_alpha_samples.data());
+        std::fill(opaque_alpha_samples_16b,
+                  opaque_alpha_samples_16b + plane_width,
+                  static_cast<int16_t>(max_sample_value));
+      } else {
+        std::fill(opaque_alpha_samples.begin(), opaque_alpha_samples.end(),
+                  uint8_t{255});
+      }
+      if (!row1) {
+        row1 = opaque_alpha_samples.data();
+        row_bytes1 = 0;
+      } else {
+        row2 = opaque_alpha_samples.data();
+        row_bytes2 = 0;
+      }
+    }
+
+    for (uint32_t y = 0; y < plane_height; ++y) {
+      if (avifImageUsesU16(&image1)) {
+        squared_diff_sum += SquaredDiffSum(
+            reinterpret_cast<const uint16_t*>(row1),
+            reinterpret_cast<const uint16_t*>(row2), plane_width);
+      } else {
+        squared_diff_sum += SquaredDiffSum(row1, row2, plane_width);
+      }
+      row1 += row_bytes1;
+      row2 += row_bytes2;
+      num_samples += plane_width;
+    }
+  }
+
+  if (squared_diff_sum == 0) {
+    return 99.0;
+  }
+  const double normalized_error =
+      squared_diff_sum /
+      (static_cast<double>(num_samples) * max_sample_value * max_sample_value);
+  if (normalized_error <= std::numeric_limits<double>::epsilon()) {
+    return 98.99;  // Very small distortion but not lossless.
+  }
+  return std::min(-10 * std::log10(normalized_error), 98.99);
+}
+
 bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
   if (image1.width != image2.width || image1.height != image2.height ||
       image1.depth != image2.depth || image1.format != image2.format ||
@@ -240,6 +337,12 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
     return {nullptr, nullptr};
   }
   return image;
+}
+
+bool WriteImage(const avifImage* image, const char* file_path) {
+  return avifPNGWrite(file_path, image, /*requestedDepth=*/0,
+                      AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
+                      /*compressionLevel=*/0);
 }
 
 AvifRwData Encode(const avifImage* image, int speed) {

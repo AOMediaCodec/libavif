@@ -143,6 +143,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifrgbtoyuvtest COMMAND avifrgbtoyuvtest)
 
+    add_executable(avifscaletest gtest/avifscaletest.cc)
+    target_link_libraries(avifscaletest avif_internal aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifscaletest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifscaletest COMMAND avifscaletest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(aviftilingtest gtest/aviftilingtest.cc)
     target_link_libraries(aviftilingtest avif_internal ${GTEST_BOTH_LIBRARIES})
     target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})

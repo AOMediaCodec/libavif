@@ -57,9 +57,11 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
             break;
 
         case AVIF_PIXEL_FORMAT_YUV400:
+            info->monochrome = AVIF_TRUE;
+            // The nonexistent chroma is considered as subsampled in each dimension
+            // according to the AV1 specification. See sections 5.5.2. and 6.4.2.
             info->chromaShiftX = 1;
             info->chromaShiftY = 1;
-            info->monochrome = AVIF_TRUE;
             break;
 
         case AVIF_PIXEL_FORMAT_NONE:
@@ -322,14 +324,6 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
         avifPixelFormatInfo info;
         avifGetPixelFormatInfo(image->yuvFormat, &info);
 
-        // Intermediary computation as 64 bits in case width or height is exactly UINT32_MAX.
-        const uint32_t shiftedW = (uint32_t)(((uint64_t)image->width + info.chromaShiftX) >> info.chromaShiftX);
-        const uint32_t shiftedH = (uint32_t)(((uint64_t)image->height + info.chromaShiftY) >> info.chromaShiftY);
-
-        // These are less than or equal to fullRowBytes/fullSize. No need to check overflows.
-        const size_t uvRowBytes = channelSize * shiftedW;
-        const size_t uvSize = uvRowBytes * shiftedH;
-
         image->imageOwnsYUVPlanes = AVIF_TRUE;
         if (!image->yuvPlanes[AVIF_CHAN_Y]) {
             image->yuvRowBytes[AVIF_CHAN_Y] = (uint32_t)fullRowBytes;
@@ -339,7 +333,15 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
             }
         }
 
-        if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
+        if (!info.monochrome) {
+            // Intermediary computation as 64 bits in case width or height is exactly UINT32_MAX.
+            const uint32_t shiftedW = (uint32_t)(((uint64_t)image->width + info.chromaShiftX) >> info.chromaShiftX);
+            const uint32_t shiftedH = (uint32_t)(((uint64_t)image->height + info.chromaShiftY) >> info.chromaShiftY);
+
+            // These are less than or equal to fullRowBytes/fullSize. No need to check overflows.
+            const size_t uvRowBytes = channelSize * shiftedW;
+            const size_t uvSize = uvRowBytes * shiftedH;
+
             for (int uvPlane = AVIF_CHAN_U; uvPlane <= AVIF_CHAN_V; ++uvPlane) {
                 if (!image->yuvPlanes[uvPlane]) {
                     image->yuvRowBytes[uvPlane] = (uint32_t)uvRowBytes;
