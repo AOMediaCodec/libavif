@@ -4110,7 +4110,7 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
     if ((nearestKeyFrame > (decoder->imageIndex + 1)) || (requestedIndex <= decoder->imageIndex)) {
         // If we get here, we need to start decoding from the nearest key frame.
         // So discard the unused decoder state and its previous frames. This
-        // will force the setup of a new decoder instance in
+        // will force the setup of new AV1 decoder (avifCodec) instances in
         // avifDecoderNextImage().
         decoder->imageIndex = nearestKeyFrame - 1; // prepare to read nearest keyframe
         avifDecoderDataResetCodec(decoder->data);
