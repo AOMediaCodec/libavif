@@ -472,7 +472,7 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
 
 // This function detects changes made on avifEncoder. It returns true on success (i.e., if every
 // change is valid), or false on failure (i.e., if any setting that can't change was changed). It
-// reports detected changes in encoderChanges.
+// reports a bitwise-OR of detected changes in encoderChanges.
 static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncoderChanges * encoderChanges)
 {
     const avifEncoder * lastEncoder = &encoder->data->lastEncoder;
