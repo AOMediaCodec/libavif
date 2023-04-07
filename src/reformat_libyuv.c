@@ -1,7 +1,6 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "avif/avif.h"
 #include "avif/internal.h"
 
 #if !defined(AVIF_LIBYUV_ENABLED)
@@ -908,6 +907,10 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
     if (!getLibYUVConversionFunction(image->yuvFormat, image->depth, rgb, alphaPreferred, &lcf)) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
+    if (!image->alphaPlane || !image->alphaRowBytes) {
+        // If the image does not have an alpha plane, then libyuv always prefills the output RGB image with opaque alpha values.
+        *alphaReformattedWithLibYUV = AVIF_TRUE;
+    }
     avifBool isYVU = lutIsYVU[rgb->format];
     const struct YuvConstants * matrix = isYVU ? matrixYVU : matrixYUV;
     int libyuvResult = -1;
@@ -973,94 +976,86 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
                                                        /*attentuate=*/0);
         *alphaReformattedWithLibYUV = AVIF_TRUE;
     } else {
-        avifImage image_downshifted_to_8bit;
-        const avifImage * image8;
-        if (avifImageUsesU16(image)) {
+        avifImage image8;
+        avifBool inputIsHighBitDepth = image->depth > 8;
+        if (inputIsHighBitDepth) {
             const avifBool downshiftAlpha = (lcf.yuvaToRgbMatrixFilter != NULL || lcf.yuvaToRgbMatrix != NULL);
-            AVIF_CHECKRES(avifImageDownshiftTo8bpc(image, &image_downshifted_to_8bit, downshiftAlpha));
-            image8 = &image_downshifted_to_8bit;
-        } else {
-            image8 = image;
+            AVIF_CHECKRES(avifImageDownshiftTo8bpc(image, &image8, downshiftAlpha));
+            image = &image8;
         }
         if (lcf.yuv400ToRgbMatrix != NULL) {
-            libyuvResult = lcf.yuv400ToRgbMatrix(image8->yuvPlanes[AVIF_CHAN_Y],
-                                                 image8->yuvRowBytes[AVIF_CHAN_Y],
+            libyuvResult = lcf.yuv400ToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                                 image->yuvRowBytes[AVIF_CHAN_Y],
                                                  rgb->pixels,
                                                  rgb->rowBytes,
                                                  matrix,
-                                                 image8->width,
-                                                 image8->height);
+                                                 image->width,
+                                                 image->height);
         } else if (lcf.yuvToRgbMatrixFilter != NULL) {
-            libyuvResult = lcf.yuvToRgbMatrixFilter(image8->yuvPlanes[AVIF_CHAN_Y],
-                                                    image8->yuvRowBytes[AVIF_CHAN_Y],
-                                                    image8->yuvPlanes[uPlaneIndex],
-                                                    image8->yuvRowBytes[uPlaneIndex],
-                                                    image8->yuvPlanes[vPlaneIndex],
-                                                    image8->yuvRowBytes[vPlaneIndex],
+            libyuvResult = lcf.yuvToRgbMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
+                                                    image->yuvRowBytes[AVIF_CHAN_Y],
+                                                    image->yuvPlanes[uPlaneIndex],
+                                                    image->yuvRowBytes[uPlaneIndex],
+                                                    image->yuvPlanes[vPlaneIndex],
+                                                    image->yuvRowBytes[vPlaneIndex],
                                                     rgb->pixels,
                                                     rgb->rowBytes,
                                                     matrix,
-                                                    image8->width,
-                                                    image8->height,
+                                                    image->width,
+                                                    image->height,
                                                     filter);
         } else if (lcf.yuvaToRgbMatrixFilter != NULL) {
-            libyuvResult = lcf.yuvaToRgbMatrixFilter(image8->yuvPlanes[AVIF_CHAN_Y],
-                                                     image8->yuvRowBytes[AVIF_CHAN_Y],
-                                                     image8->yuvPlanes[uPlaneIndex],
-                                                     image8->yuvRowBytes[uPlaneIndex],
-                                                     image8->yuvPlanes[vPlaneIndex],
-                                                     image8->yuvRowBytes[vPlaneIndex],
-                                                     image8->alphaPlane,
-                                                     image8->alphaRowBytes,
+            libyuvResult = lcf.yuvaToRgbMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
+                                                     image->yuvRowBytes[AVIF_CHAN_Y],
+                                                     image->yuvPlanes[uPlaneIndex],
+                                                     image->yuvRowBytes[uPlaneIndex],
+                                                     image->yuvPlanes[vPlaneIndex],
+                                                     image->yuvRowBytes[vPlaneIndex],
+                                                     image->alphaPlane,
+                                                     image->alphaRowBytes,
                                                      rgb->pixels,
                                                      rgb->rowBytes,
                                                      matrix,
-                                                     image8->width,
-                                                     image8->height,
+                                                     image->width,
+                                                     image->height,
                                                      /*attenuate=*/0,
                                                      filter);
             *alphaReformattedWithLibYUV = AVIF_TRUE;
         } else if (lcf.yuvToRgbMatrix != NULL) {
-            libyuvResult = lcf.yuvToRgbMatrix(image8->yuvPlanes[AVIF_CHAN_Y],
-                                              image8->yuvRowBytes[AVIF_CHAN_Y],
-                                              image8->yuvPlanes[uPlaneIndex],
-                                              image8->yuvRowBytes[uPlaneIndex],
-                                              image8->yuvPlanes[vPlaneIndex],
-                                              image8->yuvRowBytes[vPlaneIndex],
+            libyuvResult = lcf.yuvToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                              image->yuvRowBytes[AVIF_CHAN_Y],
+                                              image->yuvPlanes[uPlaneIndex],
+                                              image->yuvRowBytes[uPlaneIndex],
+                                              image->yuvPlanes[vPlaneIndex],
+                                              image->yuvRowBytes[vPlaneIndex],
                                               rgb->pixels,
                                               rgb->rowBytes,
                                               matrix,
-                                              image8->width,
-                                              image8->height);
+                                              image->width,
+                                              image->height);
         } else if (lcf.yuvaToRgbMatrix != NULL) {
-            libyuvResult = lcf.yuvaToRgbMatrix(image8->yuvPlanes[AVIF_CHAN_Y],
-                                               image8->yuvRowBytes[AVIF_CHAN_Y],
-                                               image8->yuvPlanes[uPlaneIndex],
-                                               image8->yuvRowBytes[uPlaneIndex],
-                                               image8->yuvPlanes[vPlaneIndex],
-                                               image8->yuvRowBytes[vPlaneIndex],
-                                               image8->alphaPlane,
-                                               image8->alphaRowBytes,
+            libyuvResult = lcf.yuvaToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
+                                               image->yuvRowBytes[AVIF_CHAN_Y],
+                                               image->yuvPlanes[uPlaneIndex],
+                                               image->yuvRowBytes[uPlaneIndex],
+                                               image->yuvPlanes[vPlaneIndex],
+                                               image->yuvRowBytes[vPlaneIndex],
+                                               image->alphaPlane,
+                                               image->alphaRowBytes,
                                                rgb->pixels,
                                                rgb->rowBytes,
                                                matrix,
-                                               image8->width,
-                                               image8->height,
+                                               image->width,
+                                               image->height,
                                                /*attenuate=*/0);
             *alphaReformattedWithLibYUV = AVIF_TRUE;
         }
-        if (image8 != image) {
-            avifImageFreePlanes(&image_downshifted_to_8bit, AVIF_PLANES_ALL);
+        if (inputIsHighBitDepth) {
+            avifImageFreePlanes(&image8, AVIF_PLANES_ALL);
+            image = NULL;
         }
     }
-    if (libyuvResult != 0) {
-        return AVIF_RESULT_REFORMAT_FAILED;
-    }
-    if (!image->alphaPlane || !image->alphaRowBytes) {
-        // If the image does not have an alpha plane, then libyuv always prefills the output RGB image with opaque alpha values.
-        *alphaReformattedWithLibYUV = AVIF_TRUE;
-    }
-    return AVIF_RESULT_OK;
+    return (libyuvResult != 0) ? AVIF_RESULT_REFORMAT_FAILED : AVIF_RESULT_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
