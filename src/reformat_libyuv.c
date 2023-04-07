@@ -1,6 +1,7 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include "avif/avif.h"
 #include "avif/internal.h"
 
 #if !defined(AVIF_LIBYUV_ENABLED)
@@ -868,10 +869,7 @@ static avifResult avifImageDownshiftTo8bpc(const avifImage * image, avifImage * 
     image8->depth = 8;
     // downshiftAlpha will be true only if the image has an alpha plane. So it is safe to pass AVIF_PLANES_ALL here in that case.
     assert(!downshiftAlpha || image->alphaPlane);
-    avifResult result = avifImageAllocatePlanes(image8, downshiftAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
-    if (result != AVIF_RESULT_OK) {
-        return result;
-    }
+    AVIF_CHECKRES(avifImageAllocatePlanes(image8, downshiftAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV));
     // 16384 for 10-bit and 4096 for 12-bit.
     const int scale = 1 << (24 - image->depth);
     for (int plane = AVIF_CHAN_Y; plane <= (downshiftAlpha ? AVIF_CHAN_A : AVIF_CHAN_V); ++plane) {
@@ -975,85 +973,84 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
                                                        /*attentuate=*/0);
         *alphaReformattedWithLibYUV = AVIF_TRUE;
     } else {
-        avifImage image8;
-        avifBool inputIsHighBitDepth = image->depth > 8;
-        if (inputIsHighBitDepth) {
+        avifImage image_downshifted_to_8bit;
+        const avifImage * image8;
+        if (avifImageUsesU16(image)) {
             const avifBool downshiftAlpha = (lcf.yuvaToRgbMatrixFilter != NULL || lcf.yuvaToRgbMatrix != NULL);
-            avifResult result = avifImageDownshiftTo8bpc(image, &image8, downshiftAlpha);
-            if (result != AVIF_RESULT_OK) {
-                return result;
-            }
-            image = &image8;
+            AVIF_CHECKRES(avifImageDownshiftTo8bpc(image, &image_downshifted_to_8bit, downshiftAlpha));
+            image8 = &image_downshifted_to_8bit;
+        } else {
+            image8 = image;
         }
         if (lcf.yuv400ToRgbMatrix != NULL) {
-            libyuvResult = lcf.yuv400ToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
-                                                 image->yuvRowBytes[AVIF_CHAN_Y],
+            libyuvResult = lcf.yuv400ToRgbMatrix(image8->yuvPlanes[AVIF_CHAN_Y],
+                                                 image8->yuvRowBytes[AVIF_CHAN_Y],
                                                  rgb->pixels,
                                                  rgb->rowBytes,
                                                  matrix,
-                                                 image->width,
-                                                 image->height);
+                                                 image8->width,
+                                                 image8->height);
         } else if (lcf.yuvToRgbMatrixFilter != NULL) {
-            libyuvResult = lcf.yuvToRgbMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
-                                                    image->yuvRowBytes[AVIF_CHAN_Y],
-                                                    image->yuvPlanes[uPlaneIndex],
-                                                    image->yuvRowBytes[uPlaneIndex],
-                                                    image->yuvPlanes[vPlaneIndex],
-                                                    image->yuvRowBytes[vPlaneIndex],
+            libyuvResult = lcf.yuvToRgbMatrixFilter(image8->yuvPlanes[AVIF_CHAN_Y],
+                                                    image8->yuvRowBytes[AVIF_CHAN_Y],
+                                                    image8->yuvPlanes[uPlaneIndex],
+                                                    image8->yuvRowBytes[uPlaneIndex],
+                                                    image8->yuvPlanes[vPlaneIndex],
+                                                    image8->yuvRowBytes[vPlaneIndex],
                                                     rgb->pixels,
                                                     rgb->rowBytes,
                                                     matrix,
-                                                    image->width,
-                                                    image->height,
+                                                    image8->width,
+                                                    image8->height,
                                                     filter);
         } else if (lcf.yuvaToRgbMatrixFilter != NULL) {
-            libyuvResult = lcf.yuvaToRgbMatrixFilter(image->yuvPlanes[AVIF_CHAN_Y],
-                                                     image->yuvRowBytes[AVIF_CHAN_Y],
-                                                     image->yuvPlanes[uPlaneIndex],
-                                                     image->yuvRowBytes[uPlaneIndex],
-                                                     image->yuvPlanes[vPlaneIndex],
-                                                     image->yuvRowBytes[vPlaneIndex],
-                                                     image->alphaPlane,
-                                                     image->alphaRowBytes,
+            libyuvResult = lcf.yuvaToRgbMatrixFilter(image8->yuvPlanes[AVIF_CHAN_Y],
+                                                     image8->yuvRowBytes[AVIF_CHAN_Y],
+                                                     image8->yuvPlanes[uPlaneIndex],
+                                                     image8->yuvRowBytes[uPlaneIndex],
+                                                     image8->yuvPlanes[vPlaneIndex],
+                                                     image8->yuvRowBytes[vPlaneIndex],
+                                                     image8->alphaPlane,
+                                                     image8->alphaRowBytes,
                                                      rgb->pixels,
                                                      rgb->rowBytes,
                                                      matrix,
-                                                     image->width,
-                                                     image->height,
+                                                     image8->width,
+                                                     image8->height,
                                                      /*attenuate=*/0,
                                                      filter);
             *alphaReformattedWithLibYUV = AVIF_TRUE;
         } else if (lcf.yuvToRgbMatrix != NULL) {
-            libyuvResult = lcf.yuvToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
-                                              image->yuvRowBytes[AVIF_CHAN_Y],
-                                              image->yuvPlanes[uPlaneIndex],
-                                              image->yuvRowBytes[uPlaneIndex],
-                                              image->yuvPlanes[vPlaneIndex],
-                                              image->yuvRowBytes[vPlaneIndex],
+            libyuvResult = lcf.yuvToRgbMatrix(image8->yuvPlanes[AVIF_CHAN_Y],
+                                              image8->yuvRowBytes[AVIF_CHAN_Y],
+                                              image8->yuvPlanes[uPlaneIndex],
+                                              image8->yuvRowBytes[uPlaneIndex],
+                                              image8->yuvPlanes[vPlaneIndex],
+                                              image8->yuvRowBytes[vPlaneIndex],
                                               rgb->pixels,
                                               rgb->rowBytes,
                                               matrix,
-                                              image->width,
-                                              image->height);
+                                              image8->width,
+                                              image8->height);
         } else if (lcf.yuvaToRgbMatrix != NULL) {
-            libyuvResult = lcf.yuvaToRgbMatrix(image->yuvPlanes[AVIF_CHAN_Y],
-                                               image->yuvRowBytes[AVIF_CHAN_Y],
-                                               image->yuvPlanes[uPlaneIndex],
-                                               image->yuvRowBytes[uPlaneIndex],
-                                               image->yuvPlanes[vPlaneIndex],
-                                               image->yuvRowBytes[vPlaneIndex],
-                                               image->alphaPlane,
-                                               image->alphaRowBytes,
+            libyuvResult = lcf.yuvaToRgbMatrix(image8->yuvPlanes[AVIF_CHAN_Y],
+                                               image8->yuvRowBytes[AVIF_CHAN_Y],
+                                               image8->yuvPlanes[uPlaneIndex],
+                                               image8->yuvRowBytes[uPlaneIndex],
+                                               image8->yuvPlanes[vPlaneIndex],
+                                               image8->yuvRowBytes[vPlaneIndex],
+                                               image8->alphaPlane,
+                                               image8->alphaRowBytes,
                                                rgb->pixels,
                                                rgb->rowBytes,
                                                matrix,
-                                               image->width,
-                                               image->height,
+                                               image8->width,
+                                               image8->height,
                                                /*attenuate=*/0);
             *alphaReformattedWithLibYUV = AVIF_TRUE;
         }
-        if (inputIsHighBitDepth) {
-            avifImageFreePlanes(&image8, AVIF_PLANES_YUV);
+        if (image8 != image) {
+            avifImageFreePlanes(&image_downshifted_to_8bit, AVIF_PLANES_ALL);
         }
     }
     if (libyuvResult != 0) {
