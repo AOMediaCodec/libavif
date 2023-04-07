@@ -973,12 +973,12 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
                                                        /*attentuate=*/0);
         *alphaReformattedWithLibYUV = AVIF_TRUE;
     } else {
-        avifImage image_downshifted_to_8bit;
+        avifImage imageDownshiftedTo8bit;
         const avifImage * image8;
         if (avifImageUsesU16(image)) {
             const avifBool downshiftAlpha = (lcf.yuvaToRgbMatrixFilter != NULL || lcf.yuvaToRgbMatrix != NULL);
-            AVIF_CHECKRES(avifImageDownshiftTo8bpc(image, &image_downshifted_to_8bit, downshiftAlpha));
-            image8 = &image_downshifted_to_8bit;
+            AVIF_CHECKRES(avifImageDownshiftTo8bpc(image, &imageDownshiftedTo8bit, downshiftAlpha));
+            image8 = &imageDownshiftedTo8bit;
         } else {
             image8 = image;
         }
@@ -1049,8 +1049,8 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
                                                /*attenuate=*/0);
             *alphaReformattedWithLibYUV = AVIF_TRUE;
         }
-        if (image8 != image) {
-            avifImageFreePlanes(&image_downshifted_to_8bit, AVIF_PLANES_ALL);
+        if (image8 == &imageDownshiftedTo8bit) {
+            avifImageFreePlanes(&imageDownshiftedTo8bit, AVIF_PLANES_ALL);
         }
     }
     if (libyuvResult != 0) {
