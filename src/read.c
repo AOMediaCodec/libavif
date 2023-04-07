@@ -646,6 +646,8 @@ static avifBool uniqueBoxSeen(uint32_t * uniqueBoxFlags, uint32_t whichFlag, con
 typedef struct avifTile
 {
     avifCodecDecodeInput * input;
+    // This may point to a codec that it owns or point to a shared codec that it does not own. In the shared case, this will
+    // point to one of avifDecoderData.codec or avifDecoderData.codecAlpha.
     struct avifCodec * codec;
     avifImage * image;
     uint32_t width;  // Either avifTrack.width or avifDecoderItem.width
@@ -780,6 +782,20 @@ typedef struct avifDecoderData
     avifTileInfo color;
     avifTileInfo alpha;
     avifDecoderSource source;
+    // When decoding AVIF images with grid, use a single decoder instance for all the tiles instead of creating a decoder instance
+    // for each tile. If that is the case, |codec| will be used by all the tiles.
+    //
+    // There are some edge cases where we will still need multiple decoder instances:
+    // * For animated AVIF with alpha, we will need two instances (one for the color planes and one for the alpha plane since they are both
+    //   encoded as separate video sequences). In this case, |codec| will be used for the color planes and |codecAlpha| will be
+    //   used for the alpha plane.
+    // * For grid images with multiple layers. In this case, each tile will need its own decoder instance since there would be
+    //   multiple layers in each tile. In this case, |codec| and |codecAlpha| are not used and each tile will have its own
+    //   decoder instance.
+    // * For grid images where the operating points of all the tiles are not the same. In this case, we each tile needs its own
+    //   decoder instance (same as above).
+    avifCodec * codec;
+    avifCodec * codecAlpha;
     uint8_t majorBrand[4];                     // From the file's ftyp, used by AVIF_DECODER_SOURCE_AUTO
     avifDiagnostics * diag;                    // Shallow copy; owned by avifDecoder
     const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
@@ -819,12 +835,23 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
             avifImageFreePlanes(tile->image, AVIF_PLANES_ALL); // forget any pointers into codec image buffers
         }
         if (tile->codec) {
-            avifCodecDestroy(tile->codec);
+            // Check if tile->codec was created separately and destroy it in that case.
+            if (tile->codec != data->codec && tile->codec != data->codecAlpha) {
+                avifCodecDestroy(tile->codec);
+            }
             tile->codec = NULL;
         }
     }
     data->color.decodedTileCount = 0;
     data->alpha.decodedTileCount = 0;
+    if (data->codec) {
+        avifCodecDestroy(data->codec);
+        data->codec = NULL;
+    }
+    if (data->codecAlpha) {
+        avifCodecDestroy(data->codecAlpha);
+        data->codecAlpha = NULL;
+    }
 }
 
 static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint32_t width, uint32_t height, uint8_t operatingPoint)
@@ -870,7 +897,10 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
             tile->input = NULL;
         }
         if (tile->codec) {
-            avifCodecDestroy(tile->codec);
+            // Check if tile->codec was created separately and destroy it in that case.
+            if (tile->codec != data->codec && tile->codec != data->codecAlpha) {
+                avifCodecDestroy(tile->codec);
+            }
             tile->codec = NULL;
         }
         if (tile->image) {
@@ -883,6 +913,14 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
     data->color.decodedTileCount = 0;
     data->alpha.tileCount = 0;
     data->alpha.decodedTileCount = 0;
+    if (data->codec) {
+        avifCodecDestroy(data->codec);
+        data->codec = NULL;
+    }
+    if (data->codecAlpha) {
+        avifCodecDestroy(data->codecAlpha);
+        data->codecAlpha = NULL;
+    }
 }
 
 static void avifDecoderDataDestroy(avifDecoderData * data)
@@ -1285,25 +1323,82 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
     return AVIF_TRUE;
 }
 
-// Checks the grid consistency and copies the pixels from the tiles to the
-// dstImage. Only the freshly decoded tiles are considered, skipping the already
-// copied or not-yet-decoded tiles.
-static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
-                                             avifImage * dstImage,
-                                             const avifTileInfo * info,
-                                             unsigned int oldDecodedTileCount,
-                                             avifBool alpha)
+// Allocates the dstImage based on the grid image requirements. Also verifies some spec compliance rules for grids.
+static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data, const avifTileInfo * info, avifImage * dstImage)
 {
-    assert(info->decodedTileCount > oldDecodedTileCount);
     const avifImageGrid * grid = &info->grid;
+    const avifTile * tile = &data->tiles.tile[info->firstTileIndex];
 
-    avifTile * firstTile = &data->tiles.tile[info->firstTileIndex];
-    avifBool firstTileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
+    // Validate grid image size and tile size.
+    //
+    // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
+    //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
+    if (((tile->image->width * grid->columns) < grid->outputWidth) || ((tile->image->height * grid->rows) < grid->outputHeight)) {
+        avifDiagnosticsPrintf(data->diag,
+                              "Grid image tiles do not completely cover the image (HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1)");
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+    // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
+    if (((tile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
+        ((tile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
+        avifDiagnosticsPrintf(data->diag,
+                              "Grid image tiles in the rightmost column and bottommost row do not overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2");
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
 
-    // Check for tile consistency: All tiles in a grid image should match in the properties checked below.
-    for (unsigned int i = AVIF_MAX(1, oldDecodedTileCount); i < info->decodedTileCount; ++i) {
-        avifTile * tile = &data->tiles.tile[info->firstTileIndex + i];
+    avifBool alpha = tile->input->alpha;
+    if (alpha) {
+        // An alpha tile does not contain any YUV pixels.
+        assert(tile->image->yuvFormat == AVIF_PIXEL_FORMAT_NONE);
+    }
+    if (!avifAreGridDimensionsValid(tile->image->yuvFormat, grid->outputWidth, grid->outputHeight, tile->image->width, tile->image->height, data->diag)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+
+    // Lazily populate dstImage with the new frame's properties.
+    if ((dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) ||
+        (dstImage->depth != tile->image->depth) || (!alpha && (dstImage->yuvFormat != tile->image->yuvFormat))) {
+        if (alpha) {
+            // Alpha doesn't match size, just bail out
+            avifDiagnosticsPrintf(data->diag, "Alpha plane dimensions do not match color plane dimensions");
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+
+        avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+        dstImage->width = grid->outputWidth;
+        dstImage->height = grid->outputHeight;
+        dstImage->depth = tile->image->depth;
+        dstImage->yuvFormat = tile->image->yuvFormat;
+        dstImage->yuvRange = tile->image->yuvRange;
+        if (!data->cicpSet) {
+            data->cicpSet = AVIF_TRUE;
+            dstImage->colorPrimaries = tile->image->colorPrimaries;
+            dstImage->transferCharacteristics = tile->image->transferCharacteristics;
+            dstImage->matrixCoefficients = tile->image->matrixCoefficients;
+        }
+    }
+
+    if (avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
+        avifDiagnosticsPrintf(data->diag, "Image allocation failure");
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    return AVIF_RESULT_OK;
+}
+
+// After verifying that the relevant properties of the tile match those of the first tile, copies over the pixels from the tile
+// into dstImage.
+static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
+                                               const avifTileInfo * info,
+                                               avifImage * dstImage,
+                                               const avifTile * tile,
+                                               unsigned int tileIndex)
+{
+    const avifImageGrid * grid = &info->grid;
+    const avifTile * firstTile = &data->tiles.tile[info->firstTileIndex];
+    if (tile != firstTile) {
+        // Check for tile consistency. All tiles in a grid image should match the first tile in the properties checked below.
         avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]);
+        avifBool firstTileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
         if ((tile->image->width != firstTile->image->width) || (tile->image->height != firstTile->image->height) ||
             (tile->image->depth != firstTile->image->depth) || (tile->image->yuvFormat != firstTile->image->yuvFormat) ||
             (tile->image->yuvRange != firstTile->image->yuvRange) || (uvPresent != firstTileUVPresent) ||
@@ -1315,104 +1410,28 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
         }
     }
 
-    // Validate grid image size and tile size.
-    //
-    // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
-    //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
-    if (((firstTile->image->width * grid->columns) < grid->outputWidth) ||
-        ((firstTile->image->height * grid->rows) < grid->outputHeight)) {
-        avifDiagnosticsPrintf(data->diag,
-                              "Grid image tiles do not completely cover the image (HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1)");
-        return AVIF_FALSE;
-    }
-    // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
-    if (((firstTile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
-        ((firstTile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
-        avifDiagnosticsPrintf(data->diag,
-                              "Grid image tiles in the rightmost column and bottommost row do not overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2");
-        return AVIF_FALSE;
-    }
-
-    if (alpha) {
-        // An alpha tile does not contain any YUV pixels.
-        assert(firstTile->image->yuvFormat == AVIF_PIXEL_FORMAT_NONE);
-    }
-    if (!avifAreGridDimensionsValid(firstTile->image->yuvFormat,
-                                    grid->outputWidth,
-                                    grid->outputHeight,
-                                    firstTile->image->width,
-                                    firstTile->image->height,
-                                    data->diag)) {
-        return AVIF_FALSE;
-    }
-
-    // Lazily populate dstImage with the new frame's properties. If we're decoding alpha,
-    // these values must already match.
-    if ((dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) ||
-        (dstImage->depth != firstTile->image->depth) || (!alpha && (dstImage->yuvFormat != firstTile->image->yuvFormat))) {
-        if (alpha) {
-            // Alpha doesn't match size, just bail out
-            avifDiagnosticsPrintf(data->diag, "Alpha plane dimensions do not match color plane dimensions");
-            return AVIF_FALSE;
-        }
-
-        avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
-        dstImage->width = grid->outputWidth;
-        dstImage->height = grid->outputHeight;
-        dstImage->depth = firstTile->image->depth;
-        dstImage->yuvFormat = firstTile->image->yuvFormat;
-        dstImage->yuvRange = firstTile->image->yuvRange;
-        if (!data->cicpSet) {
-            data->cicpSet = AVIF_TRUE;
-            dstImage->colorPrimaries = firstTile->image->colorPrimaries;
-            dstImage->transferCharacteristics = firstTile->image->transferCharacteristics;
-            dstImage->matrixCoefficients = firstTile->image->matrixCoefficients;
-        }
-    }
-
-    if (avifImageAllocatePlanes(dstImage, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
-        avifDiagnosticsPrintf(data->diag, "Image allocation failure");
-        return AVIF_FALSE;
-    }
-
-    avifPixelFormatInfo formatInfo;
-    avifGetPixelFormatInfo(firstTile->image->yuvFormat, &formatInfo);
-
-    unsigned int tileIndex = oldDecodedTileCount;
-    unsigned int rowIndex = oldDecodedTileCount / grid->columns;
-    unsigned int colIndex = oldDecodedTileCount % grid->columns;
-    // Only the first iteration of the outer for loop uses this initial value of colIndex.
-    // Subsequent iterations of the outer for loop initializes colIndex to 0.
+    unsigned int rowIndex = tileIndex / info->grid.columns;
+    unsigned int colIndex = tileIndex % info->grid.columns;
     avifImage srcView;
     avifImageSetDefaults(&srcView);
     avifImage dstView;
     avifImageSetDefaults(&dstView);
-    for (; rowIndex < grid->rows; ++rowIndex, colIndex = 0) {
-        for (; colIndex < grid->columns; ++colIndex, ++tileIndex) {
-            if (tileIndex >= info->decodedTileCount) {
-                // Tile is not ready yet.
-                return AVIF_TRUE;
-            }
-            avifTile * tile = &data->tiles.tile[info->firstTileIndex + tileIndex];
-
-            avifCropRect dstViewRect = {
-                firstTile->image->width * colIndex, firstTile->image->height * rowIndex, firstTile->image->width, firstTile->image->height
-            };
-            if (dstViewRect.x + dstViewRect.width > grid->outputWidth) {
-                dstViewRect.width = grid->outputWidth - dstViewRect.x;
-            }
-            if (dstViewRect.y + dstViewRect.height > grid->outputHeight) {
-                dstViewRect.height = grid->outputHeight - dstViewRect.y;
-            }
-            const avifCropRect srcViewRect = { 0, 0, dstViewRect.width, dstViewRect.height };
-            if ((avifImageSetViewRect(&dstView, dstImage, &dstViewRect) != AVIF_RESULT_OK) ||
-                (avifImageSetViewRect(&srcView, tile->image, &srcViewRect) != AVIF_RESULT_OK)) {
-                assert(AVIF_FALSE);
-                return AVIF_FALSE;
-            }
-            avifImageCopySamples(&dstView, &srcView, alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
-        }
+    avifCropRect dstViewRect = {
+        firstTile->image->width * colIndex, firstTile->image->height * rowIndex, firstTile->image->width, firstTile->image->height
+    };
+    if (dstViewRect.x + dstViewRect.width > grid->outputWidth) {
+        dstViewRect.width = grid->outputWidth - dstViewRect.x;
     }
+    if (dstViewRect.y + dstViewRect.height > grid->outputHeight) {
+        dstViewRect.height = grid->outputHeight - dstViewRect.y;
+    }
+    const avifCropRect srcViewRect = { 0, 0, dstViewRect.width, dstViewRect.height };
+    if ((avifImageSetViewRect(&dstView, dstImage, &dstViewRect) != AVIF_RESULT_OK) ||
+        (avifImageSetViewRect(&srcView, tile->image, &srcViewRect) != AVIF_RESULT_OK)) {
+        assert(AVIF_FALSE);
+        return AVIF_FALSE;
+    }
+    avifImageCopySamples(&dstView, &srcView, tile->input->alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
     return AVIF_TRUE;
 }
@@ -3337,9 +3356,70 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     return avifDecoderReset(decoder);
 }
 
-static avifCodec * avifCodecCreateInternal(avifCodecChoice choice)
+static avifCodec * avifCodecCreateInternal(avifCodecChoice choice, const avifTile * tile, avifDiagnostics * diag)
 {
-    return avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE);
+    avifCodec * codec = avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE);
+    AVIF_CHECKERR(codec, NULL);
+    codec->diag = diag;
+    codec->operatingPoint = tile->operatingPoint;
+    codec->allLayers = tile->input->allLayers;
+    return codec;
+}
+
+static avifBool avifTilesCanBeDecodedWithSameAV1Decoder(avifDecoderData * data)
+{
+    const uint8_t firstTileOperatingPoint = data->tiles.tile[0].operatingPoint;
+    const avifBool firstTileAllLayers = data->tiles.tile[0].input->allLayers;
+    for (unsigned int i = 1; i < data->tiles.count; ++i) {
+        const avifTile * tile = &data->tiles.tile[i];
+        if (tile->operatingPoint != firstTileOperatingPoint || tile->input->allLayers != firstTileAllLayers) {
+            return AVIF_FALSE;
+        }
+    }
+    return AVIF_TRUE;
+}
+
+static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
+{
+    avifDecoderData * data = decoder->data;
+    avifDecoderDataResetCodec(data);
+
+    if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
+        // In this case, we will use at most two decoder instances (one for the color planes and one for the alpha plane).
+        data->codec = avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag);
+        AVIF_CHECKERR(data->codec, AVIF_RESULT_OUT_OF_MEMORY);
+        data->tiles.tile[0].codec = data->codec;
+        if (data->tiles.count > 1) {
+            data->codecAlpha = avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[1], &decoder->diag);
+            AVIF_CHECKERR(data->codecAlpha, AVIF_RESULT_OUT_OF_MEMORY);
+            data->tiles.tile[1].codec = data->codecAlpha;
+        }
+    } else {
+        // In this case, we will use one decoder instance when there is only one tile or when all of the following conditions are
+        // met:
+        //   - The image must have exactly one layer (i.e.) decoder->imageCount == 1.
+        //   - All the tiles must have the same operating point (because AV1 decoders take operating point once at initialization
+        //     and do not allow it to be changed later).
+        //   - All the tiles must have the same value for allLayers (because AV1 decoders take allLayers once at initialization
+        //     and do not allow it to be changed later).
+        // Otherwise, we will use |tiles.count| decoder instances (one instance for each tile).
+        avifBool canUseSingleDecoder = (data->tiles.count == 1) ||
+                                       (decoder->imageCount == 1 && avifTilesCanBeDecodedWithSameAV1Decoder(data));
+        if (canUseSingleDecoder) {
+            data->codec = avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag);
+            AVIF_CHECKERR(data->codec, AVIF_RESULT_OUT_OF_MEMORY);
+            for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
+                decoder->data->tiles.tile[i].codec = data->codec;
+            }
+        } else {
+            for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
+                avifTile * tile = &decoder->data->tiles.tile[i];
+                tile->codec = avifCodecCreateInternal(decoder->codecChoice, tile, &decoder->diag);
+                AVIF_CHECKERR(tile->codec, AVIF_RESULT_OUT_OF_MEMORY);
+            }
+        }
+    }
+    return AVIF_RESULT_OK;
 }
 
 // If alpha is AVIF_FALSE, searches for the primary color item (parentItemID is ignored in this case).
@@ -3803,15 +3883,6 @@ static avifResult avifDecoderPrepareTiles(avifDecoder * decoder, uint32_t nextIm
     for (unsigned int tileIndex = info->decodedTileCount; tileIndex < info->tileCount; ++tileIndex) {
         avifTile * tile = &decoder->data->tiles.tile[info->firstTileIndex + tileIndex];
 
-        // Ensure there's an AV1 codec available before doing anything else
-        if (!tile->codec) {
-            tile->codec = avifCodecCreateInternal(decoder->codecChoice);
-            AVIF_CHECKERR(tile->codec, AVIF_RESULT_NO_CODEC_AVAILABLE);
-            tile->codec->diag = &decoder->diag;
-            tile->codec->operatingPoint = tile->operatingPoint;
-            tile->codec->allLayers = tile->input->allLayers;
-        }
-
         if (nextImageIndex >= tile->input->samples.count) {
             return AVIF_RESULT_NO_IMAGES_REMAINING;
         }
@@ -3912,6 +3983,16 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
         }
 
         ++info->decodedTileCount;
+
+        if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
+            if (tileIndex == 0) {
+                AVIF_CHECKRES(avifDecoderDataAllocateGridImagePlanes(decoder->data, info, decoder->image));
+            }
+
+            if (!avifDecoderDataCopyTileToImage(decoder->data, info, decoder->image, tile, tileIndex)) {
+                return AVIF_RESULT_INVALID_IMAGE_GRID;
+            }
+        }
     }
     return AVIF_RESULT_OK;
 }
@@ -3922,16 +4003,13 @@ avifResult avifDecoderOutputDecodedTiles(avifDecoder * decoder, const avifTileIn
         // Nothing changed.
         return AVIF_RESULT_OK;
     }
-    // There is at least one newly decoded tile.
-    assert(info->decodedTileCount > oldDecodedTileCount);
-
-    // Grid path.
+    // For grid images, the output image is populated in avifDecoderDecodeTiles.
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
-        assert(info->tileCount == (info->grid.rows * info->grid.columns));
-        AVIF_CHECKERR(avifDecoderDataFillImageGrid(decoder->data, decoder->image, info, oldDecodedTileCount, alpha),
-                      AVIF_RESULT_INVALID_IMAGE_GRID);
         return AVIF_RESULT_OK;
     }
+
+    // There is at least one newly decoded tile.
+    assert(info->decodedTileCount > oldDecodedTileCount);
 
     // Normal (most common) non-grid path. Just steal the planes from the only "tile".
     assert(info->tileCount == 1);
@@ -3965,7 +4043,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
 
-    if (!decoder->data) {
+    if (!decoder->data || decoder->data->tiles.count == 0) {
         // Nothing has been parsed yet
         return AVIF_RESULT_NO_CONTENT;
     }
@@ -3983,6 +4061,11 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
 
     assert(decoder->data->tiles.count == (decoder->data->color.tileCount + decoder->data->alpha.tileCount));
     const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
+
+    // Ensure that we have created the AV1 codecs before proceeding with the decoding.
+    if (!decoder->data->tiles.tile[0].codec) {
+        AVIF_CHECKRES(avifDecoderCreateCodecs(decoder));
+    }
 
     // Acquire all sample data for the current image first, allowing for any read call to bail out
     // with AVIF_RESULT_WAITING_ON_IO harmlessly / idempotently, unless decoder->allowIncremental.
@@ -4004,6 +4087,9 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // Decode all available color tiles now, then all available alpha tiles.
     const unsigned int oldDecodedColorTileCount = decoder->data->color.decodedTileCount;
     const unsigned int oldDecodedAlphaTileCount = decoder->data->alpha.decodedTileCount;
+    // TODO(vigneshv): For image with grid, avifDecoderDecodeTiles also populates the output. So this function and
+    // avifDecoderOutputDecodedTiles should be renamed to reflect that (or can be refactored so that they can be merged into a
+    // single function).
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->color));
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->alpha));
 
