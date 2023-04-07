@@ -4,7 +4,7 @@
 #ifndef AVIF_INTERNAL_H
 #define AVIF_INTERNAL_H
 
-#include "avif/avif.h"
+#include "avif/avif.h" // IWYU pragma: export
 
 #ifdef __cplusplus
 extern "C" {
