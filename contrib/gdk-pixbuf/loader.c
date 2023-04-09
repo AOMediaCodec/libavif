@@ -12,8 +12,16 @@
 G_MODULE_EXPORT void fill_vtable (GdkPixbufModule * module);
 G_MODULE_EXPORT void fill_info (GdkPixbufFormat * info);
 
-struct avif_context {
+G_BEGIN_DECLS
+
+typedef struct {
     GdkPixbuf * pixbuf;
+    uint64_t duration_ms;
+} AvifAnimationFrame;
+
+struct _AvifAnimation {
+    GdkPixbufAnimation parent;
+    GArray * frames;
 
     GdkPixbufModuleSizeFunc size_func;
     GdkPixbufModuleUpdatedFunc updated_func;
@@ -25,7 +33,23 @@ struct avif_context {
     GBytes * bytes;
 };
 
-static void avif_context_free(struct avif_context * context)
+#define GDK_TYPE_AVIF_ANIMATION avif_animation_get_type()
+G_DECLARE_FINAL_TYPE(AvifAnimation, avif_animation, GDK, AVIF_ANIMATION, GdkPixbufAnimation);
+
+G_DEFINE_TYPE(AvifAnimation, avif_animation, GDK_TYPE_PIXBUF_ANIMATION);
+
+struct _AvifAnimationIter {
+    GdkPixbufAnimationIter parent_instance;
+    AvifAnimation * animation;
+    size_t current_frame;
+    uint64_t time_offset;
+};
+
+#define GDK_TYPE_AVIF_ANIMATION_ITER avif_animation_iter_get_type()
+G_DECLARE_FINAL_TYPE(AvifAnimationIter, avif_animation_iter, GDK, AVIF_ANIMATION_ITER, GdkPixbufAnimationIter);
+
+G_DEFINE_TYPE(AvifAnimationIter, avif_animation_iter, GDK_TYPE_PIXBUF_ANIMATION_ITER);
+
 {
     if (!context)
         return;
