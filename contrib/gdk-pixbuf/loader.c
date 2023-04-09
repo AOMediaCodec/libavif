@@ -50,7 +50,10 @@ G_DECLARE_FINAL_TYPE(AvifAnimationIter, avif_animation_iter, GDK, AVIF_ANIMATION
 
 G_DEFINE_TYPE(AvifAnimationIter, avif_animation_iter, GDK_TYPE_PIXBUF_ANIMATION_ITER);
 
+/* Animation class functions */
+static void avif_animation_finalize(GObject * obj)
 {
+    AvifAnimation * context = (AvifAnimation *)obj;
     if (!context)
         return;
 
@@ -69,57 +72,153 @@ G_DEFINE_TYPE(AvifAnimationIter, avif_animation_iter, GDK_TYPE_PIXBUF_ANIMATION_
         context->bytes = NULL;
     }
 
-    if (context->pixbuf) {
-        g_object_unref(context->pixbuf);
-        context->pixbuf = NULL;
+    if (context->frames) {
+        for(size_t i = 0; i < context->frames->len; i++){
+            g_object_unref(g_array_index(context->frames, AvifAnimationFrame, i).pixbuf);
+        }
+        g_array_free(context->frames, TRUE);
     }
-
-    g_free(context);
 }
 
-static gboolean avif_context_try_load(struct avif_context * context, GError ** error)
+static gboolean avif_animation_is_static_image(GdkPixbufAnimation * animation)
+{
+    AvifAnimation * context = (AvifAnimation *)animation;
+    return context->frames->len == 1;
+}
+
+static GdkPixbuf * avif_animation_get_static_image(GdkPixbufAnimation * animation)
+{
+    AvifAnimation * context = (AvifAnimation *)animation;
+    return g_array_index(context->frames, AvifAnimationFrame, 0).pixbuf;
+}
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+static GdkPixbufAnimationIter * avif_animation_get_iter(GdkPixbufAnimation * animation, const GTimeVal * start_time)
+{
+    AvifAnimationIter * iter = g_object_new(GDK_TYPE_AVIF_ANIMATION_ITER, NULL);
+
+    iter->animation = (AvifAnimation *)animation;
+    g_object_ref(iter->animation);
+
+    iter->time_offset = start_time->tv_sec * 1000 + start_time->tv_usec / 1000;
+    iter->current_frame = 0;
+
+    return (GdkPixbufAnimationIter *)iter;
+}
+G_GNUC_END_IGNORE_DEPRECATIONS
+
+static void avif_animation_get_size(GdkPixbufAnimation * animation, int * width, int * height)
+{
+    AvifAnimation * context = (AvifAnimation *)animation;
+    if(width){
+        *width = context->decoder->image->width;
+    }
+    if(height){
+        *height = context->decoder->image->height;
+    }
+}
+
+static void avif_animation_init(AvifAnimation * obj) {
+    /* To ignore unused function and unused paremeter warnings/errors */
+    (void)obj;
+}
+static void avif_animation_class_init(AvifAnimationClass * class) {
+    class->parent_class.get_iter = avif_animation_get_iter;
+    class->parent_class.get_size = avif_animation_get_size;
+    class->parent_class.get_static_image = avif_animation_get_static_image;
+    class->parent_class.is_static_image = avif_animation_is_static_image;
+    G_OBJECT_CLASS(class)->finalize = avif_animation_finalize;
+}
+
+/* Iterator class functions */
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const GTimeVal * current_time)
+{
+    AvifAnimationIter * avif_iter = (AvifAnimationIter *)iter;
+    AvifAnimation * context = (AvifAnimation *)avif_iter->animation;
+
+    size_t prev_frame = avif_iter->current_frame;
+    uint64_t elapsed_time = current_time->tv_sec * 1000 + current_time->tv_usec / 1000 - avif_iter->time_offset;
+
+    /*
+     * duration in seconds stored in a double which is cast to uint64_t
+     * is the precision loss here significant?
+     */
+    uint64_t animation_time = (uint64_t)(context->decoder->duration * 1000);
+
+    if (context->decoder->repetitionCount > 0 && elapsed_time > animation_time * context->decoder->repetitionCount) {
+        avif_iter->current_frame = context->decoder->imageCount - 1;
+    } else {
+        elapsed_time = elapsed_time % animation_time;
+
+        avif_iter->current_frame = 0;
+        uint64_t frame_duration;
+
+        while (1) {
+            frame_duration = g_array_index(context->frames, AvifAnimationFrame, avif_iter->current_frame).duration_ms;
+
+            if (elapsed_time <= frame_duration) {
+                break;
+            }
+            elapsed_time -= frame_duration;
+            avif_iter->current_frame++;
+        }
+    }
+
+    return prev_frame != avif_iter->current_frame;
+}
+G_GNUC_END_IGNORE_DEPRECATIONS
+
+static int avif_animation_iter_get_delay_time(GdkPixbufAnimationIter * iter)
+{
+    AvifAnimationIter * avif_iter = (AvifAnimationIter *)iter;
+    return g_array_index(avif_iter->animation->frames, AvifAnimationFrame, avif_iter->current_frame).duration_ms;
+}
+
+static GdkPixbuf * avif_animation_iter_get_pixbuf(GdkPixbufAnimationIter * iter)
+{
+    AvifAnimationIter * avif_iter = (AvifAnimationIter *)iter;
+    return g_array_index(avif_iter->animation->frames, AvifAnimationFrame, avif_iter->current_frame).pixbuf;
+}
+
+static gboolean avif_animation_iter_on_currently_loading_frame(GdkPixbufAnimationIter * iter)
+{
+    /* this function is effectively useless with how the rest of this module was written */
+    (void)iter;
+    return FALSE;
+}
+
+static void avif_animation_iter_finalize(GObject * obj)
+{
+    AvifAnimationIter * iter = (AvifAnimationIter *)obj;
+    g_object_unref(iter->animation);
+    g_object_unref(iter);
+}
+
+
+static void avif_animation_iter_init(AvifAnimationIter * obj) {
+    /* To ignore unused function and unused paremeter warnings/errors */
+    (void)obj;
+}
+static void avif_animation_iter_class_init(AvifAnimationIterClass * class) {
+    class->parent_class.advance = avif_animation_iter_advance;
+    class->parent_class.get_delay_time = avif_animation_iter_get_delay_time;
+    class->parent_class.get_pixbuf = avif_animation_iter_get_pixbuf;
+    class->parent_class.on_currently_loading_frame = avif_animation_iter_on_currently_loading_frame;
+    G_OBJECT_CLASS(class)->finalize = avif_animation_iter_finalize;
+}
+
+G_END_DECLS
+
+GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
 {
     avifResult ret;
     avifDecoder * decoder = context->decoder;
+    GdkPixbuf * output;
+
     avifImage * image;
     avifRGBImage rgb;
-    const uint8_t * data;
-    size_t size;
     int width, height;
-    GdkPixbuf *output;
-
-    data = g_bytes_get_data(context->bytes, &size);
-
-    ret = avifDecoderSetIOMemory(decoder, data, size);
-    if (ret != AVIF_RESULT_OK) {
-        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
-                    "Couldn't decode image: %s", avifResultToString(ret));
-        return FALSE;
-    }
-
-    ret = avifDecoderParse(decoder);
-    if (ret != AVIF_RESULT_OK) {
-        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
-                    "Couldn't decode image: %s", avifResultToString(ret));
-        return FALSE;
-    }
-
-    if (decoder->imageCount > 1) {
-        g_set_error_literal(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
-                            "Image sequences not yet implemented");
-        return FALSE;
-    }
-
-    ret = avifDecoderNextImage(decoder);
-    if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
-        /* No more images, bail out. Verify that you got the expected amount of images decoded. */
-        return TRUE;
-    } else if (ret != AVIF_RESULT_OK) {
-        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
-                    "Failed to decode all frames: %s", avifResultToString(ret));
-        return FALSE;
-    }
-
     image = decoder->image;
     width = image->width;
     height = image->height;
@@ -282,14 +381,70 @@ static gboolean avif_context_try_load(struct avif_context * context, GError ** e
         g_free(icc_base64);
     }
 
-    if (context->pixbuf) {
-        g_object_unref(context->pixbuf);
-        context->pixbuf = NULL;
+    return output;
+}
+
+static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
+{
+
+    context->frames = g_array_new(FALSE, TRUE, sizeof(AvifAnimationFrame));
+
+    avifResult ret;
+    avifDecoder * decoder = context->decoder;
+    const uint8_t * data;
+    size_t size;
+
+    data = g_bytes_get_data(context->bytes, &size);
+
+    ret = avifDecoderSetIOMemory(decoder, data, size);
+    if (ret != AVIF_RESULT_OK) {
+        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                    "Couldn't decode image: %s", avifResultToString(ret));
+        return FALSE;
     }
 
-    context->pixbuf = output;
-    context->prepared_func(context->pixbuf, NULL, context->user_data);
+    ret = avifDecoderParse(decoder);
+    if (ret != AVIF_RESULT_OK) {
+        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
+                    "Couldn't decode image: %s", avifResultToString(ret));
+        return FALSE;
+    }
 
+    ret = avifDecoderNextImage(decoder);
+    if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
+        /* No more images, bail out. Verify that you got the expected amount of images decoded. */
+        return TRUE;
+    } else if (ret != AVIF_RESULT_OK) {
+        g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
+                    "Failed to decode all frames: %s", avifResultToString(ret));
+        return FALSE;
+    }
+
+    AvifAnimationFrame frame;
+    frame.pixbuf = set_pixbuf(context, error);
+    frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+
+    g_array_append_val(context->frames, frame);
+
+    context->prepared_func(g_array_index(context->frames, AvifAnimationFrame, 0).pixbuf,
+            decoder->imageCount > 1 ? (GdkPixbufAnimation *)context : NULL, context->user_data);
+
+    while(decoder->imageIndex < decoder->imageCount - 1) {
+        ret = avifDecoderNextImage(decoder);
+
+        if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
+            return TRUE;
+        } else if (ret != AVIF_RESULT_OK) {
+            g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
+                        "Failed to decode all frames: %s", avifResultToString(ret));
+            return FALSE;
+        }
+
+        frame.pixbuf = set_pixbuf(context, error);
+        frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+
+        g_array_append_val(context->frames, frame);
+    }
     return TRUE;
 }
 
@@ -298,7 +453,7 @@ static gpointer begin_load(GdkPixbufModuleSizeFunc size_func,
                            GdkPixbufModuleUpdatedFunc updated_func,
                            gpointer user_data, GError ** error)
 {
-    struct avif_context * context;
+    AvifAnimation * context;
     avifDecoder * decoder;
 
     g_assert(prepared_func != NULL);
@@ -310,7 +465,7 @@ static gpointer begin_load(GdkPixbufModuleSizeFunc size_func,
         return NULL;
     }
 
-    context = g_new0(struct avif_context, 1);
+    context = g_object_new(GDK_TYPE_AVIF_ANIMATION, NULL);
     if (!context)
         return NULL;
 
@@ -327,21 +482,21 @@ static gpointer begin_load(GdkPixbufModuleSizeFunc size_func,
 
 static gboolean stop_load(gpointer data, GError ** error)
 {
-    struct avif_context * context = (struct avif_context *) data;
+    AvifAnimation * context = (AvifAnimation *) data;
     gboolean ret;
 
     context->bytes = g_byte_array_free_to_bytes(context->data);
     context->data = NULL;
     ret = avif_context_try_load(context, error);
 
-    avif_context_free(context);
+    g_object_unref(context);
 
     return ret;
 }
 
 static gboolean load_increment(gpointer data, const guchar * buf, guint size, GError ** error)
 {
-    struct avif_context * context = (struct avif_context *) data;
+    AvifAnimation * context = (AvifAnimation *) data;
     g_byte_array_append(context->data, buf, size);
     if (error)
         *error = NULL;
