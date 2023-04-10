@@ -294,10 +294,6 @@ avifBool avifPNGRead(const char * inputFilename,
         png_set_tRNS_to_alpha(png);
     }
 
-    if ((rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
-        png_set_filler(png, 0xFFFF, PNG_FILLER_AFTER);
-    }
-
     if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
         png_set_gray_to_rgb(png);
     }
@@ -339,6 +335,9 @@ avifBool avifPNGRead(const char * inputFilename,
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
+    if ((rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
+        rgb.format = AVIF_RGB_FORMAT_RGB;
+    }
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
         goto cleanup;
