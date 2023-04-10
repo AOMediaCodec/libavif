@@ -3,6 +3,10 @@
 
 name: CI
 on: [push, pull_request]
+
+permissions:
+  contents: read
+
 jobs:
   build-shared-installed:
     runs-on: ${{ matrix.os }}

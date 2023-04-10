@@ -1,5 +1,9 @@
 name: CI
 on: [push]
+
+permissions:
+  contents: read
+
 jobs:
   clang-format-check:
     runs-on: ubuntu-latest

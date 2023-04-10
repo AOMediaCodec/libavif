@@ -1,5 +1,9 @@
 name: CI
 on: [push, pull_request]
+
+permissions:
+  contents: read
+
 jobs:
   build-android-jni:
     runs-on: ubuntu-latest
