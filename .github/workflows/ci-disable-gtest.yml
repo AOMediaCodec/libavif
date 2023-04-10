@@ -6,6 +6,10 @@
 
 name: CI
 on: [push, pull_request]
+
+permissions:
+  contents: read
+
 jobs:
   build-disable-gtest:
     runs-on: ${{ matrix.os }}
