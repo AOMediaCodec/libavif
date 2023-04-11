@@ -113,8 +113,8 @@ typedef struct avifAlphaParams
 
 } avifAlphaParams;
 
-avifBool avifFillAlpha(const avifAlphaParams * const params);
-avifBool avifReformatAlpha(const avifAlphaParams * const params);
+avifBool avifFillAlpha(const avifAlphaParams * params);
+avifBool avifReformatAlpha(const avifAlphaParams * params);
 
 typedef enum avifReformatMode
 {
