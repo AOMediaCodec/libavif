@@ -24,12 +24,19 @@ run the examples too.
 Building libavif requires [CMake](https://cmake.org/).
 
 No AV1 codecs are enabled by default. Enable them by enabling any of the
-following CMake options:
+following CMake options (e.g. `-DAVIF_CODEC_AOM=ON`):
 
-* `AVIF_CODEC_AOM` - requires CMake, NASM
-* `AVIF_CODEC_DAV1D` - requires Meson, Ninja, NASM
-* `AVIF_CODEC_LIBGAV1` - requires CMake, Ninja
-* `AVIF_CODEC_RAV1E` - requires cargo (Rust), NASM
+* `AVIF_CODEC_AOM` for [libaom](https://aomedia.googlesource.com/aom/) (encoder
+  and decoder): local build requires CMake, NASM
+* `AVIF_CODEC_DAV1D` for [dav1d](https://code.videolan.org/videolan/dav1d)
+  (decoder): local build requires Meson, Ninja, NASM
+* `AVIF_CODEC_LIBGAV1` for
+  [libgav1](https://chromium.googlesource.com/codecs/libgav1/) (decoder):
+  local build requires CMake, Ninja
+* `AVIF_CODEC_RAV1E` for [rav1e](https://github.com/xiph/rav1e) (encoder):
+  local build requires cargo (Rust), NASM
+* `AVIF_CODEC_SVT` for [SVT-AV1](https://gitlab.com/AOMediaCodec/SVT-AV1)
+  (encoder): local build requires CMake, NASM
 
 These libraries (in their C API form) must be externally available
 (discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif is
