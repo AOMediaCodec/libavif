@@ -707,6 +707,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->kf_max_dist = 0;
         }
         if (encoder->extraLayerCount > 0) {
+            cfg->g_limit = encoder->extraLayerCount + 1;
             // For layered image, disable lagged encoding to always get output
             // frame for each input frame.
             cfg->g_lag_in_frames = 0;
