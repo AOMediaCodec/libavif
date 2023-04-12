@@ -943,6 +943,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     if (encoder->extraLayerCount >= AVIF_MAX_AV1_LAYER_COUNT) {
+        avifDiagnosticsPrintf(&encoder->diag, "extraLayerCount [%u] must be less than %d", encoder->extraLayerCount, AVIF_MAX_AV1_LAYER_COUNT);
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
 
