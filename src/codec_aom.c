@@ -870,8 +870,19 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                     cfg->rc_min_quantizer = AVIF_QUANTIZER_LOSSLESS;
                     cfg->rc_max_quantizer = AVIF_QUANTIZER_LOSSLESS;
                 } else {
-                    cfg->rc_min_quantizer = AVIF_MAX(quantizer - 4, (int)cfg->rc_min_quantizer);
-                    cfg->rc_max_quantizer = AVIF_MIN(quantizer + 4, (int)cfg->rc_max_quantizer);
+                    int minQuantizer;
+                    int maxQuantizer;
+                    if (alpha) {
+                        minQuantizer = encoder->minQuantizerAlpha;
+                        maxQuantizer = encoder->maxQuantizerAlpha;
+                    } else {
+                        minQuantizer = encoder->minQuantizer;
+                        maxQuantizer = encoder->maxQuantizer;
+                    }
+                    minQuantizer = AVIF_CLAMP(minQuantizer, 0, 63);
+                    maxQuantizer = AVIF_CLAMP(maxQuantizer, 0, 63);
+                    cfg->rc_min_quantizer = AVIF_MAX(quantizer - 4, minQuantizer);
+                    cfg->rc_max_quantizer = AVIF_MIN(quantizer + 4, maxQuantizer);
                 }
                 quantizerUpdated = AVIF_TRUE;
             }
