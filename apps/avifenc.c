@@ -664,8 +664,6 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
     avifBool success = AVIF_FALSE;
     avifImage * nextImage = NULL;
 
-    // Not generating a single-image grid: Use all remaining input files as subsequent frames.
-
     const avifInputFile * nextFile;
     while ((nextFile = avifInputGetFile(input, imageIndex)) != NULL) {
         uint64_t nextDurationInTimescales = nextFile->duration ? nextFile->duration : settings->outputTiming.duration;
@@ -763,37 +761,34 @@ cleanup:
     return success;
 }
 
-static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
-                                             const avifSettings * settings,
-                                             int imageIndex,
-                                             const char * firstFilename,
-                                             const avifImage * firstImage)
+static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder, const avifSettings * settings, int layerIndex, const avifImage * firstImage)
 {
     avifBool success = AVIF_FALSE;
     int layers = encoder->extraLayerCount + 1;
     int qualityIncrement = (settings->quality - encoder->quality) / encoder->extraLayerCount;
     int qualityAlphaIncrement = (settings->qualityAlpha - encoder->qualityAlpha) / encoder->extraLayerCount;
 
-    while (imageIndex < layers) {
-        printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
-               imageIndex,
-               settings->outputTiming.duration,
-               settings->outputTiming.timescale,
-               firstFilename);
-
+    while (layerIndex < layers) {
         encoder->quality += qualityIncrement;
         encoder->qualityAlpha += qualityAlphaIncrement;
-        if (imageIndex == layers - 1) {
+        if (layerIndex == layers - 1) {
             encoder->quality = settings->quality;
             encoder->qualityAlpha = settings->qualityAlpha;
         }
+
+        printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
+               layerIndex,
+               encoder->quality,
+               qualityString(encoder->quality),
+               encoder->qualityAlpha,
+               qualityString(encoder->qualityAlpha));
 
         const avifResult result = avifEncoderAddImage(encoder, firstImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(result));
             goto cleanup;
         }
-        ++imageIndex;
+        ++layerIndex;
     }
     success = AVIF_TRUE;
 
@@ -846,9 +841,22 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     encoder->repetitionCount = settings->repetitionCount;
 
     if (settings->progressive) {
+        // If the color quality or alpha quality is less than 10, the main()
+        // function overrides --progressive and sets settings->progressive to
+        // false.
+        assert((settings->quality >= 10) && (settings->qualityAlpha >= 10));
         encoder->extraLayerCount = 1;
-        encoder->quality = (settings->quality < 2) ? settings->quality : 2;
-        encoder->qualityAlpha = (settings->qualityAlpha < 2) ? settings->qualityAlpha : 2;
+        // Encode the base layer with a very low quality to ensure a small encoded size.
+        encoder->quality = 2;
+        if (firstImage->alphaPlane && firstImage->alphaRowBytes) {
+            encoder->qualityAlpha = 2;
+        }
+        printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
+               0,
+               encoder->quality,
+               qualityString(encoder->quality),
+               encoder->qualityAlpha,
+               qualityString(encoder->qualityAlpha));
     }
 
     for (int i = 0; i < settings->codecSpecificOptions.count; ++i) {
@@ -891,10 +899,12 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         }
 
         if (settings->progressive) {
-            if (!avifEncodeRestOfLayeredImage(encoder, settings, imageIndex, firstFile->filename, firstImage)) {
+            if (!avifEncodeRestOfLayeredImage(encoder, settings, imageIndex, firstImage)) {
                 goto cleanup;
             }
         } else {
+            // Not generating a single-image grid: Use all remaining input files as subsequent
+            // frames.
             if (!avifEncodeRestOfImageSequence(encoder, settings, input, imageIndex, firstImage)) {
                 goto cleanup;
             }
@@ -1505,6 +1515,12 @@ int main(int argc, char * argv[])
     }
     assert(settings.quality != INVALID_QUALITY);
     assert(settings.qualityAlpha != INVALID_QUALITY);
+    // In progressive encoding we use a very low quality (2) for the base layer to ensure a small
+    // encoded size. If the target quality is close to the quality of the base layer, don't bother
+    // with progressive encoding.
+    if (settings.progressive && ((settings.quality < 10) || (settings.qualityAlpha < 10))) {
+        settings.progressive = AVIF_FALSE;
+    }
 
     stdinFile.filename = "(stdin)";
     stdinFile.duration = settings.outputTiming.duration;
@@ -1821,7 +1837,10 @@ int main(int argc, char * argv[])
     }
     printf("AVIF to be written:%s\n", lossyHint);
     const avifImage * avif = gridCells ? gridCells[0] : image;
-    avifImageDump(avif, settings.gridDims[0], settings.gridDims[1], AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+    avifImageDump(avif,
+                  settings.gridDims[0],
+                  settings.gridDims[1],
+                  settings.progressive ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
     if (settings.autoTiling) {
         if ((settings.tileRowsLog2 >= 0) || (settings.tileColsLog2 >= 0)) {
