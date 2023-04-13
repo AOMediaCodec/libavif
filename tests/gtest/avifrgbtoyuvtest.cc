@@ -14,7 +14,6 @@ using ::testing::Bool;
 using ::testing::Combine;
 using ::testing::Range;
 using ::testing::Values;
-using ::testing::ValuesIn;
 
 namespace libavif {
 namespace {
