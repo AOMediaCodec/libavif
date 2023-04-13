@@ -726,7 +726,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
         if (input->useStdin || (input->filesCount > 1)) {
-            printf(" * Encoding frame 1 [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
+            printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
+                   0,
                    firstDurationInTimescales,
                    settings->outputTiming.timescale,
                    firstFile->filename);
