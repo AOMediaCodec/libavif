@@ -4003,7 +4003,8 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
         } else {
             // Non-grid path. Just steal the planes from the only "tile".
             assert(info->tileCount == 1);
-            avifImage * src = decoder->data->tiles.tile[info->firstTileIndex].image;
+            assert(tileIndex == 0);
+            avifImage * src = tile->image;
             if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
                 (decoder->image->depth != src->depth)) {
                 if (tile->input->alpha) {
