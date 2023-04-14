@@ -1520,6 +1520,7 @@ int main(int argc, char * argv[])
     // with progressive encoding.
     if (settings.progressive && ((settings.quality < 10) || (settings.qualityAlpha < 10))) {
         settings.progressive = AVIF_FALSE;
+        printf("The --progressive option was ignored because the quality is below 10.\n");
     }
 
     stdinFile.filename = "(stdin)";
