@@ -80,6 +80,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifalphapremtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifalphapremtest COMMAND avifalphapremtest)
 
+    add_executable(avifbasictest gtest/avifbasictest.cc)
+    target_link_libraries(avifbasictest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifbasictest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifbasictest COMMAND avifbasictest)
+
     add_executable(avifchangesettingtest gtest/avifchangesettingtest.cc)
     target_link_libraries(avifchangesettingtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifchangesettingtest PRIVATE ${GTEST_INCLUDE_DIRS})
