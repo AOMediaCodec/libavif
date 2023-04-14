@@ -178,6 +178,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         image->transferCharacteristics = (avifTransferCharacteristics)dav1dImage->seq_hdr->trc;
         image->matrixCoefficients = (avifMatrixCoefficients)dav1dImage->seq_hdr->mtrx;
 
+        // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
@@ -185,6 +186,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
             image->yuvRowBytes[yuvPlane] = (uint32_t)dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
         }
         image->imageOwnsYUVPlanes = AVIF_FALSE;
+        codec->yuvStealer = image;
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
@@ -204,6 +206,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
         *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
+        codec->alphaStealer = image;
     }
     return AVIF_TRUE;
 }

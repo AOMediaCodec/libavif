@@ -219,6 +219,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
             image->yuvRowBytes[yuvPlane] = codec->internal->image->stride[yuvPlane];
         }
         image->imageOwnsYUVPlanes = AVIF_FALSE;
+        codec->yuvStealer = image;
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
@@ -238,6 +239,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         image->alphaRowBytes = codec->internal->image->stride[0];
         *isLimitedRangeAlpha = (codec->internal->image->range == AOM_CR_STUDIO_RANGE);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
+        codec->alphaStealer = image;
     }
 
     return AVIF_TRUE;

@@ -125,6 +125,7 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
             image->yuvRowBytes[yuvPlane] = gav1Image->stride[yuvPlane];
         }
         image->imageOwnsYUVPlanes = AVIF_FALSE;
+        codec->yuvStealer = image;
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
@@ -144,6 +145,7 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->alphaRowBytes = gav1Image->stride[0];
         *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
+        codec->alphaStealer = image;
     }
 
     return AVIF_TRUE;

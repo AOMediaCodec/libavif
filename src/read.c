@@ -1397,12 +1397,9 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
     const avifTile * firstTile = &data->tiles.tile[info->firstTileIndex];
     if (tile != firstTile) {
         // Check for tile consistency. All tiles in a grid image should match the first tile in the properties checked below.
-        avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]);
-        avifBool firstTileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
         if ((tile->image->width != firstTile->image->width) || (tile->image->height != firstTile->image->height) ||
             (tile->image->depth != firstTile->image->depth) || (tile->image->yuvFormat != firstTile->image->yuvFormat) ||
-            (tile->image->yuvRange != firstTile->image->yuvRange) || (uvPresent != firstTileUVPresent) ||
-            (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
+            (tile->image->yuvRange != firstTile->image->yuvRange) || (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
             (tile->image->transferCharacteristics != firstTile->image->transferCharacteristics) ||
             (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients)) {
             avifDiagnosticsPrintf(data->diag, "Grid image contains mismatched tiles");
@@ -3363,6 +3360,8 @@ static avifCodec * avifCodecCreateInternal(avifCodecChoice choice, const avifTil
     codec->diag = diag;
     codec->operatingPoint = tile->operatingPoint;
     codec->allLayers = tile->input->allLayers;
+    codec->yuvStealer = NULL;
+    codec->alphaStealer = NULL;
     return codec;
 }
 
@@ -3959,6 +3958,23 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             return AVIF_RESULT_OK;
         }
 
+        // Erase dangling pointers before the tile->codec->getNextImage() call. tile->image and
+        // decoder->image may have stolen planes from tile->codec.
+        if (tile->codec->alphaStealer) {
+            assert(!tile->codec->alphaStealer->imageOwnsAlphaPlane);
+            tile->codec->alphaStealer->alphaPlane = NULL;
+            tile->codec->alphaStealer->alphaRowBytes = 0;
+            tile->codec->alphaStealer = NULL;
+        }
+        if (tile->codec->yuvStealer) {
+            assert(!tile->codec->yuvStealer->imageOwnsYUVPlanes);
+            for (int plane = 0; plane < AVIF_PLANE_COUNT_YUV; plane++) {
+                tile->codec->yuvStealer->yuvPlanes[plane] = NULL;
+                tile->codec->yuvStealer->yuvRowBytes[plane] = 0;
+            }
+            tile->codec->yuvStealer = NULL;
+        }
+
         avifBool isLimitedRangeAlpha = AVIF_FALSE;
         if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->alpha, &isLimitedRangeAlpha, tile->image)) {
             avifDiagnosticsPrintf(&decoder->diag, "tile->codec->getNextImage() failed");
@@ -4018,6 +4034,17 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 decoder->image->depth = src->depth;
             }
             avifImageStealPlanes(decoder->image, src, tile->input->alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+            if (tile->input->alpha) {
+                if (!decoder->image->imageOwnsAlphaPlane) {
+                    assert(tile->codec->alphaStealer == src);
+                    tile->codec->alphaStealer = decoder->image;
+                }
+            } else {
+                if (!decoder->image->imageOwnsYUVPlanes) {
+                    assert(tile->codec->yuvStealer == src);
+                    tile->codec->yuvStealer = decoder->image;
+                }
+            }
         }
     }
     return AVIF_RESULT_OK;
@@ -4176,6 +4203,17 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
         // avifDecoderNextImage().
         decoder->imageIndex = nearestKeyFrame - 1; // prepare to read nearest keyframe
         avifDecoderDataResetCodec(decoder->data);
+        // Erase dangling pointers. decoder->image may have stolen planes from the codecs.
+        if (!decoder->image->imageOwnsAlphaPlane) {
+            decoder->image->alphaPlane = NULL;
+            decoder->image->alphaRowBytes = 0;
+        }
+        if (!decoder->image->imageOwnsYUVPlanes) {
+            for (int plane = 0; plane < AVIF_PLANE_COUNT_YUV; plane++) {
+                decoder->image->yuvPlanes[plane] = NULL;
+                decoder->image->yuvRowBytes[plane] = 0;
+            }
+        }
     }
     for (;;) {
         avifResult result = avifDecoderNextImage(decoder);

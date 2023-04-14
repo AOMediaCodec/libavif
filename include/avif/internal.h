@@ -373,6 +373,11 @@ typedef struct avifCodec
     avifCodecEncodeImageFunc encodeImage;
     avifCodecEncodeFinishFunc encodeFinish;
     avifCodecDestroyInternalFunc destroyInternal;
+
+    // IMPORTANT: The tracking of stealers assumes the images (decoder->image and tile->image)
+    // outlive the codecs.
+    avifImage * yuvStealer;
+    avifImage * alphaStealer;
 } avifCodec;
 
 avifCodec * avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags);
