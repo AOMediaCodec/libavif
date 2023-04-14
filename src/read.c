@@ -3368,6 +3368,11 @@ static avifCodec * avifCodecCreateInternal(avifCodecChoice choice, const avifTil
 
 static avifBool avifTilesCanBeDecodedWithSameAV1Decoder(avifDecoderData * data)
 {
+    if (data->color.tileCount == 1 && data->alpha.tileCount == 1) {
+        // Single tile image with alpha plane. In this case each tile needs its own decoder since the planes will be "stolen".
+        // Stealing either the color or the alpha plane will invalidate the other one when decode is called the second time.
+        return AVIF_FALSE;
+    }
     const uint8_t firstTileOperatingPoint = data->tiles.tile[0].operatingPoint;
     const avifBool firstTileAllLayers = data->tiles.tile[0].input->allLayers;
     for (unsigned int i = 1; i < data->tiles.count; ++i) {
@@ -3402,6 +3407,8 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
         //     and do not allow it to be changed later).
         //   - All the tiles must have the same value for allLayers (because AV1 decoders take allLayers once at initialization
         //     and do not allow it to be changed later).
+        //   - If the image has a single tile, it must not have an alpha plane (in this case we will steal the planes from the
+        //     decoder, so we cannot use the same decoder for both the color and the alpha planes).
         // Otherwise, we will use |tiles.count| decoder instances (one instance for each tile).
         avifBool canUseSingleDecoder = (data->tiles.count == 1) ||
                                        (decoder->imageCount == 1 && avifTilesCanBeDecodedWithSameAV1Decoder(data));
