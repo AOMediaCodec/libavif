@@ -1397,12 +1397,9 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
     const avifTile * firstTile = &data->tiles.tile[info->firstTileIndex];
     if (tile != firstTile) {
         // Check for tile consistency. All tiles in a grid image should match the first tile in the properties checked below.
-        avifBool uvPresent = (tile->image->yuvPlanes[AVIF_CHAN_U] && tile->image->yuvPlanes[AVIF_CHAN_V]);
-        avifBool firstTileUVPresent = (firstTile->image->yuvPlanes[AVIF_CHAN_U] && firstTile->image->yuvPlanes[AVIF_CHAN_V]);
         if ((tile->image->width != firstTile->image->width) || (tile->image->height != firstTile->image->height) ||
             (tile->image->depth != firstTile->image->depth) || (tile->image->yuvFormat != firstTile->image->yuvFormat) ||
-            (tile->image->yuvRange != firstTile->image->yuvRange) || (uvPresent != firstTileUVPresent) ||
-            (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
+            (tile->image->yuvRange != firstTile->image->yuvRange) || (tile->image->colorPrimaries != firstTile->image->colorPrimaries) ||
             (tile->image->transferCharacteristics != firstTile->image->transferCharacteristics) ||
             (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients)) {
             avifDiagnosticsPrintf(data->diag, "Grid image contains mismatched tiles");
