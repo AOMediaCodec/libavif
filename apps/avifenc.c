@@ -387,6 +387,9 @@ static avifBool avifInputReadImage(avifInput * input,
             fprintf(stderr, "ERROR: Cannot read y4m through standard input");
             return AVIF_FALSE;
         }
+        if (dstDepth) {
+            *dstDepth = dstImage->depth;
+        }
         assert(dstImage->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
         if (dstSourceIsRGB) {
             *dstSourceIsRGB = AVIF_FALSE;
