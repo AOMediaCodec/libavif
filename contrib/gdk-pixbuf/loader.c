@@ -241,7 +241,7 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
                             GDK_PIXBUF_ERROR,
                             GDK_PIXBUF_ERROR_INSUFFICIENT_MEMORY,
                             "Insufficient memory to open AVIF file");
-        return FALSE;
+        return NULL;
     }
 
     rgb.pixels = gdk_pixbuf_get_pixels(output);
@@ -252,7 +252,7 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
                     "Failed to convert YUV to RGB: %s", avifResultToString(ret));
         g_object_unref(output);
-        return FALSE;
+        return NULL;
     }
 
     /* transformations */
@@ -361,7 +361,7 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
                             GDK_PIXBUF_ERROR_CORRUPT_IMAGE,
                             "Transformed AVIF has zero width or height");
         g_object_unref(output);
-        return FALSE;
+        return NULL;
     }
 
     if ( width < gdk_pixbuf_get_width(output) ||
@@ -423,6 +423,10 @@ static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
     AvifAnimationFrame frame;
     frame.pixbuf = set_pixbuf(context, error);
     frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+
+    if (frame.pixbuf == NULL) {
+        return FALSE;
+    }
 
     g_array_append_val(context->frames, frame);
 
