@@ -40,5 +40,15 @@ TEST(AvifImageTest, Invalid) {
       IsValidAvifImageCreate(0, 0, /*depth=*/17, AVIF_PIXEL_FORMAT_YUV400));
 }
 
+TEST(AvifImageTest, WriteImage) {
+  testutil::AvifImagePtr image =
+      testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
+                            AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  ASSERT_TRUE(testutil::WriteImage(
+      image.get(), (testing::TempDir() + "/avifimagetest.png").c_str()));
+}
+
 }  // namespace
 }  // namespace libavif

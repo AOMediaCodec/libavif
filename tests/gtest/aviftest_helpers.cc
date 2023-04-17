@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -340,9 +341,15 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
 }
 
 bool WriteImage(const avifImage* image, const char* file_path) {
-  return avifPNGWrite(file_path, image, /*requestedDepth=*/0,
-                      AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
-                      /*compressionLevel=*/0);
+  if (!image || !file_path) return false;
+  const size_t str_len = std::strlen(file_path);
+  if (str_len >= 4 && !std::strncmp(file_path + str_len - 4, ".png", 4)) {
+    return avifPNGWrite(file_path, image, /*requestedDepth=*/0,
+                        AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
+                        /*compressionLevel=*/0);
+  }
+  // Other formats are not supported.
+  return false;
 }
 
 AvifRwData Encode(const avifImage* image, int speed) {

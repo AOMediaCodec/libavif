@@ -92,6 +92,7 @@ AvifImagePtr ReadImage(
     avifBool ignore_icc = false, avifBool ignore_exif = false,
     avifBool ignore_xmp = false);
 // Convenient wrapper around avifPNGWrite() for debugging purposes.
+// Do not remove.
 bool WriteImage(const avifImage* image, const char* file_path);
 
 // Encodes the image with default parameters.
