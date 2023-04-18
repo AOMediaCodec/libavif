@@ -388,6 +388,8 @@ avifCodec * avifCodecCreateRav1e(void);   // requires AVIF_CODEC_RAV1E (codec_ra
 const char * avifCodecVersionRav1e(void); // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
 avifCodec * avifCodecCreateSvt(void);     // requires AVIF_CODEC_SVT (codec_svt.c)
 const char * avifCodecVersionSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
+avifCodec * avifCodecCreateAVM(void);     // requires AVIF_CODEC_AVM (codec_avm.c)
+const char * avifCodecVersionAVM(void);   // requires AVIF_CODEC_AVM (codec_avm.c)
 
 // ---------------------------------------------------------------------------
 // avifDiagnostics
@@ -465,6 +467,7 @@ void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
 // This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
 #define AVIF_BOX_SIZE_TBD 0
 
+// Used for both av1C and av2C.
 typedef struct avifCodecConfigurationBox
 {
     // [skipped; is constant] unsigned int (1)marker = 1;
@@ -491,6 +494,7 @@ typedef struct avifCodecConfigurationBox
 
 typedef struct avifSequenceHeader
 {
+    uint8_t reduced_still_picture_header;
     uint32_t maxWidth;
     uint32_t maxHeight;
     uint32_t bitDepth;
@@ -500,9 +504,11 @@ typedef struct avifSequenceHeader
     avifTransferCharacteristics transferCharacteristics;
     avifMatrixCoefficients matrixCoefficients;
     avifRange range;
-    avifCodecConfigurationBox av1C;
+    avifCodecConfigurationBox av1C; // TODO(yguyon): Rename or add av2C
 } avifSequenceHeader;
-avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
+
+avifBool avifAV1SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
+avifBool avifAV2SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
 
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX

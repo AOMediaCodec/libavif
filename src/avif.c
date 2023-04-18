@@ -1004,6 +1004,9 @@ static struct AvailableCodec availableCodecs[] = {
 #if defined(AVIF_CODEC_SVT)
     { AVIF_CODEC_CHOICE_SVT, "svt", avifCodecVersionSvt, avifCodecCreateSvt, AVIF_CODEC_FLAG_CAN_ENCODE },
 #endif
+#if defined(AVIF_CODEC_AVM)
+    { AVIF_CODEC_CHOICE_AVM, "avm", avifCodecVersionAVM, avifCodecCreateAVM, AVIF_CODEC_FLAG_CAN_DECODE | AVIF_CODEC_FLAG_CAN_ENCODE },
+#endif
     { AVIF_CODEC_CHOICE_AUTO, NULL, NULL, NULL, 0 }
 };
 
@@ -1016,6 +1019,10 @@ static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, avifCo
             continue;
         }
         if (requiredFlags && ((availableCodecs[i].flags & requiredFlags) != requiredFlags)) {
+            continue;
+        }
+        if ((choice == AVIF_CODEC_CHOICE_AUTO) && (availableCodecs[i].choice == AVIF_CODEC_CHOICE_AVM)) {
+            // AV2 is experimental and cannot be the default, it must be explicitly selected.
             continue;
         }
         return &availableCodecs[i];

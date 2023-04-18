@@ -5,13 +5,12 @@ permissions:
   contents: read
 
 jobs:
-  build-static:
-    runs-on: ${{ matrix.os }}
+  build-static-av2:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        build-type: [Release, Debug]
+        also-enable-av1-codecs: [ON, OFF] # On top of enabling AV2 codecs.
 
     steps:
     - uses: actions/checkout@v3
@@ -32,7 +31,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ext
-        key: ${{ runner.os }}-${{ runner.build-type }}-${{ hashFiles('ext/*.cmd') }}
+        key: ${{ runner.os }}-static-av2-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
       with:
@@ -45,10 +44,10 @@ jobs:
         version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
     - run: pip install meson
-    - name: Build aom
+    - name: Build avm
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash aom.cmd
+      run: bash avm.cmd
     - name: Build dav1d
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -57,14 +56,6 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash rav1e.cmd
-    - name: Build SVT-AV1
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: bash svt.cmd
-    - name: Build libgav1
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: bash libgav1.cmd
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -84,12 +75,10 @@ jobs:
         mkdir build && cd build
 
         cmake .. -G Ninja
-        -DCMAKE_BUILD_TYPE=${{ runner.build-type }} -DBUILD_SHARED_LIBS=OFF
-        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
-        -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON
-        -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON
-        -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
-        -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        -DAVIF_CODEC_AVM=ON -DAVIF_LOCAL_AVM=ON
+        -DAVIF_CODEC_DAV1D=${{ runner.also-enable-av1-codecs }} -DAVIF_LOCAL_DAV1D=ON
+        -DAVIF_CODEC_RAV1E=${{ runner.also-enable-av1-codecs }} -DAVIF_LOCAL_RAV1E=ON
         -DAVIF_LOCAL_LIBYUV=ON
         -DAVIF_LOCAL_LIBSHARPYUV=ON
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON

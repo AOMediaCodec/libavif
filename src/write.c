@@ -36,7 +36,7 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
-static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
+static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg, const char * configPropName);
 
 // ---------------------------------------------------------------------------
 // avifSetTileConfiguration
@@ -152,11 +152,12 @@ typedef struct avifEncoderItem
 {
     uint16_t id;
     uint8_t type[4];
-    avifCodec * codec;                    // only present on type==av01
+    avifCodec * codec;                    // only present on image items
     avifCodecEncodeOutput * encodeOutput; // AV1 sample data
     avifRWData metadataPayload;           // Exif/XMP data
     avifCodecConfigurationBox av1C;       // Harvested in avifEncoderFinish(), if encodeOutput has samples
-    uint32_t cellIndex;                   // Which row-major cell index corresponds to this item. ignored on non-av01 types
+                                          // TODO(yguyon): Rename or add av2C
+    uint32_t cellIndex;                   // Which row-major cell index corresponds to this item. only present on image items
     avifBool alpha;
     avifBool hiddenImage; // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
 
@@ -226,6 +227,9 @@ typedef struct avifEncoderData
     uint16_t primaryItemID;
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
+    // Fields specific to AV1/AV2
+    const char * imageItemType;  // "av01" for AV1, "av02" for AV2
+    const char * configPropName; // "av1C" for AV1, "av2C" for AV2
 } avifEncoderData;
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
@@ -653,11 +657,11 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
 // These items are implicitly associated with the track they are contained within.
 static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s)
 {
-    // Count how many non-av01 items (such as EXIF/XMP) are being written
+    // Count how many non-image items (such as EXIF/XMP) are being written
     uint32_t metadataItemCount = 0;
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-        if (memcmp(item->type, "av01", 4) != 0) {
+        if (memcmp(item->type, encoder->data->imageItemType, 4) != 0) {
             ++metadataItemCount;
         }
     }
@@ -684,7 +688,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamWriteU16(s, (uint16_t)metadataItemCount);  // unsigned int(16) item_count;
     for (uint32_t trakItemIndex = 0; trakItemIndex < encoder->data->items.count; ++trakItemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[trakItemIndex];
-        if (memcmp(item->type, "av01", 4) == 0) {
+        if (memcmp(item->type, encoder->data->imageItemType, 4) == 0) {
             // Skip over all non-metadata items
             continue;
         }
@@ -702,7 +706,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamWriteU16(s, (uint16_t)metadataItemCount); //  unsigned int(16) entry_count;
     for (uint32_t trakItemIndex = 0; trakItemIndex < encoder->data->items.count; ++trakItemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[trakItemIndex];
-        if (memcmp(item->type, "av01", 4) == 0) {
+        if (memcmp(item->type, encoder->data->imageItemType, 4) == 0) {
             continue;
         }
 
@@ -909,7 +913,8 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
     }
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-        avifEncoderItem * item = avifEncoderDataCreateItem(encoder->data, "av01", infeName, infeNameSize, cellIndex);
+        avifEncoderItem * item =
+            avifEncoderDataCreateItem(encoder->data, encoder->data->imageItemType, infeName, infeNameSize, cellIndex);
         AVIF_CHECKERR(item, AVIF_RESULT_OUT_OF_MEMORY);
         item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
         AVIF_CHECKERR(item->codec, AVIF_RESULT_NO_CODEC_AVAILABLE);
@@ -1041,6 +1046,16 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     // -----------------------------------------------------------------------
+    // Choose AV1 or AV2
+
+    // TODO(yguyon): Rework when AVIF_CODEC_CHOICE_AUTO can be AVM
+    assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
+           (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
+    const avifBool isAV2 = encoder->codecChoice == AVIF_CODEC_CHOICE_AVM;
+    encoder->data->imageItemType = isAV2 ? "av02" : "av01";
+    encoder->data->configPropName = isAV2 ? "av2C" : "av1C";
+
+    // -----------------------------------------------------------------------
     // Map quality and qualityAlpha to quantizer and quantizerAlpha
     encoder->data->quantizer = avifQualityToQuantizer(encoder->quality, encoder->minQuantizer, encoder->maxQuantizer);
     encoder->data->quantizerAlpha = avifQualityToQuantizer(encoder->qualityAlpha, encoder->minQuantizerAlpha, encoder->maxQuantizerAlpha);
@@ -1140,7 +1155,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Another frame in an image sequence, or layer in a layered image
 
         const avifImage * imageMetadata = encoder->data->imageMetadata;
-        // Image metadata that are copied to the av1C and nclx boxes are not allowed to change.
+        // Image metadata that are copied to the configuration property and nclx boxes are not allowed to change.
         // If the first image in the sequence had an alpha plane (even if fully opaque), all
         // subsequent images must have alpha as well.
         if ((imageMetadata->depth != firstCell->depth) || (imageMetadata->yuvFormat != firstCell->yuvFormat) ||
@@ -1267,8 +1282,13 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         return AVIF_RESULT_NO_CONTENT;
     }
 
+    // TODO(yguyon): Rework when AVIF_CODEC_CHOICE_AUTO can be AVM
+    assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
+           (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
+    const avifBool isAV2 = encoder->codecChoice == AVIF_CODEC_CHOICE_AVM;
+
     // -----------------------------------------------------------------------
-    // Finish up AV1 encoding
+    // Finish up encoding
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
@@ -1293,19 +1313,17 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     }
 
     // -----------------------------------------------------------------------
-    // Harvest av1C properties from AV1 sequence headers
+    // Harvest configuration properties from sequence headers
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->encodeOutput->samples.count > 0) {
             const avifEncodeSample * firstSample = &item->encodeOutput->samples.sample[0];
             avifSequenceHeader sequenceHeader;
-            if (avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data)) {
-                item->av1C = sequenceHeader.av1C;
-            } else {
-                // This must be an invalid AV1 payload
-                return item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
-            }
+            AVIF_CHECKERR(isAV2 ? avifAV2SequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data)
+                                : avifAV1SequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data),
+                          item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED);
+            item->av1C = sequenceHeader.av1C;
         }
     }
 
@@ -1333,8 +1351,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     }
 
     avifBoxMarker ftyp = avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD);
-    avifRWStreamWriteChars(&s, majorBrand, 4);                             // unsigned int(32) major_brand;
-    avifRWStreamWriteU32(&s, 0);                                           // unsigned int(32) minor_version;
+    avifRWStreamWriteChars(&s, majorBrand, 4); // unsigned int(32) major_brand;
+    // TODO(yguyon): AV2-AVIF is AVIFv2 for now (change once no longer experimental)
+    avifRWStreamWriteU32(&s, isAV2 ? 2 : 0);                               // unsigned int(32) minor_version;
     avifRWStreamWriteChars(&s, "avif", 4);                                 // unsigned int(32) compatible_brands[];
     if (isSequence) {                                                      //
         avifRWStreamWriteChars(&s, "avis", 4);                             // ... compatible_brands[]
@@ -1539,7 +1558,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             imageHeight = item->gridHeight;
         }
 
-        // Properties all av01 items need
+        // Properties all image items need
 
         avifItemPropertyDedupStart(dedup);
         avifBoxMarker ispe = avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0);
@@ -1560,7 +1579,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         if (item->codec) {
             avifItemPropertyDedupStart(dedup);
-            writeConfigBox(&dedup->s, &item->av1C);
+            writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName);
             ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_TRUE);
         }
 
@@ -1809,7 +1828,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             avifBoxMarker stsd = avifRWStreamWriteFullBox(&s, "stsd", AVIF_BOX_SIZE_TBD, 0, 0);
             avifRWStreamWriteU32(&s, 1); // unsigned int(32) entry_count;
-            avifBoxMarker av01 = avifRWStreamWriteBox(&s, "av01", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker imageItem = avifRWStreamWriteBox(&s, encoder->data->imageItemType, AVIF_BOX_SIZE_TBD);
             avifRWStreamWriteZeros(&s, 6);                             // const unsigned int(8)[6] reserved = 0;
             avifRWStreamWriteU16(&s, 1);                               // unsigned int(16) data_reference_index;
             avifRWStreamWriteU16(&s, 0);                               // unsigned int(16) pre_defined = 0;
@@ -1825,7 +1844,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteZeros(&s, 32 - 11);                       //
             avifRWStreamWriteU16(&s, 0x0018);                          // template unsigned int(16) depth = 0x0018;
             avifRWStreamWriteU16(&s, (uint16_t)0xffff);                // int(16) pre_defined = -1;
-            writeConfigBox(&s, &item->av1C);
+            writeConfigBox(&s, &item->av1C, encoder->data->configPropName);
             if (!item->alpha) {
                 avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL);
             }
@@ -1844,7 +1863,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 avifRWStreamFinishBox(&s, auxi);
             }
 
-            avifRWStreamFinishBox(&s, av01);
+            avifRWStreamFinishBox(&s, imageItem);
             avifRWStreamFinishBox(&s, stsd);
 
             avifBoxMarker stts = avifRWStreamWriteFullBox(&s, "stts", AVIF_BOX_SIZE_TBD, 0, 0);
@@ -2086,9 +2105,9 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
     return avifEncoderFinish(encoder, output);
 }
 
-static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)
+static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg, const char * configPropName)
 {
-    avifBoxMarker av1C = avifRWStreamWriteBox(s, "av1C", AVIF_BOX_SIZE_TBD);
+    avifBoxMarker configBox = avifRWStreamWriteBox(s, configPropName, AVIF_BOX_SIZE_TBD);
 
     // unsigned int (1) marker = 1;
     // unsigned int (7) version = 1;
@@ -2117,5 +2136,5 @@ static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg)
     // }
     avifRWStreamWriteU8(s, 0);
 
-    avifRWStreamFinishBox(s, av1C);
+    avifRWStreamFinishBox(s, configBox);
 }
