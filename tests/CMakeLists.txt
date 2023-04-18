@@ -41,7 +41,7 @@ endforeach()
 
 if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     enable_language(CXX)
-    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD 14)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers avif_apps)
 endif()
