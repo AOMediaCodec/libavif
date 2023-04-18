@@ -48,12 +48,15 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    const avifBool useYCgCoR = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+    const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
+    const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
 #else
-    const avifBool useYCgCoR = AVIF_FALSE;
+    const avifBool useYCgCoRe = AVIF_FALSE;
+    const avifBool useYCgCoRo = AVIF_FALSE;
 #endif
     if ((image->matrixCoefficients == 3 /* CICP reserved */) ||
-        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO || useYCgCoR) && (image->yuvRange == AVIF_RANGE_LIMITED)) ||
+        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO || useYCgCoRe || useYCgCoRo) &&
+         (image->yuvRange == AVIF_RANGE_LIMITED)) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
@@ -74,8 +77,10 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     } else if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
         state->mode = AVIF_REFORMAT_MODE_YCGCO;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    } else if (useYCgCoR) {
-        state->mode = AVIF_REFORMAT_MODE_YCGCO_R;
+    } else if (useYCgCoRe) {
+        state->mode = AVIF_REFORMAT_MODE_YCGCO_RE;
+    } else if (useYCgCoRo) {
+        state->mode = AVIF_REFORMAT_MODE_YCGCO_RO;
 #endif
     }
 
@@ -168,7 +173,8 @@ static int avifReformatStateUVToUNorm(avifReformatState * state, float v)
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    assert((state->mode != AVIF_REFORMAT_MODE_YCGCO && state->mode != AVIF_REFORMAT_MODE_YCGCO_R) ||
+    assert((state->mode != AVIF_REFORMAT_MODE_YCGCO && state->mode != AVIF_REFORMAT_MODE_YCGCO_RE &&
+            state->mode != AVIF_REFORMAT_MODE_YCGCO_RO) ||
            (state->yuvRange == AVIF_RANGE_FULL));
 #else
     assert((state->mode != AVIF_REFORMAT_MODE_YCGCO) || (state->yuvRange == AVIF_RANGE_FULL));
@@ -328,7 +334,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
                             yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-                        } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO_R) {
+                        } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
                             // Formulas from JVET-U0093.
                             const int R = avifRoundf(rgbPixel[0] * rgbMaxChannelF);
                             const int G = avifRoundf(rgbPixel[1] * rgbMaxChannelF);
@@ -729,8 +735,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     B = t - Cr;
                     R = t + Cr;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-                } else if (state->mode == AVIF_REFORMAT_MODE_YCGCO_R) {
-                    const int maxValue = (1 << (state->yuvDepth - 2)) - 1;
+                } else if (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
+                    const int bit_offset = (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
+                    const int maxValue = (1 << (state->yuvDepth - bit_offset)) - 1;
                     assert((float)maxValue == state->rgbMaxChannelF);
                     const int YY = unormY;
                     const int Cg = avifRoundf(Cb * yuvMaxChannel);

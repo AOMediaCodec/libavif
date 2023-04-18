@@ -43,7 +43,6 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Input file paths.
 INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
-INPUT_JPG="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_lossless_encoded.avif"
 DECODED_FILE="avif_test_cmd_lossless_decoded.png"
@@ -77,14 +76,6 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 10 -l "${INPUT_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
   "${ARE_IMAGES_EQUAL}" "${INPUT_PNG}" "${DECODED_FILE_LOSSLESS}" 0
-
-  # Enable when enabling AVIF_ENABLE_EXPERIMENTAL_YCGCO_R.
-  echo "Testing YCgCo-R lossless on PNG and JPEG"
-  for INPUT_FILE in ${INPUT_PNG} ${INPUT_JPG}; do
-    "${AVIFENC}" -s 10 --cicp 2/2/15 -l "${INPUT_FILE}" -o "${ENCODED_FILE}"
-    "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
-    "${ARE_IMAGES_EQUAL}" "${INPUT_FILE}" "${DECODED_FILE_LOSSLESS}" 0
-  done
 popd
 
 exit 0

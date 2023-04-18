@@ -357,7 +357,8 @@ avifBool avifJPEGRead(const char * inputFilename,
         avif->width = cinfo.output_width;
         avif->height = cinfo.output_height;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                                    avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
 #else
         const avifBool useYCgCoR = AVIF_FALSE;
 #endif
@@ -368,13 +369,15 @@ avifBool avifJPEGRead(const char * inputFilename,
                                   : AVIF_APP_DEFAULT_PIXEL_FORMAT;
         }
         avif->depth = requestedDepth ? requestedDepth : 8;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
         if (useYCgCoR) {
             if (requestedDepth == 12) {
                 fprintf(stderr, "Cannot request 12 bits for YCgCo-R as it uses 1 or 2 extra bits.\n");
                 goto cleanup;
             }
-            avif->depth += 2;
+            avif->depth += (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ? 2 : 1;
         }
+#endif
         avifRGBImageSetDefaults(&rgb, avif);
         rgb.format = AVIF_RGB_FORMAT_RGB;
         rgb.chromaDownsampling = chromaDownsampling;

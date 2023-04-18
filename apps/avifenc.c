@@ -1482,7 +1482,8 @@ int main(int argc, char * argv[])
         if (cicpExplicitlySet) {
             avifBool changeMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-            changeMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+            changeMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                         settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
 #endif
             if (changeMC) {
                 fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
@@ -1762,7 +1763,8 @@ int main(int argc, char * argv[])
 
             avifBool matrixCoefficientsAreLosslessCompatible = usingIdentityMatrix;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-            matrixCoefficientsAreLosslessCompatible |= (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+            matrixCoefficientsAreLosslessCompatible |= (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                                                        image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
 #endif
             if (!matrixCoefficientsAreLosslessCompatible && !using400) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)

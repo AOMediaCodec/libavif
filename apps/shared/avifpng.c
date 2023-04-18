@@ -314,7 +314,8 @@ avifBool avifPNGRead(const char * inputFilename,
     avif->height = rawHeight;
     avif->yuvFormat = requestedFormat;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
+    const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                                avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
 #else
     const avifBool useYCgCoR = AVIF_FALSE;
 #endif
@@ -331,7 +332,9 @@ avifBool avifPNGRead(const char * inputFilename,
     avif->depth = requestedDepth;
     if (avif->depth == 0) {
         if (useYCgCoR) {
-            avif->depth = imgBitDepth + 2;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+            avif->depth = imgBitDepth + ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ? 2 : 1);
+#endif
         } else if (imgBitDepth == 8) {
             avif->depth = 8;
         } else {
@@ -404,15 +407,16 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     volatile int rgbDepth = requestedDepth;
     if (rgbDepth == 0) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_R);
-#else
-        const avifBool useYCgCoR = AVIF_FALSE;
-#endif
+        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                                    avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
         if (useYCgCoR) {
-            rgbDepth = avif->depth - 2;
+            rgbDepth = avif->depth - ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ? 2 : 1);
         } else {
+#endif
             rgbDepth = (avif->depth > 8) ? 16 : 8;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
         }
+#endif
     }
 
     volatile avifBool monochrome8bit = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
