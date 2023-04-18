@@ -22,6 +22,7 @@ typedef struct {
 struct _AvifAnimation {
     GdkPixbufAnimation parent;
     GArray * frames;
+    uint64_t animation_time;
 
     GdkPixbufModuleSizeFunc size_func;
     GdkPixbufModuleUpdatedFunc updated_func;
@@ -140,16 +141,10 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
     size_t prev_frame = avif_iter->current_frame;
     uint64_t elapsed_time = current_time->tv_sec * 1000 + current_time->tv_usec / 1000 - avif_iter->time_offset;
 
-    /*
-     * duration in seconds stored in a double which is cast to uint64_t
-     * is the precision loss here significant?
-     */
-    uint64_t animation_time = (uint64_t)(context->decoder->duration * 1000);
-
-    if (context->decoder->repetitionCount > 0 && elapsed_time > animation_time * context->decoder->repetitionCount) {
+    if (context->decoder->repetitionCount > 0 && elapsed_time > context->animation_time * context->decoder->repetitionCount) {
         avif_iter->current_frame = context->decoder->imageCount - 1;
     } else {
-        elapsed_time = elapsed_time % animation_time;
+        elapsed_time = elapsed_time % context->animation_time;
 
         avif_iter->current_frame = 0;
         uint64_t frame_duration;
@@ -423,6 +418,7 @@ static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
     AvifAnimationFrame frame;
     frame.pixbuf = set_pixbuf(context, error);
     frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+    context->animation_time = frame.duration_ms;
 
     if (frame.pixbuf == NULL) {
         return FALSE;
@@ -446,6 +442,13 @@ static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
 
         frame.pixbuf = set_pixbuf(context, error);
         frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+
+        if (frame.pixbuf == NULL) {
+            return FALSE;
+        }
+
+        /* We don't use the animation duration from the AVIF structure directly due to precision problems */
+        context->animation_time += frame.duration_ms;
 
         g_array_append_val(context->frames, frame);
     }
