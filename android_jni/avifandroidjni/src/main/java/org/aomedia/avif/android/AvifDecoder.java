@@ -4,9 +4,36 @@
 package org.aomedia.avif.android;
 
 import android.graphics.Bitmap;
+import androidx.annotation.Nullable;
 import java.nio.ByteBuffer;
 
-/** An AVIF Decoder. AVIF Specification: https://aomediacodec.github.io/av1-avif/. */
+/**
+ * An AVIF Decoder. AVIF Specification: https://aomediacodec.github.io/av1-avif/.
+ *
+ * <p>There are two ways to use this class.
+ *
+ * <p>1) As a static utility class.
+ *
+ * <p>This class can be accessed statically without instantiating an object. This is useful to
+ * simply sniff and decode still AVIF images without having to maintain any decoder state. The
+ * following are the methods that can be accessed this way: {@link isAvifImage}, {@link getInfo} and
+ * {@link decode}. The {@link Info} inner class is used only in this case.
+ *
+ * <p>2) As an instantiated regular class.
+ *
+ * <p>When used this way, the {@link create} method must be used to create an instance of this class
+ * with a valid AVIF image. This will create a long running underlying decoder object which will be
+ * used to decode the image(s). Using the returned object, other public methods of the class can be
+ * called to get information about the image and to get the individual decoded frames. When the
+ * decoder object is no longer needed, {@link release} must be called to release the underlying
+ * decoder.
+ *
+ * <p>This is useful for decoding animated AVIF images and obtaining each decoded frame one after
+ * the other.
+ *
+ * <p>NOTE: The API for using this as an instantiated regular class is still under development and
+ * might change.
+ */
 @SuppressWarnings("CatchAndPrintStackTrace")
 public class AvifDecoder {
   static {
@@ -17,10 +44,18 @@ public class AvifDecoder {
     }
   }
 
-  // This is a utility class and cannot be instantiated.
-  private AvifDecoder() {}
+  private long decoder;
+  private int width;
+  private int height;
+  private int depth;
+  private int frameCount;
+  private int repetitionCount;
 
-  /** Contains information about the AVIF Image. */
+  private AvifDecoder(ByteBuffer encoded) {
+    decoder = createDecoder(encoded, encoded.remaining());
+  }
+
+  /** Contains information about the AVIF Image. This class is only used for getInfo(). */
   public static class Info {
     public int width;
     public int height;
@@ -78,4 +113,71 @@ public class AvifDecoder {
    *     value was passed for the threads parameter.
    */
   public static native boolean decode(ByteBuffer encoded, int length, Bitmap bitmap, int threads);
+
+  /** Get the width of the image. */
+  public int getWidth() {
+    return width;
+  }
+
+  /** Get the height of the image. */
+  public int getHeight() {
+    return height;
+  }
+
+  /** Get the depth (bit depth) of the image. */
+  public int getDepth() {
+    return depth;
+  }
+
+  /** Get the number of frames in the image. */
+  public int getFrameCount() {
+    return frameCount;
+  }
+
+  /**
+   * Get the number of repetitions for an animated image (see repetitionCount in avif.h for
+   * details).
+   */
+  public int getRepetitionCount() {
+    return repetitionCount;
+  }
+
+  /** Releases the underlying decoder object. */
+  public void release() {
+    if (decoder != 0) {
+      destroyDecoder(decoder);
+    }
+    decoder = 0;
+  }
+
+  /**
+   * Create and return an AvifDecoder.
+   *
+   * @param encoded The encoded AVIF image. encoded.position() must be 0. The memory of this
+   *     ByteBuffer must be kept alive until release() is called.
+   * @return null on failure. AvifDecoder object on success.
+   */
+  @Nullable
+  public static AvifDecoder create(ByteBuffer encoded) {
+    AvifDecoder decoder = new AvifDecoder(encoded);
+    return (decoder.decoder == 0) ? null : decoder;
+  }
+
+  /**
+   * Decodes the next frame of the animated AVIF into the bitmap.
+   *
+   * @param bitmap The decoded pixels will be copied into the bitmap.
+   * @return true on success and false on failure. A few possible reasons for failure are: 1) Input
+   *     was not valid AVIF. 2) Bitmap was not large enough to store the decoded image.
+   */
+  public boolean nextFrame(Bitmap bitmap) {
+    // TODO(vigneshv): Consider returning an avifResult here instead of just a boolean.
+    return nextFrame(decoder, bitmap);
+  }
+
+  private native boolean nextFrame(long decoder, Bitmap bitmap);
+
+  private native long createDecoder(ByteBuffer encoded, int length);
+
+  private native void destroyDecoder(long decoder);
 }
