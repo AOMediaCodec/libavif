@@ -1,0 +1,7 @@
+This file describes the sources of files in this directory.
+
+* Sub-Directory: avif
+  Description: Images used for testing still AVIF decoding.
+  Source: https://github.com/AOMediaCodec/av1-avif/tree/master/testFiles/Link-U
+  Filter: Only a subset of fox* files.
+  Git Hash: 77bd20d
