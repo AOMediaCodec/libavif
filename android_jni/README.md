@@ -52,6 +52,25 @@ If all the steps were completed successfully, the AAR package that contains liba
 
 The instructions on how to add the AAR package as a dependency to your Android project can be found [here](https://developer.android.com/studio/projects/android-library#psd-add-aar-jar-dependency).
 
+## Running Instrumented Tests
+
+Step 1 - Build the library
+
+Make sure to build the library by following the steps under
+[Generate the AAR package](#generate-the-aar-package) section above.
+
+Step 2 - Set up a device/emulator
+
+Make sure that a device or an emulator has been set up and is available via
+`adb`.
+
+Step 3 - Run the tests
+
+```
+$ cd android_jni
+$ ./gradlew connectedAndroidTest
+```
+
 ## Using Android Studio
 
 The entire android_jni directory can be imported as a project into Android Studio.
