@@ -6,6 +6,8 @@
 #include <cpu-features.h>
 #include <jni.h>
 
+#include <new>
+
 #include "avif/avif.h"
 
 #define LOG_TAG "avif_jni"
@@ -15,10 +17,10 @@
 #define FUNC(RETURN_TYPE, NAME, ...)                                      \
   extern "C" {                                                            \
   JNIEXPORT RETURN_TYPE Java_org_aomedia_avif_android_AvifDecoder_##NAME( \
-      JNIEnv* env, jobject /*thiz*/, ##__VA_ARGS__);                      \
+      JNIEnv* env, jobject thiz, ##__VA_ARGS__);                          \
   }                                                                       \
   JNIEXPORT RETURN_TYPE Java_org_aomedia_avif_android_AvifDecoder_##NAME( \
-      JNIEnv* env, jobject /*thiz*/, ##__VA_ARGS__)
+      JNIEnv* env, jobject thiz, ##__VA_ARGS__)
 
 namespace {
 
@@ -26,6 +28,11 @@ jfieldID global_info_width;
 jfieldID global_info_height;
 jfieldID global_info_depth;
 jfieldID global_info_alpha_present;
+jfieldID global_width;
+jfieldID global_height;
+jfieldID global_depth;
+jfieldID global_frame_count;
+jfieldID global_repetition_count;
 
 // RAII wrapper class that properly frees the decoder related objects on
 // destruction.
@@ -78,6 +85,67 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
   return true;
 }
 
+bool DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
+                     jobject bitmap) {
+  avifResult res = avifDecoderNextImage(decoder->decoder);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to decode AVIF image. Status: %d", res);
+    return false;
+  }
+  AndroidBitmapInfo bitmap_info;
+  if (AndroidBitmap_getInfo(env, bitmap, &bitmap_info) < 0) {
+    LOGE("AndroidBitmap_getInfo failed.");
+    return false;
+  }
+  // Ensure that the bitmap is large enough to store the decoded image.
+  if (bitmap_info.width < decoder->decoder->image->width ||
+      bitmap_info.height < decoder->decoder->image->height) {
+    LOGE(
+        "Bitmap is not large enough to fit the image. Bitmap %dx%d Image "
+        "%dx%d.",
+        bitmap_info.width, bitmap_info.height, decoder->decoder->image->width,
+        decoder->decoder->image->height);
+    return false;
+  }
+  // Ensure that the bitmap format is RGBA_8888, RGB_565 or RGBA_F16.
+  if (bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 &&
+      bitmap_info.format != ANDROID_BITMAP_FORMAT_RGB_565 &&
+      bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_F16) {
+    LOGE("Bitmap format (%d) is not supported.", bitmap_info.format);
+    return false;
+  }
+  void* bitmap_pixels = nullptr;
+  if (AndroidBitmap_lockPixels(env, bitmap, &bitmap_pixels) !=
+      ANDROID_BITMAP_RESULT_SUCCESS) {
+    LOGE("Failed to lock Bitmap.");
+    return false;
+  }
+  avifRGBImage rgb_image;
+  avifRGBImageSetDefaults(&rgb_image, decoder->decoder->image);
+  if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGBA_F16) {
+    rgb_image.depth = 16;
+    rgb_image.isFloat = AVIF_TRUE;
+  } else if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
+    rgb_image.format = AVIF_RGB_FORMAT_RGB_565;
+    rgb_image.depth = 8;
+  } else {
+    rgb_image.depth = 8;
+  }
+  rgb_image.pixels = static_cast<uint8_t*>(bitmap_pixels);
+  rgb_image.rowBytes = bitmap_info.stride;
+  // Android always sees the Bitmaps as premultiplied with alpha when it renders
+  // them:
+  // https://developer.android.com/reference/android/graphics/Bitmap#setPremultiplied(boolean)
+  rgb_image.alphaPremultiplied = AVIF_TRUE;
+  res = avifImageYUVToRGB(decoder->decoder->image, &rgb_image);
+  AndroidBitmap_unlockPixels(env, bitmap);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to convert YUV Pixels to RGB. Status: %d", res);
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
@@ -91,6 +159,14 @@ jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
   global_info_height = env->GetFieldID(info_class, "height", "I");
   global_info_depth = env->GetFieldID(info_class, "depth", "I");
   global_info_alpha_present = env->GetFieldID(info_class, "alphaPresent", "Z");
+  const jclass avif_decoder_class =
+      env->FindClass("org/aomedia/avif/android/AvifDecoder");
+  global_width = env->GetFieldID(avif_decoder_class, "width", "I");
+  global_height = env->GetFieldID(avif_decoder_class, "height", "I");
+  global_depth = env->GetFieldID(avif_decoder_class, "depth", "I");
+  global_frame_count = env->GetFieldID(avif_decoder_class, "frameCount", "I");
+  global_repetition_count =
+      env->GetFieldID(avif_decoder_class, "repetitionCount", "I");
   return JNI_VERSION_1_6;
 }
 
@@ -105,7 +181,7 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
-  if (!CreateDecoderAndParse(&decoder, buffer, length, /*threads=*/ 1)) {
+  if (!CreateDecoderAndParse(&decoder, buffer, length, /*threads=*/1)) {
     return false;
   }
   env->SetIntField(info, global_info_width, decoder.decoder->image->width);
@@ -125,65 +201,41 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
   if (!CreateDecoderAndParse(
-      &decoder, buffer, length,
-      (threads == 0) ? android_getCpuCount() : threads)) {
+          &decoder, buffer, length,
+          (threads == 0) ? android_getCpuCount() : threads)) {
     return false;
   }
-  avifResult res = avifDecoderNextImage(decoder.decoder);
-  if (res != AVIF_RESULT_OK) {
-    LOGE("Failed to decode AVIF image. Status: %d", res);
-    return false;
+  return DecodeNextImage(env, &decoder, bitmap);
+}
+
+FUNC(jlong, createDecoder, jobject encoded, int length) {
+  const uint8_t* const buffer =
+      static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
+  AvifDecoderWrapper* decoder = new (std::nothrow) AvifDecoderWrapper();
+  if (decoder == nullptr) {
+    return 0;
   }
-  AndroidBitmapInfo bitmap_info;
-  if (AndroidBitmap_getInfo(env, bitmap, &bitmap_info) < 0) {
-    LOGE("AndroidBitmap_getInfo failed.");
-    return false;
+  // TODO(b/272577342): Make threads configurable.
+  if (!CreateDecoderAndParse(decoder, buffer, length, /*threads=*/1)) {
+    return 0;
   }
-  // Ensure that the bitmap is large enough to store the decoded image.
-  if (bitmap_info.width < decoder.decoder->image->width ||
-      bitmap_info.height < decoder.decoder->image->height) {
-    LOGE(
-        "Bitmap is not large enough to fit the image. Bitmap %dx%d Image "
-        "%dx%d.",
-        bitmap_info.width, bitmap_info.height, decoder.decoder->image->width,
-        decoder.decoder->image->height);
-    return false;
-  }
-  // Ensure that the bitmap format is RGBA_8888, RGB_565 or RGBA_F16.
-  if (bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 &&
-      bitmap_info.format != ANDROID_BITMAP_FORMAT_RGB_565 &&
-      bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_F16) {
-    LOGE("Bitmap format (%d) is not supported.", bitmap_info.format);
-    return false;
-  }
-  void* bitmap_pixels = nullptr;
-  if (AndroidBitmap_lockPixels(env, bitmap, &bitmap_pixels) !=
-      ANDROID_BITMAP_RESULT_SUCCESS) {
-    LOGE("Failed to lock Bitmap.");
-    return false;
-  }
-  avifRGBImage rgb_image;
-  avifRGBImageSetDefaults(&rgb_image, decoder.decoder->image);
-  if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGBA_F16) {
-    rgb_image.depth = 16;
-    rgb_image.isFloat = AVIF_TRUE;
-  } else if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
-    rgb_image.format = AVIF_RGB_FORMAT_RGB_565;
-    rgb_image.depth = 8;
-  } else {
-    rgb_image.depth = 8;
-  }
-  rgb_image.pixels = static_cast<uint8_t*>(bitmap_pixels);
-  rgb_image.rowBytes = bitmap_info.stride;
-  // Android always sees the Bitmaps as premultiplied with alpha when it renders
-  // them:
-  // https://developer.android.com/reference/android/graphics/Bitmap#setPremultiplied(boolean)
-  rgb_image.alphaPremultiplied = AVIF_TRUE;
-  res = avifImageYUVToRGB(decoder.decoder->image, &rgb_image);
-  AndroidBitmap_unlockPixels(env, bitmap);
-  if (res != AVIF_RESULT_OK) {
-    LOGE("Failed to convert YUV Pixels to RGB. Status: %d", res);
-    return false;
-  }
-  return true;
+  env->SetIntField(thiz, global_width, decoder->decoder->image->width);
+  env->SetIntField(thiz, global_height, decoder->decoder->image->height);
+  env->SetIntField(thiz, global_depth, decoder->decoder->image->depth);
+  env->SetIntField(thiz, global_frame_count, decoder->decoder->imageCount);
+  env->SetIntField(thiz, global_repetition_count,
+                   decoder->decoder->repetitionCount);
+  return reinterpret_cast<jlong>(decoder);
+}
+
+FUNC(jboolean, nextFrame, jlong jdecoder, jobject bitmap) {
+  AvifDecoderWrapper* const decoder =
+      reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
+  return DecodeNextImage(env, decoder, bitmap);
+}
+
+FUNC(void, destroyDecoder, jlong jdecoder) {
+  AvifDecoderWrapper* const decoder =
+      reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
+  delete decoder;
 }
