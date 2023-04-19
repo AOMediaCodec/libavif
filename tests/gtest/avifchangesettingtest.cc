@@ -161,6 +161,11 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
 }
 
 TEST(ChangeSettingTest, UnchangeableImageColorRange) {
+  if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
+      nullptr) {
+    GTEST_SKIP() << "Codec unavailable, skip test.";
+  }
+
   constexpr uint32_t kImageSize = 512;
   testutil::AvifImagePtr image = testutil::CreateImage(
       kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
@@ -193,6 +198,11 @@ TEST(ChangeSettingTest, UnchangeableImageColorRange) {
 }
 
 TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
+  if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
+      nullptr) {
+    GTEST_SKIP() << "Codec unavailable, skip test.";
+  }
+
   constexpr uint32_t kImageSize = 512;
   testutil::AvifImagePtr image = testutil::CreateImage(
       kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
