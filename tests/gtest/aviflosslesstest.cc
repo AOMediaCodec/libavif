@@ -73,6 +73,8 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       if (matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
         ASSERT_TRUE(are_images_equal);
       } else {
+        // AVIF_MATRIX_COEFFICIENTS_YCGCO is not lossless because it does not
+        // expand the input bit range for YCgCo values.
         ASSERT_FALSE(are_images_equal);
       }
     }
