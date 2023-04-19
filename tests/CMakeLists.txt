@@ -208,6 +208,7 @@ if(AVIF_BUILD_APPS)
 
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
         # Only aom encoder supports lossless encoding.
+        set_property(TEST test_cmd_animation PROPERTY DISABLED True)
         set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
 
         # SVT-AV1 does not support the images with odd dimensions that are used in this test.
