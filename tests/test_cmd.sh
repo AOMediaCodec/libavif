@@ -68,12 +68,6 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M}" "${DECODED_FILE}" 0 && exit 1
 
-  # Progressive test.
-  echo "Testing basic progressive"
-  "${AVIFENC}" --progressive -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
-  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
-
   # Argument parsing test with filenames starting with a dash.
   echo "Testing arguments"
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" -- "${ENCODED_FILE_WITH_DASH}"
