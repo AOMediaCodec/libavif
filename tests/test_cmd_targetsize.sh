@@ -97,13 +97,15 @@ pushd ${TMP_DIR}
   # with libaom versions older than 3.6.0. Skip the tests if that is the case.
   # TODO(yguyon): Investigate.
   # The grep and cut commands are not pretty but seem to work on most platforms.
-  AOM_VERSION=$("${AVIFENC}" -V | grep -o "aom.*[0-9]*\.")        # "aom [enc/dec]:X.Y."
-  AOM_VERSION=$(echo "${AOM_VERSION}" | cut -d ":" -f 2)          # "X.Y" maybe prepended by a 'v'
-  AOM_VERSION=$(echo "${AOM_VERSION}" | grep -o "[0-9]*\.[0-9]*") # "X.Y"
-  AOM_MAJOR_VERSION=$(echo "${AOM_VERSION}" | cut -d "." -f 1)
-  AOM_MINOR_VERSION=$(echo "${AOM_VERSION}" | cut -d "." -f 2)
-  [[ ${AOM_MAJOR_VERSION} -ge 3 ]] || exit 0 # older than 3.0.0
-  [[ ${AOM_MAJOR_VERSION} -ge 4 ]] || [[ ${AOM_MINOR_VERSION} -ge 6 ]] || exit 0 # older than 3.5.0
+  if "${AVIFENC}" -V | grep -o "aom" --quiet; then
+    AOM_VERSION=$("${AVIFENC}" -V | grep -o "aom.*[0-9]*\.")        # "aom [enc/dec]:X.Y."
+    AOM_VERSION=$(echo "${AOM_VERSION}" | cut -d ":" -f 2)          # "X.Y" maybe prepended by a 'v'
+    AOM_VERSION=$(echo "${AOM_VERSION}" | grep -o "[0-9]*\.[0-9]*") # "X.Y"
+    AOM_MAJOR_VERSION=$(echo "${AOM_VERSION}" | cut -d "." -f 1)
+    AOM_MINOR_VERSION=$(echo "${AOM_VERSION}" | cut -d "." -f 2)
+    [[ ${AOM_MAJOR_VERSION} -ge 3 ]] || exit 0 # older than 3.0.0
+    [[ ${AOM_MAJOR_VERSION} -ge 4 ]] || [[ ${AOM_MINOR_VERSION} -ge 6 ]] || exit 0 # older than 3.5.0
+  fi
 
   # Same as above but with an animation made of two frames.
   FRAME0="${DECODED_SMALLEST_FILE}"
