@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------------
-#
-# tests for command lines
 
 # Very verbose but useful for debugging.
 set -ex
@@ -39,7 +37,6 @@ fi
 
 AVIFENC="${BINARY_DIR}/avifenc"
 AVIFDEC="${BINARY_DIR}/avifdec"
-ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Basic calls.
 "${AVIFENC}" --version
@@ -49,60 +46,21 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_encoded.avif"
-ENCODED_FILE_WITH_DASH="-avif_test_cmd_encoded.avif"
 DECODED_FILE="avif_test_cmd_decoded.png"
-OUT_MSG="avif_test_cmd_out_msg.txt"
 
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_WITH_DASH}" "${DECODED_FILE}" "${OUT_MSG}"
+    rm -- "${ENCODED_FILE}" "${DECODED_FILE}"
   popd
 }
 trap cleanup EXIT
 
 pushd ${TMP_DIR}
-  # Lossy test. The decoded pixels should be different from the original image.
-  echo "Testing basic lossy"
-  "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
-  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M}" "${DECODED_FILE}" 0 && exit 1
-
-  # Progressive test.
   echo "Testing basic progressive"
   "${AVIFENC}" --progressive -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
-
-  # Argument parsing test with filenames starting with a dash.
-  echo "Testing arguments"
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -- "${ENCODED_FILE_WITH_DASH}"
-  "${AVIFDEC}" --info  -- "${ENCODED_FILE_WITH_DASH}"
-  # Passing a filename starting with a dash without using -- should fail.
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
-  "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
-
-  # --min and --max must be both specified.
-  "${AVIFENC}" -s 10 --min 24 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
-  "${AVIFENC}" -s 10 --max 26 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
-  # --minalpha and --maxalpha must be both specified.
-  "${AVIFENC}" -s 10 --minalpha 0 "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
-  "${AVIFENC}" -s 10 --maxalpha 0 "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
-
-  # The default quality is 60. The default alpha quality is 100 (lossless).
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
-  grep " color quality \[60 " "${OUT_MSG}"
-  grep " alpha quality \[100 " "${OUT_MSG}"
-  "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
-  grep " color quality \[85 " "${OUT_MSG}"
-  grep " alpha quality \[100 " "${OUT_MSG}"
-  # The average of 15 and 25 is 20. Quantizer 20 maps to quality 68.
-  "${AVIFENC}" -s 10 --min 15 --max 25 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
-  grep " color quality \[68 " "${OUT_MSG}"
-  grep " alpha quality \[100 " "${OUT_MSG}"
-  "${AVIFENC}" -s 10 -q 65 --min 15 --max 25 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
-  grep " color quality \[65 " "${OUT_MSG}"
-  grep " alpha quality \[100 " "${OUT_MSG}"
 popd
 
 exit 0

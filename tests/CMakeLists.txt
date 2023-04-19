@@ -202,6 +202,9 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd_metadata COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_metadata.sh ${CMAKE_BINARY_DIR}
                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+    add_test(NAME test_cmd_progressive COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_progressive.sh ${CMAKE_BINARY_DIR}
+                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
     add_test(NAME test_cmd_targetsize COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_targetsize.sh ${CMAKE_BINARY_DIR}
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
@@ -214,6 +217,9 @@ if(AVIF_BUILD_APPS)
         if(NOT AVIF_CODEC_RAV1E)
             set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
         endif()
+
+        # Only aom encoder supports progressive encoding.
+        set_property(TEST test_cmd_progressive PROPERTY DISABLED True)
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
     endif()
