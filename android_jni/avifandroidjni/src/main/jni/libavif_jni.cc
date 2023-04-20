@@ -209,6 +209,8 @@ FUNC(jlong, createDecoder, jobject encoded, int length) {
   const jfieldID width_id = env->GetFieldID(avif_decoder_class, "width", "I");
   const jfieldID height_id = env->GetFieldID(avif_decoder_class, "height", "I");
   const jfieldID depth_id = env->GetFieldID(avif_decoder_class, "depth", "I");
+  const jfieldID alpha_present_id =
+      env->GetFieldID(avif_decoder_class, "alphaPresent", "Z");
   const jfieldID frame_count_id =
       env->GetFieldID(avif_decoder_class, "frameCount", "I");
   const jfieldID repetition_count_id =
@@ -218,6 +220,7 @@ FUNC(jlong, createDecoder, jobject encoded, int length) {
   env->SetIntField(thiz, width_id, decoder->decoder->image->width);
   env->SetIntField(thiz, height_id, decoder->decoder->image->height);
   env->SetIntField(thiz, depth_id, decoder->decoder->image->depth);
+  env->SetBooleanField(thiz, alpha_present_id, decoder->decoder->alphaPresent);
   env->SetIntField(thiz, repetition_count_id,
                    decoder->decoder->repetitionCount);
   const int frameCount = decoder->decoder->imageCount;
