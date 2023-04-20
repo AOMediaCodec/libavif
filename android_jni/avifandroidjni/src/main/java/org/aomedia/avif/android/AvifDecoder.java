@@ -195,15 +195,14 @@ public class AvifDecoder {
    * Decodes the next frame of the animated AVIF into the bitmap.
    *
    * @param bitmap The decoded pixels will be copied into the bitmap.
-   * @return true on success and false on failure. A few possible reasons for failure are: 1) Input
-   *     was not valid AVIF. 2) Bitmap was not large enough to store the decoded image.
+   * @return 0 (AVIF_RESULT_OK) on success and some other avifStatus on failure. For a list of all
+   *     possible status codes, see the avifResult enum on avif.h in libavif's C source code.
    */
-  public boolean nextFrame(Bitmap bitmap) {
-    // TODO(vigneshv): Consider returning an avifResult here instead of just a boolean.
+  public int nextFrame(Bitmap bitmap) {
     return nextFrame(decoder, bitmap);
   }
 
-  private native boolean nextFrame(long decoder, Bitmap bitmap);
+  private native int nextFrame(long decoder, Bitmap bitmap);
 
   /**
    * Get the 0-based index of the frame that will be returned by the next call to {@link nextFrame}.
@@ -224,13 +223,14 @@ public class AvifDecoder {
    *
    * @param bitmap The decoded pixels will be copied into the bitmap.
    * @param n The zero-based index of the frame to be decoded.
-   * @return true on success and false on failure.
+   * @return 0 (AVIF_RESULT_OK) on success and some other avifStatus on failure. For a list of all
+   *     possible status codes, see the avifResult enum on avif.h in libavif's C source code.
    */
-  public boolean nthFrame(int n, Bitmap bitmap) {
+  public int nthFrame(int n, Bitmap bitmap) {
     return nthFrame(decoder, n, bitmap);
   }
 
-  private native boolean nthFrame(long decoder, int n, Bitmap bitmap);
+  private native int nthFrame(long decoder, int n, Bitmap bitmap);
 
   private native long createDecoder(ByteBuffer encoded, int length, int threads);
 
