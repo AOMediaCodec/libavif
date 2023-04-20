@@ -291,6 +291,10 @@ FUNC(jint, nthFrame, jlong jdecoder, jint n, jobject bitmap) {
   return DecodeNthImage(env, decoder, n, bitmap);
 }
 
+FUNC(jstring, resultToString, jint result) {
+  return env->NewStringUTF(avifResultToString(static_cast<avifResult>(result)));
+}
+
 FUNC(void, destroyDecoder, jlong jdecoder) {
   AvifDecoderWrapper* const decoder =
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);

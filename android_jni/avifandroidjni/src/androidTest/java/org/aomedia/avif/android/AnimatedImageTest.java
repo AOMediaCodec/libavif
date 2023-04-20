@@ -130,6 +130,12 @@ public class AnimatedImageTest {
     decoder.release();
   }
 
+  @Test
+  public void testResultToString() throws IOException {
+    // Test the avifResult value whose value and string representations are least likely to change.
+    assertThat(AvifDecoder.resultToString(AVIF_RESULT_OK)).isEqualTo("OK");
+  }
+
   private ByteBuffer getBuffer() throws IOException {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     String assetPath = Paths.get(ASSET_DIRECTORY, image.filename).toString();
