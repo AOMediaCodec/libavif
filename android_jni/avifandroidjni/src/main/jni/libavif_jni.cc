@@ -6,6 +6,7 @@
 #include <cpu-features.h>
 #include <jni.h>
 
+#include <memory>
 #include <new>
 
 #include "avif/avif.h"
@@ -33,6 +34,7 @@ jfieldID global_height;
 jfieldID global_depth;
 jfieldID global_frame_count;
 jfieldID global_repetition_count;
+jfieldID global_frame_durations;
 
 // RAII wrapper class that properly frees the decoder related objects on
 // destruction.
@@ -167,6 +169,8 @@ jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
   global_frame_count = env->GetFieldID(avif_decoder_class, "frameCount", "I");
   global_repetition_count =
       env->GetFieldID(avif_decoder_class, "repetitionCount", "I");
+  global_frame_durations =
+      env->GetFieldID(avif_decoder_class, "frameDurations", "[D");
   return JNI_VERSION_1_6;
 }
 
@@ -187,7 +191,8 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   env->SetIntField(info, global_info_width, decoder.decoder->image->width);
   env->SetIntField(info, global_info_height, decoder.decoder->image->height);
   env->SetIntField(info, global_info_depth, decoder.decoder->image->depth);
-  env->SetBooleanField(info, global_info_alpha_present, decoder.decoder->alphaPresent);
+  env->SetBooleanField(info, global_info_alpha_present,
+                       decoder.decoder->alphaPresent);
   return true;
 }
 
@@ -211,21 +216,45 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
 FUNC(jlong, createDecoder, jobject encoded, int length) {
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
-  AvifDecoderWrapper* decoder = new (std::nothrow) AvifDecoderWrapper();
+  std::unique_ptr<AvifDecoderWrapper> decoder(new (std::nothrow)
+                                                  AvifDecoderWrapper());
   if (decoder == nullptr) {
     return 0;
   }
   // TODO(b/272577342): Make threads configurable.
-  if (!CreateDecoderAndParse(decoder, buffer, length, /*threads=*/1)) {
+  if (!CreateDecoderAndParse(decoder.get(), buffer, length, /*threads=*/1)) {
     return 0;
   }
   env->SetIntField(thiz, global_width, decoder->decoder->image->width);
   env->SetIntField(thiz, global_height, decoder->decoder->image->height);
   env->SetIntField(thiz, global_depth, decoder->decoder->image->depth);
-  env->SetIntField(thiz, global_frame_count, decoder->decoder->imageCount);
   env->SetIntField(thiz, global_repetition_count,
                    decoder->decoder->repetitionCount);
-  return reinterpret_cast<jlong>(decoder);
+  const int frameCount = decoder->decoder->imageCount;
+  env->SetIntField(thiz, global_frame_count, frameCount);
+  // This native array is needed because setting one element at a time to a Java
+  // array from the JNI layer is inefficient.
+  std::unique_ptr<double[]> native_durations(
+      new (std::nothrow) double[frameCount]);
+  if (native_durations == nullptr) {
+    return 0;
+  }
+  for (int i = 0; i < frameCount; ++i) {
+    avifImageTiming timing;
+    if (avifDecoderNthImageTiming(decoder->decoder, i, &timing) !=
+        AVIF_RESULT_OK) {
+      return 0;
+    }
+    native_durations[i] = timing.duration;
+  }
+  jdoubleArray durations = env->NewDoubleArray(frameCount);
+  if (durations == nullptr) {
+    return 0;
+  }
+  env->SetDoubleArrayRegion(durations, /*start=*/0, frameCount,
+                            native_durations.get());
+  env->SetObjectField(thiz, global_frame_durations, durations);
+  return reinterpret_cast<jlong>(decoder.release());
 }
 
 FUNC(jboolean, nextFrame, jlong jdecoder, jobject bitmap) {
