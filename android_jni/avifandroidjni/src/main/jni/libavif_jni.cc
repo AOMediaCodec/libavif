@@ -25,17 +25,6 @@
 
 namespace {
 
-jfieldID global_info_width;
-jfieldID global_info_height;
-jfieldID global_info_depth;
-jfieldID global_info_alpha_present;
-jfieldID global_width;
-jfieldID global_height;
-jfieldID global_depth;
-jfieldID global_frame_count;
-jfieldID global_repetition_count;
-jfieldID global_frame_durations;
-
 // RAII wrapper class that properly frees the decoder related objects on
 // destruction.
 struct AvifDecoderWrapper {
@@ -155,22 +144,6 @@ jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
   if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
     return -1;
   }
-  const jclass info_class =
-      env->FindClass("org/aomedia/avif/android/AvifDecoder$Info");
-  global_info_width = env->GetFieldID(info_class, "width", "I");
-  global_info_height = env->GetFieldID(info_class, "height", "I");
-  global_info_depth = env->GetFieldID(info_class, "depth", "I");
-  global_info_alpha_present = env->GetFieldID(info_class, "alphaPresent", "Z");
-  const jclass avif_decoder_class =
-      env->FindClass("org/aomedia/avif/android/AvifDecoder");
-  global_width = env->GetFieldID(avif_decoder_class, "width", "I");
-  global_height = env->GetFieldID(avif_decoder_class, "height", "I");
-  global_depth = env->GetFieldID(avif_decoder_class, "depth", "I");
-  global_frame_count = env->GetFieldID(avif_decoder_class, "frameCount", "I");
-  global_repetition_count =
-      env->GetFieldID(avif_decoder_class, "repetitionCount", "I");
-  global_frame_durations =
-      env->GetFieldID(avif_decoder_class, "frameDurations", "[D");
   return JNI_VERSION_1_6;
 }
 
@@ -188,11 +161,17 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   if (!CreateDecoderAndParse(&decoder, buffer, length, /*threads=*/1)) {
     return false;
   }
-  env->SetIntField(info, global_info_width, decoder.decoder->image->width);
-  env->SetIntField(info, global_info_height, decoder.decoder->image->height);
-  env->SetIntField(info, global_info_depth, decoder.decoder->image->depth);
-  env->SetBooleanField(info, global_info_alpha_present,
-                       decoder.decoder->alphaPresent);
+  const jclass info_class =
+      env->FindClass("org/aomedia/avif/android/AvifDecoder$Info");
+  const jfieldID width = env->GetFieldID(info_class, "width", "I");
+  const jfieldID height = env->GetFieldID(info_class, "height", "I");
+  const jfieldID depth = env->GetFieldID(info_class, "depth", "I");
+  const jfieldID alpha_present =
+      env->GetFieldID(info_class, "alphaPresent", "Z");
+  env->SetIntField(info, width, decoder.decoder->image->width);
+  env->SetIntField(info, height, decoder.decoder->image->height);
+  env->SetIntField(info, depth, decoder.decoder->image->depth);
+  env->SetBooleanField(info, alpha_present, decoder.decoder->alphaPresent);
   return true;
 }
 
@@ -225,13 +204,24 @@ FUNC(jlong, createDecoder, jobject encoded, int length) {
   if (!CreateDecoderAndParse(decoder.get(), buffer, length, /*threads=*/1)) {
     return 0;
   }
-  env->SetIntField(thiz, global_width, decoder->decoder->image->width);
-  env->SetIntField(thiz, global_height, decoder->decoder->image->height);
-  env->SetIntField(thiz, global_depth, decoder->decoder->image->depth);
-  env->SetIntField(thiz, global_repetition_count,
+  const jclass avif_decoder_class =
+      env->FindClass("org/aomedia/avif/android/AvifDecoder");
+  const jfieldID width_id = env->GetFieldID(avif_decoder_class, "width", "I");
+  const jfieldID height_id = env->GetFieldID(avif_decoder_class, "height", "I");
+  const jfieldID depth_id = env->GetFieldID(avif_decoder_class, "depth", "I");
+  const jfieldID frame_count_id =
+      env->GetFieldID(avif_decoder_class, "frameCount", "I");
+  const jfieldID repetition_count_id =
+      env->GetFieldID(avif_decoder_class, "repetitionCount", "I");
+  const jfieldID frame_durations_id =
+      env->GetFieldID(avif_decoder_class, "frameDurations", "[D");
+  env->SetIntField(thiz, width_id, decoder->decoder->image->width);
+  env->SetIntField(thiz, height_id, decoder->decoder->image->height);
+  env->SetIntField(thiz, depth_id, decoder->decoder->image->depth);
+  env->SetIntField(thiz, repetition_count_id,
                    decoder->decoder->repetitionCount);
   const int frameCount = decoder->decoder->imageCount;
-  env->SetIntField(thiz, global_frame_count, frameCount);
+  env->SetIntField(thiz, frame_count_id, frameCount);
   // This native array is needed because setting one element at a time to a Java
   // array from the JNI layer is inefficient.
   std::unique_ptr<double[]> native_durations(
@@ -253,7 +243,7 @@ FUNC(jlong, createDecoder, jobject encoded, int length) {
   }
   env->SetDoubleArrayRegion(durations, /*start=*/0, frameCount,
                             native_durations.get());
-  env->SetObjectField(thiz, global_frame_durations, durations);
+  env->SetObjectField(thiz, frame_durations_id, durations);
   return reinterpret_cast<jlong>(decoder.release());
 }
 
