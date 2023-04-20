@@ -23,6 +23,8 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class AnimatedImageTest {
 
+  private static final int AVIF_RESULT_OK = 0;
+
   private static class Image {
     public final String filename;
     public final int width;
@@ -106,25 +108,25 @@ public class AnimatedImageTest {
     assertThat(bitmap).isNotNull();
     for (int i = 0; i < image.frameCount; i++) {
       assertThat(decoder.nextFrameIndex()).isEqualTo(i);
-      assertThat(decoder.nextFrame(bitmap)).isTrue();
+      assertThat(decoder.nextFrame(bitmap)).isEqualTo(AVIF_RESULT_OK);
       assertThat(frameDurations[i]).isWithin(1.0e-2).of(image.frameDuration);
     }
     assertThat(decoder.nextFrameIndex()).isEqualTo(image.frameCount);
     // Fetch the first frame again.
-    assertThat(decoder.nthFrame(0, bitmap)).isTrue();
+    assertThat(decoder.nthFrame(0, bitmap)).isEqualTo(AVIF_RESULT_OK);
     // Now nextFrame will return the second frame.
     assertThat(decoder.nextFrameIndex()).isEqualTo(1);
-    assertThat(decoder.nextFrame(bitmap)).isTrue();
+    assertThat(decoder.nextFrame(bitmap)).isEqualTo(AVIF_RESULT_OK);
     // Fetch the (frameCount/2)th frame.
-    assertThat(decoder.nthFrame(image.frameCount / 2, bitmap)).isTrue();
+    assertThat(decoder.nthFrame(image.frameCount / 2, bitmap)).isEqualTo(AVIF_RESULT_OK);
     // Fetch the last frame.
-    assertThat(decoder.nthFrame(image.frameCount - 1, bitmap)).isTrue();
+    assertThat(decoder.nthFrame(image.frameCount - 1, bitmap)).isEqualTo(AVIF_RESULT_OK);
     // Now nextFrame should return false.
     assertThat(decoder.nextFrameIndex()).isEqualTo(image.frameCount);
-    assertThat(decoder.nextFrame(bitmap)).isFalse();
+    assertThat(decoder.nextFrame(bitmap)).isNotEqualTo(AVIF_RESULT_OK);
     // Passing out of bound values for n should fail.
-    assertThat(decoder.nthFrame(-1, bitmap)).isFalse();
-    assertThat(decoder.nthFrame(image.frameCount, bitmap)).isFalse();
+    assertThat(decoder.nthFrame(-1, bitmap)).isNotEqualTo(AVIF_RESULT_OK);
+    assertThat(decoder.nthFrame(image.frameCount, bitmap)).isNotEqualTo(AVIF_RESULT_OK);
     decoder.release();
   }
 
