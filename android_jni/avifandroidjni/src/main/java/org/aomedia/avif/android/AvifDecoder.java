@@ -189,6 +189,22 @@ public class AvifDecoder {
 
   private native boolean nextFrame(long decoder, Bitmap bitmap);
 
+  /**
+   * Decodes the nth frame of the animated AVIF into the bitmap.
+   *
+   * <p>Note that calling this method will change the behavior of subsequent calls to {@link
+   * nextFrame}. {@link nextFrame} will start outputting the frame after this one.
+   *
+   * @param bitmap The decoded pixels will be copied into the bitmap.
+   * @param n The zero-based index of the frame to be decoded.
+   * @return true on success and false on failure.
+   */
+  public boolean nthFrame(int n, Bitmap bitmap) {
+    return nthFrame(decoder, n, bitmap);
+  }
+
+  private native boolean nthFrame(long decoder, int n, Bitmap bitmap);
+
   private native long createDecoder(ByteBuffer encoded, int length);
 
   private native void destroyDecoder(long decoder);
