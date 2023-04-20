@@ -278,6 +278,12 @@ FUNC(jboolean, nextFrame, jlong jdecoder, jobject bitmap) {
   return DecodeNextImage(env, decoder, bitmap);
 }
 
+FUNC(jint, nextFrameIndex, jlong jdecoder) {
+  AvifDecoderWrapper* const decoder =
+      reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
+  return decoder->decoder->imageIndex + 1;
+}
+
 FUNC(jboolean, nthFrame, jlong jdecoder, jint n, jobject bitmap) {
   AvifDecoderWrapper* const decoder =
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
