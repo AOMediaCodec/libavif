@@ -245,6 +245,12 @@ public class AvifDecoder {
    */
   public static native String resultToString(int result);
 
+  /**
+   * Returns a String that contains information about the libavif version, underlying codecs and
+   * libyuv version (if available).
+   */
+  public static native String versionString();
+
   private native long createDecoder(ByteBuffer encoded, int length, int threads);
 
   private native void destroyDecoder(long decoder);

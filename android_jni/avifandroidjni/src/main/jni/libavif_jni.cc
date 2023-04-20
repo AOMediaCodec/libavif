@@ -6,6 +6,7 @@
 #include <cpu-features.h>
 #include <jni.h>
 
+#include <cstdio>
 #include <memory>
 #include <new>
 
@@ -293,6 +294,16 @@ FUNC(jint, nthFrame, jlong jdecoder, jint n, jobject bitmap) {
 
 FUNC(jstring, resultToString, jint result) {
   return env->NewStringUTF(avifResultToString(static_cast<avifResult>(result)));
+}
+
+FUNC(jstring, versionString) {
+  char codec_versions[256];
+  avifCodecVersions(codec_versions);
+  char version_string[512];
+  snprintf(version_string, sizeof(version_string),
+           "libavif: %s. Codecs: %s. libyuv: %d.", avifVersion(),
+           codec_versions, avifLibYUVVersion());
+  return env->NewStringUTF(version_string);
 }
 
 FUNC(void, destroyDecoder, jlong jdecoder) {

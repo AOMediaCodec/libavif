@@ -131,9 +131,11 @@ public class AnimatedImageTest {
   }
 
   @Test
-  public void testResultToString() throws IOException {
+  public void testUtilityFunctions() throws IOException {
     // Test the avifResult value whose value and string representations are least likely to change.
     assertThat(AvifDecoder.resultToString(AVIF_RESULT_OK)).isEqualTo("OK");
+    // Ensure that the version string starts with "libavif".
+    assertThat(AvifDecoder.versionString()).startsWith("libavif");
   }
 
   private ByteBuffer getBuffer() throws IOException {
