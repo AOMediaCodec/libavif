@@ -53,8 +53,8 @@ public class AvifDecoder {
   private int repetitionCount;
   private double[] frameDurations;
 
-  private AvifDecoder(ByteBuffer encoded) {
-    decoder = createDecoder(encoded, encoded.remaining());
+  private AvifDecoder(ByteBuffer encoded, int threads) {
+    decoder = createDecoder(encoded, encoded.remaining(), threads);
   }
 
   /** Contains information about the AVIF Image. This class is only used for getInfo(). */
@@ -171,7 +171,23 @@ public class AvifDecoder {
    */
   @Nullable
   public static AvifDecoder create(ByteBuffer encoded) {
-    AvifDecoder decoder = new AvifDecoder(encoded);
+    return create(encoded, 1);
+  }
+
+  /**
+   * Create and return an AvifDecoder with the specified number of threads.
+   *
+   * @param encoded The encoded AVIF image. encoded.position() must be 0. The memory of this
+   *     ByteBuffer must be kept alive until release() is called.
+   * @param threads Number of threads to be used by the decoder. Zero means use number of CPU cores
+   *     as the thread count. Negative values are invalid. When this value is > 0, it is simply
+   *     mapped to the maxThreads parameter in libavif. For more details, see the documentation for
+   *     maxThreads variable in avif.h.
+   * @return null on failure. AvifDecoder object on success.
+   */
+  @Nullable
+  public static AvifDecoder create(ByteBuffer encoded, int threads) {
+    AvifDecoder decoder = new AvifDecoder(encoded, threads);
     return (decoder.decoder == 0) ? null : decoder;
   }
 
@@ -205,7 +221,7 @@ public class AvifDecoder {
 
   private native boolean nthFrame(long decoder, int n, Bitmap bitmap);
 
-  private native long createDecoder(ByteBuffer encoded, int length);
+  private native long createDecoder(ByteBuffer encoded, int length, int threads);
 
   private native void destroyDecoder(long decoder);
 }

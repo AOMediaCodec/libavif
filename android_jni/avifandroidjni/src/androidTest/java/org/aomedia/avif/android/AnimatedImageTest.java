@@ -32,6 +32,7 @@ public class AnimatedImageTest {
     public final int frameCount;
     public final int repetitionCount;
     public final double frameDuration;
+    public final int threads;
 
     public Image(
         String filename,
@@ -41,7 +42,8 @@ public class AnimatedImageTest {
         boolean alphaPresent,
         int frameCount,
         int repetitionCount,
-        double frameDuration) {
+        double frameDuration,
+        int threads) {
       this.filename = filename;
       this.width = width;
       this.height = height;
@@ -50,14 +52,15 @@ public class AnimatedImageTest {
       this.frameCount = frameCount;
       this.repetitionCount = repetitionCount;
       this.frameDuration = frameDuration;
+      this.threads = threads;
     }
   }
 
   private static final Image[] IMAGES = {
     // Parameter ordering: filename, width, height, depth, alphaPresent, frameCount,
-    // repetitionCount, frameDuration.
-    new Image("alpha_video.avif", 640, 480, 8, true, 48, -2, 0.04),
-    new Image("Chimera-AV1-10bit-480x270.avif", 480, 270, 10, false, 95, -2, 0.04),
+    // repetitionCount, frameDuration, threads.
+    new Image("alpha_video.avif", 640, 480, 8, true, 48, -2, 0.04, 1),
+    new Image("Chimera-AV1-10bit-480x270.avif", 480, 270, 10, false, 95, -2, 0.04, 2),
   };
 
   private static final String ASSET_DIRECTORY = "animated_avif";
@@ -88,7 +91,7 @@ public class AnimatedImageTest {
   public void testAnimatedAvifDecode() throws IOException {
     ByteBuffer buffer = getBuffer();
     assertThat(buffer).isNotNull();
-    AvifDecoder decoder = AvifDecoder.create(buffer);
+    AvifDecoder decoder = AvifDecoder.create(buffer, image.threads);
     assertThat(decoder).isNotNull();
     assertThat(decoder.getWidth()).isEqualTo(image.width);
     assertThat(decoder.getHeight()).isEqualTo(image.height);

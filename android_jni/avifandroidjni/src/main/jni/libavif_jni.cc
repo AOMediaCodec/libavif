@@ -152,6 +152,10 @@ bool DecodeNthImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
   return AvifImageToBitmap(env, decoder, bitmap);
 }
 
+int getThreadCount(int threads) {
+  return (threads == 0) ? android_getCpuCount() : threads;
+}
+
 }  // namespace
 
 jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
@@ -199,15 +203,18 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
-  if (!CreateDecoderAndParse(
-          &decoder, buffer, length,
-          (threads == 0) ? android_getCpuCount() : threads)) {
+  if (!CreateDecoderAndParse(&decoder, buffer, length,
+                             getThreadCount(threads))) {
     return false;
   }
   return DecodeNextImage(env, &decoder, bitmap);
 }
 
-FUNC(jlong, createDecoder, jobject encoded, int length) {
+FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
+  if (threads < 0) {
+    LOGE("Invalid value for threads (%d).", threads);
+    return 0;
+  }
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   std::unique_ptr<AvifDecoderWrapper> decoder(new (std::nothrow)
@@ -215,8 +222,8 @@ FUNC(jlong, createDecoder, jobject encoded, int length) {
   if (decoder == nullptr) {
     return 0;
   }
-  // TODO(b/272577342): Make threads configurable.
-  if (!CreateDecoderAndParse(decoder.get(), buffer, length, /*threads=*/1)) {
+  if (!CreateDecoderAndParse(decoder.get(), buffer, length,
+                             getThreadCount(threads))) {
     return 0;
   }
   const jclass avif_decoder_class =
