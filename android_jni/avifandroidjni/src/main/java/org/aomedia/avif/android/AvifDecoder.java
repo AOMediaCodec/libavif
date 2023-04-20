@@ -206,6 +206,17 @@ public class AvifDecoder {
   private native boolean nextFrame(long decoder, Bitmap bitmap);
 
   /**
+   * Get the 0-based index of the frame that will be returned by the next call to {@link nextFrame}.
+   * If the returned value is same as {@link getFrameCount}, then the next call to {@link nextFrame}
+   * will fail.
+   */
+  public int nextFrameIndex() {
+    return nextFrameIndex(decoder);
+  }
+
+  private native int nextFrameIndex(long decoder);
+
+  /**
    * Decodes the nth frame of the animated AVIF into the bitmap.
    *
    * <p>Note that calling this method will change the behavior of subsequent calls to {@link

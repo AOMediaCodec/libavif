@@ -105,18 +105,22 @@ public class AnimatedImageTest {
     Bitmap bitmap = Bitmap.createBitmap(image.width, image.height, config);
     assertThat(bitmap).isNotNull();
     for (int i = 0; i < image.frameCount; i++) {
+      assertThat(decoder.nextFrameIndex()).isEqualTo(i);
       assertThat(decoder.nextFrame(bitmap)).isTrue();
       assertThat(frameDurations[i]).isWithin(1.0e-2).of(image.frameDuration);
     }
+    assertThat(decoder.nextFrameIndex()).isEqualTo(image.frameCount);
     // Fetch the first frame again.
     assertThat(decoder.nthFrame(0, bitmap)).isTrue();
     // Now nextFrame will return the second frame.
+    assertThat(decoder.nextFrameIndex()).isEqualTo(1);
     assertThat(decoder.nextFrame(bitmap)).isTrue();
     // Fetch the (frameCount/2)th frame.
     assertThat(decoder.nthFrame(image.frameCount / 2, bitmap)).isTrue();
     // Fetch the last frame.
     assertThat(decoder.nthFrame(image.frameCount - 1, bitmap)).isTrue();
     // Now nextFrame should return false.
+    assertThat(decoder.nextFrameIndex()).isEqualTo(image.frameCount);
     assertThat(decoder.nextFrame(bitmap)).isFalse();
     // Passing out of bound values for n should fail.
     assertThat(decoder.nthFrame(-1, bitmap)).isFalse();
