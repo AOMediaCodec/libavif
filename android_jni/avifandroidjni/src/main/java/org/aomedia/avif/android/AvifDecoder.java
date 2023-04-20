@@ -196,7 +196,9 @@ public class AvifDecoder {
    *
    * @param bitmap The decoded pixels will be copied into the bitmap.
    * @return 0 (AVIF_RESULT_OK) on success and some other avifStatus on failure. For a list of all
-   *     possible status codes, see the avifResult enum on avif.h in libavif's C source code.
+   *     possible status codes, see the avifResult enum on avif.h in libavif's C source code. A
+   *     String describing the return value can be obtained by calling {@link resultToString} with
+   *     the return value of this function.
    */
   public int nextFrame(Bitmap bitmap) {
     return nextFrame(decoder, bitmap);
@@ -224,13 +226,24 @@ public class AvifDecoder {
    * @param bitmap The decoded pixels will be copied into the bitmap.
    * @param n The zero-based index of the frame to be decoded.
    * @return 0 (AVIF_RESULT_OK) on success and some other avifStatus on failure. For a list of all
-   *     possible status codes, see the avifResult enum on avif.h in libavif's C source code.
+   *     possible status codes, see the avifResult enum on avif.h in libavif's C source code. A
+   *     String describing the return value can be obtained by calling {@link resultToString} with
+   *     the return value of this function.
    */
   public int nthFrame(int n, Bitmap bitmap) {
     return nthFrame(decoder, n, bitmap);
   }
 
   private native int nthFrame(long decoder, int n, Bitmap bitmap);
+
+  /**
+   * Returns a String describing an avifResult enum value.
+   *
+   * @param result The avifResult value. Typically this is the return value of {@link nextFrame} or
+   *     {@link nthFrame}.
+   * @return A String containing the description of the avifResult.
+   */
+  public static native String resultToString(int result);
 
   private native long createDecoder(ByteBuffer encoded, int length, int threads);
 
