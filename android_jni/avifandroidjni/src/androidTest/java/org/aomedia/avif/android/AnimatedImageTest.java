@@ -63,7 +63,8 @@ public class AnimatedImageTest {
   private static final String ASSET_DIRECTORY = "animated_avif";
 
   private static final Bitmap.Config[] BITMAP_CONFIGS = {
-    Config.ARGB_8888, Config.RGBA_F16, Config.RGB_565,
+    // RGBA_F16 is not tested because x86 emulators are flaky with that.
+    Config.ARGB_8888, Config.RGB_565,
   };
 
   @Parameters
