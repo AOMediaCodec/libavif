@@ -76,13 +76,8 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
   return true;
 }
 
-bool DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
-                     jobject bitmap) {
-  avifResult res = avifDecoderNextImage(decoder->decoder);
-  if (res != AVIF_RESULT_OK) {
-    LOGE("Failed to decode AVIF image. Status: %d", res);
-    return false;
-  }
+bool AvifImageToBitmap(JNIEnv* const env, AvifDecoderWrapper* const decoder,
+                       jobject bitmap) {
   AndroidBitmapInfo bitmap_info;
   if (AndroidBitmap_getInfo(env, bitmap, &bitmap_info) < 0) {
     LOGE("AndroidBitmap_getInfo failed.");
@@ -128,13 +123,33 @@ bool DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
   // them:
   // https://developer.android.com/reference/android/graphics/Bitmap#setPremultiplied(boolean)
   rgb_image.alphaPremultiplied = AVIF_TRUE;
-  res = avifImageYUVToRGB(decoder->decoder->image, &rgb_image);
+  const avifResult res = avifImageYUVToRGB(decoder->decoder->image, &rgb_image);
   AndroidBitmap_unlockPixels(env, bitmap);
   if (res != AVIF_RESULT_OK) {
     LOGE("Failed to convert YUV Pixels to RGB. Status: %d", res);
     return false;
   }
   return true;
+}
+
+bool DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
+                     jobject bitmap) {
+  avifResult res = avifDecoderNextImage(decoder->decoder);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to decode AVIF image. Status: %d", res);
+    return false;
+  }
+  return AvifImageToBitmap(env, decoder, bitmap);
+}
+
+bool DecodeNthImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
+                    uint32_t n, jobject bitmap) {
+  avifResult res = avifDecoderNthImage(decoder->decoder, n);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to decode AVIF image. Status: %d", res);
+    return false;
+  }
+  return AvifImageToBitmap(env, decoder, bitmap);
 }
 
 }  // namespace
@@ -254,6 +269,12 @@ FUNC(jboolean, nextFrame, jlong jdecoder, jobject bitmap) {
   AvifDecoderWrapper* const decoder =
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
   return DecodeNextImage(env, decoder, bitmap);
+}
+
+FUNC(jboolean, nthFrame, jlong jdecoder, jint n, jobject bitmap) {
+  AvifDecoderWrapper* const decoder =
+      reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
+  return DecodeNthImage(env, decoder, n, bitmap);
 }
 
 FUNC(void, destroyDecoder, jlong jdecoder) {

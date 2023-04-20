@@ -104,6 +104,19 @@ public class AnimatedImageTest {
       assertThat(decoder.nextFrame(bitmap)).isTrue();
       assertThat(frameDurations[i]).isWithin(1.0e-2).of(image.frameDuration);
     }
+    // Fetch the first frame again.
+    assertThat(decoder.nthFrame(0, bitmap)).isTrue();
+    // Now nextFrame will return the second frame.
+    assertThat(decoder.nextFrame(bitmap)).isTrue();
+    // Fetch the (frameCount/2)th frame.
+    assertThat(decoder.nthFrame(image.frameCount / 2, bitmap)).isTrue();
+    // Fetch the last frame.
+    assertThat(decoder.nthFrame(image.frameCount - 1, bitmap)).isTrue();
+    // Now nextFrame should return false.
+    assertThat(decoder.nextFrame(bitmap)).isFalse();
+    // Passing out of bound values for n should fail.
+    assertThat(decoder.nthFrame(-1, bitmap)).isFalse();
+    assertThat(decoder.nthFrame(image.frameCount, bitmap)).isFalse();
     decoder.release();
   }
 
