@@ -50,6 +50,7 @@ public class AvifDecoder {
   private int depth;
   private int frameCount;
   private int repetitionCount;
+  private double[] frameDurations;
 
   private AvifDecoder(ByteBuffer encoded) {
     decoder = createDecoder(encoded, encoded.remaining());
@@ -140,6 +141,11 @@ public class AvifDecoder {
    */
   public int getRepetitionCount() {
     return repetitionCount;
+  }
+
+  /** Get the duration for each frame in the image. */
+  public double[] getFrameDurations() {
+    return frameDurations;
   }
 
   /** Releases the underlying decoder object. */

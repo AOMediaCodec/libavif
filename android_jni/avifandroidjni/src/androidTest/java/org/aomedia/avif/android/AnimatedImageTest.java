@@ -30,22 +30,31 @@ public class AnimatedImageTest {
     public final int depth;
     public final int frameCount;
     public final int repetitionCount;
+    public final double frameDuration;
 
     public Image(
-        String filename, int width, int height, int depth, int frameCount, int repetitionCount) {
+        String filename,
+        int width,
+        int height,
+        int depth,
+        int frameCount,
+        int repetitionCount,
+        double frameDuration) {
       this.filename = filename;
       this.width = width;
       this.height = height;
       this.depth = depth;
       this.frameCount = frameCount;
       this.repetitionCount = repetitionCount;
+      this.frameDuration = frameDuration;
     }
   }
 
   private static final Image[] IMAGES = {
-    // Parameter ordering: filename, width, height, depth, frameCount, repetitionCount.
-    new Image("alpha_video.avif", 640, 480, 8, 48, -2),
-    new Image("Chimera-AV1-10bit-480x270.avif", 480, 270, 10, 95, -2),
+    // Parameter ordering: filename, width, height, depth, frameCount, repetitionCount,
+    // frameDuration.
+    new Image("alpha_video.avif", 640, 480, 8, 48, -2, 0.04),
+    new Image("Chimera-AV1-10bit-480x270.avif", 480, 270, 10, 95, -2, 0.04),
   };
 
   private static final String ASSET_DIRECTORY = "animated_avif";
@@ -82,10 +91,14 @@ public class AnimatedImageTest {
     assertThat(decoder.getDepth()).isEqualTo(image.depth);
     assertThat(decoder.getFrameCount()).isEqualTo(image.frameCount);
     assertThat(decoder.getRepetitionCount()).isEqualTo(image.repetitionCount);
+    double[] frameDurations = decoder.getFrameDurations();
+    assertThat(frameDurations).isNotNull();
+    assertThat(frameDurations).hasLength(image.frameCount);
     Bitmap bitmap = Bitmap.createBitmap(image.width, image.height, config);
     assertThat(bitmap).isNotNull();
     for (int i = 0; i < image.frameCount; i++) {
       assertThat(decoder.nextFrame(bitmap)).isTrue();
+      assertThat(frameDurations[i]).isWithin(1.0e-2).of(image.frameDuration);
     }
     decoder.release();
   }
