@@ -48,6 +48,7 @@ public class AvifDecoder {
   private int width;
   private int height;
   private int depth;
+  private boolean alphaPresent;
   private int frameCount;
   private int repetitionCount;
   private double[] frameDurations;
@@ -128,6 +129,11 @@ public class AvifDecoder {
   /** Get the depth (bit depth) of the image. */
   public int getDepth() {
     return depth;
+  }
+
+  /** Returns true if the image contains a transparency/alpha channel, false otherwise. */
+  public boolean getAlphaPresent() {
+    return alphaPresent;
   }
 
   /** Get the number of frames in the image. */

@@ -28,6 +28,7 @@ public class AnimatedImageTest {
     public final int width;
     public final int height;
     public final int depth;
+    public final boolean alphaPresent;
     public final int frameCount;
     public final int repetitionCount;
     public final double frameDuration;
@@ -37,6 +38,7 @@ public class AnimatedImageTest {
         int width,
         int height,
         int depth,
+        boolean alphaPresent,
         int frameCount,
         int repetitionCount,
         double frameDuration) {
@@ -44,6 +46,7 @@ public class AnimatedImageTest {
       this.width = width;
       this.height = height;
       this.depth = depth;
+      this.alphaPresent = alphaPresent;
       this.frameCount = frameCount;
       this.repetitionCount = repetitionCount;
       this.frameDuration = frameDuration;
@@ -51,10 +54,10 @@ public class AnimatedImageTest {
   }
 
   private static final Image[] IMAGES = {
-    // Parameter ordering: filename, width, height, depth, frameCount, repetitionCount,
-    // frameDuration.
-    new Image("alpha_video.avif", 640, 480, 8, 48, -2, 0.04),
-    new Image("Chimera-AV1-10bit-480x270.avif", 480, 270, 10, 95, -2, 0.04),
+    // Parameter ordering: filename, width, height, depth, alphaPresent, frameCount,
+    // repetitionCount, frameDuration.
+    new Image("alpha_video.avif", 640, 480, 8, true, 48, -2, 0.04),
+    new Image("Chimera-AV1-10bit-480x270.avif", 480, 270, 10, false, 95, -2, 0.04),
   };
 
   private static final String ASSET_DIRECTORY = "animated_avif";
@@ -89,6 +92,7 @@ public class AnimatedImageTest {
     assertThat(decoder.getWidth()).isEqualTo(image.width);
     assertThat(decoder.getHeight()).isEqualTo(image.height);
     assertThat(decoder.getDepth()).isEqualTo(image.depth);
+    assertThat(decoder.getAlphaPresent()).isEqualTo(image.alphaPresent);
     assertThat(decoder.getFrameCount()).isEqualTo(image.frameCount);
     assertThat(decoder.getRepetitionCount()).isEqualTo(image.repetitionCount);
     double[] frameDurations = decoder.getFrameDurations();
