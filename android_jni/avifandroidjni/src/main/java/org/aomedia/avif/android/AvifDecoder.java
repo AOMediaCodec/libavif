@@ -171,7 +171,7 @@ public class AvifDecoder {
    */
   @Nullable
   public static AvifDecoder create(ByteBuffer encoded) {
-    return create(encoded, 1);
+    return create(encoded, /* threads= */ 1);
   }
 
   /**
