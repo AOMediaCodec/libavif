@@ -100,7 +100,7 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
       bitmap_info.format != ANDROID_BITMAP_FORMAT_RGB_565 &&
       bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_F16) {
     LOGE("Bitmap format (%d) is not supported.", bitmap_info.format);
-    return AVIF_RESULT_UNKNOWN_ERROR;
+    return AVIF_RESULT_NOT_IMPLEMENTED;
   }
   void* bitmap_pixels = nullptr;
   if (AndroidBitmap_lockPixels(env, bitmap, &bitmap_pixels) !=
