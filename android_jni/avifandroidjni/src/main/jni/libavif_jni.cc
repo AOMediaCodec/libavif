@@ -175,6 +175,10 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
   }
   rgb_image.pixels = static_cast<uint8_t*>(bitmap_pixels);
   rgb_image.rowBytes = bitmap_info.stride;
+  // Android always sees the Bitmaps as premultiplied with alpha when it renders
+  // them:
+  // https://developer.android.com/reference/android/graphics/Bitmap#setPremultiplied(boolean)
+  rgb_image.alphaPremultiplied = AVIF_TRUE;
   res = avifImageYUVToRGB(decoder.decoder->image, &rgb_image);
   AndroidBitmap_unlockPixels(env, bitmap);
   if (res != AVIF_RESULT_OK) {
