@@ -450,6 +450,8 @@ if(AVIF_CODEC_AOM)
 endif()
 
 if(AVIF_CODEC_AVM)
+    message(WARNING "libavif: AV2 support with avm is experimental. Only use for testing.")
+
     # The avm repository is a fork of aom and inherited a lot of folders, files and build artifacts named the same way.
     # Having both dependencies at the same time generates conflicts in includes, binary lookups etc.
     if(AVIF_CODEC_AOM)
