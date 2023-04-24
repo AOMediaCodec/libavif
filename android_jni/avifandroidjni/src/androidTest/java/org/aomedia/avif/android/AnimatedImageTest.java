@@ -1,16 +1,12 @@
 package org.aomedia.avif.android;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.aomedia.avif.android.TestUtils.Image;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
-import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
@@ -24,39 +20,6 @@ import org.junit.runners.Parameterized.Parameters;
 public class AnimatedImageTest {
 
   private static final int AVIF_RESULT_OK = 0;
-
-  private static class Image {
-    public final String filename;
-    public final int width;
-    public final int height;
-    public final int depth;
-    public final boolean alphaPresent;
-    public final int frameCount;
-    public final int repetitionCount;
-    public final double frameDuration;
-    public final int threads;
-
-    public Image(
-        String filename,
-        int width,
-        int height,
-        int depth,
-        boolean alphaPresent,
-        int frameCount,
-        int repetitionCount,
-        double frameDuration,
-        int threads) {
-      this.filename = filename;
-      this.width = width;
-      this.height = height;
-      this.depth = depth;
-      this.alphaPresent = alphaPresent;
-      this.frameCount = frameCount;
-      this.repetitionCount = repetitionCount;
-      this.frameDuration = frameDuration;
-      this.threads = threads;
-    }
-  }
 
   private static final Image[] IMAGES = {
     // Parameter ordering: filename, width, height, depth, alphaPresent, frameCount,
@@ -91,7 +54,7 @@ public class AnimatedImageTest {
 
   @Test
   public void testAnimatedAvifDecode() throws IOException {
-    ByteBuffer buffer = getBuffer();
+    ByteBuffer buffer = TestUtils.getBuffer(ASSET_DIRECTORY, image.filename);
     assertThat(buffer).isNotNull();
     AvifDecoder decoder = AvifDecoder.create(buffer, image.threads);
     assertThat(decoder).isNotNull();
@@ -136,15 +99,5 @@ public class AnimatedImageTest {
     assertThat(AvifDecoder.resultToString(AVIF_RESULT_OK)).isEqualTo("OK");
     // Ensure that the version string starts with "libavif".
     assertThat(AvifDecoder.versionString()).startsWith("libavif");
-  }
-
-  private ByteBuffer getBuffer() throws IOException {
-    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String assetPath = Paths.get(ASSET_DIRECTORY, image.filename).toString();
-    InputStream is = context.getAssets().open(assetPath);
-    ByteBuffer buffer = ByteBuffer.allocateDirect(is.available());
-    Channels.newChannel(is).read(buffer);
-    buffer.rewind();
-    return buffer;
   }
 }
