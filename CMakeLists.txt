@@ -60,7 +60,9 @@ option(AVIF_LOCAL_SVT
 option(AVIF_LOCAL_GTEST
        "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)" OFF
 )
-option(AVIF_LOCAL_AVM "Build the AVM (AV2) codec by providing your own copy of the repo in ext/avm (see Local Builds in README)" OFF)
+option(AVIF_LOCAL_AVM "Build the AVM (AV2) codec by providing your own copy of the repo in ext/avm (see Local Builds in README)"
+       OFF
+)
 
 if(AVIF_LOCAL_LIBGAV1)
     enable_language(CXX)
@@ -450,9 +452,9 @@ endif()
 if(AVIF_CODEC_AVM)
     # The avm repository is a fork of aom and inherited a lot of folders, files and build artifacts named the same way.
     # Having both dependencies at the same time generates conflicts in includes, binary lookups etc.
-    if (AVIF_CODEC_AOM)
+    if(AVIF_CODEC_AOM)
         message(FATAL_ERROR "libavif: aom conflicts with avm, bailing out")
-    endif ()
+    endif()
 
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AVM=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_avm.c)
@@ -480,7 +482,11 @@ if(AVIF_CODEC_AVM)
     message(STATUS "libavif: Codec enabled: avm (encode/decode)")
 endif()
 
-if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1 AND NOT AVIF_CODEC_AVM)
+if(NOT AVIF_CODEC_AOM
+   AND NOT AVIF_CODEC_DAV1D
+   AND NOT AVIF_CODEC_LIBGAV1
+   AND NOT AVIF_CODEC_AVM
+)
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 

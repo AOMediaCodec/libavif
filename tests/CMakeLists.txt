@@ -247,13 +247,16 @@ if(AVIF_CODEC_AVM)
 
     # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
     # This may lead to test failures when there is no available AV1 codec.
-    if(((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE) AND NOT AVIF_CODEC_RAV1E AND NOT AVIF_CODEC_SVT) OR
-       ((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_DECODE) AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1))
+    if(((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE) AND NOT AVIF_CODEC_RAV1E AND NOT AVIF_CODEC_SVT)
+       OR ((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_DECODE) AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)
+    )
         # Disable all tests that use avifEncoder without explicitly setting the codec to avm.
         set_tests_properties(aviftest PROPERTIES DISABLED True)
         if(AVIF_LOCAL_GTEST)
-            set_tests_properties(avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest
-                    avifincrtest avifiostatstest avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True)
+            set_tests_properties(
+                avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
+                avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
+            )
         endif()
         # Disable all tests that use avifenc without explicitly setting --codec=avm.
         set_tests_properties(test_cmd test_cmd_animation test_cmd_grid test_cmd_targetsize PROPERTIES DISABLED True)
