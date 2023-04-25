@@ -278,7 +278,12 @@ if(AVIF_CODEC_DAV1D)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_dav1d.c)
 
     if(AVIF_LOCAL_DAV1D)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d${AVIF_LIBRARY_SUFFIX}")
+        set(AVIF_DAV1D_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build")
+        # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
+        if(DEFINED ANDROID_ABI)
+            set(AVIF_DAV1D_BUILD_DIR "${AVIF_DAV1D_BUILD_DIR}/${ANDROID_ABI}")
+        endif()
+	set(LIB_FILENAME "${AVIF_DAV1D_BUILD_DIR}/src/libdav1d${AVIF_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
             if("${AVIF_LIBRARY_SUFFIX}" STREQUAL ".a")
                 message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
@@ -293,8 +298,8 @@ if(AVIF_CODEC_DAV1D)
         endif()
 
         set(AVIF_CODEC_INCLUDES
-            ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include" "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/include/dav1d"
+            ${AVIF_CODEC_INCLUDES} "${AVIF_DAV1D_BUILD_DIR}"
+	    "${AVIF_DAV1D_BUILD_DIR}/include" "${AVIF_DAV1D_BUILD_DIR}/include/dav1d"
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
         )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
