@@ -31,13 +31,25 @@ $ export ANDROID_SDK_ROOT="/path/to/android/sdk"
 $ export ANDROID_NDK_HOME="/path/to/android/ndk"
 ```
 
-Step 3 - Checkout and build libgav1
+Step 3 - Checkout and build libgav1 or dav1d
 
 ```
 $ cd ext
 $ ./libgav1_android.sh "${ANDROID_NDK_HOME}"
 $ cd ..
 ```
+
+If you want to use dav1d instead:
+
+```
+$ cd ext
+$ ./dav1d_android.sh "${ANDROID_NDK_HOME}"
+$ cd ..
+```
+
+Update [CMakeLists.txt](avifandroidjni/src/main/jni/CMakeLists.txt) as follows:
+ * Set `AVIF_LOCAL_LIBGAV1` and `AVIF_CODEC_LIBGAV1` to `OFF`.
+ * Set `AVIF_LOCAL_DAV1D` and `AVIF_CODEC_DAV1D` to `ON`.
 
 Step 4 - Build the JNI Wrapper and generate the AAR package
 

@@ -8,6 +8,7 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
+: # When updating the dav1d version, make the same change to dav1d_android.sh.
 git clone -b 1.1.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
 
 cd dav1d
