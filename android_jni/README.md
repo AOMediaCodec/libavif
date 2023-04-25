@@ -76,3 +76,8 @@ $ ./gradlew connectedAndroidTest
 The entire android_jni directory can be imported as a project into Android Studio.
 
 To build the project from within Android Studio, follow the all the steps from the above section to checkout and build libgav1. After that, the last step is equivalent to invoking the build from Android Studio.
+
+## Maven Releases
+
+Maven hosted version of libavif can be found here:
+https://repo1.maven.org/maven2/org/aomedia/avif/android/avif/
