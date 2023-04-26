@@ -127,7 +127,7 @@ static uint32_t avifBitsReadVLC(avifBits * const bits)
 }
 
 // ---------------------------------------------------------------------------
-// Variables in here use snake_case to self-document from the AV1 and AV2 specs:
+// Variables in here use snake_case to self-document from the AV1 spec and the in development AV2 spec:
 //
 // https://aomediacodec.github.io/av1-spec/av1-spec.pdf
 //
