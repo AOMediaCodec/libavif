@@ -44,6 +44,14 @@ static void avmCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
+static avifResult avifCheckCodecVersionAVM()
+{
+    // The minimum supported version of avm is the anchor 4.0.0.
+    // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
+    AVIF_CHECKERR((aom_codec_version() >> 16) >= 4, AVIF_RESULT_NO_CODEC_AVAILABLE);
+    return AVIF_RESULT_OK;
+}
+
 static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                                      struct avifDecoder * decoder,
                                      const avifDecodeSample * sample,
@@ -52,6 +60,8 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                                      avifImage * image)
 {
     if (!codec->internal->decoderInitialized) {
+        AVIF_CHECKRES(avifCheckCodecVersionAVM());
+
         aom_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
         cfg.threads = decoder->maxThreads;
@@ -533,32 +543,11 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
     encoderChanges &= ~AVIF_ENCODER_CHANGE_SCALING_MODE;
 
     if (!codec->internal->encoderInitialized) {
+        AVIF_CHECKRES(avifCheckCodecVersionAVM());
+
         int aomCpuUsed = -1;
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
-        }
-
-        // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
-        static const int aomVersion_2_0_0 = (2 << 16);
-        const int aomVersion = aom_codec_version();
-        if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
-            // Due to a known issue with libaom v1.0.0-errata1-avif, 10bpc and
-            // 12bpc image encodes will call the wrong variant of
-            // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
-            // a new tagged release from libaom with the fix and can verify we're
-            // running with that version of libaom, we must avoid using
-            // cpu-used=7/8 on any >8bpc image encodes.
-            //
-            // Context:
-            //   * https://github.com/AOMediaCodec/libavif/issues/49
-            //   * https://bugs.chromium.org/p/aomedia/issues/detail?id=2587
-            //
-            // Continued bug tracking here:
-            //   * https://github.com/AOMediaCodec/libavif/issues/56
-
-            if (aomCpuUsed > 6) {
-                aomCpuUsed = 6;
-            }
         }
 
         codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
