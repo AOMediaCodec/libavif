@@ -653,9 +653,23 @@ typedef struct avifTile
     uint32_t width;  // Either avifTrack.width or avifDecoderItem.width
     uint32_t height; // Either avifTrack.height or avifDecoderItem.height
     uint8_t operatingPoint;
-    uint8_t type[4]; // "av01" for AV1 and "av02" for AV2
+    uint8_t type[4]; // "av01" for AV1 ("av02" for AV2 if AVIF_CODEC_AVM)
 } avifTile;
 AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
+
+// Returns true if the item type or track format is associated with a codec from the Alliance for Open Media.
+static avifBool avifIsTypeAOM(const uint8_t type[4])
+{
+    if (!memcmp(type, "av01", 4)) {
+        return AVIF_TRUE;
+    }
+#if defined(AVIF_CODEC_AVM)
+    if (!memcmp(type, "av02", 4)) {
+        return AVIF_TRUE;
+    }
+#endif
+    return AVIF_FALSE;
+}
 
 // This holds one "meta" box (from the BMFF and HEIF standards) worth of relevant-to-AVIF information.
 // * If a meta box is parsed from the root level of the BMFF, it can contain the information about
@@ -1300,7 +1314,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
         avifDecoderItem * item = &gridItem->meta->items.item[i];
         if (item->dimgForID == gridItem->id) {
-            if (memcmp(item->type, "av01", 4) && memcmp(item->type, "av02", 4)) {
+            if (!avifIsTypeAOM(item->type)) {
                 continue;
             }
             if (item->hasUnsupportedEssentialProperty) {
@@ -1328,7 +1342,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
         avifDecoderItem * item = &gridItem->meta->items.item[i];
         if (item->dimgForID == gridItem->id) {
-            if (memcmp(item->type, "av01", 4) && memcmp(item->type, "av02", 4)) {
+            if (!avifIsTypeAOM(item->type)) {
                 continue;
             }
 
@@ -2712,8 +2726,7 @@ static avifBool avifParseSampleDescriptionBox(avifSampleTable * sampleTable,
         }
         memcpy(description->format, sampleEntryHeader.type, sizeof(description->format));
         size_t remainingBytes = avifROStreamRemainingBytes(&s);
-        if ((!memcmp(description->format, "av01", 4) || !memcmp(description->format, "av02", 4)) &&
-            (remainingBytes > VISUALSAMPLEENTRY_SIZE)) {
+        if (avifIsTypeAOM(description->format) && (remainingBytes > VISUALSAMPLEENTRY_SIZE)) {
             AVIF_CHECK(avifParseItemPropertyContainerBox(&description->properties,
                                                          rawOffset + avifROStreamOffset(&s) + VISUALSAMPLEENTRY_SIZE,
                                                          avifROStreamCurrent(&s) + VISUALSAMPLEENTRY_SIZE,
@@ -3371,7 +3384,7 @@ avifResult avifDecoderParse(avifDecoder * decoder)
             continue;
         }
         avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
-        if (memcmp(item->type, "av01", 4) && memcmp(item->type, "av02", 4) && !isGrid) {
+        if (!avifIsTypeAOM(item->type) && !isGrid) {
             // probably exif or some other data
             continue;
         }
@@ -3505,7 +3518,7 @@ static avifDecoderItem * avifDecoderDataFindItem(avifDecoderData * data, avifBoo
             // An essential property isn't supported by libavif; ignore the item.
             continue;
         }
-        if (memcmp(item->type, "av01", 4) && memcmp(item->type, "av02", 4) && memcmp(item->type, "grid", 4)) {
+        if (!avifIsTypeAOM(item->type) && memcmp(item->type, "grid", 4)) {
             // Probably exif or some other data.
             continue;
         }
@@ -3618,9 +3631,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (avifSampleTableHasFormat(track->sampleTable, "av01")) {
                 colorTrackType = "av01";
                 colorConfigPropName = "av1C";
+#if defined(AVIF_CODEC_AVM)
             } else if (avifSampleTableHasFormat(track->sampleTable, "av02")) {
                 colorTrackType = "av02";
                 colorConfigPropName = "av2C";
+#endif
             } else {
                 continue;
             }
@@ -3667,8 +3682,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
             if (avifSampleTableHasFormat(track->sampleTable, "av01")) {
                 alphaTrackType = "av01";
+#if defined(AVIF_CODEC_AVM)
             } else if (avifSampleTableHasFormat(track->sampleTable, "av02")) {
                 alphaTrackType = "av02";
+#endif
             } else {
                 continue;
             }

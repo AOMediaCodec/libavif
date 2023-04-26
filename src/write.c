@@ -228,8 +228,8 @@ typedef struct avifEncoderData
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
     // Fields specific to AV1/AV2
-    const char * imageItemType;  // "av01" for AV1, "av02" for AV2
-    const char * configPropName; // "av1C" for AV1, "av2C" for AV2
+    const char * imageItemType;  // "av01" for AV1 ("av02" for AV2 if AVIF_CODEC_AVM)
+    const char * configPropName; // "av1C" for AV1 ("av2C" for AV2 if AVIF_CODEC_AVM)
 } avifEncoderData;
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
