@@ -3,6 +3,7 @@ plugins {
 }
 
 android {
+    namespace 'org.aomedia.avif.android'
     compileSdk 30
 
     defaultConfig {
@@ -25,9 +26,7 @@ android {
     }
     externalNativeBuild {
         cmake {
-            // Lowest version of cmake that is available on the Android SDK that
-            // is greater than or equal to 3.13 is 3.18.1.
-            version '3.18.1'
+            version '3.22.1'
             path 'src/main/jni/CMakeLists.txt'
         }
     }
