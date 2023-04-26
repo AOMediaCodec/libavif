@@ -23,7 +23,8 @@ jobs:
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r23b
+          # r25c is the same as 25.2.9519653.
+          ndk-version: r25c
           add-to-path: false
       - name: Setup ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
@@ -46,7 +47,9 @@ jobs:
           working-directory: android_jni
           api-level: 30
           force-avd-creation: false
-          cmake: 3.18.1
-          ndk: 23.2.8568313
+          # This is the same version of cmake that is found in build.gradle.
+          # This will be used to build libavif and the JNI bindings.
+          cmake: 3.22.1
+          ndk: 25.2.9519653
           arch: x86_64
           script: ./gradlew cAT

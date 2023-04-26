@@ -17,7 +17,8 @@ jobs:
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r21e
+          # r25c is the same as 25.2.9519653.
+          ndk-version: r25c
           add-to-path: false
       - name: Setup ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
@@ -39,7 +40,7 @@ jobs:
       - name: Install CMake in the Android SDK
         # This is the same version of cmake that is found in build.gradle. This
         # will be used to build libavif and the JNI bindings.
-        run: sdkmanager "cmake;3.18.1"
+        run: sdkmanager "cmake;3.22.1"
       - name: Build the libavif JNI Wrapper
         working-directory: android_jni
         run: ./gradlew --no-daemon assembleRelease
