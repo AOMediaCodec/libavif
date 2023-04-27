@@ -933,6 +933,14 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
+static avifBool avifEncoderUseAV2(const avifEncoder * encoder)
+{
+    // TODO(yguyon): Rework when AVIF_CODEC_CHOICE_AUTO can be AVM
+    assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
+           (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
+    return encoder->codecChoice == AVIF_CODEC_CHOICE_AVM;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -1048,10 +1056,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // -----------------------------------------------------------------------
     // Choose AV1 or AV2
 
-    // TODO(yguyon): Rework when AVIF_CODEC_CHOICE_AUTO can be AVM
-    assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
-           (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
-    const avifBool isAV2 = encoder->codecChoice == AVIF_CODEC_CHOICE_AVM;
+    const avifBool isAV2 = avifEncoderUseAV2(encoder);
     encoder->data->imageItemType = isAV2 ? "av02" : "av01";
     encoder->data->configPropName = isAV2 ? "av2C" : "av1C";
 
@@ -1282,10 +1287,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    // TODO(yguyon): Rework when AVIF_CODEC_CHOICE_AUTO can be AVM
-    assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
-           (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
-    const avifBool isAV2 = encoder->codecChoice == AVIF_CODEC_CHOICE_AVM;
+    const avifBool isAV2 = avifEncoderUseAV2(encoder);
 
     // -----------------------------------------------------------------------
     // Finish up encoding
@@ -1352,7 +1354,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifBoxMarker ftyp = avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD);
     avifRWStreamWriteChars(&s, majorBrand, 4); // unsigned int(32) major_brand;
-    // TODO(yguyon): AV2-AVIF is AVIFv2 for now (change once no longer experimental)
+    // TODO(yguyon): Experimental AV2-AVIF is AVIF version 2 for now (change once it is ratified)
     avifRWStreamWriteU32(&s, isAV2 ? 2 : 0);                               // unsigned int(32) minor_version;
     avifRWStreamWriteChars(&s, "avif", 4);                                 // unsigned int(32) compatible_brands[];
     if (isSequence) {                                                      //
