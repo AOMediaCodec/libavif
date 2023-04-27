@@ -658,7 +658,7 @@ typedef struct avifTile
 AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
 
 // Returns true if the item type or track format is associated with a codec from the Alliance for Open Media.
-static avifBool avifIsTypeAOM(const uint8_t type[4])
+static avifBool avifIsTypeAOM(const uint8_t * type)
 {
     if (!memcmp(type, "av01", 4)) {
         return AVIF_TRUE;
@@ -869,7 +869,7 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
     }
 }
 
-static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint32_t width, uint32_t height, uint8_t operatingPoint, const uint8_t type[4])
+static avifTile * avifDecoderDataCreateTile(avifDecoderData * data, uint32_t width, uint32_t height, uint8_t operatingPoint, const uint8_t * type)
 {
     avifTile * tile = (avifTile *)avifArrayPushPtr(&data->tiles);
     tile->image = avifImageCreateEmpty();
