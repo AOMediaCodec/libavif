@@ -2005,8 +2005,10 @@ static avifBool avifParseItemPropertyContainerBox(avifPropertyArray * properties
             AVIF_CHECK(avifParseColourInformationBox(prop, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "av1C", 4)) {
             AVIF_CHECK(avifParseCodecConfigurationBoxProperty(prop, avifROStreamCurrent(&s), header.size, "av1C", diag));
+#if defined(AVIF_CODEC_AVM)
         } else if (!memcmp(header.type, "av2C", 4)) {
             AVIF_CHECK(avifParseCodecConfigurationBoxProperty(prop, avifROStreamCurrent(&s), header.size, "av2C", diag));
+#endif
         } else if (!memcmp(header.type, "pasp", 4)) {
             AVIF_CHECK(avifParsePixelAspectRatioBoxProperty(prop, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "clap", 4)) {
@@ -2111,8 +2113,24 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C", "av2C", "pasp", "clap",
-                                                     "irot", "imir", "pixi", "a1op", "lsel", "a1lx", "clli" };
+            static const char * supportedTypes[] = {
+                "ispe",
+                "auxC",
+                "colr",
+                "av1C",
+#if defined(AVIF_CODEC_AVM)
+                "av2C",
+#endif
+                "pasp",
+                "clap",
+                "irot",
+                "imir",
+                "pixi",
+                "a1op",
+                "lsel",
+                "a1lx",
+                "clli"
+            };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
             avifBool supportedType = AVIF_FALSE;
             for (size_t i = 0; i < supportedTypesCount; ++i) {
