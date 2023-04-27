@@ -388,7 +388,7 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 
 static avifBool avifSequenceHeaderParse(avifSequenceHeader * header,
                                         const avifROData * sample,
-                                        avifBool (*parse)(avifBits *, avifSequenceHeader *))
+                                        avifBool isAV2)
 {
     avifROData obus = *sample;
 
@@ -424,7 +424,7 @@ static avifBool avifSequenceHeaderParse(avifSequenceHeader * header,
             return AVIF_FALSE;
 
         if (obu_type == 1) { // Sequence Header
-            return parse(&bits, header);
+            return isAV2 ? parseAV2SequenceHeader(&bits, header) : parseAV1SequenceHeader(&bits, header);
         }
 
         // Skip this OBU
@@ -436,10 +436,10 @@ static avifBool avifSequenceHeaderParse(avifSequenceHeader * header,
 
 avifBool avifAV1SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
 {
-    return avifSequenceHeaderParse(header, sample, parseAV1SequenceHeader);
+    return avifSequenceHeaderParse(header, sample, /*isAV2=*/AVIF_FALSE);
 }
 
 avifBool avifAV2SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
 {
-    return avifSequenceHeaderParse(header, sample, parseAV2SequenceHeader);
+    return avifSequenceHeaderParse(header, sample, /*isAV2=*/AVIF_TRUE);
 }
