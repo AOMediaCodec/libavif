@@ -1857,8 +1857,11 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
     return AVIF_TRUE;
 }
 
-static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen,
-                                               const char * configPropName,avifDiagnostics * diag)
+static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop,
+                                                       const uint8_t * raw,
+                                                       size_t rawLen,
+                                                       const char * configPropName,
+                                                       avifDiagnostics * diag)
 {
     char diagContext[] = "Box[....]";
     snprintf(diagContext, sizeof(diagContext), "Box[%.4s]", configPropName); // "Box[av1C]" or "Box[av2C]"
@@ -3736,8 +3739,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         const uint8_t operatingPoint = 0; // No way to set operating point via tracks
-        avifTile * colorTile =
-            avifDecoderDataCreateTile(data, colorCodecType, colorTrack->width, colorTrack->height, operatingPoint);
+        avifTile * colorTile = avifDecoderDataCreateTile(data, colorCodecType, colorTrack->width, colorTrack->height, operatingPoint);
         if (!colorTile) {
             return AVIF_RESULT_OUT_OF_MEMORY;
         }
@@ -3751,8 +3753,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         data->color.tileCount = 1;
 
         if (alphaTrack) {
-            avifTile * alphaTile =
-                avifDecoderDataCreateTile(data, alphaCodecType, alphaTrack->width, alphaTrack->height, operatingPoint);
+            avifTile * alphaTile = avifDecoderDataCreateTile(data, alphaCodecType, alphaTrack->width, alphaTrack->height, operatingPoint);
             if (!alphaTile) {
                 return AVIF_RESULT_OUT_OF_MEMORY;
             }
