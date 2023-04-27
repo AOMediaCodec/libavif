@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <stdio.h>
 #include <string.h>
 
 #define AUXTYPE_SIZE 64
@@ -1827,7 +1828,7 @@ static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop, cons
                                                const char * configPropName,avifDiagnostics * diag)
 {
     char diagContext[] = "Box[....]";
-    memcpy(diagContext + 4, configPropName, 4); // "Box[av1C]" or "Box[av2C]"
+    snprintf(diagContext, sizeof(diagContext), "Box[%.4s]", configPropName); // "Box[av1C]" or "Box[av2C]"
     BEGIN_STREAM(s, raw, rawLen, diag, diagContext);
 
     avifCodecConfigurationBox * config = &prop->u.av1C;
