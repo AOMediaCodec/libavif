@@ -301,7 +301,24 @@ void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
 avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
 
 // ---------------------------------------------------------------------------
-// avifCodec (abstraction layer to use different AV1 implementations)
+// avifCodecType (underlying video format)
+
+// Alliance for Open Media video formats that can be used in the AVIF image format.
+typedef enum avifCodecType
+{
+    AVIF_CODEC_TYPE_UNKNOWN,
+    AVIF_CODEC_TYPE_AV1,
+#if defined(AVIF_CODEC_AVM)
+    AVIF_CODEC_TYPE_AV2, // Experimental.
+#endif
+    AVIF_CODEC_TYPE_COUNT
+} avifCodecType;
+
+// Returns AVIF_CODEC_TYPE_UNKNOWN unless the chosen codec is available with the requiredFlags.
+avifCodecType avifCodecTypeFromChoice(avifCodecChoice choice, avifCodecFlags requiredFlags);
+
+// ---------------------------------------------------------------------------
+// avifCodec (abstraction layer to use different codec type implementations)
 
 struct avifCodec;
 struct avifCodecInternal;
@@ -507,8 +524,7 @@ typedef struct avifSequenceHeader
     avifCodecConfigurationBox av1C; // TODO(yguyon): Rename or add av2C
 } avifSequenceHeader;
 
-avifBool avifAV1SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
-avifBool avifAV2SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample);
+avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX

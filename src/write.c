@@ -933,12 +933,12 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
-static avifBool avifEncoderUseAV2(const avifEncoder * encoder)
+static avifCodecType avifEncoderGetCodecType(const avifEncoder * encoder)
 {
     // TODO(yguyon): Rework when AVIF_CODEC_CHOICE_AUTO can be AVM
     assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
            (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
-    return encoder->codecChoice == AVIF_CODEC_CHOICE_AVM;
+    return avifCodecTypeFromChoice(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
 }
 
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
@@ -1056,9 +1056,21 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // -----------------------------------------------------------------------
     // Choose AV1 or AV2
 
-    const avifBool isAV2 = avifEncoderUseAV2(encoder);
-    encoder->data->imageItemType = isAV2 ? "av02" : "av01";
-    encoder->data->configPropName = isAV2 ? "av2C" : "av1C";
+    const avifCodecType codecType = avifEncoderGetCodecType(encoder);
+    switch (codecType) {
+        case AVIF_CODEC_TYPE_AV1:
+            encoder->data->imageItemType = "av01";
+            encoder->data->configPropName = "av1C";
+            break;
+#if defined(AVIF_CODEC_AVM)
+        case AVIF_CODEC_TYPE_AV2:
+            encoder->data->imageItemType = "av02";
+            encoder->data->configPropName = "av2C";
+            break;
+#endif
+        default:
+            return AVIF_RESULT_NO_CODEC_AVAILABLE;
+    }
 
     // -----------------------------------------------------------------------
     // Map quality and qualityAlpha to quantizer and quantizerAlpha
@@ -1287,7 +1299,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    const avifBool isAV2 = avifEncoderUseAV2(encoder);
+    const avifCodecType codecType = avifEncoderGetCodecType(encoder);
+    AVIF_CHECKERR(codecType != AVIF_CODEC_TYPE_UNKNOWN, AVIF_RESULT_NO_CODEC_AVAILABLE);
 
     // -----------------------------------------------------------------------
     // Finish up encoding
@@ -1322,8 +1335,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         if (item->encodeOutput->samples.count > 0) {
             const avifEncodeSample * firstSample = &item->encodeOutput->samples.sample[0];
             avifSequenceHeader sequenceHeader;
-            AVIF_CHECKERR(isAV2 ? avifAV2SequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data)
-                                : avifAV1SequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data),
+            AVIF_CHECKERR(avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data, codecType),
                           item->alpha ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED);
             item->av1C = sequenceHeader.av1C;
         }
@@ -1352,10 +1364,17 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         majorBrand = "avis";
     }
 
+    uint32_t minorVersion = 0;
+#if defined(AVIF_CODEC_AVM)
+    if (codecType == AVIF_CODEC_TYPE_AV2) {
+        // TODO(yguyon): Experimental AV2-AVIF is AVIF version 2 for now (change once it is ratified).
+        minorVersion = 2;
+    }
+#endif
+
     avifBoxMarker ftyp = avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD);
-    avifRWStreamWriteChars(&s, majorBrand, 4); // unsigned int(32) major_brand;
-    // TODO(yguyon): Experimental AV2-AVIF is AVIF version 2 for now (change once it is ratified)
-    avifRWStreamWriteU32(&s, isAV2 ? 2 : 0);                               // unsigned int(32) minor_version;
+    avifRWStreamWriteChars(&s, majorBrand, 4);                             // unsigned int(32) major_brand;
+    avifRWStreamWriteU32(&s, minorVersion);                                // unsigned int(32) minor_version;
     avifRWStreamWriteChars(&s, "avif", 4);                                 // unsigned int(32) compatible_brands[];
     if (isSequence) {                                                      //
         avifRWStreamWriteChars(&s, "avis", 4);                             // ... compatible_brands[]

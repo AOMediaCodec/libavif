@@ -353,6 +353,7 @@ static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     return !bits->error;
 }
 
+#if defined(AVIF_CODEC_AVM)
 // See https://gitlab.com/AOMediaCodec/avm/-/blob/main/av1/decoder/decodeframe.c
 static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * header)
 {
@@ -385,10 +386,9 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     // Other ignored fields.
     return !bits->error;
 }
+#endif
 
-static avifBool avifSequenceHeaderParse(avifSequenceHeader * header,
-                                        const avifROData * sample,
-                                        avifBool isAV2)
+avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType)
 {
     avifROData obus = *sample;
 
@@ -424,7 +424,16 @@ static avifBool avifSequenceHeaderParse(avifSequenceHeader * header,
             return AVIF_FALSE;
 
         if (obu_type == 1) { // Sequence Header
-            return isAV2 ? parseAV2SequenceHeader(&bits, header) : parseAV1SequenceHeader(&bits, header);
+            switch (codecType) {
+                case AVIF_CODEC_TYPE_AV1:
+                    return parseAV1SequenceHeader(&bits, header);
+#if defined(AVIF_CODEC_AVM)
+                case AVIF_CODEC_TYPE_AV2:
+                    return parseAV2SequenceHeader(&bits, header);
+#endif
+                default:
+                    return AVIF_FALSE;
+            }
         }
 
         // Skip this OBU
@@ -432,14 +441,4 @@ static avifBool avifSequenceHeaderParse(avifSequenceHeader * header,
         obus.size -= (size_t)obu_size + init_byte_pos;
     }
     return AVIF_FALSE;
-}
-
-avifBool avifAV1SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
-{
-    return avifSequenceHeaderParse(header, sample, /*isAV2=*/AVIF_FALSE);
-}
-
-avifBool avifAV2SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
-{
-    return avifSequenceHeaderParse(header, sample, /*isAV2=*/AVIF_TRUE);
 }
