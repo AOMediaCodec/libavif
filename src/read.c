@@ -1758,9 +1758,11 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
     return AVIF_TRUE;
 }
 
-static avifBool avifParseAV1CodecConfigurationBox(const uint8_t * raw, size_t rawLen, avifCodecConfigurationBox * av1C, avifDiagnostics * diag)
+static avifBool avifParseAV1CodecConfigurationBoxProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[av1C]");
+
+    avifCodecConfigurationBox * av1C = &prop->u.av1C;
 
     uint8_t markerAndVersion = 0;
     AVIF_CHECK(avifROStreamRead(&s, &markerAndVersion, 1));
@@ -1785,11 +1787,6 @@ static avifBool avifParseAV1CodecConfigurationBox(const uint8_t * raw, size_t ra
     av1C->chromaSubsamplingY = (rawFlags >> 2) & 0x1;      // unsigned int (1) chroma_subsampling_y;
     av1C->chromaSamplePosition = (rawFlags >> 0) & 0x3;    // unsigned int (2) chroma_sample_position;
     return AVIF_TRUE;
-}
-
-static avifBool avifParseAV1CodecConfigurationBoxProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
-{
-    return avifParseAV1CodecConfigurationBox(raw, rawLen, &prop->u.av1C, diag);
 }
 
 static avifBool avifParsePixelAspectRatioBoxProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
