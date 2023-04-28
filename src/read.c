@@ -1094,6 +1094,24 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
         for (uint32_t i = 0; i < item->meta->items.count; ++i) {
             avifDecoderItem * tile = &item->meta->items.item[i];
             if (tile->dimgForID == item->id) {
+                // Skip the same items as avifDecoderGenerateImageGridTiles().
+                if (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN) {
+                    continue;
+                }
+
+                // The coding format is defined by the item type.
+                if (firstTile == NULL) {
+                    firstTile = tile;
+                } else if (memcmp(tile->type, firstTile->type, 4)) {
+                    avifDiagnosticsPrintf(diag,
+                                          "Tile item ID %u of type '%.4s' differs from other tile type '%.4s'",
+                                          tile->id,
+                                          (const char *)tile->type,
+                                          (const char *)firstTile->type);
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+
+                // The chroma sampling format is part of the decoder configuration.
                 const avifProperty * tileConfigProp = avifPropertyArrayFind(&tile->properties, configPropName);
                 if (!tileConfigProp) {
                     avifDiagnosticsPrintf(diag,
@@ -1105,8 +1123,6 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                 }
                 // configProp was copied from a tile item to the grid item. Comparing tileConfigProp with it
                 // is equivalent to comparing tileConfigProp with the configPropName from the firstTile.
-
-                // The chroma sampling format is part of the decoder configuration.
                 if ((tileConfigProp->u.av1C.seqProfile != configProp->u.av1C.seqProfile) ||
                     (tileConfigProp->u.av1C.seqLevelIdx0 != configProp->u.av1C.seqLevelIdx0) ||
                     (tileConfigProp->u.av1C.seqTier0 != configProp->u.av1C.seqTier0) ||
@@ -1121,18 +1137,6 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                                           configPropName,
                                           tile->id,
                                           (const char *)tile->type);
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
-
-                // The coding format is defined by the item type.
-                if (firstTile == NULL) {
-                    firstTile = tile;
-                } else if (memcmp(tile->type, firstTile->type, 4)) {
-                    avifDiagnosticsPrintf(diag,
-                                          "Tile item ID %u of type '%.4s' differs from other tile type '%.4s'",
-                                          tile->id,
-                                          (const char *)tile->type,
-                                          (const char *)firstTile->type);
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
             }
