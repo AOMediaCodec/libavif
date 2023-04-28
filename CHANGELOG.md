@@ -34,8 +34,6 @@ List of incompatible ABI changes in this release:
 * Add the public API function avifImageIsOpaque() in avif.h.
 * Add experimental API for progressive AVIF encoding.
 * Add API for multi-threaded YUV to RGB color conversion.
-* Add the internal avifCodecType enum to distinguish between AV1 and AV2 codecs,
-  items and tracks.
 * Add experimental support for AV2 behind the compilation flag AVIF_CODEC_AVM.
   AVIF_CODEC_CHOICE_AVM is now part of avifCodecChoice.
 
