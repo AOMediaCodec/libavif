@@ -350,7 +350,7 @@ static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBo
     return 8;
 }
 
-// This is used as a hint to validating the clap box in avifDecoderItemValidateProperty.
+// This is used as a hint to validating the clap box in avifDecoderItemValidateProperties.
 static avifPixelFormat avifCodecConfigurationBoxGetFormat(const avifCodecConfigurationBox * av1C)
 {
     if (av1C->monochrome) {
@@ -1074,10 +1074,10 @@ static uint8_t avifDecoderItemOperatingPoint(const avifDecoderItem * item)
     return 0; // default
 }
 
-static avifResult avifDecoderItemValidateProperty(const avifDecoderItem * item,
-                                                  const char * configPropName,
-                                                  avifDiagnostics * diag,
-                                                  const avifStrictFlags strictFlags)
+static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item,
+                                                    const char * configPropName,
+                                                    avifDiagnostics * diag,
+                                                    const avifStrictFlags strictFlags)
 {
     const avifProperty * configProp = avifPropertyArrayFind(&item->properties, configPropName);
     if (!configProp) {
@@ -1090,39 +1090,49 @@ static avifResult avifDecoderItemValidateProperty(const avifDecoderItem * item,
         // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
         //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
         //   same decoder configuration (see 7.3.6.2).
+        avifDecoderItem * firstTile = NULL;
         for (uint32_t i = 0; i < item->meta->items.count; ++i) {
-            const avifDecoderItem * tile = &item->meta->items.item[i];
+            avifDecoderItem * tile = &item->meta->items.item[i];
             if (tile->dimgForID == item->id) {
-                // The coding format is defined by the item type.
-                // avifDecoderGenerateImageGridTiles() skipped any non-AV1 tile.
-                if (memcmp(tile->type, "av01", 4)) {
-                    continue;
+                const avifProperty * tileConfigProp = avifPropertyArrayFind(&tile->properties, configPropName);
+                if (!tileConfigProp) {
+                    avifDiagnosticsPrintf(diag,
+                                          "Tile item ID %u of type '%.4s' is missing mandatory %s property",
+                                          tile->id,
+                                          (const char *)tile->type,
+                                          configPropName);
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
+                // configProp was copied from a tile item to the grid item. Comparing tileConfigProp with it
+                // is equivalent to comparing tileConfigProp with the configPropName from the firstTile.
 
                 // The chroma sampling format is part of the decoder configuration.
-                const avifProperty * tileAv1CProp = avifPropertyArrayFind(&tile->properties, "av1C");
-                if (!tileAv1CProp) {
+                if ((tileConfigProp->u.av1C.seqProfile != configProp->u.av1C.seqProfile) ||
+                    (tileConfigProp->u.av1C.seqLevelIdx0 != configProp->u.av1C.seqLevelIdx0) ||
+                    (tileConfigProp->u.av1C.seqTier0 != configProp->u.av1C.seqTier0) ||
+                    (tileConfigProp->u.av1C.highBitdepth != configProp->u.av1C.highBitdepth) ||
+                    (tileConfigProp->u.av1C.twelveBit != configProp->u.av1C.twelveBit) ||
+                    (tileConfigProp->u.av1C.monochrome != configProp->u.av1C.monochrome) ||
+                    (tileConfigProp->u.av1C.chromaSubsamplingX != configProp->u.av1C.chromaSubsamplingX) ||
+                    (tileConfigProp->u.av1C.chromaSubsamplingY != configProp->u.av1C.chromaSubsamplingY) ||
+                    (tileConfigProp->u.av1C.chromaSamplePosition != configProp->u.av1C.chromaSamplePosition)) {
                     avifDiagnosticsPrintf(diag,
-                                          "Tile item ID %u of type '%.4s' is missing mandatory av1C property",
+                                          "The fields of the %s property of tile item ID %u of type '%.4s' differs from other tiles",
+                                          configPropName,
                                           tile->id,
                                           (const char *)tile->type);
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
-                // av1CProp was copied from a tile item to the grid item. Comparing tileAv1CProp with it
-                // is equivalent to comparing tileAv1CProp with the av1C property from the first tile.
-                if ((tileAv1CProp->u.av1C.seqProfile != av1CProp->u.av1C.seqProfile) ||
-                    (tileAv1CProp->u.av1C.seqLevelIdx0 != av1CProp->u.av1C.seqLevelIdx0) ||
-                    (tileAv1CProp->u.av1C.seqTier0 != av1CProp->u.av1C.seqTier0) ||
-                    (tileAv1CProp->u.av1C.highBitdepth != av1CProp->u.av1C.highBitdepth) ||
-                    (tileAv1CProp->u.av1C.twelveBit != av1CProp->u.av1C.twelveBit) ||
-                    (tileAv1CProp->u.av1C.monochrome != av1CProp->u.av1C.monochrome) ||
-                    (tileAv1CProp->u.av1C.chromaSubsamplingX != av1CProp->u.av1C.chromaSubsamplingX) ||
-                    (tileAv1CProp->u.av1C.chromaSubsamplingY != av1CProp->u.av1C.chromaSubsamplingY) ||
-                    (tileAv1CProp->u.av1C.chromaSamplePosition != av1CProp->u.av1C.chromaSamplePosition)) {
+
+                // The coding format is defined by the item type.
+                if (firstTile == NULL) {
+                    firstTile = tile;
+                } else if (memcmp(tile->type, firstTile->type, 4)) {
                     avifDiagnosticsPrintf(diag,
-                                          "The fields of the av1C property of tile item ID %u of type '%.4s' differs from other tiles",
+                                          "Tile item ID %u of type '%.4s' differs from other tile type '%.4s'",
                                           tile->id,
-                                          (const char *)tile->type);
+                                          (const char *)tile->type,
+                                          (const char *)firstTile->type);
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
             }
@@ -1324,7 +1334,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
     return AVIF_RESULT_OK;
 }
 
-// Returns the avifCodecType of the first cell of the gridItem.
+// Returns the avifCodecType of the first tile of the gridItem.
 static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gridItem)
 {
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
@@ -3891,12 +3901,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorItem->premByID == alphaItem->id);
 
         AVIF_CHECKRES(
-            avifDecoderItemValidateProperty(colorItem, avifGetConfigurationPropertyName(colorCodecType), &decoder->diag, decoder->strictFlags));
+            avifDecoderItemValidateProperties(colorItem, avifGetConfigurationPropertyName(colorCodecType), &decoder->diag, decoder->strictFlags));
         if (alphaItem) {
-            AVIF_CHECKRES(avifDecoderItemValidateProperty(alphaItem,
-                                                          avifGetConfigurationPropertyName(alphaCodecType),
-                                                          &decoder->diag,
-                                                          decoder->strictFlags));
+            AVIF_CHECKRES(avifDecoderItemValidateProperties(alphaItem,
+                                                            avifGetConfigurationPropertyName(alphaCodecType),
+                                                            &decoder->diag,
+                                                            decoder->strictFlags));
         }
     }
 
