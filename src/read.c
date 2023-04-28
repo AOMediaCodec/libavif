@@ -1048,6 +1048,49 @@ static avifResult avifDecoderItemValidateAV1(const avifDecoderItem * item, avifD
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
+    if (!memcmp(item->type, "grid", 4)) {
+        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
+        //   same decoder configuration (see 7.3.6.2).
+        for (uint32_t i = 0; i < item->meta->items.count; ++i) {
+            const avifDecoderItem * tile = &item->meta->items.item[i];
+            if (tile->dimgForID == item->id) {
+                // The coding format is defined by the item type.
+                // avifDecoderGenerateImageGridTiles() skipped any non-AV1 tile.
+                if (memcmp(tile->type, "av01", 4)) {
+                    continue;
+                }
+
+                // The chroma sampling format is part of the decoder configuration.
+                const avifProperty * tileAv1CProp = avifPropertyArrayFind(&tile->properties, "av1C");
+                if (!tileAv1CProp) {
+                    avifDiagnosticsPrintf(diag,
+                                          "Tile item ID %u of type '%.4s' is missing mandatory av1C property",
+                                          tile->id,
+                                          (const char *)tile->type);
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                // av1CProp was copied from a tile item to the grid item. Comparing tileAv1CProp with it
+                // is equivalent to comparing tileAv1CProp with the av1C property from the first tile.
+                if ((tileAv1CProp->u.av1C.seqProfile != av1CProp->u.av1C.seqProfile) ||
+                    (tileAv1CProp->u.av1C.seqLevelIdx0 != av1CProp->u.av1C.seqLevelIdx0) ||
+                    (tileAv1CProp->u.av1C.seqTier0 != av1CProp->u.av1C.seqTier0) ||
+                    (tileAv1CProp->u.av1C.highBitdepth != av1CProp->u.av1C.highBitdepth) ||
+                    (tileAv1CProp->u.av1C.twelveBit != av1CProp->u.av1C.twelveBit) ||
+                    (tileAv1CProp->u.av1C.monochrome != av1CProp->u.av1C.monochrome) ||
+                    (tileAv1CProp->u.av1C.chromaSubsamplingX != av1CProp->u.av1C.chromaSubsamplingX) ||
+                    (tileAv1CProp->u.av1C.chromaSubsamplingY != av1CProp->u.av1C.chromaSubsamplingY) ||
+                    (tileAv1CProp->u.av1C.chromaSamplePosition != av1CProp->u.av1C.chromaSamplePosition)) {
+                    avifDiagnosticsPrintf(diag,
+                                          "The fields of the av1C property of tile item ID %u of type '%.4s' differs from other tiles",
+                                          tile->id,
+                                          (const char *)tile->type);
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+            }
+        }
+    }
+
     const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
     if (!pixiProp && (strictFlags & AVIF_STRICT_PIXI_REQUIRED)) {
         // A pixi box is mandatory in all valid AVIF configurations. Bail out.
