@@ -318,7 +318,7 @@ typedef enum avifCodecType
 avifCodecType avifCodecTypeFromChoice(avifCodecChoice choice, avifCodecFlags requiredFlags);
 
 // ---------------------------------------------------------------------------
-// avifCodec (abstraction layer to use different codec type implementations)
+// avifCodec (abstraction layer to use different codec implementations)
 
 struct avifCodec;
 struct avifCodecInternal;

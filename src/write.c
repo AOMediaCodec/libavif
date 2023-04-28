@@ -1300,7 +1300,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     }
 
     const avifCodecType codecType = avifEncoderGetCodecType(encoder);
-    AVIF_CHECKERR(codecType != AVIF_CODEC_TYPE_UNKNOWN, AVIF_RESULT_NO_CODEC_AVAILABLE);
+    if (codecType == AVIF_CODEC_TYPE_UNKNOWN) {
+        return AVIF_RESULT_NO_CODEC_AVAILABLE;
+    }
 
     // -----------------------------------------------------------------------
     // Finish up encoding

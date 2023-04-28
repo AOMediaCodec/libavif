@@ -1324,7 +1324,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
     return AVIF_RESULT_OK;
 }
 
-// Returns the underlying format of the first cell of the gridItem.
+// Returns the avifCodecType of the first cell of the gridItem.
 static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gridItem)
 {
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
@@ -3558,7 +3558,7 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
 // If alpha is AVIF_FALSE, searches for the primary color item (parentItemID is ignored in this case).
 // If alpha is AVIF_TRUE, searches for the auxiliary alpha item whose parent item ID is parentItemID.
 // Returns the target item if found, or NULL.
-static avifDecoderItem * avifDecoderDataFindItem(const avifDecoderData * data, avifBool alpha, uint32_t parentItemID)
+static avifDecoderItem * avifDecoderDataFindItem(avifDecoderData * data, avifBool alpha, uint32_t parentItemID)
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = &data->meta->items.item[itemIndex];
@@ -3817,7 +3817,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                 data->diag),
                           AVIF_RESULT_INVALID_IMAGE_GRID);
             colorCodecType = avifDecoderItemGetGridCodecType(colorItem);
-            AVIF_CHECKERR(colorCodecType != AVIF_CODEC_TYPE_UNKNOWN, AVIF_RESULT_INVALID_IMAGE_GRID);
+            if (colorCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
+                return AVIF_RESULT_INVALID_IMAGE_GRID;
+            }
         } else {
             colorCodecType = avifGetCodecType(colorItem->type);
             assert(colorCodecType != AVIF_CODEC_TYPE_UNKNOWN);
@@ -3837,7 +3839,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                     data->diag),
                               AVIF_RESULT_INVALID_IMAGE_GRID);
                 alphaCodecType = avifDecoderItemGetGridCodecType(alphaItem);
-                AVIF_CHECKERR(alphaCodecType != AVIF_CODEC_TYPE_UNKNOWN, AVIF_RESULT_INVALID_IMAGE_GRID);
+                if (alphaCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
+                    return AVIF_RESULT_INVALID_IMAGE_GRID;
+                }
             } else {
                 alphaCodecType = avifGetCodecType(alphaItem->type);
                 assert(alphaCodecType != AVIF_CODEC_TYPE_UNKNOWN);
