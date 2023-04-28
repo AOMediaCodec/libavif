@@ -3516,13 +3516,13 @@ static avifBool avifTilesCanBeDecodedWithSameCodecInstance(avifDecoderData * dat
     }
     const uint8_t firstTileOperatingPoint = data->tiles.tile[0].operatingPoint;
     const avifBool firstTileAllLayers = data->tiles.tile[0].input->allLayers;
-    const avifCodecType firstTileCodecType = data->tiles.tile[0].codecType;
     for (unsigned int i = 1; i < data->tiles.count; ++i) {
         const avifTile * tile = &data->tiles.tile[i];
-        if ((tile->operatingPoint != firstTileOperatingPoint) || (tile->input->allLayers != firstTileAllLayers) ||
-            (tile->codecType != firstTileCodecType)) {
+        if (tile->operatingPoint != firstTileOperatingPoint || tile->input->allLayers != firstTileAllLayers) {
             return AVIF_FALSE;
         }
+        // avifDecoderItemValidateProperties() verified during avifDecoderParse() that all tiles
+        // share the same coding format so no need to check for codecType equality here.
     }
     return AVIF_TRUE;
 }
