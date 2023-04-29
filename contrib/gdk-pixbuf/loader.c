@@ -9,6 +9,8 @@
 #include <gdk-pixbuf/gdk-pixbuf-io.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
+#define BUFFER 64
+
 G_MODULE_EXPORT void fill_vtable (GdkPixbufModule * module);
 G_MODULE_EXPORT void fill_info (GdkPixbufFormat * info);
 
@@ -23,6 +25,9 @@ struct _AvifAnimation {
     GdkPixbufAnimation parent;
     GArray * frames;
     uint64_t animation_time;
+
+    GThread * decoder_thread;
+    GAsyncQueue * queue;
 
     GdkPixbufModuleSizeFunc size_func;
     GdkPixbufModuleUpdatedFunc updated_func;
@@ -43,6 +48,7 @@ struct _AvifAnimationIter {
     GdkPixbufAnimationIter parent_instance;
     AvifAnimation * animation;
     size_t current_frame;
+    uint64_t current_animation_time;
     uint64_t time_offset;
 };
 
@@ -79,6 +85,11 @@ static void avif_animation_finalize(GObject * obj)
         }
         g_array_free(context->frames, TRUE);
     }
+
+    g_async_queue_push(context->queue, "0");
+    g_thread_join(context->decoder_thread);
+    g_async_queue_unref(context->queue);
+    g_object_unref(context);
 }
 
 static gboolean avif_animation_is_static_image(GdkPixbufAnimation * animation)
@@ -144,9 +155,32 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
     if (context->decoder->repetitionCount > 0 && elapsed_time > context->animation_time * context->decoder->repetitionCount) {
         avif_iter->current_frame = context->decoder->imageCount - 1;
     } else {
-        elapsed_time = elapsed_time % context->animation_time;
+        if (elapsed_time > context->animation_time) {
+            elapsed_time = elapsed_time % context->animation_time;
+            avif_iter->current_animation_time = 0;
+            avif_iter->current_frame = 0;
+        }
 
-        avif_iter->current_frame = 0;
+        /* how much time has elapsed since the last frame */
+        elapsed_time -= avif_iter->current_animation_time;
+
+
+        /* only use buffering if animation doesn't fit into given buffer */
+        if (context->decoder->imageCount > BUFFER && BUFFER - avif_iter->current_frame < BUFFER / 2) {
+
+            for (unsigned i = 0; i < avif_iter->current_frame; i++) {
+                g_object_unref(g_array_index(context->frames, AvifAnimationFrame, i).pixbuf);
+            }
+            context->frames = g_array_remove_range(context->frames, 0, avif_iter->current_frame);
+            avif_iter->current_frame -= (avif_iter->current_frame);
+
+            if (context->decoder->imageIndex == context->decoder->imageCount - 1) {
+                avifDecoderReset(context->decoder);
+            }
+            /* wake up sleeping decoder thread */
+            g_async_queue_push(context->queue, "");
+        }
+
         uint64_t frame_duration;
 
         while (1) {
@@ -156,6 +190,7 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
                 break;
             }
             elapsed_time -= frame_duration;
+            avif_iter->current_animation_time += frame_duration;
             avif_iter->current_frame++;
         }
     }
@@ -346,9 +381,12 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
     width = gdk_pixbuf_get_width(output);
     height = gdk_pixbuf_get_height(output);
 
+    /*
+     * for some reason this will brick the whole thing
     if (context->size_func) {
         (*context->size_func)(&width, &height, context->user_data);
     }
+    */
 
     if (width == 0 || height == 0) {
         g_set_error_literal(error,
@@ -379,10 +417,61 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
     return output;
 }
 
+gboolean decode_animation_frames(AvifAnimation * context, GError ** error)
+{
+    avifResult ret;
+    avifDecoder * decoder = context->decoder;
+    AvifAnimationFrame frame;
+
+    while(decoder->imageIndex < decoder->imageCount - 1 && context->frames->len <= BUFFER) {
+        ret = avifDecoderNextImage(decoder);
+
+        if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
+            return TRUE;
+        } else if (ret != AVIF_RESULT_OK) {
+            g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
+                        "Failed to decode all frames: %s", avifResultToString(ret));
+            return FALSE;
+        }
+
+        frame.pixbuf = set_pixbuf(context, error);
+        frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+
+        if (frame.pixbuf == NULL) {
+            return FALSE;
+        }
+
+        /* We don't use the animation duration from the AVIF structure directly due to precision problems */
+        context->animation_time += frame.duration_ms;
+
+        g_array_append_val(context->frames, frame);
+    }
+    return TRUE;
+}
+
+void * decoder_thread(void * animation)
+{
+    AvifAnimation * context = (AvifAnimation *)animation;
+    GError * error;
+    char * end;
+
+    while (1) {
+        end = (char *)g_async_queue_pop(context->queue);
+        if (end[0] == '0') {
+            break;
+        }
+        decode_animation_frames(context, &error);
+    }
+
+    return 0;
+}
+
 static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
 {
+    context->decoder_thread = g_thread_new(NULL, decoder_thread, context);
+    context->queue = g_async_queue_new();
 
-    context->frames = g_array_new(FALSE, TRUE, sizeof(AvifAnimationFrame));
+    context->frames = g_array_sized_new(FALSE, TRUE, sizeof(AvifAnimationFrame), BUFFER);
 
     avifResult ret;
     avifDecoder * decoder = context->decoder;
@@ -429,30 +518,7 @@ static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
     context->prepared_func(g_array_index(context->frames, AvifAnimationFrame, 0).pixbuf,
             decoder->imageCount > 1 ? (GdkPixbufAnimation *)context : NULL, context->user_data);
 
-    while(decoder->imageIndex < decoder->imageCount - 1) {
-        ret = avifDecoderNextImage(decoder);
-
-        if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
-            return TRUE;
-        } else if (ret != AVIF_RESULT_OK) {
-            g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
-                        "Failed to decode all frames: %s", avifResultToString(ret));
-            return FALSE;
-        }
-
-        frame.pixbuf = set_pixbuf(context, error);
-        frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
-
-        if (frame.pixbuf == NULL) {
-            return FALSE;
-        }
-
-        /* We don't use the animation duration from the AVIF structure directly due to precision problems */
-        context->animation_time += frame.duration_ms;
-
-        g_array_append_val(context->frames, frame);
-    }
-    return TRUE;
+    return decode_animation_frames(context, error);
 }
 
 static gpointer begin_load(GdkPixbufModuleSizeFunc size_func,
@@ -495,8 +561,6 @@ static gboolean stop_load(gpointer data, GError ** error)
     context->bytes = g_byte_array_free_to_bytes(context->data);
     context->data = NULL;
     ret = avif_context_try_load(context, error);
-
-    g_object_unref(context);
 
     return ret;
 }
