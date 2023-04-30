@@ -156,7 +156,8 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
         avif_iter->current_frame = context->decoder->imageCount - 1;
     } else {
         if (elapsed_time > context->animation_time) {
-            elapsed_time = elapsed_time % context->animation_time;
+            elapsed_time = elapsed_time - context->animation_time;
+            avif_iter->time_offset += context->animation_time;
             avif_iter->current_animation_time = 0;
             avif_iter->current_frame = 0;
         }
