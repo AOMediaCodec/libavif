@@ -1,7 +1,6 @@
 package org.aomedia.avif.android;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.aomedia.avif.android.TestUtils.Image;
 
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -10,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.aomedia.avif.android.AvifDecoder.Info;
+import org.aomedia.avif.android.TestUtils.Image;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
