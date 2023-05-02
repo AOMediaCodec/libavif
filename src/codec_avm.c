@@ -521,6 +521,12 @@ static avifBool avifFindAOMScalingMode(const avifFraction * avifMode, AOM_SCALIN
     return AVIF_FALSE;
 }
 
+// Scales from aom's [0:63] to avm's [0:255]. TODO(yguyon): Accept [0:255] directly in avifEncoder.
+static int avmScaleQuantizer(int quantizer)
+{
+    return AVIF_CLAMP((quantizer * 255 + 31) / 63, 0, 255);
+}
+
 static avifBool avmCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
 
 static avifResult avmCodecEncodeImage(avifCodec * codec,
@@ -654,8 +660,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             maxQuantizer = encoder->maxQuantizer;
         }
         // Scale from aom's [0:63] to avm's [0:255]. TODO(yguyon): Accept [0:255] directly in avifEncoder.
-        minQuantizer = AVIF_CLAMP((minQuantizer * 255 + 31) / 63, 0, 255);
-        maxQuantizer = AVIF_CLAMP((maxQuantizer * 255 + 31) / 63, 0, 255);
+        minQuantizer = avmScaleQuantizer(minQuantizer);
+        maxQuantizer = avmScaleQuantizer(maxQuantizer);
         if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
             // cq-level is ignored in these two end-usage modes, so adjust minQuantizer and
             // maxQuantizer to the target quantizer.
@@ -748,16 +754,14 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         }
         if (alpha) {
             if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
-                // Scale from aom's [0:63] to avm's [0:255].
-                cfg->rc_min_quantizer = AVIF_CLAMP((encoder->minQuantizerAlpha * 255 + 31) / 63, 0, 255);
-                cfg->rc_max_quantizer = AVIF_CLAMP((encoder->maxQuantizerAlpha * 255 + 31) / 63, 0, 255);
+                cfg->rc_min_quantizer = avmScaleQuantizer(encoder->minQuantizerAlpha);
+                cfg->rc_max_quantizer = avmScaleQuantizer(encoder->maxQuantizerAlpha);
                 quantizerUpdated = AVIF_TRUE;
             }
         } else {
             if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER | AVIF_ENCODER_CHANGE_MAX_QUANTIZER)) {
-                // Scale from aom's [0:63] to avm's [0:255].
-                cfg->rc_min_quantizer = AVIF_CLAMP((encoder->minQuantizer * 255 + 31) / 63, 0, 255);
-                cfg->rc_max_quantizer = AVIF_CLAMP((encoder->maxQuantizer * 255 + 31) / 63, 0, 255);
+                cfg->rc_min_quantizer = avmScaleQuantizer(encoder->minQuantizer);
+                cfg->rc_max_quantizer = avmScaleQuantizer(encoder->maxQuantizer);
                 quantizerUpdated = AVIF_TRUE;
             }
         }
@@ -779,9 +783,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                         minQuantizer = encoder->minQuantizer;
                         maxQuantizer = encoder->maxQuantizer;
                     }
-                    // Scale from aom's [0:63] to avm's [0:255].
-                    minQuantizer = AVIF_CLAMP((minQuantizer * 255 + 31) / 63, 0, 255);
-                    maxQuantizer = AVIF_CLAMP((maxQuantizer * 255 + 31) / 63, 0, 255);
+                    minQuantizer = avmScaleQuantizer(minQuantizer);
+                    maxQuantizer = avmScaleQuantizer(maxQuantizer);
                     cfg->rc_min_quantizer = AVIF_MAX(quantizer - 4, minQuantizer);
                     cfg->rc_max_quantizer = AVIF_MIN(quantizer + 4, maxQuantizer);
                 }
