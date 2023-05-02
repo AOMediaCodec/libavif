@@ -283,7 +283,7 @@ if(AVIF_CODEC_DAV1D)
         if(DEFINED ANDROID_ABI)
             set(AVIF_DAV1D_BUILD_DIR "${AVIF_DAV1D_BUILD_DIR}/${ANDROID_ABI}")
         endif()
-	set(LIB_FILENAME "${AVIF_DAV1D_BUILD_DIR}/src/libdav1d${AVIF_LIBRARY_SUFFIX}")
+        set(LIB_FILENAME "${AVIF_DAV1D_BUILD_DIR}/src/libdav1d${AVIF_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
             if("${AVIF_LIBRARY_SUFFIX}" STREQUAL ".a")
                 message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
@@ -297,10 +297,8 @@ if(AVIF_CODEC_DAV1D)
             endif()
         endif()
 
-        set(AVIF_CODEC_INCLUDES
-            ${AVIF_CODEC_INCLUDES} "${AVIF_DAV1D_BUILD_DIR}"
-	    "${AVIF_DAV1D_BUILD_DIR}/include" "${AVIF_DAV1D_BUILD_DIR}/include/dav1d"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
+        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${AVIF_DAV1D_BUILD_DIR}" "${AVIF_DAV1D_BUILD_DIR}/include"
+                                "${AVIF_DAV1D_BUILD_DIR}/include/dav1d" "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
         )
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
     else()
