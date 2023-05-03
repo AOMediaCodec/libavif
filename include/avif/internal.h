@@ -311,7 +311,6 @@ typedef enum avifCodecType
 #if defined(AVIF_CODEC_AVM)
     AVIF_CODEC_TYPE_AV2, // Experimental.
 #endif
-    AVIF_CODEC_TYPE_COUNT
 } avifCodecType;
 
 // Returns AVIF_CODEC_TYPE_UNKNOWN unless the chosen codec is available with the requiredFlags.
