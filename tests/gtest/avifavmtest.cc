@@ -5,13 +5,25 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
+using testing::Combine;
+using testing::Values;
+
 namespace libavif {
 namespace {
 
-TEST(AvmTest, EncodeDecode) {
-  testutil::AvifImagePtr image =
-      testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/8,
-                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
+class AvmTest : public testing::TestWithParam<
+                    std::tuple</*width=*/int, /*height=*/int, /*depth=*/int,
+                               avifPixelFormat, /*alpha=*/bool>> {};
+
+TEST_P(AvmTest, EncodeDecode) {
+  const int width = std::get<0>(GetParam());
+  const int height = std::get<1>(GetParam());
+  const int depth = std::get<2>(GetParam());
+  const avifPixelFormat format = std::get<3>(GetParam());
+  const bool alpha = std::get<4>(GetParam());
+
+  testutil::AvifImagePtr image = testutil::CreateImage(
+      width, height, depth, format, alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
@@ -46,6 +58,28 @@ TEST(AvmTest, EncodeDecode) {
               AVIF_RESULT_NO_CODEC_AVAILABLE);
   }
 }
+
+INSTANTIATE_TEST_SUITE_P(Basic, AvmTest,
+                         Combine(/*width=*/Values(12), /*height=*/Values(34),
+                                 /*depth=*/Values(8),
+                                 Values(AVIF_PIXEL_FORMAT_YUV420,
+                                        AVIF_PIXEL_FORMAT_YUV444),
+                                 /*alpha=*/Values(true)));
+
+INSTANTIATE_TEST_SUITE_P(Tiny, AvmTest,
+                         Combine(/*width=*/Values(1), /*height=*/Values(1),
+                                 /*depth=*/Values(8),
+                                 Values(AVIF_PIXEL_FORMAT_YUV444),
+                                 /*alpha=*/Values(false)));
+
+// TODO(yguyon): Implement or fix in avm then test the following combinations.
+INSTANTIATE_TEST_SUITE_P(DISABLED_Broken, AvmTest,
+                         Combine(/*width=*/Values(1), /*height=*/Values(34),
+                                 /*depth=*/Values(8, 10, 12),
+                                 Values(AVIF_PIXEL_FORMAT_YUV400,
+                                        AVIF_PIXEL_FORMAT_YUV420,
+                                        AVIF_PIXEL_FORMAT_YUV444),
+                                 /*alpha=*/Values(true)));
 
 TEST(AvmTest, Av1StillWorksWhenAvmIsEnabled) {
   const char* encoding_codec =
