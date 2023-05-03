@@ -88,8 +88,6 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
             if (spatialID != AVIF_SPATIAL_ID_UNSET) {
-                // This requires libaom v3.1.2 or later, which has the fix for
-                // https://crbug.com/aomedia/2993.
                 if (spatialID == nextFrame->spatial_id) {
                     // Found the correct spatial_id.
                     break;
@@ -543,7 +541,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
 
-    // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AOM
+    // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AV2
     // encoder, config should be applied for each frame, so we don't care about changes on these
     // two fields.
     encoderChanges &= ~AVIF_ENCODER_CHANGE_SCALING_MODE;
@@ -616,7 +614,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         cfg->g_h = image->height;
         if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
             // Set the maximum number of frames to encode to 1. This instructs
-            // libaom to set still_picture and reduced_still_picture_header to
+            // libavm to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
             cfg->g_limit = 1;
 
@@ -624,12 +622,12 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             // https://crbug.com/aomedia/2959).
             //
             // Set g_lag_in_frames to 0 to reduce the number of frame buffers
-            // (from 20 to 2) in libaom's lookahead structure. This reduces
+            // (from 20 to 2) in libavm's lookahead structure. This reduces
             // memory consumption when encoding a single image.
             cfg->g_lag_in_frames = 0;
             // Disable automatic placement of key frames by the encoder.
             cfg->kf_mode = AOM_KF_DISABLED;
-            // Tell libaom that all frames will be key frames.
+            // Tell libavm that all frames will be key frames.
             cfg->kf_max_dist = 0;
         }
         if (encoder->extraLayerCount > 0) {
@@ -718,7 +716,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         if (alpha) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
         } else {
-            // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED,
+            // libavm's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED,
             // AOM_CICP_MC_UNSPECIFIED, AOM_CSP_UNKNOWN, and 0 (studio/limited range). Call
             // aom_codec_control() only if the values are not the defaults.
             if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
@@ -847,11 +845,11 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
     aom_image_t aomImage;
     // We prefer to simply set the aomImage.planes[] pointers to the plane buffers in 'image'. When
     // doing this, we set aomImage.w equal to aomImage.d_w and aomImage.h equal to aomImage.d_h and
-    // do not "align" aomImage.w and aomImage.h. Unfortunately this exposes a bug in libaom
+    // do not "align" aomImage.w and aomImage.h. Unfortunately this exposes a libaom bug in libavm
     // (https://crbug.com/aomedia/3113) if chroma is subsampled and image->width or image->height is
-    // equal to 1. To work around this libaom bug, we allocate the aomImage.planes[] buffers and
+    // equal to 1. To work around this libavm bug, we allocate the aomImage.planes[] buffers and
     // copy the image YUV data if image->width or image->height is equal to 1. This bug has been
-    // fixed in libaom v3.1.3.
+    // fixed in libaom v3.1.3 but not in libavm.
     //
     // Note: The exact condition for the bug is
     //   ((image->width == 1) && (chroma is subsampled horizontally)) ||
@@ -887,7 +885,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             bps = 16;
         }
         aomImage.bps = bps;
-        // See avifImageCalcAOMFmt(). libaom doesn't have AOM_IMG_FMT_I400, so we use AOM_IMG_FMT_I420 as a substitute for monochrome.
+        // See avifImageCalcAOMFmt(). libavm doesn't have AOM_IMG_FMT_I400, so we use AOM_IMG_FMT_I420 as a substitute for monochrome.
         aomImage.x_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftX;
         aomImage.y_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftY;
     }
@@ -948,8 +946,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         if (codec->internal->monochromeEnabled) {
             aomImage.monochrome = 1;
         } else {
-            // The user requested monochrome (via alpha or YUV400) but libaom cannot currently support
-            // monochrome (see chroma_check comment above). Manually set UV planes to 0.5.
+            // The user requested monochrome (via alpha or YUV400) but libavm does not support
+            // monochrome. Manually set UV planes to 0.5.
 
             // aomImage is always 420 when we're monochrome
             uint32_t monoUVWidth = (image->width + 1) >> 1;
