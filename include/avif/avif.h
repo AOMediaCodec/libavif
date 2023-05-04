@@ -150,7 +150,7 @@ typedef enum avifResult
     AVIF_RESULT_ENCODE_COLOR_FAILED,
     AVIF_RESULT_ENCODE_ALPHA_FAILED,
     AVIF_RESULT_BMFF_PARSE_FAILED,
-    AVIF_RESULT_NO_AV1_ITEMS_FOUND,
+    AVIF_RESULT_NO_AV1_ITEMS_FOUND, // TODO(yguyon): Rename or add AVIF_RESULT_NO_AV2_ITEMS_FOUND
     AVIF_RESULT_DECODE_COLOR_FAILED,
     AVIF_RESULT_DECODE_ALPHA_FAILED,
     AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH,
@@ -717,7 +717,8 @@ typedef enum avifCodecChoice
     AVIF_CODEC_CHOICE_DAV1D,   // Decode only
     AVIF_CODEC_CHOICE_LIBGAV1, // Decode only
     AVIF_CODEC_CHOICE_RAV1E,   // Encode only
-    AVIF_CODEC_CHOICE_SVT      // Encode only
+    AVIF_CODEC_CHOICE_SVT,     // Encode only
+    AVIF_CODEC_CHOICE_AVM      // Experimental (AV2)
 } avifCodecChoice;
 
 typedef enum avifCodecFlag

@@ -965,6 +965,7 @@ typedef avifCodec * (*avifCodecCreateFunc)(void);
 struct AvailableCodec
 {
     avifCodecChoice choice;
+    avifCodecType type;
     const char * name;
     versionFunc version;
     avifCodecCreateFunc create;
@@ -977,13 +978,14 @@ static struct AvailableCodec availableCodecs[] = {
 // Ordered by preference (for AUTO)
 
 #if defined(AVIF_CODEC_DAV1D)
-    { AVIF_CODEC_CHOICE_DAV1D, "dav1d", avifCodecVersionDav1d, avifCodecCreateDav1d, AVIF_CODEC_FLAG_CAN_DECODE },
+    { AVIF_CODEC_CHOICE_DAV1D, AVIF_CODEC_TYPE_AV1, "dav1d", avifCodecVersionDav1d, avifCodecCreateDav1d, AVIF_CODEC_FLAG_CAN_DECODE },
 #endif
 #if defined(AVIF_CODEC_LIBGAV1)
-    { AVIF_CODEC_CHOICE_LIBGAV1, "libgav1", avifCodecVersionGav1, avifCodecCreateGav1, AVIF_CODEC_FLAG_CAN_DECODE },
+    { AVIF_CODEC_CHOICE_LIBGAV1, AVIF_CODEC_TYPE_AV1, "libgav1", avifCodecVersionGav1, avifCodecCreateGav1, AVIF_CODEC_FLAG_CAN_DECODE },
 #endif
 #if defined(AVIF_CODEC_AOM)
     { AVIF_CODEC_CHOICE_AOM,
+      AVIF_CODEC_TYPE_AV1,
       "aom",
       avifCodecVersionAOM,
       avifCodecCreateAOM,
@@ -999,12 +1001,15 @@ static struct AvailableCodec availableCodecs[] = {
     },
 #endif
 #if defined(AVIF_CODEC_RAV1E)
-    { AVIF_CODEC_CHOICE_RAV1E, "rav1e", avifCodecVersionRav1e, avifCodecCreateRav1e, AVIF_CODEC_FLAG_CAN_ENCODE },
+    { AVIF_CODEC_CHOICE_RAV1E, AVIF_CODEC_TYPE_AV1, "rav1e", avifCodecVersionRav1e, avifCodecCreateRav1e, AVIF_CODEC_FLAG_CAN_ENCODE },
 #endif
 #if defined(AVIF_CODEC_SVT)
-    { AVIF_CODEC_CHOICE_SVT, "svt", avifCodecVersionSvt, avifCodecCreateSvt, AVIF_CODEC_FLAG_CAN_ENCODE },
+    { AVIF_CODEC_CHOICE_SVT, AVIF_CODEC_TYPE_AV1, "svt", avifCodecVersionSvt, avifCodecCreateSvt, AVIF_CODEC_FLAG_CAN_ENCODE },
 #endif
-    { AVIF_CODEC_CHOICE_AUTO, NULL, NULL, NULL, 0 }
+#if defined(AVIF_CODEC_AVM)
+    { AVIF_CODEC_CHOICE_AVM, AVIF_CODEC_TYPE_AV2, "avm", avifCodecVersionAVM, avifCodecCreateAVM, AVIF_CODEC_FLAG_CAN_DECODE | AVIF_CODEC_FLAG_CAN_ENCODE },
+#endif
+    { AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_TYPE_UNKNOWN, NULL, NULL, NULL, 0 }
 };
 
 static const int availableCodecsCount = (sizeof(availableCodecs) / sizeof(availableCodecs[0])) - 1;
@@ -1016,6 +1021,10 @@ static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, avifCo
             continue;
         }
         if (requiredFlags && ((availableCodecs[i].flags & requiredFlags) != requiredFlags)) {
+            continue;
+        }
+        if ((choice == AVIF_CODEC_CHOICE_AUTO) && (availableCodecs[i].choice == AVIF_CODEC_CHOICE_AVM)) {
+            // AV2 is experimental and cannot be the default, it must be explicitly selected.
             continue;
         }
         return &availableCodecs[i];
@@ -1030,6 +1039,15 @@ const char * avifCodecName(avifCodecChoice choice, avifCodecFlags requiredFlags)
         return availableCodec->name;
     }
     return NULL;
+}
+
+avifCodecType avifCodecTypeFromChoice(avifCodecChoice choice, avifCodecFlags requiredFlags)
+{
+    struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
+    if (availableCodec) {
+        return availableCodec->type;
+    }
+    return AVIF_CODEC_TYPE_UNKNOWN;
 }
 
 avifCodecChoice avifCodecChoiceFromName(const char * name)
