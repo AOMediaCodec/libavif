@@ -248,7 +248,12 @@ if(AVIF_CODEC_AVM)
         target_include_directories(avifavmtest PRIVATE ${GTEST_INCLUDE_DIRS})
         add_test(NAME avifavmtest COMMAND avifavmtest)
     endif()
-    # TODO(yguyon): Add test_cmd_avm.sh
+
+    if(AVIF_BUILD_APPS)
+        add_test(NAME test_cmd_avm COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm.sh ${CMAKE_BINARY_DIR}
+                                           ${CMAKE_CURRENT_SOURCE_DIR}/data
+        )
+    endif()
 
     # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
     # This may lead to test failures when there is no available AV1 codec.
@@ -263,7 +268,10 @@ if(AVIF_CODEC_AVM)
                 avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
             )
         endif()
-        # Disable all tests that use avifenc without explicitly setting --codec=avm.
-        set_tests_properties(test_cmd test_cmd_animation test_cmd_grid test_cmd_targetsize PROPERTIES DISABLED True)
+
+        if(AVIF_BUILD_APPS)
+            # Disable all tests that use avifenc without explicitly setting --codec=avm.
+            set_tests_properties(test_cmd test_cmd_animation test_cmd_grid test_cmd_targetsize PROPERTIES DISABLED True)
+        endif()
     endif()
 endif()
