@@ -45,9 +45,7 @@ TEST_P(CodecTest, EncodeDecode) {
                                   encoded.size),
             AVIF_RESULT_OK);
 
-  // AVIF_CODEC_CHOICE_SVT leads to more distortion than other codecs with
-  // default settings.
-  ASSERT_GT(testutil::GetPsnr(*image, *decoded), 30.0);
+  ASSERT_GT(testutil::GetPsnr(*image, *decoded), 32.0);
 }
 
 INSTANTIATE_TEST_SUITE_P(
