@@ -95,6 +95,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifcllitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifcllitest COMMAND avifcllitest)
 
+    add_executable(avifcodectest gtest/avifcodectest.cc)
+    target_link_libraries(avifcodectest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifcodectest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifcodectest COMMAND avifcodectest)
+
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
