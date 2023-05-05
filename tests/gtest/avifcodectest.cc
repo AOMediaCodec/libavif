@@ -31,6 +31,7 @@ TEST_P(CodecTest, EncodeDecode) {
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = encoding_codec;
+  encoder->quality = encoder->qualityAlpha = 90;  // Small loss.
   testutil::AvifRwData encoded;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
             AVIF_RESULT_OK);
