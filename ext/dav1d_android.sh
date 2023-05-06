@@ -13,12 +13,8 @@ if [ $# -ne 1 ]; then
   echo "Usage: ${0} <path_to_android_ndk>"
   exit 1
 fi
-git clone --depth 1 https://code.videolan.org/videolan/dav1d.git
+git clone -b 1.2.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
 cd dav1d
-# TODO(vigneshv): 6afabf8 is the earliest version that contains the crossfiles
-# necessary for Android NDK builds. Replace this with git clone at 1.2.0 (or
-# higher) when dav1d.cmd is updated.
-git checkout 6afabf8
 mkdir build
 cd build
 
