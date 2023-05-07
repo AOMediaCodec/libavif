@@ -24,7 +24,7 @@ typedef struct {
 struct _AvifAnimation {
     GdkPixbufAnimation parent;
     GArray * frames;
-    uint64_t animation_time;
+    uint64_t total_animation_time;
 
     GThread * decoder_thread;
     GAsyncQueue * queue;
@@ -152,22 +152,12 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
     size_t prev_frame = avif_iter->current_frame;
     uint64_t elapsed_time = current_time->tv_sec * 1000 + current_time->tv_usec / 1000 - avif_iter->time_offset;
 
-    if (context->decoder->repetitionCount > 0 && elapsed_time > context->animation_time * context->decoder->repetitionCount) {
+    if (context->decoder->repetitionCount > 0 && elapsed_time > context->total_animation_time * context->decoder->repetitionCount) {
         avif_iter->current_frame = context->decoder->imageCount - 1;
     } else {
-        if (elapsed_time > context->animation_time) {
-            elapsed_time = elapsed_time - context->animation_time;
-            avif_iter->time_offset += context->animation_time;
-            avif_iter->current_animation_time = 0;
-            avif_iter->current_frame = 0;
-        }
-
-        /* how much time has elapsed since the last frame */
-        elapsed_time -= avif_iter->current_animation_time;
-
 
         /* only use buffering if animation doesn't fit into given buffer */
-        if (context->decoder->imageCount > BUFFER && BUFFER - avif_iter->current_frame < BUFFER / 2) {
+        if (context->decoder->imageCount > BUFFER && avif_iter->current_frame > context->frames->len / 2) {
 
             for (unsigned i = 0; i < avif_iter->current_frame; i++) {
                 g_object_unref(g_array_index(context->frames, AvifAnimationFrame, i).pixbuf);
@@ -178,10 +168,20 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
             if (context->decoder->imageIndex == context->decoder->imageCount - 1) {
                 avifDecoderReset(context->decoder);
             }
+
             /* wake up sleeping decoder thread */
             g_async_queue_push(context->queue, "");
         }
+        /* only relevant for animations that fit in the buffer */
+        else if (elapsed_time > context->total_animation_time) {
+            avif_iter->time_offset += context->total_animation_time;
+            elapsed_time = elapsed_time - context->total_animation_time;
+            avif_iter->current_animation_time = 0;
+            avif_iter->current_frame = 0 ;
+        }
 
+        /* how much time has elapsed since the last frame */
+        elapsed_time -= avif_iter->current_animation_time;
         uint64_t frame_duration;
 
         while (1) {
@@ -277,6 +277,7 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
 
     rgb.pixels = gdk_pixbuf_get_pixels(output);
     rgb.rowBytes = gdk_pixbuf_get_rowstride(output);
+    rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_FASTEST;
 
     ret = avifImageYUVToRGB(image, &rgb);
     if (ret != AVIF_RESULT_OK) {
@@ -424,7 +425,7 @@ gboolean decode_animation_frames(AvifAnimation * context, GError ** error)
     avifDecoder * decoder = context->decoder;
     AvifAnimationFrame frame;
 
-    while(decoder->imageIndex < decoder->imageCount - 1 && context->frames->len <= BUFFER) {
+    while(context->frames->len <= BUFFER) {
         ret = avifDecoderNextImage(decoder);
 
         if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
@@ -443,10 +444,11 @@ gboolean decode_animation_frames(AvifAnimation * context, GError ** error)
         }
 
         /* We don't use the animation duration from the AVIF structure directly due to precision problems */
-        context->animation_time += frame.duration_ms;
+        context->total_animation_time += frame.duration_ms;
 
         g_array_append_val(context->frames, frame);
     }
+
     return TRUE;
 }
 
@@ -508,7 +510,7 @@ static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
     AvifAnimationFrame frame;
     frame.pixbuf = set_pixbuf(context, error);
     frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
-    context->animation_time = frame.duration_ms;
+    context->total_animation_time = frame.duration_ms;
 
     if (frame.pixbuf == NULL) {
         return FALSE;
