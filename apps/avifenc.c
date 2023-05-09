@@ -1464,7 +1464,8 @@ int main(int argc, char * argv[])
         }
         settings.minQuantizer = settings.maxQuantizer = settings.minQuantizerAlpha = settings.maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
         // Codec.
-        if (settings.codecChoice != AVIF_CODEC_CHOICE_AUTO && settings.codecChoice != AVIF_CODEC_CHOICE_AOM) {
+        if (settings.codecChoice != AVIF_CODEC_CHOICE_AUTO && settings.codecChoice != AVIF_CODEC_CHOICE_AOM &&
+            settings.codecChoice != AVIF_CODEC_CHOICE_AVM) {
             fprintf(stderr, "Codec can only be AOM in lossless mode.\n");
             returnCode = 1;
         }
@@ -1472,7 +1473,9 @@ int main(int argc, char * argv[])
         // https://github.com/xiph/rav1e/issues/151
         // SVT-AV1 doesn't support lossless encoding yet:
         // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
-        settings.codecChoice = AVIF_CODEC_CHOICE_AOM;
+        if (settings.codecChoice == AVIF_CODEC_CHOICE_AUTO) {
+            settings.codecChoice = AVIF_CODEC_CHOICE_AOM;
+        }
         // Range.
         if (requestedRange != AVIF_RANGE_FULL) {
             fprintf(stderr, "Range has to be full in lossless mode.\n");

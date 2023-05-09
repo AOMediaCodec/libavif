@@ -253,6 +253,9 @@ if(AVIF_CODEC_AVM)
         add_test(NAME test_cmd_avm COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm.sh ${CMAKE_BINARY_DIR}
                                            ${CMAKE_CURRENT_SOURCE_DIR}/data
         )
+        add_test(NAME test_cmd_avm_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm_lossless.sh ${CMAKE_BINARY_DIR}
+                                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
+        )
     endif()
 
     # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
