@@ -254,36 +254,40 @@ if(UNIX)
     set(AVIF_PLATFORM_LIBRARIES m Threads::Threads)
 endif()
 
-find_package(libyuv QUIET) # not required
-if(libyuv_FOUND)
-    # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
-    # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
-    # libyuv 1813 added the I*ToARGBMatrixFilter() functions, which libavif can use with the bilinear filter.
-    if(NOT LIBYUV_VERSION)
-        message(STATUS "libavif: libyuv found, but version unknown; libyuv-based fast paths disabled.")
-    elseif(LIBYUV_VERSION LESS 1755)
-        message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found, but is too old; libyuv-based fast paths disabled.")
-    else()
-        message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found; libyuv-based fast paths enabled.")
-        if(LIBYUV_VERSION LESS 1813)
-            message(STATUS "libavif: some libyuv optimizations require at least version 1813 to work.")
+if(NOT AVIF_LOCAL_LIBYUV)
+    find_package(libyuv QUIET) # not required
+    if(libyuv_FOUND)
+        # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
+        # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
+        # libyuv 1813 added the I*ToARGBMatrixFilter() functions, which libavif can use with the bilinear filter.
+        if(NOT LIBYUV_VERSION)
+            message(STATUS "libavif: libyuv found, but version unknown; libyuv-based fast paths disabled.")
+        elseif(LIBYUV_VERSION LESS 1755)
+            message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found, but is too old; libyuv-based fast paths disabled.")
+        else()
+            message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found; libyuv-based fast paths enabled.")
+            if(LIBYUV_VERSION LESS 1813)
+                message(STATUS "libavif: some libyuv optimizations require at least version 1813 to work.")
+            endif()
+            set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
+            set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
+            set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
         endif()
-        set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
-        set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
+    else()
+        message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
     endif()
-else()
-    message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
 endif()
 
-find_package(libsharpyuv QUIET) # not required
-if(libsharpyuv_FOUND)
-    message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
-    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
-    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
-else()
-    message(STATUS "libavif: libsharpyuv not found")
+if(NOT AVIF_LOCAL_LIBSHARPYUV)
+    find_package(libsharpyuv QUIET) # not required
+    if(libsharpyuv_FOUND)
+        message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
+        set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
+        set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
+    else()
+        message(STATUS "libavif: libsharpyuv not found")
+    endif()
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)
