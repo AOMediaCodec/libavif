@@ -336,9 +336,11 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                         } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
                             // Formulas from JVET-U0093.
-                            const int R = avifRoundf(rgbPixel[0] * rgbMaxChannelF);
-                            const int G = avifRoundf(rgbPixel[1] * rgbMaxChannelF);
-                            const int B = avifRoundf(rgbPixel[2] * rgbMaxChannelF);
+                            const int bitOffset = (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
+                            const int maxValue = (1 << (state.yuvDepth - bitOffset)) - 1;
+                            const int R = AVIF_CLAMP(avifRoundf(rgbPixel[0] * rgbMaxChannelF), 0, maxValue);
+                            const int G = AVIF_CLAMP(avifRoundf(rgbPixel[1] * rgbMaxChannelF), 0, maxValue);
+                            const int B = AVIF_CLAMP(avifRoundf(rgbPixel[2] * rgbMaxChannelF), 0, maxValue);
                             const int Co = R - B;
                             const int t = B + (Co >> 1);
                             const int Cg = G - t;
@@ -736,9 +738,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     R = t + Cr;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                 } else if (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
-                    const int bit_offset = (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
-                    const int maxValue = (1 << (state->yuvDepth - bit_offset)) - 1;
-                    assert((float)maxValue == state->rgbMaxChannelF);
+                    const int bitOffset = (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
+                    const int maxValue = (1 << (state->yuvDepth - bitOffset)) - 1;
+                    assert((float)maxValue == rgbMaxChannelF);
                     const int YY = unormY;
                     const int Cg = avifRoundf(Cb * yuvMaxChannel);
                     const int Co = avifRoundf(Cr * yuvMaxChannel);

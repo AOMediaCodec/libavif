@@ -21,7 +21,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
     const testutil::AvifImagePtr ground_truth_image =
         testutil::ReadImage(data_path, file_name);
 
-    for (auto& matrix_coefficient : {
+    for (auto matrix_coefficient : {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
            AVIF_MATRIX_COEFFICIENTS_YCGCO_RE, AVIF_MATRIX_COEFFICIENTS_YCGCO_RO,
 #endif
@@ -46,12 +46,9 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
         // depth is not odd.
         ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
         continue;
-      } else {
-#endif
-        ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
       }
 #endif
+      ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
 
       // Encode.
       testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
