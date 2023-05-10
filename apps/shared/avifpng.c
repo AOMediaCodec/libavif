@@ -7,8 +7,10 @@
 
 #include "png.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -196,6 +198,65 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     return AVIF_TRUE;
 }
 
+static float avifToLinear(float v, float gamma)
+{
+    return powf(v, gamma);
+}
+
+#define SRGB_GAMMA_SLOPE 12.92f
+static float avifToSrgbGamma(float linear)
+{
+    static const float kThreshold = 0.04045f / SRGB_GAMMA_SLOPE;
+    if (linear <= kThreshold) {
+        return linear * SRGB_GAMMA_SLOPE;
+    } else {
+        return powf(linear, 1.f / 2.4f) * 1.055f - 0.055f;
+    }
+}
+
+static int avifCorrectGamma(uint16_t v, float gamma, int rgbMaxChannel)
+{
+    const float normalized = v / (float)rgbMaxChannel;
+    const float corrected = avifToSrgbGamma(avifToLinear(normalized, gamma));
+    const int scaledUp = (int)floorf(corrected * rgbMaxChannel + 0.5f);
+    return scaledUp < 0 ? 0 : scaledUp > rgbMaxChannel ? rgbMaxChannel : scaledUp;
+}
+
+// Converts samples in the image from the given 'gAMA' value to the sRGB gamma curve.
+static void avifApplyGama(avifRGBImage * rgb, float gama)
+{
+    const float gamma = 1.f / gama;
+    assert(rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_RGB);
+    const uint32_t samplesPerPixel = rgb->format == AVIF_RGB_FORMAT_RGBA ? 4 : 3;
+    const uint32_t rgbChannelBytes = (rgb->depth > 8) ? 2 : 1;
+
+    const int rgbMaxChannel = (1 << rgb->depth) - 1;
+    const int rowWidth = rgb->rowBytes / rgbChannelBytes;
+    for (uint32_t j = 0; j < rgb->height; ++j) {
+        for (uint32_t i = 0; i < rgb->width; ++i) {
+            const uint32_t pixel_offset = (i * samplesPerPixel) + (j * rowWidth);
+            if (rgbChannelBytes > 1) {
+                uint16_t * pixels16 = (uint16_t *)rgb->pixels;
+                for (uint32_t k = 0; k < 3; ++k) {
+                    pixels16[pixel_offset + k] = (uint16_t)avifCorrectGamma(pixels16[pixel_offset + k], gamma, rgbMaxChannel);
+                }
+            } else {
+                for (uint32_t k = 0; k < 3; ++k) {
+                    rgb->pixels[pixel_offset + k] = (uint8_t)avifCorrectGamma(rgb->pixels[pixel_offset + k], gamma, rgbMaxChannel);
+                }
+            }
+        }
+    }
+}
+
+static avifBool avifIsSrgbChromaticities(png_fixed_point chrm[8])
+{
+    return chrm[0] == 31270 && chrm[1] == 32900 && // white
+           chrm[2] == 64000 && chrm[3] == 33000 && // red
+           chrm[4] == 30000 && chrm[5] == 60000 && // green
+           chrm[6] == 15000 && chrm[7] == 6000;    // blue
+}
+
 // Note on setjmp() and volatile variables:
 //
 // K & R, The C Programming Language 2nd Ed, p. 254 says:
@@ -265,6 +326,7 @@ avifBool avifPNGRead(const char * inputFilename,
     png_set_sig_bytes(png, 8);
     png_read_info(png, info);
 
+    avifBool hasICC = AVIF_FALSE;
     if (!ignoreICC) {
         char * iccpProfileName = NULL;
         int iccpCompression = 0;
@@ -272,6 +334,7 @@ avifBool avifPNGRead(const char * inputFilename,
         png_uint_32 iccpDataLen = 0;
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
             avifImageSetProfileICC(avif, iccpData, iccpDataLen);
+            hasICC = AVIF_TRUE;
         }
         // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
         // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
@@ -303,6 +366,14 @@ avifBool avifPNGRead(const char * inputFilename,
         png_set_swap(png);
         imgBitDepth = 16;
     }
+
+    int unusedSrgbIntent;
+    avifBool hasSrgb = png_get_sRGB(png, info, &unusedSrgbIntent);
+    double gama;
+    avifBool hasGama = png_get_gAMA(png, info, &gama) != 0;
+    png_fixed_point chrm[8];
+    avifBool hasChrm =
+        png_get_cHRM_fixed(png, info, &chrm[0], &chrm[1], &chrm[2], &chrm[3], &chrm[4], &chrm[5], &chrm[6], &chrm[7]) != 0;
 
     if (outPNGDepth) {
         *outPNGDepth = imgBitDepth;
@@ -336,7 +407,7 @@ avifBool avifPNGRead(const char * inputFilename,
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
     if ((rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
-        rgb.format = AVIF_RGB_FORMAT_RGB;
+        rgb.format = AVIF_RGB_FORMAT_RGB; // Change from default AVIF_RGB_FORMAT_RGBA
     }
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
@@ -347,6 +418,15 @@ avifBool avifPNGRead(const char * inputFilename,
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
     png_read_image(png, rowPointers);
+    if (!ignoreICC && hasGama && hasChrm && !hasSrgb && !hasICC) {
+        if (!avifIsSrgbChromaticities(chrm)) {
+            fprintf(stderr,
+                    "WARNING: PNG file contains unsupported chromaticity "
+                    "information (cHRM chunk different from sRGB). Colors may "
+                    "differ.\n");
+        }
+        avifApplyGama(&rgb, (float)gama);
+    }
     if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
         goto cleanup;
