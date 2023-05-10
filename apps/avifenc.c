@@ -1464,16 +1464,13 @@ int main(int argc, char * argv[])
         }
         settings.minQuantizer = settings.maxQuantizer = settings.minQuantizerAlpha = settings.maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
         // Codec.
-        if (settings.codecChoice != AVIF_CODEC_CHOICE_AUTO && settings.codecChoice != AVIF_CODEC_CHOICE_AOM &&
-            settings.codecChoice != AVIF_CODEC_CHOICE_AVM) {
-            fprintf(stderr, "Codec can only be AOM in lossless mode.\n");
+        if (settings.codecChoice == AVIF_CODEC_CHOICE_RAV1E) {
+            fprintf(stderr, "rav1e doesn't support lossless encoding yet: https://github.com/xiph/rav1e/issues/151\n");
             returnCode = 1;
-        }
-        // rav1e doesn't support lossless transform yet:
-        // https://github.com/xiph/rav1e/issues/151
-        // SVT-AV1 doesn't support lossless encoding yet:
-        // https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636
-        if (settings.codecChoice == AVIF_CODEC_CHOICE_AUTO) {
+        } else if (settings.codecChoice == AVIF_CODEC_CHOICE_SVT) {
+            fprintf(stderr, "SVT-AV1 doesn't support lossless encoding yet: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636\n");
+            returnCode = 1;
+        } else if (settings.codecChoice == AVIF_CODEC_CHOICE_AUTO) {
             settings.codecChoice = AVIF_CODEC_CHOICE_AOM;
         }
         // Range.
