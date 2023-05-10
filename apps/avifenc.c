@@ -1480,13 +1480,17 @@ int main(int argc, char * argv[])
         }
         // Matrix coefficients.
         if (cicpExplicitlySet) {
-            avifBool changeMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
+            avifBool incompatibleMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-            changeMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
-                         settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
+            incompatibleMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                               settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
 #endif
-            if (changeMC) {
+            if (incompatibleMC) {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+                fprintf(stderr, "Matrix coefficients have to be identity, YCgCo-Re, or YCgCo-Ro in lossless mode.\n");
+#else
                 fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
+#endif
                 returnCode = 1;
             }
         } else {
@@ -1744,7 +1748,7 @@ int main(int argc, char * argv[])
 
         if (usingIdentityMatrix && (sourceDepth != image->depth)) {
             fprintf(stderr,
-                    "WARNING: [--lossless] Input depth (%d) does not match output depth (%d). Output might not be lossless.\n",
+                    "WARNING: [--lossless] Identity matrix is used but input depth (%d) does not match output depth (%d). Output might not be lossless.\n",
                     sourceDepth,
                     image->depth);
             lossless = AVIF_FALSE;

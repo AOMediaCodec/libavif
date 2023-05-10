@@ -338,7 +338,19 @@ avifBool avifPNGRead(const char * inputFilename,
         }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
         if (useYCgCoR) {
-            avif->depth += (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ? 2 : 1;
+            if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
+                fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with PNG because it has an even bit depth.\n");
+                goto cleanup;
+            }
+            if (imgBitDepth != 8) {
+                fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RE cannot be used on 16 bit input because it adds two bits.\n");
+                goto cleanup;
+            }
+            if (requestedDepth && requestedDepth != 10) {
+                fprintf(stderr, "Cannot request %u bits for YCgCo-Re as it uses 2 extra bits.\n", requestedDepth);
+                goto cleanup;
+            }
+            avif->depth = 10;
         }
 #endif
     }
@@ -408,9 +420,8 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     volatile int rgbDepth = requestedDepth;
     if (rgbDepth == 0) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
-                                    avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
-            rgbDepth = avif->depth - ((avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ? 2 : 1);
+        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
+            rgbDepth = 8;
         } else {
             rgbDepth = (avif->depth > 8) ? 16 : 8;
         }

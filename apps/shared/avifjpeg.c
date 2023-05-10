@@ -371,11 +371,15 @@ avifBool avifJPEGRead(const char * inputFilename,
         avif->depth = requestedDepth ? requestedDepth : 8;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
         if (useYCgCoR) {
-            if (requestedDepth == 12) {
-                fprintf(stderr, "Cannot request 12 bits for YCgCo-R as it uses 1 or 2 extra bits.\n");
+            if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
+                fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with JPEG because it has an even bit depth.\n");
                 goto cleanup;
             }
-            avif->depth += (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ? 2 : 1;
+            if (requestedDepth && requestedDepth != 10) {
+                fprintf(stderr, "Cannot request %u bits for YCgCo-Re as it uses 2 extra bits.\n", requestedDepth);
+                goto cleanup;
+            }
+            avif->depth = 10;
         }
 #endif
         avifRGBImageSetDefaults(&rgb, avif);
