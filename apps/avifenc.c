@@ -818,8 +818,9 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     char manualTilingStr[128];
     snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", settings->tileRowsLog2, settings->tileColsLog2);
 
+    const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     printf("Encoding with AV1 codec '%s' speed [%d], color quality [%d (%s)], alpha quality [%d (%s)], %s, %d worker thread(s), please wait...\n",
-           avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE),
+           codecName ? codecName : "none",
            settings->speed,
            settings->quality,
            qualityString(settings->quality),
@@ -1464,14 +1465,13 @@ int main(int argc, char * argv[])
         }
         settings.minQuantizer = settings.maxQuantizer = settings.minQuantizerAlpha = settings.maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
         // Codec.
-        if (settings.codecChoice == AVIF_CODEC_CHOICE_RAV1E) {
+        const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+        if (codecName && !strcmp(codecName, "rav1e")) {
             fprintf(stderr, "rav1e doesn't support lossless encoding yet: https://github.com/xiph/rav1e/issues/151\n");
             returnCode = 1;
-        } else if (settings.codecChoice == AVIF_CODEC_CHOICE_SVT) {
+        } else if (codecName && !strcmp(codecName, "svt")) {
             fprintf(stderr, "SVT-AV1 doesn't support lossless encoding yet: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636\n");
             returnCode = 1;
-        } else if (settings.codecChoice == AVIF_CODEC_CHOICE_AUTO) {
-            settings.codecChoice = AVIF_CODEC_CHOICE_AOM;
         }
         // Range.
         if (requestedRange != AVIF_RANGE_FULL) {
@@ -1693,11 +1693,6 @@ int main(int argc, char * argv[])
         image->imir.mode = imirMode;
     }
 
-    avifBool usingAOM = AVIF_FALSE;
-    const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-    if (codecName && !strcmp(codecName, "aom")) {
-        usingAOM = AVIF_TRUE;
-    }
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
     avifBool usingLosslessColor = (settings.quality == AVIF_QUALITY_LOSSLESS);
     avifBool usingLosslessAlpha = (settings.qualityAlpha == AVIF_QUALITY_LOSSLESS);
@@ -1716,11 +1711,6 @@ int main(int argc, char * argv[])
 
     // Check for any reasons lossless will fail, and complain loudly
     if (lossless) {
-        if (!usingAOM) {
-            fprintf(stderr, "WARNING: [--lossless] Only aom (-c) supports lossless transforms. Output might not be lossless.\n");
-            lossless = AVIF_FALSE;
-        }
-
         if (!usingLosslessColor) {
             fprintf(stderr,
                     "WARNING: [--lossless] Color quality (-q or --qcolor) not set to %d. Color output might not be lossless.\n",
