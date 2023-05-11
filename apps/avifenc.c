@@ -1479,11 +1479,23 @@ int main(int argc, char * argv[])
             returnCode = 1;
         }
         // Matrix coefficients.
-        if (cicpExplicitlySet && settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
-            fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
-            returnCode = 1;
+        if (cicpExplicitlySet) {
+            avifBool incompatibleMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+            incompatibleMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                               settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
+#endif
+            if (incompatibleMC) {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+                fprintf(stderr, "Matrix coefficients have to be identity, YCgCo-Re, or YCgCo-Ro in lossless mode.\n");
+#else
+                fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
+#endif
+                returnCode = 1;
+            }
+        } else {
+            settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         }
-        settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         if (returnCode == 1)
             goto cleanup;
     } else {
@@ -1696,7 +1708,6 @@ int main(int argc, char * argv[])
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
     avifBool usingLosslessColor = (settings.quality == AVIF_QUALITY_LOSSLESS);
     avifBool usingLosslessAlpha = (settings.qualityAlpha == AVIF_QUALITY_LOSSLESS);
-    avifBool depthMatches = (sourceDepth == image->depth);
     avifBool using400 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     avifBool using444 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
     avifBool usingFullRange = (image->yuvRange == AVIF_RANGE_FULL);
@@ -1725,9 +1736,9 @@ int main(int argc, char * argv[])
             lossless = AVIF_FALSE;
         }
 
-        if (!depthMatches) {
+        if (usingIdentityMatrix && (sourceDepth != image->depth)) {
             fprintf(stderr,
-                    "WARNING: [--lossless] Input depth (%d) does not match output depth (%d). Output might not be lossless.\n",
+                    "WARNING: [--lossless] Identity matrix is used but input depth (%d) does not match output depth (%d). Output might not be lossless.\n",
                     sourceDepth,
                     image->depth);
             lossless = AVIF_FALSE;
@@ -1744,8 +1755,17 @@ int main(int argc, char * argv[])
                 lossless = AVIF_FALSE;
             }
 
-            if (!usingIdentityMatrix && !using400) {
+            avifBool matrixCoefficientsAreLosslessCompatible = usingIdentityMatrix;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+            matrixCoefficientsAreLosslessCompatible |= (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                                                        image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
+#endif
+            if (!matrixCoefficientsAreLosslessCompatible && !using400) {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+                fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0) or YCgCo-Re/Ro (--cicp x/x/15 or x/x/16); Output might not be lossless.\n");
+#else
                 fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0); Output might not be lossless.\n");
+#endif
                 lossless = AVIF_FALSE;
             }
         }
