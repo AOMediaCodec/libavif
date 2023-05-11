@@ -201,19 +201,19 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
 // Converts a gamma-compressed value to linear.
 static double avifToLinear(double v, double gamma)
 {
-    return powf(v, gamma);
+    return pow(v, gamma);
 }
 
 // Gamma-compresses a linear value using the sRGB transfer curve.
 // See section 8 of https://www.color.org/srgb.pdf
-#define SRGB_GAMMA_SLOPE 12.92f
+#define SRGB_GAMMA_SLOPE 12.92
 #define SRGB_GAMMA_TRESHOLD 0.0031308
 static double avifToSrgbGamma(double linear)
 {
     if (linear <= SRGB_GAMMA_TRESHOLD) {
         return linear * SRGB_GAMMA_SLOPE;
     } else {
-        return powf(linear, 1.f / 2.4f) * 1.055f - 0.055f;
+        return pow(linear, 1. / 2.4) * 1.055 - 0.055;
     }
 }
 
@@ -221,14 +221,14 @@ static int avifCorrectGamma(uint16_t v, double gamma, int rgbMaxChannel)
 {
     const double normalized = v / (double)rgbMaxChannel;
     const double corrected = avifToSrgbGamma(avifToLinear(normalized, gamma));
-    const int scaledUp = (int)floorf(corrected * rgbMaxChannel + 0.5f);
+    const int scaledUp = (int)floor(corrected * rgbMaxChannel + 0.5);
     return scaledUp < 0 ? 0 : scaledUp > rgbMaxChannel ? rgbMaxChannel : scaledUp;
 }
 
 // Converts samples in the image from the given 'gAMA' value to the sRGB transfer curve.
 static void avifApplyGama(avifRGBImage * rgb, double gama)
 {
-    const double gamma = 1.f / gama;
+    const double gamma = 1. / gama;
     assert(rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_RGB);
     const uint32_t bytesPerPixel = avifRGBImagePixelSize(rgb);
     const uint32_t rgbChannelBytes = (rgb->depth > 8) ? 2 : 1;
