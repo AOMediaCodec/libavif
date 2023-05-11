@@ -222,7 +222,7 @@ if(AVIF_BUILD_APPS)
     )
 
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
-        # Only aom encoder supports lossless encoding.
+        # Only aom encoder supports AV1 lossless encoding.
         set_property(TEST test_cmd_animation PROPERTY DISABLED True)
         set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
 
@@ -231,7 +231,7 @@ if(AVIF_BUILD_APPS)
             set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
         endif()
 
-        # Only aom encoder supports progressive encoding.
+        # Only aom encoder supports AV1 progressive encoding.
         set_property(TEST test_cmd_progressive PROPERTY DISABLED True)
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
