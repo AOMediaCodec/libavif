@@ -175,3 +175,44 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Personal photo converted with `avifenc --grid 1x5 --yuv 420` at
 commit [632d131](https://github.com/AOMediaCodec/libavif/commit/632d13188f9b7faa40f20d870e792174b8b5b8e6).
+
+## PNG gAMA chunks
+
+### File [gray_gama_chrm.png](gray_gama_chrm.png)
+
+![](gray_gama_chrm.png)
+
+Dark gray square with a gAMA and cHRM chunks with the values approximately equivalent to sRGB as listed at https://www.w3.org/TR/2003/REC-PNG-20031110/#11sRGB
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: gray square exported with Photoshop then manually edited with a hex editor to remove extra sRGB and iCC chunks
+
+### File [gray_gama_applied.png](gray_gama_applied.png)
+
+![](gray_gama_applied.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: obtained by encoding then decoding `gray_gama_chrm.png` with libavif
+
+### File [gray16_gama_chrm.png](gray16_gama_chrm.png)
+
+![](gray16_gama_chrm.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: obtained by converting `gray16_gama_chrm.png` with imagemagick flags `-format png48 -define png:bit-depth=16`
+
+### File [gray16_gama_applied.png](gray16_gama_applied.png)
+
+![](gray16_gama_applied.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with
+```
+convert -size 100x100 -format png48 -define png:bit-depth=16 -depth 16 \
+   'xc:rgb(0.8239871824%, 3.7888151369%, 7.05271992065%)'  gray16_gama_applied.png
+```
+Then the gAMA and cHRM chunks were removed with a hex editor.

@@ -16,9 +16,12 @@ const char* data_path = nullptr;
 
 //------------------------------------------------------------------------------
 
-void AreSamplesEqualForAllReadSettings(const char* file_name1,
-                                       const char* file_name2,
-                                       bool ignore_metadata, double min_psnr) {
+// Reads both images with checks that the PSNR between the two is between the
+// given min and max. Repeats this operation for all combinations of read
+// settings.
+void CheckPsnrForAllReadSettings(const char* file_name1, const char* file_name2,
+                                 bool ignore_metadata, double min_psnr,
+                                 double max_psnr) {
   for (avifPixelFormat requested_format :
        {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
         AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
@@ -47,11 +50,16 @@ void AreSamplesEqualForAllReadSettings(const char* file_name1,
         const std::string dir = testing::TempDir();
         const std::string dst1 = dir + "/" + file_name1;
         const std::string dst2 = dir + "/" + file_name2;
-        if (psnr < min_psnr) {
+        const double psnr_in_range = psnr >= min_psnr && psnr <= max_psnr;
+        if (!psnr_in_range) {
           testutil::WriteImage(image1.get(), dst1.c_str());
           testutil::WriteImage(image2.get(), dst2.c_str());
         }
+        // Check the min_psnr and max_psnr again instead of the psnr_in_range
+        // to get nicer failure messages.
         ASSERT_GE(psnr, min_psnr) << "Actual images saved to " << dst1
+                                  << " and " << dst2 << " psnr: " << psnr;
+        ASSERT_LE(psnr, max_psnr) << "Actual images saved to " << dst1
                                   << " and " << dst2 << " psnr: " << psnr;
       }
     }
@@ -59,21 +67,31 @@ void AreSamplesEqualForAllReadSettings(const char* file_name1,
 }
 
 TEST(JpegTest, ReadAllSubsamplingsAndAllBitDepths) {
-  AreSamplesEqualForAllReadSettings("paris_exif_xmp_icc.jpg",
-                                    "paris_exif_orientation_5.jpg",
-                                    /*ignoreMetadata=*/true, /*min_psnr=*/99.);
+  CheckPsnrForAllReadSettings(
+      "paris_exif_xmp_icc.jpg", "paris_exif_orientation_5.jpg",
+      /*ignoreMetadata=*/true, /*min_psnr=*/99., /*max_psnr=*/99.);
 }
 
 TEST(PngTest, ReadAllSubsamplingsAndAllBitDepths) {
-  AreSamplesEqualForAllReadSettings("paris_icc_exif_xmp.png",
-                                    "paris_icc_exif_xmp_at_end.png",
-                                    /*ignoreMetadata=*/true, /*min_psnr=*/99.);
-  AreSamplesEqualForAllReadSettings("gray_gama_chrm.png",
-                                    "gray_gama_applied.png",
-                                    /*ignoreMetadata=*/false, /*min_psnr=*/99.);
-  AreSamplesEqualForAllReadSettings("gray16_gama_chrm.png",
-                                    "gray16_gama_applied.png",
-                                    /*ignoreMetadata=*/false, /*min_psnr=*/65.);
+  CheckPsnrForAllReadSettings(
+      "paris_icc_exif_xmp.png", "paris_icc_exif_xmp_at_end.png",
+      /*ignoreMetadata=*/true, /*min_psnr=*/99., /*max_psnr=*/99.);
+
+  // PNG file with gAMA chunk. There SHOULD be a difference if ignoring
+  // metadata. Otherwise they should be identical.
+  CheckPsnrForAllReadSettings("gray_gama_chrm.png", "gray_gama_applied.png",
+                              /*ignoreMetadata=*/true, /*min_psnr=*/0.,
+                              /*max_psnr=*/40.);
+  CheckPsnrForAllReadSettings("gray_gama_chrm.png", "gray_gama_applied.png",
+                              /*ignoreMetadata=*/false, /*min_psnr=*/99.,
+                              /*max_psnr=*/99.);
+  // 16 bit.
+  CheckPsnrForAllReadSettings(
+      "gray16_gama_chrm.png", "gray16_gama_applied.png",
+      /*ignoreMetadata=*/true, /*min_psnr=*/0., /*max_psnr=*/40.);
+  CheckPsnrForAllReadSettings(
+      "gray16_gama_chrm.png", "gray16_gama_applied.png",
+      /*ignoreMetadata=*/false, /*min_psnr=*/99., /*max_psnr=*/99.);
 }
 
 //------------------------------------------------------------------------------

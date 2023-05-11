@@ -114,7 +114,7 @@ static void syntax(void)
     printf("    -k,--keyframe INTERVAL            : Set the forced keyframe interval (maximum frames between keyframes). Set to 0 to disable (default).\n");
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
-    printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it. Also ignores gAMA/cHRM chunks in PNG files. (no-op if absent)\\n");
+    printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it. Also ignores gAMA/cHRM chunks in PNG files. (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");

@@ -198,54 +198,59 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     return AVIF_TRUE;
 }
 
-static float avifToLinear(float v, float gamma)
+// Converts a gamma-compressed value to linear.
+static double avifToLinear(double v, double gamma)
 {
     return powf(v, gamma);
 }
 
+// Gamma-compresses a linear value using the sRGB transfer curve.
+// See section 8 of https://www.color.org/srgb.pdf
 #define SRGB_GAMMA_SLOPE 12.92f
-static float avifToSrgbGamma(float linear)
+#define SRGB_GAMMA_TRESHOLD 0.0031308
+static double avifToSrgbGamma(double linear)
 {
-    static const float kThreshold = 0.04045f / SRGB_GAMMA_SLOPE;
-    if (linear <= kThreshold) {
+    if (linear <= SRGB_GAMMA_TRESHOLD) {
         return linear * SRGB_GAMMA_SLOPE;
     } else {
         return powf(linear, 1.f / 2.4f) * 1.055f - 0.055f;
     }
 }
 
-static int avifCorrectGamma(uint16_t v, float gamma, int rgbMaxChannel)
+static int avifCorrectGamma(uint16_t v, double gamma, int rgbMaxChannel)
 {
-    const float normalized = v / (float)rgbMaxChannel;
-    const float corrected = avifToSrgbGamma(avifToLinear(normalized, gamma));
+    const double normalized = v / (double)rgbMaxChannel;
+    const double corrected = avifToSrgbGamma(avifToLinear(normalized, gamma));
     const int scaledUp = (int)floorf(corrected * rgbMaxChannel + 0.5f);
     return scaledUp < 0 ? 0 : scaledUp > rgbMaxChannel ? rgbMaxChannel : scaledUp;
 }
 
-// Converts samples in the image from the given 'gAMA' value to the sRGB gamma curve.
-static void avifApplyGama(avifRGBImage * rgb, float gama)
+// Converts samples in the image from the given 'gAMA' value to the sRGB transfer curve.
+static void avifApplyGama(avifRGBImage * rgb, double gama)
 {
-    const float gamma = 1.f / gama;
+    const double gamma = 1.f / gama;
     assert(rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_RGB);
-    const uint32_t samplesPerPixel = rgb->format == AVIF_RGB_FORMAT_RGBA ? 4 : 3;
+    const uint32_t bytesPerPixel = avifRGBImagePixelSize(rgb);
     const uint32_t rgbChannelBytes = (rgb->depth > 8) ? 2 : 1;
 
     const int rgbMaxChannel = (1 << rgb->depth) - 1;
-    const int rowWidth = rgb->rowBytes / rgbChannelBytes;
+    uint8_t * row = rgb->pixels;
     for (uint32_t j = 0; j < rgb->height; ++j) {
+        uint8_t * pixel = row;
         for (uint32_t i = 0; i < rgb->width; ++i) {
-            const uint32_t pixel_offset = (i * samplesPerPixel) + (j * rowWidth);
             if (rgbChannelBytes > 1) {
-                uint16_t * pixels16 = (uint16_t *)rgb->pixels;
+                uint16_t * pixel16 = (uint16_t *)pixel;
                 for (uint32_t k = 0; k < 3; ++k) {
-                    pixels16[pixel_offset + k] = (uint16_t)avifCorrectGamma(pixels16[pixel_offset + k], gamma, rgbMaxChannel);
+                    pixel16[k] = (uint16_t)avifCorrectGamma(pixel16[k], gamma, rgbMaxChannel);
                 }
             } else {
                 for (uint32_t k = 0; k < 3; ++k) {
-                    rgb->pixels[pixel_offset + k] = (uint8_t)avifCorrectGamma(rgb->pixels[pixel_offset + k], gamma, rgbMaxChannel);
+                    pixel[k] = (uint8_t)avifCorrectGamma(pixel[k], gamma, rgbMaxChannel);
                 }
             }
+            pixel += bytesPerPixel;
         }
+        row += rgb->rowBytes;
     }
 }
 
@@ -418,14 +423,16 @@ avifBool avifPNGRead(const char * inputFilename,
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
     png_read_image(png, rowPointers);
+    // gAMA chunk should be applied if it has an accompanying cHRM chunk, AND there is no overriding sRGB or iCCP chunk.
     if (!ignoreICC && hasGama && hasChrm && !hasSrgb && !hasICC) {
         if (!avifIsSrgbChromaticities(chrm)) {
+            // TODO: the cHRM chunk should also be dealt with if it differs from sRGB.
             fprintf(stderr,
                     "WARNING: PNG file contains unsupported chromaticity "
-                    "information (cHRM chunk different from sRGB). Colors may "
-                    "differ.\n");
+                    "information. Colors may be affected.\n");
         }
-        avifApplyGama(&rgb, (float)gama);
+        // Appy the PNG file's embedded gAMA value to prevent unexpected color shifts.
+        avifApplyGama(&rgb, (double)gama);
     }
     if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);

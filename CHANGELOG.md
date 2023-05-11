@@ -63,6 +63,9 @@ List of incompatible ABI changes in this release:
 * At decoding, avifIOStats now returns the same values as at encoding.
 * avifRGBImageAllocatePixels() now returns avifResult instead of void to report
   memory allocation failures.
+* Handle the gAMA chunk in PNG files that contain both a gAMA and a cHRM chunk and
+  no overriding sRGB or iCCP chunk. Pixel values are gamma corrected so they use
+  the transform curve from sRGB. The cHRM chunk is still unused.
 
 ## [0.11.1] - 2022-10-19
 
