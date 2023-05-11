@@ -336,11 +336,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                         } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
                             // Formulas from JVET-U0093.
-                            const int bitOffset = (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
-                            const int maxValue = (1 << (state.yuvDepth - bitOffset)) - 1;
-                            const int R = avifRoundf(AVIF_CLAMP(rgbPixel[0] * rgbMaxChannelF, 0, maxValue));
-                            const int G = avifRoundf(AVIF_CLAMP(rgbPixel[1] * rgbMaxChannelF, 0, maxValue));
-                            const int B = avifRoundf(AVIF_CLAMP(rgbPixel[2] * rgbMaxChannelF, 0, maxValue));
+                            const int R = (int)avifRoundf(AVIF_CLAMP(rgbPixel[0] * rgbMaxChannelF, 0.f, rgbMaxChannelF));
+                            const int G = (int)avifRoundf(AVIF_CLAMP(rgbPixel[1] * rgbMaxChannelF, 0.f, rgbMaxChannelF));
+                            const int B = (int)avifRoundf(AVIF_CLAMP(rgbPixel[2] * rgbMaxChannelF, 0.f, rgbMaxChannelF));
                             const int Co = R - B;
                             const int t = B + (Co >> 1);
                             const int Cg = G - t;
@@ -742,8 +740,8 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     const int maxValue = (1 << (state->yuvDepth - bitOffset)) - 1;
                     assert((float)maxValue == rgbMaxChannelF);
                     const int YY = unormY;
-                    const int Cg = avifRoundf(Cb * yuvMaxChannel);
-                    const int Co = avifRoundf(Cr * yuvMaxChannel);
+                    const int Cg = (int)avifRoundf(Cb * yuvMaxChannel);
+                    const int Co = (int)avifRoundf(Cr * yuvMaxChannel);
                     const int t = YY - (Cg >> 1);
                     G = AVIF_CLAMP(t + Cg, 0, maxValue);
                     B = AVIF_CLAMP(t - (Co >> 1), 0, maxValue);
