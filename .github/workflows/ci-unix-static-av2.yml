@@ -56,6 +56,10 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash rav1e.cmd
+    - name: Build SVT-AV1
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash svt.cmd
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -79,6 +83,7 @@ jobs:
         -DAVIF_CODEC_AVM=ON -DAVIF_LOCAL_AVM=ON
         -DAVIF_CODEC_DAV1D=${{ runner.also-enable-av1-codecs }} -DAVIF_LOCAL_DAV1D=ON
         -DAVIF_CODEC_RAV1E=${{ runner.also-enable-av1-codecs }} -DAVIF_LOCAL_RAV1E=ON
+        -DAVIF_CODEC_SVT=${{ runner.also-enable-av1-codecs }} -DAVIF_LOCAL_SVT=ON
         -DAVIF_LOCAL_LIBYUV=ON
         -DAVIF_LOCAL_LIBSHARPYUV=ON
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
