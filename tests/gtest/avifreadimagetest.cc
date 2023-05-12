@@ -86,12 +86,12 @@ TEST(PngTest, ReadAllSubsamplingsAndAllBitDepths) {
                               /*ignoreMetadata=*/false, /*min_psnr=*/99.,
                               /*max_psnr=*/99.);
   // 16 bit.
-  CheckPsnrForAllReadSettings(
-      "gray16_gama_chrm.png", "gray16_gama_applied.png",
-      /*ignoreMetadata=*/true, /*min_psnr=*/0., /*max_psnr=*/40.);
-  CheckPsnrForAllReadSettings(
-      "gray16_gama_chrm.png", "gray16_gama_applied.png",
-      /*ignoreMetadata=*/false, /*min_psnr=*/99., /*max_psnr=*/99.);
+  CheckPsnrForAllReadSettings("gray16_gama_chrm.png", "gray16_gama_applied.png",
+                              /*ignoreMetadata=*/true, /*min_psnr=*/0.,
+                              /*max_psnr=*/40.);
+  CheckPsnrForAllReadSettings("gray16_gama_chrm.png", "gray16_gama_applied.png",
+                              /*ignoreMetadata=*/false, /*min_psnr=*/99.,
+                              /*max_psnr=*/99.);
 }
 
 //------------------------------------------------------------------------------
