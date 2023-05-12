@@ -231,7 +231,8 @@ if(AVIF_BUILD_APPS)
             set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
         endif()
 
-        # Only aom encoder supports AV1 progressive encoding.
+        # Only aom encoder supports encoding AV1 spatial layers (used to implement
+        # AVIF layered images that can be progressively decoded).
         set_property(TEST test_cmd_progressive PROPERTY DISABLED True)
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
