@@ -1087,58 +1087,44 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
     }
 
     if (!memcmp(item->type, "grid", 4)) {
-        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
-        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
-        //   same decoder configuration (see 7.3.6.2).
-        avifDecoderItem * firstTile = NULL;
         for (uint32_t i = 0; i < item->meta->items.count; ++i) {
             avifDecoderItem * tile = &item->meta->items.item[i];
-            if (tile->dimgForID == item->id) {
-                // Skip the same items as avifDecoderGenerateImageGridTiles().
-                if (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN) {
-                    continue;
-                }
+            if (tile->dimgForID != item->id) {
+                continue;
+            }
+            // Tile item types were checked in avifDecoderGenerateImageTiles(), no need to do it here.
 
-                // The coding format is defined by the item type.
-                if (firstTile == NULL) {
-                    firstTile = tile;
-                } else if (memcmp(tile->type, firstTile->type, 4)) {
-                    avifDiagnosticsPrintf(diag,
-                                          "Tile item ID %u of type '%.4s' differs from other tile type '%.4s'",
-                                          tile->id,
-                                          (const char *)tile->type,
-                                          (const char *)firstTile->type);
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
+            // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+            //   All input images of a grid image item shall use the same [...] chroma sampling format,
+            //   and the same decoder configuration (see 7.3.6.2).
 
-                // The chroma sampling format is part of the decoder configuration.
-                const avifProperty * tileConfigProp = avifPropertyArrayFind(&tile->properties, configPropName);
-                if (!tileConfigProp) {
-                    avifDiagnosticsPrintf(diag,
-                                          "Tile item ID %u of type '%.4s' is missing mandatory %s property",
-                                          tile->id,
-                                          (const char *)tile->type,
-                                          configPropName);
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
-                // configProp was copied from a tile item to the grid item. Comparing tileConfigProp with it
-                // is equivalent to comparing tileConfigProp with the configPropName from the firstTile.
-                if ((tileConfigProp->u.av1C.seqProfile != configProp->u.av1C.seqProfile) ||
-                    (tileConfigProp->u.av1C.seqLevelIdx0 != configProp->u.av1C.seqLevelIdx0) ||
-                    (tileConfigProp->u.av1C.seqTier0 != configProp->u.av1C.seqTier0) ||
-                    (tileConfigProp->u.av1C.highBitdepth != configProp->u.av1C.highBitdepth) ||
-                    (tileConfigProp->u.av1C.twelveBit != configProp->u.av1C.twelveBit) ||
-                    (tileConfigProp->u.av1C.monochrome != configProp->u.av1C.monochrome) ||
-                    (tileConfigProp->u.av1C.chromaSubsamplingX != configProp->u.av1C.chromaSubsamplingX) ||
-                    (tileConfigProp->u.av1C.chromaSubsamplingY != configProp->u.av1C.chromaSubsamplingY) ||
-                    (tileConfigProp->u.av1C.chromaSamplePosition != configProp->u.av1C.chromaSamplePosition)) {
-                    avifDiagnosticsPrintf(diag,
-                                          "The fields of the %s property of tile item ID %u of type '%.4s' differs from other tiles",
-                                          configPropName,
-                                          tile->id,
-                                          (const char *)tile->type);
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
+            // The chroma sampling format is part of the decoder configuration.
+            const avifProperty * tileConfigProp = avifPropertyArrayFind(&tile->properties, configPropName);
+            if (!tileConfigProp) {
+                avifDiagnosticsPrintf(diag,
+                                      "Tile item ID %u of type '%.4s' is missing mandatory %s property",
+                                      tile->id,
+                                      (const char *)tile->type,
+                                      configPropName);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            // configProp was copied from a tile item to the grid item. Comparing tileConfigProp with it
+            // is equivalent to comparing tileConfigProp with the configPropName from the first tile.
+            if ((tileConfigProp->u.av1C.seqProfile != configProp->u.av1C.seqProfile) ||
+                (tileConfigProp->u.av1C.seqLevelIdx0 != configProp->u.av1C.seqLevelIdx0) ||
+                (tileConfigProp->u.av1C.seqTier0 != configProp->u.av1C.seqTier0) ||
+                (tileConfigProp->u.av1C.highBitdepth != configProp->u.av1C.highBitdepth) ||
+                (tileConfigProp->u.av1C.twelveBit != configProp->u.av1C.twelveBit) ||
+                (tileConfigProp->u.av1C.monochrome != configProp->u.av1C.monochrome) ||
+                (tileConfigProp->u.av1C.chromaSubsamplingX != configProp->u.av1C.chromaSubsamplingX) ||
+                (tileConfigProp->u.av1C.chromaSubsamplingY != configProp->u.av1C.chromaSubsamplingY) ||
+                (tileConfigProp->u.av1C.chromaSamplePosition != configProp->u.av1C.chromaSamplePosition)) {
+                avifDiagnosticsPrintf(diag,
+                                      "The fields of the %s property of tile item ID %u of type '%.4s' differs from other tiles",
+                                      configPropName,
+                                      tile->id,
+                                      (const char *)tile->type);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
         }
     }
@@ -1353,85 +1339,92 @@ static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gri
 
 static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifImageGrid * grid, avifDecoderItem * gridItem, avifBool alpha)
 {
-    unsigned int tilesRequested = grid->rows * grid->columns;
-
     // Count number of dimg for this item, bail out if it doesn't match perfectly
     unsigned int tilesAvailable = 0;
+    avifDecoderItem * firstTileItem = NULL;
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
         avifDecoderItem * item = &gridItem->meta->items.item[i];
-        if (item->dimgForID == gridItem->id) {
-            const avifCodecType tileCodecType = avifGetCodecType(item->type);
-            if (tileCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
-                continue;
-            }
-            if (item->hasUnsupportedEssentialProperty) {
-                // An essential property isn't supported by libavif; can't
-                // decode a grid image if any tile in the grid isn't supported.
-                avifDiagnosticsPrintf(&decoder->diag, "Grid image contains tile with an unsupported property marked as essential");
+        if (item->dimgForID != gridItem->id) {
+            continue;
+        }
+
+        // According to HEIF (ISO 14496-12), Section 6.6.2.3.1, the SingleItemTypeReferenceBox of type 'dimg'
+        // identifies the input images of the derived image item of type 'grid'. Since the reference_count
+        // shall be equal to rows*columns, unknown tile item types cannot be skipped but must be considered
+        // as errors.
+        const avifCodecType tileCodecType = avifGetCodecType(item->type);
+        if (tileCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
+            avifDiagnosticsPrintf(&decoder->diag, "Tile item ID %u has an unknown item type '%.4s'", item->id, (const char *)item->type);
+            return AVIF_FALSE;
+        }
+
+        if (item->hasUnsupportedEssentialProperty) {
+            // An essential property isn't supported by libavif; can't
+            // decode a grid image if any tile in the grid isn't supported.
+            avifDiagnosticsPrintf(&decoder->diag, "Grid image contains tile with an unsupported property marked as essential");
+            return AVIF_FALSE;
+        }
+
+        const avifTile * tile =
+            avifDecoderDataCreateTile(decoder->data, tileCodecType, item->width, item->height, avifDecoderItemOperatingPoint(item));
+        if (!tile) {
+            return AVIF_FALSE;
+        }
+        if (!avifCodecDecodeInputFillFromDecoderItem(tile->input,
+                                                     item,
+                                                     decoder->allowProgressive,
+                                                     decoder->imageCountLimit,
+                                                     decoder->io->sizeHint,
+                                                     &decoder->diag)) {
+            return AVIF_FALSE;
+        }
+        tile->input->alpha = alpha;
+
+        if (firstTileItem == NULL) {
+            firstTileItem = item;
+
+            // Adopt the configuration property of the first image item tile, so that it can be queried from
+            // the top-level color/alpha item during avifDecoderReset().
+            const char * configPropName = memcmp(item->type, "av02", 4) ? "av1C" : "av2C";
+            const avifProperty * srcProp = avifPropertyArrayFind(&item->properties, configPropName);
+            if (!srcProp) {
+                avifDiagnosticsPrintf(&decoder->diag, "Grid image's first tile is missing an %s property", configPropName);
                 return AVIF_FALSE;
             }
+            avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&gridItem->properties);
+            *dstProp = *srcProp;
 
-            ++tilesAvailable;
+            if (!alpha && item->progressive) {
+                decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
+                if (tile->input->samples.count > 1) {
+                    decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
+                    decoder->imageCount = tile->input->samples.count;
+                }
+            }
         }
+
+        if (memcmp(item->type, firstTileItem->type, 4)) {
+            // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+            //   All input images of a grid image item shall use the same coding format [...]
+            // The coding format is defined by the item type.
+            avifDiagnosticsPrintf(&decoder->diag,
+                                  "Tile item ID %u of type '%.4s' differs from other tile type '%.4s'",
+                                  item->id,
+                                  (const char *)item->type,
+                                  (const char *)firstTileItem->type);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        ++tilesAvailable;
     }
 
-    if (tilesRequested != tilesAvailable) {
+    if (tilesAvailable != grid->rows * grid->columns) {
         avifDiagnosticsPrintf(&decoder->diag,
                               "Grid image of dimensions %ux%u requires %u tiles, and only %u were found",
                               grid->columns,
                               grid->rows,
-                              tilesRequested,
+                              grid->rows * grid->columns,
                               tilesAvailable);
         return AVIF_FALSE;
-    }
-
-    avifBool firstTile = AVIF_TRUE;
-    for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
-        avifDecoderItem * item = &gridItem->meta->items.item[i];
-        if (item->dimgForID == gridItem->id) {
-            const avifCodecType codecType = avifGetCodecType(item->type);
-            if (codecType == AVIF_CODEC_TYPE_UNKNOWN) {
-                continue;
-            }
-
-            avifTile * tile =
-                avifDecoderDataCreateTile(decoder->data, codecType, item->width, item->height, avifDecoderItemOperatingPoint(item));
-            if (!tile) {
-                return AVIF_FALSE;
-            }
-            if (!avifCodecDecodeInputFillFromDecoderItem(tile->input,
-                                                         item,
-                                                         decoder->allowProgressive,
-                                                         decoder->imageCountLimit,
-                                                         decoder->io->sizeHint,
-                                                         &decoder->diag)) {
-                return AVIF_FALSE;
-            }
-            tile->input->alpha = alpha;
-
-            if (firstTile) {
-                firstTile = AVIF_FALSE;
-
-                // Adopt the configuration property of the first image item tile, so that it can be queried from
-                // the top-level color/alpha item during avifDecoderReset().
-                const char * configPropName = memcmp(item->type, "av02", 4) ? "av1C" : "av2C";
-                const avifProperty * srcProp = avifPropertyArrayFind(&item->properties, configPropName);
-                if (!srcProp) {
-                    avifDiagnosticsPrintf(&decoder->diag, "Grid image's first tile is missing an %s property", configPropName);
-                    return AVIF_FALSE;
-                }
-                avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&gridItem->properties);
-                *dstProp = *srcProp;
-
-                if (!alpha && item->progressive) {
-                    decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
-                    if (tile->input->samples.count > 1) {
-                        decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
-                        decoder->imageCount = tile->input->samples.count;
-                    }
-                }
-            }
-        }
     }
     return AVIF_TRUE;
 }
