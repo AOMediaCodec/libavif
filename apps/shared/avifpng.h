@@ -26,6 +26,10 @@ avifBool avifPNGWrite(const char * outputFilename,
                       avifChromaUpsampling chromaUpsampling,
                       int compressionLevel);
 
+// Converts RGB samples in the image from the given gamma value to the sRGB transfer curve.
+// Alpha samples (if any) are left unchanged.
+void avifConvertGammaToSrgb(avifRGBImage * rgb, double gamma);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
