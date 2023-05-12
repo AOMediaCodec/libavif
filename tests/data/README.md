@@ -106,6 +106,22 @@ The goal is to have a large XMP blob so that it can only be stored as multiple e
 |   136627 | 0xffe1 APP1 |   4791 | http://ns.adobe.com/xmp/extensio |
 |          |             |        | ...                              |
 
+### File [paris_xmp_trailing_null.jpg](paris_xmp_trailing_null.jpg)
+
+![](paris_xmp_trailing_null.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `paris_exif_xmp_icc.jpg` loaded with `avifReadImage()`, stripped from ICC and Exif, a zero byte appended to XMP,
+then written with `avifJPEGWrite()` with quality 0 (without calling `avifFixImageXMP()`).
+
+| address | marker      | length | data                                         |
+|--------:|-------------|-------:|----------------------------------------------|
+|       0 | 0xffd8 SOI  |        |                                              |
+|       2 | 0xffe0 APP0 |     16 | `JFIF.........`                              |
+|      20 | 0xffe1 APP1 |   3930 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|         |             |        | ...                                          |
+
 ### File [paris_icc_exif_xmp.png](paris_icc_exif_xmp.png)
 
 ![](paris_icc_exif_xmp.png)

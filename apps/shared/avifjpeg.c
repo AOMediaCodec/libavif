@@ -551,6 +551,7 @@ avifBool avifJPEGRead(const char * inputFilename,
         } else if (standardXMPData) {
             avifImageSetMetadataXMP(avif, standardXMPData, standardXMPSize);
         }
+        avifFixImageXMP(avif); // Remove one trailing null character if any.
     }
     jpeg_finish_decompress(&cinfo);
     ret = AVIF_TRUE;
