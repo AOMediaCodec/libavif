@@ -84,7 +84,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_ENCODE_COLOR_FAILED:           return "Encoding of color planes failed";
         case AVIF_RESULT_ENCODE_ALPHA_FAILED:           return "Encoding of alpha plane failed";
         case AVIF_RESULT_BMFF_PARSE_FAILED:             return "BMFF parsing failed";
-        case AVIF_RESULT_NO_AV1_ITEMS_FOUND:            return "No AV1 items found";
+        case AVIF_RESULT_MISSING_IMAGE_ITEM:            return "Missing or empty image item";
         case AVIF_RESULT_DECODE_COLOR_FAILED:           return "Decoding of color planes failed";
         case AVIF_RESULT_DECODE_ALPHA_FAILED:           return "Decoding of alpha plane failed";
         case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH:     return "Color and alpha planes size mismatch";

@@ -3611,7 +3611,7 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileI
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         AVIF_CHECKERR(avifDecoderGenerateImageGridTiles(decoder, &info->grid, item, alpha), AVIF_RESULT_INVALID_IMAGE_GRID);
     } else {
-        AVIF_CHECKERR(item->size != 0, AVIF_RESULT_NO_AV1_ITEMS_FOUND);
+        AVIF_CHECKERR(item->size != 0, AVIF_RESULT_MISSING_IMAGE_ITEM);
 
         const avifCodecType codecType = avifGetCodecType(item->type);
         assert(codecType != AVIF_CODEC_TYPE_UNKNOWN);
@@ -3811,13 +3811,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         if (data->meta->primaryItemID == 0) {
             // A primary item is required
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not specified");
-            return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
+            return AVIF_RESULT_MISSING_IMAGE_ITEM;
         }
 
         avifDecoderItem * colorItem = avifDecoderDataFindItem(data, /*alpha=*/AVIF_FALSE, /*parentItemID=*/0);
         if (!colorItem) {
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not found");
-            return AVIF_RESULT_NO_AV1_ITEMS_FOUND;
+            return AVIF_RESULT_MISSING_IMAGE_ITEM;
         }
         colorProperties = &colorItem->properties;
         if (!memcmp(colorItem->type, "grid", 4)) {
