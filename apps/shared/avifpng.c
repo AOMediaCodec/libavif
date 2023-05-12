@@ -426,7 +426,11 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         goto cleanup;
     }
     if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
-        if (avif->depth != 10 || (requestedDepth && requestedDepth != 8)) {
+        if (avif->depth != 10) {
+            fprintf(stderr, "avif->depth must be 10 bits and not %u.\n", avif->depth);
+            goto cleanup;
+        }
+        if (requestedDepth && requestedDepth != 8) {
             fprintf(stderr, "Cannot request %u bits for YCgCo-Re as it only works for 8 bits.\n", requestedDepth);
             goto cleanup;
         }

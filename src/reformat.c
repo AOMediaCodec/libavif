@@ -336,9 +336,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                         } else if (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
                             // Formulas from JVET-U0093.
-                            const int R = (int)avifRoundf(AVIF_CLAMP(rgbPixel[0] * rgbMaxChannelF, 0.f, rgbMaxChannelF));
-                            const int G = (int)avifRoundf(AVIF_CLAMP(rgbPixel[1] * rgbMaxChannelF, 0.f, rgbMaxChannelF));
-                            const int B = (int)avifRoundf(AVIF_CLAMP(rgbPixel[2] * rgbMaxChannelF, 0.f, rgbMaxChannelF));
+                            const int R = (int)avifRoundf(AVIF_CLAMP(rgbPixel[0] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
+                            const int G = (int)avifRoundf(AVIF_CLAMP(rgbPixel[1] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
+                            const int B = (int)avifRoundf(AVIF_CLAMP(rgbPixel[2] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
                             const int Co = R - B;
                             const int t = B + (Co >> 1);
                             const int Cg = G - t;
