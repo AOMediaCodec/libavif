@@ -90,6 +90,7 @@ static void avif_animation_finalize(GObject * obj)
     g_thread_join(context->decoder_thread);
     g_async_queue_unref(context->queue);
     g_object_unref(context);
+    context = NULL;
 }
 
 static gboolean avif_animation_is_static_image(GdkPixbufAnimation * animation)
@@ -152,7 +153,7 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
     size_t prev_frame = avif_iter->current_frame;
     uint64_t elapsed_time = current_time->tv_sec * 1000 + current_time->tv_usec / 1000 - avif_iter->time_offset;
 
-    if (context->decoder->repetitionCount > 0 && elapsed_time > context->total_animation_time * context->decoder->repetitionCount) {
+    if (context->decoder->repetitionCount > 0 && elapsed_time > context->total_animation_time * (context->decoder->repetitionCount + 1)) {
         avif_iter->current_frame = context->decoder->imageCount - 1;
     } else {
 
@@ -174,10 +175,9 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
         }
         /* only relevant for animations that fit in the buffer */
         else if (elapsed_time > context->total_animation_time) {
-            avif_iter->time_offset += context->total_animation_time;
-            elapsed_time = elapsed_time - context->total_animation_time;
+            elapsed_time = elapsed_time % context->total_animation_time;
             avif_iter->current_animation_time = 0;
-            avif_iter->current_frame = 0 ;
+            avif_iter->current_frame = 0;
         }
 
         /* how much time has elapsed since the last frame */
@@ -221,9 +221,11 @@ static gboolean avif_animation_iter_on_currently_loading_frame(GdkPixbufAnimatio
 
 static void avif_animation_iter_finalize(GObject * obj)
 {
-    AvifAnimationIter * iter = (AvifAnimationIter *)obj;
-    g_object_unref(iter->animation);
-    g_object_unref(iter);
+    /*
+     * do nothing, as according to documentation, the caller of gdk_pixbuf_get_iter:
+     * "takes ownership of the data, and is responsible for freeing it"
+     */
+    (void)obj;
 }
 
 
