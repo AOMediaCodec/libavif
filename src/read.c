@@ -3569,40 +3569,111 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
     return AVIF_RESULT_OK;
 }
 
-// If alpha is AVIF_FALSE, searches for the primary color item (parentItemID is ignored in this case).
-// If alpha is AVIF_TRUE, searches for the auxiliary alpha item whose parent item ID is parentItemID.
-// Returns the target item if found, or NULL.
-static avifDecoderItem * avifDecoderDataFindItem(avifDecoderData * data, avifBool alpha, uint32_t parentItemID)
+// Returns AVIF_TRUE if the item should be skipped. Items should be skipped for one of the following reasons:
+//  * Size is 0.
+//  * Has an essential property that isn't supported by libavif.
+//  * Item is Exif or similar data.
+//  * Item is a thumbnail.
+static avifBool avifDecoderDataShouldSkipItem(avifDecoderItem * item)
+{
+    return !item->size || item->hasUnsupportedEssentialProperty ||
+           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) || item->thumbnailForID != 0;
+}
+
+// Returns the color item if found, or NULL.
+static avifDecoderItem * avifDecoderDataFindColorItem(avifDecoderData * data)
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = &data->meta->items.item[itemIndex];
-        if (!item->size) {
+        if (avifDecoderDataShouldSkipItem(item)) {
             continue;
         }
-        if (item->hasUnsupportedEssentialProperty) {
-            // An essential property isn't supported by libavif; ignore the item.
-            continue;
-        }
-        if ((avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN) && memcmp(item->type, "grid", 4)) {
-            // Probably exif or some other data.
-            continue;
-        }
-        if (item->thumbnailForID != 0) {
-            // It's a thumbnail, skip it.
-            continue;
-        }
-        if (!alpha && (item->id == data->meta->primaryItemID)) {
+        if (item->id == data->meta->primaryItemID) {
             return item;
-        }
-        if (alpha && (item->auxForID == parentItemID)) {
-            // Is this an alpha auxiliary item of the parent color item?
-            const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
-            if (auxCProp && isAlphaURN(auxCProp->u.auxC.auxType)) {
-                return item;
-            }
         }
     }
     return NULL;
+}
+
+static avifBool avifDecoderItemIsAlphaAux(avifDecoderItem * item, uint32_t colorItemId)
+{
+    if (item->auxForID != colorItemId)
+        return AVIF_FALSE;
+    // Is this an alpha auxiliary item of the color item?
+    const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
+    return auxCProp && isAlphaURN(auxCProp->u.auxC.auxType);
+}
+
+// Finds the alpha item whose parent item is colorItem and sets it in the alphaItem output parameter. Returns AVIF_RESULT_OK on
+// success. Note that *alphaItem can be NULL even if the return value is AVIF_RESULT_OK. If the colorItem is a grid and the alpha
+// item is represented as a set of auxl items to each color tile, then a fake item will be created and isAlphaItemInInput will be
+// set to AVIF_FALSE. Otherwise, isAlphaItemInInput will be set to AVIF_TRUE when *alphaItem is not NULL.
+static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
+                                               avifDecoderItem * colorItem,
+                                               avifDecoderItem ** alphaItem,
+                                               avifBool * isAlphaItemInInput)
+{
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        if (avifDecoderDataShouldSkipItem(item)) {
+            continue;
+        }
+        if (avifDecoderItemIsAlphaAux(item, colorItem->id)) {
+            *alphaItem = item;
+            *isAlphaItemInInput = AVIF_TRUE;
+            return AVIF_RESULT_OK;
+        }
+    }
+    if (!memcmp(colorItem->type, "grid", 4)) {
+        // If color item is a grid, check if there is an alpha channel which is represented as an auxl item to each color tile
+        // item.
+        uint32_t colorItemCount = data->color.grid.rows * data->color.grid.columns;
+        if (colorItemCount <= 0) {
+            *alphaItem = NULL;
+            return AVIF_RESULT_OK;
+        }
+        uint32_t * alphaItemIndices = avifAlloc(colorItemCount * sizeof(uint32_t));
+        AVIF_CHECKERR(alphaItemIndices, AVIF_RESULT_OUT_OF_MEMORY);
+        uint32_t alphaItemCount = 0;
+        uint32_t maxItemID = 0;
+        for (uint32_t i = 0; i < colorItem->meta->items.count; ++i) {
+            avifDecoderItem * item = &colorItem->meta->items.item[i];
+            if (item->id > maxItemID) {
+                maxItemID = item->id;
+            }
+            if (item->dimgForID == colorItem->id) {
+                for (uint32_t j = 0; j < colorItem->meta->items.count; ++j) {
+                    avifDecoderItem * auxlItem = &colorItem->meta->items.item[j];
+                    if (avifDecoderItemIsAlphaAux(auxlItem, item->id)) {
+                        alphaItemIndices[alphaItemCount++] = j;
+                    }
+                }
+            }
+        }
+        if (alphaItemCount != colorItemCount) {
+            // Not all the color items had an alpha auxiliary attached to it. Report this case as an image without alpha channel.
+            avifFree(alphaItemIndices);
+            *alphaItem = NULL;
+            return AVIF_RESULT_OK;
+        }
+        *alphaItem = avifMetaFindItem(colorItem->meta, maxItemID + 1);
+        if (*alphaItem == NULL) {
+            avifFree(alphaItemIndices);
+            return AVIF_RESULT_OUT_OF_MEMORY;
+        }
+        memcpy((*alphaItem)->type, "grid", 4);
+        (*alphaItem)->width = colorItem->width;
+        (*alphaItem)->height = colorItem->height;
+        for (uint32_t i = 0; i < alphaItemCount; ++i) {
+            avifDecoderItem * item = &colorItem->meta->items.item[alphaItemIndices[i]];
+            item->dimgForID = (*alphaItem)->id;
+        }
+        avifFree(alphaItemIndices);
+        *isAlphaItemInInput = AVIF_FALSE;
+        return AVIF_RESULT_OK;
+    }
+    *alphaItem = NULL;
+    return AVIF_RESULT_OK;
 }
 
 static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifBool alpha)
@@ -3814,7 +3885,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             return AVIF_RESULT_MISSING_IMAGE_ITEM;
         }
 
-        avifDecoderItem * colorItem = avifDecoderDataFindItem(data, /*alpha=*/AVIF_FALSE, /*parentItemID=*/0);
+        avifDecoderItem * colorItem = avifDecoderDataFindColorItem(data);
         if (!colorItem) {
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not found");
             return AVIF_RESULT_MISSING_IMAGE_ITEM;
@@ -3839,19 +3910,26 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             assert(colorCodecType != AVIF_CODEC_TYPE_UNKNOWN);
         }
 
-        avifDecoderItem * alphaItem = avifDecoderDataFindItem(data, /*alpha=*/AVIF_TRUE, /*parentItemID=*/colorItem->id);
+        avifBool isAlphaItemInInput = AVIF_TRUE;
+        avifDecoderItem * alphaItem;
+        AVIF_CHECKRES(avifDecoderDataFindAlphaItem(data, colorItem, &alphaItem, &isAlphaItemInInput));
         avifCodecType alphaCodecType = AVIF_CODEC_TYPE_UNKNOWN;
         if (alphaItem) {
             if (!memcmp(alphaItem->type, "grid", 4)) {
-                avifROData readData;
-                AVIF_CHECKRES(avifDecoderItemRead(alphaItem, decoder->io, &readData, 0, 0, data->diag));
-                AVIF_CHECKERR(avifParseImageGridBox(&data->alpha.grid,
-                                                    readData.data,
-                                                    readData.size,
-                                                    decoder->imageSizeLimit,
-                                                    decoder->imageDimensionLimit,
-                                                    data->diag),
-                              AVIF_RESULT_INVALID_IMAGE_GRID);
+                if (isAlphaItemInInput) {
+                    avifROData readData;
+                    AVIF_CHECKRES(avifDecoderItemRead(alphaItem, decoder->io, &readData, 0, 0, data->diag));
+                    AVIF_CHECKERR(avifParseImageGridBox(&data->alpha.grid,
+                                                        readData.data,
+                                                        readData.size,
+                                                        decoder->imageSizeLimit,
+                                                        decoder->imageDimensionLimit,
+                                                        data->diag),
+                                  AVIF_RESULT_INVALID_IMAGE_GRID);
+                } else {
+                    // This item was not actually in the input. Just copy the color grid structure to the alpha grid.
+                    data->alpha.grid = data->color.grid;
+                }
                 alphaCodecType = avifDecoderItemGetGridCodecType(alphaItem);
                 if (alphaCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
                     return AVIF_RESULT_INVALID_IMAGE_GRID;
@@ -3906,7 +3984,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         AVIF_CHECKRES(
             avifDecoderItemValidateProperties(colorItem, avifGetConfigurationPropertyName(colorCodecType), &decoder->diag, decoder->strictFlags));
-        if (alphaItem) {
+        if (alphaItem && isAlphaItemInInput) {
             AVIF_CHECKRES(avifDecoderItemValidateProperties(alphaItem,
                                                             avifGetConfigurationPropertyName(alphaCodecType),
                                                             &decoder->diag,
