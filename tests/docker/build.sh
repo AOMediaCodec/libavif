@@ -39,7 +39,7 @@ git clone -b 1.2.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
 cd dav1d
 mkdir build
 cd build
-meson --prefix=/usr --buildtype release ..
+meson setup --prefix=/usr --buildtype release ..
 ninja install
 
 # libgav1
