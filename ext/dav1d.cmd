@@ -18,6 +18,6 @@ cd build
 : # macOS might require: -Dc_args=-fno-stack-check
 : # Build with asan: -Db_sanitize=address
 : # Build with ubsan: -Db_sanitize=undefined
-meson --default-library=static --buildtype release ..
+meson setup --default-library=static --buildtype release ..
 ninja
 cd ../..

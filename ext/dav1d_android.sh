@@ -27,7 +27,7 @@ for i in "${!ABI_LIST[@]}"; do
   abi="${ABI_LIST[i]}"
   mkdir "${abi}"
   cd "${abi}"
-  PATH=$PATH:${android_bin} meson --default-library=static --buildtype release \
+  PATH=$PATH:${android_bin} meson setup --default-library=static --buildtype release \
     --cross-file="../../package/crossfiles/${ARCH_LIST[i]}-android.meson" \
     -Denable_tools=false -Denable_tests=false ../..
   PATH=$PATH:${android_bin} ninja
