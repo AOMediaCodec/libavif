@@ -17,6 +17,10 @@ List of incompatible ABI changes in this release:
 * Check the return value of avifEncoderSetCodecSpecificOption().
 * The maxThreads member was added to the avifRGBImage struct.
 * Check the return value of avifRGBImageAllocatePixels().
+* The meaning of the keyframeInterval member of avifEncoder struct has changed
+  slightly. When set to a value of "n",
+    * Before: It forces a keyframe on every nth frame.
+    * After: Any set of "n" consecutive frame will have atleast one keyframe (every nth frame may or may not be a keyframe).
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions

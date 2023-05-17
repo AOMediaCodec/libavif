@@ -161,6 +161,18 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             svt_config->profile = HIGH_PROFILE;
         }
 
+        // In order for SVT-AV1 to force keyframes by setting pic_type to
+        // EB_AV1_KEY_PICTURE on any frame, force_key_frames has to be set.
+        svt_config->force_key_frames = TRUE;
+
+        // keyframeInterval == 1 case is handled when encoding each frame by
+        // setting pic_type to EB_AV1_KEY_PICTURE. For keyframeInterval > 1,
+        // set the intra_period_length. Eventhough setting intra_period_length
+        // to 0 should work in this case, it does not.
+        if (encoder->keyframeInterval > 1) {
+            svt_config->intra_period_length = encoder->keyframeInterval - 1;
+        }
+
         res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
         if (res == EB_ErrorBadParameter) {
             goto cleanup;
@@ -199,7 +211,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     input_buffer->pts = 0;
 
     EbAv1PictureType frame_type = EB_AV1_INVALID_PICTURE;
-    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
+    if ((addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) || (encoder->keyframeInterval == 1)) {
         frame_type = EB_AV1_KEY_PICTURE;
     }
     input_buffer->pic_type = frame_type;
