@@ -705,6 +705,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->kf_mode = AOM_KF_DISABLED;
             // Tell libaom that all frames will be key frames.
             cfg->kf_max_dist = 0;
+        } else {
+            if (encoder->keyframeInterval > 0) {
+                cfg->kf_max_dist = encoder->keyframeInterval;
+            }
         }
         if (encoder->extraLayerCount > 0) {
             cfg->g_limit = encoder->extraLayerCount + 1;

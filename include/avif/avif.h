@@ -1138,7 +1138,8 @@ typedef struct avifEncoder
     // settings (see Notes above)
     int maxThreads;
     int speed;
-    int keyframeInterval;     // How many frames between automatic forced keyframes; 0 to disable (default).
+    int keyframeInterval;     // Any set of |keyframeInterval| consecutive frames will have at least one keyframe. When it is 0,
+                              // there is no such restriction.
     uint64_t timescale;       // timescale of the media (Hz)
     int repetitionCount;      // Number of times the image sequence should be repeated. This can also be set to
                               // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.  Only applicable for image sequences.

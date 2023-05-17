@@ -172,6 +172,12 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                 goto cleanup;
             }
         }
+        if (encoder->keyframeInterval > 0) {
+            // "key_frame_interval" is the maximum interval between two keyframes.
+            if (rav1e_config_parse_int(rav1eConfig, "key_frame_interval", encoder->keyframeInterval) == -1) {
+                goto cleanup;
+            }
+        }
 
         rav1e_config_set_color_description(rav1eConfig,
                                            (RaMatrixCoefficients)image->matrixCoefficients,

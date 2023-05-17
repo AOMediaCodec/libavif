@@ -1209,10 +1209,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // -----------------------------------------------------------------------
     // Encode AV1 OBUs
 
-    if (encoder->keyframeInterval && ((encoder->data->frames.count % encoder->keyframeInterval) == 0)) {
-        addImageFlags |= AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME;
-    }
-
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
