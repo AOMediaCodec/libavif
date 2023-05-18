@@ -1401,9 +1401,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
                     decoder->imageCount = tile->input->samples.count;
                 }
             }
-        }
-
-        if (memcmp(item->type, firstTileItem->type, 4)) {
+        } else if (memcmp(item->type, firstTileItem->type, 4)) {
             // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
             //   All input images of a grid image item shall use the same coding format [...]
             // The coding format is defined by the item type.
@@ -1412,7 +1410,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
                                   item->id,
                                   (const char *)item->type,
                                   (const char *)firstTileItem->type);
-            return AVIF_RESULT_BMFF_PARSE_FAILED;
+            return AVIF_FALSE;
         }
         ++tilesAvailable;
     }
