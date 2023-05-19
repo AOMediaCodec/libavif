@@ -374,6 +374,18 @@ AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
   return decoded;
 }
 
+bool Av1EncoderAvailable() {
+  const char* encoding_codec =
+      avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_ENCODE);
+  return encoding_codec != nullptr && std::string(encoding_codec) != "avm";
+}
+
+bool Av1DecoderAvailable() {
+  const char* decoding_codec =
+      avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_DECODE);
+  return decoding_codec != nullptr && std::string(decoding_codec) != "avm";
+}
+
 //------------------------------------------------------------------------------
 
 static avifResult avifIOLimitedReaderRead(avifIO* io, uint32_t readFlags,

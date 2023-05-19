@@ -82,12 +82,7 @@ INSTANTIATE_TEST_SUITE_P(DISABLED_Broken, AvmTest,
                                  /*alpha=*/Values(true)));
 
 TEST(AvmTest, Av1StillWorksWhenAvmIsEnabled) {
-  const char* encoding_codec =
-      avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_ENCODE);
-  const char* decoding_codec =
-      avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_DECODE);
-  if (encoding_codec == nullptr || std::string(encoding_codec) == "avm" ||
-      decoding_codec == nullptr || std::string(decoding_codec) == "avm") {
+  if (!testutil::Av1EncoderAvailable() || !testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "AV1 codec unavailable, skip test.";
   }
   // avm is the only AV2 codec, so the default codec will be an AV1 one.

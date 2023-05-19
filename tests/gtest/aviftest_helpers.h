@@ -103,6 +103,12 @@ AvifRwData Encode(const avifImage* image, int speed = AVIF_SPEED_DEFAULT);
 // Returns nullptr in case of error.
 AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes);
 
+// Returns true if an AV1 encoder is available.
+bool Av1EncoderAvailable();
+
+// Returns true if an AV1 decoder is available.
+bool Av1DecoderAvailable();
+
 //------------------------------------------------------------------------------
 // avifIO overlay
 
