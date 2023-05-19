@@ -175,3 +175,29 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Personal photo converted with `avifenc --grid 1x5 --yuv 420` at
 commit [632d131](https://github.com/AOMediaCodec/libavif/commit/632d13188f9b7faa40f20d870e792174b8b5b8e6).
+
+### File [color_grid_alpha_nogrid.avif](color_grid_alpha_nogrid.avif)
+
+![](color_grid_alpha_nogrid.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: https://github.com/AOMediaCodec/libavif/issues/1203
+
+The color planes are arranged as a 1x2 grid item. The alpha plane items are
+tagged as `dimg` for each color plane item (without a `grid` item on its own).
+This is allowed per the specification. libavif should decode such files
+correctly (i.e.) it should report them as files with alpha channel.
+
+Box structure of the items in this file:
+```
+[primary item grid]
+   ^       ^
+   |dimg   |dimg
+   |       |
+[color] [color]
+   ^       ^
+   |auxl   |auxl
+   |       |
+[alpha] [alpha]
+```
