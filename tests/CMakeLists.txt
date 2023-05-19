@@ -243,7 +243,7 @@ endif()
 # AV2 tests
 
 if(AVIF_CODEC_AVM)
-    if(AVIF_LOCAL_GTEST)
+    if(AVIF_ENABLE_GTEST)
         add_executable(avifavmtest gtest/avifavmtest.cc)
         target_link_libraries(avifavmtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
         target_include_directories(avifavmtest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -266,7 +266,7 @@ if(AVIF_CODEC_AVM)
     )
         # Disable all tests that use avifEncoder without explicitly setting the codec to avm.
         set_tests_properties(aviftest PROPERTIES DISABLED True)
-        if(AVIF_LOCAL_GTEST)
+        if(AVIF_ENABLE_GTEST)
             set_tests_properties(
                 avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
                 avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
