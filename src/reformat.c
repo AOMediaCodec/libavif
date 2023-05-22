@@ -204,6 +204,16 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+    if (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
+        const int bitOffset = (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
+        const int maxValue = (1 << (state.yuvDepth - bitOffset)) - 1;
+        if ((float)maxValue != state.rgbMaxChannelF) {
+            return AVIF_RESULT_UNSUPPORTED_DEPTH;
+        }
+    }
+#endif
+
     const avifBool hasAlpha = avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha;
     avifResult allocationResult = avifImageAllocatePlanes(image, hasAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
     if (allocationResult != AVIF_RESULT_OK) {
@@ -544,7 +554,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const float kb = state->kb;
     float * unormFloatTableY = NULL;
     float * unormFloatTableUV = NULL;
-    AVIF_CHECKERR(avifCreateYUVToRGBLookUpTables(&unormFloatTableY, &unormFloatTableUV, image->depth, state), AVIF_RESULT_OUT_OF_MEMORY);
     const uint32_t yuvChannelBytes = state->yuvChannelBytes;
     const uint32_t rgbPixelBytes = state->rgbPixelBytes;
 
@@ -562,6 +571,19 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
     const uint16_t yuvMaxChannel = (uint16_t)state->yuvMaxChannel;
     const float rgbMaxChannelF = state->rgbMaxChannelF;
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+    int bitOffset, maxValue;
+    if (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
+        bitOffset = (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
+        maxValue = (1 << (state->yuvDepth - bitOffset)) - 1;
+        if ((float)maxValue != rgbMaxChannelF) {
+            return AVIF_RESULT_UNSUPPORTED_DEPTH;
+        }
+    }
+#endif
+
+    AVIF_CHECKERR(avifCreateYUVToRGBLookUpTables(&unormFloatTableY, &unormFloatTableUV, image->depth, state), AVIF_RESULT_OUT_OF_MEMORY);
 
     // If toRGBAlphaMode is active (not no-op), assert that the alpha plane is present. The end of
     // the avifPrepareReformatState() function should ensure this, but this assert makes it clear
@@ -736,9 +758,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     R = t + Cr;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                 } else if (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
-                    const int bitOffset = (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
-                    const int maxValue = (1 << (state->yuvDepth - bitOffset)) - 1;
-                    assert((float)maxValue == rgbMaxChannelF);
                     const int YY = unormY;
                     const int Cg = (int)avifRoundf(Cb * yuvMaxChannel);
                     const int Co = (int)avifRoundf(Cr * yuvMaxChannel);
