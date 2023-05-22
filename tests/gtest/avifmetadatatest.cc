@@ -426,7 +426,7 @@ TEST(MetadataTest, XMPWithTrailingNullCharacter) {
 
   // Append a zero byte to see what happens when encoded with libpng.
   avifRWDataRealloc(&jpg->xmp, jpg->xmp.size + 1);
-  jpg->xmp.data[jpg->xmp.size] = '\0';
+  jpg->xmp.data[jpg->xmp.size - 1] = '\0';
   testutil::WriteImage(jpg.get(),
                        (testing::TempDir() + "xmp_trailing_null.png").c_str());
   const testutil::AvifImagePtr png =

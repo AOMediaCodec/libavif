@@ -112,7 +112,7 @@ The goal is to have a large XMP blob so that it can only be stored as multiple e
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source: `paris_exif_xmp_icc.jpg` loaded with `avifReadImage()`, stripped from ICC and Exif, a zero byte appended to XMP,
+Source: `paris_exif_xmp_icc.jpg` loaded with `avifReadImage()`, stripped of ICC and Exif, a zero byte appended to XMP,
 then written with `avifJPEGWrite()` with quality 0 (without calling `avifImageFixXMP()`).
 
 | address | marker      | length | data                                         |
@@ -164,7 +164,7 @@ metadata this way).
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source: `paris_exif_xmp_icc.jpg` stripped from all metadata with `exiftool -all=` and Exif orientation added
+Source: `paris_exif_xmp_icc.jpg` stripped of all metadata with `exiftool -all=` and Exif orientation added
 with `exiv2 -k -M "set Exif.Image.Orientation 5"`
 
 | address | marker      |  length | data                                 |

@@ -279,10 +279,6 @@ avifAppFileFormat avifReadImage(const char * filename,
 
 void avifImageFixXMP(avifImage * image)
 {
-    if (!image->xmp.data) {
-        return;
-    }
-
     // Zero bytes are forbidden in UTF-8 XML: https://en.wikipedia.org/wiki/Valid_characters_in_XML
     // Keeping zero bytes in XMP may lead to issues at encoding or decoding.
     // For example, the PNG specification forbids null characters in XMP. See avifPNGWrite().
