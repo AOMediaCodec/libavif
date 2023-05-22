@@ -158,6 +158,19 @@ int getThreadCount(int threads) {
   return (threads == 0) ? android_getCpuCount() : threads;
 }
 
+// Checks if there is a pending JNI exception that will be thrown when the
+// control returns to the java layer. If there is none, it will return false. If
+// there is one, then it will clear the pending exception and return true.
+// Whenever this function returns true, the caller should treat it as a fatal
+// error and return with a failure status at the earliest instance possible.
+bool JniExceptionCheck(JNIEnv* env) {
+  if (!env->ExceptionCheck()) {
+    return false;
+  }
+  env->ExceptionClear();
+  return true;
+}
+
 }  // namespace
 
 jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
@@ -175,6 +188,21 @@ FUNC(jboolean, isAvifImage, jobject encoded, int length) {
   return avifPeekCompatibleFileType(&avif);
 }
 
+#define CHECK_EXCEPTION(ret)                \
+  do {                                      \
+    if (JniExceptionCheck(env)) return ret; \
+  } while (false)
+
+#define FIND_CLASS(var, class_name, ret)         \
+  const jclass var = env->FindClass(class_name); \
+  CHECK_EXCEPTION(ret);                          \
+  if (var == nullptr) return ret
+
+#define GET_FIELD_ID(var, class_name, field_name, signature, ret)          \
+  const jfieldID var = env->GetFieldID(class_name, field_name, signature); \
+  CHECK_EXCEPTION(ret);                                                    \
+  if (var == nullptr) return ret
+
 FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
@@ -182,17 +210,19 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   if (!CreateDecoderAndParse(&decoder, buffer, length, /*threads=*/1)) {
     return false;
   }
-  const jclass info_class =
-      env->FindClass("org/aomedia/avif/android/AvifDecoder$Info");
-  const jfieldID width = env->GetFieldID(info_class, "width", "I");
-  const jfieldID height = env->GetFieldID(info_class, "height", "I");
-  const jfieldID depth = env->GetFieldID(info_class, "depth", "I");
-  const jfieldID alpha_present =
-      env->GetFieldID(info_class, "alphaPresent", "Z");
+  FIND_CLASS(info_class, "org/aomedia/avif/android/AvifDecoder$Info", false);
+  GET_FIELD_ID(width, info_class, "width", "I", false);
+  GET_FIELD_ID(height, info_class, "height", "I", false);
+  GET_FIELD_ID(depth, info_class, "depth", "I", false);
+  GET_FIELD_ID(alpha_present, info_class, "alphaPresent", "Z", false);
   env->SetIntField(info, width, decoder.decoder->image->width);
+  CHECK_EXCEPTION(false);
   env->SetIntField(info, height, decoder.decoder->image->height);
+  CHECK_EXCEPTION(false);
   env->SetIntField(info, depth, decoder.decoder->image->depth);
+  CHECK_EXCEPTION(false);
   env->SetBooleanField(info, alpha_present, decoder.decoder->alphaPresent);
+  CHECK_EXCEPTION(false);
   return true;
 }
 
@@ -228,27 +258,30 @@ FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
                              getThreadCount(threads))) {
     return 0;
   }
-  const jclass avif_decoder_class =
-      env->FindClass("org/aomedia/avif/android/AvifDecoder");
-  const jfieldID width_id = env->GetFieldID(avif_decoder_class, "width", "I");
-  const jfieldID height_id = env->GetFieldID(avif_decoder_class, "height", "I");
-  const jfieldID depth_id = env->GetFieldID(avif_decoder_class, "depth", "I");
-  const jfieldID alpha_present_id =
-      env->GetFieldID(avif_decoder_class, "alphaPresent", "Z");
-  const jfieldID frame_count_id =
-      env->GetFieldID(avif_decoder_class, "frameCount", "I");
-  const jfieldID repetition_count_id =
-      env->GetFieldID(avif_decoder_class, "repetitionCount", "I");
-  const jfieldID frame_durations_id =
-      env->GetFieldID(avif_decoder_class, "frameDurations", "[D");
+  FIND_CLASS(avif_decoder_class, "org/aomedia/avif/android/AvifDecoder", 0);
+  GET_FIELD_ID(width_id, avif_decoder_class, "width", "I", 0);
+  GET_FIELD_ID(height_id, avif_decoder_class, "height", "I", 0);
+  GET_FIELD_ID(depth_id, avif_decoder_class, "depth", "I", 0);
+  GET_FIELD_ID(alpha_present_id, avif_decoder_class, "alphaPresent", "Z", 0);
+  GET_FIELD_ID(frame_count_id, avif_decoder_class, "frameCount", "I", 0);
+  GET_FIELD_ID(repetition_count_id, avif_decoder_class, "repetitionCount", "I",
+               0);
+  GET_FIELD_ID(frame_durations_id, avif_decoder_class, "frameDurations", "[D",
+               0);
   env->SetIntField(thiz, width_id, decoder->decoder->image->width);
+  CHECK_EXCEPTION(0);
   env->SetIntField(thiz, height_id, decoder->decoder->image->height);
+  CHECK_EXCEPTION(0);
   env->SetIntField(thiz, depth_id, decoder->decoder->image->depth);
+  CHECK_EXCEPTION(0);
   env->SetBooleanField(thiz, alpha_present_id, decoder->decoder->alphaPresent);
+  CHECK_EXCEPTION(0);
   env->SetIntField(thiz, repetition_count_id,
                    decoder->decoder->repetitionCount);
+  CHECK_EXCEPTION(0);
   const int frameCount = decoder->decoder->imageCount;
   env->SetIntField(thiz, frame_count_id, frameCount);
+  CHECK_EXCEPTION(0);
   // This native array is needed because setting one element at a time to a Java
   // array from the JNI layer is inefficient.
   std::unique_ptr<double[]> native_durations(
@@ -270,9 +303,15 @@ FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
   }
   env->SetDoubleArrayRegion(durations, /*start=*/0, frameCount,
                             native_durations.get());
+  CHECK_EXCEPTION(0);
   env->SetObjectField(thiz, frame_durations_id, durations);
+  CHECK_EXCEPTION(0);
   return reinterpret_cast<jlong>(decoder.release());
 }
+
+#undef GET_FIELD_ID
+#undef FIND_CLASS
+#undef CHECK_EXCEPTION
 
 FUNC(jint, nextFrame, jlong jdecoder, jobject bitmap) {
   AvifDecoderWrapper* const decoder =
