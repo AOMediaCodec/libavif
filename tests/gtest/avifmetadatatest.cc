@@ -415,7 +415,7 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
 //------------------------------------------------------------------------------
 
 // Regression test for https://github.com/AOMediaCodec/libavif/issues/1333.
-// Coverage for avifFixImageXMP().
+// Coverage for avifImageFixXMP().
 TEST(MetadataTest, XMPWithTrailingNullCharacter) {
   testutil::AvifImagePtr jpg =
       testutil::ReadImage(data_path, "paris_xmp_trailing_null.jpg");

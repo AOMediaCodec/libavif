@@ -277,7 +277,7 @@ avifAppFileFormat avifReadImage(const char * filename,
     return format;
 }
 
-void avifFixImageXMP(avifImage * image)
+void avifImageFixXMP(avifImage * image)
 {
     if (!image->xmp.data) {
         return;

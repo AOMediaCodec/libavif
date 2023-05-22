@@ -196,7 +196,7 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     // The iTXt XMP payload may not contain a zero byte according to section 4.2.3.3 of
     // the PNG specification, version 1.2. Still remove one trailing null character if any,
     // in case libpng does not strictly enforce that at decoding.
-    avifFixImageXMP(avif);
+    avifImageFixXMP(avif);
     return AVIF_TRUE;
 }
 

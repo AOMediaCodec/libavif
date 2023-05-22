@@ -66,7 +66,7 @@ List of incompatible ABI changes in this release:
 * avifRGBImageAllocatePixels() now returns avifResult instead of void to report
   memory allocation failures.
 * avifReadImage(), avifJPEGRead() and avifPNGRead() now remove the trailing zero
-  byte from read XMP chunks, if any. See avifFixImageXMP().
+  byte from read XMP chunks, if any. See avifImageFixXMP().
 
 ## [0.11.1] - 2022-10-19
 
