@@ -207,8 +207,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     if (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
         const int bitOffset = (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
-        const int maxValue = (1 << (state.yuvDepth - bitOffset)) - 1;
-        if ((float)maxValue != state.rgbMaxChannelF) {
+        if (state.yuvDepth - bitOffset != rgb->depth) {
             return AVIF_RESULT_UNSUPPORTED_DEPTH;
         }
     }
@@ -573,11 +572,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const float rgbMaxChannelF = state->rgbMaxChannelF;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    int maxValue;
     if (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
         const int bitOffset = (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
-        maxValue = (1 << (state->yuvDepth - bitOffset)) - 1;
-        if ((float)maxValue != rgbMaxChannelF) {
+        if (state->yuvDepth - bitOffset != rgb->depth) {
             return AVIF_RESULT_UNSUPPORTED_DEPTH;
         }
     }
@@ -762,9 +759,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     const int Cg = (int)avifRoundf(Cb * yuvMaxChannel);
                     const int Co = (int)avifRoundf(Cr * yuvMaxChannel);
                     const int t = YY - (Cg >> 1);
-                    G = AVIF_CLAMP(t + Cg, 0, maxValue);
-                    B = AVIF_CLAMP(t - (Co >> 1), 0, maxValue);
-                    R = AVIF_CLAMP(B + Co, 0, maxValue);
+                    G = AVIF_CLAMP(t + Cg, 0, state->rgbMaxChannel);
+                    B = AVIF_CLAMP(t - (Co >> 1), 0, state->rgbMaxChannel);
+                    R = AVIF_CLAMP(B + Co, 0, state->rgbMaxChannel);
                     G /= rgbMaxChannelF;
                     B /= rgbMaxChannelF;
                     R /= rgbMaxChannelF;
