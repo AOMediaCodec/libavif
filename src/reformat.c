@@ -23,11 +23,24 @@ struct YUVBlock
 
 static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+    const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
+    const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
+#else
+    const avifBool useYCgCoRe = AVIF_FALSE;
+    const avifBool useYCgCoRo = AVIF_FALSE;
+#endif
     if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12) && (image->depth != 16)) {
         return AVIF_FALSE;
     }
     if ((rgb->depth != 8) && (rgb->depth != 10) && (rgb->depth != 12) && (rgb->depth != 16)) {
         return AVIF_FALSE;
+    }
+    if (useYCgCoRe || useYCgCoRo) {
+        const int bitOffset = (useYCgCoRe) ? 2 : 1;
+        if (image->depth - bitOffset != rgb->depth) {
+            return AVIF_FALSE;
+        }
     }
     if (rgb->isFloat && rgb->depth != 16) {
         return AVIF_FALSE;
@@ -47,13 +60,6 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     //
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
-    const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#else
-    const avifBool useYCgCoRe = AVIF_FALSE;
-    const avifBool useYCgCoRo = AVIF_FALSE;
-#endif
     if ((image->matrixCoefficients == 3 /* CICP reserved */) ||
         ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO || useYCgCoRe || useYCgCoRo) &&
          (image->yuvRange == AVIF_RANGE_LIMITED)) ||
@@ -203,15 +209,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     if (rgb->isFloat) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
-
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    if (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
-        const int bitOffset = (state.mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
-        if (state.yuvDepth - bitOffset != rgb->depth) {
-            return AVIF_RESULT_UNSUPPORTED_DEPTH;
-        }
-    }
-#endif
 
     const avifBool hasAlpha = avifRGBFormatHasAlpha(rgb->format) && !rgb->ignoreAlpha;
     avifResult allocationResult = avifImageAllocatePlanes(image, hasAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
@@ -553,6 +550,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const float kb = state->kb;
     float * unormFloatTableY = NULL;
     float * unormFloatTableUV = NULL;
+    AVIF_CHECKERR(avifCreateYUVToRGBLookUpTables(&unormFloatTableY, &unormFloatTableUV, image->depth, state), AVIF_RESULT_OUT_OF_MEMORY);
     const uint32_t yuvChannelBytes = state->yuvChannelBytes;
     const uint32_t rgbPixelBytes = state->rgbPixelBytes;
 
@@ -570,17 +568,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
     const uint16_t yuvMaxChannel = (uint16_t)state->yuvMaxChannel;
     const float rgbMaxChannelF = state->rgbMaxChannelF;
-
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    if (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
-        const int bitOffset = (state->mode == AVIF_REFORMAT_MODE_YCGCO_RE) ? 2 : 1;
-        if (state->yuvDepth - bitOffset != rgb->depth) {
-            return AVIF_RESULT_UNSUPPORTED_DEPTH;
-        }
-    }
-#endif
-
-    AVIF_CHECKERR(avifCreateYUVToRGBLookUpTables(&unormFloatTableY, &unormFloatTableUV, image->depth, state), AVIF_RESULT_OUT_OF_MEMORY);
 
     // If toRGBAlphaMode is active (not no-op), assert that the alpha plane is present. The end of
     // the avifPrepareReformatState() function should ensure this, but this assert makes it clear
