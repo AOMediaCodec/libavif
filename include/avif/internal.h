@@ -357,7 +357,9 @@ typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
 // avifCodecEncodeImageFunc is responsible for automatic tiling if encoder->autoTiling is set to
 // AVIF_TRUE. The actual tiling values are passed to avifCodecEncodeImageFunc as parameters.
 // Similarly, avifCodecEncodeImageFunc should use the quantizer parameter instead of
-// encoder->quality and encoder->qualityAlpha.
+// encoder->quality and encoder->qualityAlpha. If disableLaggedOutput is AVIF_TRUE, then the encoder will emit the output frame
+// without any lag (if supported). Note that disableLaggedOutput is only used by the first call to this function (which
+// initializes the encoder) and is ignored by the subsequent calls.
 //
 // Note: The caller of avifCodecEncodeImageFunc always passes encoder->data->tileRowsLog2 and
 // encoder->data->tileColsLog2 as the tileRowsLog2 and tileColsLog2 arguments. Because
@@ -372,6 +374,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                int tileColsLog2,
                                                int quantizer,
                                                avifEncoderChanges encoderChanges,
+                                               avifBool disableLaggedOutput,
                                                avifAddImageFlags addImageFlags,
                                                avifCodecEncodeOutput * output);
 typedef avifBool (*avifCodecEncodeFinishFunc)(struct avifCodec * codec, avifCodecEncodeOutput * output);
