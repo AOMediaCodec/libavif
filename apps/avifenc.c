@@ -111,7 +111,7 @@ static void syntax(void)
     printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
-    printf("    -k,--keyframe INTERVAL            : Set the keyframe interval (Aany set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
+    printf("    -k,--keyframe INTERVAL            : Set the maximum keyframe interval (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");

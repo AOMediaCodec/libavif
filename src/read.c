@@ -3983,7 +3983,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         if (alphaItem) {
             avifStrictFlags strictFlags = decoder->strictFlags;
             if (!isAlphaItemInInput) {
-                // In this case, the made up grid item will not have a an associated pixi property. So validate everything else
+                // In this case, the made up grid item will not have an associated pixi property. So validate everything else
                 // but the pixi property.
                 strictFlags &= ~AVIF_STRICT_PIXI_REQUIRED;
             }

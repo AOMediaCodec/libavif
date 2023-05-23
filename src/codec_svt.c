@@ -167,7 +167,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
         // keyframeInterval == 1 case is handled when encoding each frame by
         // setting pic_type to EB_AV1_KEY_PICTURE. For keyframeInterval > 1,
-        // set the intra_period_length. Eventhough setting intra_period_length
+        // set the intra_period_length. Even though setting intra_period_length
         // to 0 should work in this case, it does not.
         if (encoder->keyframeInterval > 1) {
             svt_config->intra_period_length = encoder->keyframeInterval - 1;
