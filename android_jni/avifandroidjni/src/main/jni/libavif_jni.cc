@@ -162,7 +162,7 @@ int getThreadCount(int threads) {
 // control returns to the java layer. If there is none, it will return false. If
 // there is one, then it will clear the pending exception and return true.
 // Whenever this function returns true, the caller should treat it as a fatal
-// error and return with a failure status at the earliest instance possible.
+// error and return with a failure status as early as possible.
 bool JniExceptionCheck(JNIEnv* env) {
   if (!env->ExceptionCheck()) {
     return false;
