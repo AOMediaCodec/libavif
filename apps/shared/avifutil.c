@@ -277,6 +277,22 @@ avifAppFileFormat avifReadImage(const char * filename,
     return format;
 }
 
+void avifImageFixXMP(avifImage * image)
+{
+    // Zero bytes are forbidden in UTF-8 XML: https://en.wikipedia.org/wiki/Valid_characters_in_XML
+    // Keeping zero bytes in XMP may lead to issues at encoding or decoding.
+    // For example, the PNG specification forbids null characters in XMP. See avifPNGWrite().
+    // The XMP Specification Part 3 says "When XMP is encoded as UTF-8,
+    // there are no zero bytes in the XMP packet" for GIF.
+
+    // Consider a single trailing null character following a non-null character
+    // as a programming error. Leave other null characters as is.
+    // See the discussion at https://github.com/AOMediaCodec/libavif/issues/1333.
+    if (image->xmp.size >= 2 && image->xmp.data[image->xmp.size - 1] == '\0' && image->xmp.data[image->xmp.size - 2] != '\0') {
+        --image->xmp.size;
+    }
+}
+
 void avifDumpDiagnostics(const avifDiagnostics * diag)
 {
     if (!*diag->error) {

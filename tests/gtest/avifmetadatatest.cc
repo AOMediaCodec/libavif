@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <array>
+#include <cstring>
 #include <tuple>
 
 #include "avif/avif.h"
@@ -409,6 +410,32 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
   temp_image = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
   ASSERT_NE(temp_image, nullptr);
   ASSERT_EQ(temp_image->xmp.size, 0u);  // XMP was dropped.
+}
+
+//------------------------------------------------------------------------------
+
+// Regression test for https://github.com/AOMediaCodec/libavif/issues/1333.
+// Coverage for avifImageFixXMP().
+TEST(MetadataTest, XMPWithTrailingNullCharacter) {
+  testutil::AvifImagePtr jpg =
+      testutil::ReadImage(data_path, "paris_xmp_trailing_null.jpg");
+  ASSERT_NE(jpg, nullptr);
+  ASSERT_NE(jpg->xmp.size, 0u);
+  // avifJPEGRead() should strip the trailing null character.
+  ASSERT_EQ(std::memchr(jpg->xmp.data, '\0', jpg->xmp.size), nullptr);
+
+  // Append a zero byte to see what happens when encoded with libpng.
+  avifRWDataRealloc(&jpg->xmp, jpg->xmp.size + 1);
+  jpg->xmp.data[jpg->xmp.size - 1] = '\0';
+  testutil::WriteImage(jpg.get(),
+                       (testing::TempDir() + "xmp_trailing_null.png").c_str());
+  const testutil::AvifImagePtr png =
+      testutil::ReadImage(testing::TempDir().c_str(), "xmp_trailing_null.png");
+  ASSERT_NE(png, nullptr);
+  ASSERT_NE(png->xmp.size, 0u);
+  // avifPNGRead() should strip the trailing null character, but the libpng
+  // export during testutil::WriteImage() probably took care of that anyway.
+  ASSERT_EQ(std::memchr(png->xmp.data, '\0', png->xmp.size), nullptr);
 }
 
 //------------------------------------------------------------------------------

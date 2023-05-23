@@ -193,6 +193,10 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
         }
     }
+    // The iTXt XMP payload may not contain a zero byte according to section 4.2.3.3 of
+    // the PNG specification, version 1.2. Still remove one trailing null character if any,
+    // in case libpng does not strictly enforce that at decoding.
+    avifImageFixXMP(avif);
     return AVIF_TRUE;
 }
 
@@ -515,26 +519,23 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     if (avif->xmp.data && (avif->xmp.size > 0)) {
         // The iTXt XMP payload may not contain a zero byte according to section 4.2.3.3 of
         // the PNG specification, version 1.2.
-        if (memchr(avif->xmp.data, '\0', avif->xmp.size)) {
-            fprintf(stderr, "Error writing PNG: XMP metadata contains an invalid null character\n");
+        // The chunk is given to libpng as is. Bytes after a zero byte may be stripped.
+
+        // Providing the length through png_text.itxt_length does not work.
+        // The given png_text.text string must end with a zero byte.
+        if (avif->xmp.size >= SIZE_MAX) {
+            fprintf(stderr, "Error writing PNG: XMP metadata is too big\n");
             goto cleanup;
-        } else {
-            // Providing the length through png_text.itxt_length does not work.
-            // The given png_text.text string must end with a zero byte.
-            if (avif->xmp.size >= SIZE_MAX) {
-                fprintf(stderr, "Error writing PNG: XMP metadata is too big\n");
-                goto cleanup;
-            }
-            avifRWDataRealloc(&xmp, avif->xmp.size + 1);
-            memcpy(xmp.data, avif->xmp.data, avif->xmp.size);
-            xmp.data[avif->xmp.size] = '\0';
-            png_text * text = &texts[numTextMetadataChunks++];
-            memset(text, 0, sizeof(*text));
-            text->compression = PNG_ITXT_COMPRESSION_NONE;
-            text->key = "XML:com.adobe.xmp";
-            text->text = (char *)xmp.data;
-            text->itxt_length = xmp.size;
         }
+        avifRWDataRealloc(&xmp, avif->xmp.size + 1);
+        memcpy(xmp.data, avif->xmp.data, avif->xmp.size);
+        xmp.data[avif->xmp.size] = '\0';
+        png_text * text = &texts[numTextMetadataChunks++];
+        memset(text, 0, sizeof(*text));
+        text->compression = PNG_ITXT_COMPRESSION_NONE;
+        text->key = "XML:com.adobe.xmp";
+        text->text = (char *)xmp.data;
+        text->itxt_length = xmp.size;
     }
     if (numTextMetadataChunks != 0) {
         png_set_text(png, info, texts, numTextMetadataChunks);

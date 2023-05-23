@@ -72,6 +72,9 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter);
 
+// Removes a single trailing null character from the image->xmp, if there is exactly one.
+void avifImageFixXMP(avifImage * image);
+
 // Used by image decoders when the user doesn't explicitly choose a format with --yuv
 // This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.
 #define AVIF_APP_DEFAULT_PIXEL_FORMAT AVIF_PIXEL_FORMAT_YUV444
