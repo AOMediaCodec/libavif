@@ -47,7 +47,6 @@ List of incompatible ABI changes in this release:
 * The --grid flag in avifenc can be used for images that are not evenly divided
   into cells.
 * Apps must be built with libpng version 1.6.32 or above.
-* Update svt.cmd/svt.sh: v1.5.0
 * avifImageCopy() no longer accepts source U and V channels to be NULL for
   non-4:0:0 input if Y is not NULL and if AVIF_PLANES_YUV is specified.
 * The default values of the maxQuantizer and maxQuantizerAlpha members of
@@ -62,6 +61,8 @@ List of incompatible ABI changes in this release:
 * Update aom.cmd: v3.6.1
 * Update dav1d.cmd: 1.2.0
 * Update rav1e.cmd: v0.6.3
+* Update svt.cmd/svt.sh: v1.5.0
+* Update zlibpng.cmd: libpng 1.6.39
 * avifImageCreate(), avifImageCreateEmpty(), avifEncoderCreate() and other
   internal functions now return NULL if a memory allocation failed.
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
