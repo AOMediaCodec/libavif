@@ -50,6 +50,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       int tileColsLog2,
                                       int quantizer,
                                       avifEncoderChanges encoderChanges,
+                                      avifBool disableLaggedOutput,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
@@ -69,6 +70,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     if (encoder->extraLayerCount > 0) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
+
+    // SVT-AV1 does not support disabling lagged output. Ignore this setting.
+    (void)disableLaggedOutput;
 
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     EbColorFormat color_format = EB_YUV420;

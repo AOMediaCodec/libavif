@@ -941,6 +941,35 @@ static avifCodecType avifEncoderGetCodecType(const avifEncoder * encoder)
     return avifCodecTypeFromChoice(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
 }
 
+// This function is called after every color frame is encoded. It returns AVIF_TRUE if a keyframe needs to be forced for the next
+// alpha frame to be encoded, AVIF_FALSE otherwise.
+static avifBool avifEncoderDataShouldForceKeyframeForAlpha(const avifEncoderData * data,
+                                                           const avifEncoderItem * colorItem,
+                                                           avifAddImageFlags addImageFlags)
+{
+    if (!data->alphaPresent) {
+        // There is no alpha plane.
+        return AVIF_FALSE;
+    }
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+        // Not an animated image.
+        return AVIF_FALSE;
+    }
+    if (data->frames.count == 0) {
+        // data->frames.count is the number of frames that have been encoded so far by previous calls to avifEncoderAddImage. If
+        // this is the first frame, there is no need to force keyframe.
+        return AVIF_FALSE;
+    }
+    const uint32_t colorFramesOutputSoFar = colorItem->encodeOutput->samples.count;
+    const avifBool isLaggedOutput = (data->frames.count + 1) != colorFramesOutputSoFar;
+    if (isLaggedOutput) {
+        // If the encoder is operating with lag, then there is no way to determine if the last encoded frame was a keyframe until
+        // the encoder outputs it (after the lag). So do not force keyframe for alpha channel in this case.
+        return AVIF_FALSE;
+    }
+    return colorItem->encodeOutput->samples.sample[colorFramesOutputSoFar - 1].sync;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -1222,6 +1251,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 cellImage = paddedCellImage;
             }
             const int quantizer = item->alpha ? encoder->data->quantizerAlpha : encoder->data->quantizer;
+            // If alpha channel is present, set disableLaggedOutput to AVIF_TRUE. If the encoder supports it, this enables
+            // avifEncoderDataShouldForceKeyframeForAlpha to force a keyframe in the alpha channel whenever a keyframe has been
+            // encoded in the color channel for animated images.
             avifResult encodeResult = item->codec->encodeImage(item->codec,
                                                                encoder,
                                                                cellImage,
@@ -1230,6 +1262,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                encoder->data->tileColsLog2,
                                                                quantizer,
                                                                encoderChanges,
+                                                               /*disableLaggedOutput=*/encoder->data->alphaPresent,
                                                                addImageFlags,
                                                                item->encodeOutput);
             if (paddedCellImage) {
@@ -1240,6 +1273,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
             if (encodeResult != AVIF_RESULT_OK) {
                 return encodeResult;
+            }
+            if (itemIndex == 0 && avifEncoderDataShouldForceKeyframeForAlpha(encoder->data, item, addImageFlags)) {
+                addImageFlags |= AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME;
             }
         }
     }
