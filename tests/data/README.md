@@ -206,6 +206,7 @@ This is allowed per the specification. libavif should decode such files
 correctly (i.e.) it should report them as files with alpha channel.
 
 Box structure of the items in this file:
+
 ```
 [primary item grid]
    ^       ^
