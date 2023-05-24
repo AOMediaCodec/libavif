@@ -62,7 +62,7 @@ List of incompatible ABI changes in this release:
 * Update dav1d.cmd: 1.2.0
 * Update rav1e.cmd: v0.6.3
 * Update svt.cmd/svt.sh: v1.5.0
-* Update zlibpng.cmd: zlib 1.2.13 and libpng 1.6.39
+* Update zlibpng.cmd: zlib 1.2.13
 * avifImageCreate(), avifImageCreateEmpty(), avifEncoderCreate() and other
   internal functions now return NULL if a memory allocation failed.
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
