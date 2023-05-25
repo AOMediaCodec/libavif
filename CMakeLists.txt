@@ -89,12 +89,19 @@ endif()
 # Any proper unix environment should ignore these entire following blocks.
 option(AVIF_LOCAL_ZLIBPNG "Build zlib and libpng by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_ZLIBPNG)
-    add_subdirectory(ext/zlib)
     # Put the value of ZLIB_INCLUDE_DIR in the cache. This works around cmake behavior that has been updated by
     # cmake policy CMP0102 in cmake 3.17. Remove the CACHE workaround when we require cmake 3.17 or later. See
     # https://gitlab.kitware.com/cmake/cmake/-/issues/21343.
     set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE PATH "zlib include dir")
-    include_directories(${ZLIB_INCLUDE_DIR} "${CMAKE_CURRENT_BINARY_DIR}/ext/zlib")
+    # This include_directories() call must be before add_subdirectory(ext/zlib) to work around the
+    # zlib/CMakeLists.txt bug fixed by https://github.com/madler/zlib/pull/818.
+    include_directories(${ZLIB_INCLUDE_DIR})
+    add_subdirectory(ext/zlib)
+    # This include_directories() call and the previous include_directories() call provide the zlib
+    # include directories for add_subdirectory(ext/libpng). Because we set PNG_BUILD_ZLIB,
+    # libpng/CMakeLists.txt won't call find_package(ZLIB REQUIRED) and will see an empty
+    # ${ZLIB_INCLUDE_DIRS}.
+    include_directories("${CMAKE_CURRENT_BINARY_DIR}/ext/zlib")
     set(CMAKE_DEBUG_POSTFIX "")
 
     # This is the only way I could avoid libpng going crazy if it found awk.exe, seems benign otherwise
