@@ -819,9 +819,15 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", settings->tileRowsLog2, settings->tileColsLog2);
 
     const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-    printf("Encoding with AV1 codec '%s' speed [%d], color quality [%d (%s)], alpha quality [%d (%s)], %s, %d worker thread(s), please wait...\n",
+    char speed_str[16];
+    if (settings->speed == AVIF_SPEED_DEFAULT) {
+        strcpy(speed_str, "default");
+    } else {
+        snprintf(speed_str, sizeof(speed_str), "%d", settings->speed);
+    }
+    printf("Encoding with AV1 codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)], %s, %d worker thread(s), please wait...\n",
            codecName ? codecName : "none",
-           settings->speed,
+           speed_str,
            settings->quality,
            qualityString(settings->quality),
            settings->qualityAlpha,
