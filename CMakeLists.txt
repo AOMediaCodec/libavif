@@ -152,6 +152,7 @@ if(AVIF_LOCAL_LIBYUV)
         set(LIBYUV_LIBRARY ${LIBYUV_LIBRARY} ${JPEG_LIBRARY})
     endif()
     set(libyuv_FOUND TRUE)
+    message(STATUS "libavif: local libyuv found; libyuv-based fast paths enabled.")
 else(AVIF_LOCAL_LIBYUV)
     find_package(libyuv QUIET) # not required
     if(libyuv_FOUND)
@@ -574,9 +575,13 @@ option(AVIF_ENABLE_GTEST
 )
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
-    find_package(ZLIB REQUIRED)
-    find_package(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).
-    find_package(JPEG REQUIRED)
+    if(NOT AVIF_LOCAL_ZLIBPNG)
+        find_package(ZLIB REQUIRED)
+        find_package(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).
+    endif()
+    if(NOT AVIF_LOCAL_JPEG)
+        find_package(JPEG REQUIRED)
+    endif()
 
     add_library(
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/iccjpeg.c apps/shared/avifpng.c
