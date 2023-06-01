@@ -319,6 +319,10 @@ enum
 };
 typedef uint16_t avifTransferCharacteristics; // AVIF_TRANSFER_CHARACTERISTICS_*
 
+// If the given transfer characteristics can be expressed with a simple gamma value, sets 'gamma'
+// to that value and returns AVIF_TRUE. Returns AVIF_FALSE otherwise.
+AVIF_API avifBool avifTransferCharacteristicsGamma(avifTransferCharacteristics atc, float * gamma);
+
 enum
 {
     AVIF_MATRIX_COEFFICIENTS_IDENTITY = 0,
