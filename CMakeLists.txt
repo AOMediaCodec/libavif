@@ -148,7 +148,7 @@ if(AVIF_LOCAL_LIBYUV)
     endif()
     if(BUILD_SHARED_LIBS)
         # Fix "libyuv.so: undefined reference to `jpeg_read_raw_data'" errors.
-        if(NOT JPEG_LIBRARY)
+        if(NOT AVIF_LOCAL_JPEG)
             find_package(JPEG REQUIRED)
         endif()
         set(LIBYUV_LIBRARY ${LIBYUV_LIBRARY} ${JPEG_LIBRARY})
