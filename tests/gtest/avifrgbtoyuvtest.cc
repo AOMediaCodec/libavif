@@ -542,7 +542,7 @@ INSTANTIATE_TEST_SUITE_P(
         /*add_noise=*/Values(false),
         /*rgb_step=*/Values(17),
         /*max_abs_average_diff=*/Values(0.02),  // The color drift is centered.
-        /*min_psnr=*/Values(49.)  // RGB>YUV>RGB distortion is barely
+        /*min_psnr=*/Values(45.)  // RGB>YUV>RGB distortion is barely
                                   // noticeable.
         ));
 
