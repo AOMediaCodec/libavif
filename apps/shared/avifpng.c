@@ -504,38 +504,40 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
     png_set_IHDR(png, info, avif->width, avif->height, rgbDepth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
-    const avifColorPrimaries primaries = avif->colorPrimaries;
-    const avifTransferCharacteristics transfer = avif->transferCharacteristics;
     const avifBool hasIcc = avif->icc.data && (avif->icc.size > 0);
-    const avifBool hasNonSrgbPrimaries = (primaries != AVIF_COLOR_PRIMARIES_UNKNOWN &&
-                                          primaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED && primaries != AVIF_COLOR_PRIMARIES_BT709);
-    const avifBool hasNonSrgbTransfer =
-        (transfer != AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN && transfer != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED &&
-         transfer != AVIF_TRANSFER_CHARACTERISTICS_SRGB);
-
-    avifBool writeCicp = AVIF_FALSE;
     if (hasIcc) {
+        // If there is an ICC profile, the CICP values are irrelevant and only the ICC profile
+        // is written. If we could extract the primaries/transfer curve from the ICC profile,
+        // then they could be written in cHRM/gAMA chunks.
         png_set_iCCP(png, info, "libavif", 0, avif->icc.data, (png_uint_32)avif->icc.size);
-    } else if (hasNonSrgbPrimaries || hasNonSrgbTransfer) {
-        float primariesCoords[8];
-        avifColorPrimariesGetValues(avif->colorPrimaries, primariesCoords);
-        png_set_cHRM(png,
-                     info,
-                     primariesCoords[6],
-                     primariesCoords[7],
-                     primariesCoords[0],
-                     primariesCoords[1],
-                     primariesCoords[2],
-                     primariesCoords[3],
-                     primariesCoords[4],
-                     primariesCoords[5]);
-        float gamma;
-        if (avifTransferCharacteristicsGamma(avif->transferCharacteristics, &gamma)) {
-            png_set_gAMA(png, info, 1.0f / gamma);
+    } else {
+        const avifBool isSrgb = (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709) &&
+                                (avif->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB);
+        if (isSrgb) {
+            png_set_sRGB_gAMA_and_cHRM(png, info, PNG_sRGB_INTENT_PERCEPTUAL);
         } else {
-            // The transfer characteristics cannot be represented with a simple gAma chunk.
-            // A cICP chunk is needed, but might not be understood by all viewers since it's new.
-            writeCicp = AVIF_TRUE;
+            if (avif->colorPrimaries != AVIF_COLOR_PRIMARIES_UNKNOWN && avif->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+                float primariesCoords[8];
+                avifColorPrimariesGetValues(avif->colorPrimaries, primariesCoords);
+                png_set_cHRM(png,
+                             info,
+                             primariesCoords[6],
+                             primariesCoords[7],
+                             primariesCoords[0],
+                             primariesCoords[1],
+                             primariesCoords[2],
+                             primariesCoords[3],
+                             primariesCoords[4],
+                             primariesCoords[5]);
+            }
+            float gamma;
+            // Write the transfer characteristics IF it can be represented as a
+            // simple gamma value. Most transfer characteristics cannot be
+            // represented this way. Viewers that support the cICP chunk can use
+            // that instead, but older viewers might show incorrect colors.
+            if (avifTransferCharacteristicsGamma(avif->transferCharacteristics, &gamma)) {
+                png_set_gAMA(png, info, 1.0f / gamma);
+            }
         }
     }
 
@@ -576,7 +578,9 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     png_write_info(png, info);
 
     // Custom chunk writing, must appear after png_write_info.
-    if (writeCicp) {
+    // With AVIF, an ICC profile takes priority over ICC, but with PNG files, CICP takes priority over ICC.
+    // Therefore CICP should only be written if there is no ICC profile.
+    if (!hasIcc) {
         const png_byte cicp[5] = "cICP";
         const png_byte cicpData[4] = { (png_byte)avif->colorPrimaries,
                                        (png_byte)avif->transferCharacteristics,
