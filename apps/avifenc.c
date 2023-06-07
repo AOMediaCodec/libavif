@@ -71,6 +71,7 @@ static void syntax(void)
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -V,--version                      : Show the version number\n");
+    printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
@@ -288,6 +289,16 @@ static avifBool avifInputAddCachedImage(avifInput * input)
     ++input->cacheCount;
     free(oldCachedImages);
     return AVIF_TRUE;
+}
+
+static avifBool fileExists(const char * filename)
+{
+    FILE * outfile = fopen(filename, "rb");
+    if (outfile) {
+        fclose(outfile);
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
 }
 
 static const avifInputFile * avifInputGetFile(const avifInput * input, int imageIndex)
@@ -1048,6 +1059,7 @@ int main(int argc, char * argv[])
     //     https://github.com/AOMediaCodec/libavif/issues/440
 
     int returnCode = 0;
+    avifBool noOverwrite = AVIF_FALSE;
     avifSettings settings;
     memset(&settings, 0, sizeof(settings));
     settings.codecChoice = AVIF_CODEC_CHOICE_AUTO;
@@ -1117,6 +1129,8 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
             avifPrintVersions();
             goto cleanup;
+        } else if (!strcmp(arg, "--no-overwrite")) {
+            noOverwrite = AVIF_TRUE;
         } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
             NEXTARG();
             if (!strcmp(arg, "all")) {
@@ -1561,6 +1575,11 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
+    if (noOverwrite && fileExists(outputFilename)) {
+        fprintf(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", outputFilename);
+        goto cleanup;
+    }
+
 #if defined(_WIN32)
     if (input.useStdin) {
         setmode(fileno(stdin), O_BINARY);
@@ -1894,6 +1913,11 @@ int main(int argc, char * argv[])
         } else {
             printf(" * Repetition Count: %d\n", settings.repetitionCount);
         }
+    }
+    if (noOverwrite && fileExists(outputFilename)) {
+        // check again before write
+        fprintf(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", outputFilename);
+        goto cleanup;
     }
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
