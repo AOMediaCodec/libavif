@@ -69,20 +69,20 @@ avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char
     return AVIF_COLOR_PRIMARIES_UNKNOWN;
 }
 
-avifBool avifTransferCharacteristicsGamma(avifTransferCharacteristics atc, float * gamma)
+avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, float * gamma)
 {
     switch (atc) {
         case AVIF_TRANSFER_CHARACTERISTICS_BT470M:
             *gamma = 2.2f;
-            return AVIF_TRUE;
+            return AVIF_RESULT_OK;
         case AVIF_TRANSFER_CHARACTERISTICS_BT470BG:
             *gamma = 2.8f;
-            return AVIF_TRUE;
+            return AVIF_RESULT_OK;
         case AVIF_TRANSFER_CHARACTERISTICS_LINEAR:
             *gamma = 1.0f;
-            return AVIF_TRUE;
+            return AVIF_RESULT_OK;
         default:
-            return AVIF_FALSE;
+            return AVIF_RESULT_INVALID_ARGUMENT;
     }
 }
 

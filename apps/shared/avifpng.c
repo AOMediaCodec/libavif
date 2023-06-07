@@ -535,7 +535,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             // simple gamma value. Most transfer characteristics cannot be
             // represented this way. Viewers that support the cICP chunk can use
             // that instead, but older viewers might show incorrect colors.
-            if (avifTransferCharacteristicsGamma(avif->transferCharacteristics, &gamma)) {
+            if (avifTransferCharacteristicsGetGamma(avif->transferCharacteristics, &gamma) == AVIF_RESULT_OK) {
                 png_set_gAMA(png, info, 1.0f / gamma);
             }
         }
@@ -578,7 +578,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     png_write_info(png, info);
 
     // Custom chunk writing, must appear after png_write_info.
-    // With AVIF, an ICC profile takes priority over ICC, but with PNG files, CICP takes priority over ICC.
+    // With AVIF, an ICC profile takes priority over CICP, but with PNG files, CICP takes priority over ICC.
     // Therefore CICP should only be written if there is no ICC profile.
     if (!hasIcc) {
         const png_byte cicp[5] = "cICP";
