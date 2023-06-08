@@ -2,6 +2,20 @@
 
 ## Still images
 
+### File [draw_points.png](draw_points.png)
+
+![](draw_points.png)
+
+Source: Generated with ImageMagick's `convert` command:
+
+```
+  convert -size 3x1 xc:red -alpha on -fill '#00F8' \
+          -draw 'point 1,0' \
+          -draw 'color 2,0 point' -scale 33x33 draw_points.png
+```
+
+It uses PNG_COLOR_TYPE_PALETTE and has a tRNS chunk.
+
 ### Files `kodim*`
 
 #### File [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif)

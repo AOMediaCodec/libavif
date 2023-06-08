@@ -294,7 +294,9 @@ avifBool avifPNGRead(const char * inputFilename,
         png_set_expand_gray_1_2_4_to_8(png);
     }
 
+    avifBool hasTrnsChunk = AVIF_FALSE;
     if (png_get_valid(png, info, PNG_INFO_tRNS)) {
+        hasTrnsChunk = AVIF_TRUE;
         png_set_tRNS_to_alpha(png);
     }
 
@@ -361,7 +363,10 @@ avifBool avifPNGRead(const char * inputFilename,
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
-    if ((rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
+    // The tRNS chunk can only be used with these three color types. It is
+    // prohibited for PNG_COLOR_TYPE_GRAY_ALPHA and PNG_COLOR_TYPE_RGB_ALPHA.
+    if (!hasTrnsChunk &&
+        ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_PALETTE))) {
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
