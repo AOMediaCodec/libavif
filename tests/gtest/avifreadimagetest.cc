@@ -55,6 +55,15 @@ TEST(PngTest, ReadAllSubsamplingsAndAllBitDepths) {
       "paris_icc_exif_xmp.png", "paris_icc_exif_xmp_at_end.png"));
 }
 
+// Verify we can read a PNG file with PNG_COLOR_TYPE_PALETTE and a tRNS chunk.
+TEST(PngTest, PaletteColorTypeWithTrnsChunk) {
+  const testutil::AvifImagePtr image = testutil::ReadImage(
+      data_path, "draw_points.png", AVIF_PIXEL_FORMAT_YUV444, 8);
+  EXPECT_EQ(image->width, 33u);
+  EXPECT_EQ(image->height, 11u);
+  EXPECT_NE(image->alphaPlane, nullptr);
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace

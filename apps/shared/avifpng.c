@@ -294,8 +294,12 @@ avifBool avifPNGRead(const char * inputFilename,
         png_set_expand_gray_1_2_4_to_8(png);
     }
 
+    avifBool hasAlpha;
     if (png_get_valid(png, info, PNG_INFO_tRNS)) {
+        hasAlpha = AVIF_TRUE;
         png_set_tRNS_to_alpha(png);
+    } else {
+        hasAlpha = (rawColorType & PNG_COLOR_MASK_ALPHA) != 0;
     }
 
     if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
@@ -361,7 +365,7 @@ avifBool avifPNGRead(const char * inputFilename,
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
-    if ((rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
+    if (!hasAlpha) {
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
