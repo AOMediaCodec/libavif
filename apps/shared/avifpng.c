@@ -372,7 +372,10 @@ avifBool avifPNGRead(const char * inputFilename,
         fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
         goto cleanup;
     }
-    size_t rowBytes = png_get_rowbytes(png, info);
+    // png_read_image() receives the row pointers but not the row buffer size. Verify the row
+    // buffer size is exactly what libpng expects. If they are different, we have a bug and should
+    // not proceed.
+    const size_t rowBytes = png_get_rowbytes(png, info);
     if (rgb.rowBytes != rowBytes) {
         fprintf(stderr, "avifPNGRead internal error: rowBytes mismatch libavif %u vs libpng %" AVIF_FMT_ZU "\n", rgb.rowBytes, rowBytes);
         goto cleanup;
