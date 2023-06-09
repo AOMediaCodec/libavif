@@ -411,7 +411,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                                             dstSourceTiming,
                                                             &input->frameIter);
         if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-            fprintf(stderr, "Cannot determine input file format: %s\n", input->files[input->fileIndex].filename);
+            fprintf(stderr, "Cannot read input file: %s\n", input->files[input->fileIndex].filename);
             return AVIF_FALSE;
         }
         if (dstSourceIsRGB) {
