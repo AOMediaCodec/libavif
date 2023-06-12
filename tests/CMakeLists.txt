@@ -114,6 +114,13 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifcodectest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifcodectest COMMAND avifcodectest)
 
+    if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+        add_executable(avifconitest gtest/avifconitest.cc)
+        target_link_libraries(avifconitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(avifconitest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifconitest COMMAND avifconitest)
+    endif()
+
     add_executable(avifdecodetest gtest/avifdecodetest.cc)
     target_link_libraries(avifdecodetest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifdecodetest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -307,6 +314,9 @@ if(AVIF_CODEC_AVM)
                 avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
             )
 
+            if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+                set_tests_properties(avifconitest PROPERTIES DISABLED True)
+            endif()
             if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                 set_tests_properties(avifgainmaptest PROPERTIES DISABLED True)
             endif()
