@@ -59,9 +59,33 @@ TEST(PngTest, ReadAllSubsamplingsAndAllBitDepths) {
 TEST(PngTest, PaletteColorTypeWithTrnsChunk) {
   const testutil::AvifImagePtr image = testutil::ReadImage(
       data_path, "draw_points.png", AVIF_PIXEL_FORMAT_YUV444, 8);
+  ASSERT_NE(image, nullptr);
   EXPECT_EQ(image->width, 33u);
   EXPECT_EQ(image->height, 11u);
   EXPECT_NE(image->alphaPlane, nullptr);
+}
+
+// Verify we can read a PNG file with PNG_COLOR_TYPE_RGB and a tRNS chunk
+// after a PLTE chunk.
+TEST(PngTest, RgbColorTypeWithTrnsAfterPlte) {
+  const testutil::AvifImagePtr image = testutil::ReadImage(
+      data_path, "circle-trns-after-plte.png", AVIF_PIXEL_FORMAT_YUV444, 8);
+  ASSERT_NE(image, nullptr);
+  EXPECT_EQ(image->width, 100u);
+  EXPECT_EQ(image->height, 60u);
+  EXPECT_NE(image->alphaPlane, nullptr);
+}
+
+// Verify we can read a PNG file with PNG_COLOR_TYPE_RGB and a tRNS chunk
+// before a PLTE chunk. libpng considers the tRNS chunk as invalid and ignores
+// it, so the decoded image should have no alpha.
+TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
+  const testutil::AvifImagePtr image = testutil::ReadImage(
+      data_path, "circle-trns-before-plte.png", AVIF_PIXEL_FORMAT_YUV444, 8);
+  ASSERT_NE(image, nullptr);
+  EXPECT_EQ(image->width, 100u);
+  EXPECT_EQ(image->height, 60u);
+  EXPECT_EQ(image->alphaPlane, nullptr);
 }
 
 //------------------------------------------------------------------------------
