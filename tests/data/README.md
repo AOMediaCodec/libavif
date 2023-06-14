@@ -22,6 +22,8 @@ chunk. Since the PNG specification version 1.2 says "the tRNS chunk [...] must
 follow the PLTE chunk, if any", libpng considers the tRNS chunk as invalid and
 ignores it.
 
+### File [draw_points.png](draw_points.png)
+
 ![](draw_points.png)
 
 Source: Generated with ImageMagick's `convert` command:
