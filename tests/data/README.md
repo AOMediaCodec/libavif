@@ -2,7 +2,25 @@
 
 ## Still images
 
-### File [draw_points.png](draw_points.png)
+### File [circle-trns-after-plte.png](circle-trns-after-plte.png)
+
+![](circle-trns-after-plte.png)
+
+An opaque blue circle on a transparent green background.
+
+It is of color type 2 (PNG_COLOR_TYPE_RGB) and has a tRNS chunk after a PLTE
+chunk.
+
+### File [circle-trns-before-plte.png](circle-trns-before-plte.png)
+
+![](circle-trns-before-plte.png)
+
+An opaque blue circle on a transparent green background.
+
+It is of color type 2 (PNG_COLOR_TYPE_RGB) and has a tRNS chunk before a PLTE
+chunk. Since the PNG specification version 1.2 says "the tRNS chunk [...] must
+follow the PLTE chunk, if any", libpng considers the tRNS chunk as invalid and
+ignores it.
 
 ![](draw_points.png)
 
@@ -14,7 +32,7 @@ Source: Generated with ImageMagick's `convert` command:
           -draw 'color 2,0 point' -scale 33x33 draw_points.png
 ```
 
-It uses PNG_COLOR_TYPE_PALETTE and has a tRNS chunk.
+It is of color type 3 (PNG_COLOR_TYPE_PALETTE) and has a tRNS chunk.
 
 ### Files `kodim*`
 
