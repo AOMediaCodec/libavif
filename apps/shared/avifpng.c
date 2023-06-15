@@ -4,11 +4,13 @@
 #include "avifpng.h"
 #include "avifexif.h"
 #include "avifutil.h"
+#include "iccmaker.h"
 
 #include "png.h"
 
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -200,6 +202,11 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     return AVIF_TRUE;
 }
 
+static avifBool matchesTo3RoundedPlaces(double a, double b)
+{
+    return (fabs(a - b) < 0.001);
+}
+
 // Note on setjmp() and volatile variables:
 //
 // K & R, The C Programming Language 2nd Ed, p. 254 says:
@@ -219,7 +226,7 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifPixelFormat requestedFormat,
                      uint32_t requestedDepth,
                      avifChromaDownsampling chromaDownsampling,
-                     avifBool ignoreICC,
+                     avifBool ignoreProfile,
                      avifBool ignoreExif,
                      avifBool ignoreXMP,
                      uint32_t * outPNGDepth)
@@ -269,18 +276,6 @@ avifBool avifPNGRead(const char * inputFilename,
     png_set_sig_bytes(png, 8);
     png_read_info(png, info);
 
-    if (!ignoreICC) {
-        char * iccpProfileName = NULL;
-        int iccpCompression = 0;
-        unsigned char * iccpData = NULL;
-        png_uint_32 iccpDataLen = 0;
-        if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-            avifImageSetProfileICC(avif, iccpData, iccpDataLen);
-        }
-        // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
-        // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
-    }
-
     int rawWidth = png_get_image_width(png, info);
     int rawHeight = png_get_image_height(png, info);
     png_byte rawColorType = png_get_color_type(png, info);
@@ -310,6 +305,86 @@ avifBool avifPNGRead(const char * inputFilename,
 
     if (outPNGDepth) {
         *outPNGDepth = imgBitDepth;
+    }
+
+    if (!ignoreProfile) {
+        char * iccpProfileName = NULL;
+        int iccpCompression = 0;
+        unsigned char * iccpData = NULL;
+        png_uint_32 iccpDataLen = 0;
+        int srgb_intent = 0;
+
+        // PNG specification 4.2.2: The sRGB and iCCP chunks should not both appear.
+        // When the sRGB / iCCP chunk is present applications that recognize it and are capable of color management
+        // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
+        if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+            avifImageSetProfileICC(avif, iccpData, iccpDataLen);
+        } else if (png_get_sRGB(png, info, &srgb_intent) == PNG_INFO_sRGB) {
+            // srgb_intent ignored
+            avif->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+            avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+        } else {
+            avifBool needCraftICC = AVIF_FALSE;
+            double gamma;
+            double wX, wY, rX, rY, gX, gY, bX, bY;
+            float primaries[8];
+            if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA) {
+                gamma = 1.0 / gamma;
+                if (matchesTo3RoundedPlaces(gamma, 2.2)) {
+                    avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT470M;
+                } else if (matchesTo3RoundedPlaces(gamma, 1.0)) {
+                    avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_LINEAR;
+                } else if (matchesTo3RoundedPlaces(gamma, 2.8)) {
+                    avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT470BG;
+                } else {
+                    needCraftICC = AVIF_TRUE;
+                }
+            } else {
+                gamma = 2.2;
+            }
+
+            if (png_get_cHRM(png, info, &wX, &wY, &rX, &rY, &gX, &gY, &bX, &bY) == PNG_INFO_cHRM) {
+                primaries[0] = (float)rX;
+                primaries[1] = (float)rY;
+                primaries[2] = (float)gX;
+                primaries[3] = (float)gY;
+                primaries[4] = (float)bX;
+                primaries[5] = (float)bY;
+                primaries[6] = (float)wX;
+                primaries[7] = (float)wY;
+                avif->colorPrimaries = avifColorPrimariesFind(primaries, NULL);
+                if (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_UNKNOWN) {
+                    avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+                    needCraftICC = AVIF_TRUE;
+                }
+            } else {
+                avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primaries);
+            }
+
+            // TODO: should we specially treat gamma=2.2 + BT709 primaries as sRGB?
+
+            if (needCraftICC) {
+                avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+                avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+                fprintf(stderr, "WARNING: legacy color management information not matching any CICP value found in file %s. "
+                                "libavif is generating an ICC profile for it.\n", inputFilename);
+
+                avifBool craftICCResult = AVIF_FALSE;
+                if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
+                    craftICCResult = avifImageGenerateGrayICCFromGammaPrimaries(avif, (float)gamma, &primaries[6]);
+                } else {
+                    craftICCResult = avifImageGenerateRGBICCFromGammaPrimaries(avif, (float)gamma, primaries);
+                }
+
+                if (!craftICCResult) {
+                    fprintf(stderr, "WARNING: libavif can not generate ICC profile for file %s."
+                                    "The color management information may contain invalid value.\n", inputFilename);
+                }
+
+            }
+        }
+        // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
+        // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
     }
 
     png_read_update_info(png, info);

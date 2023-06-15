@@ -115,7 +115,7 @@ static void syntax(void)
     printf("    -k,--keyframe INTERVAL            : Set the maximum keyframe interval (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
-    printf("    --ignore-icc                      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
+    printf("    --ignore-profile,--ignore-icc     : If the input file contains embedded color profile info, ignore it (no-op if absent)\n");
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
@@ -653,7 +653,7 @@ typedef struct
     int keyframeInterval;
     avifBool ignoreExif;
     avifBool ignoreXMP;
-    avifBool ignoreICC;
+    avifBool ignoreProfile;
 
     // This holds the output timing for image sequences. The timescale member in this struct will
     // become the timescale set on avifEncoder, and the duration member will be the default duration
@@ -1080,7 +1080,7 @@ int main(int argc, char * argv[])
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;
     settings.ignoreXMP = AVIF_FALSE;
-    settings.ignoreICC = AVIF_FALSE;
+    settings.ignoreProfile = AVIF_FALSE;
 
     avifBool cropConversionRequired = AVIF_FALSE;
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
@@ -1328,7 +1328,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            settings.ignoreICC = AVIF_TRUE;
+            settings.ignoreProfile = AVIF_TRUE;
         } else if (!strcmp(arg, "--duration")) {
             NEXTARG();
             int durationInt = atoi(arg);
@@ -1373,8 +1373,8 @@ int main(int argc, char * argv[])
             settings.ignoreExif = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-xmp")) {
             settings.ignoreXMP = AVIF_TRUE;
-        } else if (!strcmp(arg, "--ignore-icc")) {
-            settings.ignoreICC = AVIF_TRUE;
+        } else if (!strcmp(arg, "--ignore-profile") || !strcmp(arg, "--ignore-icc")) {
+            settings.ignoreProfile = AVIF_TRUE;
         } else if (!strcmp(arg, "--pasp")) {
             NEXTARG();
             settings.paspCount = parseU32List(settings.paspValues, arg);
@@ -1623,7 +1623,7 @@ int main(int argc, char * argv[])
     avifAppSourceTiming firstSourceTiming;
     if (!avifInputReadImage(&input,
                             /*imageIndex=*/0,
-                            settings.ignoreICC,
+                            settings.ignoreProfile,
                             settings.ignoreExif,
                             settings.ignoreXMP,
                             image,
