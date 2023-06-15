@@ -4,7 +4,6 @@
 #include "avif/avif.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
 namespace {
 
 struct InvalidClapPropertyParam {
@@ -14,7 +13,7 @@ struct InvalidClapPropertyParam {
   avifCleanApertureBox clap;
 };
 
-InvalidClapPropertyParam kInvalidClapPropertyTestParams[] = {
+constexpr InvalidClapPropertyParam kInvalidClapPropertyTestParams[] = {
     // Zero or negative denominators.
     {120, 160, AVIF_PIXEL_FORMAT_YUV420, {96, 0, 132, 1, 0, 1, 0, 1}},
     {120,
@@ -93,7 +92,7 @@ struct ValidClapPropertyParam {
   avifCropRect expected_crop_rect;
 };
 
-ValidClapPropertyParam kValidClapPropertyTestParams[] = {
+constexpr ValidClapPropertyParam kValidClapPropertyTestParams[] = {
     // pcX = 0 + (120 - 1)/2 = 59.5
     // pcY = 0 + (160 - 1)/2 = 79.5
     // leftmost = 59.5 - (96 - 1)/2 = 12
@@ -135,4 +134,3 @@ TEST_P(ValidClapPropertyTest, ValidateClapProperty) {
 }
 
 }  // namespace
-}  // namespace libavif
