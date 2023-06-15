@@ -42,6 +42,7 @@ struct AvifDecoderWrapper {
   }
 
   avifDecoder* decoder = nullptr;
+  avifCropRect crop;
 };
 
 bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
@@ -56,8 +57,9 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
   decoder->decoder->ignoreXMP = AVIF_TRUE;
   decoder->decoder->ignoreExif = AVIF_TRUE;
 
-  // Turn off 'clap' (clean aperture) property validation. The JNI wrapper
-  // ignores the 'clap' property.
+  // Turn off libavif's 'clap' (clean aperture) property validation. This allows
+  // us to detect and ignore streams that have an invalid 'clap' property
+  // instead failing.
   decoder->decoder->strictFlags &= ~AVIF_STRICT_CLAP_VALID;
   // Allow 'pixi' (pixel information) property to be missing. Older versions of
   // libheif did not add the 'pixi' item property to AV1 image items (See
@@ -74,6 +76,20 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
     LOGE("Failed to parse AVIF image: %s.", avifResultToString(res));
     return false;
   }
+
+  avifDiagnostics diag;
+  // If the image does not have a valid 'clap' property, then we simply display
+  // the whole image.
+  if (!(decoder->decoder->image->transformFlags & AVIF_TRANSFORM_CLAP) ||
+      !avifCropRectConvertCleanApertureBox(
+          &decoder->crop, &decoder->decoder->image->clap,
+          decoder->decoder->image->width, decoder->decoder->image->height,
+          decoder->decoder->image->yuvFormat, &diag)) {
+    decoder->crop.width = decoder->decoder->image->width;
+    decoder->crop.height = decoder->decoder->image->height;
+    decoder->crop.x = 0;
+    decoder->crop.y = 0;
+  }
   return true;
 }
 
@@ -86,8 +102,8 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
   // Ensure that the bitmap is large enough to store the decoded image.
-  if (bitmap_info.width < decoder->decoder->image->width ||
-      bitmap_info.height < decoder->decoder->image->height) {
+  if (bitmap_info.width < decoder->crop.width ||
+      bitmap_info.height < decoder->crop.height) {
     LOGE(
         "Bitmap is not large enough to fit the image. Bitmap %dx%d Image "
         "%dx%d.",
@@ -108,8 +124,30 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
     LOGE("Failed to lock Bitmap.");
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
+  avifImage* image;
+  std::unique_ptr<avifImage, decltype(&avifImageDestroy)> cropped_image(
+      nullptr, avifImageDestroy);
+  avifResult res;
+  if (decoder->decoder->image->width == decoder->crop.width &&
+      decoder->decoder->image->height == decoder->crop.height &&
+      decoder->crop.x == 0 && decoder->crop.y == 0) {
+    image = decoder->decoder->image;
+  } else {
+    cropped_image.reset(avifImageCreateEmpty());
+    if (cropped_image == nullptr) {
+      LOGE("Failed to allocate cropped image.");
+      return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    res = avifImageSetViewRect(cropped_image.get(), decoder->decoder->image,
+                               &decoder->crop);
+    if (res != AVIF_RESULT_OK) {
+      LOGE("Failed to set crop rectangle. Status: %d", res);
+      return res;
+    }
+    image = cropped_image.get();
+  }
   avifRGBImage rgb_image;
-  avifRGBImageSetDefaults(&rgb_image, decoder->decoder->image);
+  avifRGBImageSetDefaults(&rgb_image, image);
   if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGBA_F16) {
     rgb_image.depth = 16;
     rgb_image.isFloat = AVIF_TRUE;
@@ -125,7 +163,7 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
   // them:
   // https://developer.android.com/reference/android/graphics/Bitmap#setPremultiplied(boolean)
   rgb_image.alphaPremultiplied = AVIF_TRUE;
-  const avifResult res = avifImageYUVToRGB(decoder->decoder->image, &rgb_image);
+  res = avifImageYUVToRGB(image, &rgb_image);
   AndroidBitmap_unlockPixels(env, bitmap);
   if (res != AVIF_RESULT_OK) {
     LOGE("Failed to convert YUV Pixels to RGB. Status: %d", res);
@@ -215,9 +253,9 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   GET_FIELD_ID(height, info_class, "height", "I", false);
   GET_FIELD_ID(depth, info_class, "depth", "I", false);
   GET_FIELD_ID(alpha_present, info_class, "alphaPresent", "Z", false);
-  env->SetIntField(info, width, decoder.decoder->image->width);
+  env->SetIntField(info, width, decoder.crop.width);
   CHECK_EXCEPTION(false);
-  env->SetIntField(info, height, decoder.decoder->image->height);
+  env->SetIntField(info, height, decoder.crop.height);
   CHECK_EXCEPTION(false);
   env->SetIntField(info, depth, decoder.decoder->image->depth);
   CHECK_EXCEPTION(false);
@@ -268,9 +306,9 @@ FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
                0);
   GET_FIELD_ID(frame_durations_id, avif_decoder_class, "frameDurations", "[D",
                0);
-  env->SetIntField(thiz, width_id, decoder->decoder->image->width);
+  env->SetIntField(thiz, width_id, decoder->crop.width);
   CHECK_EXCEPTION(0);
-  env->SetIntField(thiz, height_id, decoder->decoder->image->height);
+  env->SetIntField(thiz, height_id, decoder->crop.height);
   CHECK_EXCEPTION(0);
   env->SetIntField(thiz, depth_id, decoder->decoder->image->depth);
   CHECK_EXCEPTION(0);
