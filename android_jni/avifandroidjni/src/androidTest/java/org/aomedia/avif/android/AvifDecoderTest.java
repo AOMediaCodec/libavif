@@ -110,6 +110,7 @@ public class AvifDecoderTest {
     new Image("avif", "fox.profile2.12bpc.yuv422.avif", 1204, 800, 12, false, 1),
     new Image("avif", "fox.profile2.12bpc.yuv444.avif", 1204, 800, 12, false, 1),
     new Image("avif", "fox.profile2.8bpc.yuv422.avif", 1204, 800, 8, false, 1),
+    new Image("avif", "blue-and-magenta-crop.avif", 180, 100, 8, true, 1),
     // Parameter ordering for animated images: directory, filename, width, height, depth,
     // alphaPresent, frameCount, repetitionCount, frameDuration, threads.
     new Image("animated_avif", "alpha_video.avif", 640, 480, 8, true, 48, -2, 0.04, 1),
