@@ -32,11 +32,6 @@ jobs:
     - uses: actions/setup-python@v4
       with:
         python-version: '3.x'
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
 
     - name: Cache external dependencies
       id: cache-ext
@@ -59,10 +54,6 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: ./dav1d.cmd
-    - name: Build rav1e
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./rav1e.cmd
     - name: Build SVT-AV1
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -100,7 +91,6 @@ jobs:
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
         -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
         -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON
-        -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON
         -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
         -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON
         -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_JPEG=ON
