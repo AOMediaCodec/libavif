@@ -40,6 +40,7 @@ List of incompatible ABI changes in this release:
 * Add API for multi-threaded YUV to RGB color conversion.
 * Add experimental support for AV2 behind the compilation flag AVIF_CODEC_AVM.
   AVIF_CODEC_CHOICE_AVM is now part of avifCodecChoice.
+* Add avifenc --no-overwrite flag to avoid overwriting output file.
 
 ### Changed
 * Exif and XMP metadata is exported to PNG and JPEG files by default,
