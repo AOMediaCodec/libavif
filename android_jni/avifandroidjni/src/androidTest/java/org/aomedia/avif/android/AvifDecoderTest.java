@@ -141,7 +141,9 @@ public class AvifDecoderTest {
   // can be decoded this way.
   @Test
   public void testDecodeUtilityClass() throws IOException {
-    if (image.isAnimated) return;
+    if (image.isAnimated) {
+      return;
+    }
     ByteBuffer buffer = image.getBuffer();
     assertThat(buffer).isNotNull();
     assertThat(AvifDecoder.isAvifImage(buffer)).isTrue();
