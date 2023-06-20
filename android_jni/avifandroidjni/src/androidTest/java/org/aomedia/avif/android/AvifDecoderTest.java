@@ -150,6 +150,7 @@ public class AvifDecoderTest {
     assertThat(info.width).isEqualTo(image.width);
     assertThat(info.height).isEqualTo(image.height);
     assertThat(info.depth).isEqualTo(image.depth);
+    assertThat(info.alphaPresent).isEqualTo(image.alphaPresent);
     Bitmap bitmap = Bitmap.createBitmap(info.width, info.height, config);
     assertThat(bitmap).isNotNull();
     assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
