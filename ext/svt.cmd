@@ -14,7 +14,7 @@
 : # Starting with SVT-AV1 v1.5.0, it can be used alongside avm as a dependency of libavif.
 : # See https://github.com/AOMediaCodec/libavif/pull/1361#discussion_r1183100879.
 
-git clone -b v1.5.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v1.6.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 
 cd SVT-AV1
 cd Build/windows
