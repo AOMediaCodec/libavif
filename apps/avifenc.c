@@ -65,11 +65,20 @@ typedef struct
     int count;
 } avifCodecSpecificOptions;
 
-static void syntax(void)
+static void syntaxShort(void)
+{
+    printf("Syntax: avifenc [options] -q quality input.[jpg|jpeg|png|y4m] output.avif\n");
+    printf("where quality is between %d (worst quality) and %d (lossless).\n", AVIF_QUALITY_WORST, AVIF_QUALITY_LOSSLESS);
+    printf("Typical value is 60-80.\n\n");
+    printf("Try --longhelp for an exhaustive list of advanced options.\n");
+}
+
+static void syntaxLong(void)
 {
     printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
     printf("Options:\n");
-    printf("    -h,--help                         : Show syntax help\n");
+    printf("    -h,--help                         : Show short syntax help\n");
+    printf("    --longhelp                        : Show long syntax help\n");
     printf("    -V,--version                      : Show the version number\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
@@ -1044,7 +1053,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
 int main(int argc, char * argv[])
 {
     if (argc < 2) {
-        syntax();
+        syntaxShort();
         return 1;
     }
 
@@ -1124,7 +1133,10 @@ int main(int argc, char * argv[])
             }
             break;
         } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
-            syntax();
+            syntaxShort();
+            goto cleanup;
+        } else if (!strcmp(arg, "--longhelp")) {
+            syntaxLong();
             goto cleanup;
         } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
             avifPrintVersions();
@@ -1436,7 +1448,7 @@ int main(int argc, char * argv[])
             settings.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV;
         } else if (arg[0] == '-') {
             fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
-            syntax();
+            syntaxLong();
             returnCode = 1;
             goto cleanup;
         } else {
@@ -1570,7 +1582,7 @@ int main(int argc, char * argv[])
     }
 
     if (!outputFilename || (input.useStdin && (input.filesCount > 0)) || (!input.useStdin && (input.filesCount < 1))) {
-        syntax();
+        syntaxShort();
         returnCode = 1;
         goto cleanup;
     }
