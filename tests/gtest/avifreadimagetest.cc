@@ -88,6 +88,135 @@ TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
   EXPECT_EQ(image->alphaPlane, nullptr);
 }
 
+// Verify we can read a color PNG file tagged as gamma 2.2 through gAMA chunk,
+// and set transfer characteristics correctly.
+TEST(PngTest, ColorGamma22) {
+  const auto image = testutil::ReadImage(data_path, "ffffcc-gamma2.2.png");
+  ASSERT_NE(image, nullptr);
+
+  // gamma 2.2 should match BT470M
+  EXPECT_EQ(image->transferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_BT470M);
+
+  // should not generate ICC profile
+  EXPECT_EQ(image->icc.size, 0);
+}
+
+// Verify we can read a color PNG file tagged as gamma 1.6 through gAMA chunk,
+// and generate a color profile for it.
+TEST(PngTest, ColorGamma16) {
+  const auto image = testutil::ReadImage(data_path, "ffffcc-gamma1.6.png");
+  ASSERT_NE(image, nullptr);
+
+  // if ICC profile generated, CP and TC should be set to unspecified
+  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
+  EXPECT_EQ(image->transferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
+
+  // should generate a color profile
+  EXPECT_EQ(image->icc.size, 376);
+
+  // TODO: more verification on the generated profile
+}
+
+// Verify we can read a gray PNG file tagged as gamma 2.2 through gAMA chunk,
+// and set transfer characteristics correctly.
+TEST(PngTest, GrayGamma22) {
+  const auto image = testutil::ReadImage(data_path, "ffffff-gamma2.2.png");
+  ASSERT_NE(image, nullptr);
+
+  // gamma 2.2 should match BT470M
+  EXPECT_EQ(image->transferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_BT470M);
+
+  // should not generate ICC profile
+  EXPECT_EQ(image->icc.size, 0);
+}
+
+// Verify we can read a gray PNG file tagged as gamma 1.6 through gAMA chunk,
+// and generate a gray profile for it.
+TEST(PngTest, GrayGamma16) {
+  const auto image = testutil::ReadImage(data_path, "ffffff-gamma1.6.png");
+  ASSERT_NE(image, nullptr);
+
+  // if ICC profile generated, CP and TC should be set to unspecified
+  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
+  EXPECT_EQ(image->transferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
+
+  // should generate a gray profile
+  EXPECT_EQ(image->icc.size, 275);
+
+  // TODO: more verification on the generated profile
+}
+
+// Verify we can read a color PNG file tagged as sRGB through sRGB chunk,
+// and set color primaries and transfer characteristics correctly.
+TEST(PngTest, SRGBTagged) {
+  const auto image = testutil::ReadImage(data_path, "ffffcc-srgb.png");
+  ASSERT_NE(image, nullptr);
+
+  // should set to BT709 primaries and SRGB transfer
+  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_BT709);
+  EXPECT_EQ(image->transferCharacteristics, AVIF_TRANSFER_CHARACTERISTICS_SRGB);
+
+  // should not generate ICC profile
+  EXPECT_EQ(image->icc.size, 0);
+}
+
+// Verify we are not generating profile if asked to ignore it.
+TEST(PngTest, IgnoreProfile) {
+  const auto image = testutil::ReadImage(
+      data_path, "ffffcc-gamma1.6.png", AVIF_PIXEL_FORMAT_NONE, 0,
+      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, true);
+  ASSERT_NE(image, nullptr);
+
+  // should be left unspecified
+  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
+  EXPECT_EQ(image->transferCharacteristics, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
+
+  // should not generate ICC profile
+  EXPECT_EQ(image->icc.size, 0);
+}
+
+// Verify we can read a PNG file tagged as gamma 2.2 through gAMA chunk
+// and BT709 primaries through cHRM chunk,
+// and set color primaries and transfer characteristics correctly.
+TEST(PngTest, BT709Gamma22) {
+  const auto image =
+      testutil::ReadImage(data_path, "ArcTriomphe-cHRM-orig.png");
+  ASSERT_NE(image, nullptr);
+
+  // primaries should match BT709
+  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_BT709);
+
+  // gamma 2.2 should match BT470M
+  EXPECT_EQ(image->transferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_BT470M);
+
+  // should not generate ICC profile
+  EXPECT_EQ(image->icc.size, 0);
+}
+
+// Verify we can read a PNG file tagged as gamma 2.2 through gAMA chunk
+// and BT709 primaries with red and green swapped through cHRM chunk,
+// and generate a color profile for it.
+TEST(PngTest, BT709SwappedGamma22) {
+  const auto image =
+      testutil::ReadImage(data_path, "ArcTriomphe-cHRM-red-green-swap.png");
+  ASSERT_NE(image, nullptr);
+
+  // if ICC profile generated, CP and TC should be set to unspecified
+  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
+  EXPECT_EQ(image->transferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
+
+  // should generate a color profile
+  EXPECT_EQ(image->icc.size, 376);
+
+  // TODO: more verification on the generated profile
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace

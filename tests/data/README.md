@@ -215,6 +215,84 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Encoded from `paris_icc_exif_xmp.png` using `avifenc -s 10` at commit ed52c1b.
 
+### File [ffffcc-gamma1.6.png](ffffcc-gamma1.6.png)
+
+![](ffffcc-gamma1.6.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma16.html.
+
+It's a color image tagged as gamma 1.6.
+
+### File [ffffcc-gamma1.6.png](ffffcc-gamma1.6.png)
+
+![](ffffcc-gamma2.2.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma22.html.
+
+It's a color image tagged as gamma 2.2.
+
+### File [ffffff-gamma1.6.png](ffffff-gamma1.6.png)
+
+![](ffffff-gamma1.6.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma16.html.
+
+It's a grayscale image tagged as gamma 1.6.
+
+### File [ffffff-gamma2.2.png](ffffff-gamma2.2.png)
+
+![](ffffff-gamma2.2.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma22.html.
+
+It's a grayscale image tagged as gamma 2.2.
+
+### File [ffffcc-srgb.png](ffffcc-srgb.png)
+
+![](ffffcc-srgb.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/colorcube/colorcube-pngs-sRGB.html.
+
+It's a color image tagged as sRGB.
+
+### File [ArcTriomphe-cHRM-orig.png](ArcTriomphe-cHRM-orig.png)
+
+![](ArcTriomphe-cHRM-orig.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/png-colortest.html.
+
+It's a image tagged as gamma 2.2 and BT709 primaries.
+
+### File [ArcTriomphe-cHRM-red-green-swap.png](ArcTriomphe-cHRM-red-green-swap.png)
+
+![](ArcTriomphe-cHRM-red-green-swap.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/png-colortest.html.
+
+It's a image tagged as gamma 2.2 and BT709 primaries but red and green swapped.
+
+
 ## Grid
 
 ### File [sofa_grid1x5_420.avif](sofa_grid1x5_420.avif)
