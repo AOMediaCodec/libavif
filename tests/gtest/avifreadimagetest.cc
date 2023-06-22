@@ -88,6 +88,9 @@ TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
   EXPECT_EQ(image->alphaPlane, nullptr);
 }
 
+const size_t color_profile_size = 376;
+const size_t gray_profile_size = 275;
+
 // Verify we can read a color PNG file tagged as gamma 2.2 through gAMA chunk,
 // and set transfer characteristics correctly.
 TEST(PngTest, ColorGamma22) {
@@ -99,7 +102,7 @@ TEST(PngTest, ColorGamma22) {
             AVIF_TRANSFER_CHARACTERISTICS_BT470M);
 
   // should not generate ICC profile
-  EXPECT_EQ(image->icc.size, 0);
+  EXPECT_EQ(image->icc.size, 0u);
 }
 
 // Verify we can read a color PNG file tagged as gamma 1.6 through gAMA chunk,
@@ -114,7 +117,7 @@ TEST(PngTest, ColorGamma16) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a color profile
-  EXPECT_EQ(image->icc.size, 376);
+  EXPECT_EQ(image->icc.size, color_profile_size);
 
   // TODO: more verification on the generated profile
 }
@@ -130,7 +133,7 @@ TEST(PngTest, GrayGamma22) {
             AVIF_TRANSFER_CHARACTERISTICS_BT470M);
 
   // should not generate ICC profile
-  EXPECT_EQ(image->icc.size, 0);
+  EXPECT_EQ(image->icc.size, 0u);
 }
 
 // Verify we can read a gray PNG file tagged as gamma 1.6 through gAMA chunk,
@@ -145,7 +148,7 @@ TEST(PngTest, GrayGamma16) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a gray profile
-  EXPECT_EQ(image->icc.size, 275);
+  EXPECT_EQ(image->icc.size, gray_profile_size);
 
   // TODO: more verification on the generated profile
 }
@@ -161,7 +164,7 @@ TEST(PngTest, SRGBTagged) {
   EXPECT_EQ(image->transferCharacteristics, AVIF_TRANSFER_CHARACTERISTICS_SRGB);
 
   // should not generate ICC profile
-  EXPECT_EQ(image->icc.size, 0);
+  EXPECT_EQ(image->icc.size, 0u);
 }
 
 // Verify we are not generating profile if asked to ignore it.
@@ -176,7 +179,7 @@ TEST(PngTest, IgnoreProfile) {
   EXPECT_EQ(image->transferCharacteristics, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
 
   // should not generate ICC profile
-  EXPECT_EQ(image->icc.size, 0);
+  EXPECT_EQ(image->icc.size, 0u);
 }
 
 // Verify we can read a PNG file tagged as gamma 2.2 through gAMA chunk
@@ -195,7 +198,7 @@ TEST(PngTest, BT709Gamma22) {
             AVIF_TRANSFER_CHARACTERISTICS_BT470M);
 
   // should not generate ICC profile
-  EXPECT_EQ(image->icc.size, 0);
+  EXPECT_EQ(image->icc.size, 0u);
 }
 
 // Verify we can read a PNG file tagged as gamma 2.2 through gAMA chunk
@@ -212,7 +215,7 @@ TEST(PngTest, BT709SwappedGamma22) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a color profile
-  EXPECT_EQ(image->icc.size, 376);
+  EXPECT_EQ(image->icc.size, color_profile_size);
 
   // TODO: more verification on the generated profile
 }
