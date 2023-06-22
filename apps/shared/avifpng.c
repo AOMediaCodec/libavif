@@ -366,8 +366,9 @@ avifBool avifPNGRead(const char * inputFilename,
             if (needCraftICC) {
                 avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
                 avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-                fprintf(stderr, "WARNING: legacy color management information not matching any CICP value found in file %s. "
-                                "libavif is generating an ICC profile for it.\n", inputFilename);
+                fprintf(stderr,
+                        "WARNING: legacy color management information not matching any CICP value found in file %s. libavif is generating an ICC profile for it.\n",
+                        inputFilename);
 
                 avifBool craftICCResult = AVIF_FALSE;
                 if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
@@ -377,10 +378,10 @@ avifBool avifPNGRead(const char * inputFilename,
                 }
 
                 if (!craftICCResult) {
-                    fprintf(stderr, "WARNING: libavif can not generate ICC profile for file %s."
-                                    "The color management information may contain invalid value.\n", inputFilename);
+                    fprintf(stderr,
+                            "WARNING: libavif can not generate ICC profile for file %s. The color management information may contain invalid value.\n",
+                            inputFilename);
                 }
-
             }
         }
         // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
