@@ -312,14 +312,14 @@ avifBool avifPNGRead(const char * inputFilename,
         int iccpCompression = 0;
         unsigned char * iccpData = NULL;
         png_uint_32 iccpDataLen = 0;
-        int srgb_intent = 0;
+        int srgbIntent = 0;
 
         // PNG specification 4.2.2: The sRGB and iCCP chunks should not both appear.
         // When the sRGB / iCCP chunk is present applications that recognize it and are capable of color management
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
             avifImageSetProfileICC(avif, iccpData, iccpDataLen);
-        } else if (png_get_sRGB(png, info, &srgb_intent) == PNG_INFO_sRGB) {
+        } else if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
             // srgb_intent ignored
             avif->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
             avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
