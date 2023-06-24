@@ -6,9 +6,53 @@
 #include <math.h>
 #include <string.h>
 
-// The two ICC templates are pre-padded such that MD5 can be directly computed.
+// ICCv2 profile specification: https://www.color.org/icc32.pdf
+
+/**
+ * Color Profile Structure
+ *
+ * Header:
+ *  size         = 376 bytes (*1)
+ *  CMM          = 'lcms' (*2)
+ *  Version      = 2.2.0
+ *  Device Class = Display
+ *  Color Space  = RGB
+ *  Conn. Space  = XYZ
+ *  Date, Time   = 1 Jan 2000, 0:00:00
+ *  Platform     = Microsoft
+ *  Flags        = Not Embedded Profile, Use anywhere
+ *  Dev. Mnfctr. = 0x0
+ *  Dev. Model   = 0x0
+ *  Dev. Attrbts = Reflective, Glossy, Positive, Color
+ *  Rndrng Intnt = Perceptual
+ *  Illuminant   = 0.96420288, 1.00000000, 0.82490540    [Lab 100.000000, 0.000000, 0.000000]
+ *  Creator      = 'avif'
+ *
+ * Profile Tags:
+ *                    Tag    ID      Offset         Size                 Value
+ *                   ----  ------    ------         ----                 -----
+ *  profileDescriptionTag  'desc'       240           95                  avif
+ *     mediaWhitePointTag  'wtpt'       268 (*3)      20        (to be filled)
+ *         redColorantTag  'rXYZ'       288           20        (to be filled)
+ *       greenColorantTag  'gXYZ'       308           20        (to be filled)
+ *        blueColorantTag  'bXYZ'       328           20        (to be filled)
+ *              redTRCTag  'rTRC'       348 (*4)      16        (to be filled)
+ *            greenTRCTag  'gTRC'       348           16        (to be filled)
+ *             blueTRCTag  'bTRC'       348           16        (to be filled)
+ *           copyrightTag  'cprt'       364           12                   CC0
+ *
+ * (*1): The template data is padded to 448 bytes according to MD5 specification, so that computation can be applied
+ *       directly on it. The actual ICC profile data is the first 376 bytes.
+ * (*2): 6.1.2 CMM Type: The signatures must be registered in order to avoid conflicts.
+ *       The registry can be found at https://www.color.org/signatures2.xalter (Private and ICC tag and CMM registry)
+ *       Therefore we are using the signature of Little CMS.
+ * (*3): The profileDescriptionTag requires 95 bytes of data, but with some trick, the content of the last 67 bytes
+ *       can be anything. Therefore we are placing the following tags in this region to reduce profile size.
+ * (*4): The transfer characteristic (gamma) of the 3 channels are the same, so the data can be shared.
+ */
+
 static const uint8_t iccColorTemplate[448] = {
-    0x00, 0x00, 0x01, 0x78, 0x61, 0x76, 0x69, 0x66, 0x02, 0x20, 0x00, 0x00, 0x6d, 0x6e, 0x74, 0x72, 0x52, 0x47, 0x42, 0x20, 0x58,
+    0x00, 0x00, 0x01, 0x78, 0x6c, 0x63, 0x6d, 0x73, 0x02, 0x20, 0x00, 0x00, 0x6d, 0x6e, 0x74, 0x72, 0x52, 0x47, 0x42, 0x20, 0x58,
     0x59, 0x5a, 0x20, 0x07, 0xd0, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x61, 0x63, 0x73, 0x70, 0x4d, 0x53,
     0x46, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf6, 0xd6, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xd3, 0x2d, 0x61, 0x76, 0x69, 0x66,
@@ -40,6 +84,35 @@ static const ptrdiff_t colorGreenOffset = 0x13c;
 static const ptrdiff_t colorBlueOffset = 0x150;
 static const ptrdiff_t colorGammaOffset = 0x168;
 
+/**
+ * Gray Profile Structure
+ *
+ * Header:
+ *  size         = 275 bytes
+ *  CMM          = 'lcms'
+ *  Version      = 2.2.0
+ *  Device Class = Display
+ *  Color Space  = Gray
+ *  Conn. Space  = XYZ
+ *  Date, Time   = 1 Jan 2000, 0:00:00
+ *  Platform     = Microsoft
+ *  Flags        = Not Embedded Profile, Use anywhere
+ *  Dev. Mnfctr. = 0x0
+ *  Dev. Model   = 0x0
+ *  Dev. Attrbts = Reflective, Glossy, Positive, Color
+ *  Rndrng Intnt = Perceptual
+ *  Illuminant   = 0.96420288, 1.00000000, 0.82490540    [Lab 100.000000, 0.000000, 0.000000]
+ *  Creator      = 'avif'
+ *
+ * Profile Tags:
+ *                    Tag    ID      Offset         Size                 Value
+ *                   ----  ------    ------         ----                 -----
+ *  profileDescriptionTag  'desc'       180           95                  avif
+ *     mediaWhitePointTag  'wtpt'       208           20        (to be filled)
+ *             grayTRCTag  'kTRC'       228           16        (to be filled)
+ *           copyrightTag  'cprt'       244           12                   CC0
+ */
+
 static const uint8_t iccGrayTemplate[320] = {
     0x00, 0x00, 0x01, 0x13, 0x6c, 0x63, 0x6d, 0x73, 0x02, 0x20, 0x00, 0x00, 0x6d, 0x6e, 0x74, 0x72, 0x47, 0x52, 0x41, 0x59,
     0x58, 0x59, 0x5a, 0x20, 0x07, 0xd0, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x61, 0x63, 0x73, 0x70,
@@ -61,7 +134,7 @@ static const uint8_t iccGrayTemplate[320] = {
 
 static const size_t iccGrayLength = 275;
 
-static const ptrdiff_t grayWhiteOffset = 0xd0;
+static const ptrdiff_t grayWhiteOffset = 0xd8;
 static const ptrdiff_t grayGammaOffset = 0xf0;
 
 static const ptrdiff_t checksumOffset = 0x54;
