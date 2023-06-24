@@ -68,12 +68,12 @@ static const ptrdiff_t checksumOffset = 0x54;
 
 static const double small = 1e-12;
 
-static uint32_t readLittleInt(const uint8_t * data)
+static uint32_t readLittleEndianU32(const uint8_t * data)
 {
     return ((uint32_t)data[0] << 0) | ((uint32_t)data[1] << 8) | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
-static void writeLittleInt(uint8_t * data, uint32_t value)
+static void writeLittleEndianU32(uint8_t * data, uint32_t value)
 {
     data[0] = (value >> 0) & 0xff;
     data[1] = (value >> 8) & 0xff;
@@ -81,13 +81,13 @@ static void writeLittleInt(uint8_t * data, uint32_t value)
     data[3] = (value >> 24) & 0xff;
 }
 
-static void writeBigShort(uint8_t * data, uint16_t value)
+static void writeBigEndianU16(uint8_t * data, uint16_t value)
 {
     data[0] = (value >> 8) & 0xff;
     data[1] = (value >> 0) & 0xff;
 }
 
-static void writeBigInt(uint8_t * data, uint32_t value)
+static void writeBigEndianU32(uint8_t * data, uint32_t value)
 {
     data[0] = (value >> 24) & 0xff;
     data[1] = (value >> 16) & 0xff;
@@ -97,13 +97,14 @@ static void writeBigInt(uint8_t * data, uint32_t value)
 
 static avifBool putS15Fixed16(uint8_t * data, double value)
 {
-    double dValue = round(value * 65536);
-    if (dValue > INT32_MAX || dValue < INT32_MIN) {
+    value = round(value * 65536);
+    if (value > INT32_MAX || value < INT32_MIN) {
         return AVIF_FALSE;
     }
 
-    int32_t fixed = (int32_t)dValue;
-    writeBigInt(data, *(uint32_t *)&fixed);
+    int32_t fixed = (int32_t)value;
+    // reinterpret into uint32_t to ensure the exact bits are written.
+    writeBigEndianU32(data, *(uint32_t *)&fixed);
 
     return AVIF_TRUE;
 }
@@ -116,7 +117,7 @@ static avifBool putU8Fixed8(uint8_t * data, float value)
     }
 
     uint16_t fixed = (uint16_t)value;
-    writeBigShort(data, fixed);
+    writeBigEndianU16(data, fixed);
     return AVIF_TRUE;
 }
 
@@ -137,13 +138,13 @@ static avifBool putColorant(uint8_t * data, const double XYZ[3])
     return AVIF_TRUE;
 }
 
-static avifBool whitePointXYZ(const float xy[2], double XYZ[3])
+static avifBool xyToXYZ(const float xy[2], double XYZ[3])
 {
     if (fabsf(xy[1]) < small) {
         return AVIF_FALSE;
     }
 
-    double factor = 1 / xy[1];
+    const double factor = 1 / xy[1];
     XYZ[0] = xy[0] * factor;
     XYZ[1] = 1;
     XYZ[2] = (1 - xy[0] - xy[1]) * factor;
@@ -151,28 +152,30 @@ static avifBool whitePointXYZ(const float xy[2], double XYZ[3])
     return AVIF_TRUE;
 }
 
+// Computes I = M^-1. Returns false if M seems to be singular.
 static avifBool matInv(const double M[3][3], double I[3][3])
 {
-    double D = M[0][0] * (M[1][1] * M[2][2] - M[2][1] * M[1][2]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
-               M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
-    if (fabs(D) < small) {
+    double det = M[0][0] * (M[1][1] * M[2][2] - M[2][1] * M[1][2]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
+                 M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+    if (fabs(det) < small) {
         return AVIF_FALSE;
     }
-    D = 1 / D;
+    det = 1 / det;
 
-    I[0][0] = (M[1][1] * M[2][2] - M[2][1] * M[1][2]) * D;
-    I[0][1] = (M[0][2] * M[2][1] - M[0][1] * M[2][2]) * D;
-    I[0][2] = (M[0][1] * M[1][2] - M[0][2] * M[1][1]) * D;
-    I[1][0] = (M[1][2] * M[2][0] - M[1][0] * M[2][2]) * D;
-    I[1][1] = (M[0][0] * M[2][2] - M[0][2] * M[2][0]) * D;
-    I[1][2] = (M[1][0] * M[0][2] - M[0][0] * M[1][2]) * D;
-    I[2][0] = (M[1][0] * M[2][1] - M[2][0] * M[1][1]) * D;
-    I[2][1] = (M[2][0] * M[0][1] - M[0][0] * M[2][1]) * D;
-    I[2][2] = (M[0][0] * M[1][1] - M[1][0] * M[0][1]) * D;
+    I[0][0] = (M[1][1] * M[2][2] - M[2][1] * M[1][2]) * det;
+    I[0][1] = (M[0][2] * M[2][1] - M[0][1] * M[2][2]) * det;
+    I[0][2] = (M[0][1] * M[1][2] - M[0][2] * M[1][1]) * det;
+    I[1][0] = (M[1][2] * M[2][0] - M[1][0] * M[2][2]) * det;
+    I[1][1] = (M[0][0] * M[2][2] - M[0][2] * M[2][0]) * det;
+    I[1][2] = (M[1][0] * M[0][2] - M[0][0] * M[1][2]) * det;
+    I[2][0] = (M[1][0] * M[2][1] - M[2][0] * M[1][1]) * det;
+    I[2][1] = (M[2][0] * M[0][1] - M[0][0] * M[2][1]) * det;
+    I[2][2] = (M[0][0] * M[1][1] - M[1][0] * M[0][1]) * det;
 
     return AVIF_TRUE;
 }
 
+// Computes C = A*B
 static void matMul(const double A[3][3], const double B[3][3], double C[3][3])
 {
     C[0][0] = A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0];
@@ -186,17 +189,18 @@ static void matMul(const double A[3][3], const double B[3][3], double C[3][3])
     C[2][2] = A[2][0] * B[0][2] + A[2][1] * B[1][2] + A[2][2] * B[2][2];
 }
 
-static void matDiag(const double D[3], double M[3][3])
+// Set M to have values of d on the leading diagonal, and zero elsewhere.
+static void matDiag(const double d[3], double M[3][3])
 {
-    M[0][0] = D[0];
+    M[0][0] = d[0];
     M[0][1] = 0;
     M[0][2] = 0;
     M[1][0] = 0;
-    M[1][1] = D[1];
+    M[1][1] = d[1];
     M[1][2] = 0;
     M[2][0] = 0;
     M[2][1] = 0;
-    M[2][2] = D[2];
+    M[2][2] = d[2];
 }
 
 static void swap(double * a, double * b)
@@ -206,6 +210,7 @@ static void swap(double * a, double * b)
     *b = tmp;
 }
 
+// Transpose M
 static void matTrans(double M[3][3])
 {
     swap(&M[0][1], &M[1][0]);
@@ -213,6 +218,7 @@ static void matTrans(double M[3][3])
     swap(&M[1][2], &M[2][1]);
 }
 
+// Computes y = M.x
 static void vecMul(const double M[3][3], const double x[3], double y[3])
 {
     y[0] = M[0][0] * x[0] + M[0][1] * x[1] + M[0][2] * x[2];
@@ -220,6 +226,7 @@ static void vecMul(const double M[3][3], const double x[3], double y[3])
     y[2] = M[2][0] * x[0] + M[2][1] * x[1] + M[2][2] * x[2];
 }
 
+// MD5 algorithm. See https://www.ietf.org/rfc/rfc1321.html#appendix-A.3
 static void computeMD5(uint8_t * data, size_t length)
 {
     static const uint32_t sineparts[64] = {
@@ -254,7 +261,7 @@ static void computeMD5(uint8_t * data, size_t length)
                 f = c ^ (b | (~d));
                 g = (7 * j) & 0xf;
             }
-            uint32_t u = readLittleInt(data + i + g * 4);
+            uint32_t u = readLittleEndianU32(data + i + g * 4);
             f += a + sineparts[j] + u;
             a = d;
             d = c;
@@ -268,31 +275,34 @@ static void computeMD5(uint8_t * data, size_t length)
     }
 
     uint8_t * output = data + checksumOffset;
-    writeLittleInt(output, a0);
-    writeLittleInt(output + 4, b0);
-    writeLittleInt(output + 8, c0);
-    writeLittleInt(output + 12, d0);
+    writeLittleEndianU32(output, a0);
+    writeLittleEndianU32(output + 4, b0);
+    writeLittleEndianU32(output + 8, c0);
+    writeLittleEndianU32(output + 12, d0);
 }
 
+// Bradford chromatic adaptation matrix
+// from https://www.researchgate.net/publication/253799640_A_uniform_colour_space_based_upon_CIECAM97s
 static const double bradford[3][3] = {
     { 0.8951, 0.2664, -0.1614 },
     { -0.7502, 1.7135, 0.0367 },
     { 0.0389, -0.0685, 1.0296 },
 };
 
+// LMS values for D50 whitepoint
 static const double lmsD50[3] = { 0.996284, 1.02043, 0.818644 };
 
-avifBool avifImageGenerateRGBICCFromGammaPrimaries(avifImage * image, float gamma, const float primaries[8])
+avifBool avifImageGenerateRGBICC(avifImage * image, float gamma, const float primaries[8])
 {
     uint8_t buffer[sizeof(iccColorTemplate)];
     memcpy(buffer, iccColorTemplate, sizeof(iccColorTemplate));
 
-    double wtpt[3];
-    if (!whitePointXYZ(&primaries[6], wtpt)) {
+    double whitePointXYZ[3];
+    if (!xyToXYZ(&primaries[6], whitePointXYZ)) {
         return AVIF_FALSE;
     }
 
-    if (!putColorant(buffer + colorWhiteOffset, wtpt)) {
+    if (!putColorant(buffer + colorWhiteOffset, whitePointXYZ)) {
         return AVIF_FALSE;
     }
 
@@ -306,7 +316,7 @@ avifBool avifImageGenerateRGBICCFromGammaPrimaries(avifImage * image, float gamm
     }
 
     double rgbCoefficients[3];
-    vecMul(rgbPrimariesInv, wtpt, rgbCoefficients);
+    vecMul(rgbPrimariesInv, whitePointXYZ, rgbCoefficients);
 
     double rgbCoefficientsMat[3][3];
     matDiag(rgbCoefficients, rgbCoefficientsMat);
@@ -314,8 +324,11 @@ avifBool avifImageGenerateRGBICCFromGammaPrimaries(avifImage * image, float gamm
     double rgbXYZ[3][3];
     matMul(rgbPrimaries, rgbCoefficientsMat, rgbXYZ);
 
+    // ICC stores primaries XYZ under PCS.
+    // Adapt using linear bradford transform
+    // from https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781119021780.app3
     double lms[3];
-    vecMul(bradford, wtpt, lms);
+    vecMul(bradford, whitePointXYZ, lms);
     for (int i = 0; i < 3; ++i) {
         if (fabs(lms[i]) < small) {
             return AVIF_FALSE;
@@ -360,17 +373,17 @@ avifBool avifImageGenerateRGBICCFromGammaPrimaries(avifImage * image, float gamm
     return AVIF_TRUE;
 }
 
-avifBool avifImageGenerateGrayICCFromGammaPrimaries(avifImage * image, float gamma, const float white[2])
+avifBool avifImageGenerateGrayICC(avifImage * image, float gamma, const float white[2])
 {
     uint8_t buffer[sizeof(iccGrayTemplate)];
     memcpy(buffer, iccGrayTemplate, sizeof(iccGrayTemplate));
 
-    double wtpt[3];
-    if (!whitePointXYZ(white, wtpt)) {
+    double whitePointXYZ[3];
+    if (!xyToXYZ(white, whitePointXYZ)) {
         return AVIF_FALSE;
     }
 
-    if (!putColorant(buffer + grayWhiteOffset, wtpt)) {
+    if (!putColorant(buffer + grayWhiteOffset, whitePointXYZ)) {
         return AVIF_FALSE;
     }
 

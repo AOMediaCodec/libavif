@@ -88,8 +88,8 @@ TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
   EXPECT_EQ(image->alphaPlane, nullptr);
 }
 
-const size_t color_profile_size = 376;
-const size_t gray_profile_size = 275;
+constexpr size_t colorProfileSize = 376;
+constexpr size_t grayProfileSize = 275;
 
 // Verify we can read a color PNG file tagged as gamma 2.2 through gAMA chunk,
 // and set transfer characteristics correctly.
@@ -117,7 +117,7 @@ TEST(PngTest, ColorGamma16) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a color profile
-  EXPECT_EQ(image->icc.size, color_profile_size);
+  EXPECT_EQ(image->icc.size, colorProfileSize);
 
   // TODO: more verification on the generated profile
 }
@@ -148,7 +148,7 @@ TEST(PngTest, GrayGamma16) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a gray profile
-  EXPECT_EQ(image->icc.size, gray_profile_size);
+  EXPECT_EQ(image->icc.size, grayProfileSize);
 
   // TODO: more verification on the generated profile
 }
@@ -215,7 +215,7 @@ TEST(PngTest, BT709SwappedGamma22) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a color profile
-  EXPECT_EQ(image->icc.size, color_profile_size);
+  EXPECT_EQ(image->icc.size, colorProfileSize);
 
   // TODO: more verification on the generated profile
 }

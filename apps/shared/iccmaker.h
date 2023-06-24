@@ -10,8 +10,8 @@
 extern "C" {
 #endif
 
-avifBool avifImageGenerateRGBICCFromGammaPrimaries(avifImage * image, float gamma, const float primaries[8]);
-avifBool avifImageGenerateGrayICCFromGammaPrimaries(avifImage * image, float gamma, const float white[2]);
+avifBool avifImageGenerateRGBICC(avifImage * image, float gamma, const float primaries[8]);
+avifBool avifImageGenerateGrayICC(avifImage * image, float gamma, const float white[2]);
 
 #ifdef __cplusplus
 } // extern "C"

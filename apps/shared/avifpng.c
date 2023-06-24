@@ -361,25 +361,24 @@ avifBool avifPNGRead(const char * inputFilename,
                 avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primaries);
             }
 
-            // TODO: should we specially treat gamma=2.2 + BT709 primaries as sRGB?
-
             if (needCraftICC) {
                 avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
                 avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
                 fprintf(stderr,
-                        "WARNING: legacy color management information not matching any CICP value found in file %s. libavif is generating an ICC profile for it.\n",
+                        "WARNING: legacy color management information not matching any CICP value found in file %s. libavif is generating an ICC profile for it."
+                        "Use --ignore-profile to ignore color management information instead (may affect the colors of the encoded AVIF image).\n",
                         inputFilename);
 
                 avifBool craftICCResult = AVIF_FALSE;
                 if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
-                    craftICCResult = avifImageGenerateGrayICCFromGammaPrimaries(avif, (float)gamma, &primaries[6]);
+                    craftICCResult = avifImageGenerateGrayICC(avif, (float)gamma, &primaries[6]);
                 } else {
-                    craftICCResult = avifImageGenerateRGBICCFromGammaPrimaries(avif, (float)gamma, primaries);
+                    craftICCResult = avifImageGenerateRGBICC(avif, (float)gamma, primaries);
                 }
 
                 if (!craftICCResult) {
                     fprintf(stderr,
-                            "WARNING: libavif can not generate ICC profile for file %s. The color management information may contain invalid value.\n",
+                            "WARNING: libavif could not generate an ICC profile for file %s. It may be caused by invalid values in the color management metadata. The encoded AVIF image's colors may be affected.\n",
                             inputFilename);
                 }
             }
