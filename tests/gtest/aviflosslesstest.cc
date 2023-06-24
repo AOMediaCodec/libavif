@@ -37,7 +37,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
           /*requestedDepth=*/0,
           /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
           /*ignoreColorProfile=*/false, /*ignoreExif=*/false,
-          /*ignoreXMP=*/false, /*allowChangingCicp=*/true, image.get(),
+          /*ignoreXMP=*/false, /*allowChangingCicp=*/true, image.get(), /*frameIndex=*/nullptr,
           /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
           /*frameIter=*/nullptr);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)

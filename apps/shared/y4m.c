@@ -18,6 +18,7 @@ struct y4mFrameIterator
     int width;
     int height;
     int depth;
+    int frameIndex;
     avifBool hasAlpha;
     avifPixelFormat format;
     avifRange range;
@@ -243,7 +244,7 @@ static avifBool y4mClampSamples(avifImage * avif)
             goto cleanup; \
     } while (0)
 
-avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter)
+int y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter)
 {
     avifBool result = AVIF_FALSE;
 
@@ -252,6 +253,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     frame.height = -1;
     // Default to the color space "C420" to match the defaults of aomenc and ffmpeg.
     frame.depth = 8;
+    frame.frameIndex = -1;
     frame.hasAlpha = AVIF_FALSE;
     frame.format = AVIF_PIXEL_FORMAT_YUV420;
     frame.range = AVIF_RANGE_LIMITED;
@@ -424,6 +426,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         fprintf(stderr, "WARNING: some samples were clamped to fit into %u bits per sample\n", avif->depth);
     }
 
+    frame.frameIndex++;
     result = AVIF_TRUE;
 cleanup:
     if (iter) {
@@ -447,7 +450,7 @@ cleanup:
         fclose(frame.inputFile);
     }
     avifRWDataFree(&raw);
-    return result;
+    return result ? frame.frameIndex : -1;
 }
 
 avifBool y4mWrite(const char * outputFilename, const avifImage * avif)

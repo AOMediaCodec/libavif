@@ -27,10 +27,88 @@
     }                                                                 \
     arg = argv[++argIndex]
 
+typedef struct
+{
+    avifCodecChoice codecChoice;
+    int jobs;
+    int targetSize;
+    avifBool qualityIsConstrained;
+    avifBool qualityAlphaIsConstrained;
+    int overrideQuality;
+    int overrideQualityAlpha;
+    avifBool autoProgressive;
+    int layers;
+    int speed;
+
+    int paspCount;
+    uint32_t paspValues[8]; // only the first two are used
+    int clapCount;
+    uint32_t clapValues[8];
+    int gridDimsCount;
+    uint32_t gridDims[8]; // only the first two are used
+    int clliCount;
+    uint32_t clliValues[8]; // only the first two are used
+
+    int repetitionCount;
+    int keyframeInterval;
+    avifBool ignoreExif;
+    avifBool ignoreXMP;
+    avifBool ignoreColorProfile;
+
+    // This holds the output timing for image sequences. The timescale member in this struct will
+    // become the timescale set on avifEncoder, and the duration member will be the default duration
+    // for any frame that doesn't have a specific duration set on the commandline. See the
+    // declaration of avifAppSourceTiming for more documentation.
+    avifAppSourceTiming outputTiming;
+
+    avifBool cicpExplicitlySet;
+    avifColorPrimaries colorPrimaries;
+    avifTransferCharacteristics transferCharacteristics;
+    avifMatrixCoefficients matrixCoefficients;
+    avifChromaDownsampling chromaDownsampling;
+} avifSettings;
+
+typedef struct
+{
+    char ** keys;
+    char ** values;
+    int count;
+} avifCodecSpecificOptions;
+
+#define FILE_SETTINGS_ENTRY(TYPE, NAME) \
+    TYPE * NAME;                        \
+    TYPE NAME##_Value
+
+#define SET_FILE_SETTING(SETTING, NAME, VALUE) \
+    (SETTING).NAME##_Value = (VALUE);          \
+    (SETTING).NAME = &((SETTING).NAME##_Value);
+
+// Must use moveFileSettings to transfer between objects
+typedef struct avifInputFileSettings
+{
+    int frameIndex;
+    FILE_SETTINGS_ENTRY(int, quality);
+    FILE_SETTINGS_ENTRY(int, qualityAlpha);
+    FILE_SETTINGS_ENTRY(int, minQuantizer);
+    FILE_SETTINGS_ENTRY(int, maxQuantizer);
+    FILE_SETTINGS_ENTRY(int, minQuantizerAlpha);
+    FILE_SETTINGS_ENTRY(int, maxQuantizerAlpha);
+    FILE_SETTINGS_ENTRY(int, tileRowsLog2);
+    FILE_SETTINGS_ENTRY(int, tileColsLog2);
+    FILE_SETTINGS_ENTRY(avifBool, autoTiling);
+    FILE_SETTINGS_ENTRY(avifScalingMode, scalingMode);
+    avifCodecSpecificOptions codecSpecificOptions;
+} avifInputFileSettings;
+
+#undef FILE_SETTINGS_ENTRY
+
 typedef struct avifInputFile
 {
     const char * filename;
     uint64_t duration; // If 0, use the default duration
+
+    int settingsCount;
+    avifInputFileSettings * settings;
 } avifInputFile;
 static avifInputFile stdinFile;
 
@@ -38,6 +116,7 @@ typedef struct
 {
     int fileIndex;
     avifImage * image;
+    avifInputFileSettings * settings;
     uint32_t fileBitDepth;
     avifBool fileIsRGB;
     avifAppSourceTiming sourceTiming;
@@ -57,13 +136,6 @@ typedef struct avifInput
     avifInputCacheEntry * cache;
     int cacheCount;
 } avifInput;
-
-typedef struct
-{
-    char ** keys;
-    char ** values;
-    int count;
-} avifCodecSpecificOptions;
 
 static void syntaxShort(void)
 {
@@ -94,6 +166,7 @@ static void syntaxLong(void)
            AVIF_SPEED_FASTEST);
     printf("\n");
     printf("Advanced options:\n");
+    printf("  Global options apply to the whole output file:\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
@@ -110,9 +183,9 @@ static void syntaxLong(void)
     printf("                                        M = matrix coefficients\n");
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
-    printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
-    printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
-    printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
+    printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
+    printf("    --auto-progressive                : Auto set parameters to encode a simple progressive image\n");
+    printf("    --layer N                         : Set number of layers for progressive image\n");
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
@@ -120,7 +193,6 @@ static void syntaxLong(void)
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
-    printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
@@ -135,6 +207,23 @@ static void syntaxLong(void)
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("    --clli MaxCLL,MaxPALL             : Add clli property (content light level information).\n");
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
+    printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
+    printf("\n");
+    printf("  Frame options apply only to input files appeared after the option:\n");
+    printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
+    printf("    --qalpha Q                        : Set quality for alpha (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
+    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
+           AVIF_SPEED_SLOWEST,
+           AVIF_SPEED_FASTEST);
+    printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
+    printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
+    printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
     printf("    --min QP                          : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
@@ -151,9 +240,9 @@ static void syntaxLong(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
-    printf("    --progressive                     : EXPERIMENTAL: Encode a progressive image\n");
-    printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
+    printf("    --scaling-mode H[,V]              : Set (H)orizontal and (V)ertical frame scaling mode as fraction (Default: 1, V default to H)\n");
+    printf("    --from-index N                    : Set frame options before this flag applies to last input starting from frame N\n");
+    printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
@@ -241,6 +330,80 @@ static int parseU32List(uint32_t output[8], const char * arg)
         token = strtok(NULL, ",x");
     }
     return index;
+}
+
+static avifBool parseScaleMode(avifScalingMode * mode, const char * arg)
+{
+    char buffer[128];
+    strncpy(buffer, arg, 127);
+    buffer[127] = 0;
+
+    char * axis[2] = { NULL, NULL };
+    axis[0] = strtok(buffer, ",");
+    axis[1] = strtok(NULL, ",");
+    if (strtok(NULL, ",") != NULL) {
+        return AVIF_FALSE;
+    }
+
+    mode->horizontal.d = 1;
+
+    for (int i = 0; i < 2; ++i) {
+        char * token = strtok(axis[i], "/");
+        if (token == NULL) {
+            if (i == 0) {
+                return AVIF_FALSE;
+            } else {
+                mode->vertical = mode->horizontal;
+                break;
+            }
+        }
+        avifFraction * target = (i == 0) ? &mode->horizontal : &mode->vertical;
+        target->n = atoi(token);
+        token = strtok(NULL, "/");
+        if (token != NULL) {
+            target->d = atoi(token);
+        }
+    }
+
+    return AVIF_TRUE;
+}
+
+static void moveFileSettings(avifInputFileSettings * dst, avifInputFileSettings * src)
+{
+    memset(dst, 0, sizeof(avifInputFileSettings));
+    dst->frameIndex = src->frameIndex;
+    if (src->quality) {
+        SET_FILE_SETTING(*dst, quality, *src->quality);
+    }
+    if (src->qualityAlpha) {
+        SET_FILE_SETTING(*dst, qualityAlpha, *src->qualityAlpha);
+    }
+    if (src->minQuantizer) {
+        SET_FILE_SETTING(*dst, minQuantizer, *src->minQuantizer);
+    }
+    if (src->maxQuantizer) {
+        SET_FILE_SETTING(*dst, maxQuantizer, *src->maxQuantizer);
+    }
+    if (src->minQuantizerAlpha) {
+        SET_FILE_SETTING(*dst, minQuantizerAlpha, *src->minQuantizerAlpha);
+    }
+    if (src->maxQuantizerAlpha) {
+        SET_FILE_SETTING(*dst, maxQuantizerAlpha, *src->maxQuantizerAlpha);
+    }
+    if (src->tileColsLog2) {
+        SET_FILE_SETTING(*dst, tileColsLog2, *src->tileColsLog2);
+    }
+    if (src->tileRowsLog2) {
+        SET_FILE_SETTING(*dst, tileRowsLog2, *src->tileRowsLog2);
+    }
+    if (src->autoTiling) {
+        SET_FILE_SETTING(*dst, autoTiling, *src->autoTiling);
+    }
+    if (src->scalingMode) {
+        SET_FILE_SETTING(*dst, scalingMode, *src->scalingMode);
+    }
+    dst->codecSpecificOptions = src->codecSpecificOptions;
+    memset(src, 0, sizeof(avifInputFileSettings));
 }
 
 static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat yuvFormat, uint32_t clapValues[8])
@@ -354,6 +517,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                    avifBool ignoreXMP,
                                    avifBool allowChangingCicp,
                                    avifImage * image,
+                                   avifInputFileSettings ** settings,
                                    uint32_t * outDepth,
                                    avifBool * sourceIsRGB,
                                    avifAppSourceTiming * sourceTiming,
@@ -364,6 +528,9 @@ static avifBool avifInputReadImage(avifInput * input,
         const avifCropRect rect = { 0, 0, cached->image->width, cached->image->height };
         if (avifImageSetViewRect(image, cached->image, &rect) != AVIF_RESULT_OK) {
             assert(AVIF_FALSE);
+        }
+        if (settings) {
+            *settings = cached->settings;
         }
         if (outDepth) {
             *outDepth = cached->fileBitDepth;
@@ -378,6 +545,7 @@ static avifBool avifInputReadImage(avifInput * input,
     }
 
     avifImage * dstImage = image;
+    avifInputFileSettings ** dstSettings = settings;
     uint32_t * dstDepth = outDepth;
     avifBool * dstSourceIsRGB = sourceIsRGB;
     avifAppSourceTiming * dstSourceTiming = sourceTiming;
@@ -392,6 +560,7 @@ static avifBool avifInputReadImage(avifInput * input,
         if (avifImageCopy(dstImage, image, /*planes=*/0) != AVIF_RESULT_OK) {
             assert(AVIF_FALSE);
         }
+        dstSettings = &input->cache[imageIndex].settings;
         dstDepth = &input->cache[imageIndex].fileBitDepth;
         dstSourceIsRGB = &input->cache[imageIndex].fileIsRGB;
         dstSourceTiming = &input->cache[imageIndex].sourceTiming;
@@ -404,13 +573,22 @@ static avifBool avifInputReadImage(avifInput * input,
         memset(dstSourceTiming, 0, sizeof(avifAppSourceTiming));
     }
 
+    int frameIndex = -1;
     if (input->useStdin) {
         if (feof(stdin)) {
             return AVIF_FALSE;
         }
-        if (!y4mRead(NULL, dstImage, dstSourceTiming, &input->frameIter)) {
+        frameIndex = y4mRead(NULL, dstImage, dstSourceTiming, &input->frameIter);
+        if (frameIndex == -1) {
             fprintf(stderr, "ERROR: Cannot read y4m through standard input");
             return AVIF_FALSE;
+        }
+        if (dstSettings) {
+            for (int i = 0; i < input->files[0].settingsCount; ++i) {
+                if (input->files[0].settings[i].frameIndex == frameIndex) {
+                    *dstSettings = &input->files[0].settings[i];
+                }
+            }
         }
         if (dstDepth) {
             *dstDepth = dstImage->depth;
@@ -424,7 +602,9 @@ static avifBool avifInputReadImage(avifInput * input,
             return AVIF_FALSE;
         }
 
-        const avifAppFileFormat inputFormat = avifReadImage(input->files[input->fileIndex].filename,
+        const avifInputFile * currentFile = &input->files[input->fileIndex];
+
+        const avifAppFileFormat inputFormat = avifReadImage(currentFile->filename,
                                                             input->requestedFormat,
                                                             input->requestedDepth,
                                                             chromaDownsampling,
@@ -433,19 +613,26 @@ static avifBool avifInputReadImage(avifInput * input,
                                                             ignoreXMP,
                                                             allowChangingCicp,
                                                             dstImage,
+                                                            &frameIndex,
                                                             dstDepth,
                                                             dstSourceTiming,
                                                             &input->frameIter);
         if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-            fprintf(stderr, "Cannot read input file: %s\n", input->files[input->fileIndex].filename);
+            fprintf(stderr, "Cannot read input file: %s\n", currentFile->filename);
             return AVIF_FALSE;
         }
         if (dstSourceIsRGB) {
             *dstSourceIsRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
         }
-
         if (!input->frameIter) {
             ++input->fileIndex;
+        }
+        if (dstSettings) {
+            for (int i = 0; i < currentFile->settingsCount; ++i) {
+                if (currentFile->settings[i].frameIndex == frameIndex) {
+                    *dstSettings = &currentFile->settings[i];
+                }
+            }
         }
 
         assert(dstImage->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
@@ -461,7 +648,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                   ignoreXMP,
                                   allowChangingCicp,
                                   image,
-                                  outDepth,
+                                 settings, outDepth,
                                   sourceIsRGB,
                                   sourceTiming,
                                   chromaDownsampling);
@@ -651,53 +838,110 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
     return AVIF_TRUE;
 }
 
-typedef struct
+#define INVALID_QUALITY (-1)
+#define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
+#define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
+#define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto progressive below this quality
+#define PROGRESSIVE_START_QUALITY 2  // First progressive layer use this quality
+
+static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avifInputFileSettings * settings)
 {
-    avifCodecChoice codecChoice;
-    int jobs;
-    int quality;
-    avifBool qualityIsConstrained; // true if quality explicitly set by the user
-    int qualityAlpha;
-    avifBool qualityAlphaIsConstrained; // true if qualityAlpha explicitly set by the user
-    int minQuantizer;
-    int maxQuantizer;
-    int minQuantizerAlpha;
-    int maxQuantizerAlpha;
-    int targetSize;
-    int tileRowsLog2;
-    int tileColsLog2;
-    avifBool autoTiling;
-    avifBool progressive;
-    int speed;
+    if (!settings) {
+        return AVIF_TRUE;
+    }
 
-    int paspCount;
-    uint32_t paspValues[8]; // only the first two are used
-    int clapCount;
-    uint32_t clapValues[8];
-    int gridDimsCount;
-    uint32_t gridDims[8]; // only the first two are used
-    int clliCount;
-    uint32_t clliValues[8]; // only the first two are used
+    if (settings->quality) {
+        encoder->quality = *settings->quality;
+    }
+    if (settings->qualityAlpha) {
+        encoder->qualityAlpha = *settings->qualityAlpha;
+    }
+    if (settings->minQuantizer) {
+        encoder->minQuantizer = *settings->minQuantizer;
+    }
+    if (settings->maxQuantizer) {
+        encoder->maxQuantizer = *settings->maxQuantizer;
+    }
+    if (settings->minQuantizerAlpha) {
+        encoder->minQuantizerAlpha = *settings->minQuantizerAlpha;
+    }
+    if (settings->maxQuantizerAlpha) {
+        encoder->maxQuantizerAlpha = *settings->maxQuantizerAlpha;
+    }
+    if (settings->tileRowsLog2) {
+        encoder->tileRowsLog2 = *settings->tileRowsLog2;
+    }
+    if (settings->tileColsLog2) {
+        encoder->tileColsLog2 = *settings->tileColsLog2;
+    }
+    if (settings->autoTiling) {
+        encoder->autoTiling = *settings->autoTiling;
+    }
+    if (settings->scalingMode) {
+        encoder->scalingMode = *settings->scalingMode;
+    }
+    for (int i = 0; i < settings->codecSpecificOptions.count; ++i) {
+        if (avifEncoderSetCodecSpecificOption(encoder, settings->codecSpecificOptions.keys[i], settings->codecSpecificOptions.values[i]) !=
+            AVIF_RESULT_OK) {
+            fprintf(stderr,
+                    "ERROR: Failed to set codec specific option: %s = %s\n",
+                    settings->codecSpecificOptions.keys[i],
+                    settings->codecSpecificOptions.values[i]);
+            return AVIF_FALSE;
+        }
+    }
 
-    int repetitionCount;
-    int keyframeInterval;
-    avifBool ignoreExif;
-    avifBool ignoreXMP;
-    avifBool ignoreColorProfile;
+    return AVIF_TRUE;
+}
 
-    // This holds the output timing for image sequences. The timescale member in this struct will
-    // become the timescale set on avifEncoder, and the duration member will be the default duration
-    // for any frame that doesn't have a specific duration set on the commandline. See the
-    // declaration of avifAppSourceTiming for more documentation.
-    avifAppSourceTiming outputTiming;
+static avifBool avifEncoderVerifyImageCompatibility(const avifImage * refImage,
+                                                    const avifImage * testImage,
+                                                    const char * seriesType,
+                                                    const char * filename)
+{
+    // Verify that this frame's properties matches the first frame's properties
+    if ((refImage->width != testImage->width) || (refImage->height != testImage->height)) {
+        fprintf(stderr,
+                "ERROR: Image %s dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
+                seriesType,
+                refImage->width,
+                refImage->height,
+                testImage->width,
+                testImage->height,
+                filename);
+        return AVIF_FALSE;
+    }
+    if (refImage->depth != testImage->depth) {
+        fprintf(stderr, "ERROR: Image %s depth mismatch, [%u] vs [%u]: %s\n", seriesType, refImage->depth, testImage->depth, filename);
+        return AVIF_FALSE;
+    }
+    if ((refImage->colorPrimaries != testImage->colorPrimaries) ||
+        (refImage->transferCharacteristics != testImage->transferCharacteristics) ||
+        (refImage->matrixCoefficients != testImage->matrixCoefficients)) {
+        fprintf(stderr,
+                "ERROR: Image %s CICP mismatch, [%u/%u/%u] vs [%u/%u/%u]: %s\n",
+                seriesType,
+                refImage->colorPrimaries,
+                refImage->matrixCoefficients,
+                refImage->transferCharacteristics,
+                testImage->colorPrimaries,
+                testImage->transferCharacteristics,
+                testImage->matrixCoefficients,
+                filename);
+        return AVIF_FALSE;
+    }
+    if (refImage->yuvRange != testImage->yuvRange) {
+        fprintf(stderr,
+                "ERROR: Image %s range mismatch, [%s] vs [%s]: %s\n",
+                seriesType,
+                (refImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                (testImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                filename);
+        return AVIF_FALSE;
+    }
 
-    avifColorPrimaries colorPrimaries;
-    avifTransferCharacteristics transferCharacteristics;
-    avifMatrixCoefficients matrixCoefficients;
-    avifChromaDownsampling chromaDownsampling;
-
-    avifCodecSpecificOptions codecSpecificOptions;
-} avifSettings;
+    return AVIF_TRUE;
+}
 
 static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                               const avifSettings * settings,
@@ -707,6 +951,7 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
 {
     avifBool success = AVIF_FALSE;
     avifImage * nextImage = NULL;
+    avifInputFileSettings * nextSettings = NULL;
 
     const avifInputFile * nextFile;
     while ((nextFile = avifInputGetFile(input, imageIndex)) != NULL) {
@@ -741,55 +986,19 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 /*ignoreXMP=*/AVIF_TRUE,
                                 /*allowChangingCicp=*/AVIF_FALSE,
                                 nextImage,
+                                &nextSettings,
                                 /*outDepth=*/NULL,
                                 /*sourceIsRGB=*/NULL,
                                 /*sourceTiming=*/NULL,
                                 settings->chromaDownsampling)) {
             goto cleanup;
         }
-
-        // Verify that this frame's properties matches the first frame's properties
-        if ((firstImage->width != nextImage->width) || (firstImage->height != nextImage->height)) {
-            fprintf(stderr,
-                    "ERROR: Image sequence dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
-                    firstImage->width,
-                    firstImage->height,
-                    nextImage->width,
-                    nextImage->height,
-                    nextFile->filename);
+        if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", nextFile->filename)) {
             goto cleanup;
         }
-        if (firstImage->depth != nextImage->depth) {
-            fprintf(stderr,
-                    "ERROR: Image sequence depth mismatch, [%u] vs [%u]: %s\n",
-                    firstImage->depth,
-                    nextImage->depth,
-                    nextFile->filename);
+        if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
             goto cleanup;
         }
-        if ((firstImage->colorPrimaries != nextImage->colorPrimaries) ||
-            (firstImage->transferCharacteristics != nextImage->transferCharacteristics) ||
-            (firstImage->matrixCoefficients != nextImage->matrixCoefficients)) {
-            fprintf(stderr,
-                    "ERROR: Image sequence CICP mismatch, [%u/%u/%u] vs [%u/%u/%u]: %s\n",
-                    firstImage->colorPrimaries,
-                    firstImage->matrixCoefficients,
-                    firstImage->transferCharacteristics,
-                    nextImage->colorPrimaries,
-                    nextImage->transferCharacteristics,
-                    nextImage->matrixCoefficients,
-                    nextFile->filename);
-            goto cleanup;
-        }
-        if (firstImage->yuvRange != nextImage->yuvRange) {
-            fprintf(stderr,
-                    "ERROR: Image sequence range mismatch, [%s] vs [%s]: %s\n",
-                    (firstImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                    (nextImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                    nextFile->filename);
-            goto cleanup;
-        }
-
         const avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
         if (nextImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
@@ -806,19 +1015,75 @@ cleanup:
     return success;
 }
 
-static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder, const avifSettings * settings, int layerIndex, const avifImage * firstImage)
+static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
+                                             const avifSettings * settings,
+                                             avifInput * input,
+                                             int layerIndex,
+                                             const avifImage * firstImage)
 {
     avifBool success = AVIF_FALSE;
     int layers = encoder->extraLayerCount + 1;
-    int qualityIncrement = (settings->quality - encoder->quality) / encoder->extraLayerCount;
-    int qualityAlphaIncrement = (settings->qualityAlpha - encoder->qualityAlpha) / encoder->extraLayerCount;
+    int targetQuality = (settings->overrideQuality != INVALID_QUALITY) ? settings->overrideQuality : *input->files[0].settings[0].quality;
+    avifImage * nextImage = NULL;
+    const avifImage * encodingImage = firstImage;
+    avifInputFileSettings * nextSettings = NULL;
+
+    if (settings->autoProgressive && avifInputHasRemainingData(input, layerIndex)) {
+        fprintf(stderr, "ERROR: Automatic progressive can only have one input image.\n");
+        goto cleanup;
+    }
 
     while (layerIndex < layers) {
-        encoder->quality += qualityIncrement;
-        encoder->qualityAlpha += qualityAlphaIncrement;
-        if (layerIndex == layers - 1) {
-            encoder->quality = settings->quality;
-            encoder->qualityAlpha = settings->qualityAlpha;
+        if (settings->autoProgressive) {
+            // reversed lerp such that last layer reaches exact targetQuality
+            encoder->quality = targetQuality - (targetQuality - PROGRESSIVE_START_QUALITY) *
+                                                   (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
+            if (settings->overrideQualityAlpha != INVALID_QUALITY) {
+                encoder->qualityAlpha = settings->overrideQualityAlpha;
+            }
+        } else {
+            const avifInputFile * nextFile = avifInputGetFile(input, layerIndex);
+            if (!nextFile) {
+                fprintf(stderr, "ERROR: Encoding image with %d layers but only %d input provided.\n", layers, layerIndex);
+            }
+
+            if (nextImage) {
+                avifImageDestroy(nextImage);
+            }
+            nextImage = avifImageCreateEmpty();
+            if (!nextImage) {
+                fprintf(stderr, "ERROR: Out of memory\n");
+                goto cleanup;
+            }
+            nextImage->colorPrimaries = firstImage->colorPrimaries;
+            nextImage->transferCharacteristics = firstImage->transferCharacteristics;
+            nextImage->matrixCoefficients = firstImage->matrixCoefficients;
+            nextImage->yuvRange = firstImage->yuvRange;
+            nextImage->alphaPremultiplied = firstImage->alphaPremultiplied;
+
+            // Ignore ICC, Exif and XMP because only the metadata of the first frame is taken into
+            // account by the libavif API.
+            if (!avifInputReadImage(input,
+                                    layerIndex,
+                                    /*ignoreColorProfile=*/AVIF_TRUE,
+                                    /*ignoreExif=*/AVIF_TRUE,
+                                    /*ignoreXMP=*/AVIF_TRUE,
+                                    !settings->cicpExplicitlySet,
+                                    nextImage,
+                                    &nextSettings,
+                                    /*outDepth=*/NULL,
+                                    /*sourceIsRGB=*/NULL,
+                                    /*sourceTiming=*/NULL,
+                                    settings->chromaDownsampling)) {
+                goto cleanup;
+            }
+            if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "layer", nextFile->filename)) {
+                goto cleanup;
+            }
+            if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
+                goto cleanup;
+            }
+            encodingImage = nextImage;
         }
 
         printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
@@ -828,16 +1093,22 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder, const avifSe
                encoder->qualityAlpha,
                qualityString(encoder->qualityAlpha));
 
-        const avifResult result = avifEncoderAddImage(encoder, firstImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
+        const avifResult result = avifEncoderAddImage(encoder, encodingImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(result));
             goto cleanup;
         }
         ++layerIndex;
     }
+    if (avifInputHasRemainingData(input, layerIndex)) {
+        fprintf(stderr, "WARNING: [--layer] More than %u images were supplied for this progressive image. The rest will be ignored.\n", layers);
+    }
     success = AVIF_TRUE;
 
 cleanup:
+    if (nextImage) {
+        avifImageDestroy(nextImage);
+    }
     return success;
 }
 
@@ -858,7 +1129,29 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     }
 
     char manualTilingStr[128];
-    snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", settings->tileRowsLog2, settings->tileColsLog2);
+    snprintf(manualTilingStr,
+             sizeof(manualTilingStr),
+             "tileRowsLog2 [%d], tileColsLog2 [%d]",
+             *firstFile->settings->tileRowsLog2,
+             *firstFile->settings->tileColsLog2);
+
+    encoder->maxThreads = settings->jobs;
+    encoder->codecChoice = settings->codecChoice;
+    encoder->speed = settings->speed;
+    encoder->timescale = settings->outputTiming.timescale;
+    encoder->keyframeInterval = settings->keyframeInterval;
+    encoder->repetitionCount = settings->repetitionCount;
+    encoder->extraLayerCount = settings->layers - 1;
+    if (!avifEncodeUpdateEncoderSettings(encoder, &firstFile->settings[0])) {
+        goto cleanup;
+    }
+
+    if (settings->overrideQuality != INVALID_QUALITY) {
+        encoder->quality = settings->overrideQuality;
+    }
+    if (settings->overrideQualityAlpha != INVALID_QUALITY) {
+        encoder->qualityAlpha = settings->overrideQualityAlpha;
+    }
 
     const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     char speed_str[16];
@@ -870,56 +1163,29 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     printf("Encoding with AV1 codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)], %s, %d worker thread(s), please wait...\n",
            codecName ? codecName : "none",
            speed_str,
-           settings->quality,
-           qualityString(settings->quality),
-           settings->qualityAlpha,
-           qualityString(settings->qualityAlpha),
-           settings->autoTiling ? "automatic tiling" : manualTilingStr,
+           encoder->quality,
+           qualityString(encoder->quality),
+           encoder->qualityAlpha,
+           qualityString(encoder->qualityAlpha),
+           encoder->autoTiling ? "automatic tiling" : manualTilingStr,
            settings->jobs);
-    encoder->maxThreads = settings->jobs;
-    encoder->quality = settings->quality;
-    encoder->qualityAlpha = settings->qualityAlpha;
-    encoder->minQuantizer = settings->minQuantizer;
-    encoder->maxQuantizer = settings->maxQuantizer;
-    encoder->minQuantizerAlpha = settings->minQuantizerAlpha;
-    encoder->maxQuantizerAlpha = settings->maxQuantizerAlpha;
-    encoder->tileRowsLog2 = settings->tileRowsLog2;
-    encoder->tileColsLog2 = settings->tileColsLog2;
-    encoder->autoTiling = settings->autoTiling;
-    encoder->codecChoice = settings->codecChoice;
-    encoder->speed = settings->speed;
-    encoder->timescale = settings->outputTiming.timescale;
-    encoder->keyframeInterval = settings->keyframeInterval;
-    encoder->repetitionCount = settings->repetitionCount;
 
-    if (settings->progressive) {
+    if (settings->autoProgressive) {
         // If the color quality or alpha quality is less than 10, the main()
-        // function overrides --progressive and sets settings->progressive to
-        // false.
-        assert((settings->quality >= 10) && (settings->qualityAlpha >= 10));
-        encoder->extraLayerCount = 1;
+        // function disables --auto-progressive.
+        assert(encoder->quality >= 10);
         // Encode the base layer with a very low quality to ensure a small encoded size.
+        // But don't decrease alpha quality, because that produces bad result.
         encoder->quality = 2;
-        if (firstImage->alphaPlane && firstImage->alphaRowBytes) {
-            encoder->qualityAlpha = 2;
-        }
+    }
+
+    if (settings->layers > 1) {
         printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
                0,
                encoder->quality,
                qualityString(encoder->quality),
                encoder->qualityAlpha,
                qualityString(encoder->qualityAlpha));
-    }
-
-    for (int i = 0; i < settings->codecSpecificOptions.count; ++i) {
-        if (avifEncoderSetCodecSpecificOption(encoder, settings->codecSpecificOptions.keys[i], settings->codecSpecificOptions.values[i]) !=
-            AVIF_RESULT_OK) {
-            fprintf(stderr,
-                    "ERROR: Failed to set codec specific option: %s = %s\n",
-                    settings->codecSpecificOptions.keys[i],
-                    settings->codecSpecificOptions.values[i]);
-            goto cleanup;
-        }
     }
 
     if (settings->gridDimsCount > 0) {
@@ -933,12 +1199,12 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         int imageIndex = 1; // firstImage with imageIndex 0 is already available.
 
         avifAddImageFlags addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
-        if (!avifInputHasRemainingData(input, imageIndex) && !settings->progressive) {
+        if (!avifInputHasRemainingData(input, imageIndex) && (settings->layers == 1)) {
             addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
-        if (input->useStdin || (input->filesCount > 1)) {
+        if (input->useStdin || (settings->layers == 1 && input->filesCount > 1)) {
             printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
                    0,
                    firstDurationInTimescales,
@@ -951,8 +1217,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
             goto cleanup;
         }
 
-        if (settings->progressive) {
-            if (!avifEncodeRestOfLayeredImage(encoder, settings, imageIndex, firstImage)) {
+        if (settings->layers > 1) {
+            if (!avifEncodeRestOfLayeredImage(encoder, settings, input, imageIndex, firstImage)) {
                 goto cleanup;
             }
         } else {
@@ -981,10 +1247,6 @@ cleanup:
     }
     return success;
 }
-
-#define INVALID_QUALITY (-1)
-#define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
-#define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
 
 static avifBool avifEncodeImages(avifSettings * settings,
                                  avifInput * input,
@@ -1015,15 +1277,15 @@ static avifBool avifEncodeImages(avifSettings * settings,
     size_t closestSizeDiff = 0;
     avifIOStats closestIoStats = { 0, 0 };
 
-    int minQuality = AVIF_QUALITY_WORST; // inclusive
-    int maxQuality = AVIF_QUALITY_BEST;  // inclusive
+    int minQuality = settings->autoProgressive ? PROGRESSIVE_WORST_QUALITY : AVIF_QUALITY_WORST; // inclusive
+    int maxQuality = AVIF_QUALITY_BEST;                                                          // inclusive
     while (minQuality <= maxQuality) {
         const int quality = (minQuality + maxQuality) / 2;
         if (!settings->qualityIsConstrained) {
-            settings->quality = quality;
+            settings->overrideQuality = quality;
         }
         if (!settings->qualityAlphaIsConstrained) {
-            settings->qualityAlpha = quality;
+            settings->overrideQualityAlpha = quality;
         }
 
         if (!avifEncodeImagesFixedQuality(settings, input, firstFile, firstImage, gridCells, encoded, ioStats)) {
@@ -1057,18 +1319,22 @@ static avifBool avifEncodeImages(avifSettings * settings,
     }
 
     if (!settings->qualityIsConstrained) {
-        settings->quality = closestQuality;
+        settings->overrideQuality = closestQuality;
     }
     if (!settings->qualityAlphaIsConstrained) {
-        settings->qualityAlpha = closestQuality;
+        settings->overrideQualityAlpha = closestQuality;
     }
     avifRWDataFree(encoded);
     *encoded = closestEncoded;
     *ioStats = closestIoStats;
-    printf("Kept the encoded image of size %" AVIF_FMT_ZU " bytes generated with color quality %d and alpha quality %d.\n",
-           encoded->size,
-           settings->quality,
-           settings->qualityAlpha);
+    printf("Kept the encoded image of size %" AVIF_FMT_ZU " bytes generated with ", encoded->size);
+    if (!settings->qualityIsConstrained) {
+        printf("color quality %d", settings->overrideQuality);
+    }
+    if (!settings->qualityAlphaIsConstrained) {
+        printf("%s alpha quality %d", settings->qualityIsConstrained ? " and" : "", settings->overrideQualityAlpha);
+    }
+    printf(".\n");
     return AVIF_TRUE;
 }
 
@@ -1095,23 +1361,23 @@ int main(int argc, char * argv[])
     memset(&settings, 0, sizeof(settings));
     settings.codecChoice = AVIF_CODEC_CHOICE_AUTO;
     settings.jobs = 1;
-    settings.quality = INVALID_QUALITY;
-    settings.qualityAlpha = INVALID_QUALITY;
-    settings.minQuantizer = -1;
-    settings.maxQuantizer = -1;
-    settings.minQuantizerAlpha = -1;
-    settings.maxQuantizerAlpha = -1;
     settings.targetSize = -1;
-    settings.tileRowsLog2 = -1;
-    settings.tileColsLog2 = -1;
-    settings.autoTiling = AVIF_FALSE;
-    settings.progressive = AVIF_FALSE;
+    settings.qualityIsConstrained = AVIF_FALSE;
+    settings.qualityAlphaIsConstrained = AVIF_FALSE;
+    settings.overrideQuality = INVALID_QUALITY;
+    settings.overrideQualityAlpha = INVALID_QUALITY;
+    settings.autoProgressive = AVIF_FALSE;
+    settings.layers = 0;
     settings.speed = 6;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;
     settings.ignoreXMP = AVIF_FALSE;
     settings.ignoreColorProfile = AVIF_FALSE;
+    settings.cicpExplicitlySet = AVIF_FALSE;
+
+    avifInputFileSettings currentSettings;
+    memset(&currentSettings, 0, sizeof(currentSettings));
 
     avifBool cropConversionRequired = AVIF_FALSE;
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
@@ -1123,7 +1389,6 @@ int main(int argc, char * argv[])
     avifRWData exifOverride = AVIF_DATA_EMPTY;
     avifRWData xmpOverride = AVIF_DATA_EMPTY;
     avifRWData iccOverride = AVIF_DATA_EMPTY;
-    avifBool cicpExplicitlySet = AVIF_FALSE;
     avifBool premultiplyAlpha = AVIF_FALSE;
     uint32_t gridCellCount = 0;
     avifImage ** gridCells = NULL;
@@ -1150,6 +1415,9 @@ int main(int argc, char * argv[])
                 arg = argv[argIndex];
                 input.files[input.filesCount].filename = arg;
                 input.files[input.filesCount].duration = settings.outputTiming.duration;
+                input.files[input.filesCount].settingsCount = 1;
+                input.files[input.filesCount].settings = malloc(sizeof(avifInputFileSettings));
+                moveFileSettings(input.files[input.filesCount].settings, &currentSettings);
                 ++input.filesCount;
                 ++argIndex;
             }
@@ -1205,60 +1473,64 @@ int main(int argc, char * argv[])
             settings.keyframeInterval = atoi(arg);
         } else if (!strcmp(arg, "-q") || !strcmp(arg, "--qcolor")) {
             NEXTARG();
-            settings.quality = atoi(arg);
-            if (settings.quality < AVIF_QUALITY_WORST) {
-                settings.quality = AVIF_QUALITY_WORST;
+            int quality = atoi(arg);
+            if (quality < AVIF_QUALITY_WORST) {
+                quality = AVIF_QUALITY_WORST;
             }
-            if (settings.quality > AVIF_QUALITY_BEST) {
-                settings.quality = AVIF_QUALITY_BEST;
+            if (quality > AVIF_QUALITY_BEST) {
+                quality = AVIF_QUALITY_BEST;
             }
-            settings.qualityIsConstrained = AVIF_TRUE;
+            SET_FILE_SETTING(currentSettings, quality, quality);
         } else if (!strcmp(arg, "--qalpha")) {
             NEXTARG();
-            settings.qualityAlpha = atoi(arg);
-            if (settings.qualityAlpha < AVIF_QUALITY_WORST) {
-                settings.qualityAlpha = AVIF_QUALITY_WORST;
+            int qualityAlpha = atoi(arg);
+            if (qualityAlpha < AVIF_QUALITY_WORST) {
+                qualityAlpha = AVIF_QUALITY_WORST;
             }
-            if (settings.qualityAlpha > AVIF_QUALITY_BEST) {
-                settings.qualityAlpha = AVIF_QUALITY_BEST;
+            if (qualityAlpha > AVIF_QUALITY_BEST) {
+                qualityAlpha = AVIF_QUALITY_BEST;
             }
-            settings.qualityAlphaIsConstrained = AVIF_TRUE;
+            SET_FILE_SETTING(currentSettings, qualityAlpha, qualityAlpha);
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
-            settings.minQuantizer = atoi(arg);
-            if (settings.minQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
-                settings.minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+            int minQuantizer = atoi(arg);
+            if (minQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
+                minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
             }
-            if (settings.minQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
-                settings.minQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
+            if (minQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
+                minQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
             }
+            SET_FILE_SETTING(currentSettings, minQuantizer, minQuantizer);
         } else if (!strcmp(arg, "--max")) {
             NEXTARG();
-            settings.maxQuantizer = atoi(arg);
-            if (settings.maxQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
-                settings.maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+            int maxQuantizer = atoi(arg);
+            if (maxQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
+                maxQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
             }
-            if (settings.maxQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
-                settings.maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
+            if (maxQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
+                maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
             }
+            SET_FILE_SETTING(currentSettings, maxQuantizer, maxQuantizer);
         } else if (!strcmp(arg, "--minalpha")) {
             NEXTARG();
-            settings.minQuantizerAlpha = atoi(arg);
-            if (settings.minQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
-                settings.minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
+            int minQuantizerAlpha = atoi(arg);
+            if (minQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
+                minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
             }
-            if (settings.minQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
-                settings.minQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+            if (minQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
+                minQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
             }
+            SET_FILE_SETTING(currentSettings, minQuantizerAlpha, minQuantizerAlpha);
         } else if (!strcmp(arg, "--maxalpha")) {
             NEXTARG();
-            settings.maxQuantizerAlpha = atoi(arg);
-            if (settings.maxQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
-                settings.maxQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
+            int maxQuantizerAlpha = atoi(arg);
+            if (maxQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
+                maxQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
             }
-            if (settings.maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
-                settings.maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+            if (maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
+                maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
             }
+            SET_FILE_SETTING(currentSettings, maxQuantizerAlpha, maxQuantizerAlpha);
         } else if (!strcmp(arg, "--target-size")) {
             NEXTARG();
             settings.targetSize = atoi(arg);
@@ -1267,26 +1539,47 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--tilerowslog2")) {
             NEXTARG();
-            settings.tileRowsLog2 = atoi(arg);
-            if (settings.tileRowsLog2 < 0) {
-                settings.tileRowsLog2 = 0;
+            int tileRowsLog2 = atoi(arg);
+            if (tileRowsLog2 < 0) {
+                tileRowsLog2 = 0;
             }
-            if (settings.tileRowsLog2 > 6) {
-                settings.tileRowsLog2 = 6;
+            if (tileRowsLog2 > 6) {
+                tileRowsLog2 = 6;
             }
+            SET_FILE_SETTING(currentSettings, tileRowsLog2, tileRowsLog2);
         } else if (!strcmp(arg, "--tilecolslog2")) {
             NEXTARG();
-            settings.tileColsLog2 = atoi(arg);
-            if (settings.tileColsLog2 < 0) {
-                settings.tileColsLog2 = 0;
+            int tileColsLog2 = atoi(arg);
+            if (tileColsLog2 < 0) {
+                tileColsLog2 = 0;
             }
-            if (settings.tileColsLog2 > 6) {
-                settings.tileColsLog2 = 6;
+            if (tileColsLog2 > 6) {
+                tileColsLog2 = 6;
             }
+            SET_FILE_SETTING(currentSettings, tileColsLog2, tileColsLog2);
         } else if (!strcmp(arg, "--autotiling")) {
-            settings.autoTiling = AVIF_TRUE;
-        } else if (!strcmp(arg, "--progressive")) {
-            settings.progressive = AVIF_TRUE;
+            SET_FILE_SETTING(currentSettings, autoTiling, AVIF_TRUE);
+        } else if (!strcmp(arg, "--auto-progressive")) {
+            settings.autoProgressive = AVIF_TRUE;
+        } else if (!strcmp(arg, "--layer")) {
+            NEXTARG();
+            int layer = atoi(arg);
+            if (layer < 1) {
+                layer = 1;
+            }
+            if (layer > AVIF_MAX_AV1_LAYER_COUNT) {
+                layer = AVIF_MAX_AV1_LAYER_COUNT;
+            }
+            settings.layers = layer;
+        } else if (!strcmp(arg, "--scaling-mode")) {
+            NEXTARG();
+            avifScalingMode mode;
+            if (!parseScaleMode(&mode, arg)) {
+                fprintf(stderr, "ERROR: Invalid scaling mode: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
+            SET_FILE_SETTING(currentSettings, scalingMode, mode);
         } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
             NEXTARG();
             settings.gridDimsCount = parseU32List(settings.gridDims, arg);
@@ -1311,7 +1604,7 @@ int main(int argc, char * argv[])
             settings.colorPrimaries = (avifColorPrimaries)cicp[0];
             settings.transferCharacteristics = (avifTransferCharacteristics)cicp[1];
             settings.matrixCoefficients = (avifMatrixCoefficients)cicp[2];
-            cicpExplicitlySet = AVIF_TRUE;
+            settings.cicpExplicitlySet = AVIF_TRUE;
         } else if (!strcmp(arg, "-r") || !strcmp(arg, "--range")) {
             NEXTARG();
             if (!strcmp(arg, "limited") || !strcmp(arg, "l")) {
@@ -1395,7 +1688,7 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "-a") || !strcmp(arg, "--advanced")) {
             NEXTARG();
-            if (!avifCodecSpecificOptionsAdd(&settings.codecSpecificOptions, arg)) {
+            if (!avifCodecSpecificOptionsAdd(&currentSettings.codecSpecificOptions, arg)) {
                 fprintf(stderr, "ERROR: Out of memory when setting codec specific option: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
@@ -1473,6 +1766,30 @@ int main(int argc, char * argv[])
             premultiplyAlpha = AVIF_TRUE;
         } else if (!strcmp(arg, "--sharpyuv")) {
             settings.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV;
+        } else if (!strcmp(arg, "--from-index")) {
+            NEXTARG();
+            int frameIndex = atoi(arg);
+            avifInputFile * currentFile = &input.files[input.filesCount - 1];
+            int n = currentFile->settingsCount;
+            if (frameIndex <= currentFile->settings[n - 1].frameIndex) {
+                fprintf(stderr, "ERROR: frame index not greater than previous entry\n");
+                returnCode = 1;
+                goto cleanup;
+            }
+            avifInputFileSettings * newSettings = malloc((n + 1) * sizeof(avifInputFileSettings));
+            if (newSettings == NULL) {
+                fprintf(stderr, "ERROR: Out of memory\n");
+                returnCode = 1;
+                goto cleanup;
+            }
+            for (int i = 0; i < n; ++i) {
+                moveFileSettings(&newSettings[i], &currentFile->settings[i]);
+            }
+            currentSettings.frameIndex = frameIndex;
+            moveFileSettings(&newSettings[n], &currentSettings);
+            free(currentFile->settings);
+            currentFile->settings = newSettings;
+            currentFile->settingsCount++;
         } else if (arg[0] == '-') {
             fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
             syntaxLong();
@@ -1482,24 +1799,37 @@ int main(int argc, char * argv[])
             // Positional argument
             input.files[input.filesCount].filename = arg;
             input.files[input.filesCount].duration = settings.outputTiming.duration;
+            input.files[input.filesCount].settingsCount = 1;
+            input.files[input.filesCount].settings = malloc(sizeof(avifInputFileSettings));
+            moveFileSettings(input.files[input.filesCount].settings, &currentSettings);
             ++input.filesCount;
         }
 
         ++argIndex;
     }
 
-    if ((settings.minQuantizer < 0) != (settings.maxQuantizer < 0)) {
-        fprintf(stderr, "--min and --max must be either both specified or both unspecified.\n");
-        returnCode = 1;
-        goto cleanup;
+    // Check progressive config
+    if (settings.autoProgressive) {
+        if (settings.layers == 0) {
+            settings.layers = 2;
+        } else if (settings.layers == 1) {
+            fprintf(stderr, "Progressive unavailable if there's only one layer.\n");
+            returnCode = 1;
+            goto cleanup;
+        }
+    } else {
+        if (settings.layers == 0) {
+            settings.layers = 1;
+        }
     }
-    if ((settings.minQuantizerAlpha < 0) != (settings.maxQuantizerAlpha < 0)) {
-        fprintf(stderr, "--minalpha and --maxalpha must be either both specified or both unspecified.\n");
+
+    if (settings.layers > 1 && settings.gridDimsCount > 1) {
+        fprintf(stderr, "Progressive grid image unimplemented in avifenc.\n");
         returnCode = 1;
         goto cleanup;
     }
 
-    // Check lossy/lossless parameters and set to default if needed.
+    // Check global lossless parameters and set to default if needed.
     if (lossless) {
         // Pixel format.
         if (input.requestedFormat != AVIF_PIXEL_FORMAT_NONE && input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444 &&
@@ -1509,19 +1839,6 @@ int main(int argc, char * argv[])
                     "mode. 400 also works if the input is grayscale.\n");
             returnCode = 1;
         }
-        // Quality.
-        if ((settings.quality != INVALID_QUALITY && settings.quality != AVIF_QUALITY_LOSSLESS) ||
-            (settings.qualityAlpha != INVALID_QUALITY && settings.qualityAlpha != AVIF_QUALITY_LOSSLESS)) {
-            fprintf(stderr, "Quality cannot be set in lossless mode, except to %d.\n", AVIF_QUALITY_LOSSLESS);
-            returnCode = 1;
-        }
-        settings.quality = settings.qualityAlpha = AVIF_QUALITY_LOSSLESS;
-        // Quantizers.
-        if (settings.minQuantizer > 0 || settings.maxQuantizer > 0 || settings.minQuantizerAlpha > 0 || settings.maxQuantizerAlpha > 0) {
-            fprintf(stderr, "Quantizers cannot be set in lossless mode, except to 0.\n");
-            returnCode = 1;
-        }
-        settings.minQuantizer = settings.maxQuantizer = settings.minQuantizerAlpha = settings.maxQuantizerAlpha = AVIF_QUANTIZER_LOSSLESS;
         // Codec.
         const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
         if (codecName && !strcmp(codecName, "rav1e")) {
@@ -1537,7 +1854,7 @@ int main(int argc, char * argv[])
             returnCode = 1;
         }
         // Matrix coefficients.
-        if (cicpExplicitlySet) {
+        if (settings.cicpExplicitlySet) {
             avifBool incompatibleMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
             incompatibleMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
@@ -1554,47 +1871,11 @@ int main(int argc, char * argv[])
         } else {
             settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         }
+        if (settings.autoProgressive) {
+            fprintf(stderr, "Automatic progressive in unsupported in lossless mode.\n");
+        }
         if (returnCode == 1)
             goto cleanup;
-    } else {
-        // Set lossy defaults.
-        if (settings.minQuantizer == -1) {
-            assert(settings.maxQuantizer == -1);
-            if (settings.quality == INVALID_QUALITY) {
-                settings.quality = DEFAULT_QUALITY;
-            }
-            settings.minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
-            settings.maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
-        } else {
-            assert(settings.maxQuantizer != -1);
-            if (settings.quality == INVALID_QUALITY) {
-                const int quantizer = (settings.minQuantizer + settings.maxQuantizer) / 2;
-                settings.quality = ((63 - quantizer) * 100 + 31) / 63;
-            }
-        }
-        if (settings.minQuantizerAlpha == -1) {
-            assert(settings.maxQuantizerAlpha == -1);
-            if (settings.qualityAlpha == INVALID_QUALITY) {
-                settings.qualityAlpha = DEFAULT_QUALITY_ALPHA;
-            }
-            settings.minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
-            settings.maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
-        } else {
-            assert(settings.maxQuantizerAlpha != -1);
-            if (settings.qualityAlpha == INVALID_QUALITY) {
-                const int quantizerAlpha = (settings.minQuantizerAlpha + settings.maxQuantizerAlpha) / 2;
-                settings.qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
-            }
-        }
-    }
-    assert(settings.quality != INVALID_QUALITY);
-    assert(settings.qualityAlpha != INVALID_QUALITY);
-    // In progressive encoding we use a very low quality (2) for the base layer to ensure a small
-    // encoded size. If the target quality is close to the quality of the base layer, don't bother
-    // with progressive encoding.
-    if (settings.progressive && ((settings.quality < 10) || (settings.qualityAlpha < 10))) {
-        settings.progressive = AVIF_FALSE;
-        printf("The --progressive option was ignored because the quality is below 10.\n");
     }
 
     stdinFile.filename = "(stdin)";
@@ -1624,6 +1905,165 @@ int main(int argc, char * argv[])
     }
 #endif
 
+    // currentSettings now serves as cumulative result of all settings
+    memset(&currentSettings, 0, sizeof(avifInputFileSettings));
+
+    for (int i = 0; i < input.filesCount; ++i) {
+        avifInputFile * file = &input.files[i];
+        for (int j = 0; j < file->settingsCount; ++j) {
+            avifInputFileSettings * fileSettings = &file->settings[j];
+
+            if (fileSettings->quality) {
+                SET_FILE_SETTING(currentSettings, quality, *fileSettings->quality);
+            }
+            if (fileSettings->qualityAlpha) {
+                SET_FILE_SETTING(currentSettings, qualityAlpha, *fileSettings->qualityAlpha);
+            }
+            if (fileSettings->minQuantizer) {
+                SET_FILE_SETTING(currentSettings, minQuantizer, *fileSettings->minQuantizer);
+            }
+            if (fileSettings->maxQuantizer) {
+                SET_FILE_SETTING(currentSettings, maxQuantizer, *fileSettings->maxQuantizer);
+            }
+            if (fileSettings->minQuantizerAlpha) {
+                SET_FILE_SETTING(currentSettings, minQuantizerAlpha, *fileSettings->minQuantizerAlpha);
+            }
+            if (fileSettings->maxQuantizerAlpha) {
+                SET_FILE_SETTING(currentSettings, maxQuantizerAlpha, *fileSettings->maxQuantizerAlpha);
+            }
+            if (fileSettings->tileColsLog2) {
+                SET_FILE_SETTING(currentSettings, tileColsLog2, *fileSettings->tileColsLog2);
+            }
+            if (fileSettings->tileRowsLog2) {
+                SET_FILE_SETTING(currentSettings, tileRowsLog2, *fileSettings->tileRowsLog2);
+            }
+            if (fileSettings->autoTiling) {
+                SET_FILE_SETTING(currentSettings, autoTiling, *fileSettings->autoTiling);
+            }
+            if (fileSettings->scalingMode) {
+                SET_FILE_SETTING(currentSettings, scalingMode, *fileSettings->scalingMode);
+            }
+
+            if ((fileSettings->minQuantizer == NULL) != (fileSettings->maxQuantizer == NULL)) {
+                fprintf(stderr, "--min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if ((fileSettings->minQuantizerAlpha == NULL) != (fileSettings->maxQuantizerAlpha == NULL)) {
+                fprintf(stderr, "--minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n", file->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if (currentSettings.autoTiling && *currentSettings.autoTiling) {
+                if (fileSettings->tileRowsLog2 || fileSettings->tileColsLog2) {
+                    // testing fileSettings because currentSettings will hold default 0, 0
+                    fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified\n");
+                    returnCode = 1;
+                    goto cleanup;
+                }
+                SET_FILE_SETTING(*fileSettings, tileRowsLog2, 0);
+                SET_FILE_SETTING(currentSettings, tileRowsLog2, 0);
+                SET_FILE_SETTING(*fileSettings, tileColsLog2, 0);
+                SET_FILE_SETTING(currentSettings, tileColsLog2, 0);
+            } else {
+                if (!currentSettings.autoTiling) {
+                    SET_FILE_SETTING(*fileSettings, autoTiling, AVIF_FALSE);
+                    SET_FILE_SETTING(currentSettings, autoTiling, AVIF_FALSE);
+                }
+                if (!currentSettings.tileRowsLog2) {
+                    SET_FILE_SETTING(*fileSettings, tileRowsLog2, 0);
+                    SET_FILE_SETTING(currentSettings, tileRowsLog2, 0);
+                }
+                if (!currentSettings.tileColsLog2) {
+                    SET_FILE_SETTING(*fileSettings, tileColsLog2, 0);
+                    SET_FILE_SETTING(currentSettings, tileColsLog2, 0);
+                }
+            }
+            if (!currentSettings.scalingMode) {
+                avifScalingMode defaultMode = { { 1, 1 }, { 1, 1 } };
+                SET_FILE_SETTING(*fileSettings, scalingMode, defaultMode);
+                SET_FILE_SETTING(currentSettings, scalingMode, defaultMode);
+            }
+
+            // Check per-input lossy/lossless parameters and set to default if needed.
+            if (lossless) {
+                // Quality.
+                if ((fileSettings->quality && *fileSettings->quality != AVIF_QUALITY_LOSSLESS) ||
+                    (fileSettings->qualityAlpha && *fileSettings->qualityAlpha != AVIF_QUALITY_LOSSLESS)) {
+                    fprintf(stderr, "Quality cannot be set in lossless mode, except to %d.\n", AVIF_QUALITY_LOSSLESS);
+                    returnCode = 1;
+                }
+                // Quantizers.
+                if ((fileSettings->minQuantizer && *fileSettings->minQuantizer != AVIF_QUANTIZER_LOSSLESS) ||
+                    (fileSettings->maxQuantizer && *fileSettings->maxQuantizer != AVIF_QUANTIZER_LOSSLESS) ||
+                    (fileSettings->minQuantizerAlpha && *fileSettings->minQuantizerAlpha != AVIF_QUANTIZER_LOSSLESS) ||
+                    (fileSettings->maxQuantizerAlpha && *fileSettings->maxQuantizerAlpha != AVIF_QUANTIZER_LOSSLESS)) {
+                    fprintf(stderr, "Quantizers cannot be set in lossless mode, except to 0.\n");
+                    returnCode = 1;
+                }
+                // Add lossless settings
+                SET_FILE_SETTING(*fileSettings, quality, AVIF_QUALITY_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, qualityAlpha, AVIF_QUALITY_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, minQuantizer, AVIF_QUANTIZER_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, maxQuantizer, AVIF_QUANTIZER_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, minQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
+            } else {
+                if (!currentSettings.minQuantizer) {
+                    assert(currentSettings.maxQuantizer == NULL);
+                    if (!currentSettings.quality) {
+                        SET_FILE_SETTING(*fileSettings, quality, DEFAULT_QUALITY);
+                        SET_FILE_SETTING(currentSettings, quality, DEFAULT_QUALITY);
+                    } else {
+                        settings.qualityIsConstrained = (fileSettings->quality != NULL);
+                    }
+                    SET_FILE_SETTING(*fileSettings, minQuantizer, AVIF_QUANTIZER_BEST_QUALITY);
+                    SET_FILE_SETTING(*fileSettings, maxQuantizer, AVIF_QUANTIZER_WORST_QUALITY);
+                    SET_FILE_SETTING(currentSettings, minQuantizer, AVIF_QUANTIZER_BEST_QUALITY);
+                    SET_FILE_SETTING(currentSettings, maxQuantizer, AVIF_QUANTIZER_WORST_QUALITY);
+                } else {
+                    assert(currentSettings.maxQuantizer != NULL);
+                    if (!currentSettings.quality) {
+                        const int quantizer = (*currentSettings.minQuantizer + *currentSettings.maxQuantizer) / 2;
+                        const int quality = ((63 - quantizer) * 100 + 31) / 63;
+                        SET_FILE_SETTING(*fileSettings, quality, quality);
+                        SET_FILE_SETTING(currentSettings, quality, quality);
+                    } else {
+                        settings.qualityIsConstrained = (fileSettings->quality != NULL);
+                    }
+                }
+                if (settings.autoProgressive && *currentSettings.quality < PROGRESSIVE_WORST_QUALITY) {
+                    fprintf(stderr, "--qcolor must greater than %d when using --auto-progressive\n", PROGRESSIVE_WORST_QUALITY);
+                    returnCode = 1;
+                    goto cleanup;
+                }
+                if (!currentSettings.minQuantizerAlpha) {
+                    assert(currentSettings.maxQuantizerAlpha == NULL);
+                    if (!currentSettings.qualityAlpha) {
+                        SET_FILE_SETTING(*fileSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
+                        SET_FILE_SETTING(currentSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
+                    } else {
+                        settings.qualityAlphaIsConstrained = (fileSettings->qualityAlpha != NULL);
+                    }
+                    SET_FILE_SETTING(*fileSettings, minQuantizerAlpha, AVIF_QUANTIZER_BEST_QUALITY);
+                    SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_WORST_QUALITY);
+                    SET_FILE_SETTING(currentSettings, minQuantizerAlpha, AVIF_QUANTIZER_BEST_QUALITY);
+                    SET_FILE_SETTING(currentSettings, maxQuantizerAlpha, AVIF_QUANTIZER_WORST_QUALITY);
+                } else {
+                    assert(currentSettings.maxQuantizerAlpha != NULL);
+                    if (!currentSettings.qualityAlpha) {
+                        const int quantizerAlpha = (*currentSettings.minQuantizerAlpha + *currentSettings.maxQuantizerAlpha) / 2;
+                        const int qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
+                        SET_FILE_SETTING(*fileSettings, qualityAlpha, qualityAlpha);
+                        SET_FILE_SETTING(currentSettings, qualityAlpha, qualityAlpha);
+                    } else {
+                        settings.qualityAlphaIsConstrained = (fileSettings->qualityAlpha != NULL);
+                    }
+                }
+            }
+        }
+    }
+
     image = avifImageCreateEmpty();
     if (!image) {
         fprintf(stderr, "ERROR: Out of memory\n");
@@ -1647,7 +2087,7 @@ int main(int argc, char * argv[])
         // back to the default.
         image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
-        if (cicpExplicitlySet) {
+        if (settings.cicpExplicitlySet) {
             // Only warn if someone explicitly asked for identity.
             printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
                    image->matrixCoefficients);
@@ -1666,8 +2106,9 @@ int main(int argc, char * argv[])
                             settings.ignoreColorProfile,
                             settings.ignoreExif,
                             settings.ignoreXMP,
-                            /*allowChangingCicp=*/!cicpExplicitlySet,
+                            /*allowChangingCicp=*/!settings.cicpExplicitlySet,
                             image,
+                            /*settings=*/NULL, // Must use the first setting entry for first input
                             &sourceDepth,
                             &sourceWasRGB,
                             &firstSourceTiming,
@@ -1709,7 +2150,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    if (!image->icc.size && !cicpExplicitlySet && (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
+    if (!image->icc.size && !settings.cicpExplicitlySet && (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
         (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED)) {
         // The final image has no ICC profile, the user didn't specify any CICP, and the source
         // image didn't provide any CICP. Explicitly signal SRGB CP/TC here, as 2/2/x will be
@@ -1775,8 +2216,8 @@ int main(int argc, char * argv[])
     }
 
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
-    avifBool usingLosslessColor = (settings.quality == AVIF_QUALITY_LOSSLESS);
-    avifBool usingLosslessAlpha = (settings.qualityAlpha == AVIF_QUALITY_LOSSLESS);
+    avifBool usingLosslessColor = (*firstFile->settings->quality == AVIF_QUALITY_LOSSLESS);
+    avifBool usingLosslessAlpha = (*firstFile->settings->qualityAlpha == AVIF_QUALITY_LOSSLESS);
     avifBool using400 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     avifBool using444 = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444);
     avifBool usingFullRange = (image->yuvRange == AVIF_RANGE_FULL);
@@ -1846,6 +2287,9 @@ int main(int argc, char * argv[])
     if (settings.gridDimsCount > 0) {
         // Grid image!
 
+        // currentSettings is used to test if there's any extra config set
+        memset(&currentSettings, 0, sizeof(avifInputFileSettings));
+
         gridCellCount = settings.gridDims[0] * settings.gridDims[1];
         printf("Preparing to encode a %ux%u grid (%u cells)...\n", settings.gridDims[0], settings.gridDims[1], gridCellCount);
 
@@ -1866,6 +2310,12 @@ int main(int argc, char * argv[])
                         settings.gridDims[0],
                         settings.gridDims[1]);
                 break;
+            }
+
+            if (nextFile->settingsCount > 1 || memcmp(nextFile->settings, &currentSettings, sizeof(avifInputFileSettings)) != 0) {
+                fprintf(stderr, "ERROR: Grid image cannot use different settings for each cell.\n");
+                returnCode = 1;
+                goto cleanup;
             }
 
             avifImage * cellImage = avifImageCreateEmpty();
@@ -1890,6 +2340,7 @@ int main(int argc, char * argv[])
                                     /*ignoreXMP=*/AVIF_TRUE,
                                     /*allowChangingCicp=*/AVIF_FALSE,
                                     cellImage,
+                                    /*settings=*/NULL,
                                     /*outDepth=*/NULL,
                                     /*sourceIsRGB=*/NULL,
                                     /*sourceTiming=*/NULL,
@@ -1928,22 +2379,7 @@ int main(int argc, char * argv[])
     avifImageDump(avif,
                   settings.gridDims[0],
                   settings.gridDims[1],
-                  settings.progressive ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
-
-    if (settings.autoTiling) {
-        if ((settings.tileRowsLog2 >= 0) || (settings.tileColsLog2 >= 0)) {
-            fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified\n");
-            returnCode = 1;
-            goto cleanup;
-        }
-    } else {
-        if (settings.tileRowsLog2 < 0) {
-            settings.tileRowsLog2 = 0;
-        }
-        if (settings.tileColsLog2 < 0) {
-            settings.tileColsLog2 = 0;
-        }
-    }
+                  settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
     avifIOStats ioStats = { 0, 0 };
     if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage * const *)gridCells, &raw, &ioStats)) {
@@ -1954,7 +2390,7 @@ int main(int argc, char * argv[])
     printf("Encoded successfully.\n");
     printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.colorOBUSize);
     printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.alphaOBUSize);
-    const avifBool isImageSequence = (settings.gridDimsCount == 0) && (input.filesCount > 1);
+    const avifBool isImageSequence = (settings.gridDimsCount == 0) && (settings.layers == 1) && (input.filesCount > 1);
     if (isImageSequence) {
         if (settings.repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repetition Count: Infinite\n");
@@ -2006,13 +2442,23 @@ cleanup:
         }
     }
     free(input.cache);
-    free(input.files);
-    while (settings.codecSpecificOptions.count) {
-        --settings.codecSpecificOptions.count;
-        free(settings.codecSpecificOptions.keys[settings.codecSpecificOptions.count]);
-        free(settings.codecSpecificOptions.values[settings.codecSpecificOptions.count]);
+    while (input.filesCount) {
+        --input.filesCount;
+        avifInputFile * file = &input.files[input.filesCount];
+        while (file->settingsCount) {
+            --file->settingsCount;
+            avifInputFileSettings * fileSettings = &file->settings[file->settingsCount];
+            while (fileSettings->codecSpecificOptions.count) {
+                --fileSettings->codecSpecificOptions.count;
+                free(fileSettings->codecSpecificOptions.keys[fileSettings->codecSpecificOptions.count]);
+                free(fileSettings->codecSpecificOptions.values[fileSettings->codecSpecificOptions.count]);
+            }
+            free(fileSettings->codecSpecificOptions.keys);
+            free(fileSettings->codecSpecificOptions.values);
+        }
+        free(file->settings);
     }
-    free(settings.codecSpecificOptions.keys);
-    free(settings.codecSpecificOptions.values);
+    free(input.files);
+
     return returnCode;
 }

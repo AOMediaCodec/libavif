@@ -361,6 +361,7 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
                     requested_format, requested_depth, chroma_downsampling,
                     ignore_icc, ignore_exif, ignore_xmp, allow_changing_cicp,
                     image.get(),
+                    /*frameIndex=*/nullptr,
                     /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return {nullptr, nullptr};

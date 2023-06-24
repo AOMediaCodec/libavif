@@ -50,8 +50,9 @@ TEST_P(Y4mTest, EncodeDecode) {
 
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
-  ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),
-                      /*sourceTiming=*/nullptr, /*iter=*/nullptr));
+  ASSERT_EQ(y4mRead(file_path.str().c_str(), decoded.get(),
+                    /*sourceTiming=*/nullptr, /*iter=*/nullptr),
+            0);
 
   EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
 }
@@ -87,8 +88,9 @@ TEST_P(Y4mTest, OutOfRange) {
   // that tag along, it is ignored by the compression algorithm.
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
-  ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),
-                      /*sourceTiming=*/nullptr, /*iter=*/nullptr));
+  ASSERT_EQ(y4mRead(file_path.str().c_str(), decoded.get(),
+                    /*sourceTiming=*/nullptr, /*iter=*/nullptr),
+            0);
 
   // Pass it through the libavif API to make sure reading a bad y4m does not
   // trigger undefined behavior.

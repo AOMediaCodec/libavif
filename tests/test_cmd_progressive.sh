@@ -58,9 +58,27 @@ trap cleanup EXIT
 
 pushd ${TMP_DIR}
   echo "Testing basic progressive"
-  "${AVIFENC}" --progressive -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" --auto-progressive -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
+
+  echo "Testing manual progressive"
+  "${AVIFENC}" -s 8 --layer 2 -q 2 "${INPUT_Y4M}" -q 60 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+  "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
+
+  # libavif relies on libyuv to do scaling
+  echo "Testing progressive with frame scaling"
+  if avifenc -V | grep -o "libyuv : available" --quiet; then
+    for SCALE in 1/2 1/2,1/2; do
+      "${AVIFENC}" -s 8 --layer 2 --scaling-mode ${SCALE} "${INPUT_Y4M}" --scaling-mode 1 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+      "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+      "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
+    done
+  fi
+
+  echo "Testing no enough input"
+  "${AVIFENC}" -s 8 --layer 3 -q 2 "${INPUT_Y4M}" -q 60 "${INPUT_Y4M}" -o "${ENCODED_FILE}" && exit 1
 popd
 
 exit 0
