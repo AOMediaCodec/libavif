@@ -365,7 +365,7 @@ avifBool avifPNGRead(const char * inputFilename,
                 avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
                 avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
                 fprintf(stderr,
-                        "WARNING: legacy color management information not matching any CICP value found in file %s. libavif is generating an ICC profile for it."
+                        "INFO: legacy color management information not matching any CICP value found in file %s. libavif is generating an ICC profile for it."
                         "Use --ignore-profile to ignore color management information instead (may affect the colors of the encoded AVIF image).\n",
                         inputFilename);
 

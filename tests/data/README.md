@@ -292,6 +292,18 @@ http://www.libpng.org/pub/png/png-colortest.html.
 
 It's a image tagged as gamma 2.2 and BT709 primaries but red and green swapped.
 
+### File [ArcTriomphe-cHRM-red-green-swap-reference.png](ArcTriomphe-cHRM-red-green-swap-reference.png)
+
+![](ArcTriomphe-cHRM-red-green-swap-reference.png)
+
+License: Copyright © 2000-2005 Greg Roelofs.
+
+Source: Picture from the libpng test page
+http://www.libpng.org/pub/png/png-colortest.html.
+
+It's [ArcTriomphe-cHRM-red-green-swap.png](ArcTriomphe-cHRM-red-green-swap.png)
+converted into sRGB colorspace by Chrome using "Capture Node Screenshot"
+in DevTools.
 
 ## Grid
 

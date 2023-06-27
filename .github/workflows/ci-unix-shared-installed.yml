@@ -43,7 +43,7 @@ jobs:
       run: |
         echo "deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
         sudo apt-get update
-        sudo apt-get install libaom-dev libdav1d-dev libyuv-dev
+        sudo apt-get install libaom-dev libdav1d-dev libyuv-dev libvips-tools
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: brew install aom dav1d
