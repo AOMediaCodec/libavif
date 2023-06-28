@@ -76,12 +76,27 @@ static void syntaxShort(void)
 static void syntaxLong(void)
 {
     printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
-    printf("Options:\n");
+    printf("Standard options:\n");
     printf("    -h,--help                         : Show short syntax help\n");
     printf("    --longhelp                        : Show long syntax help\n");
     printf("    -V,--version                      : Show the version number\n");
-    printf("    --no-overwrite                    : Never overwrite existing output file\n");
+    printf("\n");
+    printf("Basic options:\n");
+    printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
+    printf("    --qalpha Q                        : Set quality for alpha (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
+    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
+           AVIF_SPEED_SLOWEST,
+           AVIF_SPEED_FASTEST);
+    printf("\n");
+    printf("Advanced options:\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
+    printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
@@ -96,23 +111,12 @@ static void syntaxLong(void)
     printf("                                        M = matrix coefficients\n");
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
-    printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
-           AVIF_QUALITY_WORST,
-           AVIF_QUALITY_BEST,
-           AVIF_QUALITY_LOSSLESS);
-    printf("    --qalpha Q                        : Set quality for alpha (%d-%d, where %d is lossless)\n",
-           AVIF_QUALITY_WORST,
-           AVIF_QUALITY_BEST,
-           AVIF_QUALITY_LOSSLESS);
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
-    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
-           AVIF_SPEED_SLOWEST,
-           AVIF_SPEED_FASTEST);
     printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
