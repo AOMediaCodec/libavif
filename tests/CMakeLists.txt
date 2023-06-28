@@ -224,8 +224,8 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd_metadata COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_metadata.sh ${CMAKE_BINARY_DIR}
                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
-    add_test(NAME test_cmd_profile COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_profile.sh ${CMAKE_BINARY_DIR}
-                                           ${CMAKE_CURRENT_SOURCE_DIR}/data
+    add_test(NAME test_cmd_icc_profile COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_icc_profile.sh ${CMAKE_BINARY_DIR}
+                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
     add_test(NAME test_cmd_progressive COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_progressive.sh ${CMAKE_BINARY_DIR}
                                                ${CMAKE_CURRENT_SOURCE_DIR}/data

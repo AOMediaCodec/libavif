@@ -10,8 +10,11 @@
 extern "C" {
 #endif
 
-avifBool avifImageGenerateRGBICC(avifImage * image, float gamma, const float primaries[8]);
-avifBool avifImageGenerateGrayICC(avifImage * image, float gamma, const float white[2]);
+// Note to libavif maintainers:
+// These ICC maker functions only serve to handling legacy color space
+// information in PNG files, and shall not be moved to libavif itself.
+avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries[8]);
+avifBool avifGenerateGrayICC(avifRWData * icc, float gamma, const float white[2]);
 
 #ifdef __cplusplus
 } // extern "C"

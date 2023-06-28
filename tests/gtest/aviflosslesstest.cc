@@ -36,7 +36,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
           /*requestedFormat=*/AVIF_PIXEL_FORMAT_NONE,
           /*requestedDepth=*/0,
           /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-          /*ignoreICC=*/false, /*ignoreExif=*/false,
+          /*ignoreColorProfile=*/false, /*ignoreExif=*/false,
           /*ignoreXMP=*/false, image.get(),
           /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
           /*frameIter=*/nullptr);

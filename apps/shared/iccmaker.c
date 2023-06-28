@@ -127,7 +127,7 @@ static const uint8_t iccGrayTemplate[320] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x58, 0x59, 0x5a, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf3, 0x54,
     0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x16, 0xc9, 0x63, 0x75, 0x72, 0x76, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
     0x01, 0x00, 0x00, 0x00, 0x74, 0x65, 0x78, 0x74, 0x00, 0x00, 0x00, 0x00, 0x43, 0x43, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x98, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
@@ -300,6 +300,8 @@ static void vecMul(const double M[3][3], const double x[3], double y[3])
 }
 
 // MD5 algorithm. See https://www.ietf.org/rfc/rfc1321.html#appendix-A.3
+// This function writes the MD5 checksum inplace at offset `checksumOffset` of `data`.
+// This function shall only be called with copy of iccColorTemplate or iccGrayTemplate, and sizeof(icc*Template).
 static void computeMD5(uint8_t * data, size_t length)
 {
     static const uint32_t sineparts[64] = {
@@ -365,7 +367,7 @@ static const double bradford[3][3] = {
 // LMS values for D50 whitepoint
 static const double lmsD50[3] = { 0.996284, 1.02043, 0.818644 };
 
-avifBool avifImageGenerateRGBICC(avifImage * image, float gamma, const float primaries[8])
+avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries[8])
 {
     uint8_t buffer[sizeof(iccColorTemplate)];
     memcpy(buffer, iccColorTemplate, sizeof(iccColorTemplate));
@@ -379,9 +381,11 @@ avifBool avifImageGenerateRGBICC(avifImage * image, float gamma, const float pri
         return AVIF_FALSE;
     }
 
-    double rgbPrimaries[3][3] = { { primaries[0], primaries[2], primaries[4] },
-                                  { primaries[1], primaries[3], primaries[5] },
-                                  { 1 - primaries[0] - primaries[1], 1 - primaries[2] - primaries[3], 1 - primaries[4] - primaries[5] } };
+    double rgbPrimaries[3][3] = {
+        { primaries[0], primaries[2], primaries[4] },
+        { primaries[1], primaries[3], primaries[5] },
+        { 1.0 - primaries[0] - primaries[1], 1.0 - primaries[2] - primaries[3], 1.0 - primaries[4] - primaries[5] }
+    };
 
     double rgbPrimariesInv[3][3];
     if (!matInv(rgbPrimaries, rgbPrimariesInv)) {
@@ -440,13 +444,13 @@ avifBool avifImageGenerateRGBICC(avifImage * image, float gamma, const float pri
     }
 
     computeMD5(buffer, sizeof(iccColorTemplate));
-    avifRWDataRealloc(&image->icc, iccColorLength);
-    memcpy(image->icc.data, buffer, iccColorLength);
+    avifRWDataRealloc(icc, iccColorLength);
+    memcpy(icc->data, buffer, iccColorLength);
 
     return AVIF_TRUE;
 }
 
-avifBool avifImageGenerateGrayICC(avifImage * image, float gamma, const float white[2])
+avifBool avifGenerateGrayICC(avifRWData * icc, float gamma, const float white[2])
 {
     uint8_t buffer[sizeof(iccGrayTemplate)];
     memcpy(buffer, iccGrayTemplate, sizeof(iccGrayTemplate));
@@ -465,8 +469,8 @@ avifBool avifImageGenerateGrayICC(avifImage * image, float gamma, const float wh
     }
 
     computeMD5(buffer, sizeof(iccGrayTemplate));
-    avifRWDataRealloc(&image->icc, iccGrayLength);
-    memcpy(image->icc.data, buffer, iccGrayLength);
+    avifRWDataRealloc(icc, iccGrayLength);
+    memcpy(icc->data, buffer, iccGrayLength);
 
     return AVIF_TRUE;
 }

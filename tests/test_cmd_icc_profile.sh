@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 #
-# tests for command lines (lossless)
+# tests for command lines (icc profile)
 
 # Very verbose but useful for debugging.
 set -ex
@@ -42,8 +42,11 @@ AVIFDEC="${BINARY_DIR}/avifdec"
 ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Input file paths.
-INPUT_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-red-green-swap.png"
-REFERENCE_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-red-green-swap-reference.png"
+INPUT_COLOR_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-red-green-swap.png"
+REFERENCE_COLOR_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-red-green-swap-reference.png"
+INPUT_GRAY_PNG="${TESTDATA_DIR}/kodim03_grayscale_gamma1.6.png"
+REFERENCE_GRAY_PNG="${TESTDATA_DIR}/kodim03_grayscale_gamma1.6-reference.png"
+SRGB_ICC="${TESTDATA_DIR}/sRGB2014.icc"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_profile_encoded.avif"
 DECODED_FILE="avif_test_cmd_profile_decoded_sRGB.png"
@@ -57,20 +60,24 @@ cleanup() {
 trap cleanup EXIT
 
 pushd ${TMP_DIR}
-  "${AVIFENC}" -s 8 -l "${INPUT_PNG}" -o "${ENCODED_FILE}"
-
-  # We use third-party tool (libvips) to independently check the validity
-  # of our generated ICC profile
-  if ! command -v vips &> /dev/null
+  # We use third-party tool (ImageMagick) to independently check
+  # our generated ICC profile is valid and correct.
+  if ! command -v convert &> /dev/null
   then
+    echo Missing ImageMagick, test skipped
     touch "${DECODED_FILE}"
     exit 0
   fi
 
-  vips icc_transform "${ENCODED_FILE}" "${DECODED_FILE}" sRGB
+  "${AVIFENC}" -s 8 -l "${INPUT_COLOR_PNG}" -o "${ENCODED_FILE}"
+  convert "${ENCODED_FILE}" -profile "${SRGB_ICC}" "${DECODED_FILE}"
 
   # PSNR test. Different CMMs resulted in slightly different outputs.
-  "${ARE_IMAGES_EQUAL}" "${REFERENCE_PNG}" "${DECODED_FILE}" 0 50
+  "${ARE_IMAGES_EQUAL}" "${REFERENCE_COLOR_PNG}" "${DECODED_FILE}" 0 50
+
+  "${AVIFENC}" -s 8 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"
+  convert "${ENCODED_FILE}" -profile "${SRGB_ICC}" "${DECODED_FILE}"
+  "${ARE_IMAGES_EQUAL}" "${REFERENCE_GRAY_PNG}" "${DECODED_FILE}" 0 45
 popd
 
 exit 0

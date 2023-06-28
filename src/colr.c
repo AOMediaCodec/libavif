@@ -86,6 +86,19 @@ avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, 
     }
 }
 
+avifTransferCharacteristics avifTransferCharacteristicsFindWithGamma(float gamma)
+{
+    if (matchesTo3RoundedPlaces(gamma, 2.2f)) {
+        return AVIF_TRANSFER_CHARACTERISTICS_BT470M;
+    } else if (matchesTo3RoundedPlaces(gamma, 1.0f)) {
+        return AVIF_TRANSFER_CHARACTERISTICS_LINEAR;
+    } else if (matchesTo3RoundedPlaces(gamma, 2.8f)) {
+        return AVIF_TRANSFER_CHARACTERISTICS_BT470BG;
+    }
+
+    return AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN;
+}
+
 struct avifMatrixCoefficientsTable
 {
     avifMatrixCoefficients matrixCoefficientsEnum;

@@ -43,10 +43,10 @@ jobs:
       run: |
         echo "deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
         sudo apt-get update
-        sudo apt-get install libaom-dev libdav1d-dev libyuv-dev libvips-tools
+        sudo apt-get install libaom-dev libdav1d-dev libyuv-dev imagemagick
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
-      run: brew install aom dav1d
+      run: brew install aom dav1d imagemagick
       # TODO(yguyon): Install libyuv (not available with brew).
 
       # `sudo apt-get install googletest libgtest-dev` leads to the following:

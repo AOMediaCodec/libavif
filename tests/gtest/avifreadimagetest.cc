@@ -7,6 +7,7 @@
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
+#include "iccmaker.h"
 
 namespace libavif {
 namespace {
@@ -88,8 +89,8 @@ TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
   EXPECT_EQ(image->alphaPlane, nullptr);
 }
 
-constexpr size_t colorProfileSize = 376;
-constexpr size_t grayProfileSize = 275;
+constexpr size_t kColorProfileSize = 376;
+constexpr size_t kGrayProfileSize = 275;
 
 // Verify we can read a color PNG file tagged as gamma 2.2 through gAMA chunk,
 // and set transfer characteristics correctly.
@@ -117,15 +118,16 @@ TEST(PngTest, ColorGamma16) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a color profile
-  EXPECT_EQ(image->icc.size, colorProfileSize);
+  EXPECT_EQ(image->icc.size, kColorProfileSize);
 
-  // TODO: more verification on the generated profile
+  // Test of generated profile is done in test_cmd_icc_profile
 }
 
 // Verify we can read a gray PNG file tagged as gamma 2.2 through gAMA chunk,
 // and set transfer characteristics correctly.
 TEST(PngTest, GrayGamma22) {
-  const auto image = testutil::ReadImage(data_path, "ffffff-gamma2.2.png");
+  const auto image = testutil::ReadImage(data_path, "ffffff-gamma2.2.png",
+                                         AVIF_PIXEL_FORMAT_YUV400);
   ASSERT_NE(image, nullptr);
 
   // gamma 2.2 should match BT470M
@@ -139,7 +141,8 @@ TEST(PngTest, GrayGamma22) {
 // Verify we can read a gray PNG file tagged as gamma 1.6 through gAMA chunk,
 // and generate a gray profile for it.
 TEST(PngTest, GrayGamma16) {
-  const auto image = testutil::ReadImage(data_path, "ffffff-gamma1.6.png");
+  const auto image = testutil::ReadImage(data_path, "ffffff-gamma1.6.png",
+                                         AVIF_PIXEL_FORMAT_YUV400);
   ASSERT_NE(image, nullptr);
 
   // if ICC profile generated, CP and TC should be set to unspecified
@@ -148,9 +151,9 @@ TEST(PngTest, GrayGamma16) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a gray profile
-  EXPECT_EQ(image->icc.size, grayProfileSize);
+  EXPECT_EQ(image->icc.size, kGrayProfileSize);
 
-  // TODO: more verification on the generated profile
+  // Test of generated profile is done in test_cmd_icc_profile
 }
 
 // Verify we can read a color PNG file tagged as sRGB through sRGB chunk,
@@ -215,9 +218,46 @@ TEST(PngTest, BT709SwappedGamma22) {
             AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
 
   // should generate a color profile
-  EXPECT_EQ(image->icc.size, colorProfileSize);
+  EXPECT_EQ(image->icc.size, kColorProfileSize);
 
-  // TODO: more verification on the generated profile
+  // Test of generated profile is done in test_cmd_icc_profile
+}
+
+constexpr size_t kChecksumOffset = 0x54;
+
+// Verify we wrote correct hash in generated ICC profile.
+TEST(PngTest, GeneratedICCHash) {
+  float primariesCoords[8];
+  avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primariesCoords);
+
+  testutil::AvifRwData icc;
+  EXPECT_EQ(avifGenerateRGBICC(&icc, 2.2f, primariesCoords), AVIF_TRUE);
+  // Steps to generate this checksum:
+  // - memset 16 bytes starting from icc.data + kChecksumOffset to 0
+  // - write `icc` to file
+  // - run `md5sum` with the written file
+  const uint8_t expectedChecksumRGB[] = {
+      // 89b06c4cc611c3110c022e06e6a0f81b
+      0x89, 0xb0, 0x6c, 0x4c, 0xc6, 0x11, 0xc3, 0x11,
+      0x0c, 0x02, 0x2e, 0x06, 0xe6, 0xa0, 0xf8, 0x1b,
+  };
+  EXPECT_EQ(memcmp(icc.data + kChecksumOffset, expectedChecksumRGB,
+                   sizeof(expectedChecksumRGB)),
+            0);
+
+  EXPECT_EQ(avifGenerateGrayICC(&icc, 2.2f, primariesCoords), AVIF_TRUE);
+  // Steps to generate this checksum:
+  // - memset 16 bytes starting from icc.data + kChecksumOffset to 0
+  // - write `icc` to file
+  // - run `md5sum` with the written file
+  const uint8_t expectedChecksumGray[] = {
+      // 7610e64f148ebe4d00cafa56cf45aea0
+      0x76, 0x10, 0xe6, 0x4f, 0x14, 0x8e, 0xbe, 0x4d,
+      0x00, 0xca, 0xfa, 0x56, 0xcf, 0x45, 0xae, 0xa0,
+  };
+  EXPECT_EQ(memcmp(icc.data + kChecksumOffset, expectedChecksumGray,
+                   sizeof(expectedChecksumGray)),
+            0);
 }
 
 //------------------------------------------------------------------------------

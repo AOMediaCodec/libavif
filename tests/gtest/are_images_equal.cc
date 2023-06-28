@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     decoded[i]->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
     if (avifReadImage(argv[i + 1], requestedFormat, kRequestedDepth,
                       AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                      /*ignoreICC=*/AVIF_FALSE, /*ignoreExif=*/AVIF_FALSE,
+                      /*ignoreColorProfile==*/AVIF_FALSE, /*ignoreExif=*/AVIF_FALSE,
                       /*ignoreXMP=*/AVIF_FALSE, decoded[i].get(), &depth[i],
                       nullptr, nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
@@ -46,9 +46,11 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  bool ignore_alpha = std::stoi(argv[3]) != 0;
+
   if (argc == 4) {
     if (!libavif::testutil::AreImagesEqual(*decoded[0], *decoded[1],
-                                           std::stoi(argv[3]) != 0)) {
+                                           ignore_alpha)) {
       std::cerr << "Images " << argv[1] << " and " << argv[2]
                 << " are different." << std::endl;
       return 1;
@@ -56,15 +58,15 @@ int main(int argc, char** argv) {
     std::cout << "Images " << argv[1] << " and " << argv[2] << " are identical."
               << std::endl;
   } else {
-    if (libavif::testutil::GetPsnr(*decoded[0], *decoded[1],
-                                   std::stoi(argv[3]) != 0) <
-        std::stod(argv[4])) {
-      std::cerr << "Images " << argv[1] << " and " << argv[2]
-                << " are not similar." << std::endl;
+    auto psnr =
+        libavif::testutil::GetPsnr(*decoded[0], *decoded[1], ignore_alpha);
+    if (psnr < std::stod(argv[4])) {
+      std::cerr << "PSNR: " << psnr << ", images " << argv[1] << " and "
+                << argv[2] << " are not similar." << std::endl;
       return 1;
     }
-    std::cout << "Images " << argv[1] << " and " << argv[2] << " are similar."
-              << std::endl;
+    std::cout << "PSNR: " << psnr << ", images " << argv[1] << " and "
+              << argv[2] << " are similar." << std::endl;
   }
 
   return 0;

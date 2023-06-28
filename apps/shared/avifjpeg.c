@@ -285,7 +285,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifPixelFormat requestedFormat,
                       uint32_t requestedDepth,
                       avifChromaDownsampling chromaDownsampling,
-                      avifBool ignoreProfile,
+                      avifBool ignoreColorProfile,
                       avifBool ignoreExif,
                       avifBool ignoreXMP)
 {
@@ -319,13 +319,13 @@ avifBool avifJPEGRead(const char * inputFilename,
     if (!ignoreExif || !ignoreXMP) {
         jpeg_save_markers(&cinfo, JPEG_APP0 + 1, /*length_limit=*/0xFFFF); // Exif/XMP
     }
-    if (!ignoreProfile) {
+    if (!ignoreColorProfile) {
         setup_read_icc_profile(&cinfo);
     }
     jpeg_stdio_src(&cinfo, f);
     jpeg_read_header(&cinfo, TRUE);
 
-    if (!ignoreProfile) {
+    if (!ignoreColorProfile) {
         uint8_t * iccDataTmp;
         unsigned int iccDataLen;
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {

@@ -44,6 +44,25 @@ It is of color type 3 (PNG_COLOR_TYPE_PALETTE) and has a tRNS chunk.
 
 License: released by the Eastman Kodak Company for unrestricted usage
 
+#### File [kodim03_grayscale_gamma1.6.png](kodim03_grayscale_gamma1.6.png)
+
+![](kodim03_grayscale_gamma1.6.png)
+
+License: released by the Eastman Kodak Company for unrestricted usage
+
+It is [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif) converted to
+grayscale and tagged as Gamma 1.6 gAMA PNG chunk.
+
+#### File [kodim03_grayscale_gamma1.6-reference.png](kodim03_grayscale_gamma1.6-reference.png)
+
+![](kodim03_grayscale_gamma1.6-reference.png)
+
+License: released by the Eastman Kodak Company for unrestricted usage
+
+It is [kodim03_grayscale_gamma1.6.png](kodim03_grayscale_gamma1.6.png)
+converted into sRGB colorspace by Chrome using "Capture Node Screenshot"
+in DevTools.
+
 #### File [kodim23_yuv420_8bpc.avif](io/kodim23_yuv420_8bpc.avif)
 
 ![](io/kodim23_yuv420_8bpc.avif)
@@ -219,7 +238,7 @@ Source: Encoded from `paris_icc_exif_xmp.png` using `avifenc -s 10` at commit ed
 
 ![](ffffcc-gamma1.6.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma16.html.
@@ -230,7 +249,7 @@ It's a color image tagged as gamma 1.6.
 
 ![](ffffcc-gamma2.2.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma22.html.
@@ -241,7 +260,7 @@ It's a color image tagged as gamma 2.2.
 
 ![](ffffff-gamma1.6.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma16.html.
@@ -252,7 +271,7 @@ It's a grayscale image tagged as gamma 1.6.
 
 ![](ffffff-gamma2.2.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma22.html.
@@ -263,7 +282,7 @@ It's a grayscale image tagged as gamma 2.2.
 
 ![](ffffcc-srgb.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-sRGB.html.
@@ -274,7 +293,7 @@ It's a color image tagged as sRGB.
 
 ![](ArcTriomphe-cHRM-orig.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/png-colortest.html.
@@ -285,7 +304,7 @@ It's a image tagged as gamma 2.2 and BT709 primaries.
 
 ![](ArcTriomphe-cHRM-red-green-swap.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/png-colortest.html.
@@ -296,7 +315,7 @@ It's a image tagged as gamma 2.2 and BT709 primaries but red and green swapped.
 
 ![](ArcTriomphe-cHRM-red-green-swap-reference.png)
 
-License: Copyright © 2000-2005 Greg Roelofs.
+License: Creative Commons Attribution-NonCommercial 2.5 License.
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/png-colortest.html.
@@ -342,3 +361,11 @@ Box structure of the items in this file:
    |       |
 [alpha] [alpha]
 ```
+
+# Other Test Files
+
+### File [sRGB2014.icc](sRGB2014.icc)
+
+License: [Copyright International Color Consortium, 2015](https://www.color.org/profiles2.xalter#license)
+
+Source: https://www.color.org/srgbprofiles.xalter#v2
