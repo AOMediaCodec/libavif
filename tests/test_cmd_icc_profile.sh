@@ -48,13 +48,14 @@ INPUT_GRAY_PNG="${TESTDATA_DIR}/kodim03_grayscale_gamma1.6.png"
 REFERENCE_GRAY_PNG="${TESTDATA_DIR}/kodim03_grayscale_gamma1.6-reference.png"
 SRGB_ICC="${TESTDATA_DIR}/sRGB2014.icc"
 # Output file names.
-ENCODED_FILE="avif_test_cmd_profile_encoded.avif"
-DECODED_FILE="avif_test_cmd_profile_decoded_sRGB.png"
+ENCODED_FILE="avif_test_cmd_icc_profile_encoded.avif"
+DECODED_FILE="avif_test_cmd_icc_profile_decoded.png"
+CORRECTED_FILE="avif_test_cmd_icc_profile_corrected.png"
 
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${DECODED_FILE}"
+    rm -- "${ENCODED_FILE}" "${DECODED_FILE}" "${CORRECTED_FILE}"
   popd
 }
 trap cleanup EXIT
@@ -70,14 +71,18 @@ pushd ${TMP_DIR}
   fi
 
   "${AVIFENC}" -s 8 -l "${INPUT_COLOR_PNG}" -o "${ENCODED_FILE}"
-  convert "${ENCODED_FILE}" -profile "${SRGB_ICC}" "${DECODED_FILE}"
+  # Old version of ImageMagick may not support reading ICC from AVIF.
+  # Decode to PNG using avifdec first.
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+  convert "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
 
   # PSNR test. Different CMMs resulted in slightly different outputs.
-  "${ARE_IMAGES_EQUAL}" "${REFERENCE_COLOR_PNG}" "${DECODED_FILE}" 0 50
+  "${ARE_IMAGES_EQUAL}" "${REFERENCE_COLOR_PNG}" "${CORRECTED_FILE}" 0 50
 
   "${AVIFENC}" -s 8 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"
-  convert "${ENCODED_FILE}" -profile "${SRGB_ICC}" "${DECODED_FILE}"
-  "${ARE_IMAGES_EQUAL}" "${REFERENCE_GRAY_PNG}" "${DECODED_FILE}" 0 45
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+  convert "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
+  "${ARE_IMAGES_EQUAL}" "${REFERENCE_GRAY_PNG}" "${CORRECTED_FILE}" 0 45
 popd
 
 exit 0
