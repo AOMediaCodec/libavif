@@ -63,10 +63,17 @@ trap cleanup EXIT
 pushd ${TMP_DIR}
   # We use third-party tool (ImageMagick) to independently check
   # our generated ICC profile is valid and correct.
-  if ! command -v convert &> /dev/null
+  if command -v magick &> /dev/null
   then
+    IMAGEMAGICK="magick"
+  elif command -v convert &> /dev/null
+  then
+    IMAGEMAGICK="convert"
+  else
     echo Missing ImageMagick, test skipped
+    touch "${ENCODED_FILE}"
     touch "${DECODED_FILE}"
+    touch "${CORRECTED_FILE}"
     exit 0
   fi
 
@@ -74,14 +81,14 @@ pushd ${TMP_DIR}
   # Old version of ImageMagick may not support reading ICC from AVIF.
   # Decode to PNG using avifdec first.
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  convert "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
+  "${IMAGEMAGICK}" "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
 
   # PSNR test. Different CMMs resulted in slightly different outputs.
   "${ARE_IMAGES_EQUAL}" "${REFERENCE_COLOR_PNG}" "${CORRECTED_FILE}" 0 50
 
   "${AVIFENC}" -s 8 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  convert "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
+  "${IMAGEMAGICK}" "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
   "${ARE_IMAGES_EQUAL}" "${REFERENCE_GRAY_PNG}" "${CORRECTED_FILE}" 0 45
 popd
 

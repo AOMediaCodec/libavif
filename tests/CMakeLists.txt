@@ -238,7 +238,7 @@ if(AVIF_BUILD_APPS)
         # Only aom encoder supports AV1 lossless encoding.
         set_property(TEST test_cmd_animation PROPERTY DISABLED True)
         set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
-        set_property(TEST test_cmd_profile PROPERTY DISABLED True)
+        set_property(TEST test_cmd_icc_profile PROPERTY DISABLED True)
 
         # SVT-AV1 does not support the images with odd dimensions that are used in this test.
         if(NOT AVIF_CODEC_RAV1E)
