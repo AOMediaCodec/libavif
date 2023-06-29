@@ -12,7 +12,7 @@
 git clone --single-branch https://chromium.googlesource.com/webm/libwebp
 
 cd libwebp
-git checkout 15a91ab
+git checkout 048cfc
 
 mkdir build
 cd build

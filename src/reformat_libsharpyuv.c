@@ -16,50 +16,50 @@ avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * 
     SharpYuvConversionMatrix matrix;
     // Fills in 'matrix' for the given YUVColorSpace.
     SharpYuvComputeConversionMatrix(&color_space, &matrix);
-#if SHARPYUV_VERSION >= SHARPYUV_MAKE_VERSION(0, 3, 0)
+#if SHARPYUV_VERSION >= SHARPYUV_MAKE_VERSION(0, 4, 0)
     SharpYuvOptions options;
-    options.yuv_matrix = &matrix;
+    SharpYuvOptionsInit(&matrix, &options);
     if (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-        // Set to SRGB for backward compatibility.
+        // Set to sRGB for backward compatibility.
         options.transfer_type = kSharpYuvTransferFunctionSrgb;
     } else {
         options.transfer_type = (SharpYuvTransferFunctionType)image->transferCharacteristics;
     }
-    if (!SharpYuvConvertWithOptions(&rgb->pixels[state->rgbOffsetBytesR],
-                                    &rgb->pixels[state->rgbOffsetBytesG],
-                                    &rgb->pixels[state->rgbOffsetBytesB],
-                                    state->rgbPixelBytes,
-                                    rgb->rowBytes,
-                                    rgb->depth,
-                                    image->yuvPlanes[AVIF_CHAN_Y],
-                                    image->yuvRowBytes[AVIF_CHAN_Y],
-                                    image->yuvPlanes[AVIF_CHAN_U],
-                                    image->yuvRowBytes[AVIF_CHAN_U],
-                                    image->yuvPlanes[AVIF_CHAN_V],
-                                    image->yuvRowBytes[AVIF_CHAN_V],
-                                    image->depth,
-                                    rgb->width,
-                                    rgb->height,
-                                    &options))
+    const int sharpyuvRes = SharpYuvConvertWithOptions(&rgb->pixels[state->rgbOffsetBytesR],
+                                                       &rgb->pixels[state->rgbOffsetBytesG],
+                                                       &rgb->pixels[state->rgbOffsetBytesB],
+                                                       state->rgbPixelBytes,
+                                                       rgb->rowBytes,
+                                                       rgb->depth,
+                                                       image->yuvPlanes[AVIF_CHAN_Y],
+                                                       image->yuvRowBytes[AVIF_CHAN_Y],
+                                                       image->yuvPlanes[AVIF_CHAN_U],
+                                                       image->yuvRowBytes[AVIF_CHAN_U],
+                                                       image->yuvPlanes[AVIF_CHAN_V],
+                                                       image->yuvRowBytes[AVIF_CHAN_V],
+                                                       image->depth,
+                                                       rgb->width,
+                                                       rgb->height,
+                                                       &options);
 #else
-    if (!SharpYuvConvert(&rgb->pixels[state->rgbOffsetBytesR],
-                         &rgb->pixels[state->rgbOffsetBytesG],
-                         &rgb->pixels[state->rgbOffsetBytesB],
-                         state->rgbPixelBytes,
-                         rgb->rowBytes,
-                         rgb->depth,
-                         image->yuvPlanes[AVIF_CHAN_Y],
-                         image->yuvRowBytes[AVIF_CHAN_Y],
-                         image->yuvPlanes[AVIF_CHAN_U],
-                         image->yuvRowBytes[AVIF_CHAN_U],
-                         image->yuvPlanes[AVIF_CHAN_V],
-                         image->yuvRowBytes[AVIF_CHAN_V],
-                         image->depth,
-                         rgb->width,
-                         rgb->height,
-                         &matrix))
+    const int sharpyuvRes = SharpYuvConvert(&rgb->pixels[state->rgbOffsetBytesR],
+                                            &rgb->pixels[state->rgbOffsetBytesG],
+                                            &rgb->pixels[state->rgbOffsetBytesB],
+                                            state->rgbPixelBytes,
+                                            rgb->rowBytes,
+                                            rgb->depth,
+                                            image->yuvPlanes[AVIF_CHAN_Y],
+                                            image->yuvRowBytes[AVIF_CHAN_Y],
+                                            image->yuvPlanes[AVIF_CHAN_U],
+                                            image->yuvRowBytes[AVIF_CHAN_U],
+                                            image->yuvPlanes[AVIF_CHAN_V],
+                                            image->yuvRowBytes[AVIF_CHAN_V],
+                                            image->depth,
+                                            rgb->width,
+                                            rgb->height,
+                                            &matrix);
 #endif
-    {
+    if (!sharpyuvRes) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
