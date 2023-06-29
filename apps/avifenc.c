@@ -78,7 +78,7 @@ static void syntaxLong(void)
     printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
     printf("Standard options:\n");
     printf("    -h,--help                         : Show short syntax help\n");
-    printf("    --longhelp                        : Show long syntax help\n");
+    printf("    --longhelp                        : Show long syntax help (this page)\n");
     printf("    -V,--version                      : Show the version number\n");
     printf("\n");
     printf("Basic options:\n");
