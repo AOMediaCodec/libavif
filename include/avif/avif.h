@@ -322,7 +322,7 @@ typedef uint16_t avifTransferCharacteristics; // AVIF_TRANSFER_CHARACTERISTICS_*
 // If the given transfer characteristics can be expressed with a simple gamma value, sets 'gamma'
 // to that value and returns AVIF_RESULT_OK. Returns an error otherwise.
 AVIF_API avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, float * gamma);
-AVIF_API avifTransferCharacteristics avifTransferCharacteristicsFindWithGamma(float gamma);
+AVIF_API avifTransferCharacteristics avifTransferCharacteristicsFindByGamma(float gamma);
 
 enum
 {

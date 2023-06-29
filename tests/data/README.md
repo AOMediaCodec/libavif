@@ -238,7 +238,7 @@ Source: Encoded from `paris_icc_exif_xmp.png` using `avifenc -s 10` at commit ed
 
 ![](ffffcc-gamma1.6.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma16.html.
@@ -249,7 +249,7 @@ It's a color image tagged as gamma 1.6.
 
 ![](ffffcc-gamma2.2.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma22.html.
@@ -260,7 +260,7 @@ It's a color image tagged as gamma 2.2.
 
 ![](ffffff-gamma1.6.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma16.html.
@@ -271,7 +271,7 @@ It's a grayscale image tagged as gamma 1.6.
 
 ![](ffffff-gamma2.2.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-gamma22.html.
@@ -282,7 +282,7 @@ It's a grayscale image tagged as gamma 2.2.
 
 ![](ffffcc-srgb.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/colorcube/colorcube-pngs-sRGB.html.
@@ -293,7 +293,7 @@ It's a color image tagged as sRGB.
 
 ![](ArcTriomphe-cHRM-orig.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/png-colortest.html.
@@ -304,7 +304,7 @@ It's a image tagged as gamma 2.2 and BT709 primaries.
 
 ![](ArcTriomphe-cHRM-red-green-swap.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/png-colortest.html.
@@ -315,7 +315,7 @@ It's a image tagged as gamma 2.2 and BT709 primaries but red and green swapped.
 
 ![](ArcTriomphe-cHRM-red-green-swap-reference.png)
 
-License: Creative Commons Attribution-NonCommercial 2.5 License.
+License: Creative Commons Attribution-NonCommercial 2.5 License
 
 Source: Picture from the libpng test page
 http://www.libpng.org/pub/png/png-colortest.html.

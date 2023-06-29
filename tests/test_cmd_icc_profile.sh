@@ -83,7 +83,7 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${IMAGEMAGICK}" "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
 
-  # PSNR test. Different CMMs resulted in slightly different outputs.
+  # PSNR test. Different Color Management Modules (CMMs) resulted in slightly different outputs.
   "${ARE_IMAGES_EQUAL}" "${REFERENCE_COLOR_PNG}" "${CORRECTED_FILE}" 0 50
 
   "${AVIFENC}" -s 8 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"

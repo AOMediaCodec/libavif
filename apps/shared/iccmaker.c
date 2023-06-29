@@ -300,8 +300,8 @@ static void vecMul(const double M[3][3], const double x[3], double y[3])
 }
 
 // MD5 algorithm. See https://www.ietf.org/rfc/rfc1321.html#appendix-A.3
-// This function writes the MD5 checksum inplace at offset `checksumOffset` of `data`.
-// This function shall only be called with copy of iccColorTemplate or iccGrayTemplate, and sizeof(icc*Template).
+// This function writes the MD5 checksum in place at offset `checksumOffset` of `data`.
+// This function shall only be called with a copy of iccColorTemplate or iccGrayTemplate, and sizeof(icc*Template).
 static void computeMD5(uint8_t * data, size_t length)
 {
     static const uint32_t sineparts[64] = {

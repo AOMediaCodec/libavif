@@ -302,97 +302,6 @@ avifBool avifPNGRead(const char * inputFilename,
         *outPNGDepth = imgBitDepth;
     }
 
-    if (!ignoreColorProfile) {
-        char * iccpProfileName = NULL;
-        int iccpCompression = 0;
-        unsigned char * iccpData = NULL;
-        png_uint_32 iccpDataLen = 0;
-        int srgbIntent;
-
-        // PNG specification (Third Edition) Section 11.3.2:
-        // The sRGB and iCCP chunks should not both appear.
-        // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
-        // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
-        if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-            avifImageSetProfileICC(avif, iccpData, iccpDataLen);
-        } else if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
-            // srgbIntent ignored
-            avif->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
-            avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-        } else {
-            avifBool needToGenerateICC = AVIF_FALSE;
-            double gamma;
-            double wX, wY, rX, rY, gX, gY, bX, bY;
-            float primaries[8];
-            if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA) {
-                gamma = 1.0 / gamma;
-                avif->transferCharacteristics = avifTransferCharacteristicsFindWithGamma((float)gamma);
-                if (avif->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN) {
-                    needToGenerateICC = AVIF_TRUE;
-                }
-            } else {
-                // No gamma information in file. Assume the default value.
-                // PNG specification (Third Edition) Section 13.13:
-                // A display exponent of 2.2 should be used unless detailed calibration measurements
-                // are available for the particular CRT used.
-                gamma = 2.2;
-            }
-
-            if (png_get_cHRM(png, info, &wX, &wY, &rX, &rY, &gX, &gY, &bX, &bY) == PNG_INFO_cHRM) {
-                primaries[0] = (float)rX;
-                primaries[1] = (float)rY;
-                primaries[2] = (float)gX;
-                primaries[3] = (float)gY;
-                primaries[4] = (float)bX;
-                primaries[5] = (float)bY;
-                primaries[6] = (float)wX;
-                primaries[7] = (float)wY;
-                avif->colorPrimaries = avifColorPrimariesFind(primaries, NULL);
-                if (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_UNKNOWN) {
-                    needToGenerateICC = AVIF_TRUE;
-                }
-            } else {
-                // No chromaticity information in file. Assume the default value.
-                // PNG specification (Third Edition) Section 13.14:
-                // PNG decoders may wish to do this for PNG datastreams with no cHRM chunk.
-                // In this case, a reasonable default would be the CCIR 709 primaries [ITU-R_BT.709].
-                avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primaries);
-            }
-
-            if (needToGenerateICC) {
-                avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-                avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-                fprintf(stderr,
-                        "INFO: legacy color space information not matching any CICP value found in file %s. libavif is generating an ICC profile for it."
-                        "Use --ignore-profile to ignore color management information instead (may affect the colors of the encoded AVIF image).\n",
-                        inputFilename);
-
-                avifBool generateICCResult = AVIF_FALSE;
-                if (requestedFormat == AVIF_PIXEL_FORMAT_YUV400) {
-                    generateICCResult = avifGenerateGrayICC(&avif->icc, (float)gamma, &primaries[6]);
-                } else {
-                    generateICCResult = avifGenerateRGBICC(&avif->icc, (float)gamma, primaries);
-                }
-
-                if (!generateICCResult) {
-                    fprintf(stderr,
-                            "WARNING: libavif could not generate an ICC profile for file %s. It may be caused by invalid values in the color space information. The encoded AVIF image's colors may be affected.\n",
-                            inputFilename);
-                }
-            }
-        }
-        // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
-        // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
-    }
-
-    png_read_update_info(png, info);
-
-    const int numChannels = png_get_channels(png, info);
-    if ((numChannels != 3) && (numChannels != 4)) {
-        fprintf(stderr, "png_get_channels() should return 3 or 4 but returns %d.\n", numChannels);
-        goto cleanup;
-    }
-
     avif->width = rawWidth;
     avif->height = rawHeight;
     avif->yuvFormat = requestedFormat;
@@ -436,6 +345,98 @@ avifBool avifPNGRead(const char * inputFilename,
         avif->depth = 10;
     }
 #endif
+
+    if (!ignoreColorProfile) {
+        char * iccpProfileName = NULL;
+        int iccpCompression = 0;
+        unsigned char * iccpData = NULL;
+        png_uint_32 iccpDataLen = 0;
+        int srgbIntent;
+
+        // PNG specification 1.2 Section 4.2.2:
+        // The sRGB and iCCP chunks should not both appear.
+        //
+        // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
+        // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
+        if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+            avifImageSetProfileICC(avif, iccpData, iccpDataLen);
+        } else if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
+            // srgbIntent ignored
+            avif->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+            avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+        } else {
+            avifBool needToGenerateICC = AVIF_FALSE;
+            double gamma;
+            double wX, wY, rX, rY, gX, gY, bX, bY;
+            float primaries[8];
+            if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA) {
+                gamma = 1.0 / gamma;
+                avif->transferCharacteristics = avifTransferCharacteristicsFindByGamma((float)gamma);
+                if (avif->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN) {
+                    needToGenerateICC = AVIF_TRUE;
+                }
+            } else {
+                // No gamma information in file. Assume the default value.
+                // PNG specification 1.2 Section 10.5:
+                // Assume a CRT exponent of 2.2 unless detailed calibration measurements
+                // of this particular CRT are available.
+                gamma = 2.2;
+            }
+
+            if (png_get_cHRM(png, info, &wX, &wY, &rX, &rY, &gX, &gY, &bX, &bY) == PNG_INFO_cHRM) {
+                primaries[0] = (float)rX;
+                primaries[1] = (float)rY;
+                primaries[2] = (float)gX;
+                primaries[3] = (float)gY;
+                primaries[4] = (float)bX;
+                primaries[5] = (float)bY;
+                primaries[6] = (float)wX;
+                primaries[7] = (float)wY;
+                avif->colorPrimaries = avifColorPrimariesFind(primaries, NULL);
+                if (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_UNKNOWN) {
+                    needToGenerateICC = AVIF_TRUE;
+                }
+            } else {
+                // No chromaticity information in file. Assume the default value.
+                // PNG specification 1.2 Section 10.6:
+                // Decoders may wish to do this for PNG files with no cHRM chunk.
+                // In that case, a reasonable default would be the CCIR 709 primaries [ITU-R-BT709].
+                avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primaries);
+            }
+
+            if (needToGenerateICC) {
+                avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+                avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+                fprintf(stderr,
+                        "INFO: legacy color space information not matching any CICP value found in file %s. libavif is generating an ICC profile for it."
+                        "Use --ignore-profile to ignore color management information instead (may affect the colors of the encoded AVIF image).\n",
+                        inputFilename);
+
+                avifBool generateICCResult = AVIF_FALSE;
+                if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                    generateICCResult = avifGenerateGrayICC(&avif->icc, (float)gamma, &primaries[6]);
+                } else {
+                    generateICCResult = avifGenerateRGBICC(&avif->icc, (float)gamma, primaries);
+                }
+
+                if (!generateICCResult) {
+                    fprintf(stderr,
+                            "WARNING: libavif could not generate an ICC profile for file %s. It may be caused by invalid values in the color space information. The encoded AVIF image's colors may be affected.\n",
+                            inputFilename);
+                }
+            }
+        }
+        // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
+        // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
+    }
+
+    png_read_update_info(png, info);
+
+    const int numChannels = png_get_channels(png, info);
+    if ((numChannels != 3) && (numChannels != 4)) {
+        fprintf(stderr, "png_get_channels() should return 3 or 4 but returns %d.\n", numChannels);
+        goto cleanup;
+    }
 
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;

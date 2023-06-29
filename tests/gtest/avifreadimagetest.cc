@@ -120,7 +120,7 @@ TEST(PngTest, ColorGamma16) {
   // should generate a color profile
   EXPECT_EQ(image->icc.size, kColorProfileSize);
 
-  // Test of generated profile is done in test_cmd_icc_profile
+  // Generated profile is tested in test_cmd_icc_profile.sh
 }
 
 // Verify we can read a gray PNG file tagged as gamma 2.2 through gAMA chunk,
@@ -153,7 +153,7 @@ TEST(PngTest, GrayGamma16) {
   // should generate a gray profile
   EXPECT_EQ(image->icc.size, kGrayProfileSize);
 
-  // Test of generated profile is done in test_cmd_icc_profile
+  // Generated profile is tested in test_cmd_icc_profile.sh
 }
 
 // Verify we can read a color PNG file tagged as sRGB through sRGB chunk,
@@ -220,7 +220,7 @@ TEST(PngTest, BT709SwappedGamma22) {
   // should generate a color profile
   EXPECT_EQ(image->icc.size, kColorProfileSize);
 
-  // Test of generated profile is done in test_cmd_icc_profile
+  // Generated profile is tested in test_cmd_icc_profile.sh
 }
 
 constexpr size_t kChecksumOffset = 0x54;

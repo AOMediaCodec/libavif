@@ -86,7 +86,7 @@ avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, 
     }
 }
 
-avifTransferCharacteristics avifTransferCharacteristicsFindWithGamma(float gamma)
+avifTransferCharacteristics avifTransferCharacteristicsFindByGamma(float gamma)
 {
     if (matchesTo3RoundedPlaces(gamma, 2.2f)) {
         return AVIF_TRANSFER_CHARACTERISTICS_BT470M;
