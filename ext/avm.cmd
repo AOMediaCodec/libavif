@@ -13,7 +13,7 @@ git clone -b research-v4.0.0 --depth 1 https://gitlab.com/AOMediaCodec/avm.git
 cd avm
 
 : # The following fix avoids errors such as "libaom.a: in function `write_frame_hash': bitstream.c: undefined reference to `MD5Init'"
-: # TODO(yguyon): Fix in avm and remove from here
+: # TODO(yguyon): Remove at next version bump. It was fixed in https://gitlab.com/AOMediaCodec/avm/-/merge_requests/752.
 sed 's-"${AOM_ROOT}/av1/encoder/dwt.h"-"${AOM_ROOT}/av1/encoder/dwt.h"\n  "${AOM_ROOT}/common/md5_utils.c"\n  "${AOM_ROOT}/common/md5_utils.h"\n  "${AOM_ROOT}/common/rawenc.c"\n  "${AOM_ROOT}/common/rawenc.h"-g' av1/av1.cmake > av1/av1.cmake.sed
 mv av1/av1.cmake.sed av1/av1.cmake
 
