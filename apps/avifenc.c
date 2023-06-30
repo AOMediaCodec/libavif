@@ -70,15 +70,14 @@ static void syntaxShort(void)
     printf("Syntax: avifenc [options] -q quality input.[jpg|jpeg|png|y4m] output.avif\n");
     printf("where quality is between %d (worst quality) and %d (lossless).\n", AVIF_QUALITY_WORST, AVIF_QUALITY_LOSSLESS);
     printf("Typical value is 60-80.\n\n");
-    printf("Try --longhelp for an exhaustive list of advanced options.\n");
+    printf("Try -h for an exhaustive list of options.\n");
 }
 
 static void syntaxLong(void)
 {
     printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
     printf("Standard options:\n");
-    printf("    -h,--help                         : Show short syntax help\n");
-    printf("    --longhelp                        : Show long syntax help (this page)\n");
+    printf("    -h,--help                         : Show syntax help (this page)\n");
     printf("    -V,--version                      : Show the version number\n");
     printf("\n");
     printf("Basic options:\n");
@@ -1137,9 +1136,6 @@ int main(int argc, char * argv[])
             }
             break;
         } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
-            syntaxShort();
-            goto cleanup;
-        } else if (!strcmp(arg, "--longhelp")) {
             syntaxLong();
             goto cleanup;
         } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
