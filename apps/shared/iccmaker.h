@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 // Note to libavif maintainers:
-// These ICC maker functions only serve to handling legacy color space
+// These ICC maker functions only serve to handle legacy color space
 // information in PNG files, and shall not be moved to libavif itself.
 avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries[8]);
 avifBool avifGenerateGrayICC(avifRWData * icc, float gamma, const float white[2]);

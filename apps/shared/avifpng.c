@@ -298,6 +298,8 @@ avifBool avifPNGRead(const char * inputFilename,
         imgBitDepth = 16;
     }
 
+    png_read_update_info(png, info);
+
     if (outPNGDepth) {
         *outPNGDepth = imgBitDepth;
     }
@@ -408,8 +410,8 @@ avifBool avifPNGRead(const char * inputFilename,
                 avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
                 avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
                 fprintf(stderr,
-                        "INFO: legacy color space information not matching any CICP value found in file %s. libavif is generating an ICC profile for it."
-                        "Use --ignore-profile to ignore color management information instead (may affect the colors of the encoded AVIF image).\n",
+                        "INFO: legacy PNG color space information found in file %s not matching any CICP value. libavif is generating an ICC profile for it."
+                        "Use --ignore-profile to ignore color space information instead (may affect the colors of the encoded AVIF image).\n",
                         inputFilename);
 
                 avifBool generateICCResult = AVIF_FALSE;
@@ -429,8 +431,6 @@ avifBool avifPNGRead(const char * inputFilename,
         // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
         // TODO(yguyon): Also check if there is a cICp chunk (https://github.com/AOMediaCodec/libavif/pull/1065#discussion_r958534232)
     }
-
-    png_read_update_info(png, info);
 
     const int numChannels = png_get_channels(png, info);
     if ((numChannels != 3) && (numChannels != 4)) {
