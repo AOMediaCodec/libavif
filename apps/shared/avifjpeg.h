@@ -15,7 +15,7 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifPixelFormat requestedFormat,
                       uint32_t requestedDepth,
                       avifChromaDownsampling chromaDownsampling,
-                      avifBool ignoreICC,
+                      avifBool ignoreColorProfile,
                       avifBool ignoreExif,
                       avifBool ignoreXMP);
 avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling);

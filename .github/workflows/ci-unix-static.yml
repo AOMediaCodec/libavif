@@ -45,6 +45,15 @@ jobs:
         version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
     - run: pip install meson
+    - name: Install ImageMagick for testing (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        echo "deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+        sudo apt-get update
+        sudo apt-get install imagemagick
+    - name: Install ImageMagick for testing (macOS)
+      if: runner.os == 'macOS'
+      run: brew install imagemagick
     - name: Build aom
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
