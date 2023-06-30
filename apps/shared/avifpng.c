@@ -10,7 +10,6 @@
 
 #include <ctype.h>
 #include <limits.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -298,11 +297,11 @@ avifBool avifPNGRead(const char * inputFilename,
         imgBitDepth = 16;
     }
 
-    png_read_update_info(png, info);
-
     if (outPNGDepth) {
         *outPNGDepth = imgBitDepth;
     }
+
+    png_read_update_info(png, info);
 
     avif->width = rawWidth;
     avif->height = rawHeight;
