@@ -218,14 +218,14 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd_grid COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_grid.sh ${CMAKE_BINARY_DIR}
                                         ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+    add_test(NAME test_cmd_icc_profile COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_icc_profile.sh ${CMAKE_BINARY_DIR}
+                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
     add_test(NAME test_cmd_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_lossless.sh ${CMAKE_BINARY_DIR}
                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
     add_test(NAME test_cmd_metadata COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_metadata.sh ${CMAKE_BINARY_DIR}
                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_icc_profile COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_icc_profile.sh ${CMAKE_BINARY_DIR}
-                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
     add_test(NAME test_cmd_progressive COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_progressive.sh ${CMAKE_BINARY_DIR}
                                                ${CMAKE_CURRENT_SOURCE_DIR}/data
@@ -237,8 +237,8 @@ if(AVIF_BUILD_APPS)
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
         # Only aom encoder supports AV1 lossless encoding.
         set_property(TEST test_cmd_animation PROPERTY DISABLED True)
-        set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
         set_property(TEST test_cmd_icc_profile PROPERTY DISABLED True)
+        set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
 
         # SVT-AV1 does not support the images with odd dimensions that are used in this test.
         if(NOT AVIF_CODEC_RAV1E)
