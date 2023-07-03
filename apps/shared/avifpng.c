@@ -316,11 +316,11 @@ avifBool avifPNGRead(const char * inputFilename,
     const avifBool useYCgCoR = AVIF_FALSE;
 #endif
     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY || useYCgCoR) {
+        if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
+            avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+        } else if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY || useYCgCoR) {
             // Identity and YCgCo-R are only valid with YUV444.
             avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-        } else if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
-            avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         } else {
             avif->yuvFormat = AVIF_APP_DEFAULT_PIXEL_FORMAT;
         }

@@ -88,7 +88,7 @@ pushd ${TMP_DIR}
 
   "${AVIFENC}" -s 8 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${IMAGEMAGICK}" "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
+  "${IMAGEMAGICK}" "${DECODED_FILE}" -define png:color-type=2 -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
   "${ARE_IMAGES_EQUAL}" "${REFERENCE_GRAY_PNG}" "${CORRECTED_FILE}" 0 45
 popd
 
