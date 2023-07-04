@@ -32,8 +32,9 @@ testutil::AvifImagePtr ReadImageLosslessBitDepth(const std::string& path,
   if (avifReadImage(path.c_str(), AVIF_PIXEL_FORMAT_YUV444, bit_depth,
                     AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
                     /*ignoreColorProfile=*/true,
-                    /*ignoreExif=*/true, /*ignoreXMP=*/true, image.get(),
-                    &output_depth, /*sourceTiming=*/nullptr,
+                    /*ignoreExif=*/true, /*ignoreXMP=*/true,
+                    /*allowChangingCicp=*/true, image.get(), &output_depth,
+                    /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return {nullptr, nullptr};
   }
