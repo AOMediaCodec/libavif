@@ -47,6 +47,8 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: brew install aom dav1d imagemagick
+    - name: Print ImageMagick version
+      run: convert --version
       # TODO(yguyon): Install libyuv (not available with brew).
 
       # `sudo apt-get install googletest libgtest-dev` leads to the following:
