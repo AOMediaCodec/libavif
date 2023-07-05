@@ -51,6 +51,8 @@ jobs:
         version: 2.15.05
     - uses: seanmiddleditch/gha-setup-ninja@v3
     - run: pip install meson
+    - name: Print ImageMagick version
+      run: magick --version
     - name: Build aom
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
