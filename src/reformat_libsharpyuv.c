@@ -9,13 +9,13 @@
 
 avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * rgb, const avifReformatState * state)
 {
-    const SharpYuvColorSpace color_space = {
+    const SharpYuvColorSpace colorSpace = {
         state->kr, state->kb, image->depth, (state->yuvRange == AVIF_RANGE_LIMITED) ? kSharpYuvRangeLimited : kSharpYuvRangeFull
     };
 
     SharpYuvConversionMatrix matrix;
     // Fills in 'matrix' for the given YUVColorSpace.
-    SharpYuvComputeConversionMatrix(&color_space, &matrix);
+    SharpYuvComputeConversionMatrix(&colorSpace, &matrix);
 #if SHARPYUV_VERSION >= SHARPYUV_MAKE_VERSION(0, 4, 0)
     SharpYuvOptions options;
     SharpYuvOptionsInit(&matrix, &options);
@@ -58,7 +58,7 @@ avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * 
                                             rgb->width,
                                             rgb->height,
                                             &matrix);
-#endif
+#endif // SHARPYUV_VERSION >= SHARPYUV_MAKE_VERSION(0, 4, 0)
     if (!sharpyuvRes) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
@@ -75,4 +75,4 @@ avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * 
     (void)state;
     return AVIF_RESULT_NOT_IMPLEMENTED;
 }
-#endif
+#endif // defined(AVIF_LIBSHARPYUV_ENABLED)
