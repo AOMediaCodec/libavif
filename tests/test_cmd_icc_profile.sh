@@ -90,6 +90,12 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${IMAGEMAGICK}" "${DECODED_FILE}" -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
   "${ARE_IMAGES_EQUAL}" "${REFERENCE_GRAY_PNG}" "${CORRECTED_FILE}" 0 45
+
+  # Check --cicp flag works
+  "${AVIFENC}" --cicp 9/12/8 -s 8 "${INPUT_COLOR_PNG}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Color Primaries" | grep 9
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Transfer Char" | grep 12
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Matrix Coeffs" | grep 8
 popd
 
 exit 0

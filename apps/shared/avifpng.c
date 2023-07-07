@@ -412,7 +412,7 @@ avifBool avifPNGRead(const char * inputFilename,
                     avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
                     fprintf(stderr,
                             "INFO: legacy PNG color space information found in file %s not matching any CICP value. libavif is generating an ICC profile for it."
-                            "Use --ignore-profile to ignore color space information instead (may affect the colors of the encoded AVIF image).\n",
+                            " Use --ignore-profile to ignore color space information instead (may affect the colors of the encoded AVIF image).\n",
                             inputFilename);
 
                     avifBool generateICCResult = AVIF_FALSE;
@@ -424,7 +424,9 @@ avifBool avifPNGRead(const char * inputFilename,
 
                     if (!generateICCResult) {
                         fprintf(stderr,
-                                "WARNING: libavif could not generate an ICC profile for file %s. It may be caused by invalid values in the color space information. The encoded AVIF image's colors may be affected.\n",
+                                "WARNING: libavif could not generate an ICC profile for file %s. "
+                                "It may be caused by invalid values in the color space information. "
+                                "The encoded AVIF image's colors may be affected.\n",
                                 inputFilename);
                     }
                 }
