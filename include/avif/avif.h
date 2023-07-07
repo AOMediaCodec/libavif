@@ -267,7 +267,7 @@ typedef enum avifRange
 } avifRange;
 
 // ---------------------------------------------------------------------------
-// CICP enums - https://www.itu.int/rec/T-REC-H.273-201612-I/en
+// CICP enums - https://www.itu.int/rec/T-REC-H.273-201612-S/en
 
 enum
 {
