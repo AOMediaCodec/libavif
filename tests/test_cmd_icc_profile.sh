@@ -93,9 +93,9 @@ pushd ${TMP_DIR}
 
   # Check --cicp flag works
   "${AVIFENC}" --cicp 9/12/8 -s 8 "${INPUT_COLOR_PNG}" -o "${ENCODED_FILE}"
-  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Color Primaries" | grep 9
-  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Transfer Char" | grep 12
-  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Matrix Coeffs" | grep 8
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Color Primaries.* 9$"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Transfer Char.* 12$"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Matrix Coeffs.* 8$"
 popd
 
 exit 0
