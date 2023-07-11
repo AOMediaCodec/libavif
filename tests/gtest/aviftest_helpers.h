@@ -90,7 +90,7 @@ AvifImagePtr ReadImage(
     avifChromaDownsampling chroma_downsampling =
         AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
     avifBool ignore_icc = false, avifBool ignore_exif = false,
-    avifBool ignore_xmp = false);
+    avifBool ignore_xmp = false, avifBool allow_changing_cicp = true);
 // Convenient wrapper around avifPNGWrite() for debugging purposes.
 // Do not remove.
 bool WriteImage(const avifImage* image, const char* file_path);

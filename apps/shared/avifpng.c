@@ -223,6 +223,7 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifBool ignoreColorProfile,
                      avifBool ignoreExif,
                      avifBool ignoreXMP,
+                     avifBool allowChangingCicp,
                      uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
@@ -361,69 +362,73 @@ avifBool avifPNGRead(const char * inputFilename,
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
             avifImageSetProfileICC(avif, iccpData, iccpDataLen);
-        } else if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
-            // srgbIntent ignored
-            avif->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
-            avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-        } else {
-            avifBool needToGenerateICC = AVIF_FALSE;
-            double gamma;
-            double wX, wY, rX, rY, gX, gY, bX, bY;
-            float primaries[8];
-            if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA) {
-                gamma = 1.0 / gamma;
-                avif->transferCharacteristics = avifTransferCharacteristicsFindByGamma((float)gamma);
-                if (avif->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN) {
-                    needToGenerateICC = AVIF_TRUE;
-                }
+        } else if (allowChangingCicp) {
+            if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
+                // srgbIntent ignored
+                avif->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+                avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
             } else {
-                // No gamma information in file. Assume the default value.
-                // PNG specification 1.2 Section 10.5:
-                // Assume a CRT exponent of 2.2 unless detailed calibration measurements
-                // of this particular CRT are available.
-                gamma = 2.2;
-            }
-
-            if (png_get_cHRM(png, info, &wX, &wY, &rX, &rY, &gX, &gY, &bX, &bY) == PNG_INFO_cHRM) {
-                primaries[0] = (float)rX;
-                primaries[1] = (float)rY;
-                primaries[2] = (float)gX;
-                primaries[3] = (float)gY;
-                primaries[4] = (float)bX;
-                primaries[5] = (float)bY;
-                primaries[6] = (float)wX;
-                primaries[7] = (float)wY;
-                avif->colorPrimaries = avifColorPrimariesFind(primaries, NULL);
-                if (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_UNKNOWN) {
-                    needToGenerateICC = AVIF_TRUE;
-                }
-            } else {
-                // No chromaticity information in file. Assume the default value.
-                // PNG specification 1.2 Section 10.6:
-                // Decoders may wish to do this for PNG files with no cHRM chunk.
-                // In that case, a reasonable default would be the CCIR 709 primaries [ITU-R-BT709].
-                avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primaries);
-            }
-
-            if (needToGenerateICC) {
-                avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-                avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-                fprintf(stderr,
-                        "INFO: legacy PNG color space information found in file %s not matching any CICP value. libavif is generating an ICC profile for it."
-                        "Use --ignore-profile to ignore color space information instead (may affect the colors of the encoded AVIF image).\n",
-                        inputFilename);
-
-                avifBool generateICCResult = AVIF_FALSE;
-                if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
-                    generateICCResult = avifGenerateGrayICC(&avif->icc, (float)gamma, &primaries[6]);
+                avifBool needToGenerateICC = AVIF_FALSE;
+                double gamma;
+                double wX, wY, rX, rY, gX, gY, bX, bY;
+                float primaries[8];
+                if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA) {
+                    gamma = 1.0 / gamma;
+                    avif->transferCharacteristics = avifTransferCharacteristicsFindByGamma((float)gamma);
+                    if (avif->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN) {
+                        needToGenerateICC = AVIF_TRUE;
+                    }
                 } else {
-                    generateICCResult = avifGenerateRGBICC(&avif->icc, (float)gamma, primaries);
+                    // No gamma information in file. Assume the default value.
+                    // PNG specification 1.2 Section 10.5:
+                    // Assume a CRT exponent of 2.2 unless detailed calibration measurements
+                    // of this particular CRT are available.
+                    gamma = 2.2;
                 }
 
-                if (!generateICCResult) {
+                if (png_get_cHRM(png, info, &wX, &wY, &rX, &rY, &gX, &gY, &bX, &bY) == PNG_INFO_cHRM) {
+                    primaries[0] = (float)rX;
+                    primaries[1] = (float)rY;
+                    primaries[2] = (float)gX;
+                    primaries[3] = (float)gY;
+                    primaries[4] = (float)bX;
+                    primaries[5] = (float)bY;
+                    primaries[6] = (float)wX;
+                    primaries[7] = (float)wY;
+                    avif->colorPrimaries = avifColorPrimariesFind(primaries, NULL);
+                    if (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_UNKNOWN) {
+                        needToGenerateICC = AVIF_TRUE;
+                    }
+                } else {
+                    // No chromaticity information in file. Assume the default value.
+                    // PNG specification 1.2 Section 10.6:
+                    // Decoders may wish to do this for PNG files with no cHRM chunk.
+                    // In that case, a reasonable default would be the CCIR 709 primaries [ITU-R-BT709].
+                    avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primaries);
+                }
+
+                if (needToGenerateICC) {
+                    avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+                    avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
                     fprintf(stderr,
-                            "WARNING: libavif could not generate an ICC profile for file %s. It may be caused by invalid values in the color space information. The encoded AVIF image's colors may be affected.\n",
+                            "INFO: legacy PNG color space information found in file %s not matching any CICP value. libavif is generating an ICC profile for it."
+                            " Use --ignore-profile to ignore color space information instead (may affect the colors of the encoded AVIF image).\n",
                             inputFilename);
+
+                    avifBool generateICCResult = AVIF_FALSE;
+                    if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                        generateICCResult = avifGenerateGrayICC(&avif->icc, (float)gamma, &primaries[6]);
+                    } else {
+                        generateICCResult = avifGenerateRGBICC(&avif->icc, (float)gamma, primaries);
+                    }
+
+                    if (!generateICCResult) {
+                        fprintf(stderr,
+                                "WARNING: libavif could not generate an ICC profile for file %s. "
+                                "It may be caused by invalid values in the color space information. "
+                                "The encoded AVIF image's colors may be affected.\n",
+                                inputFilename);
+                    }
                 }
             }
         }

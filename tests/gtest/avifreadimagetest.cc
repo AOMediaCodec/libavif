@@ -106,6 +106,26 @@ TEST(PngTest, ColorGamma22) {
   EXPECT_EQ(image->icc.size, 0u);
 }
 
+// Verify that color info does not get overwritten if allow_changing_cicp is
+// false.
+TEST(PngTest, ColorGamma22ForbitChangingCicp) {
+  const auto image = testutil::ReadImage(
+      data_path, "ffffcc-gamma2.2.png",
+      /*requested_format=*/AVIF_PIXEL_FORMAT_NONE,
+      /*requested_depth=*/0, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+      /*ignore_icc=*/false, /*ignore_exif*/ false,
+      /*ignore_xmp=*/false, /*allow_changing_cicp=*/false);
+  ASSERT_NE(image, nullptr);
+
+  // Color info should still be unspecified even if file gamma is 2.2
+  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
+  EXPECT_EQ(image->transferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
+
+  // should not generate ICC profile
+  EXPECT_EQ(image->icc.size, 0u);
+}
+
 // Verify we can read a color PNG file tagged as gamma 1.6 through gAMA chunk,
 // and generate a color profile for it.
 TEST(PngTest, ColorGamma16) {
