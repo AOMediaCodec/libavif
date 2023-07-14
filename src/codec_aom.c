@@ -703,6 +703,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         // https://aomedia-review.googlesource.com/c/aom/+/174421.
         static const int aomVersion_3_6_0 = (3 << 16) | (6 << 8);
         if (aomVersion == aomVersion_3_6_0) {
+            // Detect the use of levels 7.x and 8.x, which use a larger max
+            // tile area (4096 * 4608) than MAX_TILE_AREA (4096 * 2304). The
+            // larger max tile area may not result in a different bitstream
+            // (see the tile_info() function in the AV1 spec, Section 5.9.15),
+            // so this is just a necessary condition for the bug.
             if (!doesLevelMatch(image->width, image->height, 8192, 4352, 2) &&
                 (doesLevelMatch(image->width, image->height, 16384, 8704, 2) ||
                  doesLevelMatch(image->width, image->height, 32768, 17408, 2))) {
