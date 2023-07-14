@@ -47,32 +47,32 @@ jobs:
     - name: Build avm
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash avm.cmd
+      run: bash -e avm.cmd
     - name: Build dav1d
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash dav1d.cmd
+      run: bash -e dav1d.cmd
     - name: Build rav1e
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash rav1e.cmd
+      run: bash -e rav1e.cmd
     - name: Build SVT-AV1
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash svt.cmd
+      run: bash -e svt.cmd
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libyuv.cmd
+      run: bash -e libyuv.cmd
     - name: Build libsharpyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libsharpyuv.cmd
+      run: bash -e libsharpyuv.cmd
     - name: Build GoogleTest
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
-      run: bash googletest.cmd
+      run: bash -e googletest.cmd
 
     - name: Prepare libavif (cmake)
       run: >

@@ -9,6 +9,8 @@
 # The git tag below is known to work, and will occasionally be updated. Feel
 # free to use a more recent commit.
 
+set -e
+
 if [ $# -ne 1 ]; then
   echo "Usage: ${0} <path_to_android_ndk>"
   exit 1
