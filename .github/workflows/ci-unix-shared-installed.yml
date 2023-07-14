@@ -57,7 +57,7 @@ jobs:
     - name: Build GoogleTest
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash googletest.cmd
+      run: bash -e googletest.cmd
 
     - name: Prepare libavif (cmake)
       run: >

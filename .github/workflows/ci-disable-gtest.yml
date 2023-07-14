@@ -53,27 +53,27 @@ jobs:
     - name: Build aom
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash aom.cmd
+      run: bash -e aom.cmd
     - name: Build dav1d
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash dav1d.cmd
+      run: bash -e dav1d.cmd
     - name: Build rav1e
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash rav1e.cmd
+      run: bash -e rav1e.cmd
     - name: Build SVT-AV1
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash svt.cmd
+      run: bash -e svt.cmd
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libyuv.cmd
+      run: bash -e libyuv.cmd
     - name: Build libsharpyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libsharpyuv.cmd
+      run: bash -e libsharpyuv.cmd
 
     - name: Prepare libavif (cmake)
       run: >
