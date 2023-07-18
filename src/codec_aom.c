@@ -817,9 +817,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (lossless) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, 1);
         }
-        if (encoder->maxThreads > 1) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_ROW_MT, 1);
-        }
         if (tileRowsLog2 != 0) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
         }
