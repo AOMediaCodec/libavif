@@ -43,6 +43,7 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Input file paths.
 INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
+INPUT_GRAY_PNG="${TESTDATA_DIR}/kodim03_grayscale_gamma1.6.png"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_lossless_encoded.avif"
 DECODED_FILE="avif_test_cmd_lossless_decoded.png"
@@ -62,7 +63,7 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
 
   # Combining some arguments with lossless should fail.
-  for option in "-y 400" "--min 0 --max 1" "-r limited" "--cicp 2/2/8"; do
+  for option in "-y 420" "--min 0 --max 1" "-r limited" "--cicp 2/2/8"; do
     "${AVIFENC}" $option -s 10 -l "${DECODED_FILE}" -o "${ENCODED_FILE}" && exit 1
   done
 
@@ -76,6 +77,12 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 10 -l "${INPUT_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
   "${ARE_IMAGES_EQUAL}" "${INPUT_PNG}" "${DECODED_FILE_LOSSLESS}" 0
+
+  # 400 test.
+  echo "Testing 400 lossless"
+  "${AVIFENC}" -y 400 -s 10 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
+  "${ARE_IMAGES_EQUAL}" "${INPUT_GRAY_PNG}" "${DECODED_FILE_LOSSLESS}" 0
 popd
 
 exit 0

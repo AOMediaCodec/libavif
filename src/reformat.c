@@ -70,7 +70,8 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
         return AVIF_FALSE;
     }
 
-    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
+        (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
         return AVIF_FALSE;
     }
 
@@ -384,7 +385,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                 }
 
                 // Populate any subsampled channels with averages from the 2x2 block
-                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+                if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                    // Do nothing on chroma planes.
+                } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
                     // YUV420, average 4 samples (2x2)
 
                     float sumU = 0.0f;
