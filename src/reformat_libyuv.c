@@ -916,7 +916,10 @@ avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, 
     int libyuvResult = -1;
     int uPlaneIndex = isYVU ? AVIF_CHAN_V : AVIF_CHAN_U;
     int vPlaneIndex = isYVU ? AVIF_CHAN_U : AVIF_CHAN_V;
-    const enum FilterMode filter = nearestNeighborFilterAllowed(rgb->chromaUpsampling) ? kFilterNone : kFilterBilinear;
+    const enum FilterMode filter =
+        ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_FASTEST) || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST))
+            ? kFilterNone
+            : kFilterBilinear;
     if (lcf.yuvToRgbMatrixFilterHighBitDepth != NULL) {
         libyuvResult = lcf.yuvToRgbMatrixFilterHighBitDepth((const uint16_t *)image->yuvPlanes[AVIF_CHAN_Y],
                                                             image->yuvRowBytes[AVIF_CHAN_Y] / 2,
