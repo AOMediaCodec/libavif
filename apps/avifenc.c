@@ -484,7 +484,10 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     size_t fileSize = (size_t)pos;
     fseek(f, 0, SEEK_SET);
 
-    avifRWDataRealloc(raw, fileSize);
+    if (avifRWDataRealloc(raw, fileSize) != AVIF_RESULT_OK) {
+        fclose(f);
+        return AVIF_FALSE;
+    }
     size_t bytesRead = fread(raw->data, 1, fileSize, f);
     fclose(f);
 

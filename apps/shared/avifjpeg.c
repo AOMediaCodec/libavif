@@ -493,11 +493,17 @@ avifBool avifJPEGRead(const char * inputFilename,
                 } else {
                     memcpy(extendedXMPGUID, guid, AVIF_JPEG_EXTENDED_XMP_GUID_LENGTH);
 
-                    avifRWDataRealloc(&totalXMP, (size_t)standardXMPSize + totalExtendedXMPSize);
+                    if (avifRWDataRealloc(&totalXMP, (size_t)standardXMPSize + totalExtendedXMPSize) != AVIF_RESULT_OK) {
+                        fprintf(stderr, "XMP extraction failed: out of memory\n");
+                        goto cleanup;
+                    }
                     memcpy(totalXMP.data, standardXMPData, standardXMPSize);
 
                     // Keep track of the bytes that were set.
-                    avifRWDataRealloc(&extendedXMPReadBytes, totalExtendedXMPSize);
+                    if (avifRWDataRealloc(&extendedXMPReadBytes, totalExtendedXMPSize) != AVIF_RESULT_OK) {
+                        fprintf(stderr, "XMP extraction failed: out of memory\n");
+                        goto cleanup;
+                    }
                     memset(extendedXMPReadBytes.data, 0, extendedXMPReadBytes.size);
 
                     foundExtendedXMP = AVIF_TRUE;
@@ -619,7 +625,10 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         }
 
         avifRWData exif = { NULL, 0 };
-        avifRWDataRealloc(&exif, AVIF_JPEG_EXIF_HEADER_LENGTH + avif->exif.size - exifTiffHeaderOffset);
+        if (avifRWDataRealloc(&exif, AVIF_JPEG_EXIF_HEADER_LENGTH + avif->exif.size - exifTiffHeaderOffset) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Error writing JPEG metadata: out of memory\n");
+            goto cleanup;
+        }
         memcpy(exif.data, AVIF_JPEG_EXIF_HEADER, AVIF_JPEG_EXIF_HEADER_LENGTH);
         memcpy(exif.data + AVIF_JPEG_EXIF_HEADER_LENGTH, avif->exif.data + exifTiffHeaderOffset, avif->exif.size - exifTiffHeaderOffset);
         // Make sure the Exif orientation matches the irot/imir values.
@@ -665,7 +674,10 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
             fprintf(stderr, "Warning writing JPEG metadata: XMP payload is too big and was dropped\n");
         } else {
             avifRWData xmp = { NULL, 0 };
-            avifRWDataRealloc(&xmp, AVIF_JPEG_STANDARD_XMP_TAG_LENGTH + avif->xmp.size);
+            if (avifRWDataRealloc(&xmp, AVIF_JPEG_STANDARD_XMP_TAG_LENGTH + avif->xmp.size) != AVIF_RESULT_OK) {
+                fprintf(stderr, "Error writing JPEG metadata: out of memory\n");
+                goto cleanup;
+            }
             memcpy(xmp.data, AVIF_JPEG_STANDARD_XMP_TAG, AVIF_JPEG_STANDARD_XMP_TAG_LENGTH);
             memcpy(xmp.data + AVIF_JPEG_STANDARD_XMP_TAG_LENGTH, avif->xmp.data, avif->xmp.size);
             jpeg_write_marker(&cinfo, JPEG_APP0 + 1, xmp.data, (unsigned int)xmp.size);

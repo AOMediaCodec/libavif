@@ -425,7 +425,7 @@ TEST(MetadataTest, XMPWithTrailingNullCharacter) {
   ASSERT_EQ(std::memchr(jpg->xmp.data, '\0', jpg->xmp.size), nullptr);
 
   // Append a zero byte to see what happens when encoded with libpng.
-  avifRWDataRealloc(&jpg->xmp, jpg->xmp.size + 1);
+  ASSERT_EQ(avifRWDataRealloc(&jpg->xmp, jpg->xmp.size + 1), AVIF_RESULT_OK);
   jpg->xmp.data[jpg->xmp.size - 1] = '\0';
   testutil::WriteImage(jpg.get(),
                        (testing::TempDir() + "xmp_trailing_null.png").c_str());

@@ -142,9 +142,10 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
     return AVIF_RESULT_OK;
 }
 
-void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
+avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
-    avifRWDataSet(&image->exif, exif, exifSize);
+    AVIF_CHECKRES(avifRWDataSet(&image->exif, exif, exifSize));
     // Ignore any Exif parsing failure.
     (void)avifImageExtractExifOrientationToIrotImir(image);
+    return AVIF_RESULT_OK;
 }

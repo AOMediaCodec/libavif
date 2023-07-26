@@ -16,7 +16,9 @@ List of incompatible ABI changes in this release:
   those pointers.
 * Check the return value of avifEncoderSetCodecSpecificOption().
 * The maxThreads member was added to the avifRGBImage struct.
-* Check the return value of avifRGBImageAllocatePixels().
+* Check the return value of avifRGBImageAllocatePixels(), avifRWDataRealloc(),
+  avifRWDataSet(), avifImageSetProfileICC(), avifImageSetMetadataExif() and
+  avifImageSetMetadataXMP().
 * The meaning of the keyframeInterval member of avifEncoder struct has changed
   slightly. When set to a value of "n",
     * Before: It forces a keyframe on every nth frame.
@@ -72,7 +74,9 @@ List of incompatible ABI changes in this release:
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
   report memory allocation failures.
 * At decoding, avifIOStats now returns the same values as at encoding.
-* avifRGBImageAllocatePixels() now returns avifResult instead of void to report
+* avifRGBImageAllocatePixels(), avifRWDataRealloc(), avifRWDataSet(),
+  avifImageSetProfileICC(), avifImageSetMetadataExif() and
+  avifImageSetMetadataXMP() now return avifResult instead of void to report
   memory allocation failures.
 * avifReadImage(), avifJPEGRead() and avifPNGRead() now remove the trailing zero
   byte from read XMP chunks, if any. See avifImageFixXMP().

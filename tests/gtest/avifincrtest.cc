@@ -28,8 +28,10 @@ testutil::AvifRwData ReadFile(const char* file_name) {
   std::ifstream file(std::string(data_path) + "/" + file_name,
                      std::ios::binary | std::ios::ate);
   testutil::AvifRwData bytes;
-  avifRWDataRealloc(&bytes,
-                    file.good() ? static_cast<size_t>(file.tellg()) : 0);
+  if (avifRWDataRealloc(&bytes, file.good() ? static_cast<size_t>(file.tellg())
+                                            : 0) != AVIF_RESULT_OK) {
+    return {};
+  }
   file.seekg(0, std::ios::beg);
   file.read(reinterpret_cast<char*>(bytes.data),
             static_cast<std::streamsize>(bytes.size));

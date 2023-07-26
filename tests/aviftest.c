@@ -200,7 +200,10 @@ static int runIOTests(const char * dataDir)
         fseek(f, 0, SEEK_END);
         size_t fileSize = ftell(f);
         fseek(f, 0, SEEK_SET);
-        avifRWDataRealloc(&fileBuffer, fileSize);
+        if (avifRWDataRealloc(&fileBuffer, fileSize) != AVIF_RESULT_OK) {
+            printf("Out of memory when allocating buffer to read file: %s\n", filename);
+            return 1;
+        }
         if (fread(fileBuffer.data, 1, fileSize, f) != fileSize) {
             printf("Can't read entire file: %s\n", filename);
             fclose(f);
