@@ -40,7 +40,6 @@ List of incompatible ABI changes in this release:
 * Add API for multi-threaded YUV to RGB color conversion.
 * Add experimental support for AV2 behind the compilation flag AVIF_CODEC_AVM.
   AVIF_CODEC_CHOICE_AVM is now part of avifCodecChoice.
-* Allow lossless 4:0:0 on grayscale input.
 * Add avifenc --no-overwrite flag to avoid overwriting output file.
 * Add support for all transfer functions when using libsharpyuv.
 
@@ -76,6 +75,7 @@ List of incompatible ABI changes in this release:
   memory allocation failures.
 * avifReadImage(), avifJPEGRead() and avifPNGRead() now remove the trailing zero
   byte from read XMP chunks, if any. See avifImageFixXMP().
+* Requesting lossless 4:0:0 on a grayscale input now outputs a grayscale AVIF.
 
 ## [0.11.1] - 2022-10-19
 
