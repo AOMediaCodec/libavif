@@ -241,8 +241,7 @@ static void makeRoom(avifRWStream * stream, size_t size)
         newSize += AVIF_STREAM_BUFFER_INCREMENT;
     }
     if (avifRWDataRealloc(stream->raw, newSize) != AVIF_RESULT_OK) {
-        // TODO: https://github.com/AOMediaCodec/libavif/issues/820
-        //  - Return AVIF_RESULT_OUT_OF_MEMORY instead.
+        // TODO(issue #820): Return AVIF_RESULT_OUT_OF_MEMORY instead.
         abort();
     }
 }

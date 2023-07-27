@@ -9,8 +9,7 @@ void * avifAlloc(size_t size)
 {
     void * out = malloc(size);
     if (out == NULL) {
-        // TODO: https://github.com/AOMediaCodec/libavif/issues/820
-        //  - Remove once all calling sites propagate the error as AVIF_RESULT_OUT_OF_MEMORY.
+        // TODO(issue #820): Remove once all calling sites propagate the error as AVIF_RESULT_OUT_OF_MEMORY.
         abort();
     }
     return out;

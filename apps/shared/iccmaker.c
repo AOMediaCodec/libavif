@@ -444,10 +444,9 @@ avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries
     }
 
     computeMD5(buffer, sizeof(iccColorTemplate));
-    if (avifRWDataRealloc(icc, iccColorLength) != AVIF_RESULT_OK) {
+    if (avifRWDataSet(icc, buffer, iccColorLength) != AVIF_RESULT_OK) {
         return AVIF_FALSE;
     }
-    memcpy(icc->data, buffer, iccColorLength);
 
     return AVIF_TRUE;
 }
@@ -471,10 +470,9 @@ avifBool avifGenerateGrayICC(avifRWData * icc, float gamma, const float white[2]
     }
 
     computeMD5(buffer, sizeof(iccGrayTemplate));
-    if (avifRWDataRealloc(icc, iccGrayLength) != AVIF_RESULT_OK) {
+    if (avifRWDataSet(icc, buffer, iccGrayLength) != AVIF_RESULT_OK) {
         return AVIF_FALSE;
     }
-    memcpy(icc->data, buffer, iccGrayLength);
 
     return AVIF_TRUE;
 }

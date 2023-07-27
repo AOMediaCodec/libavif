@@ -199,6 +199,7 @@ typedef struct avifRWData
 // clang-format on
 
 // The avifRWData input must be zero-initialized before being manipulated with these functions.
+// If AVIF_RESULT_OUT_OF_MEMORY is returned, raw is left unchanged.
 AVIF_API avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize);
 AVIF_API avifResult avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len);
 AVIF_API void avifRWDataFree(avifRWData * raw);
