@@ -1639,12 +1639,10 @@ int main(int argc, char * argv[])
     image->alphaPremultiplied = premultiplyAlpha;
 
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (input.requestedFormat != AVIF_PIXEL_FORMAT_NONE) &&
-        (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) && (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV400)) {
-        // User explicitly asked for non YUV444/YUV400 yuvFormat, while
-        // matrixCoefficients was likely set to
-        // AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect of --lossless, and
-        // Identity is only valid with YUV444/YUV400. Set matrixCoefficients
-        // back to the default.
+        (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444)) {
+        // User explicitly asked for non YUV444 yuvFormat, while matrixCoefficients was likely
+        // set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect of --lossless,
+        // and Identity is only valid with YUV444. Set matrixCoefficients back to the default.
         image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
         if (cicpExplicitlySet) {
@@ -1677,8 +1675,16 @@ int main(int argc, char * argv[])
     }
 
     // Check again for y4m input (y4m input ignores input.requestedFormat and retains the format in file).
-    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
-        (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && lossless && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+
+        if (cicpExplicitlySet) {
+            // Only warn if someone explicitly asked for identity.
+            printf("WARNING: matrixCoefficients may not be set to identity (0) when encoding lossless 4:0:0. Resetting MC to defaults (%d).\n",
+                   image->matrixCoefficients);
+        }
+    }
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
         fprintf(stderr, "matrixCoefficients may not be set to identity (0) when subsampling.\n");
         returnCode = 1;
         goto cleanup;
