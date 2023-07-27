@@ -1584,7 +1584,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
                 return readResult;
             }
 
-            avifImageSetMetadataXMP(image, xmpContents.data, xmpContents.size);
+            AVIF_CHECKRES(avifImageSetMetadataXMP(image, xmpContents.data, xmpContents.size));
         }
     }
     return AVIF_RESULT_OK;
@@ -4033,7 +4033,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     return readResult;
                 }
                 colrICCSeen = AVIF_TRUE;
-                avifImageSetProfileICC(decoder->image, icc.data, icc.size);
+                AVIF_CHECKRES(avifImageSetProfileICC(decoder->image, icc.data, icc.size));
             }
             if (prop->u.colr.hasNCLX) {
                 if (colrNCLXSeen) {

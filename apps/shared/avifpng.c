@@ -196,7 +196,10 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
                 fprintf(stderr, "XMP extraction failed: empty XML:com.adobe.xmp payload\n");
                 return AVIF_FALSE;
             }
-            avifImageSetMetadataXMP(avif, (const uint8_t *)text->text, textLength);
+            if (avifImageSetMetadataXMP(avif, (const uint8_t *)text->text, textLength) != AVIF_RESULT_OK) {
+                fprintf(stderr, "XMP extraction failed: out of memory\n");
+                return AVIF_FALSE;
+            }
             *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
         }
     }
@@ -367,7 +370,10 @@ avifBool avifPNGRead(const char * inputFilename,
         // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-            avifImageSetProfileICC(avif, iccpData, iccpDataLen);
+            if (avifImageSetProfileICC(avif, iccpData, iccpDataLen) != AVIF_RESULT_OK) {
+                fprintf(stderr, "Setting ICC profile failed: out of memory.\n");
+                goto cleanup;
+            }
         } else if (allowChangingCicp) {
             if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
                 // srgbIntent ignored

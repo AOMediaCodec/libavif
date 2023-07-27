@@ -1690,14 +1690,12 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (iccOverride.size) {
-        avifImageSetProfileICC(image, iccOverride.data, iccOverride.size);
-    }
-    if (exifOverride.size) {
-        avifImageSetMetadataExif(image, exifOverride.data, exifOverride.size);
-    }
-    if (xmpOverride.size) {
-        avifImageSetMetadataXMP(image, xmpOverride.data, xmpOverride.size);
+    if ((iccOverride.size && (avifImageSetProfileICC(image, iccOverride.data, iccOverride.size) != AVIF_RESULT_OK)) ||
+        (exifOverride.size && (avifImageSetMetadataExif(image, exifOverride.data, exifOverride.size) != AVIF_RESULT_OK)) ||
+        (xmpOverride.size && (avifImageSetMetadataXMP(image, xmpOverride.data, xmpOverride.size) != AVIF_RESULT_OK))) {
+        fprintf(stderr, "Error when setting overridden metadata: out of memory.\n");
+        returnCode = 1;
+        goto cleanup;
     }
 
     if (!image->icc.size && !cicpExplicitlySet && (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&

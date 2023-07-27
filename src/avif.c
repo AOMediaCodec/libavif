@@ -227,10 +227,10 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
     avifImageCopyNoAlloc(dstImage, srcImage);
 
-    avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
+    AVIF_CHECKRES(avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size));
 
     AVIF_CHECKRES(avifRWDataSet(&dstImage->exif, srcImage->exif.data, srcImage->exif.size));
-    avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
+    AVIF_CHECKRES(avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size));
 
     if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         if ((srcImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) &&

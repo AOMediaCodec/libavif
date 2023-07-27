@@ -330,7 +330,10 @@ avifBool avifJPEGRead(const char * inputFilename,
         unsigned int iccDataLen;
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
             iccData = iccDataTmp;
-            avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen);
+            if (avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen) != AVIF_RESULT_OK) {
+                fprintf(stderr, "Setting ICC profile failed: %s (out of memory)\n", inputFilename);
+                goto cleanup;
+            }
         }
     }
 
@@ -418,7 +421,10 @@ avifBool avifJPEGRead(const char * inputFilename,
                 // Exif orientation, if any, is imported to avif->irot/imir and kept in avif->exif.
                 // libheif has the same behavior, see
                 // https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/heif_enc.cc#L403
-                avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size);
+                if (avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size) != AVIF_RESULT_OK) {
+                    fprintf(stderr, "Setting Exif metadata failed: %s (out of memory)\n", inputFilename);
+                    goto cleanup;
+                }
                 found = AVIF_TRUE;
             }
         }
@@ -555,7 +561,10 @@ avifBool avifJPEGRead(const char * inputFilename,
             totalXMP.data = NULL;
             totalXMP.size = 0;
         } else if (standardXMPData) {
-            avifImageSetMetadataXMP(avif, standardXMPData, standardXMPSize);
+            if (avifImageSetMetadataXMP(avif, standardXMPData, standardXMPSize) != AVIF_RESULT_OK) {
+                fprintf(stderr, "XMP extraction failed: out of memory\n");
+                goto cleanup;
+            }
         }
         avifImageFixXMP(avif); // Remove one trailing null character if any.
     }
