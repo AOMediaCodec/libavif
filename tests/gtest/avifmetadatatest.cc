@@ -339,7 +339,8 @@ TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   const testutil::AvifImagePtr image =
       testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
   ASSERT_NE(image, nullptr);
-  avifImageSetMetadataExif(image.get(), nullptr, 0);  // Clear Exif.
+  EXPECT_EQ(avifImageSetMetadataExif(image.get(), nullptr, 0),
+            AVIF_RESULT_OK);  // Clear Exif.
   // Orientation is kept in irot/imir.
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
