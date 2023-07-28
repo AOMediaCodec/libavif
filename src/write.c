@@ -132,7 +132,11 @@ avifResult avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, 
 {
     avifEncodeSample * sample = (avifEncodeSample *)avifArrayPushPtr(&encodeOutput->samples);
     AVIF_CHECKERR(sample, AVIF_RESULT_OUT_OF_MEMORY);
-    AVIF_CHECKRES(avifRWDataSet(&sample->data, data, len));
+    const avifResult result = avifRWDataSet(&sample->data, data, len);
+    if (result != AVIF_RESULT_OK) {
+        avifArrayPop(&encodeOutput->samples);
+        return result;
+    }
     sample->sync = sync;
     return AVIF_RESULT_OK;
 }
