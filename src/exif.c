@@ -145,6 +145,7 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
 avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
     AVIF_CHECKRES(avifRWDataSet(&image->exif, exif, exifSize));
+    // Ignore any Exif parsing failure.
     // TODO(wtc): Decide whether to ignore or return Exif parsing failures.
     (void)avifImageExtractExifOrientationToIrotImir(image);
     return AVIF_RESULT_OK;
