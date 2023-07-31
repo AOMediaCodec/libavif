@@ -199,8 +199,9 @@ typedef struct avifRWData
 // clang-format on
 
 // The avifRWData input must be zero-initialized before being manipulated with these functions.
-AVIF_API void avifRWDataRealloc(avifRWData * raw, size_t newSize);
-AVIF_API void avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len);
+// If AVIF_RESULT_OUT_OF_MEMORY is returned, raw is left unchanged.
+AVIF_API avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize);
+AVIF_API avifResult avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len);
 AVIF_API void avifRWDataFree(avifRWData * raw);
 
 // ---------------------------------------------------------------------------
@@ -565,14 +566,14 @@ AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcIma
 AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect); // shallow copy, no metadata
 AVIF_API void avifImageDestroy(avifImage * image);
 
-AVIF_API void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
+AVIF_API avifResult avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 // Sets Exif metadata. Attempts to parse the Exif metadata for Exif orientation. Sets
 // image->transformFlags, image->irot and image->imir if the Exif metadata is parsed successfully,
 // otherwise leaves image->transformFlags, image->irot and image->imir unchanged.
 // Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD.
-AVIF_API void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
+AVIF_API avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
 // Sets XMP metadata.
-AVIF_API void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
+AVIF_API avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
 AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
 AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);           // Ignores already-freed planes

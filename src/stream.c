@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 // ---------------------------------------------------------------------------
@@ -239,8 +240,9 @@ static void makeRoom(avifRWStream * stream, size_t size)
     while (newSize < neededSize) {
         newSize += AVIF_STREAM_BUFFER_INCREMENT;
     }
-    if (stream->raw->size != newSize) {
-        avifRWDataRealloc(stream->raw, newSize);
+    if (avifRWDataRealloc(stream->raw, newSize) != AVIF_RESULT_OK) {
+        // TODO(issue #820): Return AVIF_RESULT_OUT_OF_MEMORY instead.
+        abort();
     }
 }
 

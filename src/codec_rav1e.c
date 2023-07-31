@@ -229,7 +229,10 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
             goto cleanup;
         } else if (pkt) {
             if (pkt->data && (pkt->len > 0)) {
-                avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
+                result = avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
+                if (result != AVIF_RESULT_OK) {
+                    goto cleanup;
+                }
             }
             rav1e_packet_unref(pkt);
             pkt = NULL;
@@ -271,7 +274,10 @@ static avifBool rav1eCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput 
             if (pkt) {
                 gotPacket = AVIF_TRUE;
                 if (pkt->data && (pkt->len > 0)) {
-                    avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY));
+                    if (avifCodecEncodeOutputAddSample(output, pkt->data, pkt->len, (pkt->frame_type == RA_FRAME_TYPE_KEY)) !=
+                        AVIF_RESULT_OK) {
+                        return AVIF_FALSE;
+                    }
                 }
                 rav1e_packet_unref(pkt);
                 pkt = NULL;

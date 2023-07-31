@@ -61,14 +61,17 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());  // The pixels do not matter.
   if (use_icc) {
-    avifImageSetProfileICC(image.get(), kSampleIcc.data(), kSampleIcc.size());
+    ASSERT_EQ(avifImageSetProfileICC(image.get(), kSampleIcc.data(),
+                                     kSampleIcc.size()),
+              AVIF_RESULT_OK);
   }
   if (use_exif) {
     const avifTransformFlags old_transform_flags = image->transformFlags;
     const uint8_t old_irot_angle = image->irot.angle;
     const uint8_t old_imir_mode = image->imir.mode;
-    avifImageSetMetadataExif(image.get(), kSampleExif.data(),
-                             kSampleExif.size());
+    ASSERT_EQ(avifImageSetMetadataExif(image.get(), kSampleExif.data(),
+                                       kSampleExif.size()),
+              AVIF_RESULT_OK);
     // kSampleExif is not a valid Exif payload, just some part of it. These
     // fields should not be modified.
     EXPECT_EQ(image->transformFlags, old_transform_flags);
@@ -76,7 +79,9 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
     EXPECT_EQ(image->imir.mode, old_imir_mode);
   }
   if (use_xmp) {
-    avifImageSetMetadataXMP(image.get(), kSampleXmp.data(), kSampleXmp.size());
+    ASSERT_EQ(avifImageSetMetadataXMP(image.get(), kSampleXmp.data(),
+                                      kSampleXmp.size()),
+              AVIF_RESULT_OK);
   }
 
   // Encode.
@@ -334,7 +339,8 @@ TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   const testutil::AvifImagePtr image =
       testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
   ASSERT_NE(image, nullptr);
-  avifImageSetMetadataExif(image.get(), nullptr, 0);  // Clear Exif.
+  EXPECT_EQ(avifImageSetMetadataExif(image.get(), nullptr, 0),
+            AVIF_RESULT_OK);  // Clear Exif.
   // Orientation is kept in irot/imir.
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
@@ -367,14 +373,10 @@ TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
   // avifImageExtractExifOrientationToIrotImir() internally.
   // The avifImageExtractExifOrientationToIrotImir() call should not enter an
   // infinite loop.
-  //
-  // TODO(wtc): When we change avifImageSetMetadataExif() to return avifResult,
-  // assert that the avifImageSetMetadataExif() call returns AVIF_RESULT_OK
-  // because avifImageExtractExifOrientationToIrotImir() does not verify the
-  // whole payload, only the parts necessary to extract Exif orientation.
-  avifImageSetMetadataExif(
-      image.get(), kBadExifPayload,
-      sizeof(kBadExifPayload) / sizeof(kBadExifPayload[0]));
+  ASSERT_EQ(avifImageSetMetadataExif(
+                image.get(), kBadExifPayload,
+                sizeof(kBadExifPayload) / sizeof(kBadExifPayload[0])),
+            AVIF_RESULT_OK);
 }
 
 //------------------------------------------------------------------------------
@@ -425,7 +427,7 @@ TEST(MetadataTest, XMPWithTrailingNullCharacter) {
   ASSERT_EQ(std::memchr(jpg->xmp.data, '\0', jpg->xmp.size), nullptr);
 
   // Append a zero byte to see what happens when encoded with libpng.
-  avifRWDataRealloc(&jpg->xmp, jpg->xmp.size + 1);
+  ASSERT_EQ(avifRWDataRealloc(&jpg->xmp, jpg->xmp.size + 1), AVIF_RESULT_OK);
   jpg->xmp.data[jpg->xmp.size - 1] = '\0';
   testutil::WriteImage(jpg.get(),
                        (testing::TempDir() + "xmp_trailing_null.png").c_str());

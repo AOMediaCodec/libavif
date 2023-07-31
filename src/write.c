@@ -128,11 +128,17 @@ error:
     return NULL;
 }
 
-void avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync)
+avifResult avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync)
 {
     avifEncodeSample * sample = (avifEncodeSample *)avifArrayPushPtr(&encodeOutput->samples);
-    avifRWDataSet(&sample->data, data, len);
+    AVIF_CHECKERR(sample, AVIF_RESULT_OUT_OF_MEMORY);
+    const avifResult result = avifRWDataSet(&sample->data, data, len);
+    if (result != AVIF_RESULT_OK) {
+        avifArrayPop(&encodeOutput->samples);
+        return result;
+    }
     sample->sync = sync;
+    return AVIF_RESULT_OK;
 }
 
 void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput)
@@ -345,7 +351,9 @@ static avifItemPropertyDedup * avifItemPropertyDedupCreate(void)
     if (!avifArrayCreate(&dedup->properties, sizeof(avifItemProperty), 8)) {
         goto error;
     }
-    avifRWDataRealloc(&dedup->buffer, 2048); // This will resize automatically (if necessary)
+    if (avifRWDataRealloc(&dedup->buffer, 2048) != AVIF_RESULT_OK) {
+        goto error;
+    }
     return dedup;
 
 error:
@@ -776,7 +784,7 @@ static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const av
     exifItem->irefType = "cdsc";
 
     const uint32_t offset32bit = avifHTONL((uint32_t)exifTiffHeaderOffset);
-    avifRWDataRealloc(&exifItem->metadataPayload, sizeof(offset32bit) + exif->size);
+    AVIF_CHECKRES(avifRWDataRealloc(&exifItem->metadataPayload, sizeof(offset32bit) + exif->size));
     memcpy(exifItem->metadataPayload.data, &offset32bit, sizeof(offset32bit));
     memcpy(exifItem->metadataPayload.data + sizeof(offset32bit), exif->data, exif->size);
     return AVIF_RESULT_OK;
@@ -793,7 +801,7 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
 
     xmpItem->infeContentType = xmpContentType;
     xmpItem->infeContentTypeSize = xmpContentTypeSize;
-    avifRWDataSet(&xmpItem->metadataPayload, xmp->data, xmp->size);
+    AVIF_CHECKRES(avifRWDataSet(&xmpItem->metadataPayload, xmp->data, xmp->size));
     return AVIF_RESULT_OK;
 }
 

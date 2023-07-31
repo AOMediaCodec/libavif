@@ -8,6 +8,7 @@
 #include "avifutil.h"
 #include "y4m.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -331,7 +332,9 @@ int main(int argc, char * argv[])
 
     if (ignoreICC && (decoder->image->icc.size > 0)) {
         printf("[--ignore-icc] Discarding ICC profile.\n");
-        avifImageSetProfileICC(decoder->image, NULL, 0);
+        // This cannot fail.
+        result = avifImageSetProfileICC(decoder->image, NULL, 0);
+        assert(result == AVIF_RESULT_OK);
     }
 
     avifAppFileFormat outputFormat = avifGuessFileFormat(outputFilename);

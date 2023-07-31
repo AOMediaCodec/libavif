@@ -28,7 +28,10 @@
 // AVIF_FALSE is returned if fewer than numExpectedBytes hexadecimal pairs are converted.
 static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLength, size_t numExpectedBytes, avifRWData * bytes)
 {
-    avifRWDataRealloc(bytes, numExpectedBytes);
+    if (avifRWDataRealloc(bytes, numExpectedBytes) != AVIF_RESULT_OK) {
+        fprintf(stderr, "Metadata extraction failed: out of memory\n");
+        return AVIF_FALSE;
+    }
     size_t numBytes = 0;
     for (size_t i = 0; (i + 1 < hexStringLength) && (numBytes < numExpectedBytes);) {
         if (hexString[i] == '\n') {
@@ -124,7 +127,10 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
                 return AVIF_FALSE;
             }
             // Avoid avifImageSetMetadataExif() that sets irot/imir.
-            avifRWDataSet(&avif->exif, exif, exifSize);
+            if (avifRWDataSet(&avif->exif, exif, exifSize) != AVIF_RESULT_OK) {
+                fprintf(stderr, "Exif extraction failed: out of memory\n");
+                return AVIF_FALSE;
+            }
             // According to the Extensions to the PNG 1.2 Specification, Version 1.5.0, section 3.7:
             //   "It is recommended that unless a decoder has independent knowledge of the validity of the Exif data,
             //    the data should be considered to be of historical value only."
@@ -190,7 +196,10 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
                 fprintf(stderr, "XMP extraction failed: empty XML:com.adobe.xmp payload\n");
                 return AVIF_FALSE;
             }
-            avifImageSetMetadataXMP(avif, (const uint8_t *)text->text, textLength);
+            if (avifImageSetMetadataXMP(avif, (const uint8_t *)text->text, textLength) != AVIF_RESULT_OK) {
+                fprintf(stderr, "XMP extraction failed: out of memory\n");
+                return AVIF_FALSE;
+            }
             *ignoreXMP = AVIF_TRUE; // Ignore any other XMP chunk.
         }
     }
@@ -361,7 +370,10 @@ avifBool avifPNGRead(const char * inputFilename,
         // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-            avifImageSetProfileICC(avif, iccpData, iccpDataLen);
+            if (avifImageSetProfileICC(avif, iccpData, iccpDataLen) != AVIF_RESULT_OK) {
+                fprintf(stderr, "Setting ICC profile failed: out of memory.\n");
+                goto cleanup;
+            }
         } else if (allowChangingCicp) {
             if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
                 // srgbIntent ignored
@@ -653,7 +665,10 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             fprintf(stderr, "Error writing PNG: XMP metadata is too big\n");
             goto cleanup;
         }
-        avifRWDataRealloc(&xmp, avif->xmp.size + 1);
+        if (avifRWDataRealloc(&xmp, avif->xmp.size + 1) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Error writing PNG: out of memory\n");
+            goto cleanup;
+        }
         memcpy(xmp.data, avif->xmp.data, avif->xmp.size);
         xmp.data[avif->xmp.size] = '\0';
         png_text * text = &texts[numTextMetadataChunks++];

@@ -321,10 +321,14 @@ static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * outpu
         if (output_buf != NULL) {
             encode_at_eos = ((output_buf->flags & EB_BUFFERFLAG_EOS) == EB_BUFFERFLAG_EOS);
             if (output_buf->p_buffer && (output_buf->n_filled_len > 0)) {
-                avifCodecEncodeOutputAddSample(output,
-                                               output_buf->p_buffer,
-                                               output_buf->n_filled_len,
-                                               (output_buf->pic_type == EB_AV1_KEY_PICTURE));
+                const avifResult result = avifCodecEncodeOutputAddSample(output,
+                                                                         output_buf->p_buffer,
+                                                                         output_buf->n_filled_len,
+                                                                         (output_buf->pic_type == EB_AV1_KEY_PICTURE));
+                if (result != AVIF_RESULT_OK) {
+                    svt_av1_enc_release_out_buffer(&output_buf);
+                    return result;
+                }
             }
             svt_av1_enc_release_out_buffer(&output_buf);
         }

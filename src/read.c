@@ -1243,7 +1243,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
         // holding the address of the previous allocation of this buffer). This strategy avoids
         // use-after-free issues in the AV1 decoder and unnecessary reallocs as a typical
         // progressive decode use case will eventually decode the final layer anyway.
-        avifRWDataRealloc(&item->mergedExtents, item->size);
+        AVIF_CHECKRES(avifRWDataRealloc(&item->mergedExtents, item->size));
         item->ownsMergedExtents = AVIF_TRUE;
     }
 
@@ -1575,7 +1575,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
             AVIF_CHECKERR(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset),
                           AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) exif_tiff_header_offset;
 
-            avifRWDataSet(&image->exif, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream));
+            AVIF_CHECKRES(avifRWDataSet(&image->exif, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream)));
         } else if (!decoder->ignoreXMP && !memcmp(item->type, "mime", 4) &&
                    !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
             avifROData xmpContents;
@@ -1584,7 +1584,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
                 return readResult;
             }
 
-            avifImageSetMetadataXMP(image, xmpContents.data, xmpContents.size);
+            AVIF_CHECKRES(avifImageSetMetadataXMP(image, xmpContents.data, xmpContents.size));
         }
     }
     return AVIF_RESULT_OK;
@@ -2276,7 +2276,9 @@ static avifBool avifParseItemDataBox(avifMeta * meta, const uint8_t * raw, size_
         return AVIF_FALSE;
     }
 
-    avifRWDataSet(&meta->idat, raw, rawLen);
+    if (avifRWDataSet(&meta->idat, raw, rawLen) != AVIF_RESULT_OK) {
+        return AVIF_FALSE;
+    }
     return AVIF_TRUE;
 }
 
@@ -3398,7 +3400,7 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
             if (decoder->io->persistent) {
                 sample->data = sampleContents;
             } else {
-                avifRWDataSet((avifRWData *)&sample->data, sampleContents.data, sampleContents.size);
+                AVIF_CHECKRES(avifRWDataSet((avifRWData *)&sample->data, sampleContents.data, sampleContents.size));
             }
         }
     }
@@ -4031,7 +4033,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     return readResult;
                 }
                 colrICCSeen = AVIF_TRUE;
-                avifImageSetProfileICC(decoder->image, icc.data, icc.size);
+                AVIF_CHECKRES(avifImageSetProfileICC(decoder->image, icc.data, icc.size));
             }
             if (prop->u.colr.hasNCLX) {
                 if (colrNCLXSeen) {

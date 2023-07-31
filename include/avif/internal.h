@@ -285,7 +285,7 @@ typedef struct avifCodecEncodeOutput
 } avifCodecEncodeOutput;
 
 avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void);
-void avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync);
+avifResult avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync);
 void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput);
 
 // ---------------------------------------------------------------------------
