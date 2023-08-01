@@ -763,7 +763,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     G = Y - ((2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb))) / kg);
                 }
             } else {
-                // Monochrome: just populate all channels with luma (identity mode is irrelevant)
+                // Monochrome: just populate all channels with luma (state->mode is irrelevant)
                 R = Y;
                 G = Y;
                 B = Y;
