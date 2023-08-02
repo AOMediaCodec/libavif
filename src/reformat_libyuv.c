@@ -737,8 +737,13 @@ static avifBool getLibYUVConversionFunction(avifPixelFormat yuvFormat,
 
 static void getLibYUVConstants(const avifImage * image, const struct YuvConstants ** matrixYUV, const struct YuvConstants ** matrixYVU)
 {
+    // Allow the identity matrix to be used with YUV 4:0:0. Replace the identity matrix with
+    // MatrixCoefficients 6 (BT.601).
+    const avifBool yuv400WithIdentityMatrix = (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) &&
+                                              (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY);
+    const avifMatrixCoefficients matrixCoefficients = yuv400WithIdentityMatrix ? AVIF_MATRIX_COEFFICIENTS_BT601 : image->matrixCoefficients;
     if (image->yuvRange == AVIF_RANGE_FULL) {
-        switch (image->matrixCoefficients) {
+        switch (matrixCoefficients) {
             // BT.709 full range YuvConstants were added in libyuv version 1772.
             // See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/2646472.
             case AVIF_MATRIX_COEFFICIENTS_BT709:
@@ -805,7 +810,7 @@ static void getLibYUVConstants(const avifImage * image, const struct YuvConstant
                 break;
         }
     } else { // image->yuvRange == AVIF_RANGE_LIMITED
-        switch (image->matrixCoefficients) {
+        switch (matrixCoefficients) {
             case AVIF_MATRIX_COEFFICIENTS_BT709:
                 *matrixYUV = &kYuvH709Constants;
                 *matrixYVU = &kYvuH709Constants;
