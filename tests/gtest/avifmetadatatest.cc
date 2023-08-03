@@ -1,7 +1,6 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <array>
 #include <cstring>
 #include <tuple>
 
@@ -23,24 +22,6 @@ namespace {
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
 
-// ICC color profiles are not checked by libavif so the content does not matter.
-// This is a truncated widespread ICC color profile.
-const std::array<uint8_t, 24> kSampleIcc = {
-    0x00, 0x00, 0x02, 0x0c, 0x6c, 0x63, 0x6d, 0x73, 0x02, 0x10, 0x00, 0x00,
-    0x6d, 0x6e, 0x74, 0x72, 0x52, 0x47, 0x42, 0x20, 0x58, 0x59, 0x5a, 0x20};
-
-// Exif bytes are partially checked by libavif. This is a truncated widespread
-// Exif metadata chunk.
-const std::array<uint8_t, 24> kSampleExif = {
-    0xff, 0x1,  0x45, 0x78, 0x69, 0x76, 0x32, 0xff, 0xe1, 0x12, 0x5a, 0x45,
-    0x78, 0x69, 0x66, 0x0,  0x0,  0x49, 0x49, 0x2a, 0x0,  0x8,  0x0,  0x0};
-
-// XMP bytes are not checked by libavif so the content does not matter.
-// This is a truncated widespread XMP metadata chunk.
-const std::array<uint8_t, 24> kSampleXmp = {
-    0x3c, 0x3f, 0x78, 0x70, 0x61, 0x63, 0x6b, 0x65, 0x74, 0x20, 0x62, 0x65,
-    0x67, 0x69, 0x6e, 0x3d, 0x22, 0xef, 0xbb, 0xbf, 0x22, 0x20, 0x69, 0x64};
-
 //------------------------------------------------------------------------------
 // AVIF encode/decode metadata tests
 
@@ -61,26 +42,27 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());  // The pixels do not matter.
   if (use_icc) {
-    ASSERT_EQ(avifImageSetProfileICC(image.get(), kSampleIcc.data(),
-                                     kSampleIcc.size()),
+    ASSERT_EQ(avifImageSetProfileICC(image.get(), testutil::kSampleIcc.data(),
+                                     testutil::kSampleIcc.size()),
               AVIF_RESULT_OK);
   }
   if (use_exif) {
     const avifTransformFlags old_transform_flags = image->transformFlags;
     const uint8_t old_irot_angle = image->irot.angle;
     const uint8_t old_imir_mode = image->imir.mode;
-    ASSERT_EQ(avifImageSetMetadataExif(image.get(), kSampleExif.data(),
-                                       kSampleExif.size()),
-              AVIF_RESULT_OK);
-    // kSampleExif is not a valid Exif payload, just some part of it. These
-    // fields should not be modified.
+    ASSERT_EQ(
+        avifImageSetMetadataExif(image.get(), testutil::kSampleExif.data(),
+                                 testutil::kSampleExif.size()),
+        AVIF_RESULT_OK);
+    // testutil::kSampleExif is not a valid Exif payload, just some part of it.
+    // These fields should not be modified.
     EXPECT_EQ(image->transformFlags, old_transform_flags);
     EXPECT_EQ(image->irot.angle, old_irot_angle);
     EXPECT_EQ(image->imir.mode, old_imir_mode);
   }
   if (use_xmp) {
-    ASSERT_EQ(avifImageSetMetadataXMP(image.get(), kSampleXmp.data(),
-                                      kSampleXmp.size()),
+    ASSERT_EQ(avifImageSetMetadataXMP(image.get(), testutil::kSampleXmp.data(),
+                                      testutil::kSampleXmp.size()),
               AVIF_RESULT_OK);
   }
 
@@ -103,14 +85,14 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
 
   // Compare input and output metadata.
   EXPECT_TRUE(testutil::AreByteSequencesEqual(
-      decoded->icc.data, decoded->icc.size, kSampleIcc.data(),
-      use_icc ? kSampleIcc.size() : 0u));
+      decoded->icc.data, decoded->icc.size, testutil::kSampleIcc.data(),
+      use_icc ? testutil::kSampleIcc.size() : 0u));
   EXPECT_TRUE(testutil::AreByteSequencesEqual(
-      decoded->exif.data, decoded->exif.size, kSampleExif.data(),
-      use_exif ? kSampleExif.size() : 0u));
+      decoded->exif.data, decoded->exif.size, testutil::kSampleExif.data(),
+      use_exif ? testutil::kSampleExif.size() : 0u));
   EXPECT_TRUE(testutil::AreByteSequencesEqual(
-      decoded->xmp.data, decoded->xmp.size, kSampleXmp.data(),
-      use_xmp ? kSampleXmp.size() : 0u));
+      decoded->xmp.data, decoded->xmp.size, testutil::kSampleXmp.data(),
+      use_xmp ? testutil::kSampleXmp.size() : 0u));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, AvifMetadataTest,
