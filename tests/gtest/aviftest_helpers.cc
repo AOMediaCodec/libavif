@@ -98,9 +98,13 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
 }
 
 void FillImageGradient(avifImage* image) {
-  assert(image->yuvRange == AVIF_RANGE_FULL);
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    const uint32_t limitedRangeMin =
+        c == AVIF_CHAN_Y ? 16 << (image->depth - 8) : 0;
+    const uint32_t limitedRangeMax = (c == AVIF_CHAN_Y ? 219 : 224)
+                                     << (image->depth - 8);
+
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
     // 0 for A if no alpha and 0 for UV if 4:0:0.
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
@@ -108,8 +112,15 @@ void FillImageGradient(avifImage* image) {
     const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       for (uint32_t x = 0; x < plane_width; ++x) {
-        const uint32_t value = (x + y) * ((1u << image->depth) - 1u) /
-                               std::max(1u, plane_width + plane_height - 2);
+        uint32_t value;
+        if (image->yuvRange == AVIF_RANGE_FULL || c == AVIF_CHAN_A) {
+          value = (x + y) * ((1u << image->depth) - 1u) /
+                  std::max(1u, plane_width + plane_height - 2);
+        } else {
+          value = limitedRangeMin +
+                  (x + y) * (limitedRangeMax - limitedRangeMin) /
+                      std::max(1u, plane_width + plane_height - 2);
+        }
         if (avifImageUsesU16(image)) {
           reinterpret_cast<uint16_t*>(row)[x] = static_cast<uint16_t>(value);
         } else {
@@ -166,6 +177,22 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     return false;
   }
   assert(image1.width * image1.height > 0);
+
+  if (image1.clli.maxCLL != image2.clli.maxCLL ||
+      image1.clli.maxPALL != image2.clli.maxPALL) {
+    return false;
+  }
+  if (image1.transformFlags != image2.transformFlags ||
+      ((image1.transformFlags & AVIF_TRANSFORM_PASP) &&
+       std::memcmp(&image1.pasp, &image2.pasp, sizeof(image1.pasp))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_CLAP) &&
+       std::memcmp(&image1.clap, &image2.clap, sizeof(image1.clap))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_IROT) &&
+       std::memcmp(&image1.irot, &image2.irot, sizeof(image1.irot))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_IMIR) &&
+       std::memcmp(&image1.imir, &image2.imir, sizeof(image1.imir)))) {
+    return false;
+  }
 
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
