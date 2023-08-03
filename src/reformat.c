@@ -749,9 +749,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     const int Cg = (int)avifRoundf(Cb * yuvMaxChannel);
                     const int Co = (int)avifRoundf(Cr * yuvMaxChannel);
                     const int t = YY - (Cg >> 1);
-                    G = AVIF_CLAMP(t + Cg, 0, state->rgbMaxChannel);
-                    B = AVIF_CLAMP(t - (Co >> 1), 0, state->rgbMaxChannel);
-                    R = AVIF_CLAMP(B + Co, 0, state->rgbMaxChannel);
+                    G = (float)AVIF_CLAMP(t + Cg, 0, state->rgbMaxChannel);
+                    B = (float)AVIF_CLAMP(t - (Co >> 1), 0, state->rgbMaxChannel);
+                    R = (float)AVIF_CLAMP(B + Co, 0, state->rgbMaxChannel);
                     G /= rgbMaxChannelF;
                     B /= rgbMaxChannelF;
                     R /= rgbMaxChannelF;
