@@ -1862,24 +1862,16 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
     return AVIF_TRUE;
 }
 
-static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop,
-                                                       const uint8_t * raw,
-                                                       size_t rawLen,
-                                                       const char * configPropName,
-                                                       avifDiagnostics * diag)
+// Implementation of section 2.3.3. of AV1 Codec ISO Media File Format Binding specification v1.2.0.
+// See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
+static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigurationBox * config, const char * configPropName, avifDiagnostics * diag)
 {
-    char diagContext[] = "Box[....]";
-    snprintf(diagContext, sizeof(diagContext), "Box[%.4s]", configPropName); // "Box[av1C]" or "Box[av2C]"
-    BEGIN_STREAM(s, raw, rawLen, diag, diagContext);
-
-    avifCodecConfigurationBox * config = &prop->u.av1C;
-
     uint8_t markerAndVersion = 0;
-    AVIF_CHECK(avifROStreamRead(&s, &markerAndVersion, 1));
+    AVIF_CHECK(avifROStreamRead(s, &markerAndVersion, 1));
     uint8_t seqProfileAndIndex = 0;
-    AVIF_CHECK(avifROStreamRead(&s, &seqProfileAndIndex, 1));
+    AVIF_CHECK(avifROStreamRead(s, &seqProfileAndIndex, 1));
     uint8_t rawFlags = 0;
-    AVIF_CHECK(avifROStreamRead(&s, &rawFlags, 1));
+    AVIF_CHECK(avifROStreamRead(s, &rawFlags, 1));
 
     if (markerAndVersion != 0x81) {
         // Marker and version must both == 1
@@ -1896,7 +1888,39 @@ static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop,
     config->chromaSubsamplingX = (rawFlags >> 3) & 0x1;      // unsigned int (1) chroma_subsampling_x;
     config->chromaSubsamplingY = (rawFlags >> 2) & 0x1;      // unsigned int (1) chroma_subsampling_y;
     config->chromaSamplePosition = (rawFlags >> 0) & 0x3;    // unsigned int (2) chroma_sample_position;
+
+    // unsigned int (3) reserved = 0;
+    // unsigned int (1) initial_presentation_delay_present;
+    // if (initial_presentation_delay_present) {
+    //   unsigned int (4) initial_presentation_delay_minus_one;
+    // } else {
+    //   unsigned int (4) reserved = 0;
+    // }
+    AVIF_CHECK(avifROStreamSkip(s, 1));
+
+    // According to section 2.2.1. of AV1 Image File Format specification v1.1.0:
+    //   "- Sequence Header OBUs should not be present in the AV1CodecConfigurationBox."
+    //   "- If a Sequence Header OBU is present in the AV1CodecConfigurationBox,
+    //      it shall match the Sequence Header OBU in the AV1 Image Item Data."
+    //   "- Metadata OBUs, if present, shall match the values given in other item properties,
+    //      such as the PixelInformationProperty or ColourInformationBox."
+    // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#av1-configuration-item-property.
+    // For simplicity, the constraints above are not enforced.
+    // The following is skipped by avifParseItemPropertyContainerBox().
+    // unsigned int (8) configOBUs[];
     return AVIF_TRUE;
+}
+
+static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop,
+                                                       const uint8_t * raw,
+                                                       size_t rawLen,
+                                                       const char * configPropName,
+                                                       avifDiagnostics * diag)
+{
+    char diagContext[] = "Box[....]";
+    snprintf(diagContext, sizeof(diagContext), "Box[%.4s]", configPropName); // "Box[av1C]" or "Box[av2C]"
+    BEGIN_STREAM(s, raw, rawLen, diag, diagContext);
+    return avifParseCodecConfiguration(&s, &prop->u.av1C, configPropName, diag);
 }
 
 static avifBool avifParsePixelAspectRatioBoxProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
@@ -2386,7 +2410,7 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
 
     avifDecoderItem * item = avifMetaFindItem(meta, itemID);
     if (!item) {
-        avifDiagnosticsPrintf(diag, "Box[infe] has an invalid item ID [%u]", itemID);
+        avifDiagnosticsPrintf(diag, "%s: Box[infe] of type %.4s has an invalid item ID [%u]", s.diagContext, itemType, itemID);
         return AVIF_FALSE;
     }
 
@@ -4120,7 +4144,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
             } else if (configProp->u.av1C.chromaSubsamplingX) {
                 decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
-
             } else {
                 decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
             }

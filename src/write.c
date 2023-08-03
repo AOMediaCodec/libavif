@@ -36,7 +36,7 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
-static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg, const char * configPropName);
+static void writeConfigBox(avifRWStream * s, const avifCodecConfigurationBox * cfg, const char * configPropName);
 
 // ---------------------------------------------------------------------------
 // avifSetTileConfiguration
@@ -417,6 +417,7 @@ avifEncoder * avifEncoderCreate(void)
         return NULL;
     }
     memset(encoder, 0, sizeof(avifEncoder));
+    encoder->codecChoice = AVIF_CODEC_CHOICE_AUTO;
     encoder->maxThreads = 1;
     encoder->speed = AVIF_SPEED_DEFAULT;
     encoder->keyframeInterval = 0;
@@ -536,6 +537,12 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
     return AVIF_TRUE;
 }
 
+// Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
+static void avifEncoderWriteExtendedColorProperties(avifRWStream * outputStream,
+                                                    const avifImage * imageMetadata,
+                                                    struct ipmaArray * ipma,
+                                                    avifItemPropertyDedup * dedup);
+
 // This function is used in two codepaths:
 // * writing color *item* properties
 // * writing color *track* properties
@@ -590,6 +597,15 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
         ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
     }
 
+    avifEncoderWriteExtendedColorProperties(outputStream, imageMetadata, ipma, dedup);
+}
+
+static void avifEncoderWriteExtendedColorProperties(avifRWStream * outputStream,
+                                                    const avifImage * imageMetadata,
+                                                    struct ipmaArray * ipma,
+                                                    avifItemPropertyDedup * dedup)
+{
+    avifRWStream * s = dedup ? &dedup->s : outputStream;
     // Write Content Light Level Information, if present
     if (imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) {
         if (dedup) {
@@ -2174,10 +2190,10 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
     return avifEncoderFinish(encoder, output);
 }
 
-static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg, const char * configPropName)
+// Implementation of section 2.3.3. of AV1 Codec ISO Media File Format Binding specification v1.2.0.
+// See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
+static void writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox * cfg)
 {
-    avifBoxMarker configBox = avifRWStreamWriteBox(s, configPropName, AVIF_BOX_SIZE_TBD);
-
     // unsigned int (1) marker = 1;
     // unsigned int (7) version = 1;
     avifRWStreamWriteU8(s, 0x80 | 0x1);
@@ -2205,5 +2221,15 @@ static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg, co
     // }
     avifRWStreamWriteU8(s, 0);
 
+    // According to section 2.2.1. of AV1 Image File Format specification v1.1.0,
+    // there is no need to write any OBU here.
+    // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#av1-configuration-item-property.
+    // unsigned int (8) configOBUs[];
+}
+
+static void writeConfigBox(avifRWStream * s, const avifCodecConfigurationBox * cfg, const char * configPropName)
+{
+    avifBoxMarker configBox = avifRWStreamWriteBox(s, configPropName, AVIF_BOX_SIZE_TBD);
+    writeCodecConfig(s, cfg);
     avifRWStreamFinishBox(s, configBox);
 }
