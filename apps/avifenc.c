@@ -133,6 +133,7 @@ static void syntaxLong(void)
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
+    printf("    --clli MaxCLL,MaxPALL             : Add clli property (content light level information).\n");
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
     printf("    --min QP                          : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
@@ -675,6 +676,8 @@ typedef struct
     uint32_t clapValues[8];
     int gridDimsCount;
     uint32_t gridDims[8]; // only the first two are used
+    int clliCount;
+    uint32_t clliValues[8]; // only the first two are used
 
     int repetitionCount;
     int keyframeInterval;
@@ -1444,6 +1447,14 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
+        } else if (!strcmp(arg, "--clli")) {
+            NEXTARG();
+            settings.clliCount = parseU32List(settings.clliValues, arg);
+            if (settings.clliCount != 2 || settings.clliValues[0] >= (1u << 16) || settings.clliValues[1] >= (1u << 16)) {
+                fprintf(stderr, "ERROR: Invalid clli values: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
         } else if (!strcmp(arg, "--repetition-count")) {
             NEXTARG();
             if (!strcmp(arg, "infinite")) {
@@ -1757,6 +1768,10 @@ int main(int argc, char * argv[])
     if (imirMode != 0xff) {
         image->transformFlags |= AVIF_TRANSFORM_IMIR;
         image->imir.mode = imirMode;
+    }
+    if (settings.clliCount == 2) {
+        image->clli.maxCLL = (uint16_t)settings.clliValues[0];
+        image->clli.maxPALL = (uint16_t)settings.clliValues[1];
     }
 
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
