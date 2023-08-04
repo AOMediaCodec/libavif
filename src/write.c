@@ -36,7 +36,7 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
-static void writeConfigBox(avifRWStream * s, const avifCodecConfigurationBox * cfg, const char * configPropName);
+static avifResult writeConfigBox(avifRWStream * s, const avifCodecConfigurationBox * cfg, const char * configPropName);
 
 // ---------------------------------------------------------------------------
 // avifSetTileConfiguration
@@ -538,11 +538,11 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
 }
 
 // Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
-static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
-                                                    avifRWStream * outputStream,
-                                                    const avifImage * imageMetadata,
-                                                    struct ipmaArray * ipma,
-                                                    avifItemPropertyDedup * dedup);
+static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
+                                                          avifRWStream * outputStream,
+                                                          const avifImage * imageMetadata,
+                                                          struct ipmaArray * ipma,
+                                                          avifItemPropertyDedup * dedup);
 
 // This function is used in two codepaths:
 // * writing color *item* properties
@@ -555,10 +555,10 @@ static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
 // there is no need to build a property association box (ipma), and no way to deduplicate/reuse a
 // property. In this case, the ipma and dedup properties should/will be set to NULL, and this
 // function will avoid using them.
-static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
-                                            const avifImage * imageMetadata,
-                                            struct ipmaArray * ipma,
-                                            avifItemPropertyDedup * dedup)
+static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
+                                                  const avifImage * imageMetadata,
+                                                  struct ipmaArray * ipma,
+                                                  avifItemPropertyDedup * dedup)
 {
     // outputStream is the final bitstream that will be output by the libavif encoder API.
     // dedupStream is either equal to outputStream or to &dedup->s which is a temporary stream used
@@ -576,7 +576,8 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
         }
-        avifBoxMarker colr = avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD);
+        avifBoxMarker colr;
+        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD, &colr));
         avifRWStreamWriteChars(dedupStream, "prof", 4); // unsigned int(32) colour_type;
         avifRWStreamWrite(dedupStream, imageMetadata->icc.data, imageMetadata->icc.size);
         avifRWStreamFinishBox(dedupStream, colr);
@@ -590,7 +591,8 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
     if (dedup) {
         avifItemPropertyDedupStart(dedup);
     }
-    avifBoxMarker colr = avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD);
+    avifBoxMarker colr;
+    AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD, &colr));
     avifRWStreamWriteChars(dedupStream, "nclx", 4);                            // unsigned int(32) colour_type;
     avifRWStreamWriteU16(dedupStream, imageMetadata->colorPrimaries);          // unsigned int(16) colour_primaries;
     avifRWStreamWriteU16(dedupStream, imageMetadata->transferCharacteristics); // unsigned int(16) transfer_characteristics;
@@ -602,21 +604,23 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
         ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
     }
 
-    avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup);
+    AVIF_CHECKRES(avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup));
+    return AVIF_RESULT_OK;
 }
 
-static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
-                                                    avifRWStream * outputStream,
-                                                    const avifImage * imageMetadata,
-                                                    struct ipmaArray * ipma,
-                                                    avifItemPropertyDedup * dedup)
+static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
+                                                          avifRWStream * outputStream,
+                                                          const avifImage * imageMetadata,
+                                                          struct ipmaArray * ipma,
+                                                          avifItemPropertyDedup * dedup)
 {
     // Write Content Light Level Information, if present
     if (imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) {
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
         }
-        avifBoxMarker clli = avifRWStreamWriteBox(dedupStream, "clli", AVIF_BOX_SIZE_TBD);
+        avifBoxMarker clli;
+        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "clli", AVIF_BOX_SIZE_TBD, &clli));
         avifRWStreamWriteU16(dedupStream, imageMetadata->clli.maxCLL);  // unsigned int(16) max_content_light_level;
         avifRWStreamWriteU16(dedupStream, imageMetadata->clli.maxPALL); // unsigned int(16) max_pic_average_light_level;
         avifRWStreamFinishBox(dedupStream, clli);
@@ -630,7 +634,8 @@ static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
         }
-        avifBoxMarker pasp = avifRWStreamWriteBox(dedupStream, "pasp", AVIF_BOX_SIZE_TBD);
+        avifBoxMarker pasp;
+        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "pasp", AVIF_BOX_SIZE_TBD, &pasp));
         avifRWStreamWriteU32(dedupStream, imageMetadata->pasp.hSpacing); // unsigned int(32) hSpacing;
         avifRWStreamWriteU32(dedupStream, imageMetadata->pasp.vSpacing); // unsigned int(32) vSpacing;
         avifRWStreamFinishBox(dedupStream, pasp);
@@ -642,7 +647,8 @@ static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
         }
-        avifBoxMarker clap = avifRWStreamWriteBox(dedupStream, "clap", AVIF_BOX_SIZE_TBD);
+        avifBoxMarker clap;
+        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "clap", AVIF_BOX_SIZE_TBD, &clap));
         avifRWStreamWriteU32(dedupStream, imageMetadata->clap.widthN);    // unsigned int(32) cleanApertureWidthN;
         avifRWStreamWriteU32(dedupStream, imageMetadata->clap.widthD);    // unsigned int(32) cleanApertureWidthD;
         avifRWStreamWriteU32(dedupStream, imageMetadata->clap.heightN);   // unsigned int(32) cleanApertureHeightN;
@@ -660,9 +666,10 @@ static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
         }
-        avifBoxMarker irot = avifRWStreamWriteBox(dedupStream, "irot", AVIF_BOX_SIZE_TBD);
-        avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/6);                               // unsigned int (6) reserved = 0;
-        avifRWStreamWriteBits(dedupStream, imageMetadata->irot.angle & 0x3, /*bitCount=*/2); // unsigned int (2) angle;
+        avifBoxMarker irot;
+        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "irot", AVIF_BOX_SIZE_TBD, &irot));
+        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/6)); // unsigned int (6) reserved = 0;
+        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, imageMetadata->irot.angle & 0x3, /*bitCount=*/2)); // unsigned int (2) angle;
         avifRWStreamFinishBox(dedupStream, irot);
         if (dedup) {
             ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_TRUE);
@@ -672,19 +679,21 @@ static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
         }
-        avifBoxMarker imir = avifRWStreamWriteBox(dedupStream, "imir", AVIF_BOX_SIZE_TBD);
-        avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7);                                // unsigned int (7) reserved = 0;
-        avifRWStreamWriteBits(dedupStream, imageMetadata->imir.mode ? 1 : 0, /*bitCount=*/1); // unsigned int (1) mode;
+        avifBoxMarker imir;
+        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "imir", AVIF_BOX_SIZE_TBD, &imir));
+        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7)); // unsigned int (7) reserved = 0;
+        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, imageMetadata->imir.mode ? 1 : 0, /*bitCount=*/1)); // unsigned int (1) mode;
         avifRWStreamFinishBox(dedupStream, imir);
         if (dedup) {
             ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_TRUE);
         }
     }
+    return AVIF_RESULT_OK;
 }
 
 // Write unassociated metadata items (EXIF, XMP) to a small meta box inside of a trak box.
 // These items are implicitly associated with the track they are contained within.
-static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s)
+static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s)
 {
     // Count how many non-image items (such as EXIF/XMP) are being written
     uint32_t metadataItemCount = 0;
@@ -696,24 +705,27 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     }
     if (metadataItemCount == 0) {
         // Don't even bother writing the trak meta box
-        return;
+        return AVIF_RESULT_OK;
     }
 
-    avifBoxMarker meta = avifRWStreamWriteFullBox(s, "meta", AVIF_BOX_SIZE_TBD, 0, 0);
+    avifBoxMarker meta;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "meta", AVIF_BOX_SIZE_TBD, 0, 0, &meta));
 
-    avifBoxMarker hdlr = avifRWStreamWriteFullBox(s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0);
+    avifBoxMarker hdlr;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
     avifRWStreamWriteU32(s, 0);              // unsigned int(32) pre_defined = 0;
     avifRWStreamWriteChars(s, "pict", 4);    // unsigned int(32) handler_type;
     avifRWStreamWriteZeros(s, 12);           // const unsigned int(32)[3] reserved = 0;
     avifRWStreamWriteChars(s, "libavif", 8); // string name; (writing null terminator)
     avifRWStreamFinishBox(s, hdlr);
 
-    avifBoxMarker iloc = avifRWStreamWriteFullBox(s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0);
-    avifRWStreamWriteBits(s, 4, /*bitCount=*/4);          // unsigned int(4) offset_size;
-    avifRWStreamWriteBits(s, 4, /*bitCount=*/4);          // unsigned int(4) length_size;
-    avifRWStreamWriteBits(s, 0, /*bitCount=*/4);          // unsigned int(4) base_offset_size;
-    avifRWStreamWriteBits(s, 0, /*bitCount=*/4);          // unsigned int(4) reserved;
-    avifRWStreamWriteU16(s, (uint16_t)metadataItemCount); // unsigned int(16) item_count;
+    avifBoxMarker iloc;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0, &iloc));
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 4, /*bitCount=*/4));          // unsigned int(4) offset_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 4, /*bitCount=*/4));          // unsigned int(4) length_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, /*bitCount=*/4));          // unsigned int(4) base_offset_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, /*bitCount=*/4));          // unsigned int(4) reserved;
+    AVIF_CHECKRES(avifRWStreamWriteU16(s, (uint16_t)metadataItemCount)); // unsigned int(16) item_count;
     for (uint32_t trakItemIndex = 0; trakItemIndex < encoder->data->items.count; ++trakItemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[trakItemIndex];
         if (memcmp(item->type, encoder->data->imageItemType, 4) == 0) {
@@ -730,7 +742,8 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     }
     avifRWStreamFinishBox(s, iloc);
 
-    avifBoxMarker iinf = avifRWStreamWriteFullBox(s, "iinf", AVIF_BOX_SIZE_TBD, 0, 0);
+    avifBoxMarker iinf;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "iinf", AVIF_BOX_SIZE_TBD, 0, 0, &iinf));
     avifRWStreamWriteU16(s, (uint16_t)metadataItemCount); //  unsigned int(16) entry_count;
     for (uint32_t trakItemIndex = 0; trakItemIndex < encoder->data->items.count; ++trakItemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[trakItemIndex];
@@ -739,7 +752,8 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
         }
 
         assert(!item->hiddenImage);
-        avifBoxMarker infe = avifRWStreamWriteFullBox(s, "infe", AVIF_BOX_SIZE_TBD, 2, 0);
+        avifBoxMarker infe;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "infe", AVIF_BOX_SIZE_TBD, 2, 0, &infe));
         avifRWStreamWriteU16(s, item->id);                             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(s, 0);                                    // unsigned int(16) item_protection_index;
         avifRWStreamWrite(s, item->type, 4);                           // unsigned int(32) item_type;
@@ -752,6 +766,7 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamFinishBox(s, iinf);
 
     avifRWStreamFinishBox(s, meta);
+    return AVIF_RESULT_OK;
 }
 
 static void avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uint32_t gridRows, uint32_t gridWidth, uint32_t gridHeight)
@@ -1439,7 +1454,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     }
 #endif
 
-    avifBoxMarker ftyp = avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD);
+    avifBoxMarker ftyp;
+    AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
     avifRWStreamWriteChars(&s, majorBrand, 4);                             // unsigned int(32) major_brand;
     avifRWStreamWriteU32(&s, minorVersion);                                // unsigned int(32) minor_version;
     avifRWStreamWriteChars(&s, "avif", 4);                                 // unsigned int(32) compatible_brands[];
@@ -1462,12 +1478,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Start meta
 
-    avifBoxMarker meta = avifRWStreamWriteFullBox(&s, "meta", AVIF_BOX_SIZE_TBD, 0, 0);
+    avifBoxMarker meta;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "meta", AVIF_BOX_SIZE_TBD, 0, 0, &meta));
 
     // -----------------------------------------------------------------------
     // Write hdlr
 
-    avifBoxMarker hdlr = avifRWStreamWriteFullBox(&s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0);
+    avifBoxMarker hdlr;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
     avifRWStreamWriteU32(&s, 0);              // unsigned int(32) pre_defined = 0;
     avifRWStreamWriteChars(&s, "pict", 4);    // unsigned int(32) handler_type;
     avifRWStreamWriteZeros(&s, 12);           // const unsigned int(32)[3] reserved = 0;
@@ -1478,18 +1496,20 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write pitm
 
     if (encoder->data->primaryItemID != 0) {
-        avifRWStreamWriteFullBox(&s, "pitm", sizeof(uint16_t), 0, 0);
+        avifBoxMarker pitm;
+        avifRWStreamWriteFullBox(&s, "pitm", sizeof(uint16_t), 0, 0, &pitm);
         avifRWStreamWriteU16(&s, encoder->data->primaryItemID); //  unsigned int(16) item_ID;
     }
 
     // -----------------------------------------------------------------------
     // Write iloc
 
-    avifBoxMarker iloc = avifRWStreamWriteFullBox(&s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0);
-    avifRWStreamWriteBits(&s, 4, /*bitCount=*/4);                   // unsigned int(4) offset_size;
-    avifRWStreamWriteBits(&s, 4, /*bitCount=*/4);                   // unsigned int(4) length_size;
-    avifRWStreamWriteBits(&s, 0, /*bitCount=*/4);                   // unsigned int(4) base_offset_size;
-    avifRWStreamWriteBits(&s, 0, /*bitCount=*/4);                   // unsigned int(4) reserved;
+    avifBoxMarker iloc;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0, &iloc));
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));    // unsigned int(4) offset_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));    // unsigned int(4) length_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));    // unsigned int(4) base_offset_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));    // unsigned int(4) reserved;
     avifRWStreamWriteU16(&s, (uint16_t)encoder->data->items.count); // unsigned int(16) item_count;
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
@@ -1533,14 +1553,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Write iinf
 
-    avifBoxMarker iinf = avifRWStreamWriteFullBox(&s, "iinf", AVIF_BOX_SIZE_TBD, 0, 0);
+    avifBoxMarker iinf;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iinf", AVIF_BOX_SIZE_TBD, 0, 0, &iinf));
     avifRWStreamWriteU16(&s, (uint16_t)encoder->data->items.count); //  unsigned int(16) entry_count;
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
 
         uint32_t flags = item->hiddenImage ? 1 : 0;
-        avifBoxMarker infe = avifRWStreamWriteFullBox(&s, "infe", AVIF_BOX_SIZE_TBD, 2, flags);
+        avifBoxMarker infe;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "infe", AVIF_BOX_SIZE_TBD, 2, flags, &infe));
         avifRWStreamWriteU16(&s, item->id);                             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(&s, 0);                                    // unsigned int(16) item_protection_index;
         avifRWStreamWrite(&s, item->type, 4);                           // unsigned int(32) item_type;
@@ -1571,9 +1593,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         if (dimgCount > 0) {
             if (!iref) {
-                iref = avifRWStreamWriteFullBox(&s, "iref", AVIF_BOX_SIZE_TBD, 0, 0);
+                AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iref", AVIF_BOX_SIZE_TBD, 0, 0, &iref));
             }
-            avifBoxMarker refType = avifRWStreamWriteBox(&s, "dimg", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker refType;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, "dimg", AVIF_BOX_SIZE_TBD, &refType));
             avifRWStreamWriteU16(&s, item->id);  // unsigned int(16) from_item_ID;
             avifRWStreamWriteU16(&s, dimgCount); // unsigned int(16) reference_count;
             for (uint32_t dimgIndex = 0; dimgIndex < encoder->data->items.count; ++dimgIndex) {
@@ -1587,9 +1610,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         if (item->irefToID != 0) {
             if (!iref) {
-                iref = avifRWStreamWriteFullBox(&s, "iref", AVIF_BOX_SIZE_TBD, 0, 0);
+                AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iref", AVIF_BOX_SIZE_TBD, 0, 0, &iref));
             }
-            avifBoxMarker refType = avifRWStreamWriteBox(&s, item->irefType, AVIF_BOX_SIZE_TBD);
+            avifBoxMarker refType;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, item->irefType, AVIF_BOX_SIZE_TBD, &refType));
             avifRWStreamWriteU16(&s, item->id);       // unsigned int(16) from_item_ID;
             avifRWStreamWriteU16(&s, 1);              // unsigned int(16) reference_count;
             avifRWStreamWriteU16(&s, item->irefToID); // unsigned int(16) to_item_ID;
@@ -1603,10 +1627,12 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Write iprp -> ipco/ipma
 
-    avifBoxMarker iprp = avifRWStreamWriteBox(&s, "iprp", AVIF_BOX_SIZE_TBD);
+    avifBoxMarker iprp;
+    AVIF_CHECKRES(avifRWStreamWriteBox(&s, "iprp", AVIF_BOX_SIZE_TBD, &iprp));
 
     avifItemPropertyDedup * dedup = avifItemPropertyDedupCreate();
-    avifBoxMarker ipco = avifRWStreamWriteBox(&s, "ipco", AVIF_BOX_SIZE_TBD);
+    avifBoxMarker ipco;
+    AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ipco", AVIF_BOX_SIZE_TBD, &ipco));
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         const avifBool isGrid = (item->gridCols > 0);
@@ -1647,7 +1673,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         // Properties all image items need
 
         avifItemPropertyDedupStart(dedup);
-        avifBoxMarker ispe = avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0);
+        avifBoxMarker ispe;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0, &ispe));
         avifRWStreamWriteU32(&dedup->s, imageWidth);  // unsigned int(32) image_width;
         avifRWStreamWriteU32(&dedup->s, imageHeight); // unsigned int(32) image_height;
         avifRWStreamFinishBox(&dedup->s, ispe);
@@ -1656,7 +1683,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifItemPropertyDedupStart(dedup);
         uint8_t channelCount =
             ((item->itemCategory == AVIF_ITEM_ALPHA) || (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
-        avifBoxMarker pixi = avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0);
+        avifBoxMarker pixi;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
         avifRWStreamWriteU8(&dedup->s, channelCount); // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
             avifRWStreamWriteU8(&dedup->s, (uint8_t)imageMetadata->depth); // unsigned int (8) bits_per_channel;
@@ -1666,7 +1694,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         if (item->codec) {
             avifItemPropertyDedupStart(dedup);
-            writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName);
+            AVIF_CHECKRES(writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName));
             ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_TRUE);
         }
 
@@ -1674,21 +1702,23 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             // Alpha specific properties
 
             avifItemPropertyDedupStart(dedup);
-            avifBoxMarker auxC = avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker auxC;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0, &auxC));
             avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize); //  string aux_type;
             avifRWStreamFinishBox(&dedup->s, auxC);
             ipmaPush(&item->ipma, avifItemPropertyDedupFinish(dedup, &s), AVIF_FALSE);
         } else {
             // Color specific properties
 
-            avifEncoderWriteColorProperties(&s, imageMetadata, &item->ipma, dedup);
+            AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, &item->ipma, dedup));
         }
 
         if (item->extraLayerCount > 0) {
             // Layered Image Indexing Property
 
             avifItemPropertyDedupStart(dedup);
-            avifBoxMarker a1lx = avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker a1lx;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD, &a1lx));
             uint32_t layerSize[AVIF_MAX_AV1_LAYER_COUNT - 1] = { 0 };
             avifBool largeSize = AVIF_FALSE;
 
@@ -1720,7 +1750,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifItemPropertyDedupDestroy(dedup);
     dedup = NULL;
 
-    avifBoxMarker ipma = avifRWStreamWriteFullBox(&s, "ipma", AVIF_BOX_SIZE_TBD, 0, 0);
+    avifBoxMarker ipma;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "ipma", AVIF_BOX_SIZE_TBD, 0, 0, &ipma));
     {
         int ipmaCount = 0;
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
@@ -1797,9 +1828,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         // -------------------------------------------------------------------
         // Start moov
 
-        avifBoxMarker moov = avifRWStreamWriteBox(&s, "moov", AVIF_BOX_SIZE_TBD);
+        avifBoxMarker moov;
+        AVIF_CHECKRES(avifRWStreamWriteBox(&s, "moov", AVIF_BOX_SIZE_TBD, &moov));
 
-        avifBoxMarker mvhd = avifRWStreamWriteFullBox(&s, "mvhd", AVIF_BOX_SIZE_TBD, 1, 0);
+        avifBoxMarker mvhd;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "mvhd", AVIF_BOX_SIZE_TBD, 1, 0, &mvhd));
         avifRWStreamWriteU64(&s, now);                          // unsigned int(64) creation_time;
         avifRWStreamWriteU64(&s, now);                          // unsigned int(64) modification_time;
         avifRWStreamWriteU32(&s, (uint32_t)encoder->timescale); // unsigned int(32) timescale;
@@ -1830,9 +1863,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 }
             }
 
-            avifBoxMarker trak = avifRWStreamWriteBox(&s, "trak", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker trak;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, "trak", AVIF_BOX_SIZE_TBD, &trak));
 
-            avifBoxMarker tkhd = avifRWStreamWriteFullBox(&s, "tkhd", AVIF_BOX_SIZE_TBD, 1, 1);
+            avifBoxMarker tkhd;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "tkhd", AVIF_BOX_SIZE_TBD, 1, 1, &tkhd));
             avifRWStreamWriteU64(&s, now);                    // unsigned int(64) creation_time;
             avifRWStreamWriteU64(&s, now);                    // unsigned int(64) modification_time;
             avifRWStreamWriteU32(&s, itemIndex + 1);          // unsigned int(32) track_ID;
@@ -1849,16 +1884,20 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamFinishBox(&s, tkhd);
 
             if (item->irefToID != 0) {
-                avifBoxMarker tref = avifRWStreamWriteBox(&s, "tref", AVIF_BOX_SIZE_TBD);
-                avifBoxMarker refType = avifRWStreamWriteBox(&s, item->irefType, AVIF_BOX_SIZE_TBD);
+                avifBoxMarker tref;
+                AVIF_CHECKRES(avifRWStreamWriteBox(&s, "tref", AVIF_BOX_SIZE_TBD, &tref));
+                avifBoxMarker refType;
+                AVIF_CHECKRES(avifRWStreamWriteBox(&s, item->irefType, AVIF_BOX_SIZE_TBD, &refType));
                 avifRWStreamWriteU32(&s, (uint32_t)item->irefToID);
                 avifRWStreamFinishBox(&s, refType);
                 avifRWStreamFinishBox(&s, tref);
             }
 
-            avifBoxMarker edts = avifRWStreamWriteBox(&s, "edts", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker edts;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, "edts", AVIF_BOX_SIZE_TBD, &edts));
             uint32_t elstFlags = (encoder->repetitionCount != 0);
-            avifBoxMarker elst = avifRWStreamWriteFullBox(&s, "elst", AVIF_BOX_SIZE_TBD, 1, elstFlags);
+            avifBoxMarker elst;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "elst", AVIF_BOX_SIZE_TBD, 1, elstFlags, &elst));
             avifRWStreamWriteU32(&s, 1);                          // unsigned int(32) entry_count;
             avifRWStreamWriteU64(&s, framesDurationInTimescales); // unsigned int(64) segment_duration;
             avifRWStreamWriteU64(&s, 0);                          // int(64) media_time;
@@ -1868,12 +1907,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamFinishBox(&s, edts);
 
             if (item->itemCategory != AVIF_ITEM_ALPHA) {
-                avifEncoderWriteTrackMetaBox(encoder, &s);
+                AVIF_CHECKRES(avifEncoderWriteTrackMetaBox(encoder, &s));
             }
 
-            avifBoxMarker mdia = avifRWStreamWriteBox(&s, "mdia", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker mdia;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, "mdia", AVIF_BOX_SIZE_TBD, &mdia));
 
-            avifBoxMarker mdhd = avifRWStreamWriteFullBox(&s, "mdhd", AVIF_BOX_SIZE_TBD, 1, 0);
+            avifBoxMarker mdhd;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "mdhd", AVIF_BOX_SIZE_TBD, 1, 0, &mdhd));
             avifRWStreamWriteU64(&s, now);                          // unsigned int(64) creation_time;
             avifRWStreamWriteU64(&s, now);                          // unsigned int(64) modification_time;
             avifRWStreamWriteU32(&s, (uint32_t)encoder->timescale); // unsigned int(32) timescale;
@@ -1882,24 +1923,30 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteU16(&s, 0);                            // unsigned int(16) pre_defined = 0;
             avifRWStreamFinishBox(&s, mdhd);
 
-            avifBoxMarker hdlrTrak = avifRWStreamWriteFullBox(&s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker hdlrTrak;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlrTrak));
             avifRWStreamWriteU32(&s, 0); // unsigned int(32) pre_defined = 0;
             avifRWStreamWriteChars(&s, (item->itemCategory == AVIF_ITEM_ALPHA) ? "auxv" : "pict", 4); // unsigned int(32) handler_type;
             avifRWStreamWriteZeros(&s, 12);           // const unsigned int(32)[3] reserved = 0;
             avifRWStreamWriteChars(&s, "libavif", 8); // string name; (writing null terminator)
             avifRWStreamFinishBox(&s, hdlrTrak);
 
-            avifBoxMarker minf = avifRWStreamWriteBox(&s, "minf", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker minf;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, "minf", AVIF_BOX_SIZE_TBD, &minf));
 
-            avifBoxMarker vmhd = avifRWStreamWriteFullBox(&s, "vmhd", AVIF_BOX_SIZE_TBD, 0, 1);
+            avifBoxMarker vmhd;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "vmhd", AVIF_BOX_SIZE_TBD, 0, 1, &vmhd));
             avifRWStreamWriteU16(&s, 0);   // template unsigned int(16) graphicsmode = 0; (copy over the existing image)
             avifRWStreamWriteZeros(&s, 6); // template unsigned int(16)[3] opcolor = {0, 0, 0};
             avifRWStreamFinishBox(&s, vmhd);
 
-            avifBoxMarker dinf = avifRWStreamWriteBox(&s, "dinf", AVIF_BOX_SIZE_TBD);
-            avifBoxMarker dref = avifRWStreamWriteFullBox(&s, "dref", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteU32(&s, 1);                   // unsigned int(32) entry_count;
-            avifRWStreamWriteFullBox(&s, "url ", 0, 0, 1); // flags:1 means data is in this file
+            avifBoxMarker dinf;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, "dinf", AVIF_BOX_SIZE_TBD, &dinf));
+            avifBoxMarker dref;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "dref", AVIF_BOX_SIZE_TBD, 0, 0, &dref));
+            avifRWStreamWriteU32(&s, 1); // unsigned int(32) entry_count;
+            avifBoxMarker url;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "url ", 0, 0, 1, &url)); // flags:1 means data is in this file
             avifRWStreamFinishBox(&s, dref);
             avifRWStreamFinishBox(&s, dinf);
 
@@ -1908,11 +1955,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             // (stsd), Time to Sample (stts), Sample to Chunk (stsc), Sample Size (stsz), Chunk Offset (stco).
             //
             // Any boxes not listed in the above line are placed in the end (after the "stco" box).
-            avifBoxMarker stbl = avifRWStreamWriteBox(&s, "stbl", AVIF_BOX_SIZE_TBD);
+            avifBoxMarker stbl;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, "stbl", AVIF_BOX_SIZE_TBD, &stbl));
 
-            avifBoxMarker stsd = avifRWStreamWriteFullBox(&s, "stsd", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker stsd;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stsd", AVIF_BOX_SIZE_TBD, 0, 0, &stsd));
             avifRWStreamWriteU32(&s, 1); // unsigned int(32) entry_count;
-            avifBoxMarker imageItem = avifRWStreamWriteBox(&s, encoder->data->imageItemType, AVIF_BOX_SIZE_TBD);
+            avifBoxMarker imageItem;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&s, encoder->data->imageItemType, AVIF_BOX_SIZE_TBD, &imageItem));
             avifRWStreamWriteZeros(&s, 6);                             // const unsigned int(8)[6] reserved = 0;
             avifRWStreamWriteU16(&s, 1);                               // unsigned int(16) data_reference_index;
             avifRWStreamWriteU16(&s, 0);                               // unsigned int(16) pre_defined = 0;
@@ -1928,20 +1978,22 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamWriteZeros(&s, 32 - 11);                       //
             avifRWStreamWriteU16(&s, 0x0018);                          // template unsigned int(16) depth = 0x0018;
             avifRWStreamWriteU16(&s, (uint16_t)0xffff);                // int(16) pre_defined = -1;
-            writeConfigBox(&s, &item->av1C, encoder->data->configPropName);
+            AVIF_CHECKRES(writeConfigBox(&s, &item->av1C, encoder->data->configPropName));
             if (item->itemCategory == AVIF_ITEM_COLOR) {
-                avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL);
+                AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL));
             }
 
-            avifBoxMarker ccst = avifRWStreamWriteFullBox(&s, "ccst", AVIF_BOX_SIZE_TBD, 0, 0);
-            avifRWStreamWriteBits(&s, 0, /*bitCount=*/1);  // unsigned int(1) all_ref_pics_intra;
-            avifRWStreamWriteBits(&s, 1, /*bitCount=*/1);  // unsigned int(1) intra_pred_used;
-            avifRWStreamWriteBits(&s, 15, /*bitCount=*/4); // unsigned int(4) max_ref_per_pic;
-            avifRWStreamWriteBits(&s, 0, /*bitCount=*/26); // unsigned int(26) reserved;
+            avifBoxMarker ccst;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "ccst", AVIF_BOX_SIZE_TBD, 0, 0, &ccst));
+            AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/1));  // unsigned int(1) all_ref_pics_intra;
+            AVIF_CHECKRES(avifRWStreamWriteBits(&s, 1, /*bitCount=*/1));  // unsigned int(1) intra_pred_used;
+            AVIF_CHECKRES(avifRWStreamWriteBits(&s, 15, /*bitCount=*/4)); // unsigned int(4) max_ref_per_pic;
+            AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/26)); // unsigned int(26) reserved;
             avifRWStreamFinishBox(&s, ccst);
 
             if (item->itemCategory == AVIF_ITEM_ALPHA) {
-                avifBoxMarker auxi = avifRWStreamWriteFullBox(&s, "auxi", AVIF_BOX_SIZE_TBD, 0, 0);
+                avifBoxMarker auxi;
+                AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "auxi", AVIF_BOX_SIZE_TBD, 0, 0, &auxi));
                 avifRWStreamWriteChars(&s, alphaURN, alphaURNSize); //  string aux_track_type;
                 avifRWStreamFinishBox(&s, auxi);
             }
@@ -1949,7 +2001,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamFinishBox(&s, imageItem);
             avifRWStreamFinishBox(&s, stsd);
 
-            avifBoxMarker stts = avifRWStreamWriteFullBox(&s, "stts", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker stts;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stts", AVIF_BOX_SIZE_TBD, 0, 0, &stts));
             size_t sttsEntryCountOffset = avifRWStreamOffset(&s);
             uint32_t sttsEntryCount = 0;
             avifRWStreamWriteU32(&s, 0); // unsigned int(32) entry_count;
@@ -1973,14 +2026,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifRWStreamSetOffset(&s, prevOffset);
             avifRWStreamFinishBox(&s, stts);
 
-            avifBoxMarker stsc = avifRWStreamWriteFullBox(&s, "stsc", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker stsc;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stsc", AVIF_BOX_SIZE_TBD, 0, 0, &stsc));
             avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) entry_count;
             avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) first_chunk;
             avifRWStreamWriteU32(&s, item->encodeOutput->samples.count); // unsigned int(32) samples_per_chunk;
             avifRWStreamWriteU32(&s, 1);                                 // unsigned int(32) sample_description_index;
             avifRWStreamFinishBox(&s, stsc);
 
-            avifBoxMarker stsz = avifRWStreamWriteFullBox(&s, "stsz", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker stsz;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stsz", AVIF_BOX_SIZE_TBD, 0, 0, &stsz));
             avifRWStreamWriteU32(&s, 0);                                 // unsigned int(32) sample_size;
             avifRWStreamWriteU32(&s, item->encodeOutput->samples.count); // unsigned int(32) sample_count;
             for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
@@ -1989,13 +2044,15 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
             avifRWStreamFinishBox(&s, stsz);
 
-            avifBoxMarker stco = avifRWStreamWriteFullBox(&s, "stco", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker stco;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stco", AVIF_BOX_SIZE_TBD, 0, 0, &stco));
             avifRWStreamWriteU32(&s, 1);           // unsigned int(32) entry_count;
             avifEncoderItemAddMdatFixup(item, &s); //
             avifRWStreamWriteU32(&s, 1);           // unsigned int(32) chunk_offset; (set later)
             avifRWStreamFinishBox(&s, stco);
 
-            avifBoxMarker stss = avifRWStreamWriteFullBox(&s, "stss", AVIF_BOX_SIZE_TBD, 0, 0);
+            avifBoxMarker stss;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stss", AVIF_BOX_SIZE_TBD, 0, 0, &stss));
             avifRWStreamWriteU32(&s, syncSamplesCount); // unsigned int(32) entry_count;
             for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
                 avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
@@ -2031,7 +2088,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
 
-    avifBoxMarker mdat = avifRWStreamWriteBox(&s, "mdat", AVIF_BOX_SIZE_TBD);
+    avifBoxMarker mdat;
+    AVIF_CHECKRES(avifRWStreamWriteBox(&s, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
     const size_t mdatStartOffset = avifRWStreamOffset(&s);
     for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
@@ -2216,9 +2274,11 @@ static void writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox *
     // unsigned int (8) configOBUs[];
 }
 
-static void writeConfigBox(avifRWStream * s, const avifCodecConfigurationBox * cfg, const char * configPropName)
+static avifResult writeConfigBox(avifRWStream * s, const avifCodecConfigurationBox * cfg, const char * configPropName)
 {
-    avifBoxMarker configBox = avifRWStreamWriteBox(s, configPropName, AVIF_BOX_SIZE_TBD);
+    avifBoxMarker configBox;
+    AVIF_CHECKRES(avifRWStreamWriteBox(s, configPropName, AVIF_BOX_SIZE_TBD, &configBox));
     writeCodecConfig(s, cfg);
     avifRWStreamFinishBox(s, configBox);
+    return AVIF_RESULT_OK;
 }
