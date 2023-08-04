@@ -22,7 +22,8 @@ List of incompatible ABI changes in this release:
 * The meaning of the keyframeInterval member of avifEncoder struct has changed
   slightly. When set to a value of "n",
     * Before: It forces a keyframe on every nth frame.
-    * After: Any set of "n" consecutive frame will have atleast one keyframe (every nth frame may or may not be a keyframe).
+    * After: Any set of "n" consecutive frame will have at least one keyframe
+      (every nth frame may or may not be a keyframe).
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
@@ -880,7 +881,7 @@ code.
 - Added decoder and image timings for image sequences
 
 ### Changed
-- Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
+- Reorganized internal struct avifCodec to accommodate multiple codecs simultaneously (compile time; not exposed to API)
 - Fix some compiler warnings
 - Sanity check offsets and sizes in items table before using
 - Bail out of box header advertises an impossible size
