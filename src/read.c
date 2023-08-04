@@ -3195,7 +3195,9 @@ static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
 
 avifBool avifPeekCompatibleFileType(const avifROData * input)
 {
-    BEGIN_STREAM(s, input->data, input->size, NULL, NULL);
+    avifDiagnostics diag;
+    avifDiagnosticsClearError(&diag);
+    BEGIN_STREAM(s, input->data, input->size, &diag, "");
 
     avifBoxHeader header;
     AVIF_CHECK(avifROStreamReadBoxHeader(&s, &header));

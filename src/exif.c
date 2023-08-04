@@ -32,8 +32,10 @@ avifResult avifGetExifOrientationOffset(const uint8_t * exif, size_t exifSize, s
 
     avifROData raw = { exif + *offset, exifSize - *offset };
     const avifBool littleEndian = (raw.data[0] == 'I');
+    avifDiagnostics diag;
+    avifDiagnosticsClearError(&diag);
     avifROStream stream;
-    avifROStreamStart(&stream, &raw, NULL, NULL);
+    avifROStreamStart(&stream, &raw, &diag, "");
 
     // TIFF Header
     uint32_t offsetTo0thIfd;

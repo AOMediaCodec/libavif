@@ -17,10 +17,6 @@ __attribute__((__format__(__printf__, 2, 3)))
 #endif
 void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...)
 {
-    if (!diag) {
-        // It is possible this is NULL (e.g. calls to avifFileTypeIsCompatible())
-        return;
-    }
     if (*diag->error) {
         // There is already a detailed error set.
         return;
