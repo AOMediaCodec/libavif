@@ -225,6 +225,15 @@ avifBool avifImageScale(avifImage * image,
                         avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
+// AVIF item type
+
+typedef enum avifItemType
+{
+    AVIF_ITEM_COLOR = 0,
+    AVIF_ITEM_ALPHA = 1
+} avifItemType;
+
+// ---------------------------------------------------------------------------
 // Grid AVIF images
 
 // Returns false if the tiles in a grid image violate any standards.
@@ -262,8 +271,8 @@ AVIF_ARRAY_DECLARE(avifDecodeSampleArray, avifDecodeSample, sample);
 typedef struct avifCodecDecodeInput
 {
     avifDecodeSampleArray samples;
-    avifBool allLayers; // if true, the underlying codec must decode all layers, not just the best layer
-    avifBool alpha;     // if true, this is decoding an alpha plane
+    avifBool allLayers;    // if true, the underlying codec must decode all layers, not just the best layer
+    avifItemType itemType; // type of item being decoded
 } avifCodecDecodeInput;
 
 avifCodecDecodeInput * avifCodecDecodeInputCreate(void);
