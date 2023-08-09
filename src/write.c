@@ -1385,7 +1385,150 @@ static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOff
 static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
                                        avifRWStream * stream,
                                        avifEncoderItemReferenceArray * layeredColorItems,
-                                       avifEncoderItemReferenceArray * layeredAlphaItems);
+                                       avifEncoderItemReferenceArray * layeredAlphaItems)
+{
+    encoder->ioStats.colorOBUSize = 0;
+    encoder->ioStats.alphaOBUSize = 0;
+
+    avifBoxMarker mdat;
+    AVIF_CHECKRES(avifRWStreamWriteBox(stream, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
+    const size_t mdatStartOffset = avifRWStreamOffset(stream);
+    for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
+        // Use multiple passes to pack in the following order:
+        //   * Pass 0: metadata (Exif/XMP)
+        //   * Pass 1: alpha (AV1)
+        //   * Pass 2: all other item data (AV1 color)
+        //
+        // See here for the discussion on alpha coming before color:
+        // https://github.com/AOMediaCodec/libavif/issues/287
+        //
+        // Exif and XMP are packed first as they're required to be fully available
+        // by avifDecoderParse() before it returns AVIF_RESULT_OK, unless ignoreXMP
+        // and ignoreExif are enabled.
+        //
+        const avifBool metadataPass = (itemPasses == 0);
+        const avifBool alphaPass = (itemPasses == 1);
+
+        for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+            avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+            const avifBool isGrid = (item->gridCols > 0); // Grids store their payload in metadataPayload, so use this to distinguish grid payloads from XMP/Exif
+            if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
+                // this item has nothing for the mdat box
+                continue;
+            }
+            if (!isGrid && (metadataPass != (item->metadataPayload.size > 0))) {
+                // only process metadata (XMP/Exif) payloads when metadataPass is true
+                continue;
+            }
+            if (alphaPass != (item->itemCategory == AVIF_ITEM_ALPHA)) {
+                // only process alpha payloads when alphaPass is true
+                continue;
+            }
+
+            if ((encoder->extraLayerCount > 0) && (item->encodeOutput->samples.count > 0)) {
+                // Interleave - Pick out AV1 items and interleave them later.
+                // We always interleave all AV1 items for layered images.
+                assert(item->encodeOutput->samples.count == item->mdatFixups.count);
+
+                avifEncoderItemReference * ref = (item->itemCategory == AVIF_ITEM_ALPHA) ? avifArrayPushPtr(layeredAlphaItems)
+                                                                                         : avifArrayPushPtr(layeredColorItems);
+                *ref = item;
+                continue;
+            }
+
+            size_t chunkOffset = 0;
+
+            // Deduplication - See if an identical chunk to this has already been written
+            if (item->encodeOutput->samples.count > 0) {
+                avifEncodeSample * sample = &item->encodeOutput->samples.sample[0];
+                chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, sample->data.data, sample->data.size);
+            } else {
+                chunkOffset =
+                    avifEncoderFindExistingChunk(stream, mdatStartOffset, item->metadataPayload.data, item->metadataPayload.size);
+            }
+
+            if (!chunkOffset) {
+                // We've never seen this chunk before; write it out
+                chunkOffset = avifRWStreamOffset(stream);
+                if (item->encodeOutput->samples.count > 0) {
+                    for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
+                        avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
+                        AVIF_CHECKRES(avifRWStreamWrite(stream, sample->data.data, sample->data.size));
+
+                        if (item->itemCategory == AVIF_ITEM_ALPHA) {
+                            encoder->ioStats.alphaOBUSize += sample->data.size;
+                        } else {
+                            encoder->ioStats.colorOBUSize += sample->data.size;
+                        }
+                    }
+                } else {
+                    AVIF_CHECKRES(avifRWStreamWrite(stream, item->metadataPayload.data, item->metadataPayload.size));
+                }
+            }
+
+            for (uint32_t fixupIndex = 0; fixupIndex < item->mdatFixups.count; ++fixupIndex) {
+                avifOffsetFixup * fixup = &item->mdatFixups.fixup[fixupIndex];
+                size_t prevOffset = avifRWStreamOffset(stream);
+                avifRWStreamSetOffset(stream, fixup->offset);
+                AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
+                avifRWStreamSetOffset(stream, prevOffset);
+            }
+        }
+    }
+
+    uint32_t layeredItemCount = AVIF_MAX(layeredColorItems->count, layeredAlphaItems->count);
+    if (layeredItemCount > 0) {
+        // Interleave samples of all AV1 items.
+        // We first write the first layer of all items,
+        // in which we write first layer of each cell,
+        // in which we write alpha first and then color.
+        avifBool hasMoreSample;
+        uint32_t layerIndex = 0;
+        do {
+            hasMoreSample = AVIF_FALSE;
+            for (uint32_t itemIndex = 0; itemIndex < layeredItemCount; ++itemIndex) {
+                for (int samplePass = 0; samplePass < 2; ++samplePass) {
+                    // Alpha coming before color
+                    avifEncoderItemReferenceArray * currentItems = (samplePass == 0) ? layeredAlphaItems : layeredColorItems;
+                    if (itemIndex >= currentItems->count) {
+                        continue;
+                    }
+
+                    // TODO: Offer the ability for a user to specify which grid cell should be written first.
+                    avifEncoderItem * item = currentItems->ref[itemIndex];
+                    if (item->encodeOutput->samples.count <= layerIndex) {
+                        // We've already written all samples of this item
+                        continue;
+                    } else if (item->encodeOutput->samples.count > layerIndex + 1) {
+                        hasMoreSample = AVIF_TRUE;
+                    }
+                    avifRWData * data = &item->encodeOutput->samples.sample[layerIndex].data;
+                    size_t chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, data->data, data->size);
+                    if (!chunkOffset) {
+                        // We've never seen this chunk before; write it out
+                        chunkOffset = avifRWStreamOffset(stream);
+                        AVIF_CHECKRES(avifRWStreamWrite(stream, data->data, data->size));
+                        if (samplePass == 0) {
+                            encoder->ioStats.alphaOBUSize += data->size;
+                        } else {
+                            encoder->ioStats.colorOBUSize += data->size;
+                        }
+                    }
+
+                    size_t prevOffset = avifRWStreamOffset(stream);
+                    avifRWStreamSetOffset(stream, item->mdatFixups.fixup[layerIndex].offset);
+                    AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
+                    avifRWStreamSetOffset(stream, prevOffset);
+                }
+            }
+            ++layerIndex;
+        } while (hasMoreSample);
+
+        assert(layerIndex <= AVIF_MAX_AV1_LAYER_COUNT);
+    }
+    avifRWStreamFinishBox(stream, mdat);
+    return AVIF_RESULT_OK;
+}
 
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
@@ -2114,154 +2257,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifRWStreamFinishWrite(&s);
 
-    return AVIF_RESULT_OK;
-}
-
-static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
-                                       avifRWStream * stream,
-                                       avifEncoderItemReferenceArray * layeredColorItems,
-                                       avifEncoderItemReferenceArray * layeredAlphaItems)
-{
-    encoder->ioStats.colorOBUSize = 0;
-    encoder->ioStats.alphaOBUSize = 0;
-
-    avifBoxMarker mdat;
-    AVIF_CHECKRES(avifRWStreamWriteBox(stream, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
-    const size_t mdatStartOffset = avifRWStreamOffset(stream);
-    for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
-        // Use multiple passes to pack in the following order:
-        //   * Pass 0: metadata (Exif/XMP)
-        //   * Pass 1: alpha (AV1)
-        //   * Pass 2: all other item data (AV1 color)
-        //
-        // See here for the discussion on alpha coming before color:
-        // https://github.com/AOMediaCodec/libavif/issues/287
-        //
-        // Exif and XMP are packed first as they're required to be fully available
-        // by avifDecoderParse() before it returns AVIF_RESULT_OK, unless ignoreXMP
-        // and ignoreExif are enabled.
-        //
-        const avifBool metadataPass = (itemPasses == 0);
-        const avifBool alphaPass = (itemPasses == 1);
-
-        for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
-            avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-            const avifBool isGrid = (item->gridCols > 0); // Grids store their payload in metadataPayload, so use this to distinguish grid payloads from XMP/Exif
-            if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
-                // this item has nothing for the mdat box
-                continue;
-            }
-            if (!isGrid && (metadataPass != (item->metadataPayload.size > 0))) {
-                // only process metadata (XMP/Exif) payloads when metadataPass is true
-                continue;
-            }
-            if (alphaPass != (item->itemCategory == AVIF_ITEM_ALPHA)) {
-                // only process alpha payloads when alphaPass is true
-                continue;
-            }
-
-            if ((encoder->extraLayerCount > 0) && (item->encodeOutput->samples.count > 0)) {
-                // Interleave - Pick out AV1 items and interleave them later.
-                // We always interleave all AV1 items for layered images.
-                assert(item->encodeOutput->samples.count == item->mdatFixups.count);
-
-                avifEncoderItemReference * ref = (item->itemCategory == AVIF_ITEM_ALPHA) ? avifArrayPushPtr(layeredAlphaItems)
-                                                                                         : avifArrayPushPtr(layeredColorItems);
-                *ref = item;
-                continue;
-            }
-
-            size_t chunkOffset = 0;
-
-            // Deduplication - See if an identical chunk to this has already been written
-            if (item->encodeOutput->samples.count > 0) {
-                avifEncodeSample * sample = &item->encodeOutput->samples.sample[0];
-                chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, sample->data.data, sample->data.size);
-            } else {
-                chunkOffset =
-                    avifEncoderFindExistingChunk(stream, mdatStartOffset, item->metadataPayload.data, item->metadataPayload.size);
-            }
-
-            if (!chunkOffset) {
-                // We've never seen this chunk before; write it out
-                chunkOffset = avifRWStreamOffset(stream);
-                if (item->encodeOutput->samples.count > 0) {
-                    for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
-                        avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
-                        AVIF_CHECKRES(avifRWStreamWrite(stream, sample->data.data, sample->data.size));
-
-                        if (item->itemCategory == AVIF_ITEM_ALPHA) {
-                            encoder->ioStats.alphaOBUSize += sample->data.size;
-                        } else {
-                            encoder->ioStats.colorOBUSize += sample->data.size;
-                        }
-                    }
-                } else {
-                    AVIF_CHECKRES(avifRWStreamWrite(stream, item->metadataPayload.data, item->metadataPayload.size));
-                }
-            }
-
-            for (uint32_t fixupIndex = 0; fixupIndex < item->mdatFixups.count; ++fixupIndex) {
-                avifOffsetFixup * fixup = &item->mdatFixups.fixup[fixupIndex];
-                size_t prevOffset = avifRWStreamOffset(stream);
-                avifRWStreamSetOffset(stream, fixup->offset);
-                AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
-                avifRWStreamSetOffset(stream, prevOffset);
-            }
-        }
-    }
-
-    uint32_t layeredItemCount = AVIF_MAX(layeredColorItems->count, layeredAlphaItems->count);
-    if (layeredItemCount > 0) {
-        // Interleave samples of all AV1 items.
-        // We first write the first layer of all items,
-        // in which we write first layer of each cell,
-        // in which we write alpha first and then color.
-        avifBool hasMoreSample;
-        uint32_t layerIndex = 0;
-        do {
-            hasMoreSample = AVIF_FALSE;
-            for (uint32_t itemIndex = 0; itemIndex < layeredItemCount; ++itemIndex) {
-                for (int samplePass = 0; samplePass < 2; ++samplePass) {
-                    // Alpha coming before color
-                    avifEncoderItemReferenceArray * currentItems = (samplePass == 0) ? layeredAlphaItems : layeredColorItems;
-                    if (itemIndex >= currentItems->count) {
-                        continue;
-                    }
-
-                    // TODO: Offer the ability for a user to specify which grid cell should be written first.
-                    avifEncoderItem * item = currentItems->ref[itemIndex];
-                    if (item->encodeOutput->samples.count <= layerIndex) {
-                        // We've already written all samples of this item
-                        continue;
-                    } else if (item->encodeOutput->samples.count > layerIndex + 1) {
-                        hasMoreSample = AVIF_TRUE;
-                    }
-                    avifRWData * data = &item->encodeOutput->samples.sample[layerIndex].data;
-                    size_t chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, data->data, data->size);
-                    if (!chunkOffset) {
-                        // We've never seen this chunk before; write it out
-                        chunkOffset = avifRWStreamOffset(stream);
-                        AVIF_CHECKRES(avifRWStreamWrite(stream, data->data, data->size));
-                        if (samplePass == 0) {
-                            encoder->ioStats.alphaOBUSize += data->size;
-                        } else {
-                            encoder->ioStats.colorOBUSize += data->size;
-                        }
-                    }
-
-                    size_t prevOffset = avifRWStreamOffset(stream);
-                    avifRWStreamSetOffset(stream, item->mdatFixups.fixup[layerIndex].offset);
-                    AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
-                    avifRWStreamSetOffset(stream, prevOffset);
-                }
-            }
-            ++layerIndex;
-        } while (hasMoreSample);
-
-        assert(layerIndex <= AVIF_MAX_AV1_LAYER_COUNT);
-    }
-    avifRWStreamFinishBox(stream, mdat);
     return AVIF_RESULT_OK;
 }
 
