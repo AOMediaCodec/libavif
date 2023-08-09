@@ -1382,6 +1382,11 @@ static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOff
     return 0;
 }
 
+static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
+                                       avifRWStream * stream,
+                                       avifEncoderItemReferenceArray * layeredColorItems,
+                                       avifEncoderItemReferenceArray * layeredAlphaItems);
+
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
     avifDiagnosticsClearError(&encoder->diag);
@@ -2088,19 +2093,41 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Write mdat
 
+    avifEncoderItemReferenceArray layeredColorItems;
+    avifEncoderItemReferenceArray layeredAlphaItems;
+    avifResult result = AVIF_RESULT_OK;
+    if (!avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1)) {
+        result = AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    if (!avifArrayCreate(&layeredAlphaItems, sizeof(avifEncoderItemReference), 1)) {
+        result = AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    if (result == AVIF_RESULT_OK) {
+        result = avifEncoderWriteMdat(encoder, &s, &layeredColorItems, &layeredAlphaItems);
+    }
+    avifArrayDestroy(&layeredColorItems);
+    avifArrayDestroy(&layeredAlphaItems);
+    AVIF_CHECKRES(result);
+
+    // -----------------------------------------------------------------------
+    // Finish up stream
+
+    avifRWStreamFinishWrite(&s);
+
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
+                                       avifRWStream * stream,
+                                       avifEncoderItemReferenceArray * layeredColorItems,
+                                       avifEncoderItemReferenceArray * layeredAlphaItems)
+{
     encoder->ioStats.colorOBUSize = 0;
     encoder->ioStats.alphaOBUSize = 0;
 
-    avifEncoderItemReferenceArray layeredColorItems;
-    avifEncoderItemReferenceArray layeredAlphaItems;
-    if (!avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1) ||
-        !avifArrayCreate(&layeredAlphaItems, sizeof(avifEncoderItemReference), 1)) {
-        return AVIF_RESULT_OUT_OF_MEMORY;
-    }
-
     avifBoxMarker mdat;
-    AVIF_CHECKRES(avifRWStreamWriteBox(&s, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
-    const size_t mdatStartOffset = avifRWStreamOffset(&s);
+    AVIF_CHECKRES(avifRWStreamWriteBox(stream, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
+    const size_t mdatStartOffset = avifRWStreamOffset(stream);
     for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
         //   * Pass 0: metadata (Exif/XMP)
@@ -2138,8 +2165,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 // We always interleave all AV1 items for layered images.
                 assert(item->encodeOutput->samples.count == item->mdatFixups.count);
 
-                avifEncoderItemReference * ref = (item->itemCategory == AVIF_ITEM_ALPHA) ? avifArrayPushPtr(&layeredAlphaItems)
-                                                                                         : avifArrayPushPtr(&layeredColorItems);
+                avifEncoderItemReference * ref = (item->itemCategory == AVIF_ITEM_ALPHA) ? avifArrayPushPtr(layeredAlphaItems)
+                                                                                         : avifArrayPushPtr(layeredColorItems);
                 *ref = item;
                 continue;
             }
@@ -2149,18 +2176,19 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             // Deduplication - See if an identical chunk to this has already been written
             if (item->encodeOutput->samples.count > 0) {
                 avifEncodeSample * sample = &item->encodeOutput->samples.sample[0];
-                chunkOffset = avifEncoderFindExistingChunk(&s, mdatStartOffset, sample->data.data, sample->data.size);
+                chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, sample->data.data, sample->data.size);
             } else {
-                chunkOffset = avifEncoderFindExistingChunk(&s, mdatStartOffset, item->metadataPayload.data, item->metadataPayload.size);
+                chunkOffset =
+                    avifEncoderFindExistingChunk(stream, mdatStartOffset, item->metadataPayload.data, item->metadataPayload.size);
             }
 
             if (!chunkOffset) {
                 // We've never seen this chunk before; write it out
-                chunkOffset = avifRWStreamOffset(&s);
+                chunkOffset = avifRWStreamOffset(stream);
                 if (item->encodeOutput->samples.count > 0) {
                     for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
                         avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
-                        AVIF_CHECKRES(avifRWStreamWrite(&s, sample->data.data, sample->data.size));
+                        AVIF_CHECKRES(avifRWStreamWrite(stream, sample->data.data, sample->data.size));
 
                         if (item->itemCategory == AVIF_ITEM_ALPHA) {
                             encoder->ioStats.alphaOBUSize += sample->data.size;
@@ -2169,21 +2197,21 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                         }
                     }
                 } else {
-                    AVIF_CHECKRES(avifRWStreamWrite(&s, item->metadataPayload.data, item->metadataPayload.size));
+                    AVIF_CHECKRES(avifRWStreamWrite(stream, item->metadataPayload.data, item->metadataPayload.size));
                 }
             }
 
             for (uint32_t fixupIndex = 0; fixupIndex < item->mdatFixups.count; ++fixupIndex) {
                 avifOffsetFixup * fixup = &item->mdatFixups.fixup[fixupIndex];
-                size_t prevOffset = avifRWStreamOffset(&s);
-                avifRWStreamSetOffset(&s, fixup->offset);
-                AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)chunkOffset));
-                avifRWStreamSetOffset(&s, prevOffset);
+                size_t prevOffset = avifRWStreamOffset(stream);
+                avifRWStreamSetOffset(stream, fixup->offset);
+                AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
+                avifRWStreamSetOffset(stream, prevOffset);
             }
         }
     }
 
-    uint32_t layeredItemCount = AVIF_MAX(layeredColorItems.count, layeredAlphaItems.count);
+    uint32_t layeredItemCount = AVIF_MAX(layeredColorItems->count, layeredAlphaItems->count);
     if (layeredItemCount > 0) {
         // Interleave samples of all AV1 items.
         // We first write the first layer of all items,
@@ -2196,7 +2224,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             for (uint32_t itemIndex = 0; itemIndex < layeredItemCount; ++itemIndex) {
                 for (int samplePass = 0; samplePass < 2; ++samplePass) {
                     // Alpha coming before color
-                    avifEncoderItemReferenceArray * currentItems = (samplePass == 0) ? &layeredAlphaItems : &layeredColorItems;
+                    avifEncoderItemReferenceArray * currentItems = (samplePass == 0) ? layeredAlphaItems : layeredColorItems;
                     if (itemIndex >= currentItems->count) {
                         continue;
                     }
@@ -2210,11 +2238,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                         hasMoreSample = AVIF_TRUE;
                     }
                     avifRWData * data = &item->encodeOutput->samples.sample[layerIndex].data;
-                    size_t chunkOffset = avifEncoderFindExistingChunk(&s, mdatStartOffset, data->data, data->size);
+                    size_t chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, data->data, data->size);
                     if (!chunkOffset) {
                         // We've never seen this chunk before; write it out
-                        chunkOffset = avifRWStreamOffset(&s);
-                        AVIF_CHECKRES(avifRWStreamWrite(&s, data->data, data->size));
+                        chunkOffset = avifRWStreamOffset(stream);
+                        AVIF_CHECKRES(avifRWStreamWrite(stream, data->data, data->size));
                         if (samplePass == 0) {
                             encoder->ioStats.alphaOBUSize += data->size;
                         } else {
@@ -2222,10 +2250,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                         }
                     }
 
-                    size_t prevOffset = avifRWStreamOffset(&s);
-                    avifRWStreamSetOffset(&s, item->mdatFixups.fixup[layerIndex].offset);
-                    AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)chunkOffset));
-                    avifRWStreamSetOffset(&s, prevOffset);
+                    size_t prevOffset = avifRWStreamOffset(stream);
+                    avifRWStreamSetOffset(stream, item->mdatFixups.fixup[layerIndex].offset);
+                    AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
+                    avifRWStreamSetOffset(stream, prevOffset);
                 }
             }
             ++layerIndex;
@@ -2233,17 +2261,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         assert(layerIndex <= AVIF_MAX_AV1_LAYER_COUNT);
     }
-
-    avifArrayDestroy(&layeredColorItems);
-    avifArrayDestroy(&layeredAlphaItems);
-
-    avifRWStreamFinishBox(&s, mdat);
-
-    // -----------------------------------------------------------------------
-    // Finish up stream
-
-    avifRWStreamFinishWrite(&s);
-
+    avifRWStreamFinishBox(stream, mdat);
     return AVIF_RESULT_OK;
 }
 
