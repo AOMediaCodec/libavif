@@ -431,14 +431,20 @@ typedef size_t avifBoxMarker;
 
 typedef struct avifBoxHeader
 {
+    // Size of the box in bytes, excluding the box header.
     size_t size;
+
     uint8_t type[4];
 } avifBoxHeader;
 
 typedef struct avifROStream
 {
     avifROData * raw;
+
+    // Index of the next byte in the raw stream.
     size_t offset;
+
+    // Error information, if any.
     avifDiagnostics * diag;
     const char * diagContext;
 } avifROStream;
@@ -467,6 +473,8 @@ avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforc
 typedef struct avifRWStream
 {
     avifRWData * raw;
+
+    // Index of the next byte in the raw stream.
     size_t offset;
 } avifRWStream;
 
