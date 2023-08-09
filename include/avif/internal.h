@@ -431,7 +431,7 @@ typedef size_t avifBoxMarker;
 
 typedef struct avifBoxHeader
 {
-    // Size of the box in bytes, excluding the number of bytes read to know the size and the type.
+    // Size of the box in bytes, excluding the box header.
     size_t size;
 
     uint8_t type[4];
