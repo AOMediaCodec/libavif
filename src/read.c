@@ -165,6 +165,7 @@ typedef struct avifProperty
 } avifProperty;
 AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
 
+// Finds the first property of a given type.
 static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * properties, const char * type)
 {
     for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
@@ -198,7 +199,8 @@ typedef struct avifDecoderItem
     uint32_t auxForID;             // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;            // if non-zero, this item is a content description for Item #{descForID}
     uint32_t dimgForID;            // if non-zero, this item is a derived image for Item #{dimgForID}
-    uint32_t premByID;             // if non-zero, this item is premultiplied by Item #{premByID}
+    uint32_t dimgIdx; // if dimgForId is non-zero, this is the zero-based index of this item in the list of Item #{dimgForID}'s dimg
+    uint32_t premByID; // if non-zero, this item is premultiplied by Item #{premByID}
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
     avifBool ipmaSeen;    // if true, this item already received a property association
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (the layer_id value in lsel is set to 0xFFFF)
@@ -681,7 +683,7 @@ typedef struct avifTile
     avifCodecDecodeInput * input;
     avifCodecType codecType;
     // This may point to a codec that it owns or point to a shared codec that it does not own. In the shared case, this will
-    // point to one of avifDecoderData.codec or avifDecoderData.codecAlpha.
+    // point to one of avifDecoderData.codec, avifDecoderData.codecAlpha or avifDecoderData.codecGainMap.
     struct avifCodec * codec;
     avifImage * image;
     uint32_t width;  // Either avifTrack.width or avifDecoderItem.width
@@ -815,6 +817,7 @@ typedef struct avifDecoderData
     avifTileArray tiles;
     avifTileInfo color;
     avifTileInfo alpha;
+    avifTileInfo gainMap;
     avifDecoderSource source;
     // When decoding AVIF images with grid, use a single decoder instance for all the tiles instead of creating a decoder instance
     // for each tile. If that is the case, |codec| will be used by all the tiles.
@@ -830,6 +833,7 @@ typedef struct avifDecoderData
     //   decoder instance (same as above).
     avifCodec * codec;
     avifCodec * codecAlpha;
+    avifCodec * codecGainMap;
     uint8_t majorBrand[4];                     // From the file's ftyp, used by AVIF_DECODER_SOURCE_AUTO
     avifDiagnostics * diag;                    // Shallow copy; owned by avifDecoder
     const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
@@ -870,7 +874,7 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
         }
         if (tile->codec) {
             // Check if tile->codec was created separately and destroy it in that case.
-            if (tile->codec != data->codec && tile->codec != data->codecAlpha) {
+            if (tile->codec != data->codec && tile->codec != data->codecAlpha && tile->codec != data->codecGainMap) {
                 avifCodecDestroy(tile->codec);
             }
             tile->codec = NULL;
@@ -878,6 +882,7 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
     }
     data->color.decodedTileCount = 0;
     data->alpha.decodedTileCount = 0;
+    data->gainMap.decodedTileCount = 0;
     if (data->codec) {
         avifCodecDestroy(data->codec);
         data->codec = NULL;
@@ -885,6 +890,10 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
     if (data->codecAlpha) {
         avifCodecDestroy(data->codecAlpha);
         data->codecAlpha = NULL;
+    }
+    if (data->codecGainMap) {
+        avifCodecDestroy(data->codecGainMap);
+        data->codecGainMap = NULL;
     }
 }
 
@@ -933,7 +942,7 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
         }
         if (tile->codec) {
             // Check if tile->codec was created separately and destroy it in that case.
-            if (tile->codec != data->codec && tile->codec != data->codecAlpha) {
+            if (tile->codec != data->codec && tile->codec != data->codecAlpha && tile->codec != data->codecGainMap) {
                 avifCodecDestroy(tile->codec);
             }
             tile->codec = NULL;
@@ -948,6 +957,8 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
     data->color.decodedTileCount = 0;
     data->alpha.tileCount = 0;
     data->alpha.decodedTileCount = 0;
+    data->gainMap.tileCount = 0;
+    data->gainMap.decodedTileCount = 0;
     if (data->codec) {
         avifCodecDestroy(data->codec);
         data->codec = NULL;
@@ -955,6 +966,10 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
     if (data->codecAlpha) {
         avifCodecDestroy(data->codecAlpha);
         data->codecAlpha = NULL;
+    }
+    if (data->codecGainMap) {
+        avifCodecDestroy(data->codecGainMap);
+        data->codecGainMap = NULL;
     }
 }
 
@@ -1527,7 +1542,14 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
         dstViewRect.height = grid->outputHeight - dstViewRect.y;
     }
     const avifCropRect srcViewRect = { 0, 0, dstViewRect.width, dstViewRect.height };
-    if ((avifImageSetViewRect(&dstView, dstImage, &dstViewRect) != AVIF_RESULT_OK) ||
+    avifImage * dst = dstImage;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+        dst = dst->gainMap.image;
+        assert(dst);
+    }
+#endif
+    if ((avifImageSetViewRect(&dstView, dst, &dstViewRect) != AVIF_RESULT_OK) ||
         (avifImageSetViewRect(&srcView, tile->image, &srcViewRect) != AVIF_RESULT_OK)) {
         assert(AVIF_FALSE);
         return AVIF_FALSE;
@@ -1794,6 +1816,77 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid,
     }
     return avifROStreamRemainingBytes(&s) == 0;
 }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+static avifBool avifParseFloatAsFraction(avifROStream * s, float * f)
+{
+    uint32_t numerator, denominator;
+    AVIF_CHECK(avifROStreamReadU32(s, &numerator));
+    AVIF_CHECK(avifROStreamReadU32(s, &denominator));
+    if (denominator == 0) {
+        return AVIF_FALSE;
+    }
+    *f = (float)numerator / denominator;
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseFloatsAsFractions(avifROStream * s, float * f, int numFloats)
+{
+    // Read numerators.
+    for (int i = 0; i < numFloats; ++i) {
+        uint32_t numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &numerator));
+        f[i] = (float)numerator;
+    }
+    // Read denominators.
+    for (int i = 0; i < numFloats; ++i) {
+        uint32_t denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, &denominator));
+        if (denominator == 0) {
+            return AVIF_FALSE;
+        }
+        f[i] /= denominator;
+    }
+    return AVIF_TRUE;
+}
+
+static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+{
+    BEGIN_STREAM(s, raw, rawLen, diag, "Box[tmap]");
+
+    uint8_t version;
+    AVIF_CHECK(avifROStreamRead(&s, &version, 1)); // unsigned int(8) version = 0;
+    if (version != 0) {
+        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported version [%u]", version);
+        return AVIF_FALSE;
+    }
+
+    uint8_t flags;
+    AVIF_CHECK(avifROStreamRead(&s, &flags, 1)); // unsigned int(8) flags;
+    uint8_t channelCount = (flags & 1) * 2 + 1;
+    assert(channelCount == 1 || channelCount == 3);
+    metadata->baseRenditionIsHDR = flags & 2 ? AVIF_TRUE : AVIF_FALSE;
+
+    AVIF_CHECK(avifParseFloatAsFraction(&s, &metadata->hdrCapacityMin));
+    AVIF_CHECK(avifParseFloatAsFraction(&s, &metadata->hdrCapacityMax));
+    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->gainMapMin, channelCount));
+    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->gainMapMax, channelCount));
+    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->gainMapGamma, channelCount));
+    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->offsetSdr, channelCount));
+    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->offsetHdr, channelCount));
+
+    // Fill the remaining values by copying those from the first channel.
+    for (int c = channelCount; c < 3; ++c) {
+        metadata->gainMapMin[c] = metadata->gainMapMin[0];
+        metadata->gainMapMax[c] = metadata->gainMapMax[0];
+        metadata->gainMapGamma[c] = metadata->gainMapGamma[0];
+        metadata->offsetSdr[c] = metadata->offsetSdr[0];
+        metadata->offsetHdr[c] = metadata->offsetHdr[0];
+    }
+
+    return avifROStreamRemainingBytes(&s) == 0;
+}
+#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
 static avifBool avifParseImageSpatialExtentsProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
@@ -2509,6 +2602,7 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
                     }
 
                     dimg->dimgForID = fromID;
+                    dimg->dimgIdx = refIndex;
                 } else if (!memcmp(irefHeader.type, "prem", 4)) {
                     item->premByID = toID;
                 }
@@ -3517,10 +3611,10 @@ static avifResult avifCodecCreateInternal(avifCodecChoice choice, const avifTile
 
 static avifBool avifTilesCanBeDecodedWithSameCodecInstance(avifDecoderData * data)
 {
-    if (data->color.tileCount == 1 && data->alpha.tileCount == 1) {
-        // Single tile image with single tile alpha plane. In this case each tile needs its own decoder since the planes will be
-        // "stolen". Stealing either the color or the alpha plane will invalidate the other one when decode is called the second
-        // time.
+    if (data->color.tileCount == 1 && (data->alpha.tileCount == 1 || data->gainMap.tileCount == 1)) {
+        // Single tile image with single tile alpha/gain map plane. In this case each tile needs its own decoder since the planes will be
+        // "stolen". Stealing either the color or the alpha (or gain map) plane will invalidate the other one when decode is called the second
+        // (or third) time.
         return AVIF_FALSE;
     }
     const uint8_t firstTileOperatingPoint = data->tiles.tile[0].operatingPoint;
@@ -3543,6 +3637,7 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
 
     if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
         // In this case, we will use at most two codec instances (one for the color planes and one for the alpha plane).
+        // Gain maps are not supported.
         AVIF_CHECKRES(avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag, &data->codec));
         data->tiles.tile[0].codec = data->codec;
         if (data->tiles.count > 1) {
@@ -3586,7 +3681,8 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
 static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
 {
     return !item->size || item->hasUnsupportedEssentialProperty ||
-           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) || item->thumbnailForID != 0;
+           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4) && memcmp(item->type, "tmap", 4)) ||
+           item->thumbnailForID != 0;
 }
 
 // Returns the primary color item if found, or NULL.
@@ -3692,6 +3788,56 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
     data->alpha.grid = data->color.grid;
     return AVIF_RESULT_OK;
 }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+// Finds a 'tmap' (tone mapped image item) box associated with the given 'colorItem'.
+// If found, fills 'toneMappedImageItem' and  sets 'gainMapItemID' to the id of the gain map
+// item associated with the box. Otherwise, sets 'toneMappedImageItem' to NULL.
+// Returns AVIF_RESULT_OK on success (whether or not a tmap box was found).
+static avifResult avifDecoderDataFindToneMappedImageItem(avifDecoderData * data,
+                                                         avifDecoderItem * colorItem,
+                                                         avifDecoderItem ** toneMappedImageItem,
+                                                         uint32_t * gainMapItemID)
+{
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        if (avifDecoderItemShouldBeSkipped(item)) {
+            continue;
+        }
+        if (!memcmp(item->type, "tmap", 4)) {
+            // The tmap box should be associated (via 'iref'->'dimg') to two items:
+            // the first one is the base image, the second one is the gain map.
+            uint32_t dimgItemIDs[2] = { 0, 0 };
+            uint32_t numDimgItemIDs = 0;
+            for (uint32_t otherItemIndex = 0; otherItemIndex < data->meta->items.count; ++otherItemIndex) {
+                avifDecoderItem * otherItem = &data->meta->items.item[otherItemIndex];
+                if (otherItem->dimgForID != item->id) {
+                    continue;
+                }
+                if (otherItem->dimgIdx < 2) {
+                    assert(dimgItemIDs[otherItem->dimgIdx] == 0);
+                    dimgItemIDs[otherItem->dimgIdx] = otherItem->id;
+                }
+                numDimgItemIDs++;
+            }
+            if (numDimgItemIDs != 2) {
+                avifDiagnosticsPrintf(data->diag, "Expected box[tmap] to have 2 items associated with 'dimg': found [%d] instead", numDimgItemIDs);
+                return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+            }
+            if (dimgItemIDs[0] != colorItem->id) {
+                continue;
+            }
+
+            *toneMappedImageItem = item;
+            *gainMapItemID = dimgItemIDs[1];
+            return AVIF_RESULT_OK;
+        }
+    }
+    *toneMappedImageItem = NULL;
+    *gainMapItemID = 0;
+    return AVIF_RESULT_OK;
+}
+#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
 static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifItemCategory itemCategory)
 {
@@ -3954,6 +4100,71 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
         }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        avifDecoderItem * gainMapItem = NULL;
+        avifDecoderItem * toneMappedImageItem;
+        uint32_t gainMapItemID;
+        AVIF_CHECKRES(avifDecoderDataFindToneMappedImageItem(data, colorItem, &toneMappedImageItem, &gainMapItemID));
+        avifCodecType gainMapCodecType = AVIF_CODEC_TYPE_UNKNOWN;
+        if (toneMappedImageItem) {
+            avifROData tmapData;
+            AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
+            AVIF_CHECKERR(avifParseToneMappedImageBox(&decoder->image->gainMap.metadata, tmapData.data, tmapData.size, data->diag),
+                          AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
+
+            gainMapItem = avifMetaFindItem(data->meta, gainMapItemID);
+            if (!gainMapItem) {
+                avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item ID %d not found", gainMapItemID);
+                return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+            }
+
+            if (!memcmp(gainMapItem->type, "grid", 4)) {
+                avifROData gainMapGridData;
+                AVIF_CHECKRES(avifDecoderItemRead(gainMapItem, decoder->io, &gainMapGridData, 0, 0, data->diag));
+                AVIF_CHECKERR(avifParseImageGridBox(&data->gainMap.grid,
+                                                    gainMapGridData.data,
+                                                    gainMapGridData.size,
+                                                    decoder->imageSizeLimit,
+                                                    decoder->imageDimensionLimit,
+                                                    data->diag),
+                              AVIF_RESULT_INVALID_IMAGE_GRID);
+                gainMapCodecType = avifDecoderItemGetGridCodecType(gainMapItem);
+                if (gainMapCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
+                    return AVIF_RESULT_INVALID_IMAGE_GRID;
+                }
+            } else {
+                gainMapCodecType = avifGetCodecType(gainMapItem->type);
+                assert(gainMapCodecType != AVIF_CODEC_TYPE_UNKNOWN);
+            }
+
+            decoder->image->gainMap.image = avifImageCreateEmpty();
+
+            // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
+            for (uint32_t propertyIndex = 0; propertyIndex < gainMapItem->properties.count; ++propertyIndex) {
+                avifProperty * prop = &gainMapItem->properties.prop[propertyIndex];
+                if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
+                    decoder->image->gainMap.image->colorPrimaries = prop->u.colr.colorPrimaries;
+                    decoder->image->gainMap.image->transferCharacteristics = prop->u.colr.transferCharacteristics;
+                    decoder->image->gainMap.image->matrixCoefficients = prop->u.colr.matrixCoefficients;
+                    decoder->image->gainMap.image->yuvRange = prop->u.colr.range;
+                    break;
+                }
+            }
+
+            // If the base image is not HDR, then the tone mapped image is.
+            // Copy HDR properties associated with the tmap box to the gain map image.
+            // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
+            // place to put this data.
+            if (!decoder->image->gainMap.metadata.baseRenditionIsHDR) {
+                // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
+                const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItem->properties, "clli");
+                if (clliProp) {
+                    decoder->image->gainMap.image->clli = clliProp->u.clli;
+                }
+            }
+        }
+#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+
         // Find Exif and/or XMP metadata, if any
         AVIF_CHECKRES(avifDecoderFindMetadata(decoder, data->meta, decoder->image, colorItem->id));
 
@@ -3991,6 +4202,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->alpha, alphaItem, AVIF_ITEM_ALPHA));
         }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (gainMapItem) {
+            AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->gainMap, gainMapItem, AVIF_ITEM_GAIN_MAP));
+        }
+#endif
+
         decoder->image->width = colorItem->width;
         decoder->image->height = colorItem->height;
         decoder->alphaPresent = (alphaItem != NULL);
@@ -4008,10 +4225,24 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_CHECKRES(
                 avifDecoderItemValidateProperties(alphaItem, avifGetConfigurationPropertyName(alphaCodecType), &decoder->diag, strictFlags));
         }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (gainMapItem) {
+            assert(decoder->image->gainMap.image);
+            decoder->image->gainMap.image->width = gainMapItem->width;
+            decoder->image->gainMap.image->height = gainMapItem->height;
+            decoder->gainMapPresent = AVIF_TRUE;
+
+            AVIF_CHECKRES(avifDecoderItemValidateProperties(gainMapItem,
+                                                            avifGetConfigurationPropertyName(gainMapCodecType),
+                                                            &decoder->diag,
+                                                            decoder->strictFlags));
+        }
+#endif
     }
 
     decoder->data->color.firstTileIndex = 0;
     decoder->data->alpha.firstTileIndex = decoder->data->color.tileCount;
+    decoder->data->gainMap.firstTileIndex = decoder->data->color.tileCount + decoder->data->alpha.tileCount;
 
     // Sanity check tiles
     for (uint32_t tileIndex = 0; tileIndex < data->tiles.count; ++tileIndex) {
@@ -4025,6 +4256,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
             if (tile->input->itemCategory == AVIF_ITEM_ALPHA) {
                 decoder->ioStats.alphaOBUSize += sample->size;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+            } else if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                decoder->ioStats.gainMapOBUSize += sample->size;
+#endif
             } else {
                 decoder->ioStats.colorOBUSize += sample->size;
             }
@@ -4262,9 +4497,15 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
 
         if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
             if (tileIndex == 0) {
-                AVIF_CHECKRES(avifDecoderDataAllocateGridImagePlanes(decoder->data, info, decoder->image));
+                avifImage * dstImage = decoder->image;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                    dstImage = dstImage->gainMap.image;
+                    assert(dstImage);
+                }
+#endif
+                AVIF_CHECKRES(avifDecoderDataAllocateGridImagePlanes(decoder->data, info, dstImage));
             }
-
             if (!avifDecoderDataCopyTileToImage(decoder->data, info, decoder->image, tile, tileIndex)) {
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
@@ -4273,8 +4514,15 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             assert(info->tileCount == 1);
             assert(tileIndex == 0);
             avifImage * src = tile->image;
-            if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
-                (decoder->image->depth != src->depth)) {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+            if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                decoder->image->gainMap.image->width = src->width;
+                decoder->image->gainMap.image->height = src->height;
+                decoder->image->gainMap.image->depth = src->depth;
+            } else
+#endif
+                if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
+                    (decoder->image->depth != src->depth)) {
                 if (tile->input->itemCategory == AVIF_ITEM_ALPHA) {
                     avifDiagnosticsPrintf(&decoder->diag,
                                           "The color image item does not match the alpha image item in width, height, or bit depth");
@@ -4286,7 +4534,16 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 decoder->image->height = src->height;
                 decoder->image->depth = src->depth;
             }
-            avifImageStealPlanes(decoder->image, src, tile->input->itemCategory == AVIF_ITEM_ALPHA ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+            if (tile->input->itemCategory == AVIF_ITEM_ALPHA) {
+                avifImageStealPlanes(decoder->image, src, AVIF_PLANES_A);
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+            } else if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                assert(decoder->image->gainMap.image);
+                avifImageStealPlanes(decoder->image->gainMap.image, src, AVIF_PLANES_YUV);
+#endif
+            } else { // AVIF_ITEM_COLOR
+                avifImageStealPlanes(decoder->image, src, AVIF_PLANES_YUV);
+            }
         }
     }
     return AVIF_RESULT_OK;
@@ -4306,13 +4563,16 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     }
 
     if ((decoder->data->color.decodedTileCount == decoder->data->color.tileCount) &&
-        (decoder->data->alpha.decodedTileCount == decoder->data->alpha.tileCount)) {
+        (decoder->data->alpha.decodedTileCount == decoder->data->alpha.tileCount) &&
+        (decoder->data->gainMap.decodedTileCount == decoder->data->gainMap.tileCount)) {
         // A frame was decoded during the last avifDecoderNextImage() call.
         decoder->data->color.decodedTileCount = 0;
         decoder->data->alpha.decodedTileCount = 0;
+        decoder->data->gainMap.decodedTileCount = 0;
     }
 
-    assert(decoder->data->tiles.count == (decoder->data->color.tileCount + decoder->data->alpha.tileCount));
+    assert(decoder->data->tiles.count ==
+           (decoder->data->color.tileCount + decoder->data->alpha.tileCount + decoder->data->gainMap.tileCount));
     const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
 
     // Ensure that we have created the codecs before proceeding with the decoding.
@@ -4336,13 +4596,20 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     if (!decoder->allowIncremental || (prepareAlphaTileResult != AVIF_RESULT_WAITING_ON_IO)) {
         AVIF_CHECKRES(prepareAlphaTileResult);
     }
+    // And same with the gain map if present.
+    const avifResult prepareGainMapTileResult = avifDecoderPrepareTiles(decoder, nextImageIndex, &decoder->data->gainMap);
+    if (!decoder->allowIncremental || (prepareGainMapTileResult != AVIF_RESULT_WAITING_ON_IO)) {
+        AVIF_CHECKRES(prepareGainMapTileResult);
+    }
 
-    // Decode all available color tiles now, then all available alpha tiles.
+    // Decode all available color tiles now, then all available alpha and gain map tiles.
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->color));
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->alpha));
+    AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->gainMap));
 
     if ((decoder->data->color.decodedTileCount != decoder->data->color.tileCount) ||
-        (decoder->data->alpha.decodedTileCount != decoder->data->alpha.tileCount)) {
+        (decoder->data->alpha.decodedTileCount != decoder->data->alpha.tileCount) ||
+        (decoder->data->gainMap.decodedTileCount != decoder->data->gainMap.tileCount)) {
         assert(decoder->allowIncremental);
         // The image is not completely decoded. There should be no error unrelated to missing bytes,
         // and at least some missing bytes.
@@ -4427,7 +4694,8 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 
     if (requestedIndex == decoder->imageIndex) {
         if ((decoder->data->color.decodedTileCount == decoder->data->color.tileCount) &&
-            (decoder->data->alpha.decodedTileCount == decoder->data->alpha.tileCount)) {
+            (decoder->data->alpha.decodedTileCount == decoder->data->alpha.tileCount) &&
+            (decoder->data->gainMap.decodedTileCount == decoder->data->gainMap.tileCount)) {
             // The current fully decoded image (decoder->imageIndex) is requested, nothing to do
             return AVIF_RESULT_OK;
         }

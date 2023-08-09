@@ -1013,7 +1013,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
     int closestQuality = INVALID_QUALITY;
     avifRWData closestEncoded = { NULL, 0 };
     size_t closestSizeDiff = 0;
-    avifIOStats closestIoStats = { 0, 0 };
+    avifIOStats closestIoStats = { 0, 0, 0 };
 
     int minQuality = AVIF_QUALITY_WORST; // inclusive
     int maxQuality = AVIF_QUALITY_BEST;  // inclusive
@@ -1953,7 +1953,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    avifIOStats ioStats = { 0, 0 };
+    avifIOStats ioStats = { 0, 0, 0 };
     if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage * const *)gridCells, &raw, &ioStats)) {
         returnCode = 1;
         goto cleanup;

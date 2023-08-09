@@ -111,6 +111,7 @@ jobs:
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
         -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
+        -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja

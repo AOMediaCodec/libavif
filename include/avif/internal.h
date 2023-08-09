@@ -81,9 +81,20 @@ void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
 
 void avifFractionSimplify(avifFraction * f);
+// Makes the fractions have a common denominator.
 avifBool avifFractionCD(avifFraction * a, avifFraction * b);
 avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
 avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
+
+// Same as avifFraction but with unsigned ints.
+typedef struct avifFractionU
+{
+    uint32_t n;
+    uint32_t d;
+} avifFractionU;
+// Creates a fraction that is approximately equivalent to 'v'.
+// Returns false if this is impossible (value is negative or too large).
+avifBool avifToFractionU(float v, avifFractionU * f);
 
 void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
@@ -92,6 +103,7 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // Copies the samples from srcImage to dstImage. dstImage must be allocated.
 // srcImage and dstImage must have the same width, height, and depth.
 // If the AVIF_PLANES_YUV bit is set in planes, then srcImage and dstImage must have the same yuvFormat and yuvRange.
+// The gain map (if present) is not affected.
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 typedef struct avifAlphaParams
@@ -230,7 +242,10 @@ avifBool avifImageScale(avifImage * image,
 typedef enum avifItemCategory
 {
     AVIF_ITEM_COLOR = 0,
-    AVIF_ITEM_ALPHA = 1
+    AVIF_ITEM_ALPHA = 1,
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    AVIF_ITEM_GAIN_MAP = 2
+#endif
 } avifItemCategory;
 
 // ---------------------------------------------------------------------------

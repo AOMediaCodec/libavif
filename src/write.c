@@ -204,6 +204,8 @@ AVIF_ARRAY_DECLARE(avifEncoderFrameArray, avifEncoderFrame, frame);
 // ---------------------------------------------------------------------------
 // avifEncoderData
 
+AVIF_ARRAY_DECLARE(avifEncoderItemIdArray, uint16_t, item_id);
+
 typedef struct avifEncoderData
 {
     avifEncoderItemArray items;
@@ -211,6 +213,9 @@ typedef struct avifEncoderData
     // Map the encoder settings quality and qualityAlpha to quantizer and quantizerAlpha
     int quantizer;
     int quantizerAlpha;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    int quantizerGainMap;
+#endif
     // tileRowsLog2 and tileColsLog2 are the actual tiling values after automatic tiling is handled
     int tileRowsLog2;
     int tileColsLog2;
@@ -225,6 +230,7 @@ typedef struct avifEncoderData
     avifImage * imageMetadata;
     uint16_t lastItemID;
     uint16_t primaryItemID;
+    avifEncoderItemIdArray alternativeItemIDs; // list of item ids for an 'altr' box (group of alternatives to each other)
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
     // Fields specific to AV1/AV2
@@ -250,6 +256,9 @@ static avifEncoderData * avifEncoderDataCreate()
         goto error;
     }
     if (!avifArrayCreate(&data->frames, sizeof(avifEncoderFrame), 1)) {
+        goto error;
+    }
+    if (!avifArrayCreate(&data->alternativeItemIDs, sizeof(uint16_t), 1)) {
         goto error;
     }
     return data;
@@ -308,6 +317,7 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
     }
     avifArrayDestroy(&data->items);
     avifArrayDestroy(&data->frames);
+    avifArrayDestroy(&data->alternativeItemIDs);
     avifFree(data);
 }
 
@@ -428,6 +438,9 @@ avifEncoder * avifEncoderCreate(void)
     encoder->repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     encoder->quality = AVIF_QUALITY_DEFAULT;
     encoder->qualityAlpha = AVIF_QUALITY_DEFAULT;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    encoder->qualityGainMap = AVIF_QUALITY_DEFAULT;
+#endif
     encoder->minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
     encoder->maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
     encoder->minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
@@ -540,6 +553,32 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
     return AVIF_TRUE;
 }
 
+// Same as 'avifEncoderWriteColorProperties' but for the colr nclx box only.
+static avifResult avifEncoderWriteNclxProperty(
+                                         avifRWStream * dedupStream,
+                                         avifRWStream * outputStream,
+                                         const avifImage * imageMetadata,
+                                         struct ipmaArray * ipma,
+                                         avifItemPropertyDedup * dedup)
+{
+    if (dedup) {
+        avifItemPropertyDedupStart(dedup);
+    }
+    avifBoxMarker colr;
+    AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD, &colr));
+    AVIF_CHECKRES(avifRWStreamWriteChars(dedupStream, "nclx", 4));                   // unsigned int(32) colour_type;
+    AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->colorPrimaries)); // unsigned int(16) colour_primaries;
+    AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->transferCharacteristics)); // unsigned int(16) transfer_characteristics;
+    AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->matrixCoefficients)); // unsigned int(16) matrix_coefficients;
+    AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) full_range_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
+    avifRWStreamFinishBox(dedupStream, colr);
+    if (dedup) {
+        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
+    }
+    return AVIF_RESULT_OK;
+}
+
 // Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
 static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
                                                           avifRWStream * outputStream,
@@ -591,21 +630,7 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
 
     // HEIF 6.5.5.1, from Amendment 3 allows multiple colr boxes: "at most one for a given value of colour type"
     // Therefore, *always* writing an nclx box, even if an a prof box was already written above.
-    if (dedup) {
-        avifItemPropertyDedupStart(dedup);
-    }
-    avifBoxMarker colr;
-    AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD, &colr));
-    AVIF_CHECKRES(avifRWStreamWriteChars(dedupStream, "nclx", 4));                   // unsigned int(32) colour_type;
-    AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->colorPrimaries)); // unsigned int(16) colour_primaries;
-    AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->transferCharacteristics)); // unsigned int(16) transfer_characteristics;
-    AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->matrixCoefficients)); // unsigned int(16) matrix_coefficients;
-    AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) full_range_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
-    avifRWStreamFinishBox(dedupStream, colr);
-    if (dedup) {
-        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
-    }
+    AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, outputStream, imageMetadata, ipma, dedup));
 
     return avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup);
 }
@@ -690,6 +715,34 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_TRUE));
         }
     }
+    return AVIF_RESULT_OK;
+}
+
+// Same as 'avifEncoderWriteColorProperties' but for properties related to Hight Dynamic Range only.
+static avifResult avifEncoderWriteHDRProperties(
+                                          avifRWStream * dedupStream,
+                                          avifRWStream * outputStream,
+                                          const avifImage * imageMetadata,
+                                          struct ipmaArray * ipma,
+                                          avifItemPropertyDedup * dedup)
+{
+    // Write Content Light Level Information, if present
+    if (imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) {
+        if (dedup) {
+            avifItemPropertyDedupStart(dedup);
+        }
+        avifBoxMarker clli;
+        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "clli", AVIF_BOX_SIZE_TBD, &clli));
+        AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->clli.maxCLL)); // unsigned int(16) max_content_light_level;
+        AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->clli.maxPALL)); // unsigned int(16) max_pic_average_light_level;
+        avifRWStreamFinishBox(dedupStream, clli);
+        if (dedup) {
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
+        }
+    }
+
+    // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
+
     return AVIF_RESULT_OK;
 }
 
@@ -804,6 +857,96 @@ static avifResult avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uin
     avifRWStreamFinishWrite(&s);
     return AVIF_RESULT_OK;
 }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+static avifBool avifWriteFloatAsFraction(avifRWStream * s, float v)
+{
+    avifFractionU fraction;
+    if (!avifToFractionU(v, &fraction)) {
+        return AVIF_FALSE; // Value is probably negative or too large.
+    }
+    avifRWStreamWriteU32(s, fraction.n);
+    avifRWStreamWriteU32(s, fraction.d);
+    return AVIF_TRUE;
+}
+
+static avifBool avifWriteFloatsAsFractions(avifRWStream * s, const float * v, int numFloats)
+{
+    // Write numerators.
+    for (int i = 0; i < numFloats; ++i) {
+        avifFractionU fraction;
+        if (!avifToFractionU(v[i], &fraction)) {
+            return AVIF_FALSE; // Value is probably negative or too large.
+        }
+        avifRWStreamWriteU32(s, fraction.n);
+    }
+    // Write denominators.
+    for (int i = 0; i < numFloats; ++i) {
+        avifFractionU fraction;
+        if (!avifToFractionU(v[i], &fraction)) {
+            return AVIF_FALSE; // Value is probably negative or too large.
+        }
+        avifRWStreamWriteU32(s, fraction.d);
+    }
+    return AVIF_TRUE;
+}
+
+static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * gainMapMetadata)
+{
+    // aligned(8) class ToneMapImage {
+    //   unsigned int(8) version = 0;
+    //   if(version == 0) {
+    //     unsigned int(8) flags; // 1 or 3
+    //     int ChannelCount = (flags & 1)*2 + 1; // temp/nonparsable variable
+    //     Boolean BaseIsHDR = (flags & 2) != 0; // temp/nonparsable variable
+    //     unsigned int(32) HDRCapacityMinNumerator;
+    //     unsigned int(32) HDRCapacityMinDenominator;
+    //     unsigned int(32) HDRCapacityMaxNumerator;
+    //     unsigned int(32) HDRCapacityMaxDenominator;
+    //     unsigned int(32) GainMapMinNumerator [ChannelCount];
+    //     unsigned int(32) GainMapMinDenominator [ChannelCount];
+    //     unsigned int(32) GainMapMaxNumerator [ChannelCount];
+    //     unsigned int(32) GainMapMaxDenominator [ChannelCount];
+    //     unsigned int(32) GammaNumerator [ChannelCount];
+    //     unsigned int(32) GammaDenominator [ChannelCount];
+    //     unsigned int(32) HDROffsetNumerator [ChannelCount];
+    //     unsigned int(32) HDROffsetDenominator [ChannelCount];
+    //     unsigned int(32) SDROffsetNumerator [ChannelCount];
+    //     unsigned int(32) SDROffsetDenominator [ChannelCount];
+    //   }
+    // }
+
+    avifRWStream s;
+    avifRWStreamStart(&s, data);
+    const uint8_t version = 0;
+    avifRWStreamWriteU8(&s, version);
+
+    uint8_t flags = 0u;
+    // Always write three channels for now for simplicity.
+    // TODO(maryla): the draft says that this specifies the count of channels of the
+    // gain map. But tone mapping is done in RGB space so there are always three
+    // channels, even if the gain map is grayscale. Should this be revised?
+    const uint8_t channelCount = 3u;
+    if (channelCount == 3) {
+        flags |= 1;
+    }
+    if (gainMapMetadata->baseRenditionIsHDR) {
+        flags |= 2;
+    }
+    avifRWStreamWriteU8(&s, flags);
+
+    AVIF_CHECK(avifWriteFloatAsFraction(&s, gainMapMetadata->hdrCapacityMin));
+    AVIF_CHECK(avifWriteFloatAsFraction(&s, gainMapMetadata->hdrCapacityMax));
+    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->gainMapMin, channelCount));
+    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->gainMapMax, channelCount));
+    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->gainMapGamma, channelCount));
+    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->offsetSdr, channelCount));
+    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->offsetHdr, channelCount));
+
+    avifRWStreamFinishWrite(&s);
+    return AVIF_TRUE;
+}
+#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
 static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
 {
@@ -931,6 +1074,12 @@ static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantize
     return quantizer;
 }
 
+static const char infeNameColor[] = "Color";
+static const char infeNameAlpha[] = "Alpha";
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+static const char infeNameGainMap[] = "GMap";
+#endif
+
 // Adds the items for a single cell or a grid of cells. Outputs the topLevelItemID which is
 // the only item if there is exactly one cell, or the grid item for multiple cells.
 // Note: The topLevelItemID output argument has the type uint16_t* instead of avifEncoderItem** because
@@ -944,8 +1093,12 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
                                            uint16_t * topLevelItemID)
 {
     const uint32_t cellCount = gridCols * gridRows;
-    const char * infeName = (itemCategory == AVIF_ITEM_ALPHA) ? "Alpha" : "Color";
-    const size_t infeNameSize = 6;
+    const char * infeName = (itemCategory == AVIF_ITEM_ALPHA) ? infeNameAlpha
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                            : (itemCategory == AVIF_ITEM_GAIN_MAP) ? infeNameGainMap
+#endif
+                                                                   : infeNameColor;
+    const size_t infeNameSize = strlen(infeName) + 1;
 
     if (cellCount > 1) {
         avifEncoderItem * gridItem = avifEncoderDataCreateItem(encoder->data, "grid", infeName, infeNameSize, 0);
@@ -1021,6 +1174,105 @@ static avifResult avifGetErrorForItemCategory(avifItemCategory itemCategory)
     return (itemCategory == AVIF_ITEM_ALPHA) ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
 }
 
+static avifResult avifValidateImageBasicProperties(const avifImage * avifImage)
+{
+    if ((avifImage->depth != 8) && (avifImage->depth != 10) && (avifImage->depth != 12)) {
+        return AVIF_RESULT_UNSUPPORTED_DEPTH;
+    }
+
+    if (avifImage->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
+        return AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
+    }
+
+    return AVIF_RESULT_OK;
+}
+
+static uint32_t avifGridWidth(uint32_t gridCols, const avifImage * firstCell, const avifImage * bottomRightCell)
+{
+    return (gridCols - 1) * firstCell->width + bottomRightCell->width;
+}
+
+static uint32_t avifGridHeight(uint32_t gridRows, const avifImage * firstCell, const avifImage * bottomRightCell)
+{
+    return (gridRows - 1) * firstCell->height + bottomRightCell->height;
+}
+
+static avifResult avifValidateGrid(uint32_t gridCols,
+                                   uint32_t gridRows,
+                                   const avifImage * const * cellImages,
+                                   avifBool validateGainMap,
+                                   avifDiagnostics * diag)
+{
+    const uint32_t cellCount = gridCols * gridRows;
+    const avifImage * firstCell = cellImages[0];
+    const avifImage * bottomRightCell = cellImages[cellCount - 1];
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (validateGainMap) {
+        firstCell = firstCell->gainMap.image;
+        bottomRightCell = bottomRightCell->gainMap.image;
+    }
+#endif
+    const uint32_t tileWidth = firstCell->width;
+    const uint32_t tileHeight = firstCell->height;
+    const uint32_t gridWidth = avifGridWidth(gridCols, firstCell, bottomRightCell);
+    const uint32_t gridHeight = avifGridHeight(gridRows, firstCell, bottomRightCell);
+    for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
+        const avifImage * cellImage = cellImages[cellIndex];
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (validateGainMap) {
+            cellImage = cellImage->gainMap.image;
+        }
+#endif
+        const uint32_t expectedCellWidth = ((cellIndex + 1) % gridCols) ? tileWidth : bottomRightCell->width;
+        const uint32_t expectedCellHeight = (cellIndex < (cellCount - gridCols)) ? tileHeight : bottomRightCell->height;
+        if ((cellImage->width != expectedCellWidth) || (cellImage->height != expectedCellHeight)) {
+            avifDiagnosticsPrintf(diag,
+                                  "%s cell %d has invalid dimensions: expected %dx%d found %dx%d",
+                                  validateGainMap ? "gain map" : "image",
+                                  cellIndex,
+                                  expectedCellWidth,
+                                  expectedCellHeight,
+                                  cellImage->width,
+                                  cellImage->height);
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+
+        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
+        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
+        //   same decoder configuration (see 7.3.6.2).
+        if ((cellImage->depth != firstCell->depth) || (cellImage->yuvFormat != firstCell->yuvFormat) ||
+            (cellImage->yuvRange != firstCell->yuvRange) || (cellImage->colorPrimaries != firstCell->colorPrimaries) ||
+            (cellImage->transferCharacteristics != firstCell->transferCharacteristics) ||
+            (cellImage->matrixCoefficients != firstCell->matrixCoefficients) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane) ||
+            (cellImage->alphaPremultiplied != firstCell->alphaPremultiplied)) {
+            avifDiagnosticsPrintf(diag,
+                                  "all grid cells should have the same value for: depth, yuvFormat, yuvRange, colorPrimaries, "
+                                  "transferCharacteristics, matrixCoefficients, alphaPlane presence, alphaPremultiplied");
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+
+        if (!cellImage->yuvPlanes[AVIF_CHAN_Y]) {
+            return AVIF_RESULT_NO_CONTENT;
+        }
+    }
+
+    if ((bottomRightCell->width > tileWidth) || (bottomRightCell->height > tileHeight)) {
+        avifDiagnosticsPrintf(diag,
+                              "the last %s cell can be smaller but not larger than the other cells which are %dx%d, found %dx%d",
+                              validateGainMap ? "gain map" : "image",
+                              tileWidth,
+                              tileHeight,
+                              bottomRightCell->width,
+                              bottomRightCell->height);
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+    if ((cellCount > 1) && !avifAreGridDimensionsValid(firstCell->yuvFormat, gridWidth, gridHeight, tileWidth, tileHeight, diag)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
@@ -1050,65 +1302,52 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
     const avifImage * firstCell = cellImages[0];
     const avifImage * bottomRightCell = cellImages[cellCount - 1];
-    if ((firstCell->depth != 8) && (firstCell->depth != 10) && (firstCell->depth != 12)) {
-        return AVIF_RESULT_UNSUPPORTED_DEPTH;
-    }
+    AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell));
     if (!firstCell->width || !firstCell->height || !bottomRightCell->width || !bottomRightCell->height) {
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
-    //   All input images shall have exactly the same width and height; call those tile_width and tile_height.
-    // HEIF (ISO 23008-12:2017), Section 6.6.2.3.1:
-    //   The reconstructed image is formed by tiling the input images into a grid with a column width
-    //   (potentially excluding the right-most column) equal to tile_width and a row height (potentially
-    //   excluding the bottom-most row) equal to tile_height, without gap or overlap, and then
-    //   trimming on the right and the bottom to the indicated output_width and output_height.
-    // Consider the combined input cellImages as the user's final output intent.
-    // Right and bottom cells may be padded below so that all tiles are tileWidth by tileHeight,
-    // and the output cropped to gridWidth by gridHeight.
-    const uint32_t tileWidth = firstCell->width;
-    const uint32_t tileHeight = firstCell->height;
-    const uint32_t gridWidth = (gridCols - 1) * tileWidth + bottomRightCell->width;
-    const uint32_t gridHeight = (gridRows - 1) * tileHeight + bottomRightCell->height;
+    AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_FALSE, &encoder->diag));
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    const avifBool hasGainMap = (firstCell->gainMap.image != NULL);
+
+    // Check that either all cells have a gain map, or none of them do.
+    // If a gain map is present, check that they all have the same gain map metadata.
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
-        const uint32_t expectedCellWidth = ((cellIndex + 1) % gridCols) ? tileWidth : bottomRightCell->width;
-        const uint32_t expectedCellHeight = (cellIndex < (cellCount - gridCols)) ? tileHeight : bottomRightCell->height;
-        if ((cellImage->width != expectedCellWidth) || (cellImage->height != expectedCellHeight)) {
+        const avifBool cellHasGainMap = (cellImage->gainMap.image != NULL);
+        if (cellHasGainMap != hasGainMap) {
+            avifDiagnosticsPrintf(&encoder->diag, "cells should either all have a gain map image, or none of them should, found a mix");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
-    }
-
-    if ((bottomRightCell->width > tileWidth) || (bottomRightCell->height > tileHeight)) {
-        return AVIF_RESULT_INVALID_IMAGE_GRID;
-    }
-    if ((cellCount > 1) &&
-        !avifAreGridDimensionsValid(firstCell->yuvFormat, gridWidth, gridHeight, tileWidth, tileHeight, &encoder->diag)) {
-        return AVIF_RESULT_INVALID_IMAGE_GRID;
-    }
-
-    for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-        const avifImage * cellImage = cellImages[cellIndex];
-        // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
-        //   All input images of a grid image item shall use the same coding format, chroma sampling format, and the
-        //   same decoder configuration (see 7.3.6.2).
-        if ((cellImage->depth != firstCell->depth) || (cellImage->yuvFormat != firstCell->yuvFormat) ||
-            (cellImage->yuvRange != firstCell->yuvRange) || (cellImage->colorPrimaries != firstCell->colorPrimaries) ||
-            (cellImage->transferCharacteristics != firstCell->transferCharacteristics) ||
-            (cellImage->matrixCoefficients != firstCell->matrixCoefficients) || (!!cellImage->alphaPlane != !!firstCell->alphaPlane) ||
-            (cellImage->alphaPremultiplied != firstCell->alphaPremultiplied)) {
-            return AVIF_RESULT_INVALID_IMAGE_GRID;
-        }
-
-        if (!cellImage->yuvPlanes[AVIF_CHAN_Y]) {
-            return AVIF_RESULT_NO_CONTENT;
-        }
-
-        if (cellImage->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-            return AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
+        if (hasGainMap) {
+            const avifGainMapMetadata * firstMetadata = &firstCell->gainMap.metadata;
+            const avifGainMapMetadata * cellMetadata = &cellImage->gainMap.metadata;
+            if (cellMetadata->baseRenditionIsHDR != firstMetadata->baseRenditionIsHDR ||
+                cellMetadata->hdrCapacityMin != firstMetadata->hdrCapacityMin ||
+                cellMetadata->hdrCapacityMax != firstMetadata->hdrCapacityMax) {
+                avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
+                return AVIF_RESULT_INVALID_IMAGE_GRID;
+            }
+            for (int c = 0; c < 3; ++c) {
+                if (cellMetadata->gainMapMin[c] != firstMetadata->gainMapMin[c] ||
+                    cellMetadata->gainMapMax[c] != firstMetadata->gainMapMax[c] ||
+                    cellMetadata->gainMapGamma[c] != firstMetadata->gainMapGamma[c] ||
+                    cellMetadata->offsetSdr[c] != firstMetadata->offsetSdr[c] ||
+                    cellMetadata->offsetHdr[c] != firstMetadata->offsetHdr[c]) {
+                    avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
+                    return AVIF_RESULT_INVALID_IMAGE_GRID;
+                }
+            }
         }
     }
+
+    if (hasGainMap) {
+        AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell->gainMap.image));
+        AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_TRUE, &encoder->diag));
+    }
+#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
     // -----------------------------------------------------------------------
     // Validate flags
@@ -1156,6 +1395,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // Map quality and qualityAlpha to quantizer and quantizerAlpha
     encoder->data->quantizer = avifQualityToQuantizer(encoder->quality, encoder->minQuantizer, encoder->maxQuantizer);
     encoder->data->quantizerAlpha = avifQualityToQuantizer(encoder->qualityAlpha, encoder->minQuantizerAlpha, encoder->maxQuantizerAlpha);
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    encoder->data->quantizerGainMap =
+        avifQualityToQuantizer(encoder->qualityGainMap, AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
+#endif
 
     // -----------------------------------------------------------------------
     // Handle automatic tiling
@@ -1166,7 +1409,11 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Use as many tiles as allowed by the minimum tile area requirement and impose a maximum
         // of 8 tiles.
         const int threads = 8;
-        avifSetTileConfiguration(threads, tileWidth, tileHeight, &encoder->data->tileRowsLog2, &encoder->data->tileColsLog2);
+        avifSetTileConfiguration(threads,
+                                 cellImages[0]->width,
+                                 cellImages[0]->height,
+                                 &encoder->data->tileRowsLog2,
+                                 &encoder->data->tileColsLog2);
     }
 
     // -----------------------------------------------------------------------
@@ -1193,6 +1440,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
         // Prepare all AV1 items
         uint16_t colorItemID;
+        const uint32_t gridWidth = avifGridWidth(gridCols, cellImages[0], cellImages[gridCols * gridRows - 1]);
+        const uint32_t gridHeight = avifGridHeight(gridRows, cellImages[0], cellImages[gridCols * gridRows - 1]);
         AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_COLOR, &colorItemID));
         encoder->data->primaryItemID = colorItemID;
 
@@ -1232,6 +1481,47 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
         }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (firstCell->gainMap.image) {
+            avifEncoderItem * toneMappedItem = avifEncoderDataCreateItem(encoder->data,
+                                                                         "tmap",
+                                                                         infeNameGainMap,
+                                                                         /*infeNameSize=*/strlen(infeNameGainMap) + 1,
+                                                                         /*cellIndex=*/0);
+            if (!avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap.metadata)) {
+                avifDiagnosticsPrintf(&encoder->diag, "failed to write gain map metadata, some values may be negative or too large");
+                return AVIF_RESULT_ENCODE_GAIN_MAP_FAILED;
+            }
+            // While the 'tmap' item is related to the gain map, it shares most of its properties (width/height, depth etc.) with the color item.
+            toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
+            uint16_t toneMappedItemID = toneMappedItem->id;
+            *(uint16_t *)avifArrayPushPtr(&encoder->data->alternativeItemIDs) = toneMappedItemID;
+            *(uint16_t *)avifArrayPushPtr(&encoder->data->alternativeItemIDs) = colorItemID;
+
+            const uint32_t gainMapGridWidth =
+                avifGridWidth(gridCols, cellImages[0]->gainMap.image, cellImages[gridCols * gridRows - 1]->gainMap.image);
+            const uint32_t gainMapGridHeight =
+                avifGridHeight(gridRows, cellImages[0]->gainMap.image, cellImages[gridCols * gridRows - 1]->gainMap.image);
+
+            uint16_t gainMapItemID;
+            AVIF_CHECKRES(
+                avifEncoderAddImageItems(encoder, gridCols, gridRows, gainMapGridWidth, gainMapGridHeight, AVIF_ITEM_GAIN_MAP, &gainMapItemID));
+            avifEncoderItem * gainMapItem = avifEncoderDataFindItemByID(encoder->data, gainMapItemID);
+            assert(gainMapItem);
+            gainMapItem->hiddenImage = AVIF_TRUE;
+
+            // Set the color item and gain map item's dimgFromID value to point o the tone mapped item.
+            // The color item should be first, and the gain map second. This is no order set explicitly,
+            // but they will appear in item id order. So as long as colorItemID < gainMapItemID, the order will be correct.
+            assert(colorItemID < gainMapItemID);
+            avifEncoderItem * colorItem = avifEncoderDataFindItemByID(encoder->data, colorItemID);
+            assert(colorItem);
+            assert(colorItem->dimgFromID == 0); // Our internal API only allows one dimg value per item.
+            colorItem->dimgFromID = toneMappedItemID;
+            gainMapItem->dimgFromID = toneMappedItemID;
+        }
+#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+
         // -----------------------------------------------------------------------
         // Create metadata items (Exif, XMP)
 
@@ -1250,6 +1540,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
     } else {
         // Another frame in an image sequence, or layer in a layered image
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (hasGainMap) {
+            avifDiagnosticsPrintf(&encoder->diag, "gain maps are not supported for image sequences or layered images");
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+#endif
 
         const avifImage * imageMetadata = encoder->data->imageMetadata;
         // Image metadata that are copied to the configuration property and nclx boxes are not allowed to change.
@@ -1293,15 +1590,28 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
+            const avifImage * firstCellImage = firstCell;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+            if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                cellImage = cellImage->gainMap.image;
+                assert(cellImage);
+                firstCellImage = firstCell->gainMap.image;
+                assert(firstCellImage);
+            }
+#endif
             avifImage * paddedCellImage = NULL;
-            if ((cellImage->width != tileWidth) || (cellImage->height != tileHeight)) {
-                paddedCellImage = avifImageCopyAndPad(cellImage, tileWidth, tileHeight);
+            if ((cellImage->width != firstCellImage->width) || (cellImage->height != firstCellImage->height)) {
+                paddedCellImage = avifImageCopyAndPad(cellImage, firstCellImage->width, firstCellImage->height);
                 if (!paddedCellImage) {
                     return AVIF_RESULT_OUT_OF_MEMORY;
                 }
                 cellImage = paddedCellImage;
             }
-            const int quantizer = (item->itemCategory == AVIF_ITEM_ALPHA) ? encoder->data->quantizerAlpha : encoder->data->quantizer;
+            const int quantizer = (item->itemCategory == AVIF_ITEM_ALPHA) ? encoder->data->quantizerAlpha
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                                  : (item->itemCategory == AVIF_ITEM_GAIN_MAP) ? encoder->data->quantizerGainMap
+#endif
+                                                                               : encoder->data->quantizer;
             // If alpha channel is present, set disableLaggedOutput to AVIF_TRUE. If the encoder supports it, this enables
             // avifEncoderDataShouldForceKeyframeForAlpha to force a keyframe in the alpha channel whenever a keyframe has been
             // encoded in the color channel for animated images.
@@ -1382,6 +1692,9 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
 {
     encoder->ioStats.colorOBUSize = 0;
     encoder->ioStats.alphaOBUSize = 0;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    encoder->ioStats.gainMapOBUSize = 0;
+#endif
 
     avifBoxMarker mdat;
     AVIF_CHECKRES(avifRWStreamWriteBox(s, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
@@ -1389,7 +1702,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
     for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
         //   * Pass 0: metadata (Exif/XMP)
-        //   * Pass 1: alpha (AV1)
+        //   * Pass 1: alpha/gain map (AV1)
         //   * Pass 2: all other item data (AV1 color)
         //
         // See here for the discussion on alpha coming before color:
@@ -1404,12 +1717,14 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-            const avifBool isGrid = (item->gridCols > 0); // Grids store their payload in metadataPayload, so use this to distinguish grid payloads from XMP/Exif
+// Grids and tmap store their payloads in metadataPayload, so use this to distinguish grid payloads from XMP/Exif
+            const avifBool isMetadata = (!memcmp(item->type, "mime", 4) || !memcmp(item->type, "Exif", 4)) &&
+                                        (item->metadataPayload.size > 0);
             if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
                 // this item has nothing for the mdat box
                 continue;
             }
-            if (!isGrid && (metadataPass != (item->metadataPayload.size > 0))) {
+            if (metadataPass != isMetadata) {
                 // only process metadata (XMP/Exif) payloads when metadataPass is true
                 continue;
             }
@@ -1449,6 +1764,10 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
 
                         if (item->itemCategory == AVIF_ITEM_ALPHA) {
                             encoder->ioStats.alphaOBUSize += sample->data.size;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                        } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                            encoder->ioStats.gainMapOBUSize += sample->data.size;
+#endif
                         } else {
                             encoder->ioStats.colorOBUSize += sample->data.size;
                         }
@@ -1519,6 +1838,27 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
         assert(layerIndex <= AVIF_MAX_AV1_LAYER_COUNT);
     }
     avifRWStreamFinishBox(s, mdat);
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifWriteAltrGroup(avifRWStream * s, const avifEncoderItemIdArray * itemIDs)
+{
+    avifBoxMarker grpl;
+    AVIF_CHECKRES(avifRWStreamWriteBox(s, "grpl", AVIF_BOX_SIZE_TBD, &grpl));
+
+    avifBoxMarker altr;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "altr", AVIF_BOX_SIZE_TBD, 0, 0, &altr));
+
+    AVIF_CHECKRES(avifRWStreamWriteU32(s, 1));                        // unsigned int(32) group_id;
+    AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)itemIDs->count)); // unsigned int(32) num_entities_in_group;
+    for (uint32_t i = 0; i < itemIDs->count; ++i) {
+        AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)itemIDs->item_id[i])); // unsigned int(32) entity_id;
+    }
+
+    avifRWStreamFinishBox(s, altr);
+
+    avifRWStreamFinishBox(s, grpl);
+
     return AVIF_RESULT_OK;
 }
 
@@ -1785,35 +2125,46 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         const avifBool isGrid = (item->gridCols > 0);
+        const avifBool isToneMappedImage = !memcmp(item->type, "tmap", 4);
         memset(&item->ipma, 0, sizeof(item->ipma));
-        if (!item->codec && !isGrid) {
+        if (!item->codec && !isGrid && !isToneMappedImage) {
             // No ipma to write for this item
             continue;
         }
 
         if (item->dimgFromID && (item->extraLayerCount == 0)) {
-            // All image cells from a grid should share the exact same properties unless they are
-            // layered image which have different al1x, so see if we've already written properties
-            // out for another cell in this grid, and if so, just steal their ipma and move on.
-            // This is a sneaky way to provide iprp deduplication.
+            avifEncoderItem * parentItem = avifEncoderDataFindItemByID(encoder->data, item->dimgFromID);
+            if (parentItem && !memcmp(parentItem->type, "grid", 4)) {
+                // All image cells from a grid should share the exact same properties unless they are
+                // layered image which have different al1x, so see if we've already written properties
+                // out for another cell in this grid, and if so, just steal their ipma and move on.
+                // This is a sneaky way to provide iprp deduplication.
 
-            avifBool foundPreviousCell = AVIF_FALSE;
-            for (uint32_t dedupIndex = 0; dedupIndex < itemIndex; ++dedupIndex) {
-                avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
-                if ((item->dimgFromID == dedupItem->dimgFromID) && (dedupItem->extraLayerCount == 0)) {
-                    // We've already written dedup's items out. Steal their ipma indices and move on!
-                    item->ipma = dedupItem->ipma;
-                    foundPreviousCell = AVIF_TRUE;
-                    break;
+                avifBool foundPreviousCell = AVIF_FALSE;
+                for (uint32_t dedupIndex = 0; dedupIndex < itemIndex; ++dedupIndex) {
+                    avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
+                    if ((item->dimgFromID == dedupItem->dimgFromID) && (dedupItem->extraLayerCount == 0)) {
+                        // We've already written dedup's items out. Steal their ipma indices and move on!
+                        item->ipma = dedupItem->ipma;
+                        foundPreviousCell = AVIF_TRUE;
+                        break;
+                    }
                 }
-            }
-            if (foundPreviousCell) {
-                continue;
+                if (foundPreviousCell) {
+                    continue;
+                }
             }
         }
 
-        uint32_t imageWidth = imageMetadata->width;
-        uint32_t imageHeight = imageMetadata->height;
+        const avifImage * itemMetadata = imageMetadata;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+            itemMetadata = itemMetadata->gainMap.image;
+            assert(itemMetadata);
+        }
+#endif
+        uint32_t imageWidth = itemMetadata->width;
+        uint32_t imageHeight = itemMetadata->height;
         if (isGrid) {
             imageWidth = item->gridWidth;
             imageHeight = item->gridHeight;
@@ -1830,13 +2181,12 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
 
         avifItemPropertyDedupStart(dedup);
-        uint8_t channelCount =
-            ((item->itemCategory == AVIF_ITEM_ALPHA) || (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
+        uint8_t channelCount = (item->itemCategory == AVIF_ITEM_ALPHA || (itemMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
         avifBoxMarker pixi;
         AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
         AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
-            AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, (uint8_t)imageMetadata->depth)); // unsigned int (8) bits_per_channel;
+            avifRWStreamWriteU8(&dedup->s, (uint8_t)itemMetadata->depth); // unsigned int (8) bits_per_channel;
         }
         avifRWStreamFinishBox(&dedup->s, pixi);
         AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
@@ -1856,11 +2206,31 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize)); //  string aux_type;
             avifRWStreamFinishBox(&dedup->s, auxC);
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
-        } else {
+        } else if (item->itemCategory == AVIF_ITEM_COLOR) {
             // Color specific properties
 
-            AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, &item->ipma, dedup));
+            avifEncoderWriteColorProperties(&s, itemMetadata, &item->ipma, dedup);
+            if (!isToneMappedImage) {
+                AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
+            }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+            // Gain map specific properties
+
+            // Write just the colr nclx box
+            AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
+#endif
         }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (isToneMappedImage && !imageMetadata->gainMap.metadata.baseRenditionIsHDR) {
+            // HDR properties for the tone mapped image ('tmap' box) are taken from the gain map image.
+            // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
+            // place to put this data.
+
+            AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, &s, imageMetadata->gainMap.image, &item->ipma, dedup));
+        }
+#endif
 
         if (item->extraLayerCount > 0) {
             // Layered Image Indexing Property
@@ -1928,6 +2298,13 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifRWStreamFinishBox(&s, ipma);
 
     avifRWStreamFinishBox(&s, iprp);
+
+    // -----------------------------------------------------------------------
+    // Write grpl/altr box
+
+    if (encoder->data->alternativeItemIDs.count) {
+        AVIF_CHECKRES(avifWriteAltrGroup(&s, &encoder->data->alternativeItemIDs));
+    }
 
     // -----------------------------------------------------------------------
     // Finish meta box
@@ -2129,6 +2506,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(writeConfigBox(&s, &item->av1C, encoder->data->configPropName));
             if (item->itemCategory == AVIF_ITEM_COLOR) {
                 AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL));
+                AVIF_CHECKRES(avifEncoderWriteHDRProperties(NULL, &s, imageMetadata, NULL, NULL));
             }
 
             avifBoxMarker ccst;

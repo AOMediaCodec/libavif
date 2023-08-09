@@ -110,6 +110,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifdecodetest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifdecodetest COMMAND avifdecodetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
+    add_executable(avifgainmaptest gtest/avifgainmaptest.cc)
+    target_link_libraries(avifgainmaptest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifgainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifgainmaptest COMMAND avifgainmaptest)
+
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -182,6 +187,11 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(aviftilingtest avif_internal ${GTEST_BOTH_LIBRARIES})
     target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME aviftilingtest COMMAND aviftilingtest)
+
+    add_executable(avifutilstest gtest/avifutilstest.cc)
+    target_link_libraries(avifutilstest avif_internal ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifutilstest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifutilstest COMMAND avifutilstest)
 
     add_executable(avify4mtest gtest/avify4mtest.cc)
     target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
