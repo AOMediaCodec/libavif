@@ -227,11 +227,11 @@ avifBool avifImageScale(avifImage * image,
 // ---------------------------------------------------------------------------
 // AVIF item type
 
-typedef enum avifItemType
+typedef enum avifItemCategory
 {
     AVIF_ITEM_COLOR = 0,
     AVIF_ITEM_ALPHA = 1
-} avifItemType;
+} avifItemCategory;
 
 // ---------------------------------------------------------------------------
 // Grid AVIF images
@@ -271,8 +271,8 @@ AVIF_ARRAY_DECLARE(avifDecodeSampleArray, avifDecodeSample, sample);
 typedef struct avifCodecDecodeInput
 {
     avifDecodeSampleArray samples;
-    avifBool allLayers;    // if true, the underlying codec must decode all layers, not just the best layer
-    avifItemType itemType; // type of item being decoded
+    avifBool allLayers;            // if true, the underlying codec must decode all layers, not just the best layer
+    avifItemCategory itemCategory; // category of item being decoded
 } avifCodecDecodeInput;
 
 avifCodecDecodeInput * avifCodecDecodeInputCreate(void);
