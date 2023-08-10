@@ -1337,7 +1337,7 @@ static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gri
     return AVIF_CODEC_TYPE_UNKNOWN;
 }
 
-static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifImageGrid * grid, avifDecoderItem * gridItem, avifBool alpha)
+static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifImageGrid * grid, avifDecoderItem * gridItem, avifItemCategory itemCategory)
 {
     // Count number of dimg for this item, bail out if it doesn't match perfectly
     unsigned int tilesAvailable = 0;
@@ -1378,7 +1378,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
                                                      &decoder->diag)) {
             return AVIF_FALSE;
         }
-        tile->input->alpha = alpha;
+        tile->input->itemCategory = itemCategory;
 
         if (firstTileItem == NULL) {
             firstTileItem = item;
@@ -1394,7 +1394,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
             avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&gridItem->properties);
             *dstProp = *srcProp;
 
-            if (!alpha && item->progressive) {
+            if (itemCategory != AVIF_ITEM_ALPHA && item->progressive) {
                 decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
                 if (tile->input->samples.count > 1) {
                     decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
@@ -1450,7 +1450,7 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
 
-    avifBool alpha = tile->input->alpha;
+    avifBool alpha = (tile->input->itemCategory == AVIF_ITEM_ALPHA);
     if (alpha) {
         // An alpha tile does not contain any YUV pixels.
         assert(tile->image->yuvFormat == AVIF_PIXEL_FORMAT_NONE);
@@ -1532,7 +1532,7 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
         assert(AVIF_FALSE);
         return AVIF_FALSE;
     }
-    avifImageCopySamples(&dstView, &srcView, tile->input->alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+    avifImageCopySamples(&dstView, &srcView, (tile->input->itemCategory == AVIF_ITEM_ALPHA) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
     return AVIF_TRUE;
 }
@@ -3677,11 +3677,11 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifBool alpha)
+static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifItemCategory itemCategory)
 {
     const uint32_t previousTileCount = decoder->data->tiles.count;
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
-        AVIF_CHECKERR(avifDecoderGenerateImageGridTiles(decoder, &info->grid, item, alpha), AVIF_RESULT_INVALID_IMAGE_GRID);
+        AVIF_CHECKERR(avifDecoderGenerateImageGridTiles(decoder, &info->grid, item, itemCategory), AVIF_RESULT_INVALID_IMAGE_GRID);
     } else {
         AVIF_CHECKERR(item->size != 0, AVIF_RESULT_MISSING_IMAGE_ITEM);
 
@@ -3697,7 +3697,7 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileI
                                                               decoder->io->sizeHint,
                                                               &decoder->diag),
                       AVIF_RESULT_BMFF_PARSE_FAILED);
-        tile->input->alpha = alpha;
+        tile->input->itemCategory = itemCategory;
     }
     info->tileCount = decoder->data->tiles.count - previousTileCount;
     return AVIF_RESULT_OK;
@@ -3850,7 +3850,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                          data->diag)) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            alphaTile->input->alpha = AVIF_TRUE;
+            alphaTile->input->itemCategory = AVIF_ITEM_ALPHA;
             data->alpha.tileCount = 1;
         }
 
@@ -3953,7 +3953,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->duration = 1;
         decoder->durationInTimescales = 1;
 
-        AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->color, colorItem, /*alpha=*/AVIF_FALSE));
+        AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->color, colorItem, AVIF_ITEM_COLOR));
         if ((data->color.grid.rows == 0) || (data->color.grid.columns == 0)) {
             if (colorItem->progressive) {
                 decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
@@ -3972,7 +3972,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 alphaItem->width = colorItem->width;
                 alphaItem->height = colorItem->height;
             }
-            AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->alpha, alphaItem, /*alpha=*/AVIF_TRUE));
+            AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->alpha, alphaItem, AVIF_ITEM_ALPHA));
         }
 
         decoder->image->width = colorItem->width;
@@ -4007,7 +4007,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
 
-            if (tile->input->alpha) {
+            if (tile->input->itemCategory == AVIF_ITEM_ALPHA) {
                 decoder->ioStats.alphaOBUSize += sample->size;
             } else {
                 decoder->ioStats.colorOBUSize += sample->size;
@@ -4194,6 +4194,11 @@ static avifResult avifImageLimitedToFullAlpha(avifImage * image)
     return AVIF_RESULT_OK;
 }
 
+static avifResult avifGetErrorForItemCategory(avifItemCategory itemCategory)
+{
+    return (itemCategory == AVIF_ITEM_ALPHA) ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
+}
+
 static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextImageIndex, avifTileInfo * info)
 {
     const unsigned int oldDecodedTileCount = info->decodedTileCount;
@@ -4208,16 +4213,16 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
         }
 
         avifBool isLimitedRangeAlpha = AVIF_FALSE;
-        if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->alpha, &isLimitedRangeAlpha, tile->image)) {
+        if (!tile->codec->getNextImage(tile->codec, decoder, sample, tile->input->itemCategory == AVIF_ITEM_ALPHA, &isLimitedRangeAlpha, tile->image)) {
             avifDiagnosticsPrintf(&decoder->diag, "tile->codec->getNextImage() failed");
-            return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
+            return avifGetErrorForItemCategory(tile->input->itemCategory);
         }
 
         // Alpha plane with limited range is not allowed by the latest revision
         // of the specification. However, it was allowed in version 1.0.0 of the
         // specification. To allow such files, simply convert the alpha plane to
         // full range.
-        if (tile->input->alpha && isLimitedRangeAlpha) {
+        if ((tile->input->itemCategory == AVIF_ITEM_ALPHA) && isLimitedRangeAlpha) {
             avifResult result = avifImageLimitedToFullAlpha(tile->image);
             if (result != AVIF_RESULT_OK) {
                 avifDiagnosticsPrintf(&decoder->diag, "avifImageLimitedToFullAlpha failed");
@@ -4234,7 +4239,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                                 decoder->imageDimensionLimit,
                                 &decoder->diag)) {
                 avifDiagnosticsPrintf(&decoder->diag, "avifImageScale() failed");
-                return tile->input->alpha ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
+                return avifGetErrorForItemCategory(tile->input->itemCategory);
             }
         }
 
@@ -4255,7 +4260,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             avifImage * src = tile->image;
             if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
                 (decoder->image->depth != src->depth)) {
-                if (tile->input->alpha) {
+                if (tile->input->itemCategory == AVIF_ITEM_ALPHA) {
                     avifDiagnosticsPrintf(&decoder->diag,
                                           "The color image item does not match the alpha image item in width, height, or bit depth");
                     return AVIF_RESULT_DECODE_ALPHA_FAILED;
@@ -4266,7 +4271,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 decoder->image->height = src->height;
                 decoder->image->depth = src->depth;
             }
-            avifImageStealPlanes(decoder->image, src, tile->input->alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+            avifImageStealPlanes(decoder->image, src, tile->input->itemCategory == AVIF_ITEM_ALPHA ? AVIF_PLANES_A : AVIF_PLANES_YUV);
         }
     }
     return AVIF_RESULT_OK;
