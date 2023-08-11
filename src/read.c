@@ -1917,7 +1917,7 @@ static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop,
                                                        const char * configPropName,
                                                        avifDiagnostics * diag)
 {
-    char diagContext[] = "Box[....]";
+    char diagContext[10];
     snprintf(diagContext, sizeof(diagContext), "Box[%.4s]", configPropName); // "Box[av1C]" or "Box[av2C]"
     BEGIN_STREAM(s, raw, rawLen, diag, diagContext);
     return avifParseCodecConfiguration(&s, &prop->u.av1C, configPropName, diag);
@@ -2410,7 +2410,7 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
 
     avifDecoderItem * item = avifMetaFindItem(meta, itemID);
     if (!item) {
-        avifDiagnosticsPrintf(diag, "%s: Box[infe] of type %.4s has an invalid item ID [%u]", s.diagContext, itemType, itemID);
+        avifDiagnosticsPrintf(diag, "%s: Box[infe] with item_type %.4s has an invalid item ID [%u]", s.diagContext, itemType, itemID);
         return AVIF_FALSE;
     }
 
