@@ -2190,7 +2190,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
     return avifEncoderFinish(encoder, output);
 }
 
-// Implementation of section 2.3.3. of AV1 Codec ISO Media File Format Binding specification v1.2.0.
+// Implementation of section 2.3.3 of AV1 Codec ISO Media File Format Binding specification v1.2.0.
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static void writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox * cfg)
 {
@@ -2221,7 +2221,7 @@ static void writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox *
     // }
     avifRWStreamWriteU8(s, 0);
 
-    // According to section 2.2.1. of AV1 Image File Format specification v1.1.0,
+    // According to section 2.2.1 of AV1 Image File Format specification v1.1.0,
     // there is no need to write any OBU here.
     // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#av1-configuration-item-property.
     // unsigned int (8) configOBUs[];

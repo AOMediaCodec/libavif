@@ -1862,7 +1862,7 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
     return AVIF_TRUE;
 }
 
-// Implementation of section 2.3.3. of AV1 Codec ISO Media File Format Binding specification v1.2.0.
+// Implementation of section 2.3.3 of AV1 Codec ISO Media File Format Binding specification v1.2.0.
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigurationBox * config, const char * configPropName, avifDiagnostics * diag)
 {
@@ -1898,12 +1898,12 @@ static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigura
     // }
     AVIF_CHECK(avifROStreamSkip(s, 1));
 
-    // According to section 2.2.1. of AV1 Image File Format specification v1.1.0:
-    //   "- Sequence Header OBUs should not be present in the AV1CodecConfigurationBox."
-    //   "- If a Sequence Header OBU is present in the AV1CodecConfigurationBox,
-    //      it shall match the Sequence Header OBU in the AV1 Image Item Data."
-    //   "- Metadata OBUs, if present, shall match the values given in other item properties,
-    //      such as the PixelInformationProperty or ColourInformationBox."
+    // According to section 2.2.1 of AV1 Image File Format specification v1.1.0:
+    //   - Sequence Header OBUs should not be present in the AV1CodecConfigurationBox.
+    //   - If a Sequence Header OBU is present in the AV1CodecConfigurationBox,
+    //     it shall match the Sequence Header OBU in the AV1 Image Item Data.
+    //   - Metadata OBUs, if present, shall match the values given in other item properties,
+    //     such as the PixelInformationProperty or ColourInformationBox.
     // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#av1-configuration-item-property.
     // For simplicity, the constraints above are not enforced.
     // The following is skipped by avifParseItemPropertyContainerBox().
