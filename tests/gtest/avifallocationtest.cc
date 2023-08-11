@@ -155,7 +155,7 @@ TEST(EncodingTest, ReasonableValidDimensions) {
 }
 
 // 65536 is the maximum AV1 frame dimension allowed by the AV1 specification.
-// See the section 5.5.1. General sequence header OBU syntax.
+// See the section 5.5.1 General sequence header OBU syntax.
 // However, this test is disabled because:
 // - Old versions of libaom are capped to 65535 (http://crbug.com/aomedia/3304).
 // - libaom may be compiled with CONFIG_SIZE_LIMIT defined, limiting the
