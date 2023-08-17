@@ -560,22 +560,26 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
                                             struct ipmaArray * ipma,
                                             avifItemPropertyDedup * dedup)
 {
-    avifRWStream * s = outputStream;
+    // outputStream is the final bitstream that will be output by the libavif encoder API.
+    // dedupStream is either equal to outputStream or to &dedup->s which is a temporary stream used
+    // to store parts of the final bitstream; these parts may be discarded if they are a duplicate
+    // of an already stored property.
+    avifRWStream * dedupStream = outputStream;
     if (dedup) {
         assert(ipma);
 
-        // Use the dedup's temporary stream for box writes
-        s = &dedup->s;
+        // Use the dedup's temporary stream for box writes.
+        dedupStream = &dedup->s;
     }
 
     if (imageMetadata->icc.size > 0) {
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
         }
-        avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
-        avifRWStreamWriteChars(s, "prof", 4); // unsigned int(32) colour_type;
-        avifRWStreamWrite(s, imageMetadata->icc.data, imageMetadata->icc.size);
-        avifRWStreamFinishBox(s, colr);
+        avifBoxMarker colr = avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD);
+        avifRWStreamWriteChars(dedupStream, "prof", 4); // unsigned int(32) colour_type;
+        avifRWStreamWrite(dedupStream, imageMetadata->icc.data, imageMetadata->icc.size);
+        avifRWStreamFinishBox(dedupStream, colr);
         if (dedup) {
             ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
         }
@@ -586,19 +590,19 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
     if (dedup) {
         avifItemPropertyDedupStart(dedup);
     }
-    avifBoxMarker colr = avifRWStreamWriteBox(s, "colr", AVIF_BOX_SIZE_TBD);
-    avifRWStreamWriteChars(s, "nclx", 4);                                            // unsigned int(32) colour_type;
-    avifRWStreamWriteU16(s, imageMetadata->colorPrimaries);                          // unsigned int(16) colour_primaries;
-    avifRWStreamWriteU16(s, imageMetadata->transferCharacteristics);                 // unsigned int(16) transfer_characteristics;
-    avifRWStreamWriteU16(s, imageMetadata->matrixCoefficients);                      // unsigned int(16) matrix_coefficients;
-    avifRWStreamWriteU8(s, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
-                                                                                     // unsigned int(7) reserved = 0;
-    avifRWStreamFinishBox(s, colr);
+    avifBoxMarker colr = avifRWStreamWriteBox(dedupStream, "colr", AVIF_BOX_SIZE_TBD);
+    avifRWStreamWriteChars(dedupStream, "nclx", 4);                            // unsigned int(32) colour_type;
+    avifRWStreamWriteU16(dedupStream, imageMetadata->colorPrimaries);          // unsigned int(16) colour_primaries;
+    avifRWStreamWriteU16(dedupStream, imageMetadata->transferCharacteristics); // unsigned int(16) transfer_characteristics;
+    avifRWStreamWriteU16(dedupStream, imageMetadata->matrixCoefficients);      // unsigned int(16) matrix_coefficients;
+    avifRWStreamWriteU8(dedupStream, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
+                                                                                               // unsigned int(7) reserved = 0;
+    avifRWStreamFinishBox(dedupStream, colr);
     if (dedup) {
         ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
     }
 
-    avifEncoderWriteExtendedColorProperties(s, outputStream, imageMetadata, ipma, dedup);
+    avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup);
 }
 
 static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
