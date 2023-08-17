@@ -487,7 +487,6 @@ typedef struct avifRWStream
     size_t offset;
 } avifRWStream;
 
-uint8_t * avifRWStreamCurrent(avifRWStream * stream);
 void avifRWStreamStart(avifRWStream * stream, avifRWData * raw);
 size_t avifRWStreamOffset(const avifRWStream * stream);
 void avifRWStreamSetOffset(avifRWStream * stream, size_t offset);
