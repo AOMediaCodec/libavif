@@ -3677,7 +3677,7 @@ static avifResult avifParse(avifDecoder * decoder)
 
         if (ftypSeen && !needsConi && coniSeen) {
             // The 'coni' box should be ignored if there is no 'avir' brand, but libavif allows reading them in any order.
-            return AVIF_RESULT_NOT_IMPLEMENTED;
+            return AVIF_RESULT_NOT_IMPLEMENTED; // TODO(yguyon): Implement
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
