@@ -1968,6 +1968,7 @@ static avifResult avifEncoderWriteFileTypeBoxAndCondensedImageBox(avifEncoder * 
         }
     }
 
+    assert(colorItem);
     const avifRWData * colorData = &colorItem->encodeOutput->samples.sample[0].data;
     const avifRWData * alphaData = alphaItem ? &alphaItem->encodeOutput->samples.sample[0].data : NULL;
 
