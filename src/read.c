@@ -3270,6 +3270,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     meta->fromConi = AVIF_TRUE;
 
     // Read the bit fields.
+    // TODO(yguyon): Implement or return an appropriate error in cases where AVIF_RESULT_NOT_IMPLEMENTED is returned.
 
     uint32_t version;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &version, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) version;
