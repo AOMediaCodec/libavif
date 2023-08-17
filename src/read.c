@@ -3347,19 +3347,20 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
         AVIF_CHECKERR(avifROStreamReadVarInt(&s, &alphaItemDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) alpha_item_data_size;
     }
 
-    uint32_t extendedMetaSize, exifSize, xmpSize;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &extendedMetaSize, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_extended_meta;
-    if (extendedMetaSize) {
+    uint32_t hasExtendedMeta, hasExif, hasXMP;
+    uint32_t extendedMetaSize = 0, exifSize = 0, xmpSize = 0;
+    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExtendedMeta, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_extended_meta;
+    if (hasExtendedMeta) {
         AVIF_CHECKERR(avifROStreamReadVarInt(&s, &extendedMetaSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) extended_meta_size;
         ++extendedMetaSize;
     }
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &exifSize, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_exif;
-    if (exifSize) {
+    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExif, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_exif;
+    if (hasExif) {
         AVIF_CHECKERR(avifROStreamReadVarInt(&s, &exifSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) exif_data_size;
         ++exifSize;
     }
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &xmpSize, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_xmp;
-    if (xmpSize) {
+    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasXMP, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_xmp;
+    if (hasXMP) {
         AVIF_CHECKERR(avifROStreamReadVarInt(&s, &xmpSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) xmp_data_size;
         ++xmpSize;
     }
@@ -3506,7 +3507,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     offset += colorItemDataSize;
     colorItem->size = colorItemDataSize;
 
-    if (exifSize) {
+    if (hasExif) {
         avifDecoderItem * exifItem = avifMetaFindItem(meta, /*itemID=*/3);
         AVIF_CHECKERR(exifItem, AVIF_RESULT_OUT_OF_MEMORY);
         memcpy(exifItem->type, "Exif", 4);
@@ -3521,7 +3522,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
         exifItem->size = exifExtent->size;
     }
 
-    if (xmpSize) {
+    if (hasXMP) {
         avifDecoderItem * xmpItem = avifMetaFindItem(meta, /*itemID=*/4);
         AVIF_CHECKERR(xmpItem, AVIF_RESULT_OUT_OF_MEMORY);
         memcpy(xmpItem->type, "mime", 4);
@@ -3540,7 +3541,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     // Complete the generated virtual MetaBox with the ExtendedMetaBox items and properties.
     // The ExtendedMetaBox may reuse items and properties created above so it must be parsed last.
 
-    if (extendedMetaSize) {
+    if (hasExtendedMeta) {
         AVIF_CHECKERR(avifParseExtendedMeta(meta, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), extendedMetaSize, diag),
                       AVIF_RESULT_BMFF_PARSE_FAILED);
     }
