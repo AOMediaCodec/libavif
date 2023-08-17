@@ -1927,7 +1927,7 @@ static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * enc
         // Items besides the colorItem, the alphaItem and Exif/XMP/ICC
         // metadata are not directly supported by the CondensedImageBox.
         // Store them in its inner extendedMeta field instead.
-        // TODO(yguyon): Implement comment above instead of fallbacking to regular AVIF
+        // TODO(yguyon): Implement comment above instead of falling back to regular AVIF
         //               (or drop the comment above if there is no other item type).
         return AVIF_FALSE;
     }
