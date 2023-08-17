@@ -3302,20 +3302,20 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     uint32_t transferCharacteristics;
     uint32_t matrixCoefficients;
     uint32_t iccDataSize;
-    if (colorType == 3) {
+    if (colorType == AVIF_CONI_COLOR_TYPE_ICC) {
         colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
         transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
         AVIF_CHECKERR(avifROStreamReadBits(&s, &matrixCoefficients, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) matrix_coefficients;
         AVIF_CHECKERR(avifROStreamReadVarInt(&s, &iccDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) icc_data_size;
         ++iccDataSize;
-    } else if (colorType == 0) {
+    } else if (colorType == AVIF_CONI_COLOR_TYPE_SRGB) {
         // sRGB
         colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
         transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
         matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
         iccDataSize = 0;
     } else {
-        const uint32_t numBitsPerComponent = (colorType == 1) ? 5 : 8;
+        const uint32_t numBitsPerComponent = (colorType == AVIF_CONI_COLOR_TYPE_NCLX_5BIT) ? 5 : 8;
         AVIF_CHECKERR(avifROStreamReadBits(&s, &colorPrimaries, numBitsPerComponent),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(5/8) color_primaries;
         AVIF_CHECKERR(avifROStreamReadBits(&s, &transferCharacteristics, numBitsPerComponent),

@@ -239,6 +239,19 @@ typedef enum avifItemCategory
 } avifItemCategory;
 
 // ---------------------------------------------------------------------------
+// AVIF color_type field meaning in CondensendImageBox
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+typedef enum avifConiColorType
+{
+    AVIF_CONI_COLOR_TYPE_SRGB = 0,
+    AVIF_CONI_COLOR_TYPE_NCLX_5BIT = 1,
+    AVIF_CONI_COLOR_TYPE_NCLX_8BIT = 2,
+    AVIF_CONI_COLOR_TYPE_ICC = 3
+} avifConiColorType;
+#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+
+// ---------------------------------------------------------------------------
 // Grid AVIF images
 
 // Returns false if the tiles in a grid image violate any standards.

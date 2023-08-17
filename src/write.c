@@ -1992,7 +1992,7 @@ static avifResult avifEncoderWriteFileTypeBoxAndCondensedImageBox(avifEncoder * 
     }
     avifRWStreamWriteBits(&s, fullRange, 1); // unsigned int(1) full_range;
     if (image->icc.size) {
-        avifRWStreamWriteBits(&s, 3, 2);                            // unsigned int(2) color_type;
+        avifRWStreamWriteBits(&s, AVIF_CONI_COLOR_TYPE_ICC, 2);     // unsigned int(2) color_type;
         avifRWStreamWriteBits(&s, image->matrixCoefficients, 8);    // unsigned int(8) matrix_coefficients;
         avifRWStreamWriteVarInt(&s, (uint32_t)image->icc.size - 1); // varint(32) icc_data_size;
     } else {
@@ -2001,12 +2001,14 @@ static avifResult avifEncoderWriteFileTypeBoxAndCondensedImageBox(avifEncoder * 
             ((image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
              (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) &&
              (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED))) {
-            avifRWStreamWriteBits(&s, 0, 2); // unsigned int(2) color_type;
+            avifRWStreamWriteBits(&s, AVIF_CONI_COLOR_TYPE_SRGB, 2); // unsigned int(2) color_type;
         } else {
-            const avifBool eachFitsOn5bits = (image->colorPrimaries >> 5 == 0) && (image->transferCharacteristics >> 5 == 0) &&
-                                             (image->matrixCoefficients >> 5 == 0);
-            const uint32_t numBitsPerComponent = eachFitsOn5bits ? 5 : 8;
-            avifRWStreamWriteBits(&s, eachFitsOn5bits ? 1 : 2, 2);                          // unsigned int(2) color_type;
+            const avifConiColorType colorType = ((image->colorPrimaries >> 5 == 0) && (image->transferCharacteristics >> 5 == 0) &&
+                                                 (image->matrixCoefficients >> 5 == 0))
+                                                    ? AVIF_CONI_COLOR_TYPE_NCLX_5BIT
+                                                    : AVIF_CONI_COLOR_TYPE_NCLX_8BIT;
+            const uint32_t numBitsPerComponent = (colorType == AVIF_CONI_COLOR_TYPE_NCLX_5BIT) ? 5 : 8;
+            avifRWStreamWriteBits(&s, colorType, 2);                                        // unsigned int(2) color_type;
             avifRWStreamWriteBits(&s, image->colorPrimaries, numBitsPerComponent);          // unsigned int(5) color_primaries;
             avifRWStreamWriteBits(&s, image->transferCharacteristics, numBitsPerComponent); // unsigned int(5) transfer_characteristics;
             avifRWStreamWriteBits(&s, image->matrixCoefficients, numBitsPerComponent); // unsigned int(5) matrix_coefficients;
