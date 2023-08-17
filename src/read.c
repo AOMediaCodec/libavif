@@ -2410,7 +2410,7 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
 
     avifDecoderItem * item = avifMetaFindItem(meta, itemID);
     if (!item) {
-        avifDiagnosticsPrintf(diag, "%s: Box[infe] with item_type %.4s has an invalid item ID [%u]", s.diagContext, itemType, itemID);
+        avifDiagnosticsPrintf(diag, "%s: Box[infe] with item_type %.4s has an invalid item_ID [%u]", s.diagContext, itemType, itemID);
         return AVIF_FALSE;
     }
 
