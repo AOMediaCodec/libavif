@@ -538,6 +538,10 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
 }
 
 // Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
+// outputStream is the final bitstream that will be output by the libavif encoder API.
+// dedupStream is either equal to outputStream or to dedup->s which is a temporary stream used
+// to store parts of the final bitstream; these parts may be discarded if they are a duplicate
+// of an already stored property.
 static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
                                                     avifRWStream * outputStream,
                                                     const avifImage * imageMetadata,
