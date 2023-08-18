@@ -374,10 +374,10 @@ static void avifItemPropertyDedupStart(avifItemPropertyDedup * dedup)
 // assigned the next available property index, written to the output stream, and its offset/size in
 // the output stream is recorded in the dedup for future comparisons.
 //
-// Unless it returns an error, this function sets its propertyIndex argument to a valid 1-indexed
-// property index for usage in a property association (ipma) box later. If the most recent property
-// was a duplicate of a previous property, the return value will be the index of the original
-// property, otherwise it will be the index of the newly created property.
+// On success, this function sets its propertyIndex argument to a valid 1-indexed property index for
+// usage in a property association (ipma) box later. If the most recent property was a duplicate of
+// a previous property, *propertyIndex will be set to the index of the original property, otherwise
+// it will be the index of the newly created property.
 static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avifRWStream * outputStream, uint8_t * propertyIndex)
 {
     const size_t newPropertySize = avifRWStreamOffset(&dedup->s);
@@ -388,6 +388,7 @@ static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avi
             !memcmp(&outputStream->raw->data[property->offset], dedup->buffer.data, newPropertySize)) {
             // We've already written this exact property, reuse it
             *propertyIndex = property->index;
+            return AVIF_RESULT_OK;
         }
     }
 
@@ -396,8 +397,8 @@ static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avi
     property->index = ++dedup->nextIndex; // preincrement so the first new index is 1 (as ipma is 1-indexed)
     property->size = newPropertySize;
     property->offset = avifRWStreamOffset(outputStream);
-    *propertyIndex = property->index;
     AVIF_CHECKRES(avifRWStreamWrite(outputStream, dedup->buffer.data, newPropertySize));
+    *propertyIndex = property->index;
     return AVIF_RESULT_OK;
 }
 
