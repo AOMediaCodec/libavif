@@ -1818,34 +1818,10 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid,
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-static avifBool avifParseFloatAsFraction(avifROStream * s, float * f)
+static avifBool avifParseU32Array(avifROStream * s, uint32_t * v, int numValues)
 {
-    uint32_t numerator, denominator;
-    AVIF_CHECK(avifROStreamReadU32(s, &numerator));
-    AVIF_CHECK(avifROStreamReadU32(s, &denominator));
-    if (denominator == 0) {
-        return AVIF_FALSE;
-    }
-    *f = (float)numerator / denominator;
-    return AVIF_TRUE;
-}
-
-static avifBool avifParseFloatsAsFractions(avifROStream * s, float * f, int numFloats)
-{
-    // Read numerators.
-    for (int i = 0; i < numFloats; ++i) {
-        uint32_t numerator;
-        AVIF_CHECK(avifROStreamReadU32(s, &numerator));
-        f[i] = (float)numerator;
-    }
-    // Read denominators.
-    for (int i = 0; i < numFloats; ++i) {
-        uint32_t denominator;
-        AVIF_CHECK(avifROStreamReadU32(s, &denominator));
-        if (denominator == 0) {
-            return AVIF_FALSE;
-        }
-        f[i] /= denominator;
+    for (int i = 0; i < numValues; ++i) {
+        AVIF_CHECK(avifROStreamReadU32(s, &v[i]));
     }
     return AVIF_TRUE;
 }
@@ -1867,21 +1843,33 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
     assert(channelCount == 1 || channelCount == 3);
     metadata->baseRenditionIsHDR = flags & 2 ? AVIF_TRUE : AVIF_FALSE;
 
-    AVIF_CHECK(avifParseFloatAsFraction(&s, &metadata->hdrCapacityMin));
-    AVIF_CHECK(avifParseFloatAsFraction(&s, &metadata->hdrCapacityMax));
-    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->gainMapMin, channelCount));
-    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->gainMapMax, channelCount));
-    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->gainMapGamma, channelCount));
-    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->offsetSdr, channelCount));
-    AVIF_CHECK(avifParseFloatsAsFractions(&s, (float *)&metadata->offsetHdr, channelCount));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMinN));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMinD));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMaxN));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMaxD));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMinN, channelCount)); // XXX
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMinD, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMaxN, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMaxD, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapGammaN, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapGammaD, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetSdrN, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetSdrD, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetHdrN, channelCount));
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetHdrD, channelCount));
 
     // Fill the remaining values by copying those from the first channel.
     for (int c = channelCount; c < 3; ++c) {
-        metadata->gainMapMin[c] = metadata->gainMapMin[0];
-        metadata->gainMapMax[c] = metadata->gainMapMax[0];
-        metadata->gainMapGamma[c] = metadata->gainMapGamma[0];
-        metadata->offsetSdr[c] = metadata->offsetSdr[0];
-        metadata->offsetHdr[c] = metadata->offsetHdr[0];
+        metadata->gainMapMinN[c] = metadata->gainMapMinN[0];
+        metadata->gainMapMinD[c] = metadata->gainMapMinD[0];
+        metadata->gainMapMaxN[c] = metadata->gainMapMaxN[0];
+        metadata->gainMapMaxD[c] = metadata->gainMapMaxD[0];
+        metadata->gainMapGammaN[c] = metadata->gainMapGammaN[0];
+        metadata->gainMapGammaD[c] = metadata->gainMapGammaD[0];
+        metadata->offsetSdrN[c] = metadata->offsetSdrN[0];
+        metadata->offsetSdrD[c] = metadata->offsetSdrD[0];
+        metadata->offsetHdrN[c] = metadata->offsetHdrN[0];
+        metadata->offsetHdrD[c] = metadata->offsetHdrD[0];
     }
 
     return avifROStreamRemainingBytes(&s) == 0;

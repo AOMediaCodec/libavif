@@ -859,36 +859,11 @@ static avifResult avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uin
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-static avifBool avifWriteFloatAsFraction(avifRWStream * s, float v)
+static void avifWriteU32Array(avifRWStream * s, const uint32_t * v, int numValues)
 {
-    avifFractionU fraction;
-    if (!avifToFractionU(v, &fraction)) {
-        return AVIF_FALSE; // Value is probably negative or too large.
+    for (int i = 0; i < numValues; ++i) {
+        avifRWStreamWriteU32(s, v[i]);
     }
-    avifRWStreamWriteU32(s, fraction.n);
-    avifRWStreamWriteU32(s, fraction.d);
-    return AVIF_TRUE;
-}
-
-static avifBool avifWriteFloatsAsFractions(avifRWStream * s, const float * v, int numFloats)
-{
-    // Write numerators.
-    for (int i = 0; i < numFloats; ++i) {
-        avifFractionU fraction;
-        if (!avifToFractionU(v[i], &fraction)) {
-            return AVIF_FALSE; // Value is probably negative or too large.
-        }
-        avifRWStreamWriteU32(s, fraction.n);
-    }
-    // Write denominators.
-    for (int i = 0; i < numFloats; ++i) {
-        avifFractionU fraction;
-        if (!avifToFractionU(v[i], &fraction)) {
-            return AVIF_FALSE; // Value is probably negative or too large.
-        }
-        avifRWStreamWriteU32(s, fraction.d);
-    }
-    return AVIF_TRUE;
 }
 
 static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * gainMapMetadata)
@@ -935,13 +910,20 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
     }
     avifRWStreamWriteU8(&s, flags);
 
-    AVIF_CHECK(avifWriteFloatAsFraction(&s, gainMapMetadata->hdrCapacityMin));
-    AVIF_CHECK(avifWriteFloatAsFraction(&s, gainMapMetadata->hdrCapacityMax));
-    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->gainMapMin, channelCount));
-    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->gainMapMax, channelCount));
-    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->gainMapGamma, channelCount));
-    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->offsetSdr, channelCount));
-    AVIF_CHECK(avifWriteFloatsAsFractions(&s, gainMapMetadata->offsetHdr, channelCount));
+    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMinN);
+    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMinD);
+    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMaxN);
+    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMaxD);
+    avifWriteU32Array(&s, gainMapMetadata->gainMapMinN, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->gainMapMinD, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->gainMapMaxN, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->gainMapMaxD, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->gainMapGammaN, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->gainMapGammaD, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->offsetSdrN, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->offsetSdrD, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->offsetHdrN, channelCount);
+    avifWriteU32Array(&s, gainMapMetadata->offsetHdrD, channelCount);
 
     avifRWStreamFinishWrite(&s);
     return AVIF_TRUE;
@@ -1325,17 +1307,24 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             const avifGainMapMetadata * firstMetadata = &firstCell->gainMap.metadata;
             const avifGainMapMetadata * cellMetadata = &cellImage->gainMap.metadata;
             if (cellMetadata->baseRenditionIsHDR != firstMetadata->baseRenditionIsHDR ||
-                cellMetadata->hdrCapacityMin != firstMetadata->hdrCapacityMin ||
-                cellMetadata->hdrCapacityMax != firstMetadata->hdrCapacityMax) {
+                cellMetadata->hdrCapacityMinN != firstMetadata->hdrCapacityMinN ||
+                cellMetadata->hdrCapacityMinD != firstMetadata->hdrCapacityMinD ||
+                cellMetadata->hdrCapacityMaxN != firstMetadata->hdrCapacityMaxN ||
+                cellMetadata->hdrCapacityMaxD != firstMetadata->hdrCapacityMaxD) {
                 avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
             for (int c = 0; c < 3; ++c) {
-                if (cellMetadata->gainMapMin[c] != firstMetadata->gainMapMin[c] ||
-                    cellMetadata->gainMapMax[c] != firstMetadata->gainMapMax[c] ||
-                    cellMetadata->gainMapGamma[c] != firstMetadata->gainMapGamma[c] ||
-                    cellMetadata->offsetSdr[c] != firstMetadata->offsetSdr[c] ||
-                    cellMetadata->offsetHdr[c] != firstMetadata->offsetHdr[c]) {
+                if (cellMetadata->gainMapMinN[c] != firstMetadata->gainMapMinN[c] ||
+                    cellMetadata->gainMapMinD[c] != firstMetadata->gainMapMinD[c] ||
+                    cellMetadata->gainMapMaxN[c] != firstMetadata->gainMapMaxN[c] ||
+                    cellMetadata->gainMapMaxD[c] != firstMetadata->gainMapMaxD[c] ||
+                    cellMetadata->gainMapGammaN[c] != firstMetadata->gainMapGammaN[c] ||
+                    cellMetadata->gainMapGammaD[c] != firstMetadata->gainMapGammaD[c] ||
+                    cellMetadata->offsetSdrN[c] != firstMetadata->offsetSdrN[c] ||
+                    cellMetadata->offsetSdrD[c] != firstMetadata->offsetSdrD[c] ||
+                    cellMetadata->offsetHdrN[c] != firstMetadata->offsetHdrN[c] ||
+                    cellMetadata->offsetHdrD[c] != firstMetadata->offsetHdrD[c]) {
                     avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
                     return AVIF_RESULT_INVALID_IMAGE_GRID;
                 }

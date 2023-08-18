@@ -513,7 +513,8 @@ typedef struct avifContentLightLevelInformationBox
 struct avifImage;
 
 // Gain map metadata, for tone mapping between SDR and HDR.
-// All float values should be positive.
+// All field pairs ending with 'N' and 'D' are floating point values represented as fractions
+// (numerator and denominator).
 typedef struct avifGainMapMetadata
 {
     // Parameters for converting the gain map from its image encoding to log
@@ -521,14 +522,17 @@ typedef struct avifGainMapMetadata
     // gainMapLog = lerp(log(gainMapMin), log(gainMapMax), pow(gainMapEncoded, gainMapGamma));
     // where 'lerp' is a linear interpolation function.
 
-    // Minimum value in the gain map (in linear space), per RGB channel.
-    float gainMapMin[3];
+    // Minimum value in the gain map (in linear space), per RGB channel (numerator and denomi).
+    uint32_t gainMapMinN[3];
+    uint32_t gainMapMinD[3];
     // Maximum value in the gain map (in linear space), per RGB channel.
-    float gainMapMax[3];
+    uint32_t gainMapMaxN[3];
+    uint32_t gainMapMaxD[3];
     // Gain map gamma value, per RGB channel. If set to 1.0 and the transferCharacteristics
     // of the gain map image is different from 2 (AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED)
     // then the transferCharacteristics field should be used instead.
-    float gainMapGamma[3];
+    uint32_t gainMapGammaN[3];
+    uint32_t gainMapGammaD[3];
 
     // Parameters used in gain map computation/tone mapping to avoid numerical
     // instability.
@@ -537,9 +541,11 @@ typedef struct avifGainMapMetadata
     // (see below).
 
     // Offset constants for the SDR image, per RGB channel.
-    float offsetSdr[3];
+    uint32_t offsetSdrN[3];
+    uint32_t offsetSdrD[3];
     // Offset constants for the HDR image, per RGB channel.
-    float offsetHdr[3];
+    uint32_t offsetHdrN[3];
+    uint32_t offsetHdrD[3];
 
     // -----------------------------------------------------------------------
 
@@ -560,8 +566,10 @@ typedef struct avifGainMapMetadata
     // f = clamp((log(H) - log(hdrCapacityMin)) /
     //           (log(hdrCapacityMax) − log(hdrCapacityMin)), 0, 1);
     // w = baseRenditionIsHDR ? f - 1 : f;
-    float hdrCapacityMin;
-    float hdrCapacityMax;
+    uint32_t hdrCapacityMinN;
+    uint32_t hdrCapacityMinD;
+    uint32_t hdrCapacityMaxN;
+    uint32_t hdrCapacityMaxD;
 
     // AVIF_TRUE if the base image is the HDR version, AVIF_FALSE if it is the
     // SDR version.
