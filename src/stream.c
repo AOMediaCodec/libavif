@@ -21,6 +21,7 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics 
 {
     stream->raw = raw;
     stream->offset = 0;
+    stream->numUsedBitsInPartialByte = 0;
     stream->diag = diag;
     stream->diagContext = diagContext;
 
@@ -45,6 +46,7 @@ size_t avifROStreamOffset(const avifROStream * stream)
 
 void avifROStreamSetOffset(avifROStream * stream, size_t offset)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     stream->offset = offset;
     if (stream->offset > stream->raw->size) {
         stream->offset = stream->raw->size;
@@ -53,6 +55,7 @@ void avifROStreamSetOffset(avifROStream * stream, size_t offset)
 
 avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     if (!avifROStreamHasBytesLeft(stream, byteCount)) {
         avifDiagnosticsPrintf(stream->diag, "%s: Failed to skip %zu bytes, truncated data?", stream->diagContext, byteCount);
         return AVIF_FALSE;
@@ -63,6 +66,7 @@ avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount)
 
 avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     if (!avifROStreamHasBytesLeft(stream, size)) {
         avifDiagnosticsPrintf(stream->diag, "%s: Failed to read %zu bytes, truncated data?", stream->diagContext, size);
         return AVIF_FALSE;
@@ -75,6 +79,7 @@ avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size)
 
 avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t factor)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     if (factor == 0) {
         // Don't read anything, just set to 0
         *v = 0;
@@ -104,6 +109,7 @@ avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t facto
 
 avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint16_t)));
     *v = avifNTOHS(*v);
     return AVIF_TRUE;
@@ -111,6 +117,7 @@ avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v)
 
 avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avifBool littleEndian)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint16_t)));
     *v = littleEndian ? avifCTOHS(*v) : avifNTOHS(*v);
     return AVIF_TRUE;
@@ -118,6 +125,7 @@ avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avif
 
 avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint32_t)));
     *v = avifNTOHL(*v);
     return AVIF_TRUE;
@@ -125,6 +133,7 @@ avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v)
 
 avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avifBool littleEndian)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint32_t)));
     *v = littleEndian ? avifCTOHL(*v) : avifNTOHL(*v);
     return AVIF_TRUE;
@@ -132,13 +141,88 @@ avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avif
 
 avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint64_t)));
     *v = avifNTOH64(*v);
     return AVIF_TRUE;
 }
 
+// Override of avifROStreamReadBits() for convenient uint8_t output.
+avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount)
+{
+    assert(bitCount <= sizeof(*v) * 8);
+    uint32_t v32;
+    if (!avifROStreamReadBits(stream, &v32, bitCount)) {
+        return AVIF_FALSE;
+    }
+    *v = (uint8_t)v32;
+    return AVIF_TRUE;
+}
+
+avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount)
+{
+    assert(bitCount <= sizeof(*v) * 8);
+    *v = 0;
+    while (bitCount) {
+        if (stream->numUsedBitsInPartialByte == 0) {
+            AVIF_CHECK(avifROStreamSkip(stream, sizeof(uint8_t))); // Book a new partial byte in the stream.
+        }
+        assert(stream->offset > 0);
+        const uint8_t * packedBits = stream->raw->data + stream->offset - 1;
+
+        const size_t numBits = AVIF_MIN(bitCount, 8 - stream->numUsedBitsInPartialByte);
+        stream->numUsedBitsInPartialByte += numBits;
+        bitCount -= numBits;
+        // The stream bits are packed starting with the most significant bit of the first input byte.
+        // This way, packed bits can be found in the same order in the bit stream.
+        const uint32_t bits = (*packedBits >> (8 - stream->numUsedBitsInPartialByte)) & ((1 << numBits) - 1);
+        // The value bits are ordered from the most significant bit to the least significant bit.
+        // In the case where avifROStreamReadBits() is used to parse the unsigned integer value *v
+        // over multiple aligned bytes, this order corresponds to big endianness.
+        *v |= bits << bitCount;
+
+        if (stream->numUsedBitsInPartialByte == 8) {
+            // Start a new partial byte the next time a bit is needed.
+            stream->numUsedBitsInPartialByte = 0;
+        }
+    }
+    return AVIF_TRUE;
+}
+
+// Based on https://sqlite.org/src4/doc/trunk/www/varint.wiki.
+avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v)
+{
+    uint32_t a[5];
+    AVIF_CHECK(avifROStreamReadBits(stream, &a[0], 8));
+    if (a[0] <= 240) {
+        *v = a[0];
+    } else {
+        AVIF_CHECK(avifROStreamReadBits(stream, &a[1], 8));
+        if (a[0] <= 248) {
+            *v = 240 + 256 * (a[0] - 241) + a[1];
+        } else {
+            AVIF_CHECK(avifROStreamReadBits(stream, &a[2], 8));
+            if (a[0] == 249) {
+                *v = 2288 + 256 * a[1] + a[2];
+            } else {
+                AVIF_CHECK(avifROStreamReadBits(stream, &a[3], 8));
+                if (a[0] == 250) {
+                    *v = (a[3] << 16) | (a[2] << 8) | a[1];
+                } else {
+                    // TODO(yguyon): Use values of a[0] in range [252-255] (avoid pessimization).
+                    AVIF_CHECK(avifROStreamReadBits(stream, &a[4], 8));
+                    *v = (a[4] << 24) | (a[3] << 16) | (a[2] << 8) | a[1];
+                }
+            }
+        }
+    }
+    return AVIF_TRUE;
+}
+
 avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
+
     // Check for the presence of a null terminator in the stream.
     size_t remainingBytes = avifROStreamRemainingBytes(stream);
     const uint8_t * p = avifROStreamCurrent(stream);
@@ -250,6 +334,7 @@ void avifRWStreamStart(avifRWStream * stream, avifRWData * raw)
 {
     stream->raw = raw;
     stream->offset = 0;
+    stream->numUsedBitsInPartialByte = 0;
 }
 
 size_t avifRWStreamOffset(const avifRWStream * stream)
@@ -278,6 +363,7 @@ void avifRWStreamFinishWrite(avifRWStream * stream)
 
 void avifRWStreamWrite(avifRWStream * stream, const void * data, size_t size)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     if (!size) {
         return;
     }
@@ -294,6 +380,7 @@ void avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t si
 
 avifBoxMarker avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     avifBoxMarker marker = stream->offset;
     size_t headerSize = sizeof(uint32_t) + 4 /* size of type */;
     if (version != -1) {
@@ -323,12 +410,14 @@ avifBoxMarker avifRWStreamWriteBox(avifRWStream * stream, const char * type, siz
 
 void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     uint32_t noSize = avifHTONL((uint32_t)(stream->offset - marker));
     memcpy(stream->raw->data + marker, &noSize, sizeof(uint32_t));
 }
 
 void avifRWStreamWriteU8(avifRWStream * stream, uint8_t v)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     makeRoom(stream, 1);
     stream->raw->data[stream->offset] = v;
     stream->offset += 1;
@@ -336,6 +425,7 @@ void avifRWStreamWriteU8(avifRWStream * stream, uint8_t v)
 
 void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     size_t size = sizeof(uint16_t);
     v = avifHTONS(v);
     makeRoom(stream, size);
@@ -345,6 +435,7 @@ void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v)
 
 void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     size_t size = sizeof(uint32_t);
     v = avifHTONL(v);
     makeRoom(stream, size);
@@ -354,6 +445,7 @@ void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v)
 
 void avifRWStreamWriteU64(avifRWStream * stream, uint64_t v)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     size_t size = sizeof(uint64_t);
     v = avifHTON64(v);
     makeRoom(stream, size);
@@ -363,6 +455,7 @@ void avifRWStreamWriteU64(avifRWStream * stream, uint64_t v)
 
 void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount)
 {
+    assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     makeRoom(stream, byteCount);
     uint8_t * p = stream->raw->data + stream->offset;
     uint8_t * end = p + byteCount;
@@ -371,4 +464,60 @@ void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount)
         ++p;
     }
     stream->offset += byteCount;
+}
+
+void avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount)
+{
+    assert(((uint64_t)v >> bitCount) == 0); // (uint32_t >> 32 is undefined behavior)
+    while (bitCount) {
+        if (stream->numUsedBitsInPartialByte == 0) {
+            makeRoom(stream, 1); // Book a new partial byte in the stream.
+            stream->raw->data[stream->offset] = 0;
+            stream->offset += 1;
+        }
+        assert(stream->offset > 0);
+        uint8_t * packedBits = stream->raw->data + stream->offset - 1;
+
+        const size_t numBits = AVIF_MIN(bitCount, 8 - stream->numUsedBitsInPartialByte);
+        stream->numUsedBitsInPartialByte += numBits;
+        bitCount -= numBits;
+        // Order the input bits from the most significant bit to the least significant bit.
+        // In the case where avifRWStreamWriteBits() is used to write the unsigned integer value v
+        // over multiple aligned bytes, this order corresponds to big endianness.
+        const uint32_t bits = (v >> bitCount) & ((1 << numBits) - 1);
+        // Pack bits starting with the most significant bit of the first output byte.
+        // This way, packed bits can be found in the same order in the bit stream.
+        *packedBits |= bits << (8 - stream->numUsedBitsInPartialByte);
+
+        if (stream->numUsedBitsInPartialByte == 8) {
+            // Start a new partial byte the next time a bit is needed.
+            stream->numUsedBitsInPartialByte = 0;
+        }
+    }
+}
+
+// Based on https://sqlite.org/src4/doc/trunk/www/varint.wiki.
+void avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v)
+{
+    if (v <= 240) {
+        avifRWStreamWriteBits(stream, v, 8);
+    } else if (v <= 2287) {
+        avifRWStreamWriteBits(stream, (v - 240) / 256 + 241, 8);
+        avifRWStreamWriteBits(stream, (v - 240) % 256, 8);
+    } else if (v <= 67823) {
+        avifRWStreamWriteBits(stream, 249, 8);
+        avifRWStreamWriteBits(stream, (v - 2288) / 256, 8);
+        avifRWStreamWriteBits(stream, (v - 2288) % 256, 8);
+    } else if (v <= 16777215) {
+        avifRWStreamWriteBits(stream, 250, 8);
+        avifRWStreamWriteBits(stream, (v >> 0) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 8) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 16) & 0xff, 8);
+    } else {
+        avifRWStreamWriteBits(stream, 251, 8);
+        avifRWStreamWriteBits(stream, (v >> 0) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 8) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 16) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 24) & 0xff, 8);
+    }
 }

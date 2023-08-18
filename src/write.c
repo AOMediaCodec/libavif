@@ -595,8 +595,8 @@ static void avifEncoderWriteColorProperties(avifRWStream * outputStream,
     avifRWStreamWriteU16(dedupStream, imageMetadata->colorPrimaries);          // unsigned int(16) colour_primaries;
     avifRWStreamWriteU16(dedupStream, imageMetadata->transferCharacteristics); // unsigned int(16) transfer_characteristics;
     avifRWStreamWriteU16(dedupStream, imageMetadata->matrixCoefficients);      // unsigned int(16) matrix_coefficients;
-    avifRWStreamWriteU8(dedupStream, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 0x80 : 0); // unsigned int(1) full_range_flag;
-                                                                                               // unsigned int(7) reserved = 0;
+    avifRWStreamWriteBits(dedupStream, (imageMetadata->yuvRange == AVIF_RANGE_FULL) ? 1 : 0, /*bitCount=*/1); // unsigned int(1) full_range_flag;
+    avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7); // unsigned int(7) reserved = 0;
     avifRWStreamFinishBox(dedupStream, colr);
     if (dedup) {
         ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_FALSE);
@@ -661,8 +661,8 @@ static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
             avifItemPropertyDedupStart(dedup);
         }
         avifBoxMarker irot = avifRWStreamWriteBox(dedupStream, "irot", AVIF_BOX_SIZE_TBD);
-        uint8_t angle = imageMetadata->irot.angle & 0x3;
-        avifRWStreamWrite(dedupStream, &angle, 1); // unsigned int (6) reserved = 0; unsigned int (2) angle;
+        avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/6);                               // unsigned int (6) reserved = 0;
+        avifRWStreamWriteBits(dedupStream, imageMetadata->irot.angle & 0x3, /*bitCount=*/2); // unsigned int (2) angle;
         avifRWStreamFinishBox(dedupStream, irot);
         if (dedup) {
             ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_TRUE);
@@ -673,8 +673,8 @@ static void avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
             avifItemPropertyDedupStart(dedup);
         }
         avifBoxMarker imir = avifRWStreamWriteBox(dedupStream, "imir", AVIF_BOX_SIZE_TBD);
-        uint8_t mode = imageMetadata->imir.mode & 0x1;
-        avifRWStreamWrite(dedupStream, &mode, 1); // unsigned int (7) reserved = 0; unsigned int (1) mode;
+        avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7);                                // unsigned int (7) reserved = 0;
+        avifRWStreamWriteBits(dedupStream, imageMetadata->imir.mode ? 1 : 0, /*bitCount=*/1); // unsigned int (1) mode;
         avifRWStreamFinishBox(dedupStream, imir);
         if (dedup) {
             ipmaPush(ipma, avifItemPropertyDedupFinish(dedup, outputStream), AVIF_TRUE);
@@ -709,12 +709,11 @@ static void avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s
     avifRWStreamFinishBox(s, hdlr);
 
     avifBoxMarker iloc = avifRWStreamWriteFullBox(s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0);
-    uint8_t offsetSizeAndLengthSize = (4 << 4) + (4 << 0); // unsigned int(4) offset_size;
-                                                           // unsigned int(4) length_size;
-    avifRWStreamWrite(s, &offsetSizeAndLengthSize, 1);     //
-    avifRWStreamWriteZeros(s, 1);                          // unsigned int(4) base_offset_size;
-                                                           // unsigned int(4) reserved;
-    avifRWStreamWriteU16(s, (uint16_t)metadataItemCount);  // unsigned int(16) item_count;
+    avifRWStreamWriteBits(s, 4, /*bitCount=*/4);          // unsigned int(4) offset_size;
+    avifRWStreamWriteBits(s, 4, /*bitCount=*/4);          // unsigned int(4) length_size;
+    avifRWStreamWriteBits(s, 0, /*bitCount=*/4);          // unsigned int(4) base_offset_size;
+    avifRWStreamWriteBits(s, 0, /*bitCount=*/4);          // unsigned int(4) reserved;
+    avifRWStreamWriteU16(s, (uint16_t)metadataItemCount); // unsigned int(16) item_count;
     for (uint32_t trakItemIndex = 0; trakItemIndex < encoder->data->items.count; ++trakItemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[trakItemIndex];
         if (memcmp(item->type, encoder->data->imageItemType, 4) == 0) {
@@ -1487,12 +1486,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write iloc
 
     avifBoxMarker iloc = avifRWStreamWriteFullBox(&s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0);
-
-    uint8_t offsetSizeAndLengthSize = (4 << 4) + (4 << 0);          // unsigned int(4) offset_size;
-                                                                    // unsigned int(4) length_size;
-    avifRWStreamWrite(&s, &offsetSizeAndLengthSize, 1);             //
-    avifRWStreamWriteZeros(&s, 1);                                  // unsigned int(4) base_offset_size;
-                                                                    // unsigned int(4) reserved;
+    avifRWStreamWriteBits(&s, 4, /*bitCount=*/4);                   // unsigned int(4) offset_size;
+    avifRWStreamWriteBits(&s, 4, /*bitCount=*/4);                   // unsigned int(4) length_size;
+    avifRWStreamWriteBits(&s, 0, /*bitCount=*/4);                   // unsigned int(4) base_offset_size;
+    avifRWStreamWriteBits(&s, 0, /*bitCount=*/4);                   // unsigned int(4) reserved;
     avifRWStreamWriteU16(&s, (uint16_t)encoder->data->items.count); // unsigned int(16) item_count;
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
@@ -1703,8 +1700,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 }
             }
 
-            avifRWStreamWriteU8(&dedup->s, (uint8_t)largeSize); // unsigned int(7) reserved = 0;
-                                                                // unsigned int(1) large_size;
+            avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/7);                 // unsigned int(7) reserved = 0;
+            avifRWStreamWriteBits(&dedup->s, largeSize ? 1 : 0, /*bitCount=*/1); // unsigned int(1) large_size;
 
             // FieldLength = (large_size + 1) * 16;
             // unsigned int(FieldLength) layer_size[3];
@@ -1740,14 +1737,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 continue;
             }
 
-            avifRWStreamWriteU16(&s, item->id);          // unsigned int(16) item_ID;
-            avifRWStreamWriteU8(&s, item->ipma.count);   // unsigned int(8) association_count;
-            for (int i = 0; i < item->ipma.count; ++i) { //
-                uint8_t essentialAndIndex = item->ipma.associations[i];
-                if (item->ipma.essential[i]) {
-                    essentialAndIndex |= 0x80;
-                }
-                avifRWStreamWriteU8(&s, essentialAndIndex); // bit(1) essential; unsigned int(7) property_index;
+            avifRWStreamWriteU16(&s, item->id);        // unsigned int(16) item_ID;
+            avifRWStreamWriteU8(&s, item->ipma.count); // unsigned int(8) association_count;
+            for (int i = 0; i < item->ipma.count; ++i) {
+                avifRWStreamWriteBits(&s, item->ipma.essential[i] ? 1 : 0, /*bitCount=*/1); // bit(1) essential;
+                avifRWStreamWriteBits(&s, item->ipma.associations[i], /*bitCount=*/7);      // unsigned int(7) property_index;
             }
         }
     }
@@ -1940,11 +1934,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
 
             avifBoxMarker ccst = avifRWStreamWriteFullBox(&s, "ccst", AVIF_BOX_SIZE_TBD, 0, 0);
-            const uint8_t ccstValue = (0 << 7) | // unsigned int(1) all_ref_pics_intra;
-                                      (1 << 6) | // unsigned int(1) intra_pred_used;
-                                      (15 << 2); // unsigned int(4) max_ref_per_pic;
-            avifRWStreamWriteU8(&s, ccstValue);
-            avifRWStreamWriteZeros(&s, 3); // unsigned int(26) reserved; (two zero bits are written along with ccstValue).
+            avifRWStreamWriteBits(&s, 0, /*bitCount=*/1);  // unsigned int(1) all_ref_pics_intra;
+            avifRWStreamWriteBits(&s, 1, /*bitCount=*/1);  // unsigned int(1) intra_pred_used;
+            avifRWStreamWriteBits(&s, 15, /*bitCount=*/4); // unsigned int(4) max_ref_per_pic;
+            avifRWStreamWriteBits(&s, 0, /*bitCount=*/26); // unsigned int(26) reserved;
             avifRWStreamFinishBox(&s, ccst);
 
             if (item->itemCategory == AVIF_ITEM_ALPHA) {
@@ -2199,32 +2192,23 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static void writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox * cfg)
 {
-    // unsigned int (1) marker = 1;
-    // unsigned int (7) version = 1;
-    avifRWStreamWriteU8(s, 0x80 | 0x1);
+    avifRWStreamWriteBits(s, 1, /*bitCount=*/1); // unsigned int (1) marker = 1;
+    avifRWStreamWriteBits(s, 1, /*bitCount=*/7); // unsigned int (7) version = 1;
 
-    // unsigned int (3) seq_profile;
-    // unsigned int (5) seq_level_idx_0;
-    avifRWStreamWriteU8(s, (uint8_t)((cfg->seqProfile & 0x7) << 5) | (uint8_t)(cfg->seqLevelIdx0 & 0x1f));
+    avifRWStreamWriteBits(s, cfg->seqProfile, /*bitCount=*/3);   // unsigned int (3) seq_profile;
+    avifRWStreamWriteBits(s, cfg->seqLevelIdx0, /*bitCount=*/5); // unsigned int (5) seq_level_idx_0;
 
-    uint8_t bits = 0;
-    bits |= (cfg->seqTier0 & 0x1) << 7;           // unsigned int (1) seq_tier_0;
-    bits |= (cfg->highBitdepth & 0x1) << 6;       // unsigned int (1) high_bitdepth;
-    bits |= (cfg->twelveBit & 0x1) << 5;          // unsigned int (1) twelve_bit;
-    bits |= (cfg->monochrome & 0x1) << 4;         // unsigned int (1) monochrome;
-    bits |= (cfg->chromaSubsamplingX & 0x1) << 3; // unsigned int (1) chroma_subsampling_x;
-    bits |= (cfg->chromaSubsamplingY & 0x1) << 2; // unsigned int (1) chroma_subsampling_y;
-    bits |= (cfg->chromaSamplePosition & 0x3);    // unsigned int (2) chroma_sample_position;
-    avifRWStreamWriteU8(s, bits);
+    avifRWStreamWriteBits(s, cfg->seqTier0, /*bitCount=*/1);             // unsigned int (1) seq_tier_0;
+    avifRWStreamWriteBits(s, cfg->highBitdepth, /*bitCount=*/1);         // unsigned int (1) high_bitdepth;
+    avifRWStreamWriteBits(s, cfg->twelveBit, /*bitCount=*/1);            // unsigned int (1) twelve_bit;
+    avifRWStreamWriteBits(s, cfg->monochrome, /*bitCount=*/1);           // unsigned int (1) monochrome;
+    avifRWStreamWriteBits(s, cfg->chromaSubsamplingX, /*bitCount=*/1);   // unsigned int (1) chroma_subsampling_x;
+    avifRWStreamWriteBits(s, cfg->chromaSubsamplingY, /*bitCount=*/1);   // unsigned int (1) chroma_subsampling_y;
+    avifRWStreamWriteBits(s, cfg->chromaSamplePosition, /*bitCount=*/2); // unsigned int (2) chroma_sample_position;
 
-    // unsigned int (3) reserved = 0;
-    // unsigned int (1) initial_presentation_delay_present;
-    // if (initial_presentation_delay_present) {
-    //   unsigned int (4) initial_presentation_delay_minus_one;
-    // } else {
-    //   unsigned int (4) reserved = 0;
-    // }
-    avifRWStreamWriteU8(s, 0);
+    avifRWStreamWriteBits(s, 0, /*bitCount=*/3); // unsigned int (3) reserved = 0;
+    avifRWStreamWriteBits(s, 0, /*bitCount=*/1); // unsigned int (1) initial_presentation_delay_present;
+    avifRWStreamWriteBits(s, 0, /*bitCount=*/4); // unsigned int (4) reserved = 0;
 
     // According to section 2.2.1 of AV1 Image File Format specification v1.1.0,
     // there is no need to write any OBU here.
