@@ -614,8 +614,7 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
         AVIF_CHECKRES(avifItemPropertyDedupFinishAndIpmaPush(dedup, outputStream, ipma, AVIF_FALSE));
     }
 
-    AVIF_CHECKRES(avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup));
-    return AVIF_RESULT_OK;
+    return avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup);
 }
 
 static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
