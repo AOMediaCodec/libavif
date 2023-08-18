@@ -1654,8 +1654,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write pitm
 
     if (encoder->data->primaryItemID != 0) {
-        avifBoxMarker pitm;
-        AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "pitm", sizeof(uint16_t), 0, 0, &pitm));
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "pitm", sizeof(uint16_t), 0, 0, /*marker=*/NULL));
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, encoder->data->primaryItemID)); //  unsigned int(16) item_ID;
     }
 
@@ -2103,8 +2102,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifBoxMarker dref;
             AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "dref", AVIF_BOX_SIZE_TBD, 0, 0, &dref));
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, 1)); // unsigned int(32) entry_count;
-            avifBoxMarker url;
-            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "url ", 0, 0, 1, &url)); // flags:1 means data is in this file
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "url ", /*contentSize=*/0, 0, 1, /*marker=*/NULL)); // flags:1 means data is in this file
             avifRWStreamFinishBox(&s, dref);
             avifRWStreamFinishBox(&s, dinf);
 
