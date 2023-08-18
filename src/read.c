@@ -1886,7 +1886,7 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
 
     return avifROStreamRemainingBytes(&s) == 0;
 }
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 static avifBool avifParseImageSpatialExtentsProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
@@ -3794,6 +3794,8 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
 // If found, fills 'toneMappedImageItem' and  sets 'gainMapItemID' to the id of the gain map
 // item associated with the box. Otherwise, sets 'toneMappedImageItem' to NULL.
 // Returns AVIF_RESULT_OK on success (whether or not a tmap box was found).
+// Assumes that there is a single tmap item, and not, e.g., a grid of tmap items.
+// TODO(maryla): add support for files with multiple tmap items if it gets allowed by the spec.
 static avifResult avifDecoderDataFindToneMappedImageItem(avifDecoderData * data,
                                                          avifDecoderItem * colorItem,
                                                          avifDecoderItem ** toneMappedImageItem,
@@ -3837,7 +3839,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(avifDecoderData * data,
     *gainMapItemID = 0;
     return AVIF_RESULT_OK;
 }
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifItemCategory itemCategory)
 {
@@ -4163,7 +4165,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 }
             }
         }
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
         // Find Exif and/or XMP metadata, if any
         AVIF_CHECKRES(avifDecoderFindMetadata(decoder, data->meta, decoder->image, colorItem->id));

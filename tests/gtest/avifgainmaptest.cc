@@ -405,7 +405,7 @@ TEST(GainMapTest, SequenceNotSupported) {
 
 #else
 TEST(GainMapTest, WarningGainMapsAreNotCompiledIn) {}
-#endif  // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 }  // namespace
 }  // namespace libavif

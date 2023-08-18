@@ -946,7 +946,7 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
     avifRWStreamFinishWrite(&s);
     return AVIF_TRUE;
 }
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
 {
@@ -1347,7 +1347,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell->gainMap.image));
         AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_TRUE, &encoder->diag));
     }
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
     // -----------------------------------------------------------------------
     // Validate flags
@@ -1510,9 +1510,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             assert(gainMapItem);
             gainMapItem->hiddenImage = AVIF_TRUE;
 
-            // Set the color item and gain map item's dimgFromID value to point o the tone mapped item.
-            // The color item should be first, and the gain map second. This is no order set explicitly,
-            // but they will appear in item id order. So as long as colorItemID < gainMapItemID, the order will be correct.
+            // Set the color item and gain map item's dimgFromID value to point to the tone mapped item.
+            // The color item shall be first, and the gain map second. avifEncoderFinish() writes the
+            // dimg item references in item id order, so as long as colorItemID < gainMapItemID, the order
+            // will be correct.
             assert(colorItemID < gainMapItemID);
             avifEncoderItem * colorItem = avifEncoderDataFindItemByID(encoder->data, colorItemID);
             assert(colorItem);
@@ -1520,7 +1521,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             colorItem->dimgFromID = toneMappedItemID;
             gainMapItem->dimgFromID = toneMappedItemID;
         }
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
         // -----------------------------------------------------------------------
         // Create metadata items (Exif, XMP)
@@ -1702,7 +1703,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
     for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
         //   * Pass 0: metadata (Exif/XMP)
-        //   * Pass 1: alpha/gain map (AV1)
+        //   * Pass 1: alpha, gain map (AV1)
         //   * Pass 2: all other item data (AV1 color)
         //
         // See here for the discussion on alpha coming before color:
@@ -1713,22 +1714,24 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
         // and ignoreExif are enabled.
         //
         const avifBool metadataPass = (itemPasses == 0);
-        const avifBool alphaPass = (itemPasses == 1);
+        const avifBool alphaAndGainMapPass = (itemPasses == 1);
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-// Grids and tmap store their payloads in metadataPayload, so use this to distinguish grid payloads from XMP/Exif
-            const avifBool isMetadata = (!memcmp(item->type, "mime", 4) || !memcmp(item->type, "Exif", 4)) &&
-                                        (item->metadataPayload.size > 0);
             if ((item->metadataPayload.size == 0) && (item->encodeOutput->samples.count == 0)) {
                 // this item has nothing for the mdat box
                 continue;
             }
+            const avifBool isMetadata = !memcmp(item->type, "mime", 4) || !memcmp(item->type, "Exif", 4);
             if (metadataPass != isMetadata) {
                 // only process metadata (XMP/Exif) payloads when metadataPass is true
                 continue;
             }
-            if (alphaPass != (item->itemCategory == AVIF_ITEM_ALPHA)) {
+            avifBool isAlphaOrGainMap = item->itemCategory == AVIF_ITEM_ALPHA;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+            isAlphaOrGainMap = isAlphaOrGainMap || item->itemCategory == AVIF_ITEM_GAIN_MAP;
+#endif
+            if (alphaAndGainMapPass != isAlphaOrGainMap) {
                 // only process alpha payloads when alphaPass is true
                 continue;
             }

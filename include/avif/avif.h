@@ -578,10 +578,10 @@ typedef struct avifGainMap
     struct avifImage * image;
 
     // Gain map metadata.
-    // For an image grid, the metadata should be identical for all cells.
+    // For an image grid, the metadata shall be identical for all cells.
     avifGainMapMetadata metadata;
 } avifGainMap;
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 // ---------------------------------------------------------------------------
 // avifImage
@@ -647,11 +647,11 @@ typedef struct avifImage
     // Version 1.0.0 ends here. Add any new members after this line.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    // Gain map image and metadata. If no gain map is present, avifGainMap.gainMap is NULL.
+    // Gain map image and metadata. If no gain map is present, gainMap.image is NULL.
     // When calling avifImageDestroy on the containing image, the gain map image is also destroyed
     // (the containing image "owns" the gain map).
     avifGainMap gainMap;
-#endif // if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif
 } avifImage;
 
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
