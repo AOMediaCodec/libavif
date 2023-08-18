@@ -25,73 +25,90 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), size_t{0});
 
   const uint8_t rw_somedata[] = {3, 1, 4};
-  avifRWStreamWrite(&rw_stream, rw_somedata, sizeof(rw_somedata));
+  EXPECT_EQ(avifRWStreamWrite(&rw_stream, rw_somedata, sizeof(rw_somedata)),
+            AVIF_RESULT_OK);
 
   const char rw_somechars[] = "somechars";
-  avifRWStreamWriteChars(&rw_stream, rw_somechars, sizeof(rw_somechars));
+  EXPECT_EQ(
+      avifRWStreamWriteChars(&rw_stream, rw_somechars, sizeof(rw_somechars)),
+      AVIF_RESULT_OK);
 
   const char rw_box_type[] = "type";
-  avifBoxMarker rw_box_marker =
-      avifRWStreamWriteBox(&rw_stream, rw_box_type, /*contentSize=*/0);
+  avifBoxMarker rw_box_marker;
+  EXPECT_EQ(avifRWStreamWriteBox(&rw_stream, rw_box_type, /*contentSize=*/0,
+                                 &rw_box_marker),
+            AVIF_RESULT_OK);
 
   const uint8_t rw_someu8 = 0xA;
-  avifRWStreamWriteU8(&rw_stream, rw_someu8);
+  EXPECT_EQ(avifRWStreamWriteU8(&rw_stream, rw_someu8), AVIF_RESULT_OK);
 
   const int rw_full_box_version = 7;
   const uint32_t rw_full_box_flags = 0x555;
-  avifBoxMarker rw_full_box_marker =
-      avifRWStreamWriteFullBox(&rw_stream, rw_box_type, /*contentSize=*/0,
-                               rw_full_box_version, rw_full_box_flags);
+  avifBoxMarker rw_full_box_marker;
+  EXPECT_EQ(avifRWStreamWriteFullBox(&rw_stream, rw_box_type, /*contentSize=*/0,
+                                     rw_full_box_version, rw_full_box_flags,
+                                     &rw_full_box_marker),
+            AVIF_RESULT_OK);
 
   const uint16_t rw_someu16 = 0xAB;
-  avifRWStreamWriteU16(&rw_stream, rw_someu16);
+  EXPECT_EQ(avifRWStreamWriteU16(&rw_stream, rw_someu16), AVIF_RESULT_OK);
 
   avifRWStreamFinishBox(&rw_stream, rw_full_box_marker);
 
   avifRWStreamFinishBox(&rw_stream, rw_box_marker);
 
   const uint32_t rw_someu32 = 0xABCD;
-  avifRWStreamWriteU32(&rw_stream, rw_someu32);
+  EXPECT_EQ(avifRWStreamWriteU32(&rw_stream, rw_someu32), AVIF_RESULT_OK);
 
   size_t offset = avifRWStreamOffset(&rw_stream);
   const uint32_t rw_somevarint_1byte = 240;
-  avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_1byte);
+  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_1byte),
+            AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 1);
 
   offset = avifRWStreamOffset(&rw_stream);
   const uint32_t rw_somevarint_2bytes = 241;
-  avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_2bytes);
+  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_2bytes),
+            AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 2);
 
   const uint64_t rw_someu64 = 0xABCDEF01;
-  avifRWStreamWriteU64(&rw_stream, rw_someu64);
+  EXPECT_EQ(avifRWStreamWriteU64(&rw_stream, rw_someu64), AVIF_RESULT_OK);
 
   const size_t rw_somebitcount = 6;
   const uint32_t rw_somebits = (1 << rw_somebitcount) - 2;
-  avifRWStreamWriteBits(&rw_stream, rw_somebits, rw_somebitcount);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_somebits, rw_somebitcount),
+            AVIF_RESULT_OK);
   const size_t rw_maxbitcount = sizeof(uint32_t) * 8;
   const uint32_t rw_maxbits = std::numeric_limits<uint32_t>::max();
-  avifRWStreamWriteBits(&rw_stream, rw_maxbits, rw_maxbitcount);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_maxbits, rw_maxbitcount),
+            AVIF_RESULT_OK);
 
   offset = avifRWStreamOffset(&rw_stream);
   const uint32_t rw_somevarint_3bytes = 2288;
-  avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_3bytes);
+  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_3bytes),
+            AVIF_RESULT_OK);
   const uint32_t rw_somevarint_4bytes = 67824;
-  avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_4bytes);
+  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_4bytes),
+            AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 3 + 4);
 
   const uint32_t rw_somebit = 1;
-  avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1),
+            AVIF_RESULT_OK);
   // Pad till byte alignment.
-  avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1),
+            AVIF_RESULT_OK);
 
   offset = avifRWStreamOffset(&rw_stream);
   const uint32_t rw_somevarint_5bytes = std::numeric_limits<uint32_t>::max();
-  avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_5bytes);
+  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_5bytes),
+            AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 5);
 
   const size_t num_zeros = 10000;
-  avifRWStreamWriteZeros(&rw_stream, /*byteCount=*/num_zeros);
+  EXPECT_EQ(avifRWStreamWriteZeros(&rw_stream, /*byteCount=*/num_zeros),
+            AVIF_RESULT_OK);
 
   avifRWStreamFinishWrite(&rw_stream);
 
