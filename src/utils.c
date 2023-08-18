@@ -234,38 +234,3 @@ avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result)
     avifFractionSimplify(result);
     return AVIF_TRUE;
 }
-
-avifBool avifToFractionU(float v, avifFractionU * f)
-{
-    if (v < 0) {
-        return AVIF_FALSE;
-    }
-    if (v == 0.0f) {
-        f->n = 0u;
-        f->d = 1u;
-        return AVIF_TRUE;
-    }
-
-    if ((float)(uint32_t)v == v) {
-        f->n = (uint32_t)v;
-        f->d = 1u;
-        return AVIF_TRUE;
-    }
-
-    if (v < 1.0f) {
-        // Maximize precision by having the denominator as large as possible.
-        f->d = UINT32_MAX;
-        f->n = (uint32_t)avifRoundf(v * f->d);
-        return AVIF_TRUE;
-    }
-
-    // v >= 1.0f
-    // Maximize precision by having the numerator as large as possible.
-    f->n = UINT32_MAX;
-    assert(v != 0.0f);
-    f->d = (uint32_t)avifRoundf(f->n / v);
-    if (f->d == 0u || fabsf((float)f->n / f->d - v) > v * 0.01) { // Allow up to 1% loss of precision.
-        return AVIF_FALSE;                                        // value is too large.
-    }
-    return AVIF_TRUE;
-}

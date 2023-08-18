@@ -190,11 +190,6 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME aviftilingtest COMMAND aviftilingtest)
 
-    add_executable(avifutilstest gtest/avifutilstest.cc)
-    target_link_libraries(avifutilstest avif_internal ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifutilstest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifutilstest COMMAND avifutilstest)
-
     add_executable(avify4mtest gtest/avify4mtest.cc)
     target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})

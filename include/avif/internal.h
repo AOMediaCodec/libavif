@@ -86,16 +86,6 @@ avifBool avifFractionCD(avifFraction * a, avifFraction * b);
 avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
 avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
 
-// Same as avifFraction but with unsigned ints.
-typedef struct avifFractionU
-{
-    uint32_t n;
-    uint32_t d;
-} avifFractionU;
-// Creates a fraction that is approximately equivalent to 'v'.
-// Returns false if this is impossible (value is negative or too large).
-avifBool avifToFractionU(float v, avifFractionU * f);
-
 void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
