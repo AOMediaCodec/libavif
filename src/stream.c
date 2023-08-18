@@ -21,6 +21,8 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics 
 {
     stream->raw = raw;
     stream->offset = 0;
+    stream->offsetOfPartialByte = 0;
+    stream->numUsedBitsInPartialByte = 0;
     stream->diag = diag;
     stream->diagContext = diagContext;
 
@@ -45,6 +47,7 @@ size_t avifROStreamOffset(const avifROStream * stream)
 
 void avifROStreamSetOffset(avifROStream * stream, size_t offset)
 {
+    assert(stream->numUsedBitsInPartialByte == 0);
     stream->offset = offset;
     if (stream->offset > stream->raw->size) {
         stream->offset = stream->raw->size;
@@ -134,6 +137,78 @@ avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v)
 {
     AVIF_CHECK(avifROStreamRead(stream, (uint8_t *)v, sizeof(uint64_t)));
     *v = avifNTOH64(*v);
+    return AVIF_TRUE;
+}
+
+// Override of avifROStreamReadBits() for convenient uint8_t output.
+avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount)
+{
+    assert(bitCount <= sizeof(*v) * 8);
+    uint32_t v32;
+    if (!avifROStreamReadBits(stream, &v32, bitCount)) {
+        return AVIF_FALSE;
+    }
+    *v = (uint8_t)v32;
+    return AVIF_TRUE;
+}
+
+avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount)
+{
+    assert(bitCount <= sizeof(*v) * 8);
+    *v = 0;
+    while (bitCount) {
+        if (stream->numUsedBitsInPartialByte == 0) {
+            stream->offsetOfPartialByte = stream->offset;
+            AVIF_CHECK(avifROStreamSkip(stream, sizeof(uint8_t))); // Book a new partial byte in the stream.
+        }
+        const uint8_t * packedBits = stream->raw->data + stream->offsetOfPartialByte;
+
+        const size_t numBits = AVIF_MIN(bitCount, 8 - stream->numUsedBitsInPartialByte);
+        stream->numUsedBitsInPartialByte += numBits;
+        bitCount -= numBits;
+        // The stream bits are packed starting with the most significant bit of the first input byte.
+        // This way, packed bits can be found in the same order in the bit stream.
+        const uint32_t bits = (*packedBits >> (8 - stream->numUsedBitsInPartialByte)) & ((1 << numBits) - 1);
+        // The value bits are ordered from the most significant bit to the least significant bit.
+        // In the case where avifROStreamReadBits() is used to parse the unsigned integer value *v
+        // over multiple aligned bytes, this order corresponds to big endianness.
+        *v |= bits << bitCount;
+
+        if (stream->numUsedBitsInPartialByte == 8) {
+            // Start a new partial byte the next time a bit is needed.
+            stream->numUsedBitsInPartialByte = 0;
+        }
+    }
+    return AVIF_TRUE;
+}
+
+// Based on https://sqlite.org/src4/doc/trunk/www/varint.wiki.
+avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v)
+{
+    uint32_t a[5];
+    AVIF_CHECK(avifROStreamReadBits(stream, &a[0], 8));
+    if (a[0] <= 240) {
+        *v = a[0];
+    } else {
+        AVIF_CHECK(avifROStreamReadBits(stream, &a[1], 8));
+        if (a[0] <= 248) {
+            *v = 240 + 256 * (a[0] - 241) + a[1];
+        } else {
+            AVIF_CHECK(avifROStreamReadBits(stream, &a[2], 8));
+            if (a[0] == 249) {
+                *v = 2288 + 256 * a[1] + a[2];
+            } else {
+                AVIF_CHECK(avifROStreamReadBits(stream, &a[3], 8));
+                if (a[0] == 250) {
+                    *v = (a[3] << 16) | (a[2] << 8) | a[1];
+                } else {
+                    // TODO(yguyon): Use values of a[0] in range [252-255] (avoid pessimization).
+                    AVIF_CHECK(avifROStreamReadBits(stream, &a[4], 8));
+                    *v = (a[4] << 24) | (a[3] << 16) | (a[2] << 8) | a[1];
+                }
+            }
+        }
+    }
     return AVIF_TRUE;
 }
 
@@ -250,6 +325,8 @@ void avifRWStreamStart(avifRWStream * stream, avifRWData * raw)
 {
     stream->raw = raw;
     stream->offset = 0;
+    stream->offsetOfPartialByte = 0;
+    stream->numUsedBitsInPartialByte = 0;
 }
 
 size_t avifRWStreamOffset(const avifRWStream * stream)
@@ -371,4 +448,60 @@ void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount)
         ++p;
     }
     stream->offset += byteCount;
+}
+
+void avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount)
+{
+    assert(((uint64_t)v >> bitCount) == 0); // (uint32_t >> 32 is undefined behavior)
+    while (bitCount) {
+        if (stream->numUsedBitsInPartialByte == 0) {
+            makeRoom(stream, 1); // Book a new partial byte in the stream.
+            stream->offsetOfPartialByte = stream->offset;
+            stream->raw->data[stream->offsetOfPartialByte] = 0;
+            stream->offset += 1;
+        }
+        uint8_t * packedBits = stream->raw->data + stream->offsetOfPartialByte;
+
+        const size_t numBits = AVIF_MIN(bitCount, 8 - stream->numUsedBitsInPartialByte);
+        stream->numUsedBitsInPartialByte += numBits;
+        bitCount -= numBits;
+        // Order the input bits from the most significant bit to the least significant bit.
+        // In the case where avifRWStreamWriteBits() is used to write the unsigned integer value v
+        // over multiple aligned bytes, this order corresponds to big endianness.
+        const uint32_t bits = (v >> bitCount) & ((1 << numBits) - 1);
+        // Pack bits starting with the most significant bit of the first output byte.
+        // This way, packed bits can be found in the same order in the bit stream.
+        *packedBits |= bits << (8 - stream->numUsedBitsInPartialByte);
+
+        if (stream->numUsedBitsInPartialByte == 8) {
+            // Start a new partial byte the next time a bit is needed.
+            stream->numUsedBitsInPartialByte = 0;
+        }
+    }
+}
+
+// Based on https://sqlite.org/src4/doc/trunk/www/varint.wiki.
+void avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v)
+{
+    if (v <= 240) {
+        avifRWStreamWriteBits(stream, v, 8);
+    } else if (v <= 2287) {
+        avifRWStreamWriteBits(stream, (v - 240) / 256 + 241, 8);
+        avifRWStreamWriteBits(stream, (v - 240) % 256, 8);
+    } else if (v <= 67823) {
+        avifRWStreamWriteBits(stream, 249, 8);
+        avifRWStreamWriteBits(stream, (v - 2288) / 256, 8);
+        avifRWStreamWriteBits(stream, (v - 2288) % 256, 8);
+    } else if (v <= 16777215) {
+        avifRWStreamWriteBits(stream, 250, 8);
+        avifRWStreamWriteBits(stream, (v >> 0) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 8) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 16) & 0xff, 8);
+    } else {
+        avifRWStreamWriteBits(stream, 251, 8);
+        avifRWStreamWriteBits(stream, (v >> 0) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 8) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 16) & 0xff, 8);
+        avifRWStreamWriteBits(stream, (v >> 24) & 0xff, 8);
+    }
 }

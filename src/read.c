@@ -1642,23 +1642,16 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
         return AVIF_FALSE;
     }
 
-    uint8_t offsetSizeAndLengthSize;
-    AVIF_CHECK(avifROStreamRead(&s, &offsetSizeAndLengthSize, 1));
-    uint8_t offsetSize = (offsetSizeAndLengthSize >> 4) & 0xf; // unsigned int(4) offset_size;
-    uint8_t lengthSize = (offsetSizeAndLengthSize >> 0) & 0xf; // unsigned int(4) length_size;
-
-    uint8_t baseOffsetSizeAndIndexSize;
-    AVIF_CHECK(avifROStreamRead(&s, &baseOffsetSizeAndIndexSize, 1));
-    uint8_t baseOffsetSize = (baseOffsetSizeAndIndexSize >> 4) & 0xf; // unsigned int(4) base_offset_size;
-    uint8_t indexSize = 0;
-    if ((version == 1) || (version == 2)) {
-        indexSize = baseOffsetSizeAndIndexSize & 0xf; // unsigned int(4) index_size;
-        if (indexSize != 0) {
-            // extent_index unsupported
-            avifDiagnosticsPrintf(diag, "Box[iloc] has an unsupported extent_index");
-            return AVIF_FALSE;
-        }
+    uint8_t offsetSize, lengthSize, baseOffsetSize;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &offsetSize, /*bitCount=*/4));     // unsigned int(4) offset_size;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &lengthSize, /*bitCount=*/4));     // unsigned int(4) length_size;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &baseOffsetSize, /*bitCount=*/4)); // unsigned int(4) base_offset_size;
+    if (((version == 1) || (version == 2)) && (baseOffsetSize != 0)) {
+        avifDiagnosticsPrintf(diag, "Box[iloc] has an unsupported base_offset_size [%u]", baseOffsetSize);
+        return AVIF_FALSE;
     }
+    uint32_t reserved;
+    AVIF_CHECK(avifROStreamReadBits(&s, &reserved, /*bitCount=*/4)); // unsigned int(4) reserved;
 
     uint16_t tmp16;
     uint32_t itemCount;
@@ -1689,11 +1682,13 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
         }
 
         if ((version == 1) || (version == 2)) {
-            uint8_t ignored;
+            AVIF_CHECK(avifROStreamReadBits(&s, &reserved, /*bitCount=*/12)); // unsigned int(12) reserved = 0;
+            if (reserved) {
+                avifDiagnosticsPrintf(diag, "Box[iloc] has a non null reserved field [%u]", reserved);
+                return AVIF_FALSE;
+            }
             uint8_t constructionMethod;
-            AVIF_CHECK(avifROStreamRead(&s, &ignored, 1));            // unsigned int(12) reserved = 0;
-            AVIF_CHECK(avifROStreamRead(&s, &constructionMethod, 1)); // unsigned int(4) construction_method;
-            constructionMethod = constructionMethod & 0xf;
+            AVIF_CHECK(avifROStreamReadBits8(&s, &constructionMethod, /*bitCount=*/4)); // unsigned int(4) construction_method;
             if ((constructionMethod != 0 /* file */) && (constructionMethod != 1 /* idat */)) {
                 // construction method item(2) unsupported
                 avifDiagnosticsPrintf(diag, "Box[iloc] has an unsupported construction method [%u]", constructionMethod);
@@ -1841,11 +1836,15 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, uint64_t rawO
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->colorPrimaries));          // unsigned int(16) colour_primaries;
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->transferCharacteristics)); // unsigned int(16) transfer_characteristics;
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->matrixCoefficients));      // unsigned int(16) matrix_coefficients;
-        // unsigned int(1) full_range_flag;
-        // unsigned int(7) reserved = 0;
-        uint8_t tmp8;
-        AVIF_CHECK(avifROStreamRead(&s, &tmp8, 1));
-        colr->range = (tmp8 & 0x80) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
+        uint8_t full_range_flag;
+        AVIF_CHECK(avifROStreamReadBits8(&s, &full_range_flag, /*bitCount=*/1)); // unsigned int(1) full_range_flag;
+        colr->range = full_range_flag ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
+        uint8_t reserved;
+        AVIF_CHECK(avifROStreamReadBits8(&s, &reserved, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
+        if (reserved) {
+            avifDiagnosticsPrintf(diag, "Box[colr] contains nonzero reserved bits [%u]", reserved);
+            return AVIF_FALSE;
+        }
         colr->hasNCLX = AVIF_TRUE;
     }
     return AVIF_TRUE;
@@ -1866,28 +1865,27 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigurationBox * config, const char * configPropName, avifDiagnostics * diag)
 {
-    uint8_t markerAndVersion = 0;
-    AVIF_CHECK(avifROStreamRead(s, &markerAndVersion, 1));
-    uint8_t seqProfileAndIndex = 0;
-    AVIF_CHECK(avifROStreamRead(s, &seqProfileAndIndex, 1));
-    uint8_t rawFlags = 0;
-    AVIF_CHECK(avifROStreamRead(s, &rawFlags, 1));
-
-    if (markerAndVersion != 0x81) {
-        // Marker and version must both == 1
-        avifDiagnosticsPrintf(diag, "%s contains illegal marker and version pair: [%u]", configPropName, markerAndVersion);
+    uint32_t marker, version;
+    AVIF_CHECK(avifROStreamReadBits(s, &marker, /*bitCount=*/1)); // unsigned int (1) marker = 1;
+    if (!marker) {
+        avifDiagnosticsPrintf(diag, "%s contains illegal marker: [%u]", configPropName, marker);
+        return AVIF_FALSE;
+    }
+    AVIF_CHECK(avifROStreamReadBits(s, &version, /*bitCount=*/7)); // unsigned int (7) version = 1;
+    if (version != 1) {
+        avifDiagnosticsPrintf(diag, "%s contains illegal version: [%u]", configPropName, version);
         return AVIF_FALSE;
     }
 
-    config->seqProfile = (seqProfileAndIndex >> 5) & 0x7;    // unsigned int (3) seq_profile;
-    config->seqLevelIdx0 = (seqProfileAndIndex >> 0) & 0x1f; // unsigned int (5) seq_level_idx_0;
-    config->seqTier0 = (rawFlags >> 7) & 0x1;                // unsigned int (1) seq_tier_0;
-    config->highBitdepth = (rawFlags >> 6) & 0x1;            // unsigned int (1) high_bitdepth;
-    config->twelveBit = (rawFlags >> 5) & 0x1;               // unsigned int (1) twelve_bit;
-    config->monochrome = (rawFlags >> 4) & 0x1;              // unsigned int (1) monochrome;
-    config->chromaSubsamplingX = (rawFlags >> 3) & 0x1;      // unsigned int (1) chroma_subsampling_x;
-    config->chromaSubsamplingY = (rawFlags >> 2) & 0x1;      // unsigned int (1) chroma_subsampling_y;
-    config->chromaSamplePosition = (rawFlags >> 0) & 0x3;    // unsigned int (2) chroma_sample_position;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->seqProfile, /*bitCount=*/3));           // unsigned int (3) seq_profile;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->seqLevelIdx0, /*bitCount=*/5));         // unsigned int (5) seq_level_idx_0;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->seqTier0, /*bitCount=*/1));             // unsigned int (1) seq_tier_0;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->highBitdepth, /*bitCount=*/1));         // unsigned int (1) high_bitdepth;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->twelveBit, /*bitCount=*/1));            // unsigned int (1) twelve_bit;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->monochrome, /*bitCount=*/1));           // unsigned int (1) monochrome;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->chromaSubsamplingX, /*bitCount=*/1));   // unsigned int (1) chroma_subsampling_x;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->chromaSubsamplingY, /*bitCount=*/1));   // unsigned int (1) chroma_subsampling_y;
+    AVIF_CHECK(avifROStreamReadBits8(s, &config->chromaSamplePosition, /*bitCount=*/2)); // unsigned int (2) chroma_sample_position;
 
     // unsigned int (3) reserved = 0;
     // unsigned int (1) initial_presentation_delay_present;
@@ -1896,7 +1894,7 @@ static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigura
     // } else {
     //   unsigned int (4) reserved = 0;
     // }
-    AVIF_CHECK(avifROStreamSkip(s, 1));
+    AVIF_CHECK(avifROStreamSkip(s, /*byteCount=*/1));
 
     // According to section 2.2.1 of AV1 Image File Format specification v1.1.0:
     //   - Sequence Header OBUs should not be present in the AV1CodecConfigurationBox.
@@ -1954,12 +1952,13 @@ static avifBool avifParseImageRotationProperty(avifProperty * prop, const uint8_
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[irot]");
 
     avifImageRotation * irot = &prop->u.irot;
-    AVIF_CHECK(avifROStreamRead(&s, &irot->angle, 1)); // unsigned int (6) reserved = 0; unsigned int (2) angle;
-    if ((irot->angle & 0xfc) != 0) {
-        // reserved bits must be 0
-        avifDiagnosticsPrintf(diag, "Box[irot] contains nonzero reserved bits [%u]", irot->angle);
+    uint8_t reserved;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &reserved, /*bitCount=*/6)); // unsigned int (6) reserved = 0;
+    if (reserved) {
+        avifDiagnosticsPrintf(diag, "Box[irot] contains nonzero reserved bits [%u]", reserved);
         return AVIF_FALSE;
     }
+    AVIF_CHECK(avifROStreamReadBits8(&s, &irot->angle, /*bitCount=*/2)); // unsigned int (2) angle;
     return AVIF_TRUE;
 }
 
@@ -1968,12 +1967,13 @@ static avifBool avifParseImageMirrorProperty(avifProperty * prop, const uint8_t 
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[imir]");
 
     avifImageMirror * imir = &prop->u.imir;
-    AVIF_CHECK(avifROStreamRead(&s, &imir->mode, 1)); // unsigned int (7) reserved = 0; unsigned int (1) mode;
-    if ((imir->mode & 0xfe) != 0) {
-        // reserved bits must be 0
-        avifDiagnosticsPrintf(diag, "Box[imir] contains nonzero reserved bits [%u]", imir->mode);
+    uint8_t reserved;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &reserved, /*bitCount=*/7)); // unsigned int (7) reserved = 0;
+    if (reserved) {
+        avifDiagnosticsPrintf(diag, "Box[imir] contains nonzero reserved bits [%u]", reserved);
         return AVIF_FALSE;
     }
+    AVIF_CHECK(avifROStreamReadBits8(&s, &imir->mode, /*bitCount=*/1)); // unsigned int (1) mode;
     return AVIF_TRUE;
 }
 
@@ -2109,7 +2109,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
     uint8_t version;
     uint32_t flags;
     AVIF_CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
-    avifBool propertyIndexIsU16 = ((flags & 0x1) != 0);
+    avifBool propertyIndexIsU15 = ((flags & 0x1) != 0);
     *outVersionAndFlags = ((uint32_t)version << 24) | flags;
 
     uint32_t entryCount;
@@ -2147,18 +2147,10 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
         uint8_t associationCount;
         AVIF_CHECK(avifROStreamRead(&s, &associationCount, 1));
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
-            avifBool essential = AVIF_FALSE;
-            uint16_t propertyIndex = 0;
-            if (propertyIndexIsU16) {
-                AVIF_CHECK(avifROStreamReadU16(&s, &propertyIndex));
-                essential = ((propertyIndex & 0x8000) != 0);
-                propertyIndex &= 0x7fff;
-            } else {
-                uint8_t tmp;
-                AVIF_CHECK(avifROStreamRead(&s, &tmp, 1));
-                essential = ((tmp & 0x80) != 0);
-                propertyIndex = tmp & 0x7f;
-            }
+            uint8_t essential;
+            AVIF_CHECK(avifROStreamReadBits8(&s, &essential, /*bitCount=*/1)); // bit(1) essential;
+            uint32_t propertyIndex;
+            AVIF_CHECK(avifROStreamReadBits(&s, &propertyIndex, /*bitCount=*/propertyIndexIsU15 ? 15 : 7)); // unsigned int(7/15) property_index;
 
             if (propertyIndex == 0) {
                 // Not associated with any item

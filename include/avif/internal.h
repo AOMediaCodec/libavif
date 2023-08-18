@@ -453,6 +453,12 @@ typedef struct avifROStream
     // Index of the next byte in the raw stream.
     size_t offset;
 
+    // Index of the currently selected partial byte. Must be lower than offset.
+    // Only meaningful if numUsedBitsInPartialByte is not zero.
+    size_t offsetOfPartialByte;
+    // Number of bits already used in the currently selected partial byte.
+    size_t numUsedBitsInPartialByte;
+
     // Error information, if any.
     avifDiagnostics * diag;
     const char * diagContext;
@@ -478,6 +484,9 @@ avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header
 avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header); // This doesn't require that the full box can fit in the stream
 avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags); // version and flags ptrs are both optional
 avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion); // currently discards flags
+avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount);
+avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount);
+avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v);
 
 typedef struct avifRWStream
 {
@@ -485,6 +494,12 @@ typedef struct avifRWStream
 
     // Index of the next byte in the raw stream.
     size_t offset;
+
+    // Index of the currently selected partial byte. Must be lower than offset.
+    // Only meaningful if numUsedBitsInPartialByte is not zero.
+    size_t offsetOfPartialByte;
+    // Number of bits already used in the currently selected partial byte.
+    size_t numUsedBitsInPartialByte;
 } avifRWStream;
 
 void avifRWStreamStart(avifRWStream * stream, avifRWData * raw);
@@ -502,6 +517,8 @@ void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
 void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
 void avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
 void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
+void avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount);
+void avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v);
 
 // This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
 #define AVIF_BOX_SIZE_TBD 0
