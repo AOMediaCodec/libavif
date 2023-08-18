@@ -1375,17 +1375,17 @@ static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOff
     return 0;
 }
 
-static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
-                                       avifRWStream * stream,
-                                       avifEncoderItemReferenceArray * layeredColorItems,
-                                       avifEncoderItemReferenceArray * layeredAlphaItems)
+static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
+                                               avifRWStream * s,
+                                               avifEncoderItemReferenceArray * layeredColorItems,
+                                               avifEncoderItemReferenceArray * layeredAlphaItems)
 {
     encoder->ioStats.colorOBUSize = 0;
     encoder->ioStats.alphaOBUSize = 0;
 
     avifBoxMarker mdat;
-    AVIF_CHECKRES(avifRWStreamWriteBox(stream, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
-    const size_t mdatStartOffset = avifRWStreamOffset(stream);
+    AVIF_CHECKRES(avifRWStreamWriteBox(s, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
+    const size_t mdatStartOffset = avifRWStreamOffset(s);
     for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
         //   * Pass 0: metadata (Exif/XMP)
@@ -1434,19 +1434,18 @@ static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
             // Deduplication - See if an identical chunk to this has already been written
             if (item->encodeOutput->samples.count > 0) {
                 avifEncodeSample * sample = &item->encodeOutput->samples.sample[0];
-                chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, sample->data.data, sample->data.size);
+                chunkOffset = avifEncoderFindExistingChunk(s, mdatStartOffset, sample->data.data, sample->data.size);
             } else {
-                chunkOffset =
-                    avifEncoderFindExistingChunk(stream, mdatStartOffset, item->metadataPayload.data, item->metadataPayload.size);
+                chunkOffset = avifEncoderFindExistingChunk(s, mdatStartOffset, item->metadataPayload.data, item->metadataPayload.size);
             }
 
             if (!chunkOffset) {
                 // We've never seen this chunk before; write it out
-                chunkOffset = avifRWStreamOffset(stream);
+                chunkOffset = avifRWStreamOffset(s);
                 if (item->encodeOutput->samples.count > 0) {
                     for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
                         avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
-                        AVIF_CHECKRES(avifRWStreamWrite(stream, sample->data.data, sample->data.size));
+                        AVIF_CHECKRES(avifRWStreamWrite(s, sample->data.data, sample->data.size));
 
                         if (item->itemCategory == AVIF_ITEM_ALPHA) {
                             encoder->ioStats.alphaOBUSize += sample->data.size;
@@ -1455,16 +1454,16 @@ static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
                         }
                     }
                 } else {
-                    AVIF_CHECKRES(avifRWStreamWrite(stream, item->metadataPayload.data, item->metadataPayload.size));
+                    AVIF_CHECKRES(avifRWStreamWrite(s, item->metadataPayload.data, item->metadataPayload.size));
                 }
             }
 
             for (uint32_t fixupIndex = 0; fixupIndex < item->mdatFixups.count; ++fixupIndex) {
                 avifOffsetFixup * fixup = &item->mdatFixups.fixup[fixupIndex];
-                size_t prevOffset = avifRWStreamOffset(stream);
-                avifRWStreamSetOffset(stream, fixup->offset);
-                AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
-                avifRWStreamSetOffset(stream, prevOffset);
+                size_t prevOffset = avifRWStreamOffset(s);
+                avifRWStreamSetOffset(s, fixup->offset);
+                AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)chunkOffset));
+                avifRWStreamSetOffset(s, prevOffset);
             }
         }
     }
@@ -1496,11 +1495,11 @@ static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
                         hasMoreSample = AVIF_TRUE;
                     }
                     avifRWData * data = &item->encodeOutput->samples.sample[layerIndex].data;
-                    size_t chunkOffset = avifEncoderFindExistingChunk(stream, mdatStartOffset, data->data, data->size);
+                    size_t chunkOffset = avifEncoderFindExistingChunk(s, mdatStartOffset, data->data, data->size);
                     if (!chunkOffset) {
                         // We've never seen this chunk before; write it out
-                        chunkOffset = avifRWStreamOffset(stream);
-                        AVIF_CHECKRES(avifRWStreamWrite(stream, data->data, data->size));
+                        chunkOffset = avifRWStreamOffset(s);
+                        AVIF_CHECKRES(avifRWStreamWrite(s, data->data, data->size));
                         if (samplePass == 0) {
                             encoder->ioStats.alphaOBUSize += data->size;
                         } else {
@@ -1508,10 +1507,10 @@ static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
                         }
                     }
 
-                    size_t prevOffset = avifRWStreamOffset(stream);
-                    avifRWStreamSetOffset(stream, item->mdatFixups.fixup[layerIndex].offset);
-                    AVIF_CHECKRES(avifRWStreamWriteU32(stream, (uint32_t)chunkOffset));
-                    avifRWStreamSetOffset(stream, prevOffset);
+                    size_t prevOffset = avifRWStreamOffset(s);
+                    avifRWStreamSetOffset(s, item->mdatFixups.fixup[layerIndex].offset);
+                    AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)chunkOffset));
+                    avifRWStreamSetOffset(s, prevOffset);
                 }
             }
             ++layerIndex;
@@ -1519,7 +1518,7 @@ static avifResult avifEncoderWriteMdat(avifEncoder * encoder,
 
         assert(layerIndex <= AVIF_MAX_AV1_LAYER_COUNT);
     }
-    avifRWStreamFinishBox(stream, mdat);
+    avifRWStreamFinishBox(s, mdat);
     return AVIF_RESULT_OK;
 }
 
@@ -2237,7 +2236,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         result = AVIF_RESULT_OUT_OF_MEMORY;
     }
     if (result == AVIF_RESULT_OK) {
-        result = avifEncoderWriteMdat(encoder, &s, &layeredColorItems, &layeredAlphaItems);
+        result = avifEncoderWriteMediaDataBox(encoder, &s, &layeredColorItems, &layeredAlphaItems);
     }
     avifArrayDestroy(&layeredColorItems);
     avifArrayDestroy(&layeredAlphaItems);
