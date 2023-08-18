@@ -60,6 +60,18 @@ unsigned int avifLibYUVVersion(void)
 #pragma clang diagnostic pop
 #endif
 
+// libyuv is a C++ library and defines custom types (struct, enum, etc) in the libyuv namespace when the libyuv header files are
+// included by C++ code. When accessed from a C library like libavif, via a function pointer, this leads to signature mismatches
+// in the CFI sanitizers since libyuv itself, compiled as C++ code, has the types within the namespace and the C code has the
+// types without the namespace. In order to avoid this CFI error, we tag some functions as an exception when being compiled with
+// CFI enabled.  For more details on clang's CFI see: https://clang.llvm.org/docs/ControlFlowIntegrity.html. For a simpler example
+// of this bug, please see: https://github.com/vigneshvg/cpp_c_potential_cfi_bug
+#if defined(__clang__)
+#define IGNORE_CFI_ICALL __attribute__((no_sanitize("cfi-icall")))
+#else
+#define IGNORE_CFI_ICALL
+#endif
+
 //--------------------------------------------------------------------------------------------------
 // libyuv API availability management
 
@@ -892,7 +904,7 @@ static avifResult avifImageDownshiftTo8bpc(const avifImage * image, avifImage * 
     return AVIF_RESULT_OK;
 }
 
-avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifBool reformatAlpha, avifBool * alphaReformattedWithLibYUV)
+IGNORE_CFI_ICALL avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifBool reformatAlpha, avifBool * alphaReformattedWithLibYUV)
 {
     *alphaReformattedWithLibYUV = AVIF_FALSE;
     if (rgb->depth != 8 || (image->depth != 8 && image->depth != 10 && image->depth != 12)) {
