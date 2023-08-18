@@ -370,12 +370,12 @@ static void avifItemPropertyDedupStart(avifItemPropertyDedup * dedup)
 
 // This compares the newly written item property (in the dedup's temporary storage buffer) to
 // already-written properties (whose offsets/sizes in outputStream are recorded in the dedup). If a
-// match is found, the previous property index is used. If this new property is unique, it is
+// match is found, the previous property's index is used. If this new property is unique, it is
 // assigned the next available property index, written to the output stream, and its offset/size in
 // the output stream is recorded in the dedup for future comparisons.
 //
-// On success, this function adds to the given ipma box the association linking the reused or newly
-// created property.
+// On success, this function adds to the given ipma box a property association linking the reused
+// or newly created property with the item.
 static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avifRWStream * outputStream, struct ipmaArray * ipma, avifBool essential)
 {
     uint8_t propertyIndex = 0;
