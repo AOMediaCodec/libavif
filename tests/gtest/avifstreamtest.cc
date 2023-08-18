@@ -35,7 +35,7 @@ TEST(StreamTest, Roundtrip) {
   avifBoxMarker rw_box_marker =
       avifRWStreamWriteBox(&rw_stream, rw_box_type, /*contentSize=*/0);
 
-  const uint8_t rw_someu8 = 234;
+  const uint8_t rw_someu8 = 0xA;
   avifRWStreamWriteU8(&rw_stream, rw_someu8);
 
   const int rw_full_box_version = 7;
@@ -44,17 +44,17 @@ TEST(StreamTest, Roundtrip) {
       avifRWStreamWriteFullBox(&rw_stream, rw_box_type, /*contentSize=*/0,
                                rw_full_box_version, rw_full_box_flags);
 
-  const uint16_t rw_someu16 = 2345;
+  const uint16_t rw_someu16 = 0xAB;
   avifRWStreamWriteU16(&rw_stream, rw_someu16);
 
   avifRWStreamFinishBox(&rw_stream, rw_full_box_marker);
 
   avifRWStreamFinishBox(&rw_stream, rw_box_marker);
 
-  const uint32_t rw_someu32 = 23456;
+  const uint32_t rw_someu32 = 0xABCD;
   avifRWStreamWriteU32(&rw_stream, rw_someu32);
 
-  const uint64_t rw_someu64 = 234567;
+  const uint64_t rw_someu64 = 0xABCDEF01;
   avifRWStreamWriteU64(&rw_stream, rw_someu64);
 
   const size_t num_zeros = 10000;
