@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <cstring>
 #include <vector>
 
 #include "avif/internal.h"
@@ -28,8 +27,7 @@ TEST(StreamTest, Roundtrip) {
   avifRWStreamWrite(&rw_stream, rw_somedata, sizeof(rw_somedata));
 
   const char rw_somechars[] = "somechars";
-  avifRWStreamWriteChars(&rw_stream, rw_somechars,
-                         std::strlen(rw_somechars) + 1);
+  avifRWStreamWriteChars(&rw_stream, rw_somechars, sizeof(rw_somechars));
 
   const char rw_box_type[] = "type";
   avifBoxMarker rw_box_marker =
@@ -80,7 +78,7 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_TRUE(std::equal(rw_somedata, rw_somedata + sizeof(rw_somedata),
                          ro_somedata.data()));
 
-  std::vector<char> ro_somechars(sizeof(rw_somechars) + 1);
+  std::vector<char> ro_somechars(sizeof(rw_somechars));
   EXPECT_TRUE(avifROStreamReadString(&ro_stream, ro_somechars.data(),
                                      ro_somechars.size()));
   EXPECT_TRUE(std::equal(rw_somechars, rw_somechars + sizeof(rw_somechars),
