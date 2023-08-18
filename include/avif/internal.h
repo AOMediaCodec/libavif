@@ -453,10 +453,9 @@ typedef struct avifROStream
     // Index of the next byte in the raw stream.
     size_t offset;
 
-    // Index of the currently selected partial byte. Must be lower than offset.
-    // Only meaningful if numUsedBitsInPartialByte is not zero.
-    size_t offsetOfPartialByte;
-    // Number of bits already used in the currently selected partial byte.
+    // If 0, byte-aligned functions can be used (avifROStreamRead() etc.).
+    // Otherwise, it represents the number of bits already used in the last byte
+    // (located at offset-1).
     size_t numUsedBitsInPartialByte;
 
     // Error information, if any.
@@ -471,6 +470,7 @@ void avifROStreamSetOffset(avifROStream * stream, size_t offset);
 
 avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount);
 size_t avifROStreamRemainingBytes(const avifROStream * stream);
+// The following functions require byte alignment.
 avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount);
 avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size);
 avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v);
@@ -484,6 +484,7 @@ avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header
 avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header); // This doesn't require that the full box can fit in the stream
 avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags); // version and flags ptrs are both optional
 avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion); // currently discards flags
+// The following functions can write non-aligned bits.
 avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount);
 avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount);
 avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v);
@@ -495,10 +496,9 @@ typedef struct avifRWStream
     // Index of the next byte in the raw stream.
     size_t offset;
 
-    // Index of the currently selected partial byte. Must be lower than offset.
-    // Only meaningful if numUsedBitsInPartialByte is not zero.
-    size_t offsetOfPartialByte;
-    // Number of bits already used in the currently selected partial byte.
+    // If 0, byte-aligned functions can be used (avifRWStreamWrite() etc.).
+    // Otherwise, it represents the number of bits already used in the last byte
+    // (located at offset-1).
     size_t numUsedBitsInPartialByte;
 } avifRWStream;
 
@@ -507,6 +507,7 @@ size_t avifRWStreamOffset(const avifRWStream * stream);
 void avifRWStreamSetOffset(avifRWStream * stream, size_t offset);
 
 void avifRWStreamFinishWrite(avifRWStream * stream);
+// The following functions require byte alignment.
 void avifRWStreamWrite(avifRWStream * stream, const void * data, size_t size);
 void avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size);
 avifBoxMarker avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t contentSize);
@@ -517,6 +518,7 @@ void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
 void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
 void avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
 void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
+// The following functions can write non-aligned bits.
 void avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount);
 void avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v);
 

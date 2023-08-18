@@ -53,13 +53,6 @@ TEST(StreamTest, Roundtrip) {
   const uint32_t rw_someu32 = 0xABCD;
   avifRWStreamWriteU32(&rw_stream, rw_someu32);
 
-  const size_t rw_somebitcount = 6;
-  const uint32_t rw_somebits = (1 << rw_somebitcount) - 2;
-  avifRWStreamWriteBits(&rw_stream, rw_somebits, rw_somebitcount);
-  const size_t rw_maxbitcount = sizeof(uint32_t) * 8;
-  const uint32_t rw_maxbits = std::numeric_limits<uint32_t>::max();
-  avifRWStreamWriteBits(&rw_stream, rw_maxbits, rw_maxbitcount);
-
   size_t offset = avifRWStreamOffset(&rw_stream);
   const uint32_t rw_somevarint_1byte = 240;
   avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_1byte);
@@ -73,6 +66,13 @@ TEST(StreamTest, Roundtrip) {
   const uint64_t rw_someu64 = 0xABCDEF01;
   avifRWStreamWriteU64(&rw_stream, rw_someu64);
 
+  const size_t rw_somebitcount = 6;
+  const uint32_t rw_somebits = (1 << rw_somebitcount) - 2;
+  avifRWStreamWriteBits(&rw_stream, rw_somebits, rw_somebitcount);
+  const size_t rw_maxbitcount = sizeof(uint32_t) * 8;
+  const uint32_t rw_maxbits = std::numeric_limits<uint32_t>::max();
+  avifRWStreamWriteBits(&rw_stream, rw_maxbits, rw_maxbitcount);
+
   offset = avifRWStreamOffset(&rw_stream);
   const uint32_t rw_somevarint_3bytes = 2288;
   avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_3bytes);
@@ -81,6 +81,8 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 3 + 4);
 
   const uint32_t rw_somebit = 1;
+  avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1);
+  // Pad till byte alignment.
   avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1);
 
   offset = avifRWStreamOffset(&rw_stream);
@@ -144,13 +146,6 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_TRUE(avifROStreamReadU32(&ro_stream, &ro_someu32));
   EXPECT_EQ(rw_someu32, ro_someu32);
 
-  uint32_t ro_somebits;
-  EXPECT_TRUE(avifROStreamReadBits(&ro_stream, &ro_somebits, rw_somebitcount));
-  EXPECT_EQ(rw_somebits, ro_somebits);
-  uint32_t ro_maxbits;
-  EXPECT_TRUE(avifROStreamReadBits(&ro_stream, &ro_maxbits, rw_maxbitcount));
-  EXPECT_EQ(rw_maxbits, ro_maxbits);
-
   uint32_t ro_somevarint_1byte;
   EXPECT_TRUE(avifROStreamReadVarInt(&ro_stream, &ro_somevarint_1byte));
   EXPECT_EQ(rw_somevarint_1byte, ro_somevarint_1byte);
@@ -163,6 +158,13 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_TRUE(avifROStreamReadU64(&ro_stream, &ro_someu64));
   EXPECT_EQ(rw_someu64, ro_someu64);
 
+  uint32_t ro_somebits;
+  EXPECT_TRUE(avifROStreamReadBits(&ro_stream, &ro_somebits, rw_somebitcount));
+  EXPECT_EQ(rw_somebits, ro_somebits);
+  uint32_t ro_maxbits;
+  EXPECT_TRUE(avifROStreamReadBits(&ro_stream, &ro_maxbits, rw_maxbitcount));
+  EXPECT_EQ(rw_maxbits, ro_maxbits);
+
   uint32_t ro_somevarint_3bytes;
   EXPECT_TRUE(avifROStreamReadVarInt(&ro_stream, &ro_somevarint_3bytes));
   EXPECT_EQ(rw_somevarint_3bytes, ro_somevarint_3bytes);
@@ -172,6 +174,8 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_EQ(rw_somevarint_4bytes, ro_somevarint_4bytes);
 
   uint8_t ro_somebit;
+  EXPECT_TRUE(avifROStreamReadBits8(&ro_stream, &ro_somebit, /*bitCount=*/1));
+  EXPECT_EQ(rw_somebit, ro_somebit);
   EXPECT_TRUE(avifROStreamReadBits8(&ro_stream, &ro_somebit, /*bitCount=*/1));
   EXPECT_EQ(rw_somebit, ro_somebit);
 
