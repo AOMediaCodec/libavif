@@ -403,8 +403,6 @@ TEST(GainMapTest, SequenceNotSupported) {
       << avifResultToString(result) << " " << encoder->diag.error;
 }
 
-#else
-TEST(GainMapTest, WarningGainMapsAreNotCompiledIn) {}
 #endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 }  // namespace
