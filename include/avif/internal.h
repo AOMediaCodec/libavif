@@ -508,19 +508,19 @@ void avifRWStreamSetOffset(avifRWStream * stream, size_t offset);
 
 void avifRWStreamFinishWrite(avifRWStream * stream);
 // The following functions require byte alignment.
-void avifRWStreamWrite(avifRWStream * stream, const void * data, size_t size);
-void avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size);
-avifBoxMarker avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t contentSize);
-avifBoxMarker avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags);
+avifResult avifRWStreamWrite(avifRWStream * stream, const void * data, size_t size);
+avifResult avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size);
+avifResult avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t contentSize, avifBoxMarker * marker);
+avifResult avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags, avifBoxMarker * marker);
 void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
-void avifRWStreamWriteU8(avifRWStream * stream, uint8_t v);
-void avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
-void avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
-void avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
-void avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
+avifResult avifRWStreamWriteU8(avifRWStream * stream, uint8_t v);
+avifResult avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
+avifResult avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
+avifResult avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
+avifResult avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
 // The following functions can write non-aligned bits.
-void avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount);
-void avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v);
+avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount);
+avifResult avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v);
 
 // This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
 #define AVIF_BOX_SIZE_TBD 0
