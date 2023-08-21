@@ -1847,7 +1847,7 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
     AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMinD));
     AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMaxN));
     AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMaxD));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMinN, channelCount)); // XXX
+    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMinN, channelCount));
     AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMinD, channelCount));
     AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMaxN, channelCount));
     AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMaxD, channelCount));
@@ -3600,8 +3600,8 @@ static avifResult avifCodecCreateInternal(avifCodecChoice choice, const avifTile
 static avifBool avifTilesCanBeDecodedWithSameCodecInstance(avifDecoderData * data)
 {
     if (data->color.tileCount == 1 && (data->alpha.tileCount == 1 || data->gainMap.tileCount == 1)) {
-        // Single tile image with single tile alpha/gain map plane. In this case each tile needs its own decoder since the planes will be
-        // "stolen". Stealing either the color or the alpha (or gain map) plane will invalidate the other one when decode is called the second
+        // Single tile image with single tile alpha or gain map plane. In this case each tile needs its own decoder since the planes will be
+        // "stolen". Stealing either the color or the alpha (or gain map) plane will invalidate the other ones when decode is called the second
         // (or third) time.
         return AVIF_FALSE;
     }
@@ -4595,6 +4595,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // Decode all available color tiles now, then all available alpha and gain map tiles.
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->color));
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->alpha));
+    // Decode the gain map: noop if there is no gain map or AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is disabled
+    // since we never call avifDecoderGenerateImageTiles() for it.
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->gainMap));
 
     if ((decoder->data->color.decodedTileCount != decoder->data->color.tileCount) ||

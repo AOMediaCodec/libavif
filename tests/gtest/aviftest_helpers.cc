@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "avif/avif.h"
+#include "avif/internal.h"
 #include "avifpng.h"
 #include "avifutil.h"
 
@@ -346,6 +347,51 @@ bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
     row2 += image2.rowBytes;
   }
   return true;
+}
+
+avifResult MergeGrid(int grid_cols, int grid_rows,
+                     const std::vector<AvifImagePtr>& cells,
+                     avifImage* merged) {
+  std::vector<const avifImage*> ptrs(cells.size());
+  for (size_t i = 0; i < cells.size(); ++i) {
+    ptrs[i] = cells[i].get();
+  }
+  return MergeGrid(grid_cols, grid_rows, ptrs, merged);
+}
+
+avifResult MergeGrid(int grid_cols, int grid_rows,
+                     const std::vector<const avifImage*>& cells,
+                     avifImage* merged) {
+  const uint32_t tile_width = cells[0]->width;
+  const uint32_t tile_height = cells[0]->height;
+  const uint32_t grid_width =
+      (grid_cols - 1) * tile_width + cells.back()->width;
+  const uint32_t grid_height =
+      (grid_rows - 1) * tile_height + cells.back()->height;
+
+  testutil::AvifImagePtr view(avifImageCreateEmpty(), avifImageDestroy);
+  AVIF_CHECKERR(view, AVIF_RESULT_OUT_OF_MEMORY);
+
+  avifCropRect rect = {};
+  for (int j = 0; j < grid_rows; ++j) {
+    rect.x = 0;
+    for (int i = 0; i < grid_cols; ++i) {
+      const avifImage* image = cells[j * grid_cols + i];
+      rect.width = image->width;
+      rect.height = image->height;
+      AVIF_CHECKRES(avifImageSetViewRect(view.get(), merged, &rect));
+      avifImageCopySamples(/*dstImage=*/view.get(), image, AVIF_PLANES_ALL);
+      assert(!view->imageOwnsYUVPlanes);
+      rect.x += rect.width;
+    }
+    rect.y += rect.height;
+  }
+
+  if ((rect.x != grid_width) || (rect.y != grid_height)) {
+    return AVIF_RESULT_UNKNOWN_ERROR;
+  }
+
+  return AVIF_RESULT_OK;
 }
 
 //------------------------------------------------------------------------------

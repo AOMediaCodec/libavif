@@ -7,6 +7,7 @@
 #include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
+
 namespace libavif {
 namespace {
 
@@ -70,8 +71,8 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   ASSERT_NE(gain_map, nullptr);
   testutil::FillImageGradient(gain_map.get());
   gain_map->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_FCC;
-  // While attached to the gain map, this represents the clli information of the
-  // tone mapped image.
+  // Even though this is attached to the gain map, it represents the clli
+  // information of the tone mapped image.
   gain_map->clli.maxCLL = 10;
   gain_map->clli.maxPALL = 5;
 
@@ -133,8 +134,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   testutil::FillImageGradient(gain_map.get());
 
   image->gainMap.image = gain_map.release();  // 'image' now owns the gain map.
-  image->gainMap.metadata = image->gainMap.metadata =
-      GetTestGainMapMetadata(/*base_image_is_hdr=*/true);
+  image->gainMap.metadata = GetTestGainMapMetadata(/*base_image_is_hdr=*/true);
 
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
@@ -167,45 +167,6 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_basehdr.avif", std::ios::binary)
   //      .write(reinterpret_cast<char*>(encoded.data), encoded.size);
-}
-
-avifResult MergeGrid(int grid_cols, int grid_rows,
-                     const std::vector<const avifImage*>& cells,
-                     avifImage* merged) {
-  const uint32_t tile_width = cells[0]->width;
-  const uint32_t tile_height = cells[0]->height;
-  const uint32_t grid_width =
-      (grid_cols - 1) * tile_width + cells.back()->width;
-  const uint32_t grid_height =
-      (grid_rows - 1) * tile_height + cells.back()->height;
-
-  testutil::AvifImagePtr view(avifImageCreateEmpty(), avifImageDestroy);
-  if (!view) {
-    return AVIF_RESULT_OUT_OF_MEMORY;
-  }
-  avifCropRect rect = {};
-  for (int j = 0; j < grid_rows; ++j) {
-    rect.x = 0;
-    for (int i = 0; i < grid_cols; ++i) {
-      const avifImage* image = cells[j * grid_cols + i];
-      rect.width = image->width;
-      rect.height = image->height;
-      avifResult result = avifImageSetViewRect(view.get(), merged, &rect);
-      if (result != AVIF_RESULT_OK) {
-        return result;
-      }
-      avifImageCopySamples(/*dstImage=*/view.get(), image, AVIF_PLANES_ALL);
-      assert(!view->imageOwnsYUVPlanes);
-      rect.x += rect.width;
-    }
-    rect.y += rect.height;
-  }
-
-  if ((rect.x != grid_width) || (rect.y != grid_height)) {
-    return AVIF_RESULT_UNKNOWN_ERROR;
-  }
-
-  return AVIF_RESULT_OK;
 }
 
 TEST(GainMapTest, EncodeDecodeGrid) {
@@ -265,7 +226,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   testutil::AvifImagePtr merged = testutil::CreateImage(
       static_cast<int>(decoded->width), static_cast<int>(decoded->height),
       decoded->depth, decoded->yuvFormat, AVIF_PLANES_ALL);
-  ASSERT_EQ(MergeGrid(kGridCols, kGridRows, cell_ptrs, merged.get()),
+  ASSERT_EQ(testutil::MergeGrid(kGridCols, kGridRows, cell_ptrs, merged.get()),
             AVIF_RESULT_OK);
 
   testutil::AvifImagePtr merged_gain_map =
@@ -273,9 +234,9 @@ TEST(GainMapTest, EncodeDecodeGrid) {
                             static_cast<int>(decoded->gainMap.image->height),
                             decoded->gainMap.image->depth,
                             decoded->gainMap.image->yuvFormat, AVIF_PLANES_YUV);
-  ASSERT_EQ(
-      MergeGrid(kGridCols, kGridRows, gain_map_ptrs, merged_gain_map.get()),
-      AVIF_RESULT_OK);
+  ASSERT_EQ(testutil::MergeGrid(kGridCols, kGridRows, gain_map_ptrs,
+                                merged_gain_map.get()),
+            AVIF_RESULT_OK);
 
   // Verify that the input and decoded images are close.
   ASSERT_GT(testutil::GetPsnr(*merged, *decoded), 40.0);
@@ -357,39 +318,33 @@ TEST(GainMapTest, InvalidGrid) {
 }
 
 TEST(GainMapTest, SequenceNotSupported) {
-  std::vector<testutil::AvifImagePtr> frames;
-  constexpr int kNumFrames = 4;
-
-  for (int i = 0; i < kNumFrames; ++i) {
-    testutil::AvifImagePtr image =
-        testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
-                              AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
-    ASSERT_NE(image, nullptr);
-    image->transferCharacteristics =
-        AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
-    testutil::FillImageGradient(image.get());
-    testutil::AvifImagePtr gain_map =
-        testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/8,
-                              AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
-    ASSERT_NE(gain_map, nullptr);
-    testutil::FillImageGradient(gain_map.get());
-    // 'image' now owns the gain map.
-    image->gainMap.image = gain_map.release();
-
-    frames.push_back(std::move(image));
-  }
+  testutil::AvifImagePtr image =
+      testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
+                            AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  image->transferCharacteristics =
+      AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
+  testutil::FillImageGradient(image.get());
+  testutil::AvifImagePtr gain_map =
+      testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
+  ASSERT_NE(gain_map, nullptr);
+  testutil::FillImageGradient(gain_map.get());
+  // 'image' now owns the gain map.
+  image->gainMap.image = gain_map.release();
 
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
+  // Add a first frame.
   avifResult result =
-      avifEncoderAddImage(encoder.get(), frames[0].get(),
+      avifEncoderAddImage(encoder.get(), image.get(),
                           /*durationInTimescales=*/2, AVIF_ADD_IMAGE_FLAG_NONE);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
-
+  // Add a second frame.
   result =
-      avifEncoderAddImage(encoder.get(), frames[1].get(),
+      avifEncoderAddImage(encoder.get(), image.get(),
                           /*durationInTimescales=*/2, AVIF_ADD_IMAGE_FLAG_NONE);
   // Image sequences with gain maps are not supported.
   ASSERT_EQ(result, AVIF_RESULT_NOT_IMPLEMENTED)

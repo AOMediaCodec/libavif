@@ -213,9 +213,7 @@ typedef struct avifEncoderData
     // Map the encoder settings quality and qualityAlpha to quantizer and quantizerAlpha
     int quantizer;
     int quantizerAlpha;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int quantizerGainMap;
-#endif
     // tileRowsLog2 and tileColsLog2 are the actual tiling values after automatic tiling is handled
     int tileRowsLog2;
     int tileColsLog2;
@@ -554,12 +552,11 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
 }
 
 // Same as 'avifEncoderWriteColorProperties' but for the colr nclx box only.
-static avifResult avifEncoderWriteNclxProperty(
-                                         avifRWStream * dedupStream,
-                                         avifRWStream * outputStream,
-                                         const avifImage * imageMetadata,
-                                         struct ipmaArray * ipma,
-                                         avifItemPropertyDedup * dedup)
+static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
+                                               avifRWStream * outputStream,
+                                               const avifImage * imageMetadata,
+                                               struct ipmaArray * ipma,
+                                               avifItemPropertyDedup * dedup)
 {
     if (dedup) {
         avifItemPropertyDedupStart(dedup);
@@ -630,16 +627,17 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
 
     // HEIF 6.5.5.1, from Amendment 3 allows multiple colr boxes: "at most one for a given value of colour type"
     // Therefore, *always* writing an nclx box, even if an a prof box was already written above.
-    AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, outputStream, imageMetadata, ipma, dedup));
+    AVIF_CHECKRES(avifEncoderWriteNclxProperty(dedupStream, outputStream, imageMetadata, ipma, dedup));
 
     return avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup);
 }
 
-static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
-                                                          avifRWStream * outputStream,
-                                                          const avifImage * imageMetadata,
-                                                          struct ipmaArray * ipma,
-                                                          avifItemPropertyDedup * dedup)
+// Same as 'avifEncoderWriteColorProperties' but for properties related to Hight Dynamic Range only.
+static avifResult avifEncoderWriteHDRProperties(avifRWStream * dedupStream,
+                                                avifRWStream * outputStream,
+                                                const avifImage * imageMetadata,
+                                                struct ipmaArray * ipma,
+                                                avifItemPropertyDedup * dedup)
 {
     // Write Content Light Level Information, if present
     if (imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) {
@@ -656,6 +654,17 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
         }
     }
 
+    // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
+
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
+                                                          avifRWStream * outputStream,
+                                                          const avifImage * imageMetadata,
+                                                          struct ipmaArray * ipma,
+                                                          avifItemPropertyDedup * dedup)
+{
     // Write (Optional) Transformations
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
         if (dedup) {
@@ -715,34 +724,6 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_TRUE));
         }
     }
-    return AVIF_RESULT_OK;
-}
-
-// Same as 'avifEncoderWriteColorProperties' but for properties related to Hight Dynamic Range only.
-static avifResult avifEncoderWriteHDRProperties(
-                                          avifRWStream * dedupStream,
-                                          avifRWStream * outputStream,
-                                          const avifImage * imageMetadata,
-                                          struct ipmaArray * ipma,
-                                          avifItemPropertyDedup * dedup)
-{
-    // Write Content Light Level Information, if present
-    if (imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) {
-        if (dedup) {
-            avifItemPropertyDedupStart(dedup);
-        }
-        avifBoxMarker clli;
-        AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "clli", AVIF_BOX_SIZE_TBD, &clli));
-        AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->clli.maxCLL)); // unsigned int(16) max_content_light_level;
-        AVIF_CHECKRES(avifRWStreamWriteU16(dedupStream, imageMetadata->clli.maxPALL)); // unsigned int(16) max_pic_average_light_level;
-        avifRWStreamFinishBox(dedupStream, clli);
-        if (dedup) {
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
-        }
-    }
-
-    // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
-
     return AVIF_RESULT_OK;
 }
 
@@ -1398,11 +1379,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         // Use as many tiles as allowed by the minimum tile area requirement and impose a maximum
         // of 8 tiles.
         const int threads = 8;
-        avifSetTileConfiguration(threads,
-                                 cellImages[0]->width,
-                                 cellImages[0]->height,
-                                 &encoder->data->tileRowsLog2,
-                                 &encoder->data->tileColsLog2);
+        avifSetTileConfiguration(threads, firstCell->width, firstCell->height, &encoder->data->tileRowsLog2, &encoder->data->tileColsLog2);
     }
 
     // -----------------------------------------------------------------------
@@ -1429,8 +1406,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
         // Prepare all AV1 items
         uint16_t colorItemID;
-        const uint32_t gridWidth = avifGridWidth(gridCols, cellImages[0], cellImages[gridCols * gridRows - 1]);
-        const uint32_t gridHeight = avifGridHeight(gridRows, cellImages[0], cellImages[gridCols * gridRows - 1]);
+        const uint32_t gridWidth = avifGridWidth(gridCols, firstCell, bottomRightCell);
+        const uint32_t gridHeight = avifGridHeight(gridRows, firstCell, bottomRightCell);
         AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_COLOR, &colorItemID));
         encoder->data->primaryItemID = colorItemID;
 
@@ -1481,7 +1458,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 avifDiagnosticsPrintf(&encoder->diag, "failed to write gain map metadata, some values may be negative or too large");
                 return AVIF_RESULT_ENCODE_GAIN_MAP_FAILED;
             }
-            // While the 'tmap' item is related to the gain map, it shares most of its properties (width/height, depth etc.) with the color item.
+            // Even though the 'tmap' item is related to the gain map, it shares most of its properties (width/height, depth etc.) with the color item.
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
             uint16_t toneMappedItemID = toneMappedItem->id;
             *(uint16_t *)avifArrayPushPtr(&encoder->data->alternativeItemIDs) = toneMappedItemID;
@@ -2202,7 +2179,17 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             // Color specific properties
 
             avifEncoderWriteColorProperties(&s, itemMetadata, &item->ipma, dedup);
-            if (!isToneMappedImage) {
+            if (isToneMappedImage) {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                if (!imageMetadata->gainMap.metadata.baseRenditionIsHDR) {
+                    // HDR properties for the tone mapped image ('tmap' box) are taken from the gain map image.
+                    // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
+                    // place to put this data.
+
+                    AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, &s, imageMetadata->gainMap.image, &item->ipma, dedup));
+                }
+#endif
+            } else {
                 AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
             }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -2213,16 +2200,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
 #endif
         }
-
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        if (isToneMappedImage && !imageMetadata->gainMap.metadata.baseRenditionIsHDR) {
-            // HDR properties for the tone mapped image ('tmap' box) are taken from the gain map image.
-            // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
-            // place to put this data.
-
-            AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, &s, imageMetadata->gainMap.image, &item->ipma, dedup));
-        }
-#endif
 
         if (item->extraLayerCount > 0) {
             // Layered Image Indexing Property

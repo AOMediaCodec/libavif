@@ -513,8 +513,7 @@ typedef struct avifContentLightLevelInformationBox
 struct avifImage;
 
 // Gain map metadata, for tone mapping between SDR and HDR.
-// All field pairs ending with 'N' and 'D' are floating point values represented as fractions
-// (numerator and denominator).
+// All field pairs ending with 'N' and 'D' are fractional values (numerator and denominator).
 typedef struct avifGainMapMetadata
 {
     // Parameters for converting the gain map from its image encoding to log
