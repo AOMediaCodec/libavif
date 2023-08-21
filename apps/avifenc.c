@@ -1647,7 +1647,8 @@ int main(int argc, char * argv[])
 
         if (cicpExplicitlySet) {
             // Only warn if someone explicitly asked for identity.
-            printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
+            printf("WARNING: matrixCoefficients may not be set to identity (0) when %s. Resetting MC to defaults (%d).\n",
+                   (input.requestedFormat == AVIF_PIXEL_FORMAT_YUV400) ? "encoding 4:0:0" : "subsampling",
                    image->matrixCoefficients);
         }
     }
@@ -1674,13 +1675,14 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    // Check again for y4m input (y4m input ignores input.requestedFormat and retains the format in file).
-    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && lossless && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+    // Check again for -y auto or for y4m input (y4m input ignores input.requestedFormat and
+    // retains the format in file).
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
         image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
         if (cicpExplicitlySet) {
             // Only warn if someone explicitly asked for identity.
-            printf("WARNING: matrixCoefficients may not be set to identity (0) when encoding lossless 4:0:0. Resetting MC to defaults (%d).\n",
+            printf("WARNING: matrixCoefficients may not be set to identity (0) when encoding 4:0:0. Resetting MC to defaults (%d).\n",
                    image->matrixCoefficients);
         }
     }
