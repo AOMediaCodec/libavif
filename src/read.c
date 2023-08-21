@@ -1968,12 +1968,12 @@ static avifBool avifParseImageMirrorProperty(avifProperty * prop, const uint8_t 
 
     avifImageMirror * imir = &prop->u.imir;
     uint8_t reserved;
-    AVIF_CHECK(avifROStreamReadBits8(&s, &reserved, /*bitCount=*/7)); // unsigned int (7) reserved = 0;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &reserved, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
     if (reserved) {
         avifDiagnosticsPrintf(diag, "Box[imir] contains nonzero reserved bits [%u]", reserved);
         return AVIF_FALSE;
     }
-    AVIF_CHECK(avifROStreamReadBits8(&s, &imir->mode, /*bitCount=*/1)); // unsigned int (1) mode;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &imir->axis, /*bitCount=*/1)); // unsigned int(1) axis;
     return AVIF_TRUE;
 }
 
