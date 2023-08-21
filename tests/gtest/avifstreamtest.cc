@@ -39,7 +39,7 @@ TEST(StreamTest, Roundtrip) {
                                  &rw_box_marker),
             AVIF_RESULT_OK);
 
-  const uint8_t rw_someu8 = 0xA;
+  const uint8_t rw_someu8 = 0xAA;
   EXPECT_EQ(avifRWStreamWriteU8(&rw_stream, rw_someu8), AVIF_RESULT_OK);
 
   const int rw_full_box_version = 7;
@@ -50,14 +50,14 @@ TEST(StreamTest, Roundtrip) {
                                      &rw_full_box_marker),
             AVIF_RESULT_OK);
 
-  const uint16_t rw_someu16 = 0xAB;
+  const uint16_t rw_someu16 = 0xAABB;
   EXPECT_EQ(avifRWStreamWriteU16(&rw_stream, rw_someu16), AVIF_RESULT_OK);
 
   avifRWStreamFinishBox(&rw_stream, rw_full_box_marker);
 
   avifRWStreamFinishBox(&rw_stream, rw_box_marker);
 
-  const uint32_t rw_someu32 = 0xABCD;
+  const uint32_t rw_someu32 = 0xAABBCCDD;
   EXPECT_EQ(avifRWStreamWriteU32(&rw_stream, rw_someu32), AVIF_RESULT_OK);
 
   size_t offset = avifRWStreamOffset(&rw_stream);
@@ -72,7 +72,7 @@ TEST(StreamTest, Roundtrip) {
             AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 2);
 
-  const uint64_t rw_someu64 = 0xABCDEF01;
+  const uint64_t rw_someu64 = 0xAABBCCDDEEFF0011;
   EXPECT_EQ(avifRWStreamWriteU64(&rw_stream, rw_someu64), AVIF_RESULT_OK);
 
   const size_t rw_somebitcount = 6;
