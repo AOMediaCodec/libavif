@@ -194,7 +194,7 @@ typedef enum avifEncoderHeaderStrategy
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
     // Encodes as "avir" brand with a CondensedImageBox to reduce the encoded file size.
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
-    AVIF_ENCODER_MINIMIZE_HEADER,
+    AVIF_ENCODER_REDUCE_HEADER,
 #endif
 } avifEncoderHeaderStrategy;
 

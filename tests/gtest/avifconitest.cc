@@ -83,7 +83,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
-  encoder->headerStrategy = AVIF_ENCODER_MINIMIZE_HEADER;
+  encoder->headerStrategy = AVIF_ENCODER_REDUCE_HEADER;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_coni),
             AVIF_RESULT_OK);
 

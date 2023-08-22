@@ -1185,7 +1185,7 @@ int main(int argc, char * argv[])
             outputFilename = arg;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         } else if (!strcmp(arg, "--avir")) {
-            settings.headerStrategy = AVIF_ENCODER_MINIMIZE_HEADER;
+            settings.headerStrategy = AVIF_ENCODER_REDUCE_HEADER;
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
