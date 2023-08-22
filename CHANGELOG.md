@@ -81,6 +81,7 @@ List of incompatible ABI changes in this release:
   memory allocation failures.
 * avifReadImage(), avifJPEGRead() and avifPNGRead() now remove the trailing zero
   byte from read XMP chunks, if any. See avifImageFixXMP().
+* The 'mode' member of the avifImageMirror struct was renamed 'axis'.
 
 ## [0.11.1] - 2022-10-19
 

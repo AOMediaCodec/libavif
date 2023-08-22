@@ -430,24 +430,19 @@ typedef struct avifImageRotation
 
 typedef struct avifImageMirror
 {
-    // 'imir' from ISO/IEC 23008-12:2017 6.5.12 (Draft Amendment 2):
+    // 'imir' from ISO/IEC 23008-12:2022 6.5.12:
     //
-    //     'mode' specifies how the mirroring is performed:
+    //     'axis' specifies how the mirroring is performed:
     //
     //     0 indicates that the top and bottom parts of the image are exchanged;
     //     1 specifies that the left and right parts are exchanged.
     //
     //     NOTE In Exif, orientation tag can be used to signal mirroring operations. Exif
-    //     orientation tag 4 corresponds to mode = 0 of ImageMirror, and Exif orientation tag 2
-    //     corresponds to mode = 1 accordingly.
+    //     orientation tag 4 corresponds to axis = 0 of ImageMirror, and Exif orientation tag 2
+    //     corresponds to axis = 1 accordingly.
     //
     // Legal values: [0, 1]
-    //
-    // NOTE: As of HEIF Draft Amendment 2, the name of this variable has changed from 'axis' to 'mode' as
-    //       the logic behind it has been *inverted*. Please use the wording above describing the legal
-    //       values for 'mode' and update any code that previously may have used `axis` to use
-    //       the *opposite* value (0 now means top-to-bottom, where it used to mean left-to-right).
-    uint8_t mode;
+    uint8_t axis;
 } avifImageMirror;
 
 // ---------------------------------------------------------------------------

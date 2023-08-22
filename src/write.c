@@ -683,8 +683,8 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
         }
         avifBoxMarker imir;
         AVIF_CHECKRES(avifRWStreamWriteBox(dedupStream, "imir", AVIF_BOX_SIZE_TBD, &imir));
-        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7)); // unsigned int (7) reserved = 0;
-        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, imageMetadata->imir.mode ? 1 : 0, /*bitCount=*/1)); // unsigned int (1) mode;
+        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
+        AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, imageMetadata->imir.axis ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) axis;
         avifRWStreamFinishBox(dedupStream, imir);
         if (dedup) {
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_TRUE));

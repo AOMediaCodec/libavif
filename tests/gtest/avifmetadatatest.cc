@@ -49,7 +49,7 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   if (use_exif) {
     const avifTransformFlags old_transform_flags = image->transformFlags;
     const uint8_t old_irot_angle = image->irot.angle;
-    const uint8_t old_imir_mode = image->imir.mode;
+    const uint8_t old_imir_axis = image->imir.axis;
     ASSERT_EQ(
         avifImageSetMetadataExif(image.get(), testutil::kSampleExif.data(),
                                  testutil::kSampleExif.size()),
@@ -58,7 +58,7 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
     // These fields should not be modified.
     EXPECT_EQ(image->transformFlags, old_transform_flags);
     EXPECT_EQ(image->irot.angle, old_irot_angle);
-    EXPECT_EQ(image->imir.mode, old_imir_mode);
+    EXPECT_EQ(image->imir.axis, old_imir_axis);
   }
   if (use_xmp) {
     ASSERT_EQ(avifImageSetMetadataXMP(image.get(), testutil::kSampleXmp.data(),
@@ -246,7 +246,7 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(image->irot.angle, 1u);
-  EXPECT_EQ(image->imir.mode, 0u);
+  EXPECT_EQ(image->imir.axis, 0u);
 
   const testutil::AvifRwData encoded =
       testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
@@ -260,7 +260,7 @@ TEST(MetadataTest, ExifOrientation) {
       decoded->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(decoded->irot.angle, 1u);
-  EXPECT_EQ(decoded->imir.mode, 0u);
+  EXPECT_EQ(decoded->imir.axis, 0u);
 
   // Exif orientation is kept in JPEG export.
   testutil::AvifImagePtr temp_image =
@@ -269,7 +269,7 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
   EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
   EXPECT_EQ(image->irot.angle, temp_image->irot.angle);
-  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->imir.axis, temp_image->imir.axis);
   EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
 
   // Exif orientation in PNG export should be ignored or discarded.
@@ -292,7 +292,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   // This is not recommended but for testing only.
   EXPECT_GT(image->exif.size, 0u);
   image->transformFlags = AVIF_TRANSFORM_IMIR;
-  image->imir.mode = 1;
+  image->imir.axis = 1;
 
   const testutil::AvifRwData encoded =
       testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
@@ -304,7 +304,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
   EXPECT_EQ(decoded->transformFlags, avifTransformFlags{AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(decoded->irot.angle, 0u);
-  EXPECT_EQ(decoded->imir.mode, image->imir.mode);
+  EXPECT_EQ(decoded->imir.axis, image->imir.axis);
 
   // Exif orientation is set equivalent to irot/imir in JPEG export.
   // Existing Exif orientation is overwritten.
@@ -313,7 +313,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   ASSERT_NE(temp_image, nullptr);
   EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
   EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
-  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->imir.axis, temp_image->imir.axis);
   EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
 }
 
@@ -327,7 +327,7 @@ TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(image->irot.angle, 1u);
-  EXPECT_EQ(image->imir.mode, 0u);
+  EXPECT_EQ(image->imir.axis, 0u);
 
   // No Exif metadata to store the orientation: the samples should be rotated.
   const testutil::AvifImagePtr temp_image =
