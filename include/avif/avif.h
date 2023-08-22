@@ -552,6 +552,8 @@ typedef struct avifImage
     // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
     avifRWData exif;
     avifRWData xmp;
+
+    // Version 1.0.0 ends here.
 } avifImage;
 
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
@@ -1003,6 +1005,8 @@ typedef struct avifDecoder
 
     // Internals used by the decoder
     struct avifDecoderData * data;
+
+    // Version 1.0.0 ends here.
 } avifDecoder;
 
 AVIF_API avifDecoder * avifDecoderCreate(void);
@@ -1169,6 +1173,8 @@ typedef struct avifEncoder
     // Internals used by the encoder
     struct avifEncoderData * data;
     struct avifCodecSpecificOptions * csOptions;
+
+    // Version 1.0.0 ends here.
 } avifEncoder;
 
 // avifEncoderCreate() returns NULL if a memory allocation failed.
