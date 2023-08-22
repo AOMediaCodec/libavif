@@ -1272,9 +1272,6 @@ typedef struct avifScalingMode
 //   call to avifEncoderAddImage().
 typedef struct avifEncoder
 {
-    // Defaults to AVIF_ENCODER_FULL_HEADER
-    avifEncoderHeaderStrategy headerStrategy;
-
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
@@ -1313,6 +1310,9 @@ typedef struct avifEncoder
     struct avifCodecSpecificOptions * csOptions;
 
     // Version 1.0.0 ends here. Add any new members after this line.
+
+    // Defaults to AVIF_ENCODER_FULL_HEADER
+    avifEncoderHeaderStrategy headerStrategy;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting
