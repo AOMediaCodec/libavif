@@ -632,7 +632,7 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
     return avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup);
 }
 
-// Same as 'avifEncoderWriteColorProperties' but for properties related to Hight Dynamic Range only.
+// Same as 'avifEncoderWriteColorProperties' but for properties related to High Dynamic Range only.
 static avifResult avifEncoderWriteHDRProperties(avifRWStream * dedupStream,
                                                 avifRWStream * outputStream,
                                                 const avifImage * imageMetadata,
@@ -1659,9 +1659,6 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
 {
     encoder->ioStats.colorOBUSize = 0;
     encoder->ioStats.alphaOBUSize = 0;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    encoder->ioStats.gainMapOBUSize = 0;
-#endif
 
     avifBoxMarker mdat;
     AVIF_CHECKRES(avifRWStreamWriteBox(s, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
@@ -1733,11 +1730,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
 
                         if (item->itemCategory == AVIF_ITEM_ALPHA) {
                             encoder->ioStats.alphaOBUSize += sample->data.size;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-                        } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
-                            encoder->ioStats.gainMapOBUSize += sample->data.size;
-#endif
-                        } else {
+                        } else if (item->itemCategory == AVIF_ITEM_COLOR) {
                             encoder->ioStats.colorOBUSize += sample->data.size;
                         }
                     }

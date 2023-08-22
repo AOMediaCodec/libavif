@@ -81,6 +81,11 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
   AVIF_CHECKRES(
       testutil::MergeGrid(num_cols, num_rows, cell_images, grid.get()));
 
+  if ((grid->width != image->width) || (grid->height != image->height) ||
+      !testutil::AreImagesEqual(*image, *grid)) {
+    return AVIF_RESULT_UNKNOWN_ERROR;
+  }
+
   return AVIF_RESULT_OK;
 }
 

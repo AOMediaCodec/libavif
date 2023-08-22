@@ -4246,11 +4246,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
             if (tile->input->itemCategory == AVIF_ITEM_ALPHA) {
                 decoder->ioStats.alphaOBUSize += sample->size;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-            } else if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
-                decoder->ioStats.gainMapOBUSize += sample->size;
-#endif
-            } else {
+            } else if (tile->input->itemCategory == AVIF_ITEM_COLOR) {
                 decoder->ioStats.colorOBUSize += sample->size;
             }
         }

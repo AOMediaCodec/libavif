@@ -507,6 +507,7 @@ typedef struct avifContentLightLevelInformationBox
 // Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
 // images containing a gain map encoded with the current version of libavif might
 // not decode with a feature future version of libavif. Use are your own risk.
+// This is based on ISO/IEC JTC 1/SC 29/WG 3 m64379
 // This product includes Gain Map technology under license by Adobe.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -664,8 +665,10 @@ typedef struct avifImage
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
 AVIF_API avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
 AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
-AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes); // deep copy, including gain map
-AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect); // shallow copy, no metadata, no gain map
+// Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present.
+AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+// Performs a shallow copy of a rectangular area of an image. 'dstImage' does not own the planes. The gain map if any is ignored.
+AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect);
 AVIF_API void avifImageDestroy(avifImage * image);
 
 AVIF_API avifResult avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
@@ -951,12 +954,6 @@ typedef struct avifIOStats
     size_t colorOBUSize;
     // Size in bytes of the AV1 image item or track data containing alpha samples.
     size_t alphaOBUSize;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    // Size in bytes of the AV1 image item containing gain map samples.
-    size_t gainMapOBUSize;
-#else
-    size_t reserved;
-#endif
 } avifIOStats;
 
 struct avifDecoderData;
@@ -1108,11 +1105,6 @@ typedef struct avifDecoder
     // avifDecoderNextImage() or avifDecoderNthImage(), as decoder->image->alphaPlane won't exist yet.
     avifBool alphaPresent;
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    // This is true when avifDecoderParse() detects a gain map.
-    avifBool gainMapPresent;
-#endif
-
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
 
@@ -1129,6 +1121,11 @@ typedef struct avifDecoder
     struct avifDecoderData * data;
 
     // Version 1.0.0 ends here. Add any new members after this line.
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    // This is true when avifDecoderParse() detects a gain map.
+    avifBool gainMapPresent;
+#endif
 } avifDecoder;
 
 AVIF_API avifDecoder * avifDecoderCreate(void);
@@ -1279,9 +1276,6 @@ typedef struct avifEncoder
     // changeable encoder settings
     int quality;
     int qualityAlpha;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    int qualityGainMap;
-#endif
     int minQuantizer;
     int maxQuantizer;
     int minQuantizerAlpha;
@@ -1302,6 +1296,10 @@ typedef struct avifEncoder
     struct avifCodecSpecificOptions * csOptions;
 
     // Version 1.0.0 ends here. Add any new members after this line.
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    int qualityGainMap; // changeable encoder setting
+#endif
 } avifEncoder;
 
 // avifEncoderCreate() returns NULL if a memory allocation failed.
