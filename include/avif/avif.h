@@ -195,7 +195,7 @@ typedef enum avifEncoderHeaderStrategy
     // Encodes as "avir" brand with a CondensedImageBox to reduce the encoded file size.
     // This is based on the m64572 "Condensed image item" MPEG proposal for HEIF.
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
-    AVIF_ENCODER_REDUCE_HEADER,
+    AVIF_ENCODER_REDUCED_HEADER,
 #endif
 } avifEncoderHeaderStrategy;
 
