@@ -1046,7 +1046,6 @@ typedef struct avifDecoder
     // If you don't actually leverage this data, it is best to ignore it here.
     avifBool ignoreExif;
     avifBool ignoreXMP;
-    // TODO(maryla): add flags to ignore the main image, or ignore the gain map if desired.
 
     // This represents the maximum size of an image (in pixel count) that libavif and the underlying
     // AV1 decoder should attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_SIZE_LIMIT, and can
@@ -1125,6 +1124,7 @@ typedef struct avifDecoder
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     // This is true when avifDecoderParse() detects a gain map.
     avifBool gainMapPresent;
+    // TODO(maryla): add flags to ignore the main image, or ignore the gain map if desired.
 #endif
 } avifDecoder;
 
