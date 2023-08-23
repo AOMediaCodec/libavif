@@ -672,7 +672,7 @@ typedef struct
     avifBool autoTiling;
     avifBool progressive;
     int speed;
-    avifEncoderHeaderStrategy headerStrategy;
+    avifEncoderHeaderFormat headerFormat;
 
     int paspCount;
     uint32_t paspValues[8]; // only the first two are used
@@ -892,7 +892,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     encoder->autoTiling = settings->autoTiling;
     encoder->codecChoice = settings->codecChoice;
     encoder->speed = settings->speed;
-    encoder->headerStrategy = settings->headerStrategy;
+    encoder->headerFormat = settings->headerFormat;
     encoder->timescale = settings->outputTiming.timescale;
     encoder->keyframeInterval = settings->keyframeInterval;
     encoder->repetitionCount = settings->repetitionCount;
@@ -1112,7 +1112,7 @@ int main(int argc, char * argv[])
     settings.autoTiling = AVIF_FALSE;
     settings.progressive = AVIF_FALSE;
     settings.speed = 6;
-    settings.headerStrategy = AVIF_ENCODER_FULL_HEADER;
+    settings.headerFormat = AVIF_ENCODER_FULL_HEADER;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;
@@ -1185,7 +1185,7 @@ int main(int argc, char * argv[])
             outputFilename = arg;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         } else if (!strcmp(arg, "--avir")) {
-            settings.headerStrategy = AVIF_ENCODER_REDUCED_HEADER;
+            settings.headerFormat = AVIF_ENCODER_REDUCED_HEADER;
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();

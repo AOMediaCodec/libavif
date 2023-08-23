@@ -185,9 +185,9 @@ typedef enum avifResult
 AVIF_API const char * avifResultToString(avifResult result);
 
 // ---------------------------------------------------------------------------
-// avifEncoderHeaderStrategy
+// avifEncoderHeaderFormat
 
-typedef enum avifEncoderHeaderStrategy
+typedef enum avifEncoderHeaderFormat
 {
     // Encodes as "avif" brand with a MetaBox and all its required boxes for maximum compatibility.
     AVIF_ENCODER_FULL_HEADER,
@@ -197,7 +197,7 @@ typedef enum avifEncoderHeaderStrategy
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
     AVIF_ENCODER_REDUCED_HEADER,
 #endif
-} avifEncoderHeaderStrategy;
+} avifEncoderHeaderFormat;
 
 // ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
@@ -1313,7 +1313,7 @@ typedef struct avifEncoder
     // Version 1.0.0 ends here. Add any new members after this line.
 
     // Defaults to AVIF_ENCODER_FULL_HEADER
-    avifEncoderHeaderStrategy headerStrategy;
+    avifEncoderHeaderFormat headerFormat;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting

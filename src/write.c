@@ -429,7 +429,7 @@ avifEncoder * avifEncoderCreate(void)
         return NULL;
     }
     memset(encoder, 0, sizeof(avifEncoder));
-    encoder->headerStrategy = AVIF_ENCODER_FULL_HEADER;
+    encoder->headerFormat = AVIF_ENCODER_FULL_HEADER;
     encoder->codecChoice = AVIF_CODEC_CHOICE_AUTO;
     encoder->maxThreads = 1;
     encoder->speed = AVIF_SPEED_DEFAULT;
@@ -2154,7 +2154,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Decide whether to go for a CondensedImageBox or a full regular MetaBox.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    if ((encoder->headerStrategy == AVIF_ENCODER_REDUCED_HEADER) && avifEncoderIsCondensedImageBoxCompatible(encoder)) {
+    if ((encoder->headerFormat == AVIF_ENCODER_REDUCED_HEADER) && avifEncoderIsCondensedImageBoxCompatible(encoder)) {
         AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndCondensedImageBox(encoder, output));
         return AVIF_RESULT_OK;
     }
