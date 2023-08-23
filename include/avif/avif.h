@@ -132,6 +132,9 @@ AVIF_API unsigned int avifLibYUVVersion(void); // returns 0 if libavif wasn't co
 // ---------------------------------------------------------------------------
 // Memory management
 
+// NOTE: On memory allocation failure, the current implementation of avifAlloc() calls abort(),
+// but in a future release it may return NULL. To be future-proof, callers should check for a NULL
+// return value.
 AVIF_API void * avifAlloc(size_t size);
 AVIF_API void avifFree(void * p);
 
