@@ -481,7 +481,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
 // Allocates and fills look-up tables for going from YUV limited/full unorm -> full range RGB FP32.
 // Review this when implementing YCgCo limited range support.
-static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float ** unormFloatTableUV, int depth, const avifReformatState * state)
+static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float ** unormFloatTableUV, uint32_t depth, const avifReformatState * state)
 {
     const size_t cpCount = (size_t)1 << depth;
 
@@ -1625,7 +1625,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     v = (((v * (MAXLIMITEDY - MINLIMITEDY)) + (FULLY / 2)) / FULLY) + MINLIMITEDY; \
     v = AVIF_CLAMP(v, MINLIMITEDY, MAXLIMITEDY)
 
-int avifLimitedToFullY(int depth, int v)
+int avifLimitedToFullY(uint32_t depth, int v)
 {
     switch (depth) {
         case 8:
@@ -1641,7 +1641,7 @@ int avifLimitedToFullY(int depth, int v)
     return v;
 }
 
-int avifLimitedToFullUV(int depth, int v)
+int avifLimitedToFullUV(uint32_t depth, int v)
 {
     switch (depth) {
         case 8:
@@ -1657,7 +1657,7 @@ int avifLimitedToFullUV(int depth, int v)
     return v;
 }
 
-int avifFullToLimitedY(int depth, int v)
+int avifFullToLimitedY(uint32_t depth, int v)
 {
     switch (depth) {
         case 8:
@@ -1673,7 +1673,7 @@ int avifFullToLimitedY(int depth, int v)
     return v;
 }
 
-int avifFullToLimitedUV(int depth, int v)
+int avifFullToLimitedUV(uint32_t depth, int v)
 {
     switch (depth) {
         case 8:

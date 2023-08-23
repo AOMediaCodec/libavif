@@ -97,7 +97,7 @@ int main(int argc, char * argv[])
     if (mode == 0) {
         // Limited to full conversion roundtripping test
 
-        int depth = 8;
+        uint32_t depth = 8;
         int maxChannel = (1 << depth) - 1;
         for (int i = 0; i <= maxChannel; ++i) {
             int li = avifFullToLimitedY(depth, i);
