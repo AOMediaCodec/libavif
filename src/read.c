@@ -2932,10 +2932,10 @@ static avifBool avifParseEditListBox(avifTrack * track, const uint8_t * raw, siz
     }
 
     track->isRepeating = AVIF_TRUE;
-    uint32_t entry_count;
-    AVIF_CHECK(avifROStreamReadU32(&s, &entry_count)); // unsigned int(32) entry_count;
-    if (entry_count != 1) {
-        avifDiagnosticsPrintf(diag, "Box[elst] contains an entry_count != 1 [%d]", entry_count);
+    uint32_t entryCount;
+    AVIF_CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
+    if (entryCount != 1) {
+        avifDiagnosticsPrintf(diag, "Box[elst] contains an entry_count != 1 [%d]", entryCount);
         return AVIF_FALSE;
     }
 
