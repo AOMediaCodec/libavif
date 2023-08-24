@@ -49,6 +49,8 @@ List of incompatible ABI changes in this release:
 * Add API for multi-threaded YUV to RGB color conversion.
 * Add experimental support for AV2 behind the compilation flag AVIF_CODEC_AVM.
   AVIF_CODEC_CHOICE_AVM is now part of avifCodecChoice.
+* Add experimental YCgCo-R support behind the compilation flag
+  AVIF_ENABLE_EXPERIMENTAL_YCGCO_R.
 * Allow lossless 4:0:0 on grayscale input.
 * Add avifenc --no-overwrite flag to avoid overwriting output file.
 * Add avifenc --clli flag to set clli.
@@ -56,6 +58,8 @@ List of incompatible ABI changes in this release:
 
 ### Changed
 * Enable the libaom AV1E_SET_SKIP_POSTPROC_FILTERING codec control by default.
+* Use the constant rate factor (CRF) instead of the constant quantization
+  parameter (CQP) rate control mode with the SVT-AV1 encoder.
 * Exif and XMP metadata is exported to PNG and JPEG files by default,
   except XMP payloads larger than 65502 bytes in JPEG.
 * The --grid flag in avifenc can be used for images that are not evenly divided
