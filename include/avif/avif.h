@@ -500,6 +500,8 @@ typedef struct avifContentLightLevelInformationBox
 // ---------------------------------------------------------------------------
 // avifImage
 
+// NOTE: The avifImage struct may be extended in a future release. Code outside the libavif library
+// must allocate avifImage by calling the avifImageCreate() or avifImageCreateEmpty() function.
 typedef struct avifImage
 {
     // Image information
@@ -899,6 +901,8 @@ typedef enum avifProgressiveState
 } avifProgressiveState;
 AVIF_API const char * avifProgressiveStateToString(avifProgressiveState progressiveState);
 
+// NOTE: The avifDecoder struct may be extended in a future release. Code outside the libavif
+// library must allocate avifDecoder by calling the avifDecoderCreate() function.
 typedef struct avifDecoder
 {
     // --------------------------------------------------------------------------------------------
@@ -1115,6 +1119,8 @@ typedef struct avifScalingMode
 } avifScalingMode;
 
 // Notes:
+// * The avifEncoder struct may be extended in a future release. Code outside the libavif library
+//   must allocate avifEncoder by calling the avifEncoderCreate() function.
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
 //   * NOTE: Please see the "Understanding maxThreads" comment block above
