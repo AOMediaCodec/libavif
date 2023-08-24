@@ -6,7 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2023-08-23
+## [1.0.0] - 2023-08-24
+
+With the 1.0.0 release, the ABI will be more stable from now on.
 
 List of incompatible ABI changes in this release:
 
@@ -93,6 +95,9 @@ List of incompatible ABI changes in this release:
 * Write primaries and transfer characteritics info in decoded PNG.
 * Add support for reading PNG gAMA, cHRM and sRGB chunks.
 * The 'mode' member of the avifImageMirror struct was renamed 'axis'.
+* Change the type of the 'depth' parameter from int to uint32_t in
+  avifFullToLimitedY(), avifFullToLimitedUV(), avifLimitedToFullY(), and
+  avifLimitedToFullUV().
 
 ## [0.11.1] - 2022-10-19
 
