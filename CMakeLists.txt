@@ -128,6 +128,7 @@ if(AVIF_LOCAL_ZLIBPNG)
 
     set(ZLIB_LIBRARY zlibstatic)
 endif()
+
 option(AVIF_LOCAL_JPEG "Build jpeg by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_JPEG)
     add_subdirectory(ext/libjpeg)
@@ -139,6 +140,7 @@ if(AVIF_LOCAL_JPEG)
         set(JPEG_LIBRARY jpeg PARENT_SCOPE)
     endif()
 endif()
+
 option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBYUV)
     set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build/${AVIF_LIBRARY_PREFIX}yuv${AVIF_LIBRARY_SUFFIX}")
@@ -188,6 +190,7 @@ if(libyuv_FOUND)
     set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
 endif(libyuv_FOUND)
+
 option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_LIBSHARPYUV)
     set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${AVIF_LIBRARY_SUFFIX}")
@@ -213,6 +216,28 @@ if(libsharpyuv_FOUND)
 else(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv not found")
 endif(libsharpyuv_FOUND)
+
+option(AVIF_LOCAL_LIBXML2 "Build libxml2 by providing your own copy inside the ext subdir. \
+libxml2 is used when AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is ON" OFF
+)
+if(AVIF_LOCAL_LIBXML2)
+    set(LIB_FILENAME
+        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libxml2/lib/${AVIF_LIBRARY_PREFIX}xml2${AVIF_LIBRARY_SUFFIX}"
+    )
+    if(NOT EXISTS "${LIB_FILENAME}")
+        message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+    endif()
+    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libxml2/include/libxml2")
+        set(LIBXML2_LIBRARY ${LIB_FILENAME})
+    else()
+        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libxml2/include/libxml2" PARENT_SCOPE)
+        set(LIBXML2_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
+    endif()
+    set(LIBXML2_FOUND TRUE)
+else()
+    find_package(LibXml2 QUIET) # not required
+endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
@@ -617,6 +642,17 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
         avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR}
         INTERFACE apps/shared
     )
+
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if(LIBXML2_FOUND)
+            set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
+            add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+            target_link_libraries(avif_apps ${LIBXML2_LIBRARY})
+            target_include_directories(avif_apps PRIVATE ${LIBXML2_INCLUDE_DIR})
+        else()
+            message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
+        endif()
+    endif()
 endif()
 
 if(AVIF_BUILD_APPS)
@@ -759,6 +795,9 @@ if(WIN32)
     endif()
     if(AVIF_LOCAL_JPEG)
         avif_set_folder_safe(jpeg "ext/libjpeg")
+    endif()
+    if(AVIF_LOCAL_LIBXML2)
+        avif_set_folder_safe(xml2 "ext/libxml2")
     endif()
 endif()
 
