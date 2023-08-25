@@ -79,21 +79,21 @@ pushd ${TMP_DIR}
 
   # Frame option handling test
   # Passing frame options before input should not trigger warning.
-  "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE_REFERENCE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE_REFERENCE}" 2> "${OUT_MSG}"
   grep "WARNING: Frame options" "${OUT_MSG}" && exit 1
   # Passing frame options after the only input should trigger warning, but still has effect.
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 2> "${OUT_MSG}"
   grep "WARNING: Frame options" "${OUT_MSG}"
-  "${ARE_IMAGES_EQUAL}" "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" 0
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
   # Frame options after the only input but before positional output should also trigger warning,
   # but still has effect.
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 85 "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 85 "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep "WARNING: Frame options" "${OUT_MSG}"
-  "${ARE_IMAGES_EQUAL}" "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" 0
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
   # Later options should still take precedence.
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 70 "${ENCODED_FILE}" -q 85 > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 70 "${ENCODED_FILE}" -q 85 2> "${OUT_MSG}"
   grep "WARNING: Frame options" "${OUT_MSG}"
-  "${ARE_IMAGES_EQUAL}" "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" 0
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
   # Passing frame options after all inputs should fail.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 && exit 1
 
