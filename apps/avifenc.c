@@ -201,7 +201,6 @@ static void syntaxLong(void)
     printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("    --clli MaxCLL,MaxPALL             : Add clli property (content light level information).\n");
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
-    printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     printf("  Frame options apply only to input files appearing after the option:\n");
     printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
@@ -235,6 +234,7 @@ static void syntaxLong(void)
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
+    printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
