@@ -132,6 +132,9 @@ AVIF_API unsigned int avifLibYUVVersion(void); // returns 0 if libavif wasn't co
 // ---------------------------------------------------------------------------
 // Memory management
 
+// NOTE: On memory allocation failure, the current implementation of avifAlloc() calls abort(),
+// but in a future release it may return NULL. To be future-proof, callers should check for a NULL
+// return value.
 AVIF_API void * avifAlloc(size_t size);
 AVIF_API void avifFree(void * p);
 
@@ -430,24 +433,19 @@ typedef struct avifImageRotation
 
 typedef struct avifImageMirror
 {
-    // 'imir' from ISO/IEC 23008-12:2017 6.5.12 (Draft Amendment 2):
+    // 'imir' from ISO/IEC 23008-12:2022 6.5.12:
     //
-    //     'mode' specifies how the mirroring is performed:
+    //     'axis' specifies how the mirroring is performed:
     //
     //     0 indicates that the top and bottom parts of the image are exchanged;
     //     1 specifies that the left and right parts are exchanged.
     //
     //     NOTE In Exif, orientation tag can be used to signal mirroring operations. Exif
-    //     orientation tag 4 corresponds to mode = 0 of ImageMirror, and Exif orientation tag 2
-    //     corresponds to mode = 1 accordingly.
+    //     orientation tag 4 corresponds to axis = 0 of ImageMirror, and Exif orientation tag 2
+    //     corresponds to axis = 1 accordingly.
     //
     // Legal values: [0, 1]
-    //
-    // NOTE: As of HEIF Draft Amendment 2, the name of this variable has changed from 'axis' to 'mode' as
-    //       the logic behind it has been *inverted*. Please use the wording above describing the legal
-    //       values for 'mode' and update any code that previously may have used `axis` to use
-    //       the *opposite* value (0 now means top-to-bottom, where it used to mean left-to-right).
-    uint8_t mode;
+    uint8_t axis;
 } avifImageMirror;
 
 // ---------------------------------------------------------------------------
@@ -502,6 +500,8 @@ typedef struct avifContentLightLevelInformationBox
 // ---------------------------------------------------------------------------
 // avifImage
 
+// NOTE: The avifImage struct may be extended in a future release. Code outside the libavif library
+// must allocate avifImage by calling the avifImageCreate() or avifImageCreateEmpty() function.
 typedef struct avifImage
 {
     // Image information
@@ -557,6 +557,8 @@ typedef struct avifImage
     // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
     avifRWData exif;
     avifRWData xmp;
+
+    // Version 1.0.0 ends here. Add any new members after this line.
 } avifImage;
 
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
@@ -716,10 +718,10 @@ AVIF_API avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb);
 // ---------------------------------------------------------------------------
 // YUV Utils
 
-AVIF_API int avifFullToLimitedY(int depth, int v);
-AVIF_API int avifFullToLimitedUV(int depth, int v);
-AVIF_API int avifLimitedToFullY(int depth, int v);
-AVIF_API int avifLimitedToFullUV(int depth, int v);
+AVIF_API int avifFullToLimitedY(uint32_t depth, int v);
+AVIF_API int avifFullToLimitedUV(uint32_t depth, int v);
+AVIF_API int avifLimitedToFullY(uint32_t depth, int v);
+AVIF_API int avifLimitedToFullUV(uint32_t depth, int v);
 
 // ---------------------------------------------------------------------------
 // Codec selection
@@ -899,6 +901,8 @@ typedef enum avifProgressiveState
 } avifProgressiveState;
 AVIF_API const char * avifProgressiveStateToString(avifProgressiveState progressiveState);
 
+// NOTE: The avifDecoder struct may be extended in a future release. Code outside the libavif
+// library must allocate avifDecoder by calling the avifDecoderCreate() function.
 typedef struct avifDecoder
 {
     // --------------------------------------------------------------------------------------------
@@ -1008,6 +1012,8 @@ typedef struct avifDecoder
 
     // Internals used by the decoder
     struct avifDecoderData * data;
+
+    // Version 1.0.0 ends here. Add any new members after this line.
 } avifDecoder;
 
 AVIF_API avifDecoder * avifDecoderCreate(void);
@@ -1113,6 +1119,8 @@ typedef struct avifScalingMode
 } avifScalingMode;
 
 // Notes:
+// * The avifEncoder struct may be extended in a future release. Code outside the libavif library
+//   must allocate avifEncoder by calling the avifEncoderCreate() function.
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
 //   * NOTE: Please see the "Understanding maxThreads" comment block above
@@ -1174,6 +1182,8 @@ typedef struct avifEncoder
     // Internals used by the encoder
     struct avifEncoderData * data;
     struct avifCodecSpecificOptions * csOptions;
+
+    // Version 1.0.0 ends here. Add any new members after this line.
 } avifEncoder;
 
 // avifEncoderCreate() returns NULL if a memory allocation failed.
@@ -1215,6 +1225,8 @@ typedef uint32_t avifAddImageFlags;
 // * avifEncoderFinish()
 // * avifEncoderDestroy()
 //
+// The image passed to avifEncoderAddImage() or avifEncoderAddImageGrid() is encoded during the
+// call (which may be slow) and can be freed after the function returns.
 
 // durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags,
 // or if we are encoding a layered image.

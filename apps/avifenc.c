@@ -198,7 +198,7 @@ static void syntaxLong(void)
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
     printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
-    printf("    --imir MODE                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
+    printf("    --imir AXIS                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("    --clli MaxCLL,MaxPALL             : Add clli property (content light level information).\n");
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
     printf("\n");
@@ -1289,7 +1289,7 @@ int main(int argc, char * argv[])
 
     avifBool cropConversionRequired = AVIF_FALSE;
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
-    uint8_t imirMode = 0xff;  // sentinel value indicating "unused"
+    uint8_t imirAxis = 0xff;  // sentinel value indicating "unused"
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool lossless = AVIF_FALSE;
     avifImage * image = NULL;
@@ -1622,9 +1622,9 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--imir")) {
             NEXTARG();
-            imirMode = (uint8_t)atoi(arg);
-            if (imirMode > 1) {
-                fprintf(stderr, "ERROR: Invalid imir mode: %s\n", arg);
+            imirAxis = (uint8_t)atoi(arg);
+            if (imirAxis > 1) {
+                fprintf(stderr, "ERROR: Invalid imir axis: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
@@ -1918,17 +1918,16 @@ int main(int argc, char * argv[])
     image->alphaPremultiplied = premultiplyAlpha;
 
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (input.requestedFormat != AVIF_PIXEL_FORMAT_NONE) &&
-        (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) && (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV400)) {
-        // User explicitly asked for non YUV444/YUV400 yuvFormat, while
-        // matrixCoefficients was likely set to
-        // AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect of --lossless, and
-        // Identity is only valid with YUV444/YUV400. Set matrixCoefficients
-        // back to the default.
+        (input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444)) {
+        // User explicitly asked for non YUV444 yuvFormat, while matrixCoefficients was likely
+        // set to AVIF_MATRIX_COEFFICIENTS_IDENTITY as a side effect of --lossless,
+        // and Identity is only valid with YUV444. Set matrixCoefficients back to the default.
         image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
 
         if (settings.cicpExplicitlySet) {
             // Only warn if someone explicitly asked for identity.
-            printf("WARNING: matrixCoefficients may not be set to identity (0) when subsampling. Resetting MC to defaults (%d).\n",
+            printf("WARNING: matrixCoefficients may not be set to identity (0) when %s. Resetting MC to defaults (%d).\n",
+                   (input.requestedFormat == AVIF_PIXEL_FORMAT_YUV400) ? "encoding 4:0:0" : "subsampling",
                    image->matrixCoefficients);
         }
     }
@@ -1956,9 +1955,18 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    // Check again for y4m input (y4m input ignores input.requestedFormat and retains the format in file).
-    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
-        (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
+    // Check again for -y auto or for y4m input (y4m input ignores input.requestedFormat and
+    // retains the format in file).
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+
+        if (settings.cicpExplicitlySet) {
+            // Only warn if someone explicitly asked for identity.
+            printf("WARNING: matrixCoefficients may not be set to identity (0) when encoding 4:0:0. Resetting MC to defaults (%d).\n",
+                   image->matrixCoefficients);
+        }
+    }
+    if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
         fprintf(stderr, "matrixCoefficients may not be set to identity (0) when subsampling.\n");
         returnCode = 1;
         goto cleanup;
@@ -2045,9 +2053,9 @@ int main(int argc, char * argv[])
         image->transformFlags |= AVIF_TRANSFORM_IROT;
         image->irot.angle = irotAngle;
     }
-    if (imirMode != 0xff) {
+    if (imirAxis != 0xff) {
         image->transformFlags |= AVIF_TRANSFORM_IMIR;
-        image->imir.mode = imirMode;
+        image->imir.axis = imirAxis;
     }
     if (settings.clliCount == 2) {
         image->clli.maxCLL = (uint16_t)settings.clliValues[0];

@@ -117,7 +117,7 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
             printf("    * irot (Rotation)      : %u\n", avif->irot.angle);
         }
         if (avif->transformFlags & AVIF_TRANSFORM_IMIR) {
-            printf("    * imir (Mirror)        : Mode %u (%s)\n", avif->imir.mode, (avif->imir.mode == 0) ? "top-to-bottom" : "left-to-right");
+            printf("    * imir (Mirror)        : %u (%s)\n", avif->imir.axis, (avif->imir.axis == 0) ? "top-to-bottom" : "left-to-right");
         }
     }
     printf(" * Progressive    : %s\n", avifProgressiveStateToString(progressiveState));
