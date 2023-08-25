@@ -1225,6 +1225,8 @@ typedef uint32_t avifAddImageFlags;
 // * avifEncoderFinish()
 // * avifEncoderDestroy()
 //
+// The image passed to avifEncoderAddImage() or avifEncoderAddImageGrid() is encoded during the
+// call (which may be slow) and can be freed after the function returns.
 
 // durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags,
 // or if we are encoding a layered image.
