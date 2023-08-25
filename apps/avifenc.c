@@ -694,31 +694,31 @@ cleanup:
 
 static void mergeInputFileSettings(avifInputFileSettings * dst, avifInputFileSettings * src)
 {
-    if (src->quality) {
+    if (src->qualitySet) {
         SET_FILE_SETTING(*dst, quality, src->quality);
     }
-    if (src->qualityAlpha) {
+    if (src->qualityAlphaSet) {
         SET_FILE_SETTING(*dst, qualityAlpha, src->qualityAlpha);
     }
-    if (src->minQuantizer) {
+    if (src->minQuantizerSet) {
         SET_FILE_SETTING(*dst, minQuantizer, src->minQuantizer);
     }
-    if (src->maxQuantizer) {
+    if (src->maxQuantizerSet) {
         SET_FILE_SETTING(*dst, maxQuantizer, src->maxQuantizer);
     }
-    if (src->minQuantizerAlpha) {
+    if (src->minQuantizerAlphaSet) {
         SET_FILE_SETTING(*dst, minQuantizerAlpha, src->minQuantizerAlpha);
     }
-    if (src->maxQuantizerAlpha) {
+    if (src->maxQuantizerAlphaSet) {
         SET_FILE_SETTING(*dst, maxQuantizerAlpha, src->maxQuantizerAlpha);
     }
-    if (src->tileColsLog2) {
+    if (src->tileColsLog2Set) {
         SET_FILE_SETTING(*dst, tileColsLog2, src->tileColsLog2);
     }
-    if (src->tileRowsLog2) {
+    if (src->tileRowsLog2Set) {
         SET_FILE_SETTING(*dst, tileRowsLog2, src->tileRowsLog2);
     }
-    if (src->autoTiling) {
+    if (src->autoTilingSet) {
         SET_FILE_SETTING(*dst, autoTiling, src->autoTiling);
     }
 }
@@ -1781,6 +1781,8 @@ int main(int argc, char * argv[])
     }
 
     // currentSettings now serves as cumulative result of all settings
+    // Note: The code below will always ensure currentSettings has default value for all settings.
+    //  So testing !currentSettings.*Set is basically say "if it's first input, and it doesn't specify this setting"
     memset(&currentSettings, 0, sizeof(avifInputFileSettings));
 
     for (int i = 0; i < input.filesCount; ++i) {
@@ -1799,30 +1801,30 @@ int main(int argc, char * argv[])
             returnCode = 1;
             goto cleanup;
         }
-        if (currentSettings.autoTilingSet && currentSettings.autoTiling) {
-            if (fileSettings->tileRowsLog2 || fileSettings->tileColsLog2) {
-                // testing fileSettings because currentSettings will hold default 0, 0
+
+        if (fileSettings->autoTilingSet) {
+            // If this file has autotiling set, it can't also set manual tiling
+            if (fileSettings->tileRowsLog2Set || fileSettings->tileColsLog2Set) {
                 fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified\n");
                 returnCode = 1;
                 goto cleanup;
             }
+        } else if ((fileSettings->tileColsLog2Set || fileSettings->tileRowsLog2Set) ||
+                   !currentSettings.autoTilingSet) {
+            // If this file has manual tile config set, disable autotiling;
+            // If it's first input, set default value (also false)
+            SET_FILE_SETTING(*fileSettings, autoTiling, AVIF_FALSE);
+            SET_FILE_SETTING(currentSettings, autoTiling, AVIF_FALSE);
+        }
+
+        // Set default value for first input: 0 for all cases
+        if (!currentSettings.tileRowsLog2Set) {
             SET_FILE_SETTING(*fileSettings, tileRowsLog2, 0);
             SET_FILE_SETTING(currentSettings, tileRowsLog2, 0);
+        }
+        if (!currentSettings.tileColsLog2Set) {
             SET_FILE_SETTING(*fileSettings, tileColsLog2, 0);
             SET_FILE_SETTING(currentSettings, tileColsLog2, 0);
-        } else {
-            if (!currentSettings.autoTiling) {
-                SET_FILE_SETTING(*fileSettings, autoTiling, AVIF_FALSE);
-                SET_FILE_SETTING(currentSettings, autoTiling, AVIF_FALSE);
-            }
-            if (!currentSettings.tileRowsLog2) {
-                SET_FILE_SETTING(*fileSettings, tileRowsLog2, 0);
-                SET_FILE_SETTING(currentSettings, tileRowsLog2, 0);
-            }
-            if (!currentSettings.tileColsLog2) {
-                SET_FILE_SETTING(*fileSettings, tileColsLog2, 0);
-                SET_FILE_SETTING(currentSettings, tileColsLog2, 0);
-            }
         }
 
         // Check per-input lossy/lossless parameters and set to default if needed.
@@ -1849,9 +1851,9 @@ int main(int argc, char * argv[])
             SET_FILE_SETTING(*fileSettings, minQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
             SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
         } else {
-            if (!currentSettings.minQuantizer) {
+            if (!currentSettings.minQuantizerSet) {
                 assert(!currentSettings.maxQuantizerSet);
-                if (!currentSettings.quality) {
+                if (!currentSettings.qualitySet) {
                     SET_FILE_SETTING(*fileSettings, quality, DEFAULT_QUALITY);
                     SET_FILE_SETTING(currentSettings, quality, DEFAULT_QUALITY);
                 } else {
@@ -1863,7 +1865,7 @@ int main(int argc, char * argv[])
                 SET_FILE_SETTING(currentSettings, maxQuantizer, AVIF_QUANTIZER_WORST_QUALITY);
             } else {
                 assert(currentSettings.maxQuantizerSet);
-                if (!currentSettings.quality) {
+                if (!currentSettings.qualitySet) {
                     const int quantizer = (currentSettings.minQuantizer + currentSettings.maxQuantizer) / 2;
                     const int quality = ((63 - quantizer) * 100 + 31) / 63;
                     SET_FILE_SETTING(*fileSettings, quality, quality);
@@ -1877,9 +1879,9 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            if (!currentSettings.minQuantizerAlpha) {
+            if (!currentSettings.minQuantizerAlphaSet) {
                 assert(!currentSettings.maxQuantizerAlphaSet);
-                if (!currentSettings.qualityAlpha) {
+                if (!currentSettings.qualityAlphaSet) {
                     SET_FILE_SETTING(*fileSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
                     SET_FILE_SETTING(currentSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
                 } else {
@@ -1891,7 +1893,7 @@ int main(int argc, char * argv[])
                 SET_FILE_SETTING(currentSettings, maxQuantizerAlpha, AVIF_QUANTIZER_WORST_QUALITY);
             } else {
                 assert(currentSettings.maxQuantizerAlphaSet);
-                if (!currentSettings.qualityAlpha) {
+                if (!currentSettings.qualityAlphaSet) {
                     const int quantizerAlpha = (currentSettings.minQuantizerAlpha + currentSettings.maxQuantizerAlpha) / 2;
                     const int qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
                     SET_FILE_SETTING(*fileSettings, qualityAlpha, qualityAlpha);
