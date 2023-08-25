@@ -9,9 +9,7 @@
 
 void avifDiagnosticsClearError(avifDiagnostics * diag)
 {
-    if (diag) {
-        *diag->error = '\0';
-    }
+    *diag->error = '\0';
 }
 
 #ifdef __clang__
@@ -20,6 +18,7 @@ __attribute__((__format__(__printf__, 2, 3)))
 void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...)
 {
     if (!diag) {
+        // It is possible this is NULL (e.g. calls to avifPeekCompatibleFileType())
         return;
     }
     if (*diag->error) {
