@@ -1878,7 +1878,7 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             if (!currentSettings.minQuantizerAlpha) {
-                assert(currentSettings.maxQuantizerAlphaSet);
+                assert(!currentSettings.maxQuantizerAlphaSet);
                 if (!currentSettings.qualityAlpha) {
                     SET_FILE_SETTING(*fileSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
                     SET_FILE_SETTING(currentSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
