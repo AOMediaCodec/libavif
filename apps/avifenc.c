@@ -1776,7 +1776,7 @@ int main(int argc, char * argv[])
             }
             avifCodecSpecificOptionsFree(&currentSettings.codecSpecificOptions);
         } else {
-            fprintf(stderr, "WARNING: trailing frame options has no effect. Place frame options before the input you intend to apply to.\n");
+            fprintf(stderr, "WARNING: Trailing frame options has no effect. Place frame options before the input you intend to apply to.\n");
         }
     }
 
