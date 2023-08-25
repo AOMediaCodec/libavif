@@ -1082,7 +1082,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         // If the color quality or alpha quality is less than 10, the main()
         // function overrides --progressive and sets settings->progressive to
         // false.
-        assert((settings->quality >= 10) && (settings->qualityAlpha >= 10));
+        assert((encoder->quality >= 10) && (encoder->qualityAlpha >= 10));
         encoder->extraLayerCount = 1;
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
@@ -1850,7 +1850,7 @@ int main(int argc, char * argv[])
             SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
         } else {
             if (!currentSettings.minQuantizer) {
-                assert(currentSettings.maxQuantizer == NULL);
+                assert(!currentSettings.maxQuantizerSet);
                 if (!currentSettings.quality) {
                     SET_FILE_SETTING(*fileSettings, quality, DEFAULT_QUALITY);
                     SET_FILE_SETTING(currentSettings, quality, DEFAULT_QUALITY);
@@ -1862,7 +1862,7 @@ int main(int argc, char * argv[])
                 SET_FILE_SETTING(currentSettings, minQuantizer, AVIF_QUANTIZER_BEST_QUALITY);
                 SET_FILE_SETTING(currentSettings, maxQuantizer, AVIF_QUANTIZER_WORST_QUALITY);
             } else {
-                assert(currentSettings.maxQuantizer != NULL);
+                assert(currentSettings.maxQuantizerSet);
                 if (!currentSettings.quality) {
                     const int quantizer = (currentSettings.minQuantizer + currentSettings.maxQuantizer) / 2;
                     const int quality = ((63 - quantizer) * 100 + 31) / 63;
@@ -1878,7 +1878,7 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             if (!currentSettings.minQuantizerAlpha) {
-                assert(currentSettings.maxQuantizerAlpha == NULL);
+                assert(currentSettings.maxQuantizerAlphaSet);
                 if (!currentSettings.qualityAlpha) {
                     SET_FILE_SETTING(*fileSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
                     SET_FILE_SETTING(currentSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
@@ -1890,7 +1890,7 @@ int main(int argc, char * argv[])
                 SET_FILE_SETTING(currentSettings, minQuantizerAlpha, AVIF_QUANTIZER_BEST_QUALITY);
                 SET_FILE_SETTING(currentSettings, maxQuantizerAlpha, AVIF_QUANTIZER_WORST_QUALITY);
             } else {
-                assert(currentSettings.maxQuantizerAlpha != NULL);
+                assert(currentSettings.maxQuantizerAlphaSet);
                 if (!currentSettings.qualityAlpha) {
                     const int quantizerAlpha = (currentSettings.minQuantizerAlpha + currentSettings.maxQuantizerAlpha) / 2;
                     const int qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
