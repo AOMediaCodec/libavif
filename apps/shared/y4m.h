@@ -18,8 +18,7 @@ extern "C" {
 // The structure will always be freed upon failure or reaching EOF.
 struct y4mFrameIterator;
 
-// Returns the index of the frame just read in, or -1 if failed
-int y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter);
+avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter);
 avifBool y4mWrite(const char * outputFilename, const avifImage * avif);
 
 #ifdef __cplusplus

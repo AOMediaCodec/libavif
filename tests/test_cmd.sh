@@ -49,6 +49,7 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_encoded.avif"
+ENCODED_FILE_REFERENCE="avif_test_cmd_encoded_ref.avif"
 ENCODED_FILE_WITH_DASH="-avif_test_cmd_encoded.avif"
 DECODED_FILE="avif_test_cmd_decoded.png"
 OUT_MSG="avif_test_cmd_out_msg.txt"
@@ -75,6 +76,26 @@ pushd ${TMP_DIR}
   # Passing a filename starting with a dash without using -- should fail.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
   "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
+
+  # Frame option handling test
+  # Passing frame options before input should not trigger warning.
+  "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE_REFERENCE}" > "${OUT_MSG}"
+  grep "WARNING: Frame options" "${OUT_MSG}" && exit 1
+  # Passing frame options after the only input should trigger warning, but still has effect.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 > "${OUT_MSG}"
+  grep "WARNING: Frame options" "${OUT_MSG}"
+  "${ARE_IMAGES_EQUAL}" "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" 0
+  # Frame options after the only input but before positional output should also trigger warning,
+  # but still has effect.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 85 "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep "WARNING: Frame options" "${OUT_MSG}"
+  "${ARE_IMAGES_EQUAL}" "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" 0
+  # Later options should still take precedence.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 70 "${ENCODED_FILE}" -q 85 > "${OUT_MSG}"
+  grep "WARNING: Frame options" "${OUT_MSG}"
+  "${ARE_IMAGES_EQUAL}" "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" 0
+  # Passing frame options after all inputs should fail.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 && exit 1
 
   # --min and --max must be both specified.
   "${AVIFENC}" -s 10 --min 24 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1

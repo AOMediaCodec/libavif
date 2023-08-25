@@ -248,19 +248,14 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifBool ignoreXMP,
                                 avifBool allowChangingCicp,
                                 avifImage * image,
-                                int * frameIndex,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter)
 {
     const avifAppFileFormat format = avifGuessFileFormat(filename);
     if (format == AVIF_APP_FILE_FORMAT_Y4M) {
-        int index = y4mRead(filename, image, sourceTiming, frameIter);
-        if (index == -1) {
+        if (!y4mRead(filename, image, sourceTiming, frameIter)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
-        }
-        if (frameIndex) {
-            *frameIndex = index;
         }
         if (outDepth) {
             *outDepth = image->depth;
@@ -269,18 +264,12 @@ avifAppFileFormat avifReadImage(const char * filename,
         if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
-        if (frameIndex) {
-            *frameIndex = 0;
-        }
         if (outDepth) {
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
         if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, allowChangingCicp, outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
-        }
-        if (frameIndex) {
-            *frameIndex = 0;
         }
     } else {
         fprintf(stderr, "Unrecognized file format for input file: %s\n", filename);

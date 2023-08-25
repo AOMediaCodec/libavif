@@ -69,7 +69,6 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifBool ignoreXMP,
                                 avifBool allowChangingCicp,
                                 avifImage * image,
-                                int * frameIndex,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter);

@@ -39,7 +39,6 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 # Input file paths.
 INPUT_Y4M_0="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
 INPUT_Y4M_1="${TESTDATA_DIR}/kodim23_yuv420_8bpc.y4m"
-INPUT_Y4M_BOTH="${TESTDATA_DIR}/kodim03_23_concat_yuv420_8bpc.y4m"
 INPUT_BAD_DIMENSIONS="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_animation_encoded.avif"
@@ -71,10 +70,10 @@ pushd ${TMP_DIR}
   grep "dimensions mismatch" "${ERROR_MSG}"
 
   # Output should be larger if second frame is set to higher quality.
-  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_BOTH}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_0}" "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   Q60_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
-  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_BOTH}" -q 100 --from-index 1 -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_0}" -q 100 "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   Q60_Q100_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
   [[ ${Q60_FILE_SIZE} -lt ${Q60_Q100_FILE_SIZE} ]] || exit 1
