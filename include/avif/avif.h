@@ -671,6 +671,8 @@ typedef enum avifChromaDownsampling
     AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV = 4     // Uses sharp yuv filter (libsharpyuv), available for 4:2:0 only, ignored for 4:2:2
 } avifChromaDownsampling;
 
+// NOTE: avifRGBImage must be initialized with avifRGBImageSetDefaults() (preferred) or memset()
+// before use.
 typedef struct avifRGBImage
 {
     uint32_t width;                        // must match associated avifImage
