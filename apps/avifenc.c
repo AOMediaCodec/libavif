@@ -78,6 +78,7 @@ typedef struct
     TYPE NAME;                          \
     avifBool NAME##Set
 
+// Set NAME of SETTING to VALUE, and also mark NAME as set
 #define SET_FILE_SETTING(SETTING, NAME, VALUE) \
     (SETTING).NAME = (VALUE);                  \
     (SETTING).NAME##Set = AVIF_TRUE;
@@ -672,28 +673,13 @@ static void avifCodecSpecificOptionsFree(avifCodecSpecificOptions * options)
     }
     free(options->keys);
     free(options->values);
+    options->keys = NULL;
+    options->values = NULL;
 }
 
-static avifBool avifCodecSpecificOptionsMerge(avifCodecSpecificOptions * dst, avifCodecSpecificOptions * src)
+static avifBool mergeInputFileSettings(avifInputFileSettings * dst, avifInputFileSettings * src)
 {
     avifBool success = AVIF_TRUE;
-    while (src->count) {
-        --src->count;
-        success = avifCodecSpecificOptionsAddKeyValue(dst, src->keys[src->count], src->values[src->count]);
-        if (!success) {
-            ++src->count; // ownership not transferred
-            goto cleanup;
-        }
-    }
-    // Upon successful merge, src is now empty.
-    // Free memory hold by src so the outer avifInputFileSettings can be safely thrown away.
-    avifCodecSpecificOptionsFree(src);
-cleanup:
-    return success;
-}
-
-static void mergeInputFileSettings(avifInputFileSettings * dst, avifInputFileSettings * src)
-{
     if (src->qualitySet) {
         SET_FILE_SETTING(*dst, quality, src->quality);
     }
@@ -721,6 +707,22 @@ static void mergeInputFileSettings(avifInputFileSettings * dst, avifInputFileSet
     if (src->autoTilingSet) {
         SET_FILE_SETTING(*dst, autoTiling, src->autoTiling);
     }
+    avifCodecSpecificOptions * srcCsOptions = &src->codecSpecificOptions;
+    while (srcCsOptions->count) {
+        --srcCsOptions->count;
+        success = avifCodecSpecificOptionsAddKeyValue(&dst->codecSpecificOptions,
+                                                      srcCsOptions->keys[srcCsOptions->count],
+                                                      srcCsOptions->values[srcCsOptions->count]);
+        if (!success) {
+            ++srcCsOptions->count; // ownership not transferred
+            goto cleanup;
+        }
+    }
+    // Upon successful merge, srcCsOptions is now empty.
+    // Free memory hold by src so src can be safely thrown away.
+    avifCodecSpecificOptionsFree(srcCsOptions);
+cleanup:
+    return success;
 }
 
 // Returns the best cell size for a given horizontal or vertical dimension.
@@ -1284,8 +1286,8 @@ int main(int argc, char * argv[])
     settings.ignoreColorProfile = AVIF_FALSE;
     settings.cicpExplicitlySet = AVIF_FALSE;
 
-    avifInputFileSettings currentSettings;
-    memset(&currentSettings, 0, sizeof(currentSettings));
+    avifInputFileSettings pendingSettings;
+    memset(&pendingSettings, 0, sizeof(pendingSettings));
 
     avifBool cropConversionRequired = AVIF_FALSE;
     uint8_t irotAngle = 0xff; // sentinel value indicating "unused"
@@ -1323,8 +1325,8 @@ int main(int argc, char * argv[])
                 arg = argv[argIndex];
                 input.files[input.filesCount].filename = arg;
                 input.files[input.filesCount].duration = settings.outputTiming.duration;
-                input.files[input.filesCount].settings = currentSettings;
-                memset(&currentSettings, 0, sizeof(currentSettings));
+                input.files[input.filesCount].settings = pendingSettings;
+                memset(&pendingSettings, 0, sizeof(pendingSettings));
                 ++input.filesCount;
                 ++argIndex;
             }
@@ -1387,7 +1389,7 @@ int main(int argc, char * argv[])
             if (quality > AVIF_QUALITY_BEST) {
                 quality = AVIF_QUALITY_BEST;
             }
-            SET_FILE_SETTING(currentSettings, quality, quality);
+            SET_FILE_SETTING(pendingSettings, quality, quality);
         } else if (!strcmp(arg, "--qalpha")) {
             NEXTARG();
             int qualityAlpha = atoi(arg);
@@ -1397,7 +1399,7 @@ int main(int argc, char * argv[])
             if (qualityAlpha > AVIF_QUALITY_BEST) {
                 qualityAlpha = AVIF_QUALITY_BEST;
             }
-            SET_FILE_SETTING(currentSettings, qualityAlpha, qualityAlpha);
+            SET_FILE_SETTING(pendingSettings, qualityAlpha, qualityAlpha);
         } else if (!strcmp(arg, "--min")) {
             NEXTARG();
             int minQuantizer = atoi(arg);
@@ -1407,7 +1409,7 @@ int main(int argc, char * argv[])
             if (minQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
                 minQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            SET_FILE_SETTING(currentSettings, minQuantizer, minQuantizer);
+            SET_FILE_SETTING(pendingSettings, minQuantizer, minQuantizer);
         } else if (!strcmp(arg, "--max")) {
             NEXTARG();
             int maxQuantizer = atoi(arg);
@@ -1417,7 +1419,7 @@ int main(int argc, char * argv[])
             if (maxQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
                 maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            SET_FILE_SETTING(currentSettings, maxQuantizer, maxQuantizer);
+            SET_FILE_SETTING(pendingSettings, maxQuantizer, maxQuantizer);
         } else if (!strcmp(arg, "--minalpha")) {
             NEXTARG();
             int minQuantizerAlpha = atoi(arg);
@@ -1427,7 +1429,7 @@ int main(int argc, char * argv[])
             if (minQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
                 minQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            SET_FILE_SETTING(currentSettings, minQuantizerAlpha, minQuantizerAlpha);
+            SET_FILE_SETTING(pendingSettings, minQuantizerAlpha, minQuantizerAlpha);
         } else if (!strcmp(arg, "--maxalpha")) {
             NEXTARG();
             int maxQuantizerAlpha = atoi(arg);
@@ -1437,7 +1439,7 @@ int main(int argc, char * argv[])
             if (maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
                 maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            SET_FILE_SETTING(currentSettings, maxQuantizerAlpha, maxQuantizerAlpha);
+            SET_FILE_SETTING(pendingSettings, maxQuantizerAlpha, maxQuantizerAlpha);
         } else if (!strcmp(arg, "--target-size")) {
             NEXTARG();
             settings.targetSize = atoi(arg);
@@ -1453,7 +1455,7 @@ int main(int argc, char * argv[])
             if (tileRowsLog2 > 6) {
                 tileRowsLog2 = 6;
             }
-            SET_FILE_SETTING(currentSettings, tileRowsLog2, tileRowsLog2);
+            SET_FILE_SETTING(pendingSettings, tileRowsLog2, tileRowsLog2);
         } else if (!strcmp(arg, "--tilecolslog2")) {
             NEXTARG();
             int tileColsLog2 = atoi(arg);
@@ -1463,9 +1465,9 @@ int main(int argc, char * argv[])
             if (tileColsLog2 > 6) {
                 tileColsLog2 = 6;
             }
-            SET_FILE_SETTING(currentSettings, tileColsLog2, tileColsLog2);
+            SET_FILE_SETTING(pendingSettings, tileColsLog2, tileColsLog2);
         } else if (!strcmp(arg, "--autotiling")) {
-            SET_FILE_SETTING(currentSettings, autoTiling, AVIF_TRUE);
+            SET_FILE_SETTING(pendingSettings, autoTiling, AVIF_TRUE);
         } else if (!strcmp(arg, "--progressive")) {
             settings.progressive = AVIF_TRUE;
         } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
@@ -1576,7 +1578,7 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "-a") || !strcmp(arg, "--advanced")) {
             NEXTARG();
-            if (!avifCodecSpecificOptionsAdd(&currentSettings.codecSpecificOptions, arg)) {
+            if (!avifCodecSpecificOptionsAdd(&pendingSettings.codecSpecificOptions, arg)) {
                 fprintf(stderr, "ERROR: Out of memory when setting codec specific option: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
@@ -1663,8 +1665,8 @@ int main(int argc, char * argv[])
             // Positional argument
             input.files[input.filesCount].filename = arg;
             input.files[input.filesCount].duration = settings.outputTiming.duration;
-            input.files[input.filesCount].settings = currentSettings;
-            memset(&currentSettings, 0, sizeof(currentSettings));
+            input.files[input.filesCount].settings = pendingSettings;
+            memset(&pendingSettings, 0, sizeof(pendingSettings));
             ++input.filesCount;
         }
 
@@ -1728,16 +1730,14 @@ int main(int argc, char * argv[])
             --input.filesCount;
             outputFilename = input.files[input.filesCount].filename;
             // later options take precedence, so merge reversely and then copy
-            mergeInputFileSettings(&input.files[input.filesCount].settings, &currentSettings);
-            if (!avifCodecSpecificOptionsMerge(&input.files[input.filesCount].settings.codecSpecificOptions,
-                                               &currentSettings.codecSpecificOptions)) {
+            if (!mergeInputFileSettings(&input.files[input.filesCount].settings, &pendingSettings)) {
                 fprintf(stderr, "ERROR: Out of memory when handling codec specific option.\n");
                 // input.files[input.filesCount] may still hold ownership of some codecSpecificOptions keys and values
                 ++input.filesCount;
                 returnCode = 1;
                 goto cleanup;
             }
-            memcpy(&currentSettings, &input.files[input.filesCount].settings, sizeof(avifInputFileSettings));
+            memcpy(&pendingSettings, &input.files[input.filesCount].settings, sizeof(avifInputFileSettings));
         }
     }
 
@@ -1763,44 +1763,24 @@ int main(int argc, char * argv[])
     // For multiple input, print a warning and ask user to clarify.
     avifInputFileSettings emptySettingsReference;
     memset(&emptySettingsReference, 0, sizeof(emptySettingsReference));
-    if (memcmp(&currentSettings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
+    if (memcmp(&pendingSettings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
         if (input.filesCount == 1) {
             fprintf(stderr,
                     "WARNING: Frame options should be placed before input. Assume they are applying to the only input %s.\n",
                     input.files[0].filename);
-            mergeInputFileSettings(&input.files[0].settings, &currentSettings);
-            if (!avifCodecSpecificOptionsMerge(&input.files[0].settings.codecSpecificOptions, &currentSettings.codecSpecificOptions)) {
+            if (!mergeInputFileSettings(&input.files[0].settings, &pendingSettings)) {
                 fprintf(stderr, "ERROR: Out of memory when handling codec specific option.\n");
                 returnCode = 1;
                 goto cleanup;
             }
-            avifCodecSpecificOptionsFree(&currentSettings.codecSpecificOptions);
         } else {
             fprintf(stderr, "WARNING: Trailing frame options has no effect. Place frame options before the input you intend to apply to.\n");
         }
     }
 
-    // currentSettings now serves as cumulative result of all settings
-    // Note: The code below will always ensure currentSettings has default value for all settings.
-    //  So testing !currentSettings.*Set is basically say "if it's first input, and it doesn't specify this setting"
-    memset(&currentSettings, 0, sizeof(avifInputFileSettings));
-
     for (int i = 0; i < input.filesCount; ++i) {
         avifInputFile * file = &input.files[i];
         avifInputFileSettings * fileSettings = &file->settings;
-
-        mergeInputFileSettings(&currentSettings, fileSettings);
-
-        if ((fileSettings->minQuantizerSet) != (fileSettings->maxQuantizerSet)) {
-            fprintf(stderr, "--min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
-            returnCode = 1;
-            goto cleanup;
-        }
-        if ((fileSettings->minQuantizerAlphaSet) != (fileSettings->maxQuantizerAlphaSet)) {
-            fprintf(stderr, "--minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n", file->filename);
-            returnCode = 1;
-            goto cleanup;
-        }
 
         if (fileSettings->autoTilingSet) {
             // If this file has autotiling set, it can't also set manual tiling
@@ -1809,25 +1789,9 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-        } else if ((fileSettings->tileColsLog2Set || fileSettings->tileRowsLog2Set) ||
-                   !currentSettings.autoTilingSet) {
-            // If this file has manual tile config set, disable autotiling;
-            // If it's first input, set default value (also false)
-            SET_FILE_SETTING(*fileSettings, autoTiling, AVIF_FALSE);
-            SET_FILE_SETTING(currentSettings, autoTiling, AVIF_FALSE);
         }
 
-        // Set default value for first input: 0 for all cases
-        if (!currentSettings.tileRowsLog2Set) {
-            SET_FILE_SETTING(*fileSettings, tileRowsLog2, 0);
-            SET_FILE_SETTING(currentSettings, tileRowsLog2, 0);
-        }
-        if (!currentSettings.tileColsLog2Set) {
-            SET_FILE_SETTING(*fileSettings, tileColsLog2, 0);
-            SET_FILE_SETTING(currentSettings, tileColsLog2, 0);
-        }
-
-        // Check per-input lossy/lossless parameters and set to default if needed.
+        // Check per-input lossy/lossless parameters.
         if (lossless) {
             // Quality.
             if ((fileSettings->qualitySet && fileSettings->quality != AVIF_QUALITY_LOSSLESS) ||
@@ -1840,66 +1804,93 @@ int main(int argc, char * argv[])
                 (fileSettings->maxQuantizerSet && fileSettings->maxQuantizer != AVIF_QUANTIZER_LOSSLESS) ||
                 (fileSettings->minQuantizerAlphaSet && fileSettings->minQuantizerAlpha != AVIF_QUANTIZER_LOSSLESS) ||
                 (fileSettings->maxQuantizerAlphaSet && fileSettings->maxQuantizerAlpha != AVIF_QUANTIZER_LOSSLESS)) {
-                fprintf(stderr, "Quantizers cannot be set in lossless mode, except to 0.\n");
+                fprintf(stderr, "Quantizers cannot be set in lossless mode, except to %d.\n", AVIF_QUANTIZER_LOSSLESS);
                 returnCode = 1;
             }
-            // Add lossless settings
-            SET_FILE_SETTING(*fileSettings, quality, AVIF_QUALITY_LOSSLESS);
-            SET_FILE_SETTING(*fileSettings, qualityAlpha, AVIF_QUALITY_LOSSLESS);
-            SET_FILE_SETTING(*fileSettings, minQuantizer, AVIF_QUANTIZER_LOSSLESS);
-            SET_FILE_SETTING(*fileSettings, maxQuantizer, AVIF_QUANTIZER_LOSSLESS);
-            SET_FILE_SETTING(*fileSettings, minQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
-            SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
         } else {
-            if (!currentSettings.minQuantizerSet) {
-                assert(!currentSettings.maxQuantizerSet);
-                if (!currentSettings.qualitySet) {
-                    SET_FILE_SETTING(*fileSettings, quality, DEFAULT_QUALITY);
-                    SET_FILE_SETTING(currentSettings, quality, DEFAULT_QUALITY);
-                } else {
-                    settings.qualityIsConstrained = fileSettings->qualitySet;
-                }
-                SET_FILE_SETTING(*fileSettings, minQuantizer, AVIF_QUANTIZER_BEST_QUALITY);
-                SET_FILE_SETTING(*fileSettings, maxQuantizer, AVIF_QUANTIZER_WORST_QUALITY);
-                SET_FILE_SETTING(currentSettings, minQuantizer, AVIF_QUANTIZER_BEST_QUALITY);
-                SET_FILE_SETTING(currentSettings, maxQuantizer, AVIF_QUANTIZER_WORST_QUALITY);
-            } else {
-                assert(currentSettings.maxQuantizerSet);
-                if (!currentSettings.qualitySet) {
-                    const int quantizer = (currentSettings.minQuantizer + currentSettings.maxQuantizer) / 2;
-                    const int quality = ((63 - quantizer) * 100 + 31) / 63;
-                    SET_FILE_SETTING(*fileSettings, quality, quality);
-                    SET_FILE_SETTING(currentSettings, quality, quality);
-                } else {
-                    settings.qualityIsConstrained = fileSettings->qualitySet;
+            if (settings.progressive) {
+                assert(AVIF_QUALITY_DEFAULT >= PROGRESSIVE_WORST_QUALITY);
+                if (fileSettings->qualitySet && fileSettings->quality < PROGRESSIVE_WORST_QUALITY) {
+                    fprintf(stderr, "--qcolor must be greater than %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
+                    returnCode = 1;
+                    goto cleanup;
                 }
             }
-            if (settings.progressive && currentSettings.quality < PROGRESSIVE_WORST_QUALITY) {
-                fprintf(stderr, "--qcolor must be greater than %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
+        }
+
+        if (fileSettings->tileColsLog2Set || fileSettings->tileRowsLog2Set) {
+            // If this file has manual tile config set, disable autotiling;
+            SET_FILE_SETTING(*fileSettings, autoTiling, AVIF_FALSE);
+        }
+
+        // Set defaults for first input file.
+        if (i == 0) {
+            // This check only applies to the first input.
+            // Following inputs can change only one and leave the other unchanged.
+            if ((fileSettings->minQuantizerSet) != (fileSettings->maxQuantizerSet)) {
+                fprintf(stderr, "--min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
                 returnCode = 1;
                 goto cleanup;
             }
-            if (!currentSettings.minQuantizerAlphaSet) {
-                assert(!currentSettings.maxQuantizerAlphaSet);
-                if (!currentSettings.qualityAlphaSet) {
-                    SET_FILE_SETTING(*fileSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
-                    SET_FILE_SETTING(currentSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
-                } else {
-                    settings.qualityAlphaIsConstrained = fileSettings->qualityAlpha;
-                }
-                SET_FILE_SETTING(*fileSettings, minQuantizerAlpha, AVIF_QUANTIZER_BEST_QUALITY);
-                SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_WORST_QUALITY);
-                SET_FILE_SETTING(currentSettings, minQuantizerAlpha, AVIF_QUANTIZER_BEST_QUALITY);
-                SET_FILE_SETTING(currentSettings, maxQuantizerAlpha, AVIF_QUANTIZER_WORST_QUALITY);
+            if ((fileSettings->minQuantizerAlphaSet) != (fileSettings->maxQuantizerAlphaSet)) {
+                fprintf(stderr, "--minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n", file->filename);
+                returnCode = 1;
+                goto cleanup;
+            }
+
+            if (!fileSettings->autoTilingSet) {
+                SET_FILE_SETTING(*fileSettings, autoTiling, AVIF_FALSE);
+            }
+            if (!fileSettings->tileRowsLog2Set) {
+                SET_FILE_SETTING(*fileSettings, tileRowsLog2, 0);
+            }
+            if (!fileSettings->tileColsLog2Set) {
+                SET_FILE_SETTING(*fileSettings, tileColsLog2, 0);
+            }
+
+            // Set lossy/lossless parameters to default if needed.
+            if (lossless) {
+                // Add lossless settings
+                SET_FILE_SETTING(*fileSettings, quality, AVIF_QUALITY_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, qualityAlpha, AVIF_QUALITY_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, minQuantizer, AVIF_QUANTIZER_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, maxQuantizer, AVIF_QUANTIZER_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, minQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
+                SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_LOSSLESS);
             } else {
-                assert(currentSettings.maxQuantizerAlphaSet);
-                if (!currentSettings.qualityAlphaSet) {
-                    const int quantizerAlpha = (currentSettings.minQuantizerAlpha + currentSettings.maxQuantizerAlpha) / 2;
-                    const int qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
-                    SET_FILE_SETTING(*fileSettings, qualityAlpha, qualityAlpha);
-                    SET_FILE_SETTING(currentSettings, qualityAlpha, qualityAlpha);
+                settings.qualityIsConstrained = fileSettings->qualitySet;
+                settings.qualityAlphaIsConstrained = fileSettings->qualityAlphaSet;
+
+                if (fileSettings->minQuantizerSet) {
+                    assert(fileSettings->maxQuantizerSet);
+                    if (!fileSettings->qualitySet) {
+                        const int quantizer = (fileSettings->minQuantizer + fileSettings->maxQuantizer) / 2;
+                        const int quality = ((63 - quantizer) * 100 + 31) / 63;
+                        SET_FILE_SETTING(*fileSettings, quality, quality);
+                    }
                 } else {
-                    settings.qualityAlphaIsConstrained = fileSettings->qualityAlpha;
+                    assert(!fileSettings->maxQuantizerSet);
+                    if (!fileSettings->qualitySet) {
+                        SET_FILE_SETTING(*fileSettings, quality, DEFAULT_QUALITY);
+                    }
+                    SET_FILE_SETTING(*fileSettings, minQuantizer, AVIF_QUANTIZER_BEST_QUALITY);
+                    SET_FILE_SETTING(*fileSettings, maxQuantizer, AVIF_QUANTIZER_WORST_QUALITY);
+                }
+
+                if (fileSettings->minQuantizerAlphaSet) {
+                    assert(fileSettings->maxQuantizerAlphaSet);
+                    if (!fileSettings->qualityAlphaSet) {
+                        const int quantizerAlpha = (fileSettings->minQuantizerAlpha + fileSettings->maxQuantizerAlpha) / 2;
+                        const int qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
+                        SET_FILE_SETTING(*fileSettings, qualityAlpha, qualityAlpha);
+                    }
+                } else {
+                    assert(!fileSettings->maxQuantizerAlphaSet);
+                    if (!fileSettings->qualityAlphaSet) {
+                        SET_FILE_SETTING(*fileSettings, qualityAlpha, DEFAULT_QUALITY_ALPHA);
+                    }
+                    SET_FILE_SETTING(*fileSettings, minQuantizerAlpha, AVIF_QUANTIZER_BEST_QUALITY);
+                    SET_FILE_SETTING(*fileSettings, maxQuantizerAlpha, AVIF_QUANTIZER_WORST_QUALITY);
                 }
             }
         }
@@ -2282,7 +2273,7 @@ cleanup:
     avifRWDataFree(&exifOverride);
     avifRWDataFree(&xmpOverride);
     avifRWDataFree(&iccOverride);
-    avifCodecSpecificOptionsFree(&currentSettings.codecSpecificOptions);
+    avifCodecSpecificOptionsFree(&pendingSettings.codecSpecificOptions);
     while (input.cacheCount) {
         --input.cacheCount;
         if (input.cache[input.cacheCount].image) {
