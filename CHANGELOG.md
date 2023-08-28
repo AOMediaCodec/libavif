@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2023-08-24
 
-With the 1.0.0 release, the ABI will be more stable from now on.
+With the 1.0.0 release, the ABI will be more stable from now on. Please note
+the allocation and initialization requirements for avifImage, avifDecoder,
+avifEncoder, and avifRGBImage in the "avif/avif.h" header.
 
 List of incompatible ABI changes in this release:
 
