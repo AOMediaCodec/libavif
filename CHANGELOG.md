@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+* Update svt.cmd/svt.sh: v1.7.0
+* Update zlibpng.cmd: zlib 1.3 and libpng 1.6.40
+
 ## [1.0.1] - 2023-08-29
 
 ### Changed
