@@ -265,6 +265,22 @@ if(AVIF_BUILD_APPS)
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
 
+    if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
+        # test_cmd_enc_boxes_golden.sh depends on MP4Box
+        # Only allow a locally built version to avoid differences with versioning.
+        set(MP4BOX_DIR ${CMAKE_SOURCE_DIR}/ext/gpac/bin/gcc/)
+        if(NOT EXISTS ${MP4BOX_DIR}/MP4Box)
+            message(FATAL_ERROR "AVIF_ENABLE_GOLDEN_TESTS is ON but ${MP4BOX_DIR}/MP4Box is missing. Run ext/mp4box.sh")
+        endif()
+
+        set(GOLDEN_TESTS_OUTPUT_DIR "" CACHE STRING "Output path for golden tests (will be a temp dir if empty)")
+
+        add_test(NAME test_cmd_enc_boxes_golden
+                 COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
+                         ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
+        )
+    endif()
+
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
         # Only aom encoder supports AV1 lossless encoding.
         set_property(TEST test_cmd_animation PROPERTY DISABLED True)
