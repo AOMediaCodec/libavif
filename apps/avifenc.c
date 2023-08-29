@@ -994,15 +994,16 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
     int layers = encoder->extraLayerCount + 1;
     int targetQuality = (settings->overrideQuality != INVALID_QUALITY) ? settings->overrideQuality
                                                                        : input->files[0].settings.quality.value;
+    int targetQualityAlpha = (settings->overrideQualityAlpha != INVALID_QUALITY) ? settings->overrideQualityAlpha
+                                                                                 : input->files[0].settings.qualityAlpha.value;
     const avifImage * encodingImage = firstImage;
 
     while (layerIndex < layers) {
         // reversed lerp such that last layer reaches exact targetQuality
         encoder->quality = targetQuality - (targetQuality - PROGRESSIVE_START_QUALITY) * (encoder->extraLayerCount - layerIndex) /
                                                encoder->extraLayerCount;
-        if (settings->overrideQualityAlpha != INVALID_QUALITY) {
-            encoder->qualityAlpha = settings->overrideQualityAlpha;
-        }
+        encoder->qualityAlpha = targetQualityAlpha - (targetQualityAlpha - PROGRESSIVE_START_QUALITY) *
+                                                         (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
 
         printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
                layerIndex,
@@ -1085,7 +1086,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         // If the color quality or alpha quality is less than 10, the main()
         // function overrides --progressive and sets settings->progressive to
         // false.
-        assert((encoder->quality >= 10) && (encoder->qualityAlpha >= 10));
+        assert((encoder->quality >= PROGRESSIVE_WORST_QUALITY) && (encoder->qualityAlpha >= PROGRESSIVE_WORST_QUALITY));
         encoder->extraLayerCount = 1;
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
@@ -1879,9 +1880,15 @@ int main(int argc, char * argv[])
             }
         } else {
             if (settings.progressive) {
-                assert(AVIF_QUALITY_DEFAULT >= PROGRESSIVE_WORST_QUALITY);
+                assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
+                assert(DEFAULT_QUALITY_ALPHA >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
                     fprintf(stderr, "--qcolor must be greater than %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
+                    returnCode = 1;
+                    goto cleanup;
+                }
+                if (fileSettings->qualityAlpha.set && fileSettings->qualityAlpha.value < PROGRESSIVE_WORST_QUALITY) {
+                    fprintf(stderr, "--qalpha must be greater than %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
