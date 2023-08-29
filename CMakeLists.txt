@@ -295,6 +295,9 @@ set(AVIF_SRCS
     src/utils.c
     src/write.c
 )
+if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    list(APPEND AVIF_SRCS src/gainmap.c)
+endif()
 
 # Only applicable to macOS. In GitHub CI's macos-latest os image, this prevents using the libpng
 # and libjpeg headers from /Library/Frameworks/Mono.framework/Headers instead of
@@ -709,6 +712,9 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
     install(FILES include/avif/avif.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        install(FILES include/avif/gainmap.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------------------

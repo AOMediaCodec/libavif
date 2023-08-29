@@ -234,3 +234,39 @@ avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result)
     avifFractionSimplify(result);
     return AVIF_TRUE;
 }
+
+avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
+{
+    if (v < 0 || v > UINT32_MAX) {
+        return AVIF_FALSE;
+    }
+
+    if (round(v) == v) {
+        *numerator = (uint32_t)v;
+        *denominator = 1u;
+        return AVIF_TRUE;
+    }
+
+    if (v < 1.0) {
+        // Maximize precision by having the denominator as large as possible.
+        *denominator = UINT32_MAX;
+        *numerator = (uint32_t)round(v * (*denominator));
+        return AVIF_TRUE;
+    }
+
+    // v >= 1.0f
+    // Maximize precision by having the numerator as large as possible.
+    *numerator = UINT32_MAX;
+    assert(v != 0.0);
+    *denominator = (uint32_t)round(*numerator / v);
+    assert(*denominator != 0.0);
+
+    if (fabs((double)*numerator / *denominator - v) > fabs(round(v) - v)) {
+        // If we get a lower error by just rounding v, then go with that instead.
+        // This happens for large values.
+        *numerator = (uint32_t)round(v);
+        *denominator = 1u;
+    }
+
+    return AVIF_TRUE;
+}

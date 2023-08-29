@@ -522,7 +522,8 @@ typedef struct avifContentLightLevelInformationBox
 // avifGainMap
 // Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
 // images containing a gain map encoded with the current version of libavif might
-// not decode with a feature future version of libavif. Use are your own risk.
+// not decode with a feature future version of libavif. The API is not guaranteed
+// to be stable, and might even be removed in the future. Use are your own risk.
 // This is based on ISO/IEC JTC 1/SC 29/WG 3 m64379
 // This product includes Gain Map technology under license by Adobe.
 
