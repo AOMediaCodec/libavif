@@ -672,7 +672,7 @@ typedef struct
     avifBool autoTiling;
     avifBool progressive;
     int speed;
-    avifEncoderHeaderFormat headerFormat;
+    avifHeaderFormat headerFormat;
 
     int paspCount;
     uint32_t paspValues[8]; // only the first two are used
@@ -1112,7 +1112,7 @@ int main(int argc, char * argv[])
     settings.autoTiling = AVIF_FALSE;
     settings.progressive = AVIF_FALSE;
     settings.speed = 6;
-    settings.headerFormat = AVIF_ENCODER_FULL_HEADER;
+    settings.headerFormat = AVIF_HEADER_FULL;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;
@@ -1185,7 +1185,7 @@ int main(int argc, char * argv[])
             outputFilename = arg;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         } else if (!strcmp(arg, "--avir")) {
-            settings.headerFormat = AVIF_ENCODER_REDUCED_HEADER;
+            settings.headerFormat = AVIF_HEADER_REDUCED;
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();

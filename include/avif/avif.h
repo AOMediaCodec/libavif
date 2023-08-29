@@ -185,19 +185,19 @@ typedef enum avifResult
 AVIF_API const char * avifResultToString(avifResult result);
 
 // ---------------------------------------------------------------------------
-// avifEncoderHeaderFormat
+// avifHeaderFormat
 
-typedef enum avifEncoderHeaderFormat
+typedef enum avifHeaderFormat
 {
-    // Encodes as "avif" brand with a MetaBox and all its required boxes for maximum compatibility.
-    AVIF_ENCODER_FULL_HEADER,
+    // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
+    AVIF_HEADER_FULL,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    // Encodes as "avir" brand with a CondensedImageBox to reduce the encoded file size.
+    // AVIF file with an "avir" brand and a CondensedImageBox to reduce the encoded file size.
     // This is based on the m64572 "Condensed image item" MPEG proposal for HEIF.
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
-    AVIF_ENCODER_REDUCED_HEADER,
+    AVIF_HEADER_REDUCED,
 #endif
-} avifEncoderHeaderFormat;
+} avifHeaderFormat;
 
 // ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
@@ -1312,8 +1312,8 @@ typedef struct avifEncoder
 
     // Version 1.0.0 ends here. Add any new members after this line.
 
-    // Defaults to AVIF_ENCODER_FULL_HEADER
-    avifEncoderHeaderFormat headerFormat;
+    // Defaults to AVIF_HEADER_FULL
+    avifHeaderFormat headerFormat;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting
