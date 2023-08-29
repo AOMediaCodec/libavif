@@ -76,32 +76,16 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
   testutil::AvifImagePtr grid = testutil::CreateImage(
       static_cast<int>(image->width), static_cast<int>(image->height),
       /*depth=*/8, yuv_format, AVIF_PLANES_ALL);
-  testutil::AvifImagePtr view(avifImageCreateEmpty(), avifImageDestroy);
-  if (!view) {
-    return AVIF_RESULT_OUT_OF_MEMORY;
-  }
-  avifCropRect rect = {};
-  auto it = cell_images.cbegin();
-  for (const std::vector<Cell>& cell_row : cell_rows) {
-    rect.x = 0;
-    for (const Cell& cell : cell_row) {
-      rect.width = cell.width;
-      rect.height = cell.height;
-      result = avifImageSetViewRect(view.get(), grid.get(), &rect);
-      if (result != AVIF_RESULT_OK) {
-        return result;
-      }
-      avifImageCopySamples(/*dstImage=*/view.get(), it->get(), AVIF_PLANES_ALL);
-      assert(!view->imageOwnsYUVPlanes);
-      ++it;
-      rect.x += rect.width;
-    }
-    rect.y += rect.height;
-  }
-  if ((rect.x != image->width) || (rect.y != image->height) ||
+  const int num_rows = (int)cell_rows.size();
+  const int num_cols = (int)cell_rows[0].size();
+  AVIF_CHECKRES(
+      testutil::MergeGrid(num_cols, num_rows, cell_images, grid.get()));
+
+  if ((grid->width != image->width) || (grid->height != image->height) ||
       !testutil::AreImagesEqual(*image, *grid)) {
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
+
   return AVIF_RESULT_OK;
 }
 

@@ -34,6 +34,7 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" ON)
 
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
+option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP "Enable experimental gain map code (for HDR images that look good both on HDR and SDR displays)" OFF)
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding/decoding (see AVIF_CODEC_AOM_DECODE/AVIF_CODEC_AOM_ENCODE)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding" OFF)
@@ -260,6 +261,10 @@ endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+endif()
+
+if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 endif()
 
 set(AVIF_SRCS

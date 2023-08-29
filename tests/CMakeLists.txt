@@ -44,6 +44,7 @@ if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     set(CMAKE_CXX_STANDARD 14)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers avif_apps)
+    target_link_libraries(aviftest_helpers avif_internal)
 endif()
 
 ################################################################################
@@ -109,6 +110,13 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifdecodetest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifdecodetest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifdecodetest COMMAND avifdecodetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        add_executable(avifgainmaptest gtest/avifgainmaptest.cc)
+        target_link_libraries(avifgainmaptest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(avifgainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifgainmaptest COMMAND avifgainmaptest)
+    endif()
 
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
@@ -290,6 +298,10 @@ if(AVIF_CODEC_AVM)
                 avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
                 avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
             )
+
+            if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                set_tests_properties(avifgainmaptest PROPERTIES DISABLED True)
+            endif()
         endif()
 
         if(AVIF_BUILD_APPS)

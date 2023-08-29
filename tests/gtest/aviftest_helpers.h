@@ -7,6 +7,7 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <vector>
 
 #include "avif/avif.h"
 
@@ -98,6 +99,13 @@ bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2);
 // A negative value means that the input images cannot be compared.
 double GetPsnr(const avifImage& image1, const avifImage& image2,
                bool ignore_alpha = false);
+
+// Merges the given image grid cells into a single image.
+avifResult MergeGrid(int grid_cols, int grid_rows,
+                     const std::vector<AvifImagePtr>& cells, avifImage* merged);
+avifResult MergeGrid(int grid_cols, int grid_rows,
+                     const std::vector<const avifImage*>& cells,
+                     avifImage* merged);
 
 //------------------------------------------------------------------------------
 // Shorter versions of libavif functions
