@@ -311,6 +311,10 @@ set(AVIF_CODEC_DEFINITIONS)
 set(AVIF_CODEC_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
+if(NOT libyuv_FOUND)
+    set(AVIF_SRCS ${AVIF_SRCS} src/scale/scale_impl.c src/scale/scale.c)
+endif()
+
 if(AVIF_CODEC_DAV1D)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_DAV1D=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_dav1d.c)
