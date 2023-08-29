@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2023-08-29
+
+### Changed
+* gdk-pixbuf: Explicitly pass link directories
+* gdk-pixbuf: Fix build failure after imir.mode -> imir.axis rename
+
 ## [1.0.0] - 2023-08-24
 
 With the 1.0.0 release, the ABI will be more stable from now on. Please note
@@ -974,6 +980,7 @@ code.
 - `avifVersion()` function
 
 [Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/AOMediaCodec/libavif/compare/v0.11.1...v1.0.0
 [0.11.1]: https://github.com/AOMediaCodec/libavif/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/AOMediaCodec/libavif/compare/v0.10.1...v0.11.0
