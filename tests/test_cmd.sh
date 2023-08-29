@@ -77,26 +77,31 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
   "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
 
-  # Frame option handling test
-  # Passing frame options before input should not print warning.
+  # Option update handling test
+  # Passing non-update option before input should not print warning.
   "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE_REFERENCE}" 2> "${OUT_MSG}"
-  grep "WARNING: Frame options" "${OUT_MSG}" && exit 1
-  # Passing frame options after the only input should print warning, but still has effect.
+  grep "WARNING: -q" "${OUT_MSG}" && exit 1
+  grep "WARNING: Trailing options" "${OUT_MSG}" && exit 1
+  # Passing non-update option after input should print warning.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 2> "${OUT_MSG}"
-  grep "WARNING: Frame options" "${OUT_MSG}"
+  grep "WARNING: -q" "${OUT_MSG}"
   cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
-  # Frame options after the only input but before positional output should also print warning,
-  # but still has effect.
+  # Passing non-update option after input but before positional output should also print warning.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 85 "${ENCODED_FILE}" 2> "${OUT_MSG}"
-  grep "WARNING: Frame options" "${OUT_MSG}"
+  grep "WARNING: -q" "${OUT_MSG}"
   cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
-  # Later options should still take precedence.
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 70 "${ENCODED_FILE}" -q 85 2> "${OUT_MSG}"
-  grep "WARNING: Frame options" "${OUT_MSG}"
+  # Passing update option before first input should print warning.
+  "${AVIFENC}" -s 10 -q:u 85 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
+  grep "WARNING: -q" "${OUT_MSG}"
   cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
-  # Passing frame options after all inputs should print warning.
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 2> "${OUT_MSG}"
-  grep "WARNING: Trailing frame options" "${OUT_MSG}"
+  # Passing update option after input should print warning, and has no effect.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q:u 85 2> "${OUT_MSG}"
+  grep "WARNING: Trailing options" "${OUT_MSG}"
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" && exit 1
+  # Passing update option after input but before positional output should also print warning, and has no effect.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q:u 85 "${ENCODED_FILE}" 2> "${OUT_MSG}"
+  grep "WARNING: Trailing options" "${OUT_MSG}"
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" && exit 1
 
   # --min and --max must be both specified.
   "${AVIFENC}" -s 10 --min 24 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1

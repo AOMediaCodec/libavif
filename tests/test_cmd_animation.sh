@@ -60,7 +60,7 @@ pushd ${TMP_DIR}
   "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M_0}" "${DECODED_FILE}" 0 && exit 1
 
   # Lossless test.
-  "${AVIFENC}" -s 8 -q 100 "${INPUT_Y4M_0}" "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 "${INPUT_Y4M_0}" "${INPUT_Y4M_1}" -q 100 -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M_0}" "${DECODED_FILE}" 0
 
@@ -73,7 +73,7 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_0}" "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   Q60_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
-  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_0}" -q 100 "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_0}" -q:u 100 "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   Q60_Q100_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
   [[ ${Q60_FILE_SIZE} -lt ${Q60_Q100_FILE_SIZE} ]] || exit 1

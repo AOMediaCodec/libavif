@@ -70,9 +70,9 @@ pushd ${TMP_DIR}
   [[ ${DEFAULT_QUALITY_FILE_SIZE} -lt ${BIGGEST_FILE_SIZE} ]] || exit 1
 
   # Check that min/max file sizes match lowest/highest qualities.
-  "${AVIFENC}" -s 8 -q 0 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}" -q 0
   [[ $(wc -c < "${ENCODED_FILE}") -eq ${SMALLEST_FILE_SIZE} ]] || exit 1
-  "${AVIFENC}" -s 8 -q 100 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}" -q 100
   [[ $(wc -c < "${ENCODED_FILE}") -eq ${BIGGEST_FILE_SIZE} ]] || exit 1
   # Negative test.
   [[ $(wc -c < "${ENCODED_FILE}") -eq ${SMALLEST_FILE_SIZE} ]] && exit 1

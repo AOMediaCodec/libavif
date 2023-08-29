@@ -176,7 +176,6 @@ static void syntaxLong(void)
            AVIF_SPEED_FASTEST);
     printf("\n");
     printf("Advanced options:\n");
-    printf("  Global options apply to the whole output file:\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
@@ -216,8 +215,9 @@ static void syntaxLong(void)
     printf("    --imir AXIS                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("    --clli MaxCLL,MaxPALL             : Add clli property (content light level information).\n");
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
+    printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
-    printf("  Frame options apply only to input files appearing after the option:\n");
+    printf("  The following options can optionally have a :u (or :update) suffix like -q:u, to apply only to input files appearing after the option:\n");
     printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
@@ -226,9 +226,6 @@ static void syntaxLong(void)
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
-    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
-           AVIF_SPEED_SLOWEST,
-           AVIF_SPEED_FASTEST);
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
@@ -249,7 +246,6 @@ static void syntaxLong(void)
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
-    printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
         printf("aom-specific advanced options:\n");
@@ -337,6 +333,44 @@ static int parseU32List(uint32_t output[8], const char * arg)
         token = strtok(NULL, ",x");
     }
     return index;
+}
+
+typedef enum avifOptionSuffixType
+{
+    AVIF_OPTION_SUFFIX_NONE,
+    AVIF_OPTION_SUFFIX_UPDATE,
+    AVIF_OPTION_SUFFIX_INVALID,
+} avifOptionSuffixType;
+
+static avifOptionSuffixType parseOptionSuffix(const char * arg, int inputCount)
+{
+    const char * suffix = strchr(arg, ':');
+
+    if (suffix == NULL) {
+        if (inputCount != 0) {
+            fprintf(stderr,
+                    "WARNING: %s is applying to all inputs. Use %s:u to apply only to inputs after it, "
+                    "or move it before first input to avoid ambiguity.\n",
+                    arg,
+                    arg);
+        }
+        return AVIF_OPTION_SUFFIX_NONE;
+    }
+
+    if (!strcmp(suffix, ":u") || !strcmp(suffix, ":update")) {
+        if (inputCount == 0) {
+            fprintf(stderr, "WARNING: %s before first input, %s suffix has no effect.\n", arg, suffix);
+        }
+        return AVIF_OPTION_SUFFIX_UPDATE;
+    }
+
+    fprintf(stderr, "ERROR: Unknown option suffix in flag %s.\n", arg);
+    return AVIF_OPTION_SUFFIX_INVALID;
+}
+
+static avifBool strpre(const char * str, const char * prefix)
+{
+    return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 
 static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat yuvFormat, uint32_t clapValues[8])
@@ -689,54 +723,6 @@ static void avifCodecSpecificOptionsFree(avifCodecSpecificOptions * options)
     free(options->values);
     options->keys = NULL;
     options->values = NULL;
-}
-
-static avifBool mergeInputFileSettings(avifInputFileSettings * dst, avifInputFileSettings * src)
-{
-    avifBool success = AVIF_TRUE;
-    if (src->quality.set) {
-        dst->quality = src->quality;
-    }
-    if (src->qualityAlpha.set) {
-        dst->qualityAlpha = src->qualityAlpha;
-    }
-    if (src->minQuantizer.set) {
-        dst->minQuantizer = src->minQuantizer;
-    }
-    if (src->maxQuantizer.set) {
-        dst->maxQuantizer = src->maxQuantizer;
-    }
-    if (src->minQuantizerAlpha.set) {
-        dst->minQuantizerAlpha = src->minQuantizerAlpha;
-    }
-    if (src->maxQuantizerAlpha.set) {
-        dst->maxQuantizerAlpha = src->maxQuantizerAlpha;
-    }
-    if (src->tileColsLog2.set) {
-        dst->tileColsLog2 = src->tileColsLog2;
-    }
-    if (src->tileRowsLog2.set) {
-        dst->tileRowsLog2 = src->tileRowsLog2;
-    }
-    if (src->autoTiling.set) {
-        dst->autoTiling = src->autoTiling;
-    }
-    avifCodecSpecificOptions * srcCsOptions = &src->codecSpecificOptions;
-    while (srcCsOptions->count) {
-        --srcCsOptions->count;
-        success = avifCodecSpecificOptionsAddKeyValue(&dst->codecSpecificOptions,
-                                                      srcCsOptions->keys[srcCsOptions->count],
-                                                      srcCsOptions->values[srcCsOptions->count]);
-        if (!success) {
-            ++srcCsOptions->count; // ownership not transferred
-            goto cleanup;
-        }
-    }
-    // Upon successful merge, srcCsOptions is now empty.
-    // Free memory hold by src so src can be safely thrown away.
-    avifCodecSpecificOptionsFree(srcCsOptions);
-cleanup:
-    return success;
 }
 
 // Returns the best cell size for a given horizontal or vertical dimension.
@@ -1395,7 +1381,12 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-k") || !strcmp(arg, "--keyframe")) {
             NEXTARG();
             settings.keyframeInterval = atoi(arg);
-        } else if (!strcmp(arg, "-q") || !strcmp(arg, "--qcolor")) {
+        } else if (!strcmp(arg, "-q") || !strcmp(arg, "--qcolor") || strpre(arg, "-q:") || strpre(arg, "--qcolor:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int quality = atoi(arg);
             if (quality < AVIF_QUALITY_WORST) {
@@ -1404,8 +1395,17 @@ int main(int argc, char * argv[])
             if (quality > AVIF_QUALITY_BEST) {
                 quality = AVIF_QUALITY_BEST;
             }
-            pendingSettings.quality = intSettingsEntryOf(quality);
-        } else if (!strcmp(arg, "--qalpha")) {
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.quality = intSettingsEntryOf(quality);
+            } else {
+                input.files[0].settings.quality = intSettingsEntryOf(quality);
+            }
+        } else if (!strcmp(arg, "--qalpha") || strpre(arg, "--qalpha:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int qualityAlpha = atoi(arg);
             if (qualityAlpha < AVIF_QUALITY_WORST) {
@@ -1414,8 +1414,17 @@ int main(int argc, char * argv[])
             if (qualityAlpha > AVIF_QUALITY_BEST) {
                 qualityAlpha = AVIF_QUALITY_BEST;
             }
-            pendingSettings.qualityAlpha = intSettingsEntryOf(qualityAlpha);
-        } else if (!strcmp(arg, "--min")) {
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.qualityAlpha = intSettingsEntryOf(qualityAlpha);
+            } else {
+                input.files[0].settings.qualityAlpha = intSettingsEntryOf(qualityAlpha);
+            }
+        } else if (!strcmp(arg, "--min") || strpre(arg, "--min:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int minQuantizer = atoi(arg);
             if (minQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
@@ -1424,8 +1433,17 @@ int main(int argc, char * argv[])
             if (minQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
                 minQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            pendingSettings.minQuantizer = intSettingsEntryOf(minQuantizer);
-        } else if (!strcmp(arg, "--max")) {
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.minQuantizer = intSettingsEntryOf(minQuantizer);
+            } else {
+                input.files[0].settings.minQuantizer = intSettingsEntryOf(minQuantizer);
+            }
+        } else if (!strcmp(arg, "--max") || strpre(arg, "--max:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int maxQuantizer = atoi(arg);
             if (maxQuantizer < AVIF_QUANTIZER_BEST_QUALITY) {
@@ -1434,8 +1452,17 @@ int main(int argc, char * argv[])
             if (maxQuantizer > AVIF_QUANTIZER_WORST_QUALITY) {
                 maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            pendingSettings.maxQuantizer = intSettingsEntryOf(maxQuantizer);
-        } else if (!strcmp(arg, "--minalpha")) {
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.maxQuantizer = intSettingsEntryOf(maxQuantizer);
+            } else {
+                input.files[0].settings.maxQuantizer = intSettingsEntryOf(maxQuantizer);
+            }
+        } else if (!strcmp(arg, "--minalpha") || strpre(arg, "--minalpha:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int minQuantizerAlpha = atoi(arg);
             if (minQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
@@ -1444,8 +1471,17 @@ int main(int argc, char * argv[])
             if (minQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
                 minQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            pendingSettings.minQuantizerAlpha = intSettingsEntryOf(minQuantizerAlpha);
-        } else if (!strcmp(arg, "--maxalpha")) {
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.minQuantizerAlpha = intSettingsEntryOf(minQuantizerAlpha);
+            } else {
+                input.files[0].settings.minQuantizerAlpha = intSettingsEntryOf(minQuantizerAlpha);
+            }
+        } else if (!strcmp(arg, "--maxalpha") || strpre(arg, "--maxalpha:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int maxQuantizerAlpha = atoi(arg);
             if (maxQuantizerAlpha < AVIF_QUANTIZER_BEST_QUALITY) {
@@ -1454,14 +1490,23 @@ int main(int argc, char * argv[])
             if (maxQuantizerAlpha > AVIF_QUANTIZER_WORST_QUALITY) {
                 maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
             }
-            pendingSettings.maxQuantizerAlpha = intSettingsEntryOf(maxQuantizerAlpha);
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.maxQuantizerAlpha = intSettingsEntryOf(maxQuantizerAlpha);
+            } else {
+                input.files[0].settings.maxQuantizerAlpha = intSettingsEntryOf(maxQuantizerAlpha);
+            }
         } else if (!strcmp(arg, "--target-size")) {
             NEXTARG();
             settings.targetSize = atoi(arg);
             if (settings.targetSize < 0) {
                 settings.targetSize = -1;
             }
-        } else if (!strcmp(arg, "--tilerowslog2")) {
+        } else if (!strcmp(arg, "--tilerowslog2") || strpre(arg, "--tilerowslog2:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int tileRowsLog2 = atoi(arg);
             if (tileRowsLog2 < 0) {
@@ -1470,8 +1515,17 @@ int main(int argc, char * argv[])
             if (tileRowsLog2 > 6) {
                 tileRowsLog2 = 6;
             }
-            pendingSettings.tileRowsLog2 = intSettingsEntryOf(tileRowsLog2);
-        } else if (!strcmp(arg, "--tilecolslog2")) {
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.tileRowsLog2 = intSettingsEntryOf(tileRowsLog2);
+            } else {
+                input.files[0].settings.tileRowsLog2 = intSettingsEntryOf(tileRowsLog2);
+            }
+        } else if (!strcmp(arg, "--tilecolslog2") || strpre(arg, "--tilecolslog2:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int tileColsLog2 = atoi(arg);
             if (tileColsLog2 < 0) {
@@ -1480,9 +1534,22 @@ int main(int argc, char * argv[])
             if (tileColsLog2 > 6) {
                 tileColsLog2 = 6;
             }
-            pendingSettings.tileColsLog2 = intSettingsEntryOf(tileColsLog2);
-        } else if (!strcmp(arg, "--autotiling")) {
-            pendingSettings.autoTiling = boolSettingsEntryOf(AVIF_TRUE);
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.tileColsLog2 = intSettingsEntryOf(tileColsLog2);
+            } else {
+                input.files[0].settings.tileColsLog2 = intSettingsEntryOf(tileColsLog2);
+            }
+        } else if (!strcmp(arg, "--autotiling") || strpre(arg, "--autotiling:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.autoTiling = boolSettingsEntryOf(AVIF_TRUE);
+            } else {
+                input.files[0].settings.autoTiling = boolSettingsEntryOf(AVIF_TRUE);
+            }
         } else if (!strcmp(arg, "--progressive")) {
             settings.progressive = AVIF_TRUE;
         } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
@@ -1591,9 +1658,16 @@ int main(int argc, char * argv[])
                     goto cleanup;
                 }
             }
-        } else if (!strcmp(arg, "-a") || !strcmp(arg, "--advanced")) {
+        } else if (!strcmp(arg, "-a") || !strcmp(arg, "--advanced") || strpre(arg, "-a:") || strpre(arg, "--advanced:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
-            if (!avifCodecSpecificOptionsAdd(&pendingSettings.codecSpecificOptions, arg)) {
+            avifInputFileSettings * targetSettings =
+                (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) ? &pendingSettings : &input.files[0].settings;
+            if (!avifCodecSpecificOptionsAdd(&targetSettings->codecSpecificOptions, arg)) {
                 fprintf(stderr, "ERROR: Out of memory when setting codec specific option: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
@@ -1740,19 +1814,16 @@ int main(int argc, char * argv[])
     stdinFile.filename = "(stdin)";
     stdinFile.duration = settings.outputTiming.duration;
 
+    avifInputFileSettings emptySettingsReference;
+    memset(&emptySettingsReference, 0, sizeof(emptySettingsReference));
+
     if (!outputFilename) {
         if (((input.useStdin && (input.filesCount == 1)) || (!input.useStdin && (input.filesCount > 1)))) {
             --input.filesCount;
             outputFilename = input.files[input.filesCount].filename;
-            // later options take precedence, so merge reversely and then copy
-            if (!mergeInputFileSettings(&input.files[input.filesCount].settings, &pendingSettings)) {
-                fprintf(stderr, "ERROR: Out of memory when handling codec specific option.\n");
-                // input.files[input.filesCount] may still hold ownership of some codecSpecificOptions keys and values
-                ++input.filesCount;
-                returnCode = 1;
-                goto cleanup;
+            if (memcmp(&input.files[input.filesCount].settings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
+                fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
             }
-            memcpy(&pendingSettings, &input.files[input.filesCount].settings, sizeof(avifInputFileSettings));
         }
     }
 
@@ -1773,24 +1844,8 @@ int main(int argc, char * argv[])
     }
 #endif
 
-    // Handle trailing frame options.
-    // For single input, we assume user means to apply these options to the input as well.
-    // For multiple input, print a warning and ask user to clarify.
-    avifInputFileSettings emptySettingsReference;
-    memset(&emptySettingsReference, 0, sizeof(emptySettingsReference));
     if (memcmp(&pendingSettings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
-        if (input.filesCount == 1) {
-            fprintf(stderr,
-                    "WARNING: Frame options should be placed before input. Assume they are applying to the only input %s.\n",
-                    input.files[0].filename);
-            if (!mergeInputFileSettings(&input.files[0].settings, &pendingSettings)) {
-                fprintf(stderr, "ERROR: Out of memory when handling codec specific option.\n");
-                returnCode = 1;
-                goto cleanup;
-            }
-        } else {
-            fprintf(stderr, "WARNING: Trailing frame options has no effect. Place frame options before the input you intend to apply to.\n");
-        }
+        fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
     }
 
     for (int i = 0; i < input.filesCount; ++i) {
