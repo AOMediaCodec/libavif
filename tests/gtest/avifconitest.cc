@@ -67,9 +67,10 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
     const avifCropRect rect{image->width / 4, image->height / 4,
                             std::min(1u, image->width / 2),
                             std::min(1u, image->height / 2)};
-    ASSERT_TRUE(avifCleanApertureBoxConvertCropRect(
-        &image->clap, &rect, image->width, image->height, image->yuvFormat,
-        /*diag=*/nullptr));
+    avifDiagnostics diag;
+    ASSERT_TRUE(avifCleanApertureBoxConvertCropRect(&image->clap, &rect,
+                                                    image->width, image->height,
+                                                    image->yuvFormat, &diag));
   }
   if (create_transform_flags & AVIF_TRANSFORM_IROT) {
     image->irot.angle = 2;
