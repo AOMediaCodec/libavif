@@ -10,6 +10,7 @@ if(AVIF_BUILD_GDK_PIXBUF)
             set(GDK_PIXBUF_SRCS loader.c)
             add_library(pixbufloader-avif MODULE ${GDK_PIXBUF_SRCS})
 
+            set_target_properties(avif PROPERTIES POSITION_INDEPENDENT_CODE ON)
             target_link_libraries(pixbufloader-avif PUBLIC ${GDK_PIXBUF_LIBRARIES} avif)
             target_link_directories(pixbufloader-avif PUBLIC ${GDK_PIXBUF_LIBRARY_DIRS})
             target_include_directories(pixbufloader-avif PUBLIC ${GDK_PIXBUF_INCLUDE_DIRS})
