@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+List of incompatible ABI changes in this release:
+
+* The headerFormat member was added to avifEncoder.
+
 ### Added
 * Add experimental API for reading and writing gain maps in AVIF files.
   If enabled at compile time, add `gainMap` field to `avifImage`,
@@ -17,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the future. Files created now might not decode in a future version.
   This feature is off by default and must be enabled with the
   AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compilation flag.
+* Add the headerFormat member of new type avifHeaderFormat to avifEncoder.
+* Add experimental API for reading and writing "avir"-branded AVIF files
+  behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_AVIR.
 
 ### Changed
 * Update svt.cmd/svt.sh: v1.7.0
