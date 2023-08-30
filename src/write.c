@@ -1842,6 +1842,7 @@ static avifResult avifImageWriteExtendedMeta(const avifImage * imageMetadata, av
         AVIF_CHECKRES(avifRWStreamWriteBox(stream, "ipco", AVIF_BOX_SIZE_TBD, &ipco));
         {
             // No need for dedup because there is only one property of each type and for a single item.
+            AVIF_CHECKRES(avifEncoderWriteHDRProperties(stream, stream, imageMetadata, /*ipma=*/NULL, /*dedup=*/NULL));
             AVIF_CHECKRES(avifEncoderWriteExtendedColorProperties(stream, stream, imageMetadata, /*ipma=*/NULL, /*dedup=*/NULL));
         }
         avifRWStreamFinishBox(stream, ipco);
