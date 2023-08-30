@@ -77,7 +77,8 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   gain_map->clli.maxPALL = 5;
 
   image->gainMap.image = gain_map.release();  // 'image' now owns the gain map.
-  image->gainMap.metadata = GetTestGainMapMetadata(/*base_image_is_hdr=*/false);
+  image->gainMap.metadata =
+      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/false);
 
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
@@ -134,7 +135,8 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   testutil::FillImageGradient(gain_map.get());
 
   image->gainMap.image = gain_map.release();  // 'image' now owns the gain map.
-  image->gainMap.metadata = GetTestGainMapMetadata(/*base_image_is_hdr=*/true);
+  image->gainMap.metadata =
+      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
 
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
@@ -177,7 +179,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   constexpr int kGridRows = 2;
 
   avifGainMapMetadata gain_map_metadata =
-      GetTestGainMapMetadata(/*base_image_is_hdr=*/true);
+      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
 
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
     testutil::AvifImagePtr image =
@@ -258,7 +260,7 @@ TEST(GainMapTest, InvalidGrid) {
   constexpr int kGridRows = 2;
 
   avifGainMapMetadata gain_map_metadata =
-      GetTestGainMapMetadata(/*base_image_is_hdr=*/true);
+      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
 
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
     testutil::AvifImagePtr image =
