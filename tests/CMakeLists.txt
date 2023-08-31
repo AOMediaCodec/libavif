@@ -47,6 +47,14 @@ if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     target_link_libraries(aviftest_helpers avif_internal)
 endif()
 
+# Fuzz target without the fuzzing engine. For easy reproduction of oss-fuzz issues.
+add_executable(avifreprofuzz oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
+if(AVIF_LOCAL_LIBGAV1)
+    set_target_properties(avifreprofuzz PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
+target_link_libraries(avifreprofuzz avif ${AVIF_PLATFORM_LIBRARIES})
+add_test(NAME avifreprofuzz COMMAND avifreprofuzz ${CMAKE_CURRENT_SOURCE_DIR}/data/color_grid_alpha_nogrid.avif)
+
 ################################################################################
 # GoogleTest
 
