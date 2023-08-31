@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+* Add experimental API for reading and writing gain maps in AVIF files.
+  If enabled at compile time, add `gainMap` field to `avifImage`,
+  `qualityGainMap` field to `avifEncoder`, and `gainMapPresent` to
+  `avifDecoder`.
+  Gain maps allow readers that support them to display HDR images that look
+  good on both HDR and SDR displays.
+  This feature is highly experimental. The API might change or be removed
+  in the future. Files created now might not decode in a future version.
+  This feature is off by default and must be enabled with the
+  AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compilation flag.
+
 ### Changed
 * Update svt.cmd/svt.sh: v1.7.0
 * Update zlibpng.cmd: zlib 1.3 and libpng 1.6.40
