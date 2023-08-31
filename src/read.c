@@ -3664,13 +3664,12 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
 // Returns AVIF_TRUE if the item should be skipped. Items should be skipped for one of the following reasons:
 //  * Size is 0.
 //  * Has an essential property that isn't supported by libavif.
-//  * Item is Exif or similar metadata.
+//  * Item is not a single image or a grid.
 //  * Item is a thumbnail.
 static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
 {
     return !item->size || item->hasUnsupportedEssentialProperty ||
-           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4) && memcmp(item->type, "tmap", 4)) ||
-           item->thumbnailForID != 0;
+           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) || item->thumbnailForID != 0;
 }
 
 // Returns the primary color item if found, or NULL.
@@ -3791,7 +3790,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(avifDecoderData * data,
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = &data->meta->items.item[itemIndex];
-        if (avifDecoderItemShouldBeSkipped(item)) {
+        if (!item->size || item->hasUnsupportedEssentialProperty || item->thumbnailForID != 0) {
             continue;
         }
         if (!memcmp(item->type, "tmap", 4)) {
@@ -4105,6 +4104,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             gainMapItem = avifMetaFindItem(data->meta, gainMapItemID);
             if (!gainMapItem) {
                 avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item ID %d not found", gainMapItemID);
+                return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+            }
+            if (avifDecoderItemShouldBeSkipped(gainMapItem)) {
+                avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item %d is not a supported image type", gainMapItemID);
                 return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
             }
 
