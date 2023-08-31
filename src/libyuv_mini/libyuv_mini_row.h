@@ -27,34 +27,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef LIBYUV_MINI_ROW_H
+#define LIBYUV_MINI_ROW_H
+
 #include <stdint.h>
+#include <stdlib.h>
 
-#define LIBYUV_VERSION 1874
+#define align_buffer_64(var, size)                                         \
+  void* var##_mem = malloc((size) + 63);                      /* NOLINT */ \
+  uint8_t* var = (uint8_t*)(((intptr_t)var##_mem + 63) & ~63) /* NOLINT */
 
-// Supported filtering.
-typedef enum FilterMode {
-  kFilterNone = 0,      // Point sample; Fastest.
-  kFilterLinear = 1,    // Filter horizontally only.
-  kFilterBilinear = 2,  // Faster than box, but lower quality scaling down.
-  kFilterBox = 3        // Highest quality.
-} FilterModeEnum;
+#define free_aligned_buffer_64(var) \
+  free(var##_mem);                  \
+  var = NULL
 
-void avifScalePlane_12(const uint16_t* src,
-                   int src_stride,
-                   int src_width,
-                   int src_height,
-                   uint16_t* dst,
-                   int dst_stride,
-                   int dst_width,
-                   int dst_height,
-                   enum FilterMode filtering);
+#define align_buffer_64_16(var, size)                                        \
+  void* var##_mem = malloc((size)*2 + 63);                      /* NOLINT */ \
+  uint16_t* var = (uint16_t*)(((intptr_t)var##_mem + 63) & ~63) /* NOLINT */
 
-void avifScalePlane(const uint8_t* src,
-                int src_stride,
-                int src_width,
-                int src_height,
-                uint8_t* dst,
-                int dst_stride,
-                int dst_width,
-                int dst_height,
-                enum FilterMode filtering);
+#define free_aligned_buffer_64_16(var) \
+  free(var##_mem);                     \
+  var = NULL
+
+void InterpolateRow_C(uint8_t* dst_ptr,
+                      const uint8_t* src_ptr,
+                      ptrdiff_t src_stride,
+                      int width,
+                      int source_y_fraction);
+
+void InterpolateRow_16_C(uint16_t* dst_ptr,
+                         const uint16_t* src_ptr,
+                         ptrdiff_t src_stride,
+                         int width,
+                         int source_y_fraction);
+
+#endif // LIBYUV_MINI_ROW_H

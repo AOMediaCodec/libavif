@@ -4,9 +4,7 @@
 #include "avif/internal.h"
 
 #if !defined(AVIF_LIBYUV_ENABLED)
-#include "scale/avif_scale.h"
-#define ScalePlane_12 avifScalePlane_12
-#define ScalePlane avifScalePlane
+#include "libyuv_mini/libyuv_mini_scale.h"
 #else
 #include <limits.h>
 
@@ -23,7 +21,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
-#endif
+#endif // AVIF_LIBYUV_ENABLED
 
 // This should be configurable and/or smarter. kFilterBox has the highest quality but is the slowest.
 #define AVIF_LIBYUV_FILTER_MODE kFilterBox

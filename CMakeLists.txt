@@ -312,7 +312,13 @@ set(AVIF_CODEC_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
 if(NOT libyuv_FOUND)
-    set(AVIF_SRCS ${AVIF_SRCS} src/scale/scale_impl.c src/scale/scale.c)
+    # Imported from libyuv commit c60323de1756f489bd061e66aea9c3c73a8ef72c
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/libyuv_mini/libyuv_mini_scale.c
+        src/libyuv_mini/libyuv_mini_scale_common.c
+        src/libyuv_mini/libyuv_mini_scale_any.c
+        src/libyuv_mini/libyuv_mini_row_common.c
+    )
 endif()
 
 if(AVIF_CODEC_DAV1D)
