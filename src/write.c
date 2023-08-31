@@ -429,7 +429,6 @@ avifEncoder * avifEncoderCreate(void)
         return NULL;
     }
     memset(encoder, 0, sizeof(avifEncoder));
-    encoder->headerFormat = AVIF_HEADER_FULL;
     encoder->codecChoice = AVIF_CODEC_CHOICE_AUTO;
     encoder->maxThreads = 1;
     encoder->speed = AVIF_SPEED_DEFAULT;
@@ -451,6 +450,7 @@ avifEncoder * avifEncoderCreate(void)
     encoder->scalingMode = noScaling;
     encoder->data = avifEncoderDataCreate();
     encoder->csOptions = avifCodecSpecificOptionsCreate();
+    encoder->headerFormat = AVIF_HEADER_FULL;
     if (!encoder->data || !encoder->csOptions) {
         avifEncoderDestroy(encoder);
         return NULL;
