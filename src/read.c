@@ -739,8 +739,8 @@ typedef struct avifMeta
     uint32_t primaryItemID;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    // If true, the fields above were extracted from a CondensedImageBox. It implies some
-    // constraints to its optional extendedMeta field, such as forbidden item IDs, properties etc.
+    // If true, the fields above were extracted from a CondensedImageBox. It imposes some
+    // constraints on its optional extendedMeta field, such as forbidden item IDs, properties etc.
     avifBool fromConi;
 #endif
 } avifMeta;
@@ -1616,10 +1616,10 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
             // Advance past Annex A.2.1's header
             BEGIN_STREAM(exifBoxStream, exifContents.data, exifContents.size, &decoder->diag, "Exif header");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+            // The CondensedImageBox does not signal the exifTiffHeaderOffset.
             if (!meta->fromConi)
 #endif
             {
-                // The CondensedImageBox does not signal the exifTiffHeaderOffset.
                 uint32_t exifTiffHeaderOffset;
                 AVIF_CHECKERR(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset),
                               AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) exif_tiff_header_offset;

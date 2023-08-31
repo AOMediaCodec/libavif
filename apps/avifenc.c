@@ -98,7 +98,7 @@ static void syntaxLong(void)
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    printf("    --avir                            : Minimize header if possible\n");
+    printf("    --avir                            : Use reduced header if possible\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");

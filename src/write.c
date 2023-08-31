@@ -579,7 +579,8 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
 }
 
 // Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
-// Also used by the extendedMeta field of the CondensedImageBox.
+// Also used by the extendedMeta field of the CondensedImageBox if AVIF_ENABLE_EXPERIMENTAL_AVIR is
+// defined.
 static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
                                                           avifRWStream * outputStream,
                                                           const avifImage * imageMetadata,
@@ -2152,9 +2153,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     uint64_t now = (uint64_t)time(NULL) + 2082844800;
 
     // -----------------------------------------------------------------------
-    // Decide whether to go for a CondensedImageBox or a full regular MetaBox.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+    // Decide whether to go for a CondensedImageBox or a full regular MetaBox.
     if ((encoder->headerFormat == AVIF_HEADER_REDUCED) && avifEncoderIsCondensedImageBoxCompatible(encoder)) {
         AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndCondensedImageBox(encoder, output));
         return AVIF_RESULT_OK;

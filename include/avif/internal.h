@@ -239,9 +239,9 @@ typedef enum avifItemCategory
 } avifItemCategory;
 
 // ---------------------------------------------------------------------------
-// AVIF color_type field meaning in CondensendImageBox
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+// AVIF color_type field meaning in CondensedImageBox
 typedef enum avifConiColorType
 {
     AVIF_CONI_COLOR_TYPE_SRGB = 0,
