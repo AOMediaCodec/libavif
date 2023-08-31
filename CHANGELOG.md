@@ -6,10 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-List of incompatible ABI changes in this release:
-
-* The headerFormat member was added to avifEncoder.
-
 ### Added
 * Add experimental API for reading and writing gain maps in AVIF files.
   If enabled at compile time, add `gainMap` field to `avifImage`,
