@@ -4598,8 +4598,13 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
 #endif
     }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     assert(decoder->data->tiles.count ==
            (decoder->data->color.tileCount + decoder->data->alpha.tileCount + decoder->data->gainMap.tileCount));
+#else
+    assert(decoder->data->tiles.count == (decoder->data->color.tileCount + decoder->data->alpha.tileCount));
+#endif
+
     const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
 
     // Ensure that we have created the codecs before proceeding with the decoding.
