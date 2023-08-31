@@ -3591,10 +3591,12 @@ static avifResult avifParse(avifDecoder * decoder)
     avifBool ftypSeen = AVIF_FALSE;
     avifBool metaSeen = AVIF_FALSE;
     avifBool moovSeen = AVIF_FALSE;
-    avifBool coniSeen = AVIF_FALSE;
     avifBool needsMeta = AVIF_FALSE;
     avifBool needsMoov = AVIF_FALSE;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+    avifBool coniSeen = AVIF_FALSE;
     avifBool needsConi = AVIF_FALSE;
+#endif
 
     for (;;) {
         // Read just enough to get the next box header (a max of 32 bytes)
@@ -3624,8 +3626,12 @@ static avifResult avifParse(avifDecoder * decoder)
         avifROData boxContents = AVIF_DATA_EMPTY;
 
         // TODO: reorg this code to only do these memcmps once each
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4) ||
             !memcmp(header.type, "coni", 4)) {
+#else
+        if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4)) {
+#endif
             boxOffset = parseOffset;
             readResult = decoder->io->read(decoder->io, 0, parseOffset, header.size, &boxContents);
             if (readResult != AVIF_RESULT_OK) {
@@ -3667,14 +3673,15 @@ static avifResult avifParse(avifDecoder * decoder)
             AVIF_CHECKERR(avifParseMovieBox(data, boxOffset, boxContents.data, boxContents.size, decoder->imageSizeLimit, decoder->imageDimensionLimit),
                           AVIF_RESULT_BMFF_PARSE_FAILED);
             moovSeen = AVIF_TRUE;
-        }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-        else if (!memcmp(header.type, "coni", 4)) {
+        } else if (!memcmp(header.type, "coni", 4)) {
             AVIF_CHECKERR(!metaSeen && !moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseCondensedImageBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
             coniSeen = AVIF_TRUE;
+#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
         }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         if (ftypSeen && !needsConi && coniSeen) {
             // The 'coni' box should be ignored if there is no 'avir' brand, but libavif allows reading them in any order.
             return AVIF_RESULT_NOT_IMPLEMENTED; // TODO(yguyon): Implement
@@ -3684,17 +3691,26 @@ static avifResult avifParse(avifDecoder * decoder)
         // See if there is enough information to consider Parse() a success and early-out:
         // * If the brand 'avif' is present, require a meta box
         // * If the brand 'avis' is present, require a moov box
-        // * If the brand 'avir' is present, require a coni box
+        // * If AVIF_ENABLE_EXPERIMENTAL_AVIR is defined and the brand 'avir' is present, require a coni box
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         if (ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen) && (!needsConi || coniSeen)) {
+#else
+        if (ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen)) {
+#endif
             return AVIF_RESULT_OK;
         }
     }
     if (!ftypSeen) {
         return AVIF_RESULT_INVALID_FTYP;
     }
-    if ((needsMeta && !metaSeen) || (needsMoov && !moovSeen) || (needsConi && !coniSeen)) {
+    if ((needsMeta && !metaSeen) || (needsMoov && !moovSeen)) {
         return AVIF_RESULT_TRUNCATED_DATA;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+    if (needsConi && !coniSeen) {
+        return AVIF_RESULT_TRUNCATED_DATA;
+    }
+#endif
     return AVIF_RESULT_OK;
 }
 
