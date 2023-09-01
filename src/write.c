@@ -450,11 +450,11 @@ avifEncoder * avifEncoderCreate(void)
     encoder->scalingMode = noScaling;
     encoder->data = avifEncoderDataCreate();
     encoder->csOptions = avifCodecSpecificOptionsCreate();
-    encoder->headerFormat = AVIF_HEADER_FULL;
     if (!encoder->data || !encoder->csOptions) {
         avifEncoderDestroy(encoder);
         return NULL;
     }
+    encoder->headerFormat = AVIF_HEADER_FULL;
     return encoder;
 }
 
@@ -2146,14 +2146,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Begin write stream
 
-    const avifImage * imageMetadata = encoder->data->imageMetadata;
-    // The epoch for creation_time and modification_time is midnight, Jan. 1,
-    // 1904, in UTC time. Add the number of seconds between that epoch and the
-    // Unix epoch.
-    uint64_t now = (uint64_t)time(NULL) + 2082844800;
-
-    // -----------------------------------------------------------------------
-
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
     // Decide whether to go for a CondensedImageBox or a full regular MetaBox.
     if ((encoder->headerFormat == AVIF_HEADER_REDUCED) && avifEncoderIsCondensedImageBoxCompatible(encoder)) {
@@ -2161,6 +2153,12 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         return AVIF_RESULT_OK;
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+
+    const avifImage * imageMetadata = encoder->data->imageMetadata;
+    // The epoch for creation_time and modification_time is midnight, Jan. 1,
+    // 1904, in UTC time. Add the number of seconds between that epoch and the
+    // Unix epoch.
+    uint64_t now = (uint64_t)time(NULL) + 2082844800;
 
     avifRWStream s;
     avifRWStreamStart(&s, output);
