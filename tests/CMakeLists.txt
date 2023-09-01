@@ -47,7 +47,7 @@ if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     target_link_libraries(aviftest_helpers avif_internal)
 endif()
 
-# Fuzz target without the fuzzing engine. For easy reproduction of oss-fuzz issues.
+# Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
 add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
