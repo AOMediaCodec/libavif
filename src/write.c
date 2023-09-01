@@ -30,6 +30,7 @@ static const size_t alphaURNSize = sizeof(alphaURN);
 static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
 static const size_t xmpContentTypeSize = sizeof(xmpContentType);
 
+static avifResult writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox * cfg);
 static avifResult writeConfigBox(avifRWStream * s, const avifCodecConfigurationBox * cfg, const char * configPropName);
 
 // ---------------------------------------------------------------------------
@@ -453,6 +454,7 @@ avifEncoder * avifEncoderCreate(void)
         avifEncoderDestroy(encoder);
         return NULL;
     }
+    encoder->headerFormat = AVIF_HEADER_FULL;
     return encoder;
 }
 
@@ -577,6 +579,8 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
 }
 
 // Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
+// Also used by the extendedMeta field of the CondensedImageBox if AVIF_ENABLE_EXPERIMENTAL_AVIR is
+// defined.
 static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
                                                           avifRWStream * outputStream,
                                                           const avifImage * imageMetadata,
@@ -1824,6 +1828,270 @@ static avifResult avifWriteAltrGroup(avifRWStream * s, const avifEncoderItemIdAr
     return AVIF_RESULT_OK;
 }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+// Writes the extendedMeta field of the CondensedImageBox.
+static avifResult avifImageWriteExtendedMeta(const avifImage * imageMetadata, avifRWStream * stream)
+{
+    // The ExtendedMetaBox has no size and box type because these are already set by the CondensedImageBox.
+
+    avifBoxMarker iprp;
+    AVIF_CHECKRES(avifRWStreamWriteBox(stream, "iprp", AVIF_BOX_SIZE_TBD, &iprp));
+    {
+        // ItemPropertyContainerBox
+
+        avifBoxMarker ipco;
+        AVIF_CHECKRES(avifRWStreamWriteBox(stream, "ipco", AVIF_BOX_SIZE_TBD, &ipco));
+        {
+            // No need for dedup because there is only one property of each type and for a single item.
+            AVIF_CHECKRES(avifEncoderWriteHDRProperties(stream, stream, imageMetadata, /*ipma=*/NULL, /*dedup=*/NULL));
+            AVIF_CHECKRES(avifEncoderWriteExtendedColorProperties(stream, stream, imageMetadata, /*ipma=*/NULL, /*dedup=*/NULL));
+        }
+        avifRWStreamFinishBox(stream, ipco);
+
+        // ItemPropertyAssociationBox
+
+        avifBoxMarker ipma;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(stream, "ipma", AVIF_BOX_SIZE_TBD, 0, 0, &ipma));
+        {
+            // Same order as in avifEncoderWriteExtendedColorProperties().
+            const uint8_t numNonEssentialProperties = ((imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) ? 1 : 0) +
+                                                      ((imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) ? 1 : 0);
+            const uint8_t numEssentialProperties = ((imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) ? 1 : 0) +
+                                                   ((imageMetadata->transformFlags & AVIF_TRANSFORM_IROT) ? 1 : 0) +
+                                                   ((imageMetadata->transformFlags & AVIF_TRANSFORM_IMIR) ? 1 : 0);
+            const uint8_t ipmaCount = numNonEssentialProperties + numEssentialProperties;
+            assert(ipmaCount >= 1);
+
+            // Only add properties to the primary item.
+            AVIF_CHECKRES(avifRWStreamWriteU32(stream, 1)); // unsigned int(32) entry_count;
+            {
+                // Primary item ID is defined as 1 by the CondensedImageBox.
+                AVIF_CHECKRES(avifRWStreamWriteU16(stream, 1));        // unsigned int(16) item_ID;
+                AVIF_CHECKRES(avifRWStreamWriteU8(stream, ipmaCount)); // unsigned int(8) association_count;
+                for (uint8_t i = 0; i < ipmaCount; ++i) {
+                    AVIF_CHECKRES(avifRWStreamWriteBits(stream, (i >= numNonEssentialProperties) ? 1 : 0, /*bitCount=*/1)); // bit(1) essential;
+                    // The CondensedImageBox will always create 8 item properties, so to refer to the
+                    // first property in the ItemPropertyContainerBox above, use index 9.
+                    AVIF_CHECKRES(avifRWStreamWriteBits(stream, 9 + i, /*bitCount=*/7)); // unsigned int(7) property_index;
+                }
+            }
+        }
+        avifRWStreamFinishBox(stream, ipma);
+    }
+    avifRWStreamFinishBox(stream, iprp);
+    return AVIF_RESULT_OK;
+}
+
+// Returns true if the image can be encoded with a CondensedImageBox instead of a full regular MetaBox.
+static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * encoder)
+{
+    // The CondensedImageBox ("avir" brand) only supports non-layered, still images.
+    if (encoder->extraLayerCount || (encoder->data->frames.count != 1)) {
+        return AVIF_FALSE;
+    }
+
+    // Only 4:4:4, 4:2:0 and 4:0:0 are supported by a CondensedImageBox.
+    if ((encoder->data->imageMetadata->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
+        (encoder->data->imageMetadata->yuvFormat != AVIF_PIXEL_FORMAT_YUV420) &&
+        (encoder->data->imageMetadata->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
+        return AVIF_FALSE;
+    }
+
+    const avifEncoderItem * colorItem = NULL;
+    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+        avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+
+        // Grids are not supported by a CondensedImageBox.
+        if (item->gridCols || item->gridRows) {
+            return AVIF_FALSE;
+        }
+
+        if (item->id == encoder->data->primaryItemID) {
+            assert(!colorItem);
+            colorItem = item;
+            continue; // The primary item can be stored in the CondensedImageBox.
+        }
+        if (item->itemCategory == AVIF_ITEM_ALPHA && item->irefToID == encoder->data->primaryItemID) {
+            continue; // The alpha auxiliary item can be stored in the CondensedImageBox.
+        }
+        if (!memcmp(item->type, "mime", 4) && !memcmp(item->infeName, "XMP", item->infeNameSize)) {
+            assert(item->metadataPayload.size == encoder->data->imageMetadata->xmp.size);
+            continue; // XMP metadata can be stored in the CondensedImageBox.
+        }
+        if (!memcmp(item->type, "Exif", 4) && !memcmp(item->infeName, "Exif", item->infeNameSize)) {
+            assert(item->metadataPayload.size == encoder->data->imageMetadata->exif.size + 4);
+            const uint32_t exif_tiff_header_offset = *(uint32_t *)item->metadataPayload.data;
+            if (exif_tiff_header_offset != 0) {
+                return AVIF_FALSE;
+            }
+            continue; // Exif metadata can be stored in the CondensedImageBox if exif_tiff_header_offset is 0.
+        }
+
+        // Items besides the colorItem, the alphaItem and Exif/XMP/ICC
+        // metadata are not directly supported by the CondensedImageBox.
+        // Store them in its inner extendedMeta field instead.
+        // TODO(yguyon): Implement comment above instead of falling back to regular AVIF
+        //               (or drop the comment above if there is no other item type).
+        return AVIF_FALSE;
+    }
+    // A primary item is necessary.
+    if (!colorItem) {
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
+static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifRWStream * s, avifRWData * extendedMeta);
+
+static avifResult avifEncoderWriteFileTypeBoxAndCondensedImageBox(avifEncoder * encoder, avifRWData * output)
+{
+    avifRWStream s;
+    avifRWStreamStart(&s, output);
+
+    avifBoxMarker ftyp;
+    AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avir", 4)); // unsigned int(32) major_brand;
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));           // unsigned int(32) minor_version;
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avir", 4)); // unsigned int(32) compatible_brands[];
+    avifRWStreamFinishBox(&s, ftyp);
+
+    avifRWData extendedMeta = AVIF_DATA_EMPTY;
+    const avifResult result = avifEncoderWriteCondensedImageBox(encoder, &s, &extendedMeta);
+    avifRWDataFree(&extendedMeta);
+    AVIF_CHECKRES(result);
+
+    avifRWStreamFinishWrite(&s);
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifRWStream * s, avifRWData * extendedMeta)
+{
+    const avifEncoderItem * colorItem = NULL;
+    const avifEncoderItem * alphaItem = NULL;
+    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+        avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+        if (item->id == encoder->data->primaryItemID) {
+            colorItem = item;
+            assert(colorItem->encodeOutput->samples.count == 1);
+        } else if (item->itemCategory == AVIF_ITEM_ALPHA && item->irefToID == encoder->data->primaryItemID) {
+            assert(!alphaItem);
+            alphaItem = item;
+            assert(alphaItem->encodeOutput->samples.count == 1);
+        }
+    }
+
+    assert(colorItem);
+    const avifRWData * colorData = &colorItem->encodeOutput->samples.sample[0].data;
+    const avifRWData * alphaData = alphaItem ? &alphaItem->encodeOutput->samples.sample[0].data : NULL;
+
+    const avifImage * const image = encoder->data->imageMetadata;
+
+    const avifBool isMonochrome = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
+    const avifBool isSubsampled = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420;
+    const avifBool fullRange = image->yuvRange == AVIF_RANGE_FULL;
+
+    avifBoxMarker coni;
+    AVIF_CHECKRES(avifRWStreamWriteBox(s, "coni", AVIF_BOX_SIZE_TBD, &coni));
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // unsigned int(2) version;
+
+    AVIF_CHECKRES(avifRWStreamWriteVarInt(s, image->width - 1));  // varint(32) width_minus_one;
+    AVIF_CHECKRES(avifRWStreamWriteVarInt(s, image->height - 1)); // varint(32) height_minus_one;
+
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1));                // unsigned int(1) is_float;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->depth - 1, 4)); // unsigned int(4) bit_depth_minus_one;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, isMonochrome, 1));     // unsigned int(1) is_monochrome;
+    if (!isMonochrome) {
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, isSubsampled, 1)); // unsigned int(1) is_subsampled;
+    }
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1)); // unsigned int(1) full_range;
+    if (image->icc.size) {
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_CONI_COLOR_TYPE_ICC, 2));     // unsigned int(2) color_type;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, image->matrixCoefficients, 8));    // unsigned int(8) matrix_coefficients;
+        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)image->icc.size - 1)); // varint(32) icc_data_size;
+    } else {
+        if (((image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709) && (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB) &&
+             (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601)) ||
+            ((image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
+             (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) &&
+             (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED))) {
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_CONI_COLOR_TYPE_SRGB, 2)); // unsigned int(2) color_type;
+        } else {
+            const avifConiColorType colorType = ((image->colorPrimaries >> 5 == 0) && (image->transferCharacteristics >> 5 == 0) &&
+                                                 (image->matrixCoefficients >> 5 == 0))
+                                                    ? AVIF_CONI_COLOR_TYPE_NCLX_5BIT
+                                                    : AVIF_CONI_COLOR_TYPE_NCLX_8BIT;
+            const uint32_t numBitsPerComponent = (colorType == AVIF_CONI_COLOR_TYPE_NCLX_5BIT) ? 5 : 8;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, colorType, 2));                               // unsigned int(2) color_type;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->colorPrimaries, numBitsPerComponent)); // unsigned int(5) color_primaries;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->transferCharacteristics, numBitsPerComponent)); // unsigned int(5) transfer_characteristics;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->matrixCoefficients, numBitsPerComponent)); // unsigned int(5) matrix_coefficients;
+        }
+    }
+
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1)); // unsigned int(1) has_explicit_codec_types;
+    AVIF_CHECKRES(avifRWStreamWriteVarInt(s, 4));  // varint(32) main_item_codec_config_size;
+    assert(colorData->size >= 1);
+    AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)colorData->size - 1)); // varint(32) main_item_data_size;
+
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, alphaItem ? 1 : 0, 1)); // unsigned int(1) has_alpha;
+    if (alphaItem) {
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, image->alphaPremultiplied, 1)); // unsigned int(1) alpha_is_premultiplied;
+        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, 4));                          // varint(32) alpha_item_codec_config_size;
+        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)alphaData->size));  // varint(32) alpha_item_data_size;
+    }
+
+    if (image->clli.maxCLL || image->clli.maxPALL || (image->transformFlags != AVIF_TRANSFORM_NONE)) {
+        avifRWStream extendedMetaStream;
+        avifRWStreamStart(&extendedMetaStream, extendedMeta);
+        AVIF_CHECKRES(avifImageWriteExtendedMeta(image, &extendedMetaStream));
+        avifRWStreamFinishWrite(&extendedMetaStream);
+    }
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, extendedMeta->size ? 1 : 0, 1)); // unsigned int(1) has_extended_meta;
+    if (extendedMeta->size) {
+        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)extendedMeta->size - 1)); // varint(32) extended_meta_size;
+    }
+
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->exif.size ? 1 : 0, 1)); // unsigned int(1) has_exif;
+    if (image->exif.size) {
+        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)image->exif.size - 1)); // varint(32) exif_data_size;
+    }
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->xmp.size ? 1 : 0, 1)); // unsigned int(1) has_xmp;
+    if (image->xmp.size) {
+        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)image->xmp.size - 1)); // varint(32) xmp_data_size;
+    }
+
+    // Padding to align with whole bytes if necessary.
+    if (s->numUsedBitsInPartialByte) {
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 8 - s->numUsedBitsInPartialByte));
+    }
+
+    if (alphaItem) {
+        writeCodecConfig(s, &alphaItem->av1C); // unsigned int(8) alpha_item_codec_config[];
+    }
+    writeCodecConfig(s, &colorItem->av1C); // unsigned int(8) main_item_codec_config[];
+
+    if (extendedMeta->size) {
+        AVIF_CHECKRES(avifRWStreamWrite(s, extendedMeta->data, extendedMeta->size));
+    }
+
+    if (image->icc.size) {
+        AVIF_CHECKRES(avifRWStreamWrite(s, image->icc.data, image->icc.size)); // unsigned int(8) icc_data[];
+    }
+    if (alphaItem) {
+        AVIF_CHECKRES(avifRWStreamWrite(s, alphaData->data, alphaData->size)); // unsigned int(8) alpha_data[];
+    }
+    AVIF_CHECKRES(avifRWStreamWrite(s, colorData->data, colorData->size)); // unsigned int(8) main_data[];
+    if (image->exif.size) {
+        AVIF_CHECKRES(avifRWStreamWrite(s, image->exif.data, image->exif.size)); // unsigned int(8) exif_data[];
+    }
+    if (image->xmp.size) {
+        AVIF_CHECKRES(avifRWStreamWrite(s, image->xmp.data, image->xmp.size)); // unsigned int(8) xmp_data[];
+    }
+    avifRWStreamFinishBox(s, coni);
+    return AVIF_RESULT_OK;
+}
+#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
     avifDiagnosticsClearError(&encoder->diag);
@@ -1877,6 +2145,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     // -----------------------------------------------------------------------
     // Begin write stream
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+    // Decide whether to go for a CondensedImageBox or a full regular MetaBox.
+    if ((encoder->headerFormat == AVIF_HEADER_REDUCED) && avifEncoderIsCondensedImageBoxCompatible(encoder)) {
+        AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndCondensedImageBox(encoder, output));
+        return AVIF_RESULT_OK;
+    }
+#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
     const avifImage * imageMetadata = encoder->data->imageMetadata;
     // The epoch for creation_time and modification_time is midnight, Jan. 1,
@@ -1957,11 +2233,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifBoxMarker iloc;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0, &iloc));
-    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));    // unsigned int(4) offset_size;
-    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));    // unsigned int(4) length_size;
-    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));    // unsigned int(4) base_offset_size;
-    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));    // unsigned int(4) reserved;
-    avifRWStreamWriteU16(&s, (uint16_t)encoder->data->items.count); // unsigned int(16) item_count;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));                   // unsigned int(4) offset_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));                   // unsigned int(4) length_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));                   // unsigned int(4) base_offset_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));                   // unsigned int(4) reserved;
+    AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)encoder->data->items.count)); // unsigned int(16) item_count;
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
