@@ -666,7 +666,7 @@ typedef struct avifImage
 AVIF_API avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
 AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 // Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present
-// and AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined.
+// and if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined.
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 // Performs a shallow copy of a rectangular area of an image. 'dstImage' does not own the planes.
 // Ignores the gainMap field (which exists only if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
