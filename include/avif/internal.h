@@ -227,7 +227,7 @@ avifBool avifImageScale(avifImage * image,
                         avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
-// AVIF item type
+// AVIF item category
 
 typedef enum avifItemCategory
 {
