@@ -1863,12 +1863,15 @@ int main(int argc, char * argv[])
         avifInputFileSettings * fileSettings = &file->settings;
 
         if (fileSettings->autoTiling.set) {
-            // If this file has autotiling set, it can't also set manual tiling
             if (fileSettings->tileRowsLog2.set || fileSettings->tileColsLog2.set) {
-                fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified\n");
+                fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified for current input\n");
                 returnCode = 1;
                 goto cleanup;
             }
+            // At here this entry can only be set by command line, so its value have to be AVIF_TRUE.
+            // Disable manual tiling (possibly set by previous input).
+            fileSettings->tileRowsLog2 = intSettingsEntryOf(0);
+            fileSettings->tileColsLog2 = intSettingsEntryOf(0);
         }
 
         // Check per-input lossy/lossless parameters.
@@ -1905,7 +1908,7 @@ int main(int argc, char * argv[])
         }
 
         if (fileSettings->tileColsLog2.set || fileSettings->tileRowsLog2.set) {
-            // If this file has manual tile config set, disable autotiling;
+            // If this file has manual tile config set, disable autotiling (possibly set by previous input)
             fileSettings->autoTiling = boolSettingsEntryOf(AVIF_FALSE);
         }
 
@@ -1936,7 +1939,8 @@ int main(int argc, char * argv[])
 
             // Set lossy/lossless parameters to default if needed.
             if (lossless) {
-                // Add lossless settings
+                // Add lossless settings.
+                // Settings on first input will be inherited by all inputs, so this is sufficient.
                 fileSettings->quality = intSettingsEntryOf(AVIF_QUALITY_LOSSLESS);
                 fileSettings->qualityAlpha = intSettingsEntryOf(AVIF_QUALITY_LOSSLESS);
                 fileSettings->minQuantizer = intSettingsEntryOf(AVIF_QUANTIZER_LOSSLESS);
