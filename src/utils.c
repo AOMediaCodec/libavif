@@ -179,7 +179,6 @@ static avifBool overflowsInt32(int64_t x)
     return (x < INT32_MIN) || (x > INT32_MAX);
 }
 
-// Make the fractions have a common denominator
 avifBool avifFractionCD(avifFraction * a, avifFraction * b)
 {
     avifFractionSimplify(a);

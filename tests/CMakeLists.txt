@@ -44,7 +44,16 @@ if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     set(CMAKE_CXX_STANDARD 14)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers avif_apps)
+    target_link_libraries(aviftest_helpers avif_internal)
 endif()
+
+# Fuzz target without the fuzzing engine. For easy reproduction of oss-fuzz issues.
+add_executable(avifreprofuzz oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
+if(AVIF_LOCAL_LIBGAV1)
+    set_target_properties(avifreprofuzz PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
+target_link_libraries(avifreprofuzz avif ${AVIF_PLATFORM_LIBRARIES})
+add_test(NAME avifreprofuzz COMMAND avifreprofuzz ${CMAKE_CURRENT_SOURCE_DIR}/data/color_grid_alpha_nogrid.avif)
 
 ################################################################################
 # GoogleTest
@@ -105,10 +114,24 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifcodectest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifcodectest COMMAND avifcodectest)
 
+    if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+        add_executable(avifconitest gtest/avifconitest.cc)
+        target_link_libraries(avifconitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(avifconitest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifconitest COMMAND avifconitest)
+    endif()
+
     add_executable(avifdecodetest gtest/avifdecodetest.cc)
     target_link_libraries(avifdecodetest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifdecodetest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifdecodetest COMMAND avifdecodetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        add_executable(avifgainmaptest gtest/avifgainmaptest.cc)
+        target_link_libraries(avifgainmaptest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(avifgainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifgainmaptest COMMAND avifgainmaptest)
+    endif()
 
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
     target_link_libraries(avifgridapitest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
@@ -290,6 +313,13 @@ if(AVIF_CODEC_AVM)
                 avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
                 avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
             )
+
+            if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+                set_tests_properties(avifconitest PROPERTIES DISABLED True)
+            endif()
+            if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                set_tests_properties(avifgainmaptest PROPERTIES DISABLED True)
+            endif()
         endif()
 
         if(AVIF_BUILD_APPS)

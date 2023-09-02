@@ -38,6 +38,7 @@ typedef struct
     int overrideQualityAlpha;
     avifBool progressive;
     int speed;
+    avifHeaderFormat headerFormat;
 
     int paspCount;
     uint32_t paspValues[8]; // only the first two are used
@@ -177,6 +178,9 @@ static void syntaxLong(void)
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+    printf("    --avir                            : Use reduced header if possible\n");
+#endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
     printf("    -y,--yuv FORMAT                   : Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained)\n");
@@ -1039,6 +1043,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     encoder->timescale = settings->outputTiming.timescale;
     encoder->keyframeInterval = settings->keyframeInterval;
     encoder->repetitionCount = settings->repetitionCount;
+    encoder->headerFormat = settings->headerFormat;
     if (!avifEncodeUpdateEncoderSettings(encoder, &firstFile->settings)) {
         goto cleanup;
     }
@@ -1269,6 +1274,7 @@ int main(int argc, char * argv[])
     settings.overrideQualityAlpha = INVALID_QUALITY;
     settings.progressive = AVIF_FALSE;
     settings.speed = 6;
+    settings.headerFormat = AVIF_HEADER_FULL;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;
@@ -1344,6 +1350,10 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
             NEXTARG();
             outputFilename = arg;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+        } else if (!strcmp(arg, "--avir")) {
+            settings.headerFormat = AVIF_HEADER_REDUCED;
+#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
             input.requestedDepth = atoi(arg);

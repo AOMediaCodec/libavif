@@ -26,7 +26,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 # aom
 cd
-git clone -b v3.6.1 --depth 1 https://aomedia.googlesource.com/aom
+git clone -b v3.7.0 --depth 1 https://aomedia.googlesource.com/aom
 cd aom
 mkdir build.avif
 cd build.avif
@@ -59,7 +59,7 @@ cargo cinstall --prefix=/usr --release
 
 # SVT-AV1
 cd
-git clone -b v1.6.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v1.7.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 cd SVT-AV1
 cd Build
 cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release ..

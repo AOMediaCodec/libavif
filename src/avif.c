@@ -182,6 +182,10 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
     dstImage->clap = srcImage->clap;
     dstImage->irot = srcImage->irot;
     dstImage->imir = srcImage->imir;
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    dstImage->gainMap.metadata = srcImage->gainMap.metadata;
+#endif
 }
 
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
@@ -249,6 +253,19 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         }
     }
     avifImageCopySamples(dstImage, srcImage, planes);
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (srcImage->gainMap.image) {
+        if (!dstImage->gainMap.image) {
+            dstImage->gainMap.image = avifImageCreateEmpty();
+        }
+        AVIF_CHECKRES(avifImageCopy(dstImage->gainMap.image, srcImage->gainMap.image, planes));
+    } else if (dstImage->gainMap.image) {
+        avifImageDestroy(dstImage->gainMap.image);
+        dstImage->gainMap.image = NULL;
+    }
+#endif // defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+
     return AVIF_RESULT_OK;
 }
 
@@ -288,6 +305,11 @@ avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage
 
 void avifImageDestroy(avifImage * image)
 {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (image->gainMap.image) {
+        avifImageDestroy(image->gainMap.image);
+    }
+#endif
     avifImageFreePlanes(image, AVIF_PLANES_ALL);
     avifRWDataFree(&image->icc);
     avifRWDataFree(&image->exif);
