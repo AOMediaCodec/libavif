@@ -86,19 +86,17 @@ static avifSettingsEntryInt intSettingsEntryOf(int value)
     return entry;
 }
 
-typedef struct avifSettingsEntryBool
-{
-    avifBool value;
-    avifBool set;
-} avifSettingsEntryBool;
+typedef avifSettingsEntryInt avifSettingsEntryBool;
 
 static avifSettingsEntryBool boolSettingsEntryOf(avifBool value)
 {
-    avifSettingsEntryBool entry = { value, AVIF_TRUE };
-    return entry;
+    return intSettingsEntryOf(value);
 }
 
-// Must use moveFileSettings to transfer between objects
+// Each entry records an "update" action to the corresponding field in avifEncoder.
+// Fields in avifEncoder are not reset after encoding an image,
+// so updates naturally apply to all following inputs,
+// and is only recorded once on the first applicable input.
 typedef struct avifInputFileSettings
 {
     avifSettingsEntryInt quality;
@@ -201,7 +199,6 @@ static void syntaxLong(void)
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
-    printf("    --duration D                      : Set all following frame durations (in timescales) to D; default 1. Can be set multiple times (before supplying each filename)\n");
     printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
     printf("    -k,--keyframe INTERVAL            : Set the maximum keyframe interval (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
@@ -217,7 +214,7 @@ static void syntaxLong(void)
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
     printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
-    printf("  The following options can optionally have a :u (or :update) suffix like -q:u, to apply only to input files appearing after the option:\n");
+    printf("  The following options can optionally have a :u (or :update) suffix like `-q:u Q`, to apply only to input files appearing after the option:\n");
     printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
@@ -245,6 +242,7 @@ static void syntaxLong(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
+    printf("    --duration D                      : Set frame durations (in timescales) to D; default 1. This option always apply to following inputs with or without suffix.\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {
@@ -342,12 +340,13 @@ typedef enum avifOptionSuffixType
     AVIF_OPTION_SUFFIX_INVALID,
 } avifOptionSuffixType;
 
+// Pass inputCount=-1 to disable position based warning
 static avifOptionSuffixType parseOptionSuffix(const char * arg, int inputCount)
 {
     const char * suffix = strchr(arg, ':');
 
     if (suffix == NULL) {
-        if (inputCount != 0) {
+        if (inputCount != 0 && inputCount != -1) {
             fprintf(stderr,
                     "WARNING: %s is applying to all inputs. Use %s:u to apply only to inputs after it, "
                     "or move it before first input to avoid ambiguity.\n",
@@ -358,9 +357,6 @@ static avifOptionSuffixType parseOptionSuffix(const char * arg, int inputCount)
     }
 
     if (!strcmp(suffix, ":u") || !strcmp(suffix, ":update")) {
-        if (inputCount == 0) {
-            fprintf(stderr, "WARNING: %s before first input, %s suffix has no effect.\n", arg, suffix);
-        }
         return AVIF_OPTION_SUFFIX_UPDATE;
     }
 
@@ -654,8 +650,9 @@ static char * avifStrdup(const char * str)
     return dup;
 }
 
-static avifBool avifCodecSpecificOptionsAddKeyValue(avifCodecSpecificOptions * options, char * key, char * value)
+static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, const char * keyValue)
 {
+    avifBool success = AVIF_FALSE;
     char ** oldKeys = options->keys;
     char ** oldValues = options->values;
     options->keys = malloc((options->count + 1) * sizeof(*options->keys));
@@ -672,43 +669,31 @@ static avifBool avifCodecSpecificOptionsAddKeyValue(avifCodecSpecificOptions * o
         memcpy(options->values, oldValues, options->count * sizeof(*options->values));
     }
 
-    options->keys[options->count] = key;
-    options->values[options->count] = value;
-    ++options->count;
-    free(oldKeys);
-    free(oldValues);
-    return AVIF_TRUE;
-}
-
-static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, const char * keyValue)
-{
-    avifBool success = AVIF_FALSE;
     const char * value = strchr(keyValue, '=');
-    char * valueCopy = NULL;
-    char * keyCopy = NULL;
     if (value) {
         // Keep the parts on the left and on the right of the equal sign,
         // but not the equal sign itself.
-        valueCopy = avifStrdup(value + 1);
+        options->values[options->count] = avifStrdup(value + 1);
         const size_t keyLength = strlen(keyValue) - strlen(value);
-        keyCopy = malloc(keyLength + 1);
-        if (!valueCopy || !keyCopy) {
+        options->keys[options->count] = malloc(keyLength + 1);
+        if (!options->values[options->count] || !options->keys[options->count]) {
             goto cleanup;
         }
-        memcpy(keyCopy, keyValue, keyLength);
-        keyCopy[keyLength] = '\0';
+        memcpy(options->keys[options->count], keyValue, keyLength);
+        options->keys[options->count][keyLength] = '\0';
     } else {
         // Pass in a non-NULL, empty string. Codecs can use the mere existence of a key as a boolean value.
-        valueCopy = avifStrdup("");
-        keyCopy = avifStrdup(keyValue);
-        if (!keyCopy || !valueCopy) {
+        options->values[options->count] = avifStrdup("");
+        options->keys[options->count] = avifStrdup(keyValue);
+        if (!options->values[options->count] || !options->keys[options->count]) {
             goto cleanup;
         }
     }
-    success = avifCodecSpecificOptionsAddKeyValue(options, keyCopy, valueCopy);
+    success = AVIF_TRUE;
 cleanup:
-    free(keyCopy);
-    free(valueCopy);
+    ++options->count;
+    free(oldKeys);
+    free(oldValues);
     return success;
 }
 
@@ -992,11 +977,11 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
 {
     avifBool success = AVIF_FALSE;
     int layers = encoder->extraLayerCount + 1;
+    // --progressive only allows one input, so directly read from it.
     int targetQuality = (settings->overrideQuality != INVALID_QUALITY) ? settings->overrideQuality
                                                                        : input->files[0].settings.quality.value;
     int targetQualityAlpha = (settings->overrideQualityAlpha != INVALID_QUALITY) ? settings->overrideQualityAlpha
                                                                                  : input->files[0].settings.qualityAlpha.value;
-    const avifImage * encodingImage = firstImage;
 
     while (layerIndex < layers) {
         // reversed lerp such that last layer reaches exact targetQuality
@@ -1012,7 +997,7 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                encoder->qualityAlpha,
                qualityString(encoder->qualityAlpha));
 
-        const avifResult result = avifEncoderAddImage(encoder, encodingImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
+        const avifResult result = avifEncoderAddImage(encoder, firstImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(result));
             goto cleanup;
@@ -1191,7 +1176,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
     avifIOStats closestIoStats = { 0, 0 };
 
     int minQuality = settings->progressive ? PROGRESSIVE_WORST_QUALITY : AVIF_QUALITY_WORST; // inclusive
-    int maxQuality = AVIF_QUALITY_BEST;                                                          // inclusive
+    int maxQuality = AVIF_QUALITY_BEST;                                                      // inclusive
     while (minQuality <= maxQuality) {
         const int quality = (minQuality + maxQuality) / 2;
         if (!settings->qualityIsConstrained) {
@@ -1245,7 +1230,10 @@ static avifBool avifEncodeImages(avifSettings * settings,
         printf("color quality %d", settings->overrideQuality);
     }
     if (!settings->qualityAlphaIsConstrained) {
-        printf("%s alpha quality %d", settings->qualityIsConstrained ? " and" : "", settings->overrideQualityAlpha);
+        if (!settings->qualityIsConstrained) {
+            printf(" and ");
+        }
+        printf("alpha quality %d", settings->overrideQualityAlpha);
     }
     printf(".\n");
     return AVIF_TRUE;
@@ -1626,7 +1614,12 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             settings.ignoreColorProfile = AVIF_TRUE;
-        } else if (!strcmp(arg, "--duration")) {
+        } else if (!strcmp(arg, "--duration") || strpre(arg, "--duration:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, -1);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
             NEXTARG();
             int durationInt = atoi(arg);
             if (durationInt < 1) {
@@ -1806,7 +1799,7 @@ int main(int argc, char * argv[])
             settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         }
         if (settings.progressive) {
-            fprintf(stderr, "Automatic progressive in unsupported in lossless mode.\n");
+            fprintf(stderr, "Automatic progressive is unsupported in lossless mode.\n");
         }
         if (returnCode == 1)
             goto cleanup;
@@ -1849,6 +1842,12 @@ int main(int argc, char * argv[])
         fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
     }
 
+    if (settings.progressive && input.filesCount > 1) {
+        fprintf(stderr, "ERROR: --progressive only supports one input.\n");
+        returnCode = 1;
+        goto cleanup;
+    }
+
     for (int i = 0; i < input.filesCount; ++i) {
         avifInputFile * file = &input.files[i];
         avifInputFileSettings * fileSettings = &file->settings;
@@ -1883,12 +1882,12 @@ int main(int argc, char * argv[])
                 assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
                 assert(DEFAULT_QUALITY_ALPHA >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
-                    fprintf(stderr, "--qcolor must be greater than %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
+                    fprintf(stderr, "--qcolor must be at least %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
                 if (fileSettings->qualityAlpha.set && fileSettings->qualityAlpha.value < PROGRESSIVE_WORST_QUALITY) {
-                    fprintf(stderr, "--qalpha must be greater than %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
+                    fprintf(stderr, "--qalpha must be at least %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
@@ -2305,7 +2304,7 @@ int main(int argc, char * argv[])
     printf("Encoded successfully.\n");
     printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.colorOBUSize);
     printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.alphaOBUSize);
-    const avifBool isImageSequence = (settings.gridDimsCount == 0) && (!settings.progressive) && (input.filesCount > 1);
+    const avifBool isImageSequence = (settings.gridDimsCount == 0) && (input.filesCount > 1);
     if (isImageSequence) {
         if (settings.repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repetition Count: Infinite\n");

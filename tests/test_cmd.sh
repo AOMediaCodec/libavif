@@ -90,10 +90,6 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 85 "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep "WARNING: -q" "${OUT_MSG}"
   cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
-  # Passing update option before first input should print warning.
-  "${AVIFENC}" -s 10 -q:u 85 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
-  grep "WARNING: -q" "${OUT_MSG}"
-  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
   # Passing update option after input should print warning, and has no effect.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q:u 85 2> "${OUT_MSG}"
   grep "WARNING: Trailing options" "${OUT_MSG}"
