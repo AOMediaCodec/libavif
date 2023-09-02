@@ -2,10 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
-
-#if !defined(AVIF_LIBYUV_ENABLED)
-#include "libyuv_mini/libyuv_mini_scale.h"
-#else
 #include <limits.h>
 
 #if defined(__clang__)
@@ -21,7 +17,6 @@
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
-#endif // AVIF_LIBYUV_ENABLED
 
 // This should be configurable and/or smarter. kFilterBox has the highest quality but is the slowest.
 #define AVIF_LIBYUV_FILTER_MODE kFilterBox

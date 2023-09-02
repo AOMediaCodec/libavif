@@ -314,10 +314,10 @@ set(AVIF_CODEC_LIBRARIES)
 if(NOT libyuv_FOUND)
     # Imported from libyuv commit c60323de1756f489bd061e66aea9c3c73a8ef72c
     set(AVIF_SRCS ${AVIF_SRCS}
-        src/libyuv_mini/libyuv_mini_scale.c
-        src/libyuv_mini/libyuv_mini_scale_common.c
-        src/libyuv_mini/libyuv_mini_scale_any.c
-        src/libyuv_mini/libyuv_mini_row_common.c
+        third_party/libyuv/source/scale.c
+        third_party/libyuv/source/scale_common.c
+        third_party/libyuv/source/scale_any.c
+        third_party/libyuv/source/row_common.c
     )
 endif()
 
@@ -542,6 +542,9 @@ target_include_directories(
     avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include> PRIVATE ${AVIF_PLATFORM_INCLUDES}
                                                                                                       ${AVIF_CODEC_INCLUDES}
 )
+if(NOT libyuv_FOUND)
+    target_include_directories(avif PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
+endif()
 set(AVIF_PKG_CONFIG_EXTRA_CFLAGS "")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif PUBLIC AVIF_DLL PRIVATE AVIF_BUILDING_SHARED_LIBS)
