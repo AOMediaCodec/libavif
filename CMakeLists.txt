@@ -312,7 +312,6 @@ set(AVIF_CODEC_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
 if(NOT libyuv_FOUND)
-    # Imported from libyuv commit c60323de1756f489bd061e66aea9c3c73a8ef72c
     set(AVIF_SRCS ${AVIF_SRCS}
         third_party/libyuv/source/scale.c
         third_party/libyuv/source/scale_common.c
