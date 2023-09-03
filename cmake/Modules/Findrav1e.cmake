@@ -31,6 +31,8 @@ if(NOT RAV1E_INCLUDE_DIR)
     )
 endif()
 
+# Search for both rav1e and rav1e.dll because when building shared libraries
+# for Windows, cargo-c names the libraries rav1e.dll and ravie.dll.lib
 if(NOT RAV1E_LIBRARY)
     find_library(RAV1E_LIBRARY NAMES rav1e rav1e.dll PATHS ${_RAV1E_LIBDIR})
 endif()
