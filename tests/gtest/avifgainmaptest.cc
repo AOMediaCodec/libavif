@@ -11,8 +11,6 @@
 namespace libavif {
 namespace {
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-
 void CheckGainMapMetadataMatches(const avifGainMapMetadata& lhs,
                                  const avifGainMapMetadata& rhs) {
   EXPECT_EQ(lhs.baseRenditionIsHDR, rhs.baseRenditionIsHDR);
@@ -352,8 +350,6 @@ TEST(GainMapTest, SequenceNotSupported) {
   ASSERT_EQ(result, AVIF_RESULT_NOT_IMPLEMENTED)
       << avifResultToString(result) << " " << encoder->diag.error;
 }
-
-#endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 }  // namespace
 }  // namespace libavif
