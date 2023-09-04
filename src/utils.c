@@ -241,32 +241,37 @@ avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denom
         return AVIF_FALSE;
     }
 
-    if (round(v) == v) {
-        *numerator = (uint32_t)v;
-        *denominator = 1u;
-        return AVIF_TRUE;
+    // Good enough tolerance for stopping early.
+    const double relative_tolerance = 1e-10;
+    // Maximum denominator: makes sure that both the numerator and denominator are <= UINT32_MAX.
+    const uint64_t max_d = (v <= 1) ? UINT32_MAX : (uint64_t)floor(UINT32_MAX / fabs(v));
+
+    // Find the best approximation of v as a fraction using continued fractions, see
+    // https://en.wikipedia.org/wiki/Continued_fraction
+    *denominator = 1;
+    uint32_t previous_d = 0;
+    double current_v = v - floor(v);
+    int iter = 0;
+    // Set a maximum number of iterations to be safe but it should converge in < 10 iterations.
+    const int max_iter = 20;
+    while (iter < max_iter) {
+        const double d_v = (double)(*denominator) * v;
+        *numerator = (uint32_t)round(d_v);
+        const double tolerance = (double)(*denominator) * relative_tolerance;
+        if (fabs(d_v - (*numerator)) < tolerance) {
+            // Acceptable tolerance reached, stop here.
+            return AVIF_TRUE;
+        }
+        current_v = 1.0 / current_v;
+        const double new_d = previous_d + floor(current_v) * (*denominator);
+        if (new_d > max_d) {
+            // This is the best we can do with a denominator <= max_d.
+            return AVIF_TRUE;
+        }
+        previous_d = *denominator;
+        *denominator = (uint32_t)new_d;
+        current_v -= floor(current_v);
+        ++iter;
     }
-
-    if (v < 1.0) {
-        // Maximize precision by having the denominator as large as possible.
-        *denominator = UINT32_MAX;
-        *numerator = (uint32_t)round(v * (*denominator));
-        return AVIF_TRUE;
-    }
-
-    // v >= 1.0f
-    // Maximize precision by having the numerator as large as possible.
-    *numerator = UINT32_MAX;
-    assert(v != 0.0);
-    *denominator = (uint32_t)round(*numerator / v);
-    assert(*denominator != 0.0);
-
-    if (fabs((double)*numerator / *denominator - v) > fabs(round(v) - v)) {
-        // If we get a lower error by just rounding v, then go with that instead.
-        // This happens for large values.
-        *numerator = (uint32_t)round(v);
-        *denominator = 1u;
-    }
-
-    return AVIF_TRUE;
+    return AVIF_FALSE;
 }
