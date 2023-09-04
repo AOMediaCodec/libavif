@@ -214,7 +214,9 @@ typedef struct avifEncoderData
     // Map the encoder settings quality and qualityAlpha to quantizer and quantizerAlpha
     int quantizer;
     int quantizerAlpha;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int quantizerGainMap;
+#endif
     // tileRowsLog2 and tileColsLog2 are the actual tiling values after automatic tiling is handled
     int tileRowsLog2;
     int tileColsLog2;

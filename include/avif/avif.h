@@ -517,6 +517,7 @@ typedef struct avifContentLightLevelInformationBox
     uint16_t maxPALL;
 } avifContentLightLevelInformationBox;
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 // ---------------------------------------------------------------------------
 // avifGainMap
 // Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
@@ -525,7 +526,6 @@ typedef struct avifContentLightLevelInformationBox
 // This is based on ISO/IEC JTC 1/SC 29/WG 3 m64379
 // This product includes Gain Map technology under license by Adobe.
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 struct avifImage;
 
 // Gain map metadata, for tone mapping between SDR and HDR.
@@ -680,9 +680,11 @@ typedef struct avifImage
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
 AVIF_API avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
 AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
-// Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present.
+// Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present
+// and if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined.
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
-// Performs a shallow copy of a rectangular area of an image. 'dstImage' does not own the planes. The gain map if any is ignored.
+// Performs a shallow copy of a rectangular area of an image. 'dstImage' does not own the planes.
+// Ignores the gainMap field (which exists only if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
 AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect);
 AVIF_API void avifImageDestroy(avifImage * image);
 
@@ -695,7 +697,8 @@ AVIF_API avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * 
 // Sets XMP metadata.
 AVIF_API avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
-// Allocate/free/steal planes. These functions do not affect the gain map image if present.
+// Allocate/free/steal planes. These functions ignore the gainMap field (which exists only if
+// AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
 AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
 AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);           // Ignores already-freed planes
 AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes);
