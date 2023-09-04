@@ -4566,7 +4566,8 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
     return AVIF_RESULT_OK;
 }
 
-static avifBool avifDecoderDataLastFrameFullyDecoded(const avifDecoderData * data)
+// Returns AVIF_FALSE if there is currently a partially decoded frame.
+static avifBool avifDecoderDataFrameFullyDecoded(const avifDecoderData * data)
 {
     avifBool fullyDecoded = (data->color.decodedTileCount == data->color.tileCount) &&
                             (data->alpha.decodedTileCount == data->alpha.tileCount);
@@ -4589,7 +4590,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         return AVIF_RESULT_IO_NOT_SET;
     }
 
-    if (avifDecoderDataLastFrameFullyDecoded(decoder->data)) {
+    if (avifDecoderDataFrameFullyDecoded(decoder->data)) {
         // A frame was decoded during the last avifDecoderNextImage() call.
         decoder->data->color.decodedTileCount = 0;
         decoder->data->alpha.decodedTileCount = 0;
@@ -4643,7 +4644,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     AVIF_CHECKRES(avifDecoderDecodeTiles(decoder, nextImageIndex, &decoder->data->gainMap));
 #endif
 
-    if (!avifDecoderDataLastFrameFullyDecoded(decoder->data)) {
+    if (!avifDecoderDataFrameFullyDecoded(decoder->data)) {
         assert(decoder->allowIncremental);
         // The image is not completely decoded. There should be no error unrelated to missing bytes,
         // and at least some missing bytes.
@@ -4727,7 +4728,7 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
     }
 
     if (requestedIndex == decoder->imageIndex) {
-        if (avifDecoderDataLastFrameFullyDecoded(decoder->data)) {
+        if (avifDecoderDataFrameFullyDecoded(decoder->data)) {
             // The current fully decoded image (decoder->imageIndex) is requested, nothing to do
             return AVIF_RESULT_OK;
         }
