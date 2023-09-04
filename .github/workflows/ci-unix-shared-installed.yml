@@ -1,7 +1,7 @@
 # This is a copy of ci-unix-shared-local.yml for building shared libraries
 # with an additional build configuration (using installed deps and dav1d).
 
-name: CI
+name: CI Unix Shared Installed
 on: [push, pull_request]
 
 permissions:

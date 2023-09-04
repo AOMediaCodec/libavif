@@ -1,9 +1,9 @@
-# This is a copy of ci.yml for building shared libraries. It differs from ci.yml as follows:
+# This is a copy of ci-unix-static.yml for building shared libraries. It differs from ci-unix-static.yml as follows:
 #
 #   * The os matrix consists of ubuntu-latest only.
 #   * Does not build rav1e, SVT-AV1 nor libgav1.
 
-name: CI
+name: CI Unix Shared Local
 on: [push, pull_request]
 
 permissions:
