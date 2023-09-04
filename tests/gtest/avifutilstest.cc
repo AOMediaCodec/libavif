@@ -1,11 +1,12 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cmath>
+
 #include "avif/avif.h"
 #include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
-#include "math.h"
 
 namespace libavif {
 namespace {

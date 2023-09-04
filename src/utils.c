@@ -243,34 +243,35 @@ avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denom
     }
 
     // Maximum denominator: makes sure that both the numerator and denominator are <= UINT32_MAX.
-    const uint64_t max_d = (v <= 1) ? UINT32_MAX : (uint64_t)floor(UINT32_MAX / fabs(v));
+    const uint64_t maxD = (v <= 1) ? UINT32_MAX : (uint64_t)floor(UINT32_MAX / v);
 
     // Find the best approximation of v as a fraction using continued fractions, see
     // https://en.wikipedia.org/wiki/Continued_fraction
     *denominator = 1;
-    uint32_t previous_d = 0;
-    double current_v = v - floor(v);
+    uint32_t previousD = 0;
+    double currentV = v - floor(v);
     int iter = 0;
     // Set a maximum number of iterations to be safe. Most numbers should
     // converge in less than ~20 iterations.
     // The golden ratio is the worst case and takes 39 iterations.
-    const int max_iter = 39;
-    while (iter < max_iter) {
-        const double d_v = (double)(*denominator) * v;
-        *numerator = (uint32_t)round(d_v);
-        if (fabs(d_v - (*numerator)) == 0.0) {
-            // Double precision reached.
+    const int maxIter = 39;
+    while (iter < maxIter) {
+        const double numeratorDouble = (double)(*denominator) * v;
+        assert(numeratorDouble <= UINT32_MAX);
+        *numerator = (uint32_t)round(numeratorDouble);
+        if (fabs(numeratorDouble - (*numerator)) == 0.0) {
             return AVIF_TRUE;
         }
-        current_v = 1.0 / current_v;
-        const double new_d = previous_d + floor(current_v) * (*denominator);
-        if (new_d > max_d) {
+        currentV = 1.0 / currentV;
+        const double newD = previousD + floor(currentV) * (*denominator);
+        if (newD > maxD) {
             // This is the best we can do with a denominator <= max_d.
             return AVIF_TRUE;
         }
-        previous_d = *denominator;
-        *denominator = (uint32_t)new_d;
-        current_v -= floor(current_v);
+        previousD = *denominator;
+        assert(newD <= UINT32_MAX);
+        *denominator = (uint32_t)newD;
+        currentV -= floor(currentV);
         ++iter;
     }
     // Maximum number of iterations reached, return what we've found.
