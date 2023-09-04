@@ -53,7 +53,7 @@ if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(repro_avif_decode_fuzzer avif ${AVIF_PLATFORM_LIBRARIES})
-# The test below exists for coverage and as an usage example: repro_avif_decode_fuzzer [reproducer file path]
+# The test below exists for coverage and as a usage example: repro_avif_decode_fuzzer [reproducer file path]
 add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
                                                ${CMAKE_CURRENT_SOURCE_DIR}/data/color_grid_alpha_nogrid.avif
 )
