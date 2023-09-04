@@ -1,4 +1,4 @@
-name: CI
+name: CI Android JNI
 on: [push, pull_request]
 
 permissions:

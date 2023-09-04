@@ -1,4 +1,4 @@
-# This is a copy of ci.yml for Windows. It differs from ci.yml as follows:
+# This is a copy of ci-unix-static.yml for Windows. It differs from ci-unix-static.yml as follows:
 #
 #   * The os matrix consists of windows-latest only.
 #   * Installs Visual Studio in the os image.
@@ -10,7 +10,7 @@
 #   * Builds with local libjpeg (-DAVIF_LOCAL_JPEG=ON).
 #   * Builds with local zlib and libpng (-DAVIF_LOCAL_ZLIBPNG=ON).
 
-name: CI
+name: CI Windows
 on: [push, pull_request]
 
 permissions:

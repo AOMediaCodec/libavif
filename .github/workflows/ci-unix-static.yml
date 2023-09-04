@@ -1,4 +1,4 @@
-name: CI
+name: CI Unix Static
 on: [push, pull_request]
 
 permissions:
