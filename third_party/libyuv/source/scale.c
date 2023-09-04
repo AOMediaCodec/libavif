@@ -962,6 +962,29 @@ void ScalePlane_12(const uint16_t* src,
                    int dst_width,
                    int dst_height,
                    enum FilterMode filtering) {
+  // Simplify filtering when possible.
+  filtering = ScaleFilterReduce(src_width, src_height, dst_width, dst_height,
+                                filtering);
+
+  // Negative height means invert the image.
+  if (src_height < 0) {
+    src_height = -src_height;
+    src = src + (src_height - 1) * (int64_t)src_stride;
+    src_stride = -src_stride;
+  }
+
+  if ((dst_width + 1) / 2 == src_width && filtering == kFilterLinear) {
+    ScalePlaneUp2_12_Linear(src_width, src_height, dst_width, dst_height,
+                            src_stride, dst_stride, src, dst);
+    return;
+  }
+  if ((dst_height + 1) / 2 == src_height && (dst_width + 1) / 2 == src_width &&
+      (filtering == kFilterBilinear || filtering == kFilterBox)) {
+    ScalePlaneUp2_12_Bilinear(src_width, src_height, dst_width, dst_height,
+                              src_stride, dst_stride, src, dst);
+    return;
+  }
+
   ScalePlane_16(src, src_stride, src_width, src_height, dst, dst_stride,
                 dst_width, dst_height, filtering);
 }
