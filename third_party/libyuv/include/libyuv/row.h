@@ -11,8 +11,10 @@
 #ifndef INCLUDE_LIBYUV_ROW_H_
 #define INCLUDE_LIBYUV_ROW_H_
 
-#include <stdint.h>
-#include <stdlib.h>
+#include <stddef.h>  // For NULL
+#include <stdlib.h>  // For malloc
+
+#include "libyuv/basic_types.h"
 
 #define align_buffer_64(var, size)                                         \
   void* var##_mem = malloc((size) + 63);                      /* NOLINT */ \
@@ -42,4 +44,4 @@ void InterpolateRow_16_C(uint16_t* dst_ptr,
                          int width,
                          int source_y_fraction);
 
-#endif // INCLUDE_LIBYUV_ROW_H_
+#endif  // INCLUDE_LIBYUV_ROW_H_

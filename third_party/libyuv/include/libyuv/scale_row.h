@@ -11,20 +11,47 @@
 #ifndef INCLUDE_LIBYUV_SCALE_ROW_H_
 #define INCLUDE_LIBYUV_SCALE_ROW_H_
 
+#include "libyuv/basic_types.h"
 #include "libyuv/scale.h"
 
-#include <stdint.h>
-#include <stdlib.h>
+// Scale ARGB vertically with bilinear interpolation.
+void ScalePlaneVertical(int src_height,
+                        int dst_width,
+                        int dst_height,
+                        int src_stride,
+                        int dst_stride,
+                        const uint8_t* src_argb,
+                        uint8_t* dst_argb,
+                        int x,
+                        int y,
+                        int dy,
+                        int bpp,
+                        enum FilterMode filtering);
+
+void ScalePlaneVertical_16(int src_height,
+                           int dst_width,
+                           int dst_height,
+                           int src_stride,
+                           int dst_stride,
+                           const uint16_t* src_argb,
+                           uint16_t* dst_argb,
+                           int x,
+                           int y,
+                           int dy,
+                           int wpp,
+                           enum FilterMode filtering);
+
+// Simplify the filtering based on scale factors.
+enum FilterMode ScaleFilterReduce(int src_width,
+                                  int src_height,
+                                  int dst_width,
+                                  int dst_height,
+                                  enum FilterMode filtering);
 
 // Divide num by div and return as 16.16 fixed point result.
-static int FixedDiv_C(int num, int div) {
-  return (int)(((int64_t)(num) << 16) / div);
-}
-
+int FixedDiv_C(int num, int div);
 // Divide num - 1 by div - 1 and return as 16.16 fixed point result.
-static int FixedDiv1_C(int num, int div) {
-  return (int)((((int64_t)(num) << 16) - 0x00010001) / (div - 1));
-}
+int FixedDiv1_C(int num, int div);
 
 #define FixedDiv FixedDiv_C
 #define FixedDiv1 FixedDiv1_C
@@ -118,37 +145,4 @@ void ScaleAddRow_16_C(const uint16_t* src_ptr,
                       uint32_t* dst_ptr,
                       int src_width);
 
-enum FilterMode ScaleFilterReduce(int src_width,
-                                  int src_height,
-                                  int dst_width,
-                                  int dst_height,
-                                  enum FilterMode filtering);
-
-// Scale ARGB vertically with bilinear interpolation.
-void ScalePlaneVertical(int src_height,
-                        int dst_width,
-                        int dst_height,
-                        int src_stride,
-                        int dst_stride,
-                        const uint8_t* src_argb,
-                        uint8_t* dst_argb,
-                        int x,
-                        int y,
-                        int dy,
-                        int bpp,
-                        enum FilterMode filtering);
-
-void ScalePlaneVertical_16(int src_height,
-                           int dst_width,
-                           int dst_height,
-                           int src_stride,
-                           int dst_stride,
-                           const uint16_t* src_argb,
-                           uint16_t* dst_argb,
-                           int x,
-                           int y,
-                           int dy,
-                           int wpp,
-                           enum FilterMode filtering);
-
-#endif // INCLUDE_LIBYUV_SCALE_ROW_H_
+#endif  // INCLUDE_LIBYUV_SCALE_ROW_H_

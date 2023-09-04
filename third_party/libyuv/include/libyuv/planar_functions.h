@@ -11,7 +11,7 @@
 #ifndef INCLUDE_LIBYUV_PLANAR_FUNCTIONS_H_
 #define INCLUDE_LIBYUV_PLANAR_FUNCTIONS_H_
 
-#include <stdint.h>
+#include "libyuv/basic_types.h"
 
 void CopyPlane(const uint8_t* src_y,
                int src_stride_y,
@@ -27,4 +27,4 @@ void CopyPlane_16(const uint16_t* src_y,
                   int width,
                   int height);
 
-#endif // INCLUDE_LIBYUV_PLANAR_FUNCTIONS_H_
+#endif  // INCLUDE_LIBYUV_PLANAR_FUNCTIONS_H_

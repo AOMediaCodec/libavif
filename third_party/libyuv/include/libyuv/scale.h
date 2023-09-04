@@ -11,7 +11,7 @@
 #ifndef INCLUDE_LIBYUV_SCALE_H_
 #define INCLUDE_LIBYUV_SCALE_H_
 
-#include <stdint.h>
+#include "libyuv/basic_types.h"
 
 // Supported filtering.
 typedef enum FilterMode {
@@ -41,4 +41,4 @@ void ScalePlane_12(const uint16_t* src,
                    int dst_height,
                    enum FilterMode filtering);
 
-#endif // INCLUDE_LIBYUV_SCALE_H_
+#endif  // INCLUDE_LIBYUV_SCALE_H_

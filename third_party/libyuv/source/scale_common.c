@@ -479,6 +479,16 @@ enum FilterMode ScaleFilterReduce(int src_width,
   return filtering;
 }
 
+// Divide num by div and return as 16.16 fixed point result.
+int FixedDiv_C(int num, int div) {
+  return (int)(((int64_t)(num) << 16) / div);
+}
+
+// Divide num - 1 by div - 1 and return as 16.16 fixed point result.
+int FixedDiv1_C(int num, int div) {
+  return (int)((((int64_t)(num) << 16) - 0x00010001) / (div - 1));
+}
+
 #define CENTERSTART(dx, s) (dx < 0) ? -((-dx >> 1) + s) : ((dx >> 1) + s)
 
 // Compute slope values for stepping.
