@@ -42,10 +42,19 @@ TEST(ToFractionUTest, RoundTrip) {
   TestRoundTrip(1253456.456, perfect_tolerance);
   TestRoundTrip(8598533.9, perfect_tolerance);
 
-  // Numbers with a lot of decimals or very large/small can show a small error.
-  const double small_tolerance = 1e-5;
-  TestRoundTrip(0.00000123456, small_tolerance);
+  // // Numbers with a lot of decimals or very large/small can show a small
+  // error.
+  const double small_tolerance = 1e-9;
+  TestRoundTrip(0.0123456, small_tolerance);
   TestRoundTrip(3 + kLotsOfDecimals, small_tolerance);
+  TestRoundTrip(sqrt(2.0), small_tolerance);
+  TestRoundTrip(exp(1.0), small_tolerance);
+  TestRoundTrip(exp(10.0), small_tolerance);
+  TestRoundTrip(exp(15.0), small_tolerance);
+  // The golden ratio, the irrational number that is the "most difficult" to
+  // approximate rationally according to Wikipedia.
+  const double kGoldenRatio = (1.0 + std::sqrt(5.0)) / 2.0;
+  TestRoundTrip(kGoldenRatio, small_tolerance);  // Golden ratio.
   TestRoundTrip(((double)UINT32_MAX) - 0.5, small_tolerance);
   // Note that values smaller than this might have a larger relative error
   // (e.g. 1.0e-10).

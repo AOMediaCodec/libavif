@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <string.h>
 
@@ -237,12 +238,10 @@ avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result)
 
 avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
 {
-    if (v < 0 || v > UINT32_MAX) {
+    if (isnan(v) || v < 0 || v > UINT32_MAX) {
         return AVIF_FALSE;
     }
 
-    // Good enough tolerance for stopping early.
-    const double relative_tolerance = 1e-10;
     // Maximum denominator: makes sure that both the numerator and denominator are <= UINT32_MAX.
     const uint64_t max_d = (v <= 1) ? UINT32_MAX : (uint64_t)floor(UINT32_MAX / fabs(v));
 
@@ -252,14 +251,15 @@ avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denom
     uint32_t previous_d = 0;
     double current_v = v - floor(v);
     int iter = 0;
-    // Set a maximum number of iterations to be safe but it should converge in < 10 iterations.
-    const int max_iter = 20;
+    // Set a maximum number of iterations to be safe. Most numbers should
+    // converge in less than ~20 iterations.
+    // The golden ratio is the worst case and takes 39 iterations.
+    const int max_iter = 39;
     while (iter < max_iter) {
         const double d_v = (double)(*denominator) * v;
         *numerator = (uint32_t)round(d_v);
-        const double tolerance = (double)(*denominator) * relative_tolerance;
-        if (fabs(d_v - (*numerator)) < tolerance) {
-            // Acceptable tolerance reached, stop here.
+        if (fabs(d_v - (*numerator)) == 0.0) {
+            // Double precision reached.
             return AVIF_TRUE;
         }
         current_v = 1.0 / current_v;
@@ -273,5 +273,9 @@ avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denom
         current_v -= floor(current_v);
         ++iter;
     }
-    return AVIF_FALSE;
+    // Maximum number of iterations reached, return what we've found.
+    // For max_iter >= 39 we shouldn't get here. max_iter can be set
+    // to a lower value to speed up the algorithm if needed.
+    *numerator = (uint32_t)round((double)(*denominator) * v);
+    return AVIF_TRUE;
 }
