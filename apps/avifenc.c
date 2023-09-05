@@ -344,13 +344,12 @@ typedef enum avifOptionSuffixType
     AVIF_OPTION_SUFFIX_INVALID,
 } avifOptionSuffixType;
 
-// Pass inputCount=-1 to disable position based warning
-static avifOptionSuffixType parseOptionSuffix(const char * arg, int inputCount)
+static avifOptionSuffixType parseOptionSuffix(const char * arg, avifBool warnNoSuffix)
 {
     const char * suffix = strchr(arg, ':');
 
     if (suffix == NULL) {
-        if (inputCount != 0 && inputCount != -1) {
+        if (warnNoSuffix) {
             fprintf(stderr,
                     "WARNING: %s is applying to all inputs. Use %s:u to apply only to inputs after it, "
                     "or move it before first input to avoid ambiguity.\n",
@@ -1381,7 +1380,9 @@ int main(int argc, char * argv[])
             NEXTARG();
             settings.keyframeInterval = atoi(arg);
         } else if (!strcmp(arg, "-q") || !strcmp(arg, "--qcolor") || strpre(arg, "-q:") || strpre(arg, "--qcolor:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            // For compatibility reason unsuffixed flags always apply to all input (as if they appear before first input).
+            // Print a warning if unsuffixed flag appears after input file.
+            avifOptionSuffixType type = parseOptionSuffix(arg, /*warnNoSuffix=*/input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1400,7 +1401,7 @@ int main(int argc, char * argv[])
                 input.files[0].settings.quality = intSettingsEntryOf(quality);
             }
         } else if (!strcmp(arg, "--qalpha") || strpre(arg, "--qalpha:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1419,7 +1420,7 @@ int main(int argc, char * argv[])
                 input.files[0].settings.qualityAlpha = intSettingsEntryOf(qualityAlpha);
             }
         } else if (!strcmp(arg, "--min") || strpre(arg, "--min:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1438,7 +1439,7 @@ int main(int argc, char * argv[])
                 input.files[0].settings.minQuantizer = intSettingsEntryOf(minQuantizer);
             }
         } else if (!strcmp(arg, "--max") || strpre(arg, "--max:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1457,7 +1458,7 @@ int main(int argc, char * argv[])
                 input.files[0].settings.maxQuantizer = intSettingsEntryOf(maxQuantizer);
             }
         } else if (!strcmp(arg, "--minalpha") || strpre(arg, "--minalpha:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1476,7 +1477,7 @@ int main(int argc, char * argv[])
                 input.files[0].settings.minQuantizerAlpha = intSettingsEntryOf(minQuantizerAlpha);
             }
         } else if (!strcmp(arg, "--maxalpha") || strpre(arg, "--maxalpha:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1501,7 +1502,7 @@ int main(int argc, char * argv[])
                 settings.targetSize = -1;
             }
         } else if (!strcmp(arg, "--tilerowslog2") || strpre(arg, "--tilerowslog2:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1520,7 +1521,7 @@ int main(int argc, char * argv[])
                 input.files[0].settings.tileRowsLog2 = intSettingsEntryOf(tileRowsLog2);
             }
         } else if (!strcmp(arg, "--tilecolslog2") || strpre(arg, "--tilecolslog2:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1539,7 +1540,7 @@ int main(int argc, char * argv[])
                 input.files[0].settings.tileColsLog2 = intSettingsEntryOf(tileColsLog2);
             }
         } else if (!strcmp(arg, "--autotiling") || strpre(arg, "--autotiling:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1625,7 +1626,8 @@ int main(int argc, char * argv[])
             }
             settings.ignoreColorProfile = AVIF_TRUE;
         } else if (!strcmp(arg, "--duration") || strpre(arg, "--duration:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, -1);
+            // --duration is special, we always treat it as suffixed with :u, so don't print warning for it.
+            avifOptionSuffixType type = parseOptionSuffix(arg, /*warnNoSuffix=*/AVIF_FALSE);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1663,7 +1665,7 @@ int main(int argc, char * argv[])
                 }
             }
         } else if (!strcmp(arg, "-a") || !strcmp(arg, "--advanced") || strpre(arg, "-a:") || strpre(arg, "--advanced:")) {
-            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount);
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
                 returnCode = 1;
                 goto cleanup;
@@ -1862,16 +1864,26 @@ int main(int argc, char * argv[])
         avifInputFile * file = &input.files[i];
         avifInputFileSettings * fileSettings = &file->settings;
 
+        // Check tiling parameters.
+        // Auto tiling (autoTiling) and manual tiling (tileRowsLog2, tileColsLog2) are mutually exclusive, which means:
+        // - At each input, only one of the two shall be set.
+        // - At some input, specify one disables the other.
         if (fileSettings->autoTiling.set) {
             if (fileSettings->tileRowsLog2.set || fileSettings->tileColsLog2.set) {
-                fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified for current input\n");
+                fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified for current input.\n");
                 returnCode = 1;
                 goto cleanup;
             }
-            // At here this entry can only be set by command line, so its value have to be AVIF_TRUE.
-            // Disable manual tiling (possibly set by previous input).
+            // At this point, autoTiling of this input file can only be set by command line.
+            // (auto generation of setting entries happens below)
+            // Since it's a boolean flag, its value must be AVIF_TRUE.
+            assert(fileSettings->autoTiling.value);
+            // Therefore disables manual tiling at this input (in case it was enabled at previous input).
             fileSettings->tileRowsLog2 = intSettingsEntryOf(0);
             fileSettings->tileColsLog2 = intSettingsEntryOf(0);
+        } else if (fileSettings->tileColsLog2.set || fileSettings->tileRowsLog2.set) {
+            // If this file has manual tile config set, disable autotiling, for the same reason as above.
+            fileSettings->autoTiling = boolSettingsEntryOf(AVIF_FALSE);
         }
 
         // Check per-input lossy/lossless parameters.
@@ -1879,7 +1891,7 @@ int main(int argc, char * argv[])
             // Quality.
             if ((fileSettings->quality.set && fileSettings->quality.value != AVIF_QUALITY_LOSSLESS) ||
                 (fileSettings->qualityAlpha.set && fileSettings->qualityAlpha.value != AVIF_QUALITY_LOSSLESS)) {
-                fprintf(stderr, "Quality cannot be set in lossless mode, except to %d.\n", AVIF_QUALITY_LOSSLESS);
+                fprintf(stderr, "ERROR: Quality cannot be set in lossless mode, except to %d.\n", AVIF_QUALITY_LOSSLESS);
                 returnCode = 1;
             }
             // Quantizers.
@@ -1887,7 +1899,7 @@ int main(int argc, char * argv[])
                 (fileSettings->maxQuantizer.set && fileSettings->maxQuantizer.value != AVIF_QUANTIZER_LOSSLESS) ||
                 (fileSettings->minQuantizerAlpha.set && fileSettings->minQuantizerAlpha.value != AVIF_QUANTIZER_LOSSLESS) ||
                 (fileSettings->maxQuantizerAlpha.set && fileSettings->maxQuantizerAlpha.value != AVIF_QUANTIZER_LOSSLESS)) {
-                fprintf(stderr, "Quantizers cannot be set in lossless mode, except to %d.\n", AVIF_QUANTIZER_LOSSLESS);
+                fprintf(stderr, "ERROR: Quantizers cannot be set in lossless mode, except to %d.\n", AVIF_QUANTIZER_LOSSLESS);
                 returnCode = 1;
             }
         } else {
@@ -1895,21 +1907,16 @@ int main(int argc, char * argv[])
                 assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
                 assert(DEFAULT_QUALITY_ALPHA >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
-                    fprintf(stderr, "--qcolor must be at least %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
+                    fprintf(stderr, "ERROR: --qcolor must be at least %d when using --progressive.\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
                 if (fileSettings->qualityAlpha.set && fileSettings->qualityAlpha.value < PROGRESSIVE_WORST_QUALITY) {
-                    fprintf(stderr, "--qalpha must be at least %d when using --progressive\n", PROGRESSIVE_WORST_QUALITY);
+                    fprintf(stderr, "ERROR: --qalpha must be at least %d when using --progressive.\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
             }
-        }
-
-        if (fileSettings->tileColsLog2.set || fileSettings->tileRowsLog2.set) {
-            // If this file has manual tile config set, disable autotiling (possibly set by previous input)
-            fileSettings->autoTiling = boolSettingsEntryOf(AVIF_FALSE);
         }
 
         // Set defaults for first input file.
@@ -1917,12 +1924,14 @@ int main(int argc, char * argv[])
             // This check only applies to the first input.
             // Following inputs can change only one and leave the other unchanged.
             if (fileSettings->minQuantizer.set != fileSettings->maxQuantizer.set) {
-                fprintf(stderr, "--min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
+                fprintf(stderr, "ERROR: --min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
                 returnCode = 1;
                 goto cleanup;
             }
             if (fileSettings->minQuantizerAlpha.set != fileSettings->maxQuantizerAlpha.set) {
-                fprintf(stderr, "--minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n", file->filename);
+                fprintf(stderr,
+                        "ERROR: --minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n",
+                        file->filename);
                 returnCode = 1;
                 goto cleanup;
             }
