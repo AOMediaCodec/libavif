@@ -97,6 +97,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifalphapremtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifalphapremtest COMMAND avifalphapremtest)
 
+    add_executable(avifanimationtest gtest/avifanimationtest.cc)
+    target_link_libraries(avifanimationtest aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifanimationtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifanimationtest COMMAND avifanimationtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(avifbasictest gtest/avifbasictest.cc)
     target_link_libraries(avifbasictest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifbasictest PRIVATE ${GTEST_INCLUDE_DIRS})

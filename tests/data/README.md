@@ -419,6 +419,24 @@ Source: Same pixels as `color_grid_alpha_nogrid.avif` encoded with
 [`cavif-rs`](https://github.com/kornelski/cavif-rs) with the
 [alpha `ispe` fix](https://github.com/kornelski/avif-serialize/pull/4) removed.
 
+## Animated Images
+
+### File [colors-animated-8bpc.avif](colors-animated-8bpc.avif)
+
+![](colors-animated-8bpc.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Random colors generated with ffmpeg.
+
+An animated AVIF image file with the following attributes:
+* Width: 150
+* Height: 150
+* Alpha present: No
+* YUV Format: 420
+* Repetition Count: 0
+* Frame count: 5
+
 # Other Test Files
 
 ### File [sRGB2014.icc](sRGB2014.icc)
