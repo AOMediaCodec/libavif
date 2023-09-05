@@ -68,6 +68,16 @@ pushd ${TMP_DIR}
   "${AVIFENC}" "${INPUT_Y4M_0}" "${INPUT_BAD_DIMENSIONS}" -o "${ENCODED_FILE}" \
     2> "${ERROR_MSG}" && exit 1
   grep "dimensions mismatch" "${ERROR_MSG}"
+
+  # Output should be larger if second frame is set to higher quality.
+  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_0}" "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+  Q60_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
+  "${AVIFENC}" -s 8 -q 60 "${INPUT_Y4M_0}" -q:u 100 "${INPUT_Y4M_1}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+  Q60_Q100_FILE_SIZE=$(wc -c < "${ENCODED_FILE}")
+  [[ ${Q60_FILE_SIZE} -lt ${Q60_Q100_FILE_SIZE} ]] || exit 1
+
 popd
 
 exit 0
