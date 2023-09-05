@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Add --scaling-mode flag to set scaling mode of each layer.
   This part of AV1 encoder is not as thoroughly tested, so there are higher
   possibility encoder may crash when given certain configuration or input.
+* Add imageSequenceTrackPresent flag to the avifDecoder struct.
 
 ### Changed
 * Update aom.cmd: v3.7.0

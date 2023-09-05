@@ -28,6 +28,7 @@ TEST(BasicTest, EncodeDecode) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
 
   // Verify that the input and decoded images are close.
   ASSERT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
