@@ -30,7 +30,8 @@ typedef struct avifGainMapMetadataDouble
     avifBool baseRenditionIsHDR;
 } avifGainMapMetadataDouble;
 
-// Converts a avifGainMapMetadataDouble to avifGainMapMetadata by
+// Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values
+// to the closest uint32_t fractions.
 // Returns AVIF_FALSE if some field values are < 0 or > UINT32_MAX.
 avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
 

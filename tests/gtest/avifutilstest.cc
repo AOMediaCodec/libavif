@@ -27,39 +27,39 @@ constexpr double kLotsOfDecimals = 0.14159265358979323846;
 
 TEST(ToFractionUTest, RoundTrip) {
   // Whole numbers and simple fractions should match perfectly.
-  const double perfect_tolerance = 0.0;
-  TestRoundTrip(0.0, perfect_tolerance);
-  TestRoundTrip(1.0, perfect_tolerance);
-  TestRoundTrip(42.0, perfect_tolerance);
-  TestRoundTrip(102356.0, perfect_tolerance);
-  TestRoundTrip(102356456.0f, perfect_tolerance);
-  TestRoundTrip(UINT32_MAX / 2.0, perfect_tolerance);
-  TestRoundTrip((double)UINT32_MAX - 1.0, perfect_tolerance);
-  TestRoundTrip((double)UINT32_MAX, perfect_tolerance);
-  TestRoundTrip(0.123, perfect_tolerance);
-  TestRoundTrip(1.0 / 3.0, perfect_tolerance);
-  TestRoundTrip(1.0 / 4.0, perfect_tolerance);
-  TestRoundTrip(3.0 / 23.0, perfect_tolerance);
-  TestRoundTrip(1253456.456, perfect_tolerance);
-  TestRoundTrip(8598533.9, perfect_tolerance);
+  constexpr double kPerfectTolerance = 0.0;
+  TestRoundTrip(0.0, kPerfectTolerance);
+  TestRoundTrip(1.0, kPerfectTolerance);
+  TestRoundTrip(42.0, kPerfectTolerance);
+  TestRoundTrip(102356.0, kPerfectTolerance);
+  TestRoundTrip(102356456.0f, kPerfectTolerance);
+  TestRoundTrip(UINT32_MAX / 2.0, kPerfectTolerance);
+  TestRoundTrip((double)UINT32_MAX - 1.0, kPerfectTolerance);
+  TestRoundTrip((double)UINT32_MAX, kPerfectTolerance);
+  TestRoundTrip(0.123, kPerfectTolerance);
+  TestRoundTrip(1.0 / 3.0, kPerfectTolerance);
+  TestRoundTrip(1.0 / 4.0, kPerfectTolerance);
+  TestRoundTrip(3.0 / 23.0, kPerfectTolerance);
+  TestRoundTrip(1253456.456, kPerfectTolerance);
+  TestRoundTrip(8598533.9, kPerfectTolerance);
 
   // // Numbers with a lot of decimals or very large/small can show a small
   // error.
-  const double small_tolerance = 1e-9;
-  TestRoundTrip(0.0123456, small_tolerance);
-  TestRoundTrip(3 + kLotsOfDecimals, small_tolerance);
-  TestRoundTrip(sqrt(2.0), small_tolerance);
-  TestRoundTrip(exp(1.0), small_tolerance);
-  TestRoundTrip(exp(10.0), small_tolerance);
-  TestRoundTrip(exp(15.0), small_tolerance);
+  constexpr double kSmallTolerance = 1e-9;
+  TestRoundTrip(0.0123456, kSmallTolerance);
+  TestRoundTrip(3 + kLotsOfDecimals, kSmallTolerance);
+  TestRoundTrip(sqrt(2.0), kSmallTolerance);
+  TestRoundTrip(exp(1.0), kSmallTolerance);
+  TestRoundTrip(exp(10.0), kSmallTolerance);
+  TestRoundTrip(exp(15.0), kSmallTolerance);
   // The golden ratio, the irrational number that is the "most difficult" to
   // approximate rationally according to Wikipedia.
   const double kGoldenRatio = (1.0 + std::sqrt(5.0)) / 2.0;
-  TestRoundTrip(kGoldenRatio, small_tolerance);  // Golden ratio.
-  TestRoundTrip(((double)UINT32_MAX) - 0.5, small_tolerance);
+  TestRoundTrip(kGoldenRatio, kSmallTolerance);  // Golden ratio.
+  TestRoundTrip(((double)UINT32_MAX) - 0.5, kSmallTolerance);
   // Note that values smaller than this might have a larger relative error
   // (e.g. 1.0e-10).
-  TestRoundTrip(4.2e-10, small_tolerance);
+  TestRoundTrip(4.2e-10, kSmallTolerance);
 }
 
 // Tests the max difference between the fraction-ified value and the original
