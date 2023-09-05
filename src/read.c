@@ -3786,6 +3786,9 @@ avifDecoder * avifDecoderCreate(void)
     decoder->imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
     decoder->strictFlags = AVIF_STRICT_ENABLED;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    decoder->ignoreGainMap = AVIF_TRUE;
+#endif
     return decoder;
 }
 
@@ -4249,11 +4252,11 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
 // Finds a 'tmap' (tone mapped image item) box associated with the given 'colorItem'.
 // If found, fills 'toneMappedImageItem' and  sets 'gainMapItemID' to the id of the gain map
 // item associated with the box. Otherwise, sets 'toneMappedImageItem' to NULL.
-// Returns AVIF_RESULT_OK on success (whether or not a tmap box was found).
+// Returns AVIF_RESULT_OK if no errors were encountered (whether or not a tmap box was found).
 // Assumes that there is a single tmap item, and not, e.g., a grid of tmap items.
 // TODO(maryla): add support for files with multiple tmap items if it gets allowed by the spec.
-static avifResult avifDecoderDataFindToneMappedImageItem(avifDecoderData * data,
-                                                         avifDecoderItem * colorItem,
+static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData * data,
+                                                         const avifDecoderItem * colorItem,
                                                          avifDecoderItem ** toneMappedImageItem,
                                                          uint32_t * gainMapItemID)
 {
@@ -4293,6 +4296,99 @@ static avifResult avifDecoderDataFindToneMappedImageItem(avifDecoderData * data,
     }
     *toneMappedImageItem = NULL;
     *gainMapItemID = 0;
+    return AVIF_RESULT_OK;
+}
+
+// Finds a 'tmap' (tone mapped image item) box associated with the given 'colorItem',
+// then finds the associated gain map image.
+// If found, fills 'gainMapItem' and  'gainMapCodecType'. Otherwise, sets 'gainMapItem' to NULL.
+// Returns AVIF_RESULT_OK if no errors were encountered (whether or not a gain map was found).
+// Assumes that there is a single tmap item, and not, e.g., a grid of tmap items.
+static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
+                                             const avifDecoderItem * colorItem,
+                                             avifDecoderItem ** gainMapItem,
+                                             avifCodecType * gainMapCodecType)
+{
+    *gainMapItem = NULL;
+    *gainMapCodecType = AVIF_CODEC_TYPE_UNKNOWN;
+
+    avifDecoderData * data = decoder->data;
+
+    avifDecoderItem * toneMappedImageItem;
+    uint32_t gainMapItemID;
+    AVIF_CHECKRES(avifDecoderDataFindToneMappedImageItem(data, colorItem, &toneMappedImageItem, &gainMapItemID));
+    if (!toneMappedImageItem) {
+        return AVIF_RESULT_OK;
+    }
+
+    if (!decoder->ignoreGainMap) {
+        // Read the gain map's metadata.
+        avifROData tmapData;
+        AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
+
+        AVIF_CHECKERR(avifParseToneMappedImageBox(&decoder->image->gainMap.metadata, tmapData.data, tmapData.size, data->diag),
+                      AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
+    }
+
+    avifDecoderItem * gainMapItemTmp = avifMetaFindItem(data->meta, gainMapItemID);
+    if (!gainMapItemTmp) {
+        avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item ID %d not found", gainMapItemID);
+        return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+    }
+    if (avifDecoderItemShouldBeSkipped(gainMapItemTmp)) {
+        avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item %d is not a supported image type", gainMapItemID);
+        return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+    }
+
+    if (!memcmp(gainMapItemTmp->type, "grid", 4)) {
+        avifROData gainMapGridData;
+        AVIF_CHECKRES(avifDecoderItemRead(gainMapItemTmp, decoder->io, &gainMapGridData, 0, 0, data->diag));
+        AVIF_CHECKERR(avifParseImageGridBox(&data->gainMap.grid,
+                                            gainMapGridData.data,
+                                            gainMapGridData.size,
+                                            decoder->imageSizeLimit,
+                                            decoder->imageDimensionLimit,
+                                            data->diag),
+                      AVIF_RESULT_INVALID_IMAGE_GRID);
+        *gainMapCodecType = avifDecoderItemGetGridCodecType(gainMapItemTmp);
+        if (*gainMapCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+    } else {
+        *gainMapCodecType = avifGetCodecType(gainMapItemTmp->type);
+        assert(*gainMapCodecType != AVIF_CODEC_TYPE_UNKNOWN);
+    }
+
+    if (!decoder->ignoreGainMap) {
+        decoder->image->gainMap.image = avifImageCreateEmpty();
+
+        // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
+        for (uint32_t propertyIndex = 0; propertyIndex < gainMapItemTmp->properties.count; ++propertyIndex) {
+            avifProperty * prop = &gainMapItemTmp->properties.prop[propertyIndex];
+            if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
+                decoder->image->gainMap.image->colorPrimaries = prop->u.colr.colorPrimaries;
+                decoder->image->gainMap.image->transferCharacteristics = prop->u.colr.transferCharacteristics;
+                decoder->image->gainMap.image->matrixCoefficients = prop->u.colr.matrixCoefficients;
+                decoder->image->gainMap.image->yuvRange = prop->u.colr.range;
+                break;
+            }
+        }
+
+        // If the base image is not HDR, then the tone mapped image is.
+        // Copy HDR properties associated with the tmap box to the gain map image.
+        // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
+        // place to put this data.
+        if (!decoder->image->gainMap.metadata.baseRenditionIsHDR) {
+            // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
+            const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItem->properties, "clli");
+            if (clliProp) {
+                decoder->image->gainMap.image->clli = clliProp->u.clli;
+            }
+        }
+    }
+
+    // Only set the output parameter after everything has been validated.
+    *gainMapItem = gainMapItemTmp;
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -4559,71 +4655,17 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        avifDecoderItem * gainMapItem = NULL;
-        avifDecoderItem * toneMappedImageItem;
-        uint32_t gainMapItemID;
-        AVIF_CHECKRES(avifDecoderDataFindToneMappedImageItem(data, colorItem, &toneMappedImageItem, &gainMapItemID));
-        avifCodecType gainMapCodecType = AVIF_CODEC_TYPE_UNKNOWN;
-        if (toneMappedImageItem) {
-            avifROData tmapData;
-            AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
-            AVIF_CHECKERR(avifParseToneMappedImageBox(&decoder->image->gainMap.metadata, tmapData.data, tmapData.size, data->diag),
-                          AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
-
-            gainMapItem = avifMetaFindItem(data->meta, gainMapItemID);
-            if (!gainMapItem) {
-                avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item ID %d not found", gainMapItemID);
-                return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
-            }
-            if (avifDecoderItemShouldBeSkipped(gainMapItem)) {
-                avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item %d is not a supported image type", gainMapItemID);
-                return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
-            }
-
-            if (!memcmp(gainMapItem->type, "grid", 4)) {
-                avifROData gainMapGridData;
-                AVIF_CHECKRES(avifDecoderItemRead(gainMapItem, decoder->io, &gainMapGridData, 0, 0, data->diag));
-                AVIF_CHECKERR(avifParseImageGridBox(&data->gainMap.grid,
-                                                    gainMapGridData.data,
-                                                    gainMapGridData.size,
-                                                    decoder->imageSizeLimit,
-                                                    decoder->imageDimensionLimit,
-                                                    data->diag),
-                              AVIF_RESULT_INVALID_IMAGE_GRID);
-                gainMapCodecType = avifDecoderItemGetGridCodecType(gainMapItem);
-                if (gainMapCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
-                    return AVIF_RESULT_INVALID_IMAGE_GRID;
-                }
-            } else {
-                gainMapCodecType = avifGetCodecType(gainMapItem->type);
-                assert(gainMapCodecType != AVIF_CODEC_TYPE_UNKNOWN);
-            }
-
-            decoder->image->gainMap.image = avifImageCreateEmpty();
-
-            // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
-            for (uint32_t propertyIndex = 0; propertyIndex < gainMapItem->properties.count; ++propertyIndex) {
-                avifProperty * prop = &gainMapItem->properties.prop[propertyIndex];
-                if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
-                    decoder->image->gainMap.image->colorPrimaries = prop->u.colr.colorPrimaries;
-                    decoder->image->gainMap.image->transferCharacteristics = prop->u.colr.transferCharacteristics;
-                    decoder->image->gainMap.image->matrixCoefficients = prop->u.colr.matrixCoefficients;
-                    decoder->image->gainMap.image->yuvRange = prop->u.colr.range;
-                    break;
-                }
-            }
-
-            // If the base image is not HDR, then the tone mapped image is.
-            // Copy HDR properties associated with the tmap box to the gain map image.
-            // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
-            // place to put this data.
-            if (!decoder->image->gainMap.metadata.baseRenditionIsHDR) {
-                // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
-                const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItem->properties, "clli");
-                if (clliProp) {
-                    decoder->image->gainMap.image->clli = clliProp->u.clli;
-                }
-            }
+        avifDecoderItem * gainMapItem;
+        avifCodecType gainMapCodecType;
+        avifResult findGainMapResult = avifDecoderFindGainMapItem(decoder, colorItem, &gainMapItem, &gainMapCodecType);
+        if (decoder->ignoreGainMap) {
+            // When ignoring the gain map, we still report whether one is present or not,
+            // but do not fail if there was any error with the gain map.
+            decoder->gainMapPresent = (findGainMapResult == AVIF_RESULT_OK) && (gainMapItem != NULL);
+            // We also ignore the actual item and don't decode it.
+            gainMapItem = NULL;
+        } else {
+            AVIF_CHECKRES(findGainMapResult);
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
@@ -4642,26 +4684,33 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->duration = 1;
         decoder->durationInTimescales = 1;
 
-        AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->color, colorItem, AVIF_ITEM_COLOR));
-        if ((data->color.grid.rows == 0) || (data->color.grid.columns == 0)) {
-            if (colorItem->progressive) {
-                decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
-                const avifTile * colorTile = &data->tiles.tile[0];
-                if (colorTile->input->samples.count > 1) {
-                    decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
-                    decoder->imageCount = (int)colorTile->input->samples.count;
+        avifBool shouldDecodeColorAndAlpha = AVIF_TRUE;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        shouldDecodeColorAndAlpha = !decoder->ignoreColorAndAlpha;
+#endif
+
+        if (shouldDecodeColorAndAlpha) {
+            AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->color, colorItem, AVIF_ITEM_COLOR));
+            if ((data->color.grid.rows == 0) || (data->color.grid.columns == 0)) {
+                if (colorItem->progressive) {
+                    decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
+                    const avifTile * colorTile = &data->tiles.tile[0];
+                    if (colorTile->input->samples.count > 1) {
+                        decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
+                        decoder->imageCount = (int)colorTile->input->samples.count;
+                    }
                 }
             }
-        }
 
-        if (alphaItem) {
-            if (!alphaItem->width && !alphaItem->height) {
-                // NON-STANDARD: Alpha subimage does not have an ispe property; adopt width/height from color item
-                assert(!(decoder->strictFlags & AVIF_STRICT_ALPHA_ISPE_REQUIRED));
-                alphaItem->width = colorItem->width;
-                alphaItem->height = colorItem->height;
+            if (alphaItem) {
+                if (!alphaItem->width && !alphaItem->height) {
+                    // NON-STANDARD: Alpha subimage does not have an ispe property; adopt width/height from color item
+                    assert(!(decoder->strictFlags & AVIF_STRICT_ALPHA_ISPE_REQUIRED));
+                    alphaItem->width = colorItem->width;
+                    alphaItem->height = colorItem->height;
+                }
+                AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->alpha, alphaItem, AVIF_ITEM_ALPHA));
             }
-            AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->alpha, alphaItem, AVIF_ITEM_ALPHA));
         }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)

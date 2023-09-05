@@ -1142,7 +1142,14 @@ typedef struct avifDecoder
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     // This is true when avifDecoderParse() detects a gain map.
     avifBool gainMapPresent;
-    // TODO(maryla): add flags to ignore the main image, or ignore the gain map if desired.
+    // Do not decode the gain map image or gain map metadata if present (defaults to AVIF_TRUE).
+    // Set this to AVIF_FALSE if you DO want to decode gain map pixels and metadata.
+    // gainMapPresent is still set if the presence of a gain map is detected, regardless
+    // of this setting.
+    avifBool ignoreGainMap;
+    // Do not decode the color/alpha planes of the main image.
+    // Can be useful to decode the gain map only.
+    avifBool ignoreColorAndAlpha;
 #endif
 } avifDecoder;
 
