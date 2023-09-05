@@ -86,6 +86,7 @@ if(BUILD_SHARED_LIBS)
 else()
     set(AVIF_LIBRARY_PREFIX "${CMAKE_STATIC_LIBRARY_PREFIX}")
     set(AVIF_LIBRARY_SUFFIX "${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    # This is needed to get shared libraries (e.g. pixbufloader-avif) to compile against a static libavif.
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
