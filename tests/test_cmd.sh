@@ -49,6 +49,7 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_encoded.avif"
+ENCODED_FILE_REFERENCE="avif_test_cmd_encoded_ref.avif"
 ENCODED_FILE_WITH_DASH="-avif_test_cmd_encoded.avif"
 DECODED_FILE="avif_test_cmd_decoded.png"
 OUT_MSG="avif_test_cmd_out_msg.txt"
@@ -75,6 +76,28 @@ pushd ${TMP_DIR}
   # Passing a filename starting with a dash without using -- should fail.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
   "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
+
+  # Option update handling test
+  # Passing non-update option before input should not print warning.
+  "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE_REFERENCE}" 2> "${OUT_MSG}"
+  grep "WARNING: -q" "${OUT_MSG}" && exit 1
+  grep "WARNING: Trailing options" "${OUT_MSG}" && exit 1
+  # Passing non-update option after input should print warning.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q 85 2> "${OUT_MSG}"
+  grep "WARNING: -q" "${OUT_MSG}"
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
+  # Passing non-update option after input but before positional output should also print warning.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 85 "${ENCODED_FILE}" 2> "${OUT_MSG}"
+  grep "WARNING: -q" "${OUT_MSG}"
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}"
+  # Passing update option after input should print warning, and has no effect.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" -q:u 85 2> "${OUT_MSG}"
+  grep "WARNING: Trailing options" "${OUT_MSG}"
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" && exit 1
+  # Passing update option after input but before positional output should also print warning, and has no effect.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q:u 85 "${ENCODED_FILE}" 2> "${OUT_MSG}"
+  grep "WARNING: Trailing options" "${OUT_MSG}"
+  cmp -s "${ENCODED_FILE_REFERENCE}" "${ENCODED_FILE}" && exit 1
 
   # --min and --max must be both specified.
   "${AVIFENC}" -s 10 --min 24 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1

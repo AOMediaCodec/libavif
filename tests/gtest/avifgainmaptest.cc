@@ -55,28 +55,44 @@ avifGainMapMetadata GetTestGainMapMetadata(bool base_rendition_is_hdr) {
   return metadata;
 }
 
-TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
+testutil::AvifImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
   testutil::AvifImagePtr image =
       testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
-  ASSERT_NE(image, nullptr);
-  image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+  if (image == nullptr) {
+    return {nullptr, nullptr};
+  }
+  image->transferCharacteristics =
+      (avifTransferCharacteristics)(base_rendition_is_hdr
+                                        ? AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084
+                                        : AVIF_TRANSFER_CHARACTERISTICS_SRGB);
   testutil::FillImageGradient(image.get());
-
   testutil::AvifImagePtr gain_map =
       testutil::CreateImage(/*width=*/6, /*height=*/17, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
-  ASSERT_NE(gain_map, nullptr);
+  if (gain_map == nullptr) {
+    return {nullptr, nullptr};
+  }
   testutil::FillImageGradient(gain_map.get());
-  gain_map->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_FCC;
-  // Even though this is attached to the gain map, it represents the clli
-  // information of the tone mapped image.
-  gain_map->clli.maxCLL = 10;
-  gain_map->clli.maxPALL = 5;
-
   image->gainMap.image = gain_map.release();  // 'image' now owns the gain map.
-  image->gainMap.metadata =
-      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/false);
+  image->gainMap.metadata = GetTestGainMapMetadata(base_rendition_is_hdr);
+
+  if (base_rendition_is_hdr) {
+    image->clli.maxCLL = 10;
+    image->clli.maxPALL = 5;
+  } else {
+    // Even though this is attached to the gain map, it represents the clli
+    // information of the tone mapped image.
+    image->gainMap.image->clli.maxCLL = 10;
+    image->gainMap.image->clli.maxPALL = 5;
+  }
+
+  return image;
+}
+
+TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
+  testutil::AvifImagePtr image =
+      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
 
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
@@ -89,6 +105,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
+  decoder->ignoreGainMap = AVIF_FALSE;
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -107,8 +124,8 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
             image->gainMap.image->clli.maxCLL);
   EXPECT_EQ(decoded->gainMap.image->clli.maxPALL,
             image->gainMap.image->clli.maxPALL);
-  CheckGainMapMetadataMatches(image->gainMap.metadata,
-                              decoded->gainMap.metadata);
+  CheckGainMapMetadataMatches(decoded->gainMap.metadata,
+                              image->gainMap.metadata);
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_basesdr.avif", std::ios::binary)
@@ -117,24 +134,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
 
 TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   testutil::AvifImagePtr image =
-      testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
-                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
-  ASSERT_NE(image, nullptr);
-  image->transferCharacteristics =
-      AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
-  image->clli.maxCLL = 10;
-  image->clli.maxPALL = 5;
-  testutil::FillImageGradient(image.get());
-
-  testutil::AvifImagePtr gain_map =
-      testutil::CreateImage(/*width=*/6, /*height=*/17, /*depth=*/8,
-                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
-  ASSERT_NE(gain_map, nullptr);
-  testutil::FillImageGradient(gain_map.get());
-
-  image->gainMap.image = gain_map.release();  // 'image' now owns the gain map.
-  image->gainMap.metadata =
-      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
+      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
 
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   ASSERT_NE(encoder, nullptr);
@@ -146,6 +146,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  decoder->ignoreGainMap = AVIF_FALSE;
   ASSERT_NE(decoder, nullptr);
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
@@ -161,8 +162,8 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
             40.0);
   EXPECT_EQ(decoded->clli.maxCLL, image->clli.maxCLL);
   EXPECT_EQ(decoded->clli.maxPALL, image->clli.maxPALL);
-  CheckGainMapMetadataMatches(image->gainMap.metadata,
-                              decoded->gainMap.metadata);
+  CheckGainMapMetadataMatches(decoded->gainMap.metadata,
+                              image->gainMap.metadata);
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_basehdr.avif", std::ios::binary)
@@ -218,6 +219,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
+  decoder->ignoreGainMap = AVIF_FALSE;
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -244,7 +246,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   EXPECT_TRUE(decoder->gainMapPresent);
   ASSERT_NE(decoded->gainMap.image, nullptr);
   ASSERT_GT(testutil::GetPsnr(*merged_gain_map, *decoded->gainMap.image), 40.0);
-  CheckGainMapMetadataMatches(gain_map_metadata, decoded->gainMap.metadata);
+  CheckGainMapMetadataMatches(decoded->gainMap.metadata, gain_map_metadata);
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_grid.avif", std::ios::binary)
@@ -349,6 +351,138 @@ TEST(GainMapTest, SequenceNotSupported) {
   // Image sequences with gain maps are not supported.
   ASSERT_EQ(result, AVIF_RESULT_NOT_IMPLEMENTED)
       << avifResultToString(result) << " " << encoder->diag.error;
+}
+
+TEST(GainMapTest, IgnoreGainMap) {
+  testutil::AvifImagePtr image =
+      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  // Decode image, with ignoreGainMap true by default.
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                 encoded.size);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  // Verify that the input and decoded images are close.
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
+  // Verify that the gain map was detected...
+  EXPECT_TRUE(decoder->gainMapPresent);
+  // ... but not decoded because ignoreGainMap is true by default.
+  EXPECT_EQ(decoded->gainMap.image, nullptr);
+  // Check that the gain map metadata was not populated either.
+  CheckGainMapMetadataMatches(decoded->gainMap.metadata, avifGainMapMetadata());
+}
+
+TEST(GainMapTest, IgnoreColorAndAlpha) {
+  testutil::AvifImagePtr image =
+      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  // Decode just the gain map.
+  decoder->ignoreColorAndAlpha = AVIF_TRUE;
+  decoder->ignoreGainMap = AVIF_FALSE;
+  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                 encoded.size);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  // Main image metadata is available.
+  EXPECT_EQ(decoder->image->width, 12u);
+  EXPECT_EQ(decoder->image->height, 34u);
+  // But pixels are not.
+  EXPECT_EQ(decoder->image->yuvRowBytes[0], 0u);
+  EXPECT_EQ(decoder->image->yuvRowBytes[1], 0u);
+  EXPECT_EQ(decoder->image->yuvRowBytes[2], 0u);
+  EXPECT_EQ(decoder->image->alphaRowBytes, 0u);
+  // The gain map was decoded.
+  EXPECT_TRUE(decoder->gainMapPresent);
+  ASSERT_NE(decoded->gainMap.image, nullptr);
+  EXPECT_GT(testutil::GetPsnr(*image->gainMap.image, *decoded->gainMap.image),
+            40.0);
+  CheckGainMapMetadataMatches(decoded->gainMap.metadata,
+                              image->gainMap.metadata);
+}
+
+TEST(GainMapTest, IgnoreAll) {
+  testutil::AvifImagePtr image =
+      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  // Ignore both the main image and the gain map.
+  decoder->ignoreColorAndAlpha = AVIF_TRUE;
+  decoder->ignoreGainMap = AVIF_TRUE;
+  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                 encoded.size);
+  // ... which should give an error.
+  ASSERT_EQ(result, AVIF_RESULT_NO_CONTENT);
+}
+
+TEST(GainMapTest, NoGainMap) {
+  // Create a simple image without a gain map.
+  testutil::AvifImagePtr image =
+      testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
+                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+  testutil::FillImageGradient(image.get());
+  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  // Enable gain map decoding.
+  decoder->ignoreGainMap = AVIF_FALSE;
+  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                 encoded.size);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  // Verify that the input and decoded images are close.
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
+  // Verify that no gain map was found.
+  EXPECT_FALSE(decoder->gainMapPresent);
+  EXPECT_EQ(decoded->gainMap.image, nullptr);
+  CheckGainMapMetadataMatches(decoded->gainMap.metadata, avifGainMapMetadata());
 }
 
 }  // namespace

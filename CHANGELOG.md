@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_AVIR.
 * Implement avifImageScale() fallback when libyuv is not available.
 * Partial import of libyuv to third_party/libyuv (new LICENSE).
+* Add avifenc flag suffixes ":update" and ":u". Quality-relative,
+  tiling-relative and codec-specific flags can now be positional, relative to
+  input files.
 
 ### Changed
 * Update aom.cmd: v3.7.0
