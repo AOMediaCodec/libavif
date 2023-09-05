@@ -32,6 +32,8 @@
   free(var##_mem);                     \
   var = NULL
 
+void CopyRow_C(const uint8_t* src, uint8_t* dst, int count);
+
 void InterpolateRow_C(uint8_t* dst_ptr,
                       const uint8_t* src_ptr,
                       ptrdiff_t src_stride,

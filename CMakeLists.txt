@@ -317,6 +317,7 @@ if(NOT libyuv_FOUND)
         third_party/libyuv/source/scale_common.c
         third_party/libyuv/source/scale_any.c
         third_party/libyuv/source/row_common.c
+        third_party/libyuv/source/planar_functions.c
     )
 endif()
 

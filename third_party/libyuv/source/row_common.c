@@ -43,6 +43,10 @@ void Convert16To8Row_C(const uint16_t* src_y,
   }
 }
 
+void CopyRow_C(const uint8_t* src, uint8_t* dst, int count) {
+  memcpy(dst, src, count);
+}
+
 // Blend 2 rows into 1.
 static void HalfRow_C(const uint8_t* src_uv,
                       ptrdiff_t src_uv_stride,

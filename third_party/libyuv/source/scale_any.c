@@ -15,6 +15,37 @@
 
 #include "libyuv/basic_types.h"
 
+// Scale up horizontally 2 times using linear filter.
+#define SUH2LANY(NAME, SIMD, C, MASK, PTYPE)                       \
+  void NAME(const PTYPE* src_ptr, PTYPE* dst_ptr, int dst_width) { \
+    int work_width = (dst_width - 1) & ~1;                         \
+    int r = work_width & MASK;                                     \
+    int n = work_width & ~MASK;                                    \
+    dst_ptr[0] = src_ptr[0];                                       \
+    if (work_width > 0) {                                          \
+      if (n != 0) {                                                \
+        SIMD(src_ptr, dst_ptr + 1, n);                             \
+      }                                                            \
+      C(src_ptr + (n / 2), dst_ptr + n + 1, r);                    \
+    }                                                              \
+    dst_ptr[dst_width - 1] = src_ptr[(dst_width - 1) / 2];         \
+  }
+
+// Even the C versions need to be wrapped, because boundary pixels have to
+// be handled differently
+
+SUH2LANY(ScaleRowUp2_Linear_Any_C,
+         ScaleRowUp2_Linear_C,
+         ScaleRowUp2_Linear_C,
+         0,
+         uint8_t)
+
+SUH2LANY(ScaleRowUp2_Linear_16_Any_C,
+         ScaleRowUp2_Linear_16_C,
+         ScaleRowUp2_Linear_16_C,
+         0,
+         uint16_t)
+
 // Scale up 2 times using bilinear filter.
 // This function produces 2 rows at a time.
 #define SU2BLANY(NAME, SIMD, C, MASK, PTYPE)                              \
@@ -50,36 +81,5 @@ SU2BLANY(ScaleRowUp2_Bilinear_Any_C,
 SU2BLANY(ScaleRowUp2_Bilinear_16_Any_C,
          ScaleRowUp2_Bilinear_16_C,
          ScaleRowUp2_Bilinear_16_C,
-         0,
-         uint16_t)
-
-// Scale up horizontally 2 times using linear filter.
-#define SUH2LANY(NAME, SIMD, C, MASK, PTYPE)                       \
-  void NAME(const PTYPE* src_ptr, PTYPE* dst_ptr, int dst_width) { \
-    int work_width = (dst_width - 1) & ~1;                         \
-    int r = work_width & MASK;                                     \
-    int n = work_width & ~MASK;                                    \
-    dst_ptr[0] = src_ptr[0];                                       \
-    if (work_width > 0) {                                          \
-      if (n != 0) {                                                \
-        SIMD(src_ptr, dst_ptr + 1, n);                             \
-      }                                                            \
-      C(src_ptr + (n / 2), dst_ptr + n + 1, r);                    \
-    }                                                              \
-    dst_ptr[dst_width - 1] = src_ptr[(dst_width - 1) / 2];         \
-  }
-
-// Even the C versions need to be wrapped, because boundary pixels have to
-// be handled differently
-
-SUH2LANY(ScaleRowUp2_Linear_Any_C,
-         ScaleRowUp2_Linear_C,
-         ScaleRowUp2_Linear_C,
-         0,
-         uint8_t)
-
-SUH2LANY(ScaleRowUp2_Linear_16_Any_C,
-         ScaleRowUp2_Linear_16_C,
-         ScaleRowUp2_Linear_16_C,
          0,
          uint16_t)
