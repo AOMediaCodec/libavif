@@ -1160,6 +1160,11 @@ typedef struct avifDecoder
     // Can be useful to decode the gain map image only.
     avifBool ignoreColorAndAlpha;
 #endif
+
+    // This is true when avifDecoderParse() detects an image sequence track in the image. If this is true, the image can be
+    // decoded either as an animated image sequence or as a still image (the primary image item) by setting avifDecoderSetSource
+    // to the appropriate source.
+    avifBool imageSequenceTrackPresent;
 } avifDecoder;
 
 AVIF_API avifDecoder * avifDecoderCreate(void);

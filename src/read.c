@@ -3664,6 +3664,7 @@ static avifResult avifParse(avifDecoder * decoder)
             AVIF_CHECKERR(avifParseMovieBox(data, boxOffset, boxContents.data, boxContents.size, decoder->imageSizeLimit, decoder->imageDimensionLimit),
                           AVIF_RESULT_BMFF_PARSE_FAILED);
             moovSeen = AVIF_TRUE;
+            decoder->imageSequenceTrackPresent = AVIF_TRUE;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         } else if (!memcmp(header.type, "coni", 4)) {
             AVIF_CHECKERR(!metaSeen && !moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
