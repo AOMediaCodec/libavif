@@ -318,7 +318,7 @@ static avifBool parseU32List(uint32_t output[], int n, const char * arg, const c
     strncpy(buffer, arg, 127);
     buffer[127] = 0;
 
-    char delims[2] = {delim, 0};
+    char delims[2] = { delim, 0 };
 
     int index = 0;
     char * token = buffer;
@@ -999,8 +999,6 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
     // --auto-progressive only allows one input, so directly read from it.
     int targetQuality = (settings->overrideQuality != INVALID_QUALITY) ? settings->overrideQuality
                                                                        : input->files[0].settings.quality.value;
-    int targetQualityAlpha = (settings->overrideQualityAlpha != INVALID_QUALITY) ? settings->overrideQualityAlpha
-                                                                                 : input->files[0].settings.qualityAlpha.value;
 
     avifImage * nextImage = NULL;
     const avifImage * encodingImage = firstImage;
@@ -1013,11 +1011,9 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
 
     while (layerIndex < layers) {
         if (settings->autoProgressive) {
-            // reversed lerp such that last layer reaches exact targetQuality
+            // reversed lerp, so that last layer reaches exact targetQuality
             encoder->quality = targetQuality - (targetQuality - PROGRESSIVE_START_QUALITY) *
                                                    (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
-            encoder->qualityAlpha = targetQualityAlpha - (targetQualityAlpha - PROGRESSIVE_START_QUALITY) *
-                                                             (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
         } else {
             const avifInputFile * nextFile = avifInputGetFile(input, layerIndex);
             if (!nextFile) {
@@ -1152,13 +1148,10 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         // If the color quality or alpha quality is less than 10, the main()
         // function overrides --auto-progressive and sets settings->progressive to
         // false.
-        assert((encoder->quality >= PROGRESSIVE_WORST_QUALITY) && (encoder->qualityAlpha >= PROGRESSIVE_WORST_QUALITY));
-        encoder->extraLayerCount = 1;
+        assert(encoder->quality >= PROGRESSIVE_WORST_QUALITY);
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
-        if (firstImage->alphaPlane && firstImage->alphaRowBytes) {
-            encoder->qualityAlpha = 2;
-        }
+        // Low alpha quality resulted in weird artifact, so we don't do it.
     }
 
     if (settings->layers > 1) {
@@ -1649,9 +1642,8 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             NEXTARG();
-            uint32_t frac[2] = {0, 1};
-            if (!(parseU32List(frac, 1, arg, '/') || parseU32List(frac, 2, arg, '/'))
-                || frac[0] > INT32_MAX || frac[1] > INT32_MAX) {
+            uint32_t frac[2] = { 0, 1 };
+            if (!(parseU32List(frac, 1, arg, '/') || parseU32List(frac, 2, arg, '/')) || frac[0] > INT32_MAX || frac[1] > INT32_MAX) {
                 fprintf(stderr, "ERROR: Invalid scaling mode: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
@@ -2035,17 +2027,12 @@ int main(int argc, char * argv[])
         } else {
             if (settings.autoProgressive) {
                 assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
-                assert(DEFAULT_QUALITY_ALPHA >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
                     fprintf(stderr, "ERROR: --qcolor must be at least %d when using --auto-progressive.\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
-                if (fileSettings->qualityAlpha.set && fileSettings->qualityAlpha.value < PROGRESSIVE_WORST_QUALITY) {
-                    fprintf(stderr, "ERROR: --qalpha must be at least %d when using --auto-progressive.\n", PROGRESSIVE_WORST_QUALITY);
-                    returnCode = 1;
-                    goto cleanup;
-                }
+                // --auto-progressive only adjust color quality
             }
         }
 
