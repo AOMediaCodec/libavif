@@ -210,8 +210,8 @@ static void syntaxLong(void)
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
-    printf("    --auto-progressive                : Auto set parameters to encode a simple progressive image\n");
-    printf("    --layer N                         : Set number of layers for progressive image\n");
+    printf("    --auto-progressive                : EXPERIMENTAL: Auto set parameters to encode a simple progressive image.\n");
+    printf("    --layer N                         : EXPERIMENTAL: Set number of layers for progressive image [1-%d]. (default: 1 means disable progressive)\n", AVIF_MAX_AV1_LAYER_COUNT);
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
@@ -262,7 +262,7 @@ static void syntaxLong(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
-    printf("    --scaling-mode N[/D]              : Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1)\n");
+    printf("    --scaling-mode N[/D]              : EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1)\n");
     printf("    --duration D                      : Set frame durations (in timescales) to D; default 1. This option always apply to following inputs with or without suffix.\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("\n");

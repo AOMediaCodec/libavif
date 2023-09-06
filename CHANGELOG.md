@@ -23,11 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add avifenc flag suffixes ":update" and ":u". Quality-relative,
   tiling-relative and codec-specific flags can now be positional, relative to
   input files.
+* Add experimental support for progressive AVIF encoding in avifenc.
+  A "layer" of progressive AVIF works like a frame of animated AVIF, but
+  rendered in progressive manner on supported viewers.
+  Only aom supports progressive AVIF encoding at the time of writing.
+  Add --layer flag to set number of layers of progressive AVIF.
+  Add --scaling-mode flag to set scaling mode of each layer.
+  This part of AV1 encoder is not as thoroughly tested, so there are higher
+  possibility encoder may crash when given certain configuration or input.
 
 ### Changed
 * Update aom.cmd: v3.7.0
 * Update svt.cmd/svt.sh: v1.7.0
 * Update zlibpng.cmd: zlib 1.3 and libpng 1.6.40
+* The experimental --progressive flag in avifenc was renamed to
+  --auto-progressive.
 
 ## [1.0.1] - 2023-08-29
 
