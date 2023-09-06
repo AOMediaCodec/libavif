@@ -4,7 +4,6 @@
 #include "avif/internal.h"
 
 #include <assert.h>
-#include <float.h>
 #include <math.h>
 #include <string.h>
 
