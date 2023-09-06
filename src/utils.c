@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <string.h>
 
@@ -232,5 +233,50 @@ avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result)
     result->d = a.d;
 
     avifFractionSimplify(result);
+    return AVIF_TRUE;
+}
+
+avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
+{
+    if (isnan(v) || v < 0 || v > UINT32_MAX) {
+        return AVIF_FALSE;
+    }
+
+    // Maximum denominator: makes sure that both the numerator and denominator are <= UINT32_MAX.
+    const uint64_t maxD = (v <= 1) ? UINT32_MAX : (uint64_t)floor(UINT32_MAX / v);
+
+    // Find the best approximation of v as a fraction using continued fractions, see
+    // https://en.wikipedia.org/wiki/Continued_fraction
+    *denominator = 1;
+    uint32_t previousD = 0;
+    double currentV = v - floor(v);
+    int iter = 0;
+    // Set a maximum number of iterations to be safe. Most numbers should
+    // converge in less than ~20 iterations.
+    // The golden ratio is the worst case and takes 39 iterations.
+    const int maxIter = 39;
+    while (iter < maxIter) {
+        const double numeratorDouble = (double)(*denominator) * v;
+        assert(numeratorDouble <= UINT32_MAX);
+        *numerator = (uint32_t)round(numeratorDouble);
+        if (fabs(numeratorDouble - (*numerator)) == 0.0) {
+            return AVIF_TRUE;
+        }
+        currentV = 1.0 / currentV;
+        const double newD = previousD + floor(currentV) * (*denominator);
+        if (newD > maxD) {
+            // This is the best we can do with a denominator <= max_d.
+            return AVIF_TRUE;
+        }
+        previousD = *denominator;
+        assert(newD <= UINT32_MAX);
+        *denominator = (uint32_t)newD;
+        currentV -= floor(currentV);
+        ++iter;
+    }
+    // Maximum number of iterations reached, return what we've found.
+    // For max_iter >= 39 we shouldn't get here. max_iter can be set
+    // to a lower value to speed up the algorithm if needed.
+    *numerator = (uint32_t)round((double)(*denominator) * v);
     return AVIF_TRUE;
 }

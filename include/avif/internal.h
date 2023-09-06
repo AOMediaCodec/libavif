@@ -86,6 +86,10 @@ avifBool avifFractionCD(avifFraction * a, avifFraction * b);
 avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
 avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
 
+// Creates a uint32 fraction that is approximately equal to 'v'.
+// Returns AVIF_FALSE if 'v' is < 0 or > UINT32_MAX or NaN.
+avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator);
+
 void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);

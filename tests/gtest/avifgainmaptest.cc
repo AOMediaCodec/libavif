@@ -1,9 +1,11 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cmath>
 #include <fstream>
 
 #include "avif/avif.h"
+#include "avif/gainmap.h"
 #include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -483,6 +485,61 @@ TEST(GainMapTest, NoGainMap) {
   EXPECT_FALSE(decoder->gainMapPresent);
   EXPECT_EQ(decoded->gainMap.image, nullptr);
   CheckGainMapMetadataMatches(decoded->gainMap.metadata, avifGainMapMetadata());
+}
+
+#define EXPECT_FRACTION_NEAR(numerator, denominator, expected)     \
+  EXPECT_NEAR(std::abs((double)numerator / denominator), expected, \
+              expected * 0.001);
+
+TEST(GainMapTest, Convert) {
+  avifGainMapMetadataDouble metadata_double = {};
+  metadata_double.gainMapMin[0] = 1.0;
+  metadata_double.gainMapMin[1] = 1.1;
+  metadata_double.gainMapMin[2] = 1.2;
+  metadata_double.gainMapMax[0] = 10.0;
+  metadata_double.gainMapMax[1] = 10.1;
+  metadata_double.gainMapMax[2] = 10.2;
+  metadata_double.gainMapGamma[0] = 1.0;
+  metadata_double.gainMapGamma[1] = 1.0;
+  metadata_double.gainMapGamma[2] = 1.2;
+  metadata_double.offsetSdr[0] = 1.0 / 32.0;
+  metadata_double.offsetSdr[1] = 1.0 / 64.0;
+  metadata_double.offsetSdr[2] = 1.0 / 128.0;
+  metadata_double.offsetHdr[0] = 0.004564;
+  metadata_double.offsetHdr[1] = 0.0;
+  metadata_double.hdrCapacityMin = 1.0;
+  metadata_double.hdrCapacityMax = 10.0;
+  metadata_double.baseRenditionIsHDR = AVIF_TRUE;
+
+  avifGainMapMetadata metadata = {};
+  ASSERT_TRUE(
+      avifGainMapMetadataDoubleToFractions(&metadata, &metadata_double));
+
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_FRACTION_NEAR(metadata.gainMapMinN[i], metadata.gainMapMinD[i],
+                         metadata_double.gainMapMin[i]);
+    EXPECT_FRACTION_NEAR(metadata.gainMapMaxN[i], metadata.gainMapMaxD[i],
+                         metadata_double.gainMapMax[i]);
+    EXPECT_FRACTION_NEAR(metadata.gainMapGammaN[i], metadata.gainMapGammaD[i],
+                         metadata_double.gainMapGamma[i]);
+    EXPECT_FRACTION_NEAR(metadata.offsetSdrN[i], metadata.offsetSdrD[i],
+                         metadata_double.offsetSdr[i]);
+    EXPECT_FRACTION_NEAR(metadata.offsetHdrN[i], metadata.offsetHdrD[i],
+                         metadata_double.offsetHdr[i]);
+  }
+  EXPECT_FRACTION_NEAR(metadata.hdrCapacityMinN, metadata.hdrCapacityMinD,
+                       metadata_double.hdrCapacityMin);
+  EXPECT_FRACTION_NEAR(metadata.hdrCapacityMaxN, metadata.hdrCapacityMaxD,
+                       metadata_double.hdrCapacityMax);
+  EXPECT_EQ(metadata.baseRenditionIsHDR, metadata_double.baseRenditionIsHDR);
+}
+
+TEST(GainMapTest, Invalid) {
+  avifGainMapMetadataDouble metadata_double = {};
+  metadata_double.gainMapGamma[0] = -42;  // A negative value is invalid!
+  avifGainMapMetadata metadata = {};
+  ASSERT_FALSE(
+      avifGainMapMetadataDoubleToFractions(&metadata, &metadata_double));
 }
 
 }  // namespace
