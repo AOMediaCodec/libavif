@@ -17,32 +17,6 @@
 
 #define STATIC_CAST(type, expr) (type)(expr)
 
-// TODO(fbarchard): make clamp255 preserve negative values.
-static __inline int32_t clamp255(int32_t v) {
-  return (-(v >= 255) | v) & 255;
-}
-
-// Use scale to convert lsb formats to msb, depending how many bits there are:
-// 32768 = 9 bits
-// 16384 = 10 bits
-// 4096 = 12 bits
-// 256 = 16 bits
-// TODO(fbarchard): change scale to bits
-#define C16TO8(v, scale) clamp255(((v) * (scale)) >> 16)
-
-void Convert16To8Row_C(const uint16_t* src_y,
-                       uint8_t* dst_y,
-                       int scale,
-                       int width) {
-  int x;
-  assert(scale >= 256);
-  assert(scale <= 32768);
-
-  for (x = 0; x < width; ++x) {
-    dst_y[x] = STATIC_CAST(uint8_t, C16TO8(src_y[x], scale));
-  }
-}
-
 void CopyRow_C(const uint8_t* src, uint8_t* dst, int count) {
   memcpy(dst, src, count);
 }
