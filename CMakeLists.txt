@@ -584,7 +584,7 @@ endif()
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 option(AVIF_ENABLE_GOLDEN_TESTS
-       "Build tests that compare encoding output to golden files. Depends on MP4box which can be built with ext/mp4box.sh" OFF
+       "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON, and depends on MP4box which can be built with ext/mp4box.sh" OFF
 )
 option(AVIF_ENABLE_GTEST
        "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON

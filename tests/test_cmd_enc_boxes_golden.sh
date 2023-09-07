@@ -61,9 +61,7 @@ has_errors=false
 cleanup() {
     # Only delete temp files if the test succeeded, to allow debugging in case or error.
     if ! $has_errors; then
-        find ${OUTPUT_DIR} -name '*.avif' -delete
-        find ${OUTPUT_DIR} -name '*.xml' -delete
-        find ${OUTPUT_DIR} -name '*.xml.diff' -delete
+        find ${OUTPUT_DIR} -type f \( -name '*.avif' -o -name '*.xml' -o -name '*.xml.diff' \) -delete
     fi
 }
 trap cleanup EXIT
