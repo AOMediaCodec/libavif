@@ -17,13 +17,6 @@
 #include "libyuv/row.h"
 #include "libyuv/scale_row.h"
 
-#define STATIC_CAST(type, expr) (type)(expr)
-
-// TODO(fbarchard): make clamp255 preserve negative values.
-static __inline int32_t clamp255(int32_t v) {
-  return (-(v >= 255) | v) & 255;
-}
-
 static __inline int Abs(int v) {
   return v >= 0 ? v : -v;
 }
