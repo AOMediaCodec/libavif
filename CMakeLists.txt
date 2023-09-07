@@ -321,6 +321,13 @@ if(NOT libyuv_FOUND)
         third_party/libyuv/source/row_common.c
         third_party/libyuv/source/planar_functions.c
     )
+    if(DEFINED ANDROID_ABI)
+        # When building third_party/libyuv/source/scale.c, some functions use
+        # some of the parameters only inside an assert statement. This causes
+        # unused parameter warnings when building for Android. Suppress the
+        # warning in that case.
+        add_compile_options(-Wno-unused-parameter)
+    endif()
 endif()
 
 if(AVIF_CODEC_DAV1D)
