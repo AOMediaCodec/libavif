@@ -41,13 +41,13 @@ typedef struct
     int layers;
     avifHeaderFormat headerFormat;
 
-    avifBool paspValid;
+    avifBool paspPresent;
     uint32_t paspValues[2];
-    avifBool clapValid;
+    avifBool clapValid; // clapValues may contain 4 crop values and need conversion. In this case clapValid is also false.
     uint32_t clapValues[8];
-    avifBool gridDimsValid;
+    avifBool gridDimsPresent;
     uint32_t gridDims[2];
-    avifBool clliValid;
+    avifBool clliPresent;
     uint32_t clliValues[2];
 
     int repetitionCount;
@@ -210,8 +210,9 @@ static void syntaxLong(void)
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
-    printf("    --auto-progressive                : EXPERIMENTAL: Auto set parameters to encode a simple progressive image.\n");
-    printf("    --layer N                         : EXPERIMENTAL: Set number of layers for progressive image [1-%d]. (default: 1 means disable progressive)\n", AVIF_MAX_AV1_LAYER_COUNT);
+    printf("    --auto-progressive                : EXPERIMENTAL: Auto set parameters to encode a simple progressive image from a single input frame.\n");
+    printf("    --layer N                         : EXPERIMENTAL: Set number of layers for progressive image [1-%d]. (default: 1 means disable progressive)\n",
+           AVIF_MAX_AV1_LAYER_COUNT);
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
@@ -309,8 +310,8 @@ static const char * qualityString(int quality)
     return "Low";
 }
 
-// Parse exactly n uint32_t from arg with separator characters delim.
-// output must be able to hold at least n elements.
+// Parse exactly n uint32_t from arg with separator character delim.
+// Output must be able to hold at least n elements.
 // Length of arg shall not exceed 127 characters or result can be truncated.
 static avifBool parseU32List(uint32_t output[], int n, const char * arg, const char delim)
 {
@@ -318,7 +319,8 @@ static avifBool parseU32List(uint32_t output[], int n, const char * arg, const c
     strncpy(buffer, arg, 127);
     buffer[127] = 0;
 
-    char delims[2] = { delim, 0 };
+    // strtok wants a string for delim, so build a single character string here.
+    const char delims[2] = { delim, '\0' };
 
     int index = 0;
     char * token = buffer;
@@ -1018,6 +1020,7 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
             const avifInputFile * nextFile = avifInputGetFile(input, layerIndex);
             if (!nextFile) {
                 fprintf(stderr, "ERROR: Encoding image with %d layers but only %d input provided.\n", layers, layerIndex);
+                goto cleanup;
             }
 
             if (nextImage) {
@@ -1145,9 +1148,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
            settings->jobs);
 
     if (settings->autoProgressive) {
-        // If the color quality or alpha quality is less than 10, the main()
-        // function overrides --auto-progressive and sets settings->progressive to
-        // false.
+        // If the color quality is less than 10, the main() function overrides
+        // --auto-progressive and sets settings->progressive to false.
         assert(encoder->quality >= PROGRESSIVE_WORST_QUALITY);
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
@@ -1163,7 +1165,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
                qualityString(encoder->qualityAlpha));
     }
 
-    if (settings->gridDimsValid > 0) {
+    if (settings->gridDimsPresent) {
         const avifResult addImageResult =
             avifEncoderAddImageGrid(encoder, settings->gridDims[0], settings->gridDims[1], gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
@@ -1660,7 +1662,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            settings.gridDimsValid = AVIF_TRUE;
+            settings.gridDimsPresent = AVIF_TRUE;
             if ((settings.gridDims[0] == 0) || (settings.gridDims[0] > 256) || (settings.gridDims[1] == 0) ||
                 (settings.gridDims[1] > 256)) {
                 fprintf(stderr, "ERROR: Invalid grid dims (valid dim range [1-256]): %s\n", arg);
@@ -1793,7 +1795,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            settings.paspValid = AVIF_TRUE;
+            settings.paspPresent = AVIF_TRUE;
         } else if (!strcmp(arg, "--crop")) {
             NEXTARG();
             if (!parseU32List(settings.clapValues, 4, arg, ',')) {
@@ -1834,7 +1836,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            settings.clliValid = AVIF_TRUE;
+            settings.clliPresent = AVIF_TRUE;
         } else if (!strcmp(arg, "--repetition-count")) {
             NEXTARG();
             if (!strcmp(arg, "infinite")) {
@@ -1884,7 +1886,7 @@ int main(int argc, char * argv[])
             settings.layers = 1;
         }
     }
-    if (settings.layers > 1 && settings.gridDimsValid > 1) {
+    if (settings.layers > 1 && settings.gridDimsPresent) {
         fprintf(stderr, "Progressive grid image unimplemented in avifenc.\n");
         returnCode = 1;
         goto cleanup;
@@ -2219,7 +2221,7 @@ int main(int argc, char * argv[])
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
     }
 
-    if (settings.paspValid) {
+    if (settings.paspPresent) {
         image->transformFlags |= AVIF_TRANSFORM_PASP;
         image->pasp.hSpacing = settings.paspValues[0];
         image->pasp.vSpacing = settings.paspValues[1];
@@ -2270,7 +2272,7 @@ int main(int argc, char * argv[])
         image->transformFlags |= AVIF_TRANSFORM_IMIR;
         image->imir.axis = imirAxis;
     }
-    if (settings.clliValid) {
+    if (settings.clliPresent) {
         image->clli.maxCLL = (uint16_t)settings.clliValues[0];
         image->clli.maxPALL = (uint16_t)settings.clliValues[1];
     }
@@ -2344,7 +2346,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (settings.gridDimsValid > 0) {
+    if (settings.gridDimsPresent) {
         // Grid image!
 
         gridCellCount = settings.gridDims[0] * settings.gridDims[1];
@@ -2448,7 +2450,7 @@ int main(int argc, char * argv[])
     printf("Encoded successfully.\n");
     printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.colorOBUSize);
     printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.alphaOBUSize);
-    const avifBool isImageSequence = (settings.gridDimsValid == 0) && (settings.layers == 1) && (input.filesCount > 1);
+    const avifBool isImageSequence = (!settings.gridDimsPresent) && (settings.layers == 1) && (input.filesCount > 1);
     if (isImageSequence) {
         if (settings.repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repetition Count: Infinite\n");

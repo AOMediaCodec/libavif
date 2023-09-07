@@ -77,7 +77,7 @@ pushd ${TMP_DIR}
     done
   fi
 
-  echo "Testing no enough input"
+  echo "Testing not enough input"
   "${AVIFENC}" -s 8 --layer 3 -q:u 2 "${INPUT_Y4M}" -q:u 60 "${INPUT_Y4M}" -o "${ENCODED_FILE}" && exit 1
 popd
 

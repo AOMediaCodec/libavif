@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   input files.
 * Add experimental support for progressive AVIF encoding in avifenc.
   A "layer" of progressive AVIF works like a frame of animated AVIF, but
-  rendered in progressive manner on supported viewers.
+  rendered in progressive manner on supported viewers (e.g. Chrome 94 or newer).
   Only aom supports progressive AVIF encoding at the time of writing.
   Add --layer flag to set number of layers of progressive AVIF.
   Add --scaling-mode flag to set scaling mode of each layer.
