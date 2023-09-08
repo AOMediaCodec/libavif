@@ -3,6 +3,8 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
+: # libxml2 is released under the MIT License.
+
 git clone -b v2.11.5 --depth 1 https://gitlab.gnome.org/GNOME/libxml2.git
 
 mkdir -p libxml2/build.libavif

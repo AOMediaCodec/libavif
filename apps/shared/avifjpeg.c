@@ -77,6 +77,7 @@ static avifBool avifJPEGCopyPixels(avifImage * avif, struct jpeg_decompress_stru
         readLines = AVIF_MAX(readLines, linesPerCall[i]);
     }
 
+    avifImageFreePlanes(avif, AVIF_PLANES_ALL); // Free planes in case they were already allocated.
     if (avifImageAllocatePlanes(avif, AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
         return AVIF_FALSE;
     }
@@ -341,6 +342,9 @@ static avifBool avifJPEGReadInternal(FILE * f,
                                      avifBool ignoreXMP,
                                      avifBool ignoreGainMap);
 
+// Arbitrary max number of jpeg segments to parse before giving up.
+#define MAX_JPEG_SEGMENTS 100
+
 // Finds the offset of the first MPF segment. Returns AVIF_TRUE if it was found.
 static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
 {
@@ -350,10 +354,11 @@ static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
     if (fseek(f, offset, SEEK_SET) != 0) {
         return AVIF_FALSE;
     }
+
     uint8_t buffer[4];
-    // Guaranteed to end when we reach the end of the file since 'offset' always increases by at least
-    // JPEG_MPF_SEGMENT_HEADER_SIZE_BYTES.
-    while (1) {
+    int numSegments = 0;
+    while (numSegments < MAX_JPEG_SEGMENTS) {
+        ++numSegments;
         // Read the APP<n> segment marker (2 bytes) and the segment size (2 bytes).
         if (fread(buffer, 1, 4, f) != 4) {
             fseek(f, oldOffset, SEEK_SET);
@@ -362,7 +367,7 @@ static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
         offset += 4;
 
         // Total APP<n> segment byte count, including the byte count value (2 bytes), but excluding the 2 byte APP<n> marker itself.
-        uint16_t segmentLength = avifJPEGReadUint16BigEndian(&buffer[2]);
+        const uint16_t segmentLength = avifJPEGReadUint16BigEndian(&buffer[2]);
         if (segmentLength < 2) {
             fseek(f, oldOffset, SEEK_SET);
             return AVIF_FALSE; // Invalid length.
@@ -397,6 +402,7 @@ static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
             return AVIF_FALSE;
         }
     }
+    return AVIF_FALSE;
 }
 
 // Searches for a node called 'nameSpace:nodeName' in the children (or descendants if 'recursive' is set) of 'parentNode'.
@@ -410,8 +416,8 @@ static const xmlNode * avifJPEGFindXMLNodeByName(const xmlNode * parentNode, con
         if (node->ns != NULL && !xmlStrcmp(node->ns->href, (const xmlChar *)nameSpace) &&
             !xmlStrcmp(node->name, (const xmlChar *)nodeName)) {
             return node;
-        } else if (recursive && node->children != NULL) {
-            const xmlNode * descendantNode = avifJPEGFindXMLNodeByName(node->children, nameSpace, nodeName, recursive);
+        } else if (recursive) {
+            const xmlNode * descendantNode = avifJPEGFindXMLNodeByName(node, nameSpace, nodeName, recursive);
             if (descendantNode != NULL) {
                 return descendantNode;
             }
@@ -423,7 +429,7 @@ static const xmlNode * avifJPEGFindXMLNodeByName(const xmlNode * parentNode, con
 #define XML_NAME_SPACE_GAIN_MAP "http://ns.adobe.com/hdr-gain-map/1.0/"
 #define XML_NAME_SPACE_RDF "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
-// Finds an 'rdf::Description' node containing a gain map version attribute (hdrm:Version="1.0").
+// Finds an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
 // Returns NULL if not found.
 static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode)
 {
@@ -435,20 +441,17 @@ static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode)
         return NULL;
     }
     for (const xmlNode * node = rdfNode->children; node != NULL; node = node->next) {
-        // Loop through rdf::Description children.
+        // Loop through rdf:Description children.
         // 7.4 "A single XMP packet shall be serialized using a single rdf:RDF XML element. The rdf:RDF element content
         // shall consist of only zero or more rdf:Description elements."
         if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)XML_NAME_SPACE_RDF) &&
             !xmlStrcmp(node->name, (const xmlChar *)"Description")) {
-            // Look for the gain map version attribute: hdrm:Version="1.0"
+            // Look for the gain map version attribute: hdrgm:Version="1.0"
             for (xmlAttr * prop = node->properties; prop != NULL; prop = prop->next) {
                 if (prop->ns && !xmlStrcmp(prop->ns->href, (const xmlChar *)XML_NAME_SPACE_GAIN_MAP) &&
-                    !xmlStrcmp(prop->name, (const xmlChar *)"Version") && prop->children != NULL) {
-                    if (!xmlStrcmp(prop->children->content, (const xmlChar *)"1.0")) {
-                        return node;
-                    } else {
-                        return NULL; // Invalid or unsupported version.
-                    }
+                    !xmlStrcmp(prop->name, (const xmlChar *)"Version") && prop->children != NULL &&
+                    !xmlStrcmp(prop->children->content, (const xmlChar *)"1.0")) {
+                    return node;
                 }
             }
         }
@@ -463,23 +466,27 @@ static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode)
 // the current code probably won't detect it.
 #define LIBXML2_XML_PARSING_FLAGS (XML_PARSE_RECOVER | XML_PARSE_NOERROR)
 
-// Returns true if there is an 'rdf::Description' node containing a gain map version attribute (hdrm:Version="1.0").
+// Returns true if there is an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
 // On the main image, this signals that the file also contains a gain map.
-// On a subsequent image, this signals that it a gain map.
+// On a subsequent image, this signals that it is a gain map.
 static avifBool avifJPEGHasGainMapXMPNode(const uint8_t * xmpData, size_t xmpSize)
 {
     xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, LIBXML2_XML_PARSING_FLAGS);
+    if (document == NULL) {
+        return AVIF_FALSE; // Out of memory?
+    }
     const xmlNode * rootNode = xmlDocGetRootElement(document);
     const xmlNode * node = avifJPEGFindGainMapXMPNode(rootNode);
+    const avifBool found = node != NULL;
     xmlFreeDoc(document);
-    return node != NULL;
+    return found;
 }
 
 // Finds the value of a gain map metadata property, that can be either stored as an attribute of 'descriptionNode'
-// (which should point to a <rd::Description> node) or as a child node.
+// (which should point to a <rdf:Description> node) or as a child node.
 // 'maxValues' is the maximum number of expected values, and the size of the 'values' array. 'numValues' is set to the number
 // of values actually found (which may be smaller or larger, but only up to 'maxValues' are stored in 'values').
-// Return AVIF_TRUE if the property was found.
+// Returns AVIF_TRUE if the property was found.
 static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
                                             const char * propertyName,
                                             uint32_t maxValues,
@@ -492,6 +499,8 @@ static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
     for (xmlAttr * prop = descriptionNode->properties; prop != NULL; prop = prop->next) {
         if (prop->ns && !xmlStrcmp(prop->ns->href, (const xmlChar *)XML_NAME_SPACE_GAIN_MAP) &&
             !xmlStrcmp(prop->name, (const xmlChar *)propertyName) && prop->children != NULL && prop->children->content != NULL) {
+            // Properties should have just one child containing the property's value
+            // (in fact the 'children' field is documented as "the value of the property").
             values[0] = (const char *)prop->children->content;
             *numValues = 1;
             return AVIF_TRUE;
@@ -641,7 +650,7 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
                                                   /*log2Encoded=*/AVIF_FALSE,
                                                   metadataDouble.gainMapGamma,
                                                   /*numDoubles=*/3));
-    // Change gammma to 1.0/gamma (we are using a different convetion from the metadata XMP).
+    // Change gammma to 1.0/gamma (we are using a different convention from the metadata XMP).
     for (int i = 0; i < 3; ++i) {
         if (metadataDouble.gainMapGamma[i] == 0) {
             return AVIF_FALSE; // Invalid value, the spec says that gamma should be > 0
@@ -678,7 +687,7 @@ static avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize,
 // Parses an MPF (Multi-Picture File) JPEG metadata segment to find the location of other
 // images, and decodes the gain map image (as determined by having gain map XMP metadata) into 'avif'.
 // See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html
-// and https://helpx.adobe.com/camera-raw/using/gain-map.html
+// and https://helpx.adobe.com/camera-raw/using/gain-map.html in particular Figures 1 to 6.
 // Returns AVIF_FALSE if no gain map was found.
 static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
                                                    const char * inputFilename,
@@ -690,8 +699,8 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
 {
     uint32_t offset = 0;
 
-    const uint8_t littleEndian[4] = { 0x49, 0x49, 0x2A, 0x00 };
-    const uint8_t bigEndian[4] = { 0x4D, 0x4D, 0x00, 0x2A };
+    const uint8_t littleEndian[4] = { 0x49, 0x49, 0x2A, 0x00 }; // "II*\0"
+    const uint8_t bigEndian[4] = { 0x4D, 0x4D, 0x00, 0x2A };    // "MM\0*"
 
     uint8_t endiannessTag[4];
     AVIF_CHECK(avifJPEGReadBytes(segmentData, endiannessTag, &offset, 4));
@@ -712,6 +721,7 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
     }
     offset = offsetToFirstIfd;
 
+    // Read MP (Multi-Picture) tags.
     uint16_t mpTagCount;
     AVIF_CHECK(avifJPEGReadU16(segmentData, &mpTagCount, &offset, isBigEndian));
 
@@ -742,6 +752,7 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
                 break;
             case 45059: // ImageUIDList, unused
             case 45060: // TotalFrames, unused
+            default:
                 break;
         }
     }
@@ -821,7 +832,7 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
 
             const avifROData mpfData = { (const uint8_t *)marker->data + tagMpf.size, marker->data_length - tagMpf.size };
             if (!avifJPEGExtractGainMapImageFromMpf(f, inputFilename, &mpfData, image, requestedFormat, requestedDepth, chromaDownsampling)) {
-                fprintf(stderr, "Warning: failed to read gain map image\n");
+                fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
                 avifImageDestroy(image);
                 return AVIF_FALSE;
             }
@@ -1153,6 +1164,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
     // The primary XMP block (for the main image) must contain a node with an hdrgm:Version field if and only if a gain map is present.
     if (!ignoreGainMap && avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size)) {
+        // Ignore the return value: continue even if we fail to find/parse/decode the gain map.
         avifJPEGExtractGainMapImage(f, inputFilename, &cinfo, &avif->gainMap, requestedFormat, requestedDepth, chromaDownsampling);
     }
 
