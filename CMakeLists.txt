@@ -222,16 +222,16 @@ libxml2 is used when AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is ON" OFF
 )
 if(AVIF_LOCAL_LIBXML2)
     set(LIB_FILENAME
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libxml2/lib/${AVIF_LIBRARY_PREFIX}xml2${AVIF_LIBRARY_SUFFIX}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libavif/lib/${AVIF_LIBRARY_PREFIX}xml2${AVIF_LIBRARY_SUFFIX}"
     )
     if(NOT EXISTS "${LIB_FILENAME}")
         message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
     endif()
     if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libxml2/include/libxml2")
+        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libavif/include/libxml2")
         set(LIBXML2_LIBRARY ${LIB_FILENAME})
     else()
-        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libxml2/include/libxml2" PARENT_SCOPE)
+        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libavif/include/libxml2" PARENT_SCOPE)
         set(LIBXML2_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
     set(LIBXML2_FOUND TRUE)

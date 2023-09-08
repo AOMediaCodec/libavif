@@ -1,10 +1,7 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <math.h>
-
-#include <array>
-#include <tuple>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
@@ -33,42 +30,34 @@ TEST(JpegTest, ReadJpegWithGainMap) {
     ASSERT_NE(image->gainMap.image, nullptr);
     EXPECT_EQ(image->gainMap.image->width, 512u);
     EXPECT_EQ(image->gainMap.image->height, 384u);
+    // Since ignore_xmp is true, there should be no XMP, even if it had to
+    // be read to parse the gain map.
     EXPECT_EQ(image->xmp.size, 0u);
 
-    EXPECT_FALSE(image->gainMap.metadata.baseRenditionIsHDR);
+    const auto& m = image->gainMap.metadata;
+    EXPECT_FALSE(m.baseRenditionIsHDR);
     const double kEpsilon = 1e-8;
-    EXPECT_NEAR((double)image->gainMap.metadata.hdrCapacityMinN /
-                    image->gainMap.metadata.hdrCapacityMinD,
-                1, kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.hdrCapacityMaxN /
-                    image->gainMap.metadata.hdrCapacityMaxD,
+    EXPECT_NEAR(static_cast<double>(m.hdrCapacityMinN) / m.hdrCapacityMinD, 1,
+                kEpsilon);
+    EXPECT_NEAR(static_cast<double>(m.hdrCapacityMaxN) / m.hdrCapacityMaxD,
                 exp2(3.5), kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapMinN[0] /
-                    image->gainMap.metadata.gainMapMinD[0],
+    EXPECT_NEAR(static_cast<double>(m.gainMapMinN[0]) / m.gainMapMinD[0],
                 exp2(0), kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapMinN[1] /
-                    image->gainMap.metadata.gainMapMinD[1],
+    EXPECT_NEAR(static_cast<double>(m.gainMapMinN[1]) / m.gainMapMinD[1],
                 exp2(0), kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapMinN[2] /
-                    image->gainMap.metadata.gainMapMinD[2],
+    EXPECT_NEAR(static_cast<double>(m.gainMapMinN[2]) / m.gainMapMinD[2],
                 exp2(0), kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapMaxN[0] /
-                    image->gainMap.metadata.gainMapMaxD[0],
+    EXPECT_NEAR(static_cast<double>(m.gainMapMaxN[0]) / m.gainMapMaxD[0],
                 exp2(3.5), kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapMaxN[1] /
-                    image->gainMap.metadata.gainMapMaxD[1],
+    EXPECT_NEAR(static_cast<double>(m.gainMapMaxN[1]) / m.gainMapMaxD[1],
                 exp2(3.6), kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapMaxN[2] /
-                    image->gainMap.metadata.gainMapMaxD[2],
+    EXPECT_NEAR(static_cast<double>(m.gainMapMaxN[2]) / m.gainMapMaxD[2],
                 exp2(3.7), kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapGammaN[0] /
-                    image->gainMap.metadata.gainMapGammaD[0],
+    EXPECT_NEAR(static_cast<double>(m.gainMapGammaN[0]) / m.gainMapGammaD[0],
                 1.0, kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapGammaN[1] /
-                    image->gainMap.metadata.gainMapGammaD[1],
+    EXPECT_NEAR(static_cast<double>(m.gainMapGammaN[1]) / m.gainMapGammaD[1],
                 1.0, kEpsilon);
-    EXPECT_NEAR((double)image->gainMap.metadata.gainMapGammaN[2] /
-                    image->gainMap.metadata.gainMapGammaD[2],
+    EXPECT_NEAR(static_cast<double>(m.gainMapGammaN[2]) / m.gainMapGammaD[2],
                 1.0, kEpsilon);
   }
 }
@@ -82,6 +71,8 @@ TEST(JpegTest, IgnoreGainMap) {
       /*ignore_gain_map=*/true);
   ASSERT_NE(image, nullptr);
   EXPECT_EQ(image->gainMap.image, nullptr);
+  // Check there is xmp since ignore_xmp is false (just making sure that
+  // ignore_gain_map=true has no impact on this).
   EXPECT_GT(image->xmp.size, 0u);
 }
 
