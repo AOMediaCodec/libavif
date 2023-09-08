@@ -36,9 +36,10 @@ typedef struct
     avifBool qualityAlphaIsConstrained; // true if qualityAlpha explicitly set by the user
     int overrideQuality;
     int overrideQualityAlpha;
-    avifBool autoProgressive;
-    int speed;
+    avifBool autoProgressive; // automatic layered encoding (progressive) with single input
+    avifBool layered;         // manual layered encoding by specifying each layer
     int layers;
+    int speed;
     avifHeaderFormat headerFormat;
 
     avifBool paspPresent;
@@ -210,8 +211,8 @@ static void syntaxLong(void)
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
-    printf("    --auto-progressive                : EXPERIMENTAL: Auto set parameters to encode a simple progressive image from a single input frame.\n");
-    printf("    --layer N                         : EXPERIMENTAL: Set number of layers for progressive image [1-%d]. (default: 1 means disable progressive)\n",
+    printf("    --progressive                     : EXPERIMENTAL: Auto set parameters to encode a simple layered image supporting progressive rendering from a single input frame.\n");
+    printf("    --layered                         : EXPERIMENTAL: Encode a layered AVIF. Each input is encoded as one layer and at most %d layers can be encoded.\n",
            AVIF_MAX_AV1_LAYER_COUNT);
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
@@ -816,8 +817,8 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 #define INVALID_QUALITY (-1)
 #define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
 #define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
-#define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto progressive below this quality
-#define PROGRESSIVE_START_QUALITY 2  // First progressive layer use this quality
+#define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto automatic layered encoding below this quality
+#define PROGRESSIVE_START_QUALITY 2  // First layer use this quality
 
 static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avifInputFileSettings * settings)
 {
@@ -998,7 +999,7 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
 {
     avifBool success = AVIF_FALSE;
     int layers = encoder->extraLayerCount + 1;
-    // --auto-progressive only allows one input, so directly read from it.
+    // --progressive only allows one input, so directly read from it.
     int targetQuality = (settings->overrideQuality != INVALID_QUALITY) ? settings->overrideQuality
                                                                        : input->files[0].settings.quality.value;
 
@@ -1007,7 +1008,7 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
     const avifInputFileSettings * nextSettings = NULL;
 
     if (settings->autoProgressive && avifInputHasRemainingData(input, layerIndex)) {
-        fprintf(stderr, "ERROR: Automatic progressive can only have one input image.\n");
+        fprintf(stderr, "ERROR: Automatic layered encoding can only have one input image.\n");
         goto cleanup;
     }
 
@@ -1018,10 +1019,9 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                                    (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
         } else {
             const avifInputFile * nextFile = avifInputGetFile(input, layerIndex);
-            if (!nextFile) {
-                fprintf(stderr, "ERROR: Encoding image with %d layers but only %d input provided.\n", layers, layerIndex);
-                goto cleanup;
-            }
+            // main() function should set number of layers to number of input,
+            // so nextFile should not be NULL.
+            assert(nextFile);
 
             if (nextImage) {
                 avifImageDestroy(nextImage);
@@ -1053,6 +1053,11 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                     settings->chromaDownsampling)) {
                 goto cleanup;
             }
+            // frameIter is NULL if y4m reached end, so single frame y4m is still supported.
+            if (input->frameIter) {
+                fprintf(stderr, "ERROR: Layered encoding does not support input with multiple frames: %s.\n", nextFile->filename);
+                goto cleanup;
+            }
             if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "layer", nextFile->filename)) {
                 goto cleanup;
             }
@@ -1076,11 +1081,11 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
         }
         ++layerIndex;
     }
-    if (avifInputHasRemainingData(input, layerIndex)) {
-        fprintf(stderr, "WARNING: [--layer] More than %u images were supplied for this progressive image. The rest will be ignored.\n", layers);
-    }
-    success = AVIF_TRUE;
 
+    // main() function should set number of layers to number of input,
+    // so there should be no input left.
+    assert(!avifInputHasRemainingData(input, layerIndex));
+    success = AVIF_TRUE;
 cleanup:
     if (nextImage) {
         avifImageDestroy(nextImage);
@@ -1149,7 +1154,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
 
     if (settings->autoProgressive) {
         // If the color quality is less than 10, the main() function overrides
-        // --auto-progressive and sets settings->progressive to false.
+        // --progressive and sets settings->autoProgressive to false.
         assert(encoder->quality >= PROGRESSIVE_WORST_QUALITY);
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
@@ -1347,6 +1352,7 @@ int main(int argc, char * argv[])
     settings.overrideQuality = INVALID_QUALITY;
     settings.overrideQualityAlpha = INVALID_QUALITY;
     settings.autoProgressive = AVIF_FALSE;
+    settings.layered = AVIF_FALSE;
     settings.layers = 0;
     settings.speed = 6;
     settings.headerFormat = AVIF_HEADER_FULL;
@@ -1626,17 +1632,20 @@ int main(int argc, char * argv[])
             } else {
                 input.files[0].settings.autoTiling = boolSettingsEntryOf(AVIF_TRUE);
             }
-        } else if (!strcmp(arg, "--auto-progressive")) {
-            settings.autoProgressive = AVIF_TRUE;
-        } else if (!strcmp(arg, "--layer")) {
-            NEXTARG();
-            int layer = atoi(arg);
-            if (layer < 1 || layer > AVIF_MAX_AV1_LAYER_COUNT) {
-                fprintf(stderr, "ERROR: Invalid layer count (valid range [1-%d]): %s\n", AVIF_MAX_AV1_LAYER_COUNT, arg);
+        } else if (!strcmp(arg, "--progressive")) {
+            if (settings.layered) {
+                fprintf(stderr, "ERROR: Can not use both --progressive and --layered\n");
                 returnCode = 1;
                 goto cleanup;
             }
-            settings.layers = layer;
+            settings.autoProgressive = AVIF_TRUE;
+        } else if (!strcmp(arg, "--layered")) {
+            if (settings.autoProgressive) {
+                fprintf(stderr, "ERROR: Can not use both --progressive and --layered\n");
+                returnCode = 1;
+                goto cleanup;
+            }
+            settings.layered = AVIF_TRUE;
         } else if (!strcmp(arg, "--scaling-mode") || strpre(arg, "--scaling-mode:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
@@ -1872,26 +1881,6 @@ int main(int argc, char * argv[])
         ++argIndex;
     }
 
-    // Check progressive config
-    if (settings.autoProgressive) {
-        if (settings.layers == 0) {
-            settings.layers = 2;
-        } else if (settings.layers == 1) {
-            fprintf(stderr, "Progressive unavailable if there's only one layer.\n");
-            returnCode = 1;
-            goto cleanup;
-        }
-    } else {
-        if (settings.layers == 0) {
-            settings.layers = 1;
-        }
-    }
-    if (settings.layers > 1 && settings.gridDimsPresent) {
-        fprintf(stderr, "Progressive grid image unimplemented in avifenc.\n");
-        returnCode = 1;
-        goto cleanup;
-    }
-
     // Check global lossless parameters and set to default if needed.
     if (lossless) {
         // Pixel format.
@@ -1935,7 +1924,7 @@ int main(int argc, char * argv[])
             settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         }
         if (settings.autoProgressive) {
-            fprintf(stderr, "Automatic progressive is unsupported in lossless mode.\n");
+            fprintf(stderr, "Automatic layered encoding is unsupported in lossless mode.\n");
         }
         if (returnCode == 1)
             goto cleanup;
@@ -1978,8 +1967,33 @@ int main(int argc, char * argv[])
         fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
     }
 
-    if (settings.autoProgressive && input.filesCount > 1) {
-        fprintf(stderr, "ERROR: --auto-progressive only supports one input.\n");
+    // Check layer config
+    if (settings.autoProgressive) {
+        assert(!settings.layered);
+        if (input.filesCount > 1) {
+            fprintf(stderr, "ERROR: --progressive only supports one input.\n");
+            returnCode = 1;
+            goto cleanup;
+        }
+        // for automatic layered encoding, make a 2 layer AVIF.
+        settings.layers = 2;
+    } else if (settings.layered) {
+        // For manual layered encoding, infer number of layers from input count.
+        // For multi-frame input (Y4Ms) layered encoding only use the first frame,
+        // so that we can assume number of inputs is number of layers.
+        // We don't support changing config halfway encoding on input,
+        // therefore encoding layered AVIF with single multi-frame input is not very meaningful.
+        if (input.filesCount < 2 || input.filesCount > AVIF_MAX_AV1_LAYER_COUNT) {
+            fprintf(stderr, "Encoding layered AVIF required 2 to %d inputs, but got %d.\n", AVIF_MAX_AV1_LAYER_COUNT, input.filesCount);
+            returnCode = 1;
+            goto cleanup;
+        }
+        settings.layers = input.filesCount;
+    } else {
+        settings.layers = 1;
+    }
+    if (settings.layers > 1 && settings.gridDimsPresent) {
+        fprintf(stderr, "Layered grid image unimplemented in avifenc.\n");
         returnCode = 1;
         goto cleanup;
     }
@@ -2030,11 +2044,11 @@ int main(int argc, char * argv[])
             if (settings.autoProgressive) {
                 assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
-                    fprintf(stderr, "ERROR: --qcolor must be at least %d when using --auto-progressive.\n", PROGRESSIVE_WORST_QUALITY);
+                    fprintf(stderr, "ERROR: --qcolor must be at least %d when using --progressive.\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
-                // --auto-progressive only adjust color quality
+                // --progressive only adjust color quality
             }
         }
 
