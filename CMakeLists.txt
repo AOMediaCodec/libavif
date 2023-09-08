@@ -316,6 +316,23 @@ set(AVIF_CODEC_DEFINITIONS)
 set(AVIF_CODEC_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
+if(NOT libyuv_FOUND)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        third_party/libyuv/source/scale.c
+        third_party/libyuv/source/scale_common.c
+        third_party/libyuv/source/scale_any.c
+        third_party/libyuv/source/row_common.c
+        third_party/libyuv/source/planar_functions.c
+    )
+    if(DEFINED ANDROID_ABI OR DEFINED APPLE)
+        # When building third_party/libyuv/source/scale.c, some functions use
+        # some of the parameters only inside an assert statement. This causes
+        # unused parameter warnings when building for Android. Suppress the
+        # warning in that case.
+        add_compile_options(-Wno-unused-parameter)
+    endif()
+endif()
+
 if(AVIF_CODEC_DAV1D)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_DAV1D=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_dav1d.c)
@@ -537,6 +554,9 @@ target_include_directories(
     avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include> PRIVATE ${AVIF_PLATFORM_INCLUDES}
                                                                                                       ${AVIF_CODEC_INCLUDES}
 )
+if(NOT libyuv_FOUND)
+    target_include_directories(avif PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
+endif()
 set(AVIF_PKG_CONFIG_EXTRA_CFLAGS "")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif PUBLIC AVIF_DLL PRIVATE AVIF_BUILDING_SHARED_LIBS)
