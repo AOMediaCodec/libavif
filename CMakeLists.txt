@@ -295,6 +295,9 @@ set(AVIF_SRCS
     src/utils.c
     src/write.c
 )
+if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    list(APPEND AVIF_SRCS src/gainmap.c)
+endif()
 
 # Only applicable to macOS. In GitHub CI's macos-latest os image, this prevents using the libpng
 # and libjpeg headers from /Library/Frameworks/Mono.framework/Headers instead of
@@ -605,6 +608,9 @@ endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
+option(AVIF_ENABLE_GOLDEN_TESTS
+       "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON, and depends on MP4box which can be built with ext/mp4box.sh" OFF
+)
 option(AVIF_ENABLE_GTEST
        "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
 )
@@ -729,6 +735,9 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
     install(FILES include/avif/avif.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        install(FILES include/avif/gainmap.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------------------

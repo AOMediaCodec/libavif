@@ -209,6 +209,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME aviftilingtest COMMAND aviftilingtest)
 
+    add_executable(avifutilstest gtest/avifutilstest.cc)
+    target_link_libraries(avifutilstest avif_internal ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifutilstest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifutilstest COMMAND avifutilstest)
+
     add_executable(avify4mtest gtest/avify4mtest.cc)
     target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -264,6 +269,22 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd_targetsize COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_targetsize.sh ${CMAKE_BINARY_DIR}
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+
+    if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
+        # test_cmd_enc_boxes_golden.sh depends on MP4Box
+        # Only allow a locally built version to avoid differences with versioning.
+        set(MP4BOX_DIR ${CMAKE_SOURCE_DIR}/ext/gpac/bin/gcc/)
+        if(NOT EXISTS ${MP4BOX_DIR}/MP4Box)
+            message(FATAL_ERROR "AVIF_ENABLE_GOLDEN_TESTS is ON but ${MP4BOX_DIR}/MP4Box is missing. Run ext/mp4box.sh")
+        endif()
+
+        set(GOLDEN_TESTS_OUTPUT_DIR "" CACHE STRING "Output path for golden tests (will be a temp dir if empty)")
+
+        add_test(NAME test_cmd_enc_boxes_golden
+                 COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
+                         ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
+        )
+    endif()
 
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
         # Only aom encoder supports AV1 lossless encoding.
