@@ -844,9 +844,6 @@ typedef struct avifDecoderData
     //   decoder instance (same as above).
     avifCodec * codec;
     avifCodec * codecAlpha;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    avifCodec * codecGainMap;
-#endif
     uint8_t majorBrand[4];                     // From the file's ftyp, used by AVIF_DECODER_SOURCE_AUTO
     avifDiagnostics * diag;                    // Shallow copy; owned by avifDecoder
     const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
@@ -887,11 +884,7 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
         }
         if (tile->codec) {
             // Check if tile->codec was created separately and destroy it in that case.
-            avifBool tileOwnsCodec = tile->codec != data->codec && tile->codec != data->codecAlpha;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-            tileOwnsCodec = tileOwnsCodec && tile->codec != data->codecGainMap;
-#endif
-            if (tileOwnsCodec) {
+            if (tile->codec != data->codec && tile->codec != data->codecAlpha) {
                 avifCodecDestroy(tile->codec);
             }
             tile->codec = NULL;
@@ -909,10 +902,6 @@ static void avifDecoderDataResetCodec(avifDecoderData * data)
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     data->gainMap.decodedTileCount = 0;
-    if (data->codecGainMap) {
-        avifCodecDestroy(data->codecGainMap);
-        data->codecGainMap = NULL;
-    }
 #endif
 }
 
@@ -961,11 +950,7 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
         }
         if (tile->codec) {
             // Check if tile->codec was created separately and destroy it in that case.
-            avifBool tileOwnsCodec = tile->codec != data->codec && tile->codec != data->codecAlpha;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-            tileOwnsCodec = tileOwnsCodec && tile->codec != data->codecGainMap;
-#endif
-            if (tileOwnsCodec) {
+            if (tile->codec != data->codec && tile->codec != data->codecAlpha) {
                 avifCodecDestroy(tile->codec);
             }
             tile->codec = NULL;
@@ -991,10 +976,6 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     data->gainMap.tileCount = 0;
     data->gainMap.decodedTileCount = 0;
-    if (data->codecGainMap) {
-        avifCodecDestroy(data->codecGainMap);
-        data->codecGainMap = NULL;
-    }
 #endif
 }
 
