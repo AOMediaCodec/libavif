@@ -840,7 +840,7 @@ typedef struct avifDecoderData
     // * For grid images with multiple layers. In this case, each tile will need its own decoder instance since there would be
     //   multiple layers in each tile. In this case, |codec| and |codecAlpha| are not used and each tile will have its own
     //   decoder instance.
-    // * For grid images where the operating points of all the tiles are not the same. In this case, we each tile needs its own
+    // * For grid images where the operating points of all the tiles are not the same. In this case, each tile needs its own
     //   decoder instance (same as above).
     avifCodec * codec;
     avifCodec * codecAlpha;
@@ -853,9 +853,9 @@ typedef struct avifDecoderData
     avifBool cicpSet;                          // True if avifDecoder's image has had its CICP set correctly yet.
                                                // This allows nclx colr boxes to override AV1 CICP, as specified in the MIAF
                                                // standard (ISO/IEC 23000-22:2019), section 7.3.6.4:
-                                               //
-    // "The colour information property takes precedence over any colour information in the image
-    // bitstream, i.e. if the property is present, colour information in the bitstream shall be ignored."
+                                               //   The colour information property takes precedence over any colour information
+                                               //   in the image bitstream, i.e. if the property is present, colour information in
+                                               //   the bitstream shall be ignored.
 } avifDecoderData;
 
 static void avifDecoderDataDestroy(avifDecoderData * data);
