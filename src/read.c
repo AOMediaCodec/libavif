@@ -3761,8 +3761,7 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
     BEGIN_STREAM(s, input->data, input->size, NULL, NULL);
 
     avifBoxHeader header;
-    AVIF_CHECK(avifROStreamReadBoxHeader(&s, &header));
-    if (memcmp(header.type, "ftyp", 4)) {
+    if (!avifROStreamReadBoxHeader(&s, &header) || memcmp(header.type, "ftyp", 4)) {
         return AVIF_FALSE;
     }
 
