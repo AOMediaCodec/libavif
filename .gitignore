@@ -4,6 +4,7 @@
 /ext/avm
 /ext/dav1d
 /ext/googletest
+/ext/gpac
 /ext/libjpeg
 /ext/libgav1
 /ext/libpng

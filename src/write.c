@@ -846,11 +846,12 @@ static avifResult avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uin
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-static void avifWriteU32Array(avifRWStream * s, const uint32_t * v, int numValues)
+static avifResult avifWriteU32Array(avifRWStream * s, const uint32_t * v, int numValues)
 {
     for (int i = 0; i < numValues; ++i) {
-        avifRWStreamWriteU32(s, v[i]);
+        AVIF_CHECKRES(avifRWStreamWriteU32(s, v[i]));
     }
+    return AVIF_RESULT_OK;
 }
 
 static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * gainMapMetadata)
@@ -881,7 +882,7 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
     avifRWStream s;
     avifRWStreamStart(&s, data);
     const uint8_t version = 0;
-    avifRWStreamWriteU8(&s, version);
+    AVIF_CHECKRES(avifRWStreamWriteU8(&s, version));
 
     uint8_t flags = 0u;
     // Always write three channels for now for simplicity.
@@ -895,22 +896,22 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
     if (gainMapMetadata->baseRenditionIsHDR) {
         flags |= 2;
     }
-    avifRWStreamWriteU8(&s, flags);
+    AVIF_CHECKRES(avifRWStreamWriteU8(&s, flags));
 
-    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMinN);
-    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMinD);
-    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMaxN);
-    avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMaxD);
-    avifWriteU32Array(&s, gainMapMetadata->gainMapMinN, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->gainMapMinD, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->gainMapMaxN, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->gainMapMaxD, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->gainMapGammaN, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->gainMapGammaD, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->offsetSdrN, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->offsetSdrD, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->offsetHdrN, channelCount);
-    avifWriteU32Array(&s, gainMapMetadata->offsetHdrD, channelCount);
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMinN));
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMinD));
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMaxN));
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, gainMapMetadata->hdrCapacityMaxD));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->gainMapMinN, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->gainMapMinD, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->gainMapMaxN, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->gainMapMaxD, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->gainMapGammaN, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->gainMapGammaD, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->offsetSdrN, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->offsetSdrD, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->offsetHdrN, channelCount));
+    AVIF_CHECKRES(avifWriteU32Array(&s, gainMapMetadata->offsetHdrD, channelCount));
 
     avifRWStreamFinishWrite(&s);
     return AVIF_TRUE;
@@ -2426,7 +2427,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
         AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
-            avifRWStreamWriteU8(&dedup->s, (uint8_t)itemMetadata->depth); // unsigned int (8) bits_per_channel;
+            AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, (uint8_t)itemMetadata->depth)); // unsigned int (8) bits_per_channel;
         }
         avifRWStreamFinishBox(&dedup->s, pixi);
         AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));

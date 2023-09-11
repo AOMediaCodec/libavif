@@ -234,6 +234,55 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Encoded from `paris_icc_exif_xmp.png` using `avifenc -s 10` at commit ed52c1b.
 
+### File [paris_exif_xmp_gainmap_littleendian.jpg](paris_exif_xmp_gainmap_littleendian.jpg)
+
+![](paris_exif_xmp_gainmap_littleendian.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Based on paris_exif_xmp_icc.jpg with ICC stripped out and a gain map added.
+Contains a MPF (Multi-Picture Format) segment with metadata pointing to a second image
+at offset 33487. The MPF metadata is in little endian order, as signaled by the four bytes
+'II*\0'.
+
+| address | marker      | length | data                                         |
+|--------:|-------------|-------:|----------------------------------------------|
+|       0 | 0xffd8 SOI  |        |                                              |
+|       2 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|      20 | 0xffe1 APP1 |    838 | `Exif..II*......................`            |
+|    1156 | 0xffe1 APP1 |   2808 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|    3670 | 0xffe1 APP1 |    392 | `http://ns.adobe.com/xmp/extension/`         |
+|    4064 | 0xffe2 APP2 |     88 | `MPF..II*.....                   `           |
+|         |             |        | ...                                          |
+|   33487 | 0xffd8 SOI  |        |                                              |
+|   33489 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|         |             |        | ...                                          |
+
+### File [paris_exif_xmp_gainmap_bigendian.jpg](paris_exif_xmp_gainmap_bigendian.jpg)
+
+![](paris_exif_xmp_gainmap_bigendian.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as paris_exif_xmp_gainmap_littleendian.jpg but manually edited with
+a hex editor to make the MPF metadata big endian, as signaled by the four bytes
+'MM\0*'.
+
+| address | marker      | length | data                                         |
+|--------:|-------------|-------:|----------------------------------------------|
+|       0 | 0xffd8 SOI  |        |                                              |
+|       2 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|      20 | 0xffe1 APP1 |    838 | `Exif..II*......................`            |
+|    1156 | 0xffe1 APP1 |   2808 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|    3670 | 0xffe1 APP1 |    392 | `http://ns.adobe.com/xmp/extension/`         |
+|    4064 | 0xffe2 APP2 |     88 | `MPF..MM.*....                   `           |
+|         |             |        | ...                                          |
+|   33487 | 0xffd8 SOI  |        |                                              |
+|   33489 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|         |             |        | ...                                          |
+
 ### File [ffffcc-gamma1.6.png](ffffcc-gamma1.6.png)
 
 ![](ffffcc-gamma1.6.png)

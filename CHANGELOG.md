@@ -17,9 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the future. Files created now might not decode in a future version.
   This feature is off by default and must be enabled with the
   AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compilation flag.
+* Add experimental support for converting jpeg files with gain maps to AVIF
+  files with gain maps. Requires libxml2, and the AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+  compilation flag.
 * Add the headerFormat member of new type avifHeaderFormat to avifEncoder.
 * Add experimental API for reading and writing "avir"-branded AVIF files
   behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_AVIR.
+* Implement avifImageScale() fallback when libyuv is not available.
+* Partial import of libyuv to third_party/libyuv (new LICENSE).
 * Add avifenc flag suffixes ":update" and ":u". Quality-relative,
   tiling-relative and codec-specific flags can now be positional, relative to
   input files.

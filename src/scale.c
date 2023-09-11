@@ -2,27 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
-
-#if !defined(AVIF_LIBYUV_ENABLED)
-
-avifBool avifImageScale(avifImage * image,
-                        uint32_t dstWidth,
-                        uint32_t dstHeight,
-                        uint32_t imageSizeLimit,
-                        uint32_t imageDimensionLimit,
-                        avifDiagnostics * diag)
-{
-    (void)image;
-    (void)dstWidth;
-    (void)dstHeight;
-    (void)imageSizeLimit;
-    (void)imageDimensionLimit;
-    avifDiagnosticsPrintf(diag, "avifImageScale() called, but is unimplemented without libyuv!");
-    return AVIF_FALSE;
-}
-
-#else
-
 #include <limits.h>
 
 #if defined(__clang__)
@@ -32,7 +11,7 @@ avifBool avifImageScale(avifImage * image,
 // in version 1813:
 // https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3183182
 // https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3527834
-#pragma clang diagnostic ignored "-Wnewline-eof"       // "no newline at end of file"
+#pragma clang diagnostic ignored "-Wnewline-eof" // "no newline at end of file"
 #endif
 #include <libyuv.h>
 #if defined(__clang__)
@@ -173,5 +152,3 @@ avifBool avifImageScale(avifImage * image,
 
     return AVIF_TRUE;
 }
-
-#endif

@@ -56,6 +56,7 @@ typedef struct
     avifBool ignoreExif;
     avifBool ignoreXMP;
     avifBool ignoreColorProfile;
+    avifBool ignoreGainMap; // only relevant when compiled with AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
 
     // This holds the output timing for image sequences. The timescale member in this struct will
     // become the timescale set on avifEncoder, and the duration member will be the default duration
@@ -200,7 +201,7 @@ static void syntaxLong(void)
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
     printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
     printf("    -y,--yuv FORMAT                   : Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained)\n");
-    printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For all other cases, auto defaults to 444\n");
+    printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename\n");
@@ -227,6 +228,10 @@ static void syntaxLong(void)
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+    printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
+    // TODO(maryla): add quality setting for the gain map.
+#endif
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
     printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
@@ -490,6 +495,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                    avifBool ignoreExif,
                                    avifBool ignoreXMP,
                                    avifBool allowChangingCicp,
+                                   avifBool ignoreGainMap,
                                    avifImage * image,
                                    const avifInputFileSettings ** settings,
                                    uint32_t * outDepth,
@@ -579,6 +585,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                                             ignoreExif,
                                                             ignoreXMP,
                                                             allowChangingCicp,
+                                                            ignoreGainMap,
                                                             dstImage,
                                                             dstDepth,
                                                             dstSourceTiming,
@@ -609,6 +616,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                   ignoreExif,
                                   ignoreXMP,
                                   allowChangingCicp,
+                                  ignoreGainMap,
                                   image,
                                   settings,
                                   outDepth,
@@ -955,12 +963,14 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
 
         // Ignore ICC, Exif and XMP because only the metadata of the first frame is taken into
         // account by the libavif API.
+        // Ignore gain map as it's not supported for sequences.
         if (!avifInputReadImage(input,
                                 imageIndex,
                                 /*ignoreColorProfile=*/AVIF_TRUE,
                                 /*ignoreExif=*/AVIF_TRUE,
                                 /*ignoreXMP=*/AVIF_TRUE,
                                 /*allowChangingCicp=*/AVIF_FALSE,
+                                /*ignoreGainMap=*/AVIF_TRUE,
                                 nextImage,
                                 &nextSettings,
                                 /*outDepth=*/NULL,
@@ -1039,12 +1049,14 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
 
             // Ignore ICC, Exif and XMP because only the metadata of the first frame is taken into
             // account by the libavif API.
+            // Ignore gain map because the two features are currently incompatible.
             if (!avifInputReadImage(input,
                                     layerIndex,
                                     /*ignoreColorProfile=*/AVIF_TRUE,
                                     /*ignoreExif=*/AVIF_TRUE,
                                     /*ignoreXMP=*/AVIF_TRUE,
                                     !settings->cicpExplicitlySet,
+                                    /*ignoreGainMap=*/AVIF_TRUE,
                                     nextImage,
                                     &nextSettings,
                                     /*outDepth=*/NULL,
@@ -1361,6 +1373,7 @@ int main(int argc, char * argv[])
     settings.ignoreExif = AVIF_FALSE;
     settings.ignoreXMP = AVIF_FALSE;
     settings.ignoreColorProfile = AVIF_FALSE;
+    settings.ignoreGainMap = AVIF_FALSE;
     settings.cicpExplicitlySet = AVIF_FALSE;
 
     avifInputFileSettings pendingSettings;
@@ -1797,6 +1810,10 @@ int main(int argc, char * argv[])
             settings.ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-profile") || !strcmp(arg, "--ignore-icc")) {
             settings.ignoreColorProfile = AVIF_TRUE;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+        } else if (!strcmp(arg, "--ignore-gain-map")) {
+            settings.ignoreGainMap = AVIF_TRUE;
+#endif
         } else if (!strcmp(arg, "--pasp")) {
             NEXTARG();
             if (!parseU32List(settings.paspValues, 2, arg, ',')) {
@@ -2168,12 +2185,16 @@ int main(int argc, char * argv[])
     uint32_t sourceDepth = 0;
     avifBool sourceWasRGB = AVIF_FALSE;
     avifAppSourceTiming firstSourceTiming;
+    const avifBool isImageSequence = (!settings.gridDimsPresent) && (settings.layers == 1) && (input.filesCount > 1);
+    // Gain maps are not supported for animations or layered images.
+    const avifBool ignoreGainMap = settings.ignoreGainMap || isImageSequence || settings.autoProgressive;
     if (!avifInputReadImage(&input,
                             /*imageIndex=*/0,
                             settings.ignoreColorProfile,
                             settings.ignoreExif,
                             settings.ignoreXMP,
                             /*allowChangingCicp=*/!settings.cicpExplicitlySet,
+                            ignoreGainMap,
                             image,
                             /*settings=*/NULL, // Must use the setting for first input
                             &sourceDepth,
@@ -2413,6 +2434,7 @@ int main(int argc, char * argv[])
                                     /*ignoreExif=*/AVIF_TRUE,
                                     /*ignoreXMP=*/AVIF_TRUE,
                                     /*allowChangingCicp=*/AVIF_FALSE,
+                                    settings.ignoreGainMap,
                                     cellImage,
                                     /*settings=*/NULL,
                                     /*outDepth=*/NULL,
@@ -2464,7 +2486,6 @@ int main(int argc, char * argv[])
     printf("Encoded successfully.\n");
     printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.colorOBUSize);
     printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.alphaOBUSize);
-    const avifBool isImageSequence = (!settings.gridDimsPresent) && (settings.layers == 1) && (input.filesCount > 1);
     if (isImageSequence) {
         if (settings.repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repetition Count: Infinite\n");
