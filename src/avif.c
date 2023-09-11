@@ -103,6 +103,11 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_OUT_OF_MEMORY:                 return "Out of memory";
         case AVIF_RESULT_CANNOT_CHANGE_SETTING:         return "Cannot change some setting during encoding";
         case AVIF_RESULT_INCOMPATIBLE_IMAGE:            return "The image is incompatible with already encoded images";
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        case AVIF_RESULT_ENCODE_GAIN_MAP_FAILED:        return "Encoding of gain map planes failed";
+        case AVIF_RESULT_DECODE_GAIN_MAP_FAILED:        return "Decoding of gain map planes failed";
+        case AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE:     return "Invalid tone mapped image item";
+#endif
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
