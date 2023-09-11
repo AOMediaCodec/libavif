@@ -31,7 +31,7 @@ jobs:
         path: ext
         key: ${{ runner.os }}-golden-tests-${{ hashFiles('ext/aom.cmd', 'ext/libyuv.cmd', 'ext/mp4box.sh') }}
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835
       with:
         cmake-version: '3.13.x'
     - name: Print cmake version
