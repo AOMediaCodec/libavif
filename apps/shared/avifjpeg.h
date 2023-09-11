@@ -26,6 +26,11 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifBool ignoreGainMap);
 avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling);
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+// Parses XMP gain map metadata. Visible for testing.
+avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMapMetadata * metadata);
+#endif
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
