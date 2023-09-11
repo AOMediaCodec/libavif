@@ -463,7 +463,7 @@ static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode)
 // In particular, if the jpeg files contains extended XMP, avifJPEGReadInternal simply concatenates it to
 // standard XMP, which is not a valid XML tree.
 // TODO(maryla): better handle extended XMP. If the gain map metadata is in the extended part,
-// the current code probably won't detect it.
+// the current code won't detect it.
 #define LIBXML2_XML_PARSING_FLAGS (XML_PARSE_RECOVER | XML_PARSE_NOERROR)
 
 // Returns true if there is an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
@@ -473,11 +473,11 @@ static avifBool avifJPEGHasGainMapXMPNode(const uint8_t * xmpData, size_t xmpSiz
 {
     xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, LIBXML2_XML_PARSING_FLAGS);
     if (document == NULL) {
-        return AVIF_FALSE; // Out of memory?
+        return AVIF_FALSE; // Probably and out of memory error.
     }
     const xmlNode * rootNode = xmlDocGetRootElement(document);
     const xmlNode * node = avifJPEGFindGainMapXMPNode(rootNode);
-    const avifBool found = node != NULL;
+    const avifBool found = (node != NULL);
     xmlFreeDoc(document);
     return found;
 }
@@ -615,9 +615,9 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     const char * baseRenditionIsHDR;
     if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues)) {
         if (!strcmp(baseRenditionIsHDR, "True")) {
-            metadata->baseRenditionIsHDR = AVIF_TRUE;
+            metadataDouble.baseRenditionIsHDR = AVIF_TRUE;
         } else if (!strcmp(baseRenditionIsHDR, "False")) {
-            metadata->baseRenditionIsHDR = AVIF_FALSE;
+            metadataDouble.baseRenditionIsHDR = AVIF_FALSE;
         } else {
             return AVIF_FALSE; // Unexpected value.
         }
@@ -675,9 +675,12 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 
 // Parses gain map metadata from an XMP payload.
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
-static avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMapMetadata * metadata)
+avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMapMetadata * metadata)
 {
     xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, LIBXML2_XML_PARSING_FLAGS);
+    if (document == NULL) {
+        return AVIF_FALSE; // Probably an out of memory error.
+    }
     xmlNode * rootNode = xmlDocGetRootElement(document);
     const avifBool res = avifJPEGParseGainMapXMPProperties(rootNode, metadata);
     xmlFreeDoc(document);
