@@ -33,7 +33,7 @@ typedef struct avifGainMapMetadataDouble
 // Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values
 // to the closest uint32_t fractions.
 // Returns AVIF_FALSE if some field values are < 0 or > UINT32_MAX.
-avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
+AVIF_API avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
 
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 

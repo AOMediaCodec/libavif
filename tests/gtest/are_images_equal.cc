@@ -35,8 +35,9 @@ int main(int argc, char** argv) {
                       /*ignoreColorProfile==*/AVIF_FALSE,
                       /*ignoreExif=*/AVIF_FALSE,
                       /*ignoreXMP=*/AVIF_FALSE, /*allowChangingCicp=*/AVIF_TRUE,
-                      decoded[i].get(), &depth[i], nullptr,
-                      nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+                      // TODO(maryla): also compare gain maps.
+                      /*ignoreGainMap=*/AVIF_TRUE, decoded[i].get(), &depth[i],
+                      nullptr, nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
       return 2;
     }

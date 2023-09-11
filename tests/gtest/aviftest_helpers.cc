@@ -400,13 +400,14 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
                        avifPixelFormat requested_format, int requested_depth,
                        avifChromaDownsampling chroma_downsampling,
                        avifBool ignore_icc, avifBool ignore_exif,
-                       avifBool ignore_xmp, avifBool allow_changing_cicp) {
+                       avifBool ignore_xmp, avifBool allow_changing_cicp,
+                       avifBool ignore_gain_map) {
   testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
   if (!image ||
       avifReadImage((std::string(folder_path) + file_name).c_str(),
                     requested_format, requested_depth, chroma_downsampling,
                     ignore_icc, ignore_exif, ignore_xmp, allow_changing_cicp,
-                    image.get(),
+                    ignore_gain_map, image.get(),
                     /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return {nullptr, nullptr};
