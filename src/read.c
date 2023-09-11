@@ -1428,12 +1428,8 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
             avifProperty * dstProp = (avifProperty *)avifArrayPushPtr(&gridItem->properties);
             *dstProp = *srcProp;
 
-            if (itemCategory != AVIF_ITEM_ALPHA && item->progressive) {
-                decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
-                if (tile->input->samples.count > 1) {
-                    decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
-                    decoder->imageCount = tile->input->samples.count;
-                }
+            if (itemCategory == AVIF_ITEM_COLOR && item->progressive) {
+                gridItem->progressive = AVIF_TRUE; // Propagate the progressive status to the top-level grid item.
             }
         } else if (memcmp(item->type, firstTileItem->type, 4)) {
             // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
@@ -4672,16 +4668,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         if (shouldDecodeColorAndAlpha) {
             AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->color, colorItem, AVIF_ITEM_COLOR));
-            if ((data->color.grid.rows == 0) || (data->color.grid.columns == 0)) {
-                if (colorItem->progressive) {
-                    decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
-                    const avifTile * colorTile = &data->tiles.tile[0];
-                    if (colorTile->input->samples.count > 1) {
-                        decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
-                        decoder->imageCount = (int)colorTile->input->samples.count;
-                    }
-                }
-            }
 
             if (alphaItem) {
                 if (!alphaItem->width && !alphaItem->height) {
@@ -4699,6 +4685,16 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->gainMap, gainMapItem, AVIF_ITEM_GAIN_MAP));
         }
 #endif
+
+        if (colorItem->progressive) {
+            decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
+            // data->color.firstTileIndex is not yet defined but will be set to 0 a few lines below.
+            const avifTile * colorTile = &data->tiles.tile[0];
+            if (colorTile->input->samples.count > 1) {
+                decoder->progressiveState = AVIF_PROGRESSIVE_STATE_ACTIVE;
+                decoder->imageCount = (int)colorTile->input->samples.count;
+            }
+        }
 
         decoder->image->width = colorItem->width;
         decoder->image->height = colorItem->height;
