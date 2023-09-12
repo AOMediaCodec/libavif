@@ -36,7 +36,7 @@ jobs:
       uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ext
-        key: ${{ runner.os }}-shared-local-${{ hashFiles('ext/*.cmd') }}
+        key: ${{ runner.os }}-shared-local-${{ hashFiles('CMakeLists.txt', 'ext/*.cmd') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835 # v1.14.1
       with:
@@ -51,15 +51,6 @@ jobs:
     - run: pip install meson
     - name: Print ImageMagick version
       run: convert --version
-    - name: Set shared libs
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: >
-        sed -i'' -e 's/-DBUILD_SHARED_LIBS=OFF/-DBUILD_SHARED_LIBS=ON/' *.cmd
-
-        sed -i'' -e 's/--default-library=static/--default-library=shared/' dav1d.cmd
-
-        sed -i'' -e 's/ninja yuv/ninja yuv_shared/' libyuv.cmd
     - name: Build aom
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext

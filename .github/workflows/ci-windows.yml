@@ -48,7 +48,7 @@ jobs:
       uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ext
-        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
+        key: ${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'ext/*.cmd') }}
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@321e6ed62a1fc77024a3bd853deb33645e8b22c4 # v1.4.0
