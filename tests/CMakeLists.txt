@@ -87,6 +87,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifallocationtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifallocationtest COMMAND avifallocationtest)
 
+    add_executable(avifalphanoispetest gtest/avifalphanoispetest.cc)
+    target_link_libraries(avifalphanoispetest aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifalphanoispetest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifalphanoispetest COMMAND avifalphanoispetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(avifalphapremtest gtest/avifalphapremtest.cc)
     target_link_libraries(avifalphapremtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifalphapremtest PRIVATE ${GTEST_INCLUDE_DIRS})
