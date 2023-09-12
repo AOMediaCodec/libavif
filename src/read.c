@@ -4642,6 +4642,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         if (decoder->ignoreGainMap) {
             // When ignoring the gain map, we still report whether one is present or not,
             // but do not fail if there was any error with the gain map.
+            if (findGainMapResult != AVIF_RESULT_OK) {
+                // Only ignore reproducible errors (caused by the bitstream and not by the environment).
+                AVIF_CHECKERR(findGainMapResult != AVIF_RESULT_OUT_OF_MEMORY, findGainMapResult);
+                // Clear diagnostic message.
+                avifDiagnosticsClearError(data->diag);
+            }
             decoder->gainMapPresent = (findGainMapResult == AVIF_RESULT_OK) && (gainMapItem != NULL);
             // We also ignore the actual item and don't decode it.
             gainMapItem = NULL;
