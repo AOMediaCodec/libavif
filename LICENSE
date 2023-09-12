@@ -354,7 +354,7 @@ Files: android_jni/gradlew*
 
 ------------------------------------------------------------------------------
 
-Files: third_party/libyuv*
+Files: third_party/libyuv/*
 
 Copyright 2011 The LibYuv Project Authors. All rights reserved.
 
