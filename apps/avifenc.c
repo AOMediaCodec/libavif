@@ -36,8 +36,8 @@ typedef struct
     avifBool qualityAlphaIsConstrained; // true if qualityAlpha explicitly set by the user
     int overrideQuality;
     int overrideQualityAlpha;
-    avifBool autoProgressive; // automatic layered encoding (progressive) with single input
-    avifBool layered;         // manual layered encoding by specifying each layer
+    avifBool progressive; // automatic layered encoding (progressive) with single input
+    avifBool layered;     // manual layered encoding by specifying each layer
     int layers;
     int speed;
     avifHeaderFormat headerFormat;
@@ -1017,13 +1017,13 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
     const avifImage * encodingImage = firstImage;
     const avifInputFileSettings * nextSettings = NULL;
 
-    if (settings->autoProgressive && avifInputHasRemainingData(input, layerIndex)) {
+    if (settings->progressive && avifInputHasRemainingData(input, layerIndex)) {
         fprintf(stderr, "ERROR: Automatic layered encoding can only have one input image.\n");
         goto cleanup;
     }
 
     while (layerIndex < layers) {
-        if (settings->autoProgressive) {
+        if (settings->progressive) {
             // reversed lerp, so that last layer reaches exact targetQuality
             encoder->quality = targetQuality - (targetQuality - PROGRESSIVE_START_QUALITY) *
                                                    (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
@@ -1164,7 +1164,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
            encoder->autoTiling ? "automatic tiling" : manualTilingStr,
            settings->jobs);
 
-    if (settings->autoProgressive) {
+    if (settings->progressive) {
         // If the color quality is less than 10, the main() function overrides
         // --progressive and sets settings->autoProgressive to false.
         assert(encoder->quality >= PROGRESSIVE_WORST_QUALITY);
@@ -1271,8 +1271,8 @@ static avifBool avifEncodeImages(avifSettings * settings,
     size_t closestSizeDiff = 0;
     avifIOStats closestIoStats = { 0, 0 };
 
-    int minQuality = settings->autoProgressive ? PROGRESSIVE_WORST_QUALITY : AVIF_QUALITY_WORST; // inclusive
-    int maxQuality = AVIF_QUALITY_BEST;                                                          // inclusive
+    int minQuality = settings->progressive ? PROGRESSIVE_WORST_QUALITY : AVIF_QUALITY_WORST; // inclusive
+    int maxQuality = AVIF_QUALITY_BEST;                                                      // inclusive
     while (minQuality <= maxQuality) {
         const int quality = (minQuality + maxQuality) / 2;
         if (!settings->qualityIsConstrained) {
@@ -1363,7 +1363,7 @@ int main(int argc, char * argv[])
     settings.qualityAlphaIsConstrained = AVIF_FALSE;
     settings.overrideQuality = INVALID_QUALITY;
     settings.overrideQualityAlpha = INVALID_QUALITY;
-    settings.autoProgressive = AVIF_FALSE;
+    settings.progressive = AVIF_FALSE;
     settings.layered = AVIF_FALSE;
     settings.layers = 0;
     settings.speed = 6;
@@ -1651,9 +1651,9 @@ int main(int argc, char * argv[])
                 returnCode = 1;
                 goto cleanup;
             }
-            settings.autoProgressive = AVIF_TRUE;
+            settings.progressive = AVIF_TRUE;
         } else if (!strcmp(arg, "--layered")) {
-            if (settings.autoProgressive) {
+            if (settings.progressive) {
                 fprintf(stderr, "ERROR: Can not use both --progressive and --layered\n");
                 returnCode = 1;
                 goto cleanup;
@@ -1940,7 +1940,7 @@ int main(int argc, char * argv[])
         } else {
             settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         }
-        if (settings.autoProgressive) {
+        if (settings.progressive) {
             fprintf(stderr, "Automatic layered encoding is unsupported in lossless mode.\n");
         }
         if (returnCode == 1)
@@ -1985,7 +1985,7 @@ int main(int argc, char * argv[])
     }
 
     // Check layer config
-    if (settings.autoProgressive) {
+    if (settings.progressive) {
         assert(!settings.layered);
         if (input.filesCount > 1) {
             fprintf(stderr, "ERROR: --progressive only supports one input.\n");
@@ -2058,7 +2058,7 @@ int main(int argc, char * argv[])
                 returnCode = 1;
             }
         } else {
-            if (settings.autoProgressive) {
+            if (settings.progressive) {
                 assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
                     fprintf(stderr, "ERROR: --qcolor must be at least %d when using --progressive.\n", PROGRESSIVE_WORST_QUALITY);
@@ -2187,7 +2187,7 @@ int main(int argc, char * argv[])
     avifAppSourceTiming firstSourceTiming;
     const avifBool isImageSequence = (!settings.gridDimsPresent) && (settings.layers == 1) && (input.filesCount > 1);
     // Gain maps are not supported for animations or layered images.
-    const avifBool ignoreGainMap = settings.ignoreGainMap || isImageSequence || settings.autoProgressive;
+    const avifBool ignoreGainMap = settings.ignoreGainMap || isImageSequence || settings.progressive;
     if (!avifInputReadImage(&input,
                             /*imageIndex=*/0,
                             settings.ignoreColorProfile,

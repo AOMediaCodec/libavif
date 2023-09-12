@@ -80,7 +80,7 @@ pushd ${TMP_DIR}
   echo "Testing too few layers"
   "${AVIFENC}" -s 8 --layered -q:u 60 "${INPUT_Y4M}" -o "${ENCODED_FILE}" && exit 1
 
-  echo "Testing too much layers"
+  echo "Testing too many layers"
   "${AVIFENC}" -s 8 --layered \
     -q:u 10 "${INPUT_Y4M}" \
     -q:u 20 "${INPUT_Y4M}" \
