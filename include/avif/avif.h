@@ -1143,11 +1143,20 @@ typedef struct avifDecoder
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     // This is true when avifDecoderParse() detects a gain map.
     avifBool gainMapPresent;
-    // Do not decode the gain map image or gain map metadata if present (defaults to AVIF_TRUE).
-    // Set this to AVIF_FALSE if you DO want to decode gain map pixels and metadata.
+    // Do not decode the gain map image if present (defaults to AVIF_TRUE).
+    // Set this to AVIF_FALSE if you DO want to decode gain map pixels
+    // (see also ignoreGainMapMetadata below).
     // gainMapPresent is still set if the presence of a gain map is detected, regardless
     // of this setting.
     avifBool ignoreGainMap;
+    // Do not read the gain map metadata if present (defaults to AVIF_TRUE).
+    // gainMapPresent is still set if the presence of a gain map is detected, regardless
+    // of this setting.
+    // Gain map metadata is read during avifDecoderParse(). Like Exif and XMP, this data
+    // can be (unfortunately) packed at the end of the file, which will cause
+    // avifDecoderParse() to return AVIF_RESULT_WAITING_ON_IO until it finds it.
+    // If you don't actually use this data, it's best to leave this to AVIF_TRUE (default).
+    avifBool ignoreGainMapMetadata;
     // Do not decode the color/alpha planes of the main image.
     // Can be useful to decode the gain map only.
     avifBool ignoreColorAndAlpha;
