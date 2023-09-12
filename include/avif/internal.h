@@ -253,11 +253,12 @@ avifBool avifImageScale(avifImage * image,
 
 typedef enum avifItemCategory
 {
-    AVIF_ITEM_COLOR = 0,
-    AVIF_ITEM_ALPHA = 1,
+    AVIF_ITEM_COLOR,
+    AVIF_ITEM_ALPHA,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    AVIF_ITEM_GAIN_MAP = 2
+    AVIF_ITEM_GAIN_MAP,
 #endif
+    AVIF_ITEM_CATEGORY_COUNT
 } avifItemCategory;
 
 // ---------------------------------------------------------------------------
