@@ -92,6 +92,7 @@ endif()
 
 set(AVIF_PLATFORM_DEFINITIONS)
 set(AVIF_PLATFORM_INCLUDES)
+set(AVIF_PLATFORM_SYSTEM_INCLUDES)
 set(AVIF_PLATFORM_LIBRARIES)
 
 # ---------------------------------------------------------------------------------------
@@ -105,7 +106,7 @@ if(AVIF_LOCAL_ZLIBPNG)
     set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE PATH "zlib include dir")
     # This include_directories() call must be before add_subdirectory(ext/zlib) to work around the
     # zlib/CMakeLists.txt bug fixed by https://github.com/madler/zlib/pull/818.
-    include_directories(${ZLIB_INCLUDE_DIR})
+    include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
     add_subdirectory(ext/zlib)
     # This include_directories() call and the previous include_directories() call provide the zlib
     # include directories for add_subdirectory(ext/libpng). Because we set PNG_BUILD_ZLIB,
@@ -187,7 +188,7 @@ else(AVIF_LOCAL_LIBYUV)
 endif()
 if(libyuv_FOUND)
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
-    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
+    set(AVIF_PLATFORM_SYSTEM_INCLUDES ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
 endif(libyuv_FOUND)
 
@@ -211,7 +212,11 @@ endif()
 if(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
-    set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
+    if(AVIF_LOCAL_LIBSHARPYUV)
+        set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
+    else()
+        set(AVIF_PLATFORM_SYSTEM_INCLUDES ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
+    endif()
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
 else(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv not found")
@@ -339,6 +344,7 @@ endif()
 
 set(AVIF_CODEC_DEFINITIONS)
 set(AVIF_CODEC_INCLUDES)
+set(AVIF_CODEC_SYSTEM_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
 if(NOT libyuv_FOUND)
@@ -390,7 +396,7 @@ if(AVIF_CODEC_DAV1D)
         # Check to see if dav1d is independently being built by the outer CMake project
         if(NOT TARGET dav1d)
             find_package(dav1d REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${DAV1D_INCLUDE_DIR})
+            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${DAV1D_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
     endif()
@@ -423,7 +429,7 @@ if(AVIF_CODEC_LIBGAV1)
         # Check to see if libgav1 is independently being built by the outer CMake project
         if(NOT TARGET libgav1)
             find_package(libgav1 REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${LIBGAV1_INCLUDE_DIR})
+            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${LIBGAV1_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
     endif()
@@ -449,7 +455,7 @@ if(AVIF_CODEC_RAV1E)
         # Check to see if rav1e is independently being built by the outer CMake project
         if(NOT TARGET rav1e)
             find_package(rav1e REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${RAV1E_INCLUDE_DIR})
+            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${RAV1E_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${RAV1E_LIBRARIES})
     endif()
@@ -482,7 +488,7 @@ if(AVIF_CODEC_SVT)
         # Check to see if svt is independently being built by the outer CMake project
         if(NOT TARGET svt)
             find_package(svt REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${SVT_INCLUDE_DIR})
+            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${SVT_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
     endif()
@@ -520,7 +526,7 @@ if(AVIF_CODEC_AOM)
         # Check to see if aom is independently being built by the outer CMake project
         if(NOT TARGET aom)
             find_package(aom REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${AOM_INCLUDE_DIR})
+            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AOM_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
     endif()
@@ -555,7 +561,7 @@ if(AVIF_CODEC_AVM)
         # Check to see if avm is independently being built by the outer CMake project
         if(NOT TARGET avm)
             find_package(avm REQUIRED)
-            set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${AVM_INCLUDE_DIR})
+            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AVM_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AVM_LIBRARIES})
     endif()
@@ -575,10 +581,9 @@ add_library(avif ${AVIF_SRCS})
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-target_include_directories(
-    avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include> PRIVATE ${AVIF_PLATFORM_INCLUDES}
-                                                                                                      ${AVIF_CODEC_INCLUDES}
-)
+target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_include_directories(avif PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+target_include_directories(avif SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
 if(NOT libyuv_FOUND)
     target_include_directories(avif PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
 endif()
@@ -595,13 +600,15 @@ endif()
 # The avif_internal target should not be used by external code.
 if(BUILD_SHARED_LIBS)
     add_library(avif_internal STATIC ${AVIF_SRCS})
-    # Copy most properties from the public avif library target.
+    # Copy or duplicate most properties from the public avif library target.
     target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
     target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
-    target_include_directories(
-        avif_internal PUBLIC "$<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>"
-        PRIVATE "$<TARGET_PROPERTY:avif,INCLUDE_DIRECTORIES>"
-    )
+    target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
+    target_include_directories(avif_internal PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+    target_include_directories(avif_internal SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
+    if(NOT libyuv_FOUND)
+        target_include_directories(avif_internal PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
+    endif()
 else()
     add_library(avif_internal ALIAS avif)
 endif()
@@ -658,17 +665,16 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
     # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
     # headers from /usr/local/include.
-    target_include_directories(
-        avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR}
-        INTERFACE apps/shared
-    )
+    target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_include_directories(avif_apps SYSTEM PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
+    target_include_directories(avif_apps INTERFACE apps/shared)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if(LIBXML2_FOUND)
             set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
             add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
             target_link_libraries(avif_apps ${LIBXML2_LIBRARY})
-            target_include_directories(avif_apps PRIVATE ${LIBXML2_INCLUDE_DIR})
+            target_include_directories(avif_apps SYSTEM PRIVATE ${LIBXML2_INCLUDE_DIR})
         else()
             message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
         endif()
