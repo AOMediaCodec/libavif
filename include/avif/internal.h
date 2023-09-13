@@ -1,6 +1,18 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+// Policy on including "avif/internal.h" vs. "avif/avif.h"
+//
+// "avif/avif.h" is the public header of the libavif library. Code that uses
+// only the public API of the libavif library should include "avif/avif.h".
+//
+// "avif/internal.h" is the internal header of the libavif library. Code that
+// uses the internal types or functions of the libavif library, such as the
+// implementation files src/*.c and the unit tests of internal functions,
+// should include "avif/internal.h". A file should not include both
+// "avif/internal.h" and "avif/avif.h". An IWYU pragma has been added to tell
+// the include-what-you-use tool that "avif/internal.h" exports "avif/avif.h".
+
 #ifndef AVIF_INTERNAL_H
 #define AVIF_INTERNAL_H
 
