@@ -419,7 +419,7 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   EXPECT_TRUE(decoder->gainMapPresent);
   // ... but not decoded because ignoreGainMap is true by default.
   EXPECT_EQ(decoded->gainMap.image, nullptr);
-  // Check that the gain map metadata was not populated either.
+  // Check that the gain map metadata WAS populated.
   CheckGainMapMetadataMatches(decoded->gainMap.metadata,
                               image->gainMap.metadata);
 }
