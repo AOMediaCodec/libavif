@@ -1310,8 +1310,6 @@ typedef struct avifEncoder
                               // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
     uint32_t extraLayerCount; // EXPERIMENTAL: Non-zero value encodes layered image.
 
-    uint32_t width;
-    uint32_t height;
     // changeable encoder settings
     int quality;
     int qualityAlpha;
@@ -1338,6 +1336,9 @@ typedef struct avifEncoder
 
     // Defaults to AVIF_HEADER_FULL
     avifHeaderFormat headerFormat;
+
+    uint32_t width;
+    uint32_t height;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting

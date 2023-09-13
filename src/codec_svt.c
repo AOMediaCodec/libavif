@@ -45,7 +45,7 @@ static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * outpu
 static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
-                                      avifBool alpha,
+                                      avifItemCategory category,
                                       int tileRowsLog2,
                                       int tileColsLog2,
                                       int quantizer,
@@ -54,6 +54,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       uint32_t addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
+    avifBool alpha = category == AVIF_ITEM_ALPHA;
+
     // SVT-AV1 does not support changing encoder settings.
     if (encoderChanges) {
         return AVIF_RESULT_NOT_IMPLEMENTED;

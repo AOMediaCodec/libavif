@@ -1601,7 +1601,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             avifResult encodeResult = item->codec->encodeImage(item->codec,
                                                                encoder,
                                                                cellImage,
-                                                               item->itemCategory == AVIF_ITEM_ALPHA,
+                                                               item->itemCategory,
                                                                encoder->data->tileRowsLog2,
                                                                encoder->data->tileColsLog2,
                                                                quantizer,
@@ -2410,14 +2410,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         }
 
         const avifImage * itemMetadata = imageMetadata;
+        uint32_t imageWidth = cellWidth;
+        uint32_t imageHeight = cellHeight;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             itemMetadata = itemMetadata->gainMap.image;
             assert(itemMetadata);
+            imageWidth = itemMetadata->width;
+            imageHeight = itemMetadata->height;
         }
 #endif
-        uint32_t imageWidth = cellWidth;
-        uint32_t imageHeight = cellHeight;
         if (isGrid) {
             imageWidth = item->gridWidth;
             imageHeight = item->gridHeight;
