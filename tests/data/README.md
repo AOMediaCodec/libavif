@@ -411,6 +411,14 @@ Box structure of the items in this file:
 [alpha] [alpha]
 ```
 
+### File [alpha_noispe.avif](alpha_noispe.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same pixels as `color_grid_alpha_nogrid.avif` encoded with
+[`cavif-rs`](https://github.com/kornelski/cavif-rs) with the
+[alpha `ispe` fix](https://github.com/kornelski/avif-serialize/pull/4) removed.
+
 # Other Test Files
 
 ### File [sRGB2014.icc](sRGB2014.icc)
