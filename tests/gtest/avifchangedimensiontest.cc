@@ -1,8 +1,10 @@
 // Copyright 2022 Yuan Tong. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <algorithm>
 #include <map>
 #include <string>
+#include <tuple>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
@@ -44,7 +46,22 @@ TEST_P(ChangeDimensionTest, EncodeDecode) {
 
   char versionBuffer[256];
   avifCodecVersions(versionBuffer);
-  bool will_fail = (versionBuffer < std::string("v3.6.0")) &&
+  std::string version_code =
+      std::find(versionBuffer, versionBuffer + 256, ':') + 1;
+  int version[3]{};
+  for (int i = 0; i < 3; ++i) {
+    ASSERT_FALSE(version_code.empty());
+    size_t parsed = 0;
+    version[i] = std::stoi(version_code, &parsed);
+    ASSERT_NE(parsed, 0);
+    if (i != 2) {
+      ASSERT_GT(version_code.size(), parsed + 1);
+      version_code = version_code.substr(parsed + 1);
+    }
+  }
+
+  bool will_fail = (std::make_tuple(version[0], version[1], version[2]) <
+                    std::make_tuple(3, 6, 0)) &&
                    ((size_first < size_second) || (depth > 8));
 
   uint32_t size_display = std::max(size_first, size_second);
@@ -80,7 +97,7 @@ TEST_P(ChangeDimensionTest, EncodeDecode) {
     avifEncoderSetCodecSpecificOption(encoder.get(), "end-usage",
                                       end_usage.c_str());
     if (end_usage == "q") {
-      avifEncoderSetCodecSpecificOption(encoder.get(), "cq-level", "30");
+      encoder->quality = 50;
     }
     avifEncoderSetCodecSpecificOption(encoder.get(), "tune", tune.c_str());
     if (denoise) {
@@ -143,8 +160,8 @@ INSTANTIATE_TEST_SUITE_P(AOMIncreasing, ChangeDimensionTest,
                                  /*denoise=*/Bool()));
 
 INSTANTIATE_TEST_SUITE_P(AOMIncreasingMultiThread, ChangeDimensionTest,
-                         Combine(/*size_first*/ Values(512),
-                                 /*size_second*/ Values(768),
+                         Combine(/*size_first*/ Values(256),
+                                 /*size_second*/ Values(512),
                                  /*speed=*/Values(6, 10),
                                  /*depth=*/Values(8, 10),
                                  /*maxThreads*/ Values(8),
