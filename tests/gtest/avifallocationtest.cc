@@ -148,12 +148,14 @@ TEST(EncodingTest, MinimumValidDimensions) {
 }
 
 TEST(EncodingTest, ReasonableValidDimensions) {
+  // 16384 x 8704 is the maximum width x height allowed in the levels defined
+  // in the AV1 specification.
   TestEncoding(16384, 1, 12, AVIF_RESULT_OK);
-  TestEncoding(1, 16384, 12, AVIF_RESULT_OK);
+  TestEncoding(1, 8704, 12, AVIF_RESULT_OK);
 }
 
 // 65536 is the maximum AV1 frame dimension allowed by the AV1 specification.
-// See the section 5.5.1. General sequence header OBU syntax.
+// See the section 5.5.1 General sequence header OBU syntax.
 // However, this test is disabled because:
 // - Old versions of libaom are capped to 65535 (http://crbug.com/aomedia/3304).
 // - libaom may be compiled with CONFIG_SIZE_LIMIT defined, limiting the

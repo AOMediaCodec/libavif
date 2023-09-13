@@ -103,7 +103,7 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
             return AVIF_RESULT_IO_ERROR;
         }
         if (reader->buffer.size < size) {
-            avifRWDataRealloc(&reader->buffer, size);
+            AVIF_CHECKRES(avifRWDataRealloc(&reader->buffer, size));
         }
         if (fseek(reader->f, (long)offset, SEEK_SET) != 0) {
             return AVIF_RESULT_IO_ERROR;
@@ -146,12 +146,20 @@ avifIO * avifIOCreateFileReader(const char * filename)
     fseek(f, 0, SEEK_SET);
 
     avifIOFileReader * reader = avifAlloc(sizeof(avifIOFileReader));
+    if (!reader) {
+        fclose(f);
+        return NULL;
+    }
     memset(reader, 0, sizeof(avifIOFileReader));
     reader->f = f;
     reader->io.destroy = avifIOFileReaderDestroy;
     reader->io.read = avifIOFileReaderRead;
     reader->io.sizeHint = (uint64_t)fileSize;
     reader->io.persistent = AVIF_FALSE;
-    avifRWDataRealloc(&reader->buffer, 1024);
+    if (avifRWDataRealloc(&reader->buffer, 1024) != AVIF_RESULT_OK) {
+        avifFree(reader);
+        fclose(f);
+        return NULL;
+    }
     return (avifIO *)reader;
 }

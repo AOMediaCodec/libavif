@@ -1,0 +1,55 @@
+name: CI Android Emulator Tests
+on:
+  push:
+    paths:
+      - 'android_jni/**'
+  pull_request:
+    paths:
+      - 'android_jni/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-run-android-jni-tests:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+      - name: Download and Setup the Android NDK
+        uses: nttld/setup-ndk@dbacc5871a0fac6eef9a09d2ca86bc8bf79432c3 # v1.3.1
+        id: setup-ndk
+        with:
+          # r25c is the same as 25.2.9519653.
+          ndk-version: r25c
+          add-to-path: false
+      - name: Setup ninja
+        uses: seanmiddleditch/gha-setup-ninja@16b940825621068d98711680b6c3ff92201f8fc0 # v3
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835 # v1.14.1
+        with:
+          # This is the minimum cmake version needed to build libgav1.
+          cmake-version: '3.7.x'
+      - name: Build libgav1 with the Android NDK
+        working-directory: ext
+        run: bash libgav1_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
+      - name: Setup JDK
+        uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3.12.0
+        with:
+          java-version: '11'
+          distribution: 'zulu'
+      - name: Run Instrumented Tests on the Emulator
+        uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b # v2.28.0
+        with:
+          working-directory: android_jni
+          api-level: 30
+          force-avd-creation: false
+          # This is the same version of cmake that is found in build.gradle.
+          # This will be used to build libavif and the JNI bindings.
+          cmake: 3.22.1
+          ndk: 25.2.9519653
+          arch: x86_64
+          script: ./gradlew cAT

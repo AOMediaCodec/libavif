@@ -3,7 +3,6 @@
 
 #include <ostream>
 
-#include "avif/avif.h"
 #include "avif/internal.h"
 #include "gtest/gtest.h"
 

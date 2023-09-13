@@ -45,11 +45,12 @@ INPUT_JPG="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_metadata_encoded.avif"
 ENCODED_FILE_NO_METADATA="avif_test_cmd_metadata_encoded_no_metadata.avif"
+ENCODED_FILE_MORE_METADATA="avif_test_cmd_metadata_encoded_more_metadata.avif"
 
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}"
+    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${ENCODED_FILE_MORE_METADATA}"
   popd
 }
 trap cleanup EXIT
@@ -66,6 +67,9 @@ pushd ${TMP_DIR}
     cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
     cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+    # As should adding metadata.
+    "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_MORE_METADATA}" --clli 1000,50
+    cmp "${ENCODED_FILE}" "${ENCODED_FILE_MORE_METADATA}" && exit 1
   done
 popd
 

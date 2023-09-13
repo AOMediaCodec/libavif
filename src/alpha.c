@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <string.h>
 
-avifBool avifFillAlpha(const avifAlphaParams * const params)
+avifBool avifFillAlpha(const avifAlphaParams * params)
 {
     if (params->dstDepth > 8) {
         const uint16_t maxChannel = (uint16_t)((1 << params->dstDepth) - 1);
@@ -31,7 +31,7 @@ avifBool avifFillAlpha(const avifAlphaParams * const params)
     return AVIF_TRUE;
 }
 
-avifBool avifReformatAlpha(const avifAlphaParams * const params)
+avifBool avifReformatAlpha(const avifAlphaParams * params)
 {
     const int srcMaxChannel = (1 << params->srcDepth) - 1;
     const int dstMaxChannel = (1 << params->dstDepth) - 1;

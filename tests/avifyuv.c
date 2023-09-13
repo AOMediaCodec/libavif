@@ -97,7 +97,7 @@ int main(int argc, char * argv[])
     if (mode == 0) {
         // Limited to full conversion roundtripping test
 
-        int depth = 8;
+        uint32_t depth = 8;
         int maxChannel = (1 << depth) - 1;
         for (int i = 0; i <= maxChannel; ++i) {
             int li = avifFullToLimitedY(depth, i);
@@ -151,26 +151,40 @@ int main(int argc, char * argv[])
 
                         avifImage * image = avifImageCreate(dim, dim, yuvDepth, AVIF_PIXEL_FORMAT_YUV444);
                         if (!image) {
-                            printf("ERROR: Out of memory\n");
+                            fprintf(stderr, "ERROR: Out of memory\n");
                             return 1;
                         }
                         image->colorPrimaries = cicp->cp;
                         image->transferCharacteristics = cicp->tc;
                         image->matrixCoefficients = cicp->mc;
                         image->yuvRange = range;
-                        avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+                        if (avifImageAllocatePlanes(image, AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
+                            avifImageDestroy(image);
+                            printf("ERROR: Out of memory\n");
+                            return 1;
+                        }
 
                         avifRGBImage srcRGB;
                         avifRGBImageSetDefaults(&srcRGB, image);
                         srcRGB.format = AVIF_RGB_FORMAT_RGB;
                         srcRGB.depth = rgbDepth;
-                        avifRGBImageAllocatePixels(&srcRGB);
 
                         avifRGBImage dstRGB;
                         avifRGBImageSetDefaults(&dstRGB, image);
                         dstRGB.format = AVIF_RGB_FORMAT_RGB;
                         dstRGB.depth = rgbDepth;
-                        avifRGBImageAllocatePixels(&dstRGB);
+
+                        if ((avifRGBImageAllocatePixels(&srcRGB) != AVIF_RESULT_OK)) {
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Out of memory\n");
+                            return 1;
+                        }
+                        if ((avifRGBImageAllocatePixels(&dstRGB) != AVIF_RESULT_OK)) {
+                            avifRGBImageFreePixels(&srcRGB);
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Out of memory\n");
+                            return 1;
+                        }
 
                         uint64_t driftPixelCounts[MAX_DRIFT];
                         for (int i = 0; i < MAX_DRIFT; ++i) {
@@ -255,7 +269,10 @@ int main(int argc, char * argv[])
                                             maxDrift = drift;
                                         }
                                     } else {
-                                        printf("ERROR: Encountered a drift greater than or equal to MAX_DRIFT(%d): %d\n", MAX_DRIFT, drift);
+                                        fprintf(stderr,
+                                                "ERROR: Encountered a drift greater than or equal to MAX_DRIFT(%d): %d\n",
+                                                MAX_DRIFT,
+                                                drift);
                                         return 1;
                                     }
                                 }
@@ -303,7 +320,7 @@ int main(int argc, char * argv[])
 
         avifImage * image = avifImageCreate(originalWidth, originalHeight, 8, AVIF_PIXEL_FORMAT_YUV444);
         if (!image) {
-            printf("ERROR: Out of memory\n");
+            fprintf(stderr, "ERROR: Out of memory\n");
             return 1;
         }
 
@@ -313,7 +330,11 @@ int main(int argc, char * argv[])
             avifRGBImage srcRGB;
             avifRGBImageSetDefaults(&srcRGB, image);
             srcRGB.depth = yuvDepth;
-            avifRGBImageAllocatePixels(&srcRGB);
+            if (avifRGBImageAllocatePixels(&srcRGB) != AVIF_RESULT_OK) {
+                avifImageDestroy(image);
+                fprintf(stderr, "ERROR: Out of memory\n");
+                return 1;
+            }
             if (yuvDepth > 8) {
                 float maxChannelF = (float)((1 << yuvDepth) - 1);
                 for (uint32_t j = 0; j < srcRGB.height; ++j) {
@@ -358,7 +379,12 @@ int main(int argc, char * argv[])
                         avifRGBImageSetDefaults(&intermediateRGB, image);
                         intermediateRGB.depth = rgbDepth;
                         intermediateRGB.format = rgbFormat;
-                        avifRGBImageAllocatePixels(&intermediateRGB);
+                        if (avifRGBImageAllocatePixels(&intermediateRGB) != AVIF_RESULT_OK) {
+                            avifRGBImageFreePixels(&srcRGB);
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Out of memory\n");
+                            return 1;
+                        }
                         avifImageYUVToRGB(image, &intermediateRGB);
 
                         avifImageFreePlanes(image, AVIF_PLANES_ALL);
@@ -367,7 +393,13 @@ int main(int argc, char * argv[])
                         avifRGBImage dstRGB;
                         avifRGBImageSetDefaults(&dstRGB, image);
                         dstRGB.depth = yuvDepth;
-                        avifRGBImageAllocatePixels(&dstRGB);
+                        if (avifRGBImageAllocatePixels(&dstRGB) != AVIF_RESULT_OK) {
+                            avifRGBImageFreePixels(&intermediateRGB);
+                            avifRGBImageFreePixels(&srcRGB);
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Out of memory\n");
+                            return 1;
+                        }
                         avifImageYUVToRGB(image, &dstRGB);
 
                         avifBool moveOn = AVIF_FALSE;
@@ -459,7 +491,10 @@ int main(int argc, char * argv[])
             for (int i = 0; i < MAX_DRIFT; ++i) {
                 driftPixelCounts[i] = 0;
             }
-            avifRGBImageAllocatePixels(&rgb);
+            if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Out of memory\n");
+                return 1;
+            }
 
             for (uint32_t a = 0; a < size; ++a) {
                 // meaningful premultiplied RGB value can't exceed A value, so stop at R = A
@@ -488,12 +523,13 @@ int main(int argc, char * argv[])
                         uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
                         int drift = abs((int)pixel[0] - (int)r);
                         if (drift >= MAX_DRIFT) {
-                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
-                                   MAX_DRIFT,
-                                   rgbDepth,
-                                   pixel[0],
-                                   r,
-                                   a);
+                            fprintf(stderr,
+                                    "ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                    MAX_DRIFT,
+                                    rgbDepth,
+                                    pixel[0],
+                                    r,
+                                    a);
                             return 1;
                         }
                         if (maxDrift < drift) {
@@ -504,12 +540,13 @@ int main(int argc, char * argv[])
                         uint16_t * pixel = (uint16_t *)&rgb.pixels[r * sizeof(uint16_t) * 4];
                         int drift = abs((int)pixel[0] - (int)r);
                         if (drift >= MAX_DRIFT) {
-                            printf("ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
-                                   MAX_DRIFT,
-                                   rgbDepth,
-                                   pixel[0],
-                                   r,
-                                   a);
+                            fprintf(stderr,
+                                    "ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
+                                    MAX_DRIFT,
+                                    rgbDepth,
+                                    pixel[0],
+                                    r,
+                                    a);
                             return 1;
                         }
                         if (maxDrift < drift) {

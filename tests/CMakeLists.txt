@@ -41,10 +41,22 @@ endforeach()
 
 if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     enable_language(CXX)
-    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD 14)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers avif_apps)
+    target_link_libraries(aviftest_helpers avif_internal)
 endif()
+
+# Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
+add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
+if(AVIF_LOCAL_LIBGAV1)
+    set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
+target_link_libraries(repro_avif_decode_fuzzer avif ${AVIF_PLATFORM_LIBRARIES})
+# The test below exists for coverage and as a usage example: repro_avif_decode_fuzzer [reproducer file path]
+add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
+                                               ${CMAKE_CURRENT_SOURCE_DIR}/data/color_grid_alpha_nogrid.avif
+)
 
 ################################################################################
 # GoogleTest
@@ -75,10 +87,20 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifallocationtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifallocationtest COMMAND avifallocationtest)
 
+    add_executable(avifalphanoispetest gtest/avifalphanoispetest.cc)
+    target_link_libraries(avifalphanoispetest aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifalphanoispetest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifalphanoispetest COMMAND avifalphanoispetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(avifalphapremtest gtest/avifalphapremtest.cc)
     target_link_libraries(avifalphapremtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifalphapremtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifalphapremtest COMMAND avifalphapremtest)
+
+    add_executable(avifbasictest gtest/avifbasictest.cc)
+    target_link_libraries(avifbasictest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifbasictest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifbasictest COMMAND avifbasictest)
 
     add_executable(avifchangedimensiontest gtest/avifchangedimensiontest.cc)
     target_link_libraries(avifchangedimensiontest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
@@ -90,13 +112,49 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifchangesettingtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifchangesettingtest COMMAND avifchangesettingtest)
 
+    add_executable(avifclaptest gtest/avifclaptest.cc)
+    target_link_libraries(avifclaptest avif ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifclaptest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifclaptest COMMAND avifclaptest)
+
     add_executable(avifcllitest gtest/avifcllitest.cc)
     target_link_libraries(avifcllitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifcllitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifcllitest COMMAND avifcllitest)
 
+    add_executable(avifcodectest gtest/avifcodectest.cc)
+    target_link_libraries(avifcodectest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifcodectest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifcodectest COMMAND avifcodectest)
+
+    if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+        add_executable(avifconitest gtest/avifconitest.cc)
+        target_link_libraries(avifconitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(avifconitest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifconitest COMMAND avifconitest)
+    endif()
+
+    add_executable(avifdecodetest gtest/avifdecodetest.cc)
+    target_link_libraries(avifdecodetest aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifdecodetest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifdecodetest COMMAND avifdecodetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        add_executable(avifgainmaptest gtest/avifgainmaptest.cc)
+        target_link_libraries(avifgainmaptest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(avifgainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifgainmaptest COMMAND avifgainmaptest)
+
+        if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+            add_executable(avifjpeggainmaptest gtest/avifjpeggainmaptest.cc)
+            target_link_libraries(avifjpeggainmaptest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+            target_include_directories(avifjpeggainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
+            add_test(NAME avifjpeggainmaptest COMMAND avifjpeggainmaptest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+        endif()
+    endif()
+
     add_executable(avifgridapitest gtest/avifgridapitest.cc)
-    target_link_libraries(avifgridapitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_link_libraries(avifgridapitest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifgridapitest COMMAND avifgridapitest)
 
@@ -117,6 +175,11 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifiostatstest avif_internal aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifiostatstest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifiostatstest COMMAND avifiostatstest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
+    add_executable(aviflosslesstest gtest/aviflosslesstest.cc)
+    target_link_libraries(aviflosslesstest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(aviflosslesstest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME aviflosslesstest COMMAND aviflosslesstest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
     add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
     target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_LIBRARIES})
@@ -148,10 +211,25 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifrgbtoyuvtest COMMAND avifrgbtoyuvtest)
 
+    add_executable(avifscaletest gtest/avifscaletest.cc)
+    target_link_libraries(avifscaletest avif_internal aviftest_helpers ${GTEST_LIBRARIES})
+    target_include_directories(avifscaletest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifscaletest COMMAND avifscaletest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
+    add_executable(avifstreamtest gtest/avifstreamtest.cc)
+    target_link_libraries(avifstreamtest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifstreamtest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifstreamtest COMMAND avifstreamtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_executable(aviftilingtest gtest/aviftilingtest.cc)
     target_link_libraries(aviftilingtest avif_internal ${GTEST_BOTH_LIBRARIES})
     target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME aviftilingtest COMMAND aviftilingtest)
+
+    add_executable(avifutilstest gtest/avifutilstest.cc)
+    target_link_libraries(avifutilstest avif_internal ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifutilstest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifutilstest COMMAND avifutilstest)
 
     add_executable(avify4mtest gtest/avify4mtest.cc)
     target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
@@ -162,7 +240,9 @@ if(AVIF_ENABLE_GTEST)
         # These tests are supported with aom being the encoder and decoder. If aom is unavailable,
         # these tests are disabled because other codecs may not implement all the necessary features.
         # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
-        set_tests_properties(avifallocationtest avifgridapitest avifmetadatatest avifincrtest PROPERTIES DISABLED True)
+        set_tests_properties(
+            avifallocationtest avifgridapitest avifincrtest aviflosslesstest avifmetadatatest PROPERTIES DISABLED True
+        )
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding or decoding.")
     endif()
@@ -191,18 +271,49 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd_grid COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_grid.sh ${CMAKE_BINARY_DIR}
                                         ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+    add_test(NAME test_cmd_icc_profile COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_icc_profile.sh ${CMAKE_BINARY_DIR}
+                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
     add_test(NAME test_cmd_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_lossless.sh ${CMAKE_BINARY_DIR}
                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
     add_test(NAME test_cmd_metadata COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_metadata.sh ${CMAKE_BINARY_DIR}
                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+    add_test(NAME test_cmd_progressive COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_progressive.sh ${CMAKE_BINARY_DIR}
+                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
     add_test(NAME test_cmd_targetsize COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_targetsize.sh ${CMAKE_BINARY_DIR}
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
 
+    if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
+        # test_cmd_enc_boxes_golden.sh depends on MP4Box
+        # Only allow a locally built version to avoid differences with versioning.
+        set(MP4BOX_DIR ${CMAKE_SOURCE_DIR}/ext/gpac/bin/gcc/)
+        if(NOT EXISTS ${MP4BOX_DIR}/MP4Box)
+            message(FATAL_ERROR "AVIF_ENABLE_GOLDEN_TESTS is ON but ${MP4BOX_DIR}/MP4Box is missing. Run ext/mp4box.sh")
+        endif()
+
+        set(GOLDEN_TESTS_OUTPUT_DIR "" CACHE STRING "Output path for golden tests (will be a temp dir if empty)")
+
+        add_test(NAME test_cmd_enc_boxes_golden
+                 COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
+                         ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
+        )
+
+        if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+            add_test(NAME test_cmd_enc_gainmap_boxes_golden
+                    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_gainmap_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
+                            ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
+            )
+        endif()
+    endif()
+
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
-        # Only aom encoder supports lossless encoding.
+        # Only aom encoder supports AV1 lossless encoding.
+        set_property(TEST test_cmd_animation PROPERTY DISABLED True)
+        set_property(TEST test_cmd_icc_profile PROPERTY DISABLED True)
         set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
 
         # SVT-AV1 does not support the images with odd dimensions that are used in this test.
@@ -210,6 +321,62 @@ if(AVIF_BUILD_APPS)
             set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
         endif()
 
+        # Only aom encoder supports encoding AV1 spatial layers (used to implement
+        # AVIF layered images that can be progressively decoded).
+        set_property(TEST test_cmd_progressive PROPERTY DISABLED True)
+
         message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
+    endif()
+endif()
+
+################################################################################
+# AV2 tests
+
+if(AVIF_CODEC_AVM)
+    if(AVIF_ENABLE_GTEST)
+        add_executable(avifavmtest gtest/avifavmtest.cc)
+        target_link_libraries(avifavmtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_include_directories(avifavmtest PRIVATE ${GTEST_INCLUDE_DIRS})
+        add_test(NAME avifavmtest COMMAND avifavmtest)
+    endif()
+
+    if(AVIF_BUILD_APPS)
+        add_test(NAME test_cmd_avm COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm.sh ${CMAKE_BINARY_DIR}
+                                           ${CMAKE_CURRENT_SOURCE_DIR}/data
+        )
+        add_test(NAME test_cmd_avm_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm_lossless.sh ${CMAKE_BINARY_DIR}
+                                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
+        )
+    endif()
+
+    # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
+    # This may lead to test failures when there is no available AV1 codec.
+    if(((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE) AND NOT AVIF_CODEC_RAV1E AND NOT AVIF_CODEC_SVT)
+       OR ((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_DECODE) AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)
+    )
+        # Disable all tests that use avifEncoder without explicitly setting the codec to avm.
+        set_tests_properties(aviftest PROPERTIES DISABLED True)
+        if(AVIF_ENABLE_GTEST)
+            set_tests_properties(
+                avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
+                avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
+            )
+
+            if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+                set_tests_properties(avifconitest PROPERTIES DISABLED True)
+            endif()
+            if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                set_tests_properties(avifgainmaptest PROPERTIES DISABLED True)
+
+                if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+                    set_tests_properties(avifjpeggainmaptest PROPERTIES DISABLED True)
+                endif()
+            endif()
+        endif()
+
+        if(AVIF_BUILD_APPS)
+            # Disable all tests that use avifenc without explicitly setting --codec=avm.
+            set_tests_properties(test_cmd test_cmd_animation test_cmd_grid test_cmd_targetsize PROPERTIES DISABLED True)
+        endif()
     endif()
 endif()

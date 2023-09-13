@@ -91,42 +91,42 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
             case 1: // The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
                 image->transformFlags = otherFlags;
                 image->irot.angle = 0; // ignored
-                image->imir.mode = 0;  // ignored
+                image->imir.axis = 0;  // ignored
                 return AVIF_RESULT_OK;
             case 2: // The 0th row is at the visual top of the image, and the 0th column is the visual right-hand side.
                 image->transformFlags = otherFlags | AVIF_TRANSFORM_IMIR;
                 image->irot.angle = 0; // ignored
-                image->imir.mode = 1;
+                image->imir.axis = 1;
                 return AVIF_RESULT_OK;
             case 3: // The 0th row is at the visual bottom of the image, and the 0th column is the visual right-hand side.
                 image->transformFlags = otherFlags | AVIF_TRANSFORM_IROT;
                 image->irot.angle = 2;
-                image->imir.mode = 0; // ignored
+                image->imir.axis = 0; // ignored
                 return AVIF_RESULT_OK;
             case 4: // The 0th row is at the visual bottom of the image, and the 0th column is the visual left-hand side.
                 image->transformFlags = otherFlags | AVIF_TRANSFORM_IMIR;
                 image->irot.angle = 0; // ignored
-                image->imir.mode = 0;
+                image->imir.axis = 0;
                 return AVIF_RESULT_OK;
             case 5: // The 0th row is the visual left-hand side of the image, and the 0th column is the visual top.
                 image->transformFlags = otherFlags | AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR;
                 image->irot.angle = 1; // applied before imir according to MIAF spec ISO/IEC 28002-12:2021 - section 7.3.6.7
-                image->imir.mode = 0;
+                image->imir.axis = 0;
                 return AVIF_RESULT_OK;
             case 6: // The 0th row is the visual right-hand side of the image, and the 0th column is the visual top.
                 image->transformFlags = otherFlags | AVIF_TRANSFORM_IROT;
                 image->irot.angle = 3;
-                image->imir.mode = 0; // ignored
+                image->imir.axis = 0; // ignored
                 return AVIF_RESULT_OK;
             case 7: // The 0th row is the visual right-hand side of the image, and the 0th column is the visual bottom.
                 image->transformFlags = otherFlags | AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR;
                 image->irot.angle = 3; // applied before imir according to MIAF spec ISO/IEC 28002-12:2021 - section 7.3.6.7
-                image->imir.mode = 0;
+                image->imir.axis = 0;
                 return AVIF_RESULT_OK;
             case 8: // The 0th row is the visual left-hand side of the image, and the 0th column is the visual bottom.
                 image->transformFlags = otherFlags | AVIF_TRANSFORM_IROT;
                 image->irot.angle = 1;
-                image->imir.mode = 0; // ignored
+                image->imir.axis = 0; // ignored
                 return AVIF_RESULT_OK;
             default: // reserved
                 break;
@@ -138,13 +138,15 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
     //   The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
     image->transformFlags = otherFlags;
     image->irot.angle = 0; // ignored
-    image->imir.mode = 0;  // ignored
+    image->imir.axis = 0;  // ignored
     return AVIF_RESULT_OK;
 }
 
-void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
+avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
-    avifRWDataSet(&image->exif, exif, exifSize);
+    AVIF_CHECKRES(avifRWDataSet(&image->exif, exif, exifSize));
     // Ignore any Exif parsing failure.
+    // TODO(wtc): Decide whether to ignore or return Exif parsing failures.
     (void)avifImageExtractExifOrientationToIrotImir(image);
+    return AVIF_RESULT_OK;
 }

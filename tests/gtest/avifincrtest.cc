@@ -28,8 +28,10 @@ testutil::AvifRwData ReadFile(const char* file_name) {
   std::ifstream file(std::string(data_path) + "/" + file_name,
                      std::ios::binary | std::ios::ate);
   testutil::AvifRwData bytes;
-  avifRWDataRealloc(&bytes,
-                    file.good() ? static_cast<size_t>(file.tellg()) : 0);
+  if (avifRWDataRealloc(&bytes, file.good() ? static_cast<size_t>(file.tellg())
+                                            : 0) != AVIF_RESULT_OK) {
+    return {};
+  }
   file.seekg(0, std::ios::beg);
   file.read(reinterpret_cast<char*>(bytes.data),
             static_cast<std::streamsize>(bytes.size));
@@ -53,10 +55,10 @@ TEST(IncrementalTest, Decode) {
 
   // Cell height is hardcoded because there is no API to extract it from an
   // encoded payload.
-  testutil::DecodeIncrementally(encoded_avif, /*is_persistent=*/true,
-                                /*give_size_hint=*/true,
-                                /*use_nth_image_api=*/false, *reference,
-                                /*cell_height=*/154);
+  testutil::DecodeIncrementally(
+      encoded_avif, /*is_persistent=*/true, /*give_size_hint=*/true,
+      /*use_nth_image_api=*/false, *reference, /*cell_height=*/154,
+      /*enable_fine_incremental_check=*/true);
 }
 
 //------------------------------------------------------------------------------
@@ -98,7 +100,7 @@ TEST_P(IncrementalTest, EncodeDecode) {
                                     &cell_height);
   testutil::DecodeNonIncrementallyAndIncrementally(
       encoded_avif, encoded_avif_is_persistent, give_size_hint,
-      use_nth_image_api, cell_height);
+      use_nth_image_api, cell_height, /*enable_fine_incremental_check=*/true);
 }
 
 INSTANTIATE_TEST_SUITE_P(WholeImage, IncrementalTest,

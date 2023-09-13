@@ -10,10 +10,10 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
+using ::testing::Bool;
 using ::testing::Combine;
 using ::testing::Range;
 using ::testing::Values;
-using ::testing::ValuesIn;
 
 namespace libavif {
 namespace {
@@ -542,7 +542,7 @@ INSTANTIATE_TEST_SUITE_P(
         /*add_noise=*/Values(false),
         /*rgb_step=*/Values(17),
         /*max_abs_average_diff=*/Values(0.02),  // The color drift is centered.
-        /*min_psnr=*/Values(49.)  // RGB>YUV>RGB distortion is barely
+        /*min_psnr=*/Values(45.)  // RGB>YUV>RGB distortion is barely
                                   // noticeable.
         ));
 
@@ -672,7 +672,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(61),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(1.),  // Not very accurate because
                                                   // of high rgb_step.
@@ -686,7 +686,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(211),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.2),  // Not very accurate because
                                                    // of high rgb_step.
@@ -700,7 +700,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(809),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.3),  // Not very accurate because
                                                    // of high rgb_step.
@@ -714,7 +714,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(16001),  // High or it would be too slow.
             /*max_abs_average_diff=*/Values(0.05),
             /*min_psnr=*/Values(80.)));
@@ -730,7 +730,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_RANGE_FULL, AVIF_RANGE_LIMITED),
             Values(kMatrixCoefficientsBT601),
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
-            /*add_noise=*/Values(false, true),
+            /*add_noise=*/Bool(),
             /*rgb_step=*/Values(3),  // way faster and 99% similar to rgb_step=1
             /*max_abs_average_diff=*/Values(10.),
             /*min_psnr=*/Values(10.)));
@@ -741,7 +741,8 @@ class YUVToRGBThreadingTest
     : public testing::TestWithParam<std::tuple<
           /*rgb_depth=*/int, /*yuv_depth=*/int,
           /*width=*/int, /*height=*/int, avifRGBFormat, avifPixelFormat,
-          /*threads=*/int, /*avoidLibYUV=*/bool, avifChromaUpsampling>> {};
+          /*threads=*/int, /*avoidLibYUV=*/bool, avifChromaUpsampling,
+          /*has_alpha=*/bool>> {};
 
 TEST_P(YUVToRGBThreadingTest, TestIdentical) {
   const int rgb_depth = std::get<0>(GetParam());
@@ -753,6 +754,7 @@ TEST_P(YUVToRGBThreadingTest, TestIdentical) {
   const int maxThreads = std::get<6>(GetParam());
   const bool avoidLibYUV = std::get<7>(GetParam());
   const avifChromaUpsampling chromaUpsampling = std::get<8>(GetParam());
+  const bool has_alpha = std::get<9>(GetParam());
 
   if (rgb_depth > 8 && rgb_format == AVIF_RGB_FORMAT_RGB_565) {
     return;
@@ -764,19 +766,20 @@ TEST_P(YUVToRGBThreadingTest, TestIdentical) {
   yuv->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
   yuv->yuvRange = AVIF_RANGE_FULL;
 
-  // Fill YUV planes with random values.
+  // Fill YUVA planes with random values.
   srand(0xAABBCCDD);
   const int yuv_max = (1 << yuv_depth);
-  ASSERT_EQ(avifImageAllocatePlanes(yuv.get(), AVIF_PLANES_YUV),
+  ASSERT_EQ(avifImageAllocatePlanes(
+                yuv.get(), has_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV),
             AVIF_RESULT_OK);
-  avifPixelFormatInfo pixel_format_info;
-  avifGetPixelFormatInfo(yuv_format, &pixel_format_info);
-  const int plane_count = pixel_format_info.monochrome ? 1 : 3;
-  for (int plane = 0; plane < plane_count; ++plane) {
+  for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+    const uint32_t plane_width = avifImagePlaneWidth(yuv.get(), plane);
+    if (plane_width == 0) continue;
+    const uint32_t plane_height = avifImagePlaneHeight(yuv.get(), plane);
+    const uint32_t rowBytes = avifImagePlaneRowBytes(yuv.get(), plane);
     uint8_t* row = avifImagePlane(yuv.get(), plane);
-    for (uint32_t y = 0; y < avifImagePlaneHeight(yuv.get(), plane);
-         ++y, row += yuv.get()->yuvRowBytes[plane]) {
-      for (uint32_t x = 0; x < avifImagePlaneWidth(yuv.get(), plane); ++x) {
+    for (uint32_t y = 0; y < plane_height; ++y, row += rowBytes) {
+      for (uint32_t x = 0; x < plane_width; ++x) {
         if (yuv_depth == 8) {
           row[x] = (uint8_t)(rand() % yuv_max);
         } else {
@@ -808,14 +811,15 @@ INSTANTIATE_TEST_SUITE_P(
             /*yuv_depth=*/Values(8, 10),
             /*width=*/Values(1, 2, 127, 200),
             /*height=*/Values(1, 2, 127, 200),
-            Values(AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_ARGB),
+            Values(AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA),
             Range(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_COUNT),
             // Test an odd and even number for threads. Not adding all possible
             // thread values to keep the number of test instances low.
             /*threads=*/Values(2, 7),
-            /*avoidLibYUV=*/Values(true, false),
+            /*avoidLibYUV=*/Bool(),
             Values(AVIF_CHROMA_UPSAMPLING_FASTEST,
-                   AVIF_CHROMA_UPSAMPLING_BILINEAR)));
+                   AVIF_CHROMA_UPSAMPLING_BILINEAR),
+            /*has_alpha=*/Bool()));
 
 // This will generate a large number of test instances and hence it is disabled
 // by default. It can be run manually if necessary.
@@ -828,11 +832,12 @@ INSTANTIATE_TEST_SUITE_P(
             Range(AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_COUNT),
             Range(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_COUNT),
             /*threads=*/Range(0, 9),
-            /*avoidLibYUV=*/Values(true, false),
+            /*avoidLibYUV=*/Bool(),
             Values(AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
                    AVIF_CHROMA_UPSAMPLING_FASTEST,
                    AVIF_CHROMA_UPSAMPLING_NEAREST,
-                   AVIF_CHROMA_UPSAMPLING_BILINEAR)));
+                   AVIF_CHROMA_UPSAMPLING_BILINEAR),
+            /*has_alpha=*/Bool()));
 
 }  // namespace
 }  // namespace libavif

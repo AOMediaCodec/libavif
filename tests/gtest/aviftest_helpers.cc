@@ -5,10 +5,16 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <string>
+#include <vector>
 
 #include "avif/avif.h"
+#include "avif/internal.h"
+#include "avifpng.h"
 #include "avifutil.h"
 
 namespace libavif {
@@ -21,7 +27,9 @@ AvifRgbImage::AvifRgbImage(const avifImage* yuv, int rgbDepth,
   avifRGBImageSetDefaults(this, yuv);
   depth = rgbDepth;
   format = rgbFormat;
-  avifRGBImageAllocatePixels(this);
+  if (avifRGBImageAllocatePixels(this) != AVIF_RESULT_OK) {
+    std::abort();
+  }
 }
 
 AvifRwData::AvifRwData(AvifRwData&& other) : avifRWData{other} {
@@ -91,9 +99,13 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
 }
 
 void FillImageGradient(avifImage* image) {
-  assert(image->yuvRange == AVIF_RANGE_FULL);
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    const uint32_t limitedRangeMin =
+        c == AVIF_CHAN_Y ? 16 << (image->depth - 8) : 0;
+    const uint32_t limitedRangeMax = (c == AVIF_CHAN_Y ? 219 : 224)
+                                     << (image->depth - 8);
+
     const uint32_t plane_width = avifImagePlaneWidth(image, c);
     // 0 for A if no alpha and 0 for UV if 4:0:0.
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
@@ -101,8 +113,15 @@ void FillImageGradient(avifImage* image) {
     const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       for (uint32_t x = 0; x < plane_width; ++x) {
-        const uint32_t value = (x + y) * ((1u << image->depth) - 1u) /
-                               std::max(1u, plane_width + plane_height - 2);
+        uint32_t value;
+        if (image->yuvRange == AVIF_RANGE_FULL || c == AVIF_CHAN_A) {
+          value = (x + y) * ((1u << image->depth) - 1u) /
+                  std::max(1u, plane_width + plane_height - 2);
+        } else {
+          value = limitedRangeMin +
+                  (x + y) * (limitedRangeMax - limitedRangeMin) /
+                      std::max(1u, plane_width + plane_height - 2);
+        }
         if (avifImageUsesU16(image)) {
           reinterpret_cast<uint16_t*>(row)[x] = static_cast<uint16_t>(value);
         } else {
@@ -160,6 +179,22 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
   }
   assert(image1.width * image1.height > 0);
 
+  if (image1.clli.maxCLL != image2.clli.maxCLL ||
+      image1.clli.maxPALL != image2.clli.maxPALL) {
+    return false;
+  }
+  if (image1.transformFlags != image2.transformFlags ||
+      ((image1.transformFlags & AVIF_TRANSFORM_PASP) &&
+       std::memcmp(&image1.pasp, &image2.pasp, sizeof(image1.pasp))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_CLAP) &&
+       std::memcmp(&image1.clap, &image2.clap, sizeof(image1.clap))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_IROT) &&
+       std::memcmp(&image1.irot, &image2.irot, sizeof(image1.irot))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_IMIR) &&
+       std::memcmp(&image1.imir, &image2.imir, sizeof(image1.imir)))) {
+    return false;
+  }
+
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     if (ignore_alpha && c == AVIF_CHAN_A) continue;
@@ -200,6 +235,100 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
          AreByteSequencesEqual(image1.xmp, image2.xmp);
 }
 
+namespace {
+
+template <typename Sample>
+uint64_t SquaredDiffSum(const Sample* samples1, const Sample* samples2,
+                        uint32_t num_samples) {
+  uint64_t sum = 0;
+  for (uint32_t i = 0; i < num_samples; ++i) {
+    const int32_t diff = static_cast<int32_t>(samples1[i]) - samples2[i];
+    sum += diff * diff;
+  }
+  return sum;
+}
+
+}  // namespace
+
+double GetPsnr(const avifImage& image1, const avifImage& image2,
+               bool ignore_alpha) {
+  if (image1.width != image2.width || image1.height != image2.height ||
+      image1.depth != image2.depth || image1.yuvFormat != image2.yuvFormat ||
+      image1.yuvRange != image2.yuvRange) {
+    return -1;
+  }
+  assert(image1.width * image1.height > 0);
+
+  uint64_t squared_diff_sum = 0;
+  uint32_t num_samples = 0;
+  const uint32_t max_sample_value = (1 << image1.depth) - 1;
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    if (ignore_alpha && c == AVIF_CHAN_A) continue;
+
+    const uint32_t plane_width = std::max(avifImagePlaneWidth(&image1, c),
+                                          avifImagePlaneWidth(&image2, c));
+    const uint32_t plane_height = std::max(avifImagePlaneHeight(&image1, c),
+                                           avifImagePlaneHeight(&image2, c));
+    if (plane_width == 0 || plane_height == 0) continue;
+
+    const uint8_t* row1 = avifImagePlane(&image1, c);
+    const uint8_t* row2 = avifImagePlane(&image2, c);
+    if (!row1 != !row2 && c != AVIF_CHAN_A) {
+      return -1;
+    }
+    uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
+    uint32_t row_bytes2 = avifImagePlaneRowBytes(&image2, c);
+
+    // Consider missing alpha planes as samples set to the maximum value.
+    std::vector<uint8_t> opaque_alpha_samples;
+    if (!row1 != !row2) {
+      opaque_alpha_samples.resize(std::max(row_bytes1, row_bytes2));
+      if (avifImageUsesU16(&image1)) {
+        uint16_t* opaque_alpha_samples_16b =
+            reinterpret_cast<uint16_t*>(opaque_alpha_samples.data());
+        std::fill(opaque_alpha_samples_16b,
+                  opaque_alpha_samples_16b + plane_width,
+                  static_cast<int16_t>(max_sample_value));
+      } else {
+        std::fill(opaque_alpha_samples.begin(), opaque_alpha_samples.end(),
+                  uint8_t{255});
+      }
+      if (!row1) {
+        row1 = opaque_alpha_samples.data();
+        row_bytes1 = 0;
+      } else {
+        row2 = opaque_alpha_samples.data();
+        row_bytes2 = 0;
+      }
+    }
+
+    for (uint32_t y = 0; y < plane_height; ++y) {
+      if (avifImageUsesU16(&image1)) {
+        squared_diff_sum += SquaredDiffSum(
+            reinterpret_cast<const uint16_t*>(row1),
+            reinterpret_cast<const uint16_t*>(row2), plane_width);
+      } else {
+        squared_diff_sum += SquaredDiffSum(row1, row2, plane_width);
+      }
+      row1 += row_bytes1;
+      row2 += row_bytes2;
+      num_samples += plane_width;
+    }
+  }
+
+  if (squared_diff_sum == 0) {
+    return 99.0;
+  }
+  const double normalized_error =
+      squared_diff_sum /
+      (static_cast<double>(num_samples) * max_sample_value * max_sample_value);
+  if (normalized_error <= std::numeric_limits<double>::epsilon()) {
+    return 98.99;  // Very small distortion but not lossless.
+  }
+  return std::min(-10 * std::log10(normalized_error), 98.99);
+}
+
 bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
   if (image1.width != image2.width || image1.height != image2.height ||
       image1.depth != image2.depth || image1.format != image2.format ||
@@ -220,35 +349,49 @@ bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
   return true;
 }
 
-void CopyImageSamples(const avifImage& from, avifImage* to) {
-  assert(from.width == to->width);
-  assert(from.height == to->height);
-  assert(from.depth == to->depth);
-  assert(from.yuvFormat == to->yuvFormat);
-  assert(from.yuvRange == to->yuvRange);
-
-  for (avifChannelIndex c :
-       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
-    const uint8_t* from_row = avifImagePlane(&from, c);
-    uint8_t* to_row = avifImagePlane(to, c);
-    assert(!from_row == !to_row);
-    const uint32_t from_row_bytes = avifImagePlaneRowBytes(&from, c);
-    const uint32_t to_row_bytes = avifImagePlaneRowBytes(to, c);
-    const uint32_t plane_width = avifImagePlaneWidth(&from, c);
-    // 0 for A if no alpha and 0 for UV if 4:0:0.
-    const uint32_t plane_height = avifImagePlaneHeight(&from, c);
-    for (uint32_t y = 0; y < plane_height; ++y) {
-      if (avifImageUsesU16(&from)) {
-        std::copy(reinterpret_cast<const uint16_t*>(from_row),
-                  reinterpret_cast<const uint16_t*>(from_row) + plane_width,
-                  reinterpret_cast<uint16_t*>(to_row));
-      } else {
-        std::copy(from_row, from_row + plane_width, to_row);
-      }
-      from_row += from_row_bytes;
-      to_row += to_row_bytes;
-    }
+avifResult MergeGrid(int grid_cols, int grid_rows,
+                     const std::vector<AvifImagePtr>& cells,
+                     avifImage* merged) {
+  std::vector<const avifImage*> ptrs(cells.size());
+  for (size_t i = 0; i < cells.size(); ++i) {
+    ptrs[i] = cells[i].get();
   }
+  return MergeGrid(grid_cols, grid_rows, ptrs, merged);
+}
+
+avifResult MergeGrid(int grid_cols, int grid_rows,
+                     const std::vector<const avifImage*>& cells,
+                     avifImage* merged) {
+  const uint32_t tile_width = cells[0]->width;
+  const uint32_t tile_height = cells[0]->height;
+  const uint32_t grid_width =
+      (grid_cols - 1) * tile_width + cells.back()->width;
+  const uint32_t grid_height =
+      (grid_rows - 1) * tile_height + cells.back()->height;
+
+  testutil::AvifImagePtr view(avifImageCreateEmpty(), avifImageDestroy);
+  AVIF_CHECKERR(view, AVIF_RESULT_OUT_OF_MEMORY);
+
+  avifCropRect rect = {};
+  for (int j = 0; j < grid_rows; ++j) {
+    rect.x = 0;
+    for (int i = 0; i < grid_cols; ++i) {
+      const avifImage* image = cells[j * grid_cols + i];
+      rect.width = image->width;
+      rect.height = image->height;
+      AVIF_CHECKRES(avifImageSetViewRect(view.get(), merged, &rect));
+      avifImageCopySamples(/*dstImage=*/view.get(), image, AVIF_PLANES_ALL);
+      assert(!view->imageOwnsYUVPlanes);
+      rect.x += rect.width;
+    }
+    rect.y += rect.height;
+  }
+
+  if ((rect.x != grid_width) || (rect.y != grid_height)) {
+    return AVIF_RESULT_UNKNOWN_ERROR;
+  }
+
+  return AVIF_RESULT_OK;
 }
 
 //------------------------------------------------------------------------------
@@ -257,17 +400,31 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
                        avifPixelFormat requested_format, int requested_depth,
                        avifChromaDownsampling chroma_downsampling,
                        avifBool ignore_icc, avifBool ignore_exif,
-                       avifBool ignore_xmp) {
+                       avifBool ignore_xmp, avifBool allow_changing_cicp,
+                       avifBool ignore_gain_map) {
   testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
   if (!image ||
       avifReadImage((std::string(folder_path) + file_name).c_str(),
                     requested_format, requested_depth, chroma_downsampling,
-                    ignore_icc, ignore_exif, ignore_xmp, image.get(),
+                    ignore_icc, ignore_exif, ignore_xmp, allow_changing_cicp,
+                    ignore_gain_map, image.get(),
                     /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return {nullptr, nullptr};
   }
   return image;
+}
+
+bool WriteImage(const avifImage* image, const char* file_path) {
+  if (!image || !file_path) return false;
+  const size_t str_len = std::strlen(file_path);
+  if (str_len >= 4 && !std::strncmp(file_path + str_len - 4, ".png", 4)) {
+    return avifPNGWrite(file_path, image, /*requestedDepth=*/0,
+                        AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
+                        /*compressionLevel=*/0);
+  }
+  // Other formats are not supported.
+  return false;
 }
 
 AvifRwData Encode(const avifImage* image, int speed) {
@@ -290,6 +447,18 @@ AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
     return {nullptr, nullptr};
   }
   return decoded;
+}
+
+bool Av1EncoderAvailable() {
+  const char* encoding_codec =
+      avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_ENCODE);
+  return encoding_codec != nullptr && std::string(encoding_codec) != "avm";
+}
+
+bool Av1DecoderAvailable() {
+  const char* decoding_codec =
+      avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_DECODE);
+  return decoding_codec != nullptr && std::string(decoding_codec) != "avm";
 }
 
 //------------------------------------------------------------------------------

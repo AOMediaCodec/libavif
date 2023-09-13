@@ -67,7 +67,8 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
 // cells of cell_height rows.
 uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
                                bool has_alpha, size_t available_byte_count,
-                               size_t byte_count) {
+                               size_t byte_count,
+                               bool enable_fine_incremental_check) {
   // The whole image should be available when the full input is.
   if (available_byte_count >= byte_count) {
     return height;
@@ -76,6 +77,10 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
   if ((available_byte_count + 10) >= byte_count) {
     return height - cell_height;
   }
+
+  // The tests below can be hard to tune for any kind of input, especially
+  // fuzzed grids. Early exit in that case.
+  if (!enable_fine_incremental_check) return 0;
 
   // Subtract the header because decoding it does not output any pixel.
   // Most AVIF headers are below 500 bytes.
@@ -245,11 +250,16 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
   ASSERT_NE(sub_image, nullptr);
   ASSERT_LE(width, image.width);
   ASSERT_LE(height, image.height);
+  // Encode the centered rect of dimensions width*height from the image.
+  avifCropRect rect{/*x=*/(image.width - width) / 2,
+                    /*y=*/(image.height - height) / 2, width, height};
   avifPixelFormatInfo info;
   avifGetPixelFormatInfo(image.yuvFormat, &info);
-  const avifCropRect rect{
-      /*x=*/((image.width - width) / 2) & ~info.chromaShiftX,
-      /*y=*/((image.height - height) / 2) & ~info.chromaShiftX, width, height};
+  if (!info.monochrome) {
+    // Use even coordinates in subsampled dimensions.
+    rect.x &= ~info.chromaShiftX;
+    rect.y &= ~info.chromaShiftY;
+  }
   ASSERT_EQ(avifImageSetViewRect(sub_image.get(), &image, &rect),
             AVIF_RESULT_OK);
   if (create_alpha_if_none && !sub_image->alphaPlane) {
@@ -267,7 +277,8 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
 
 void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
                          bool give_size_hint, bool use_nth_image_api,
-                         const avifImage& reference, uint32_t cell_height) {
+                         const avifImage& reference, uint32_t cell_height,
+                         bool enable_fine_incremental_check) {
   // AVIF cells are at least 64 pixels tall.
   if (cell_height != reference.height) {
     ASSERT_GE(cell_height, 64u);
@@ -313,7 +324,7 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
     ASSERT_GE(decoded_row_count, previously_decoded_row_count);
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
         reference.height, cell_height, reference.alphaPlane != nullptr,
-        data.available.size, data.full_size);
+        data.available.size, data.full_size, enable_fine_incremental_check);
     ASSERT_GE(decoded_row_count, min_decoded_row_count);
     ComparePartialYuva(reference, *decoder->image, decoded_row_count);
 
@@ -330,11 +341,10 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
   ComparePartialYuva(reference, *decoder->image, reference.height);
 }
 
-void DecodeNonIncrementallyAndIncrementally(const avifRWData& encoded_avif,
-                                            bool is_persistent,
-                                            bool give_size_hint,
-                                            bool use_nth_image_api,
-                                            uint32_t cell_height) {
+void DecodeNonIncrementallyAndIncrementally(
+    const avifRWData& encoded_avif, bool is_persistent, bool give_size_hint,
+    bool use_nth_image_api, uint32_t cell_height,
+    bool enable_fine_incremental_check) {
   AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(reference, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
@@ -344,7 +354,8 @@ void DecodeNonIncrementallyAndIncrementally(const avifRWData& encoded_avif,
             AVIF_RESULT_OK);
 
   DecodeIncrementally(encoded_avif, is_persistent, give_size_hint,
-                      use_nth_image_api, *reference, cell_height);
+                      use_nth_image_api, *reference, cell_height,
+                      enable_fine_incremental_check);
 }
 
 //------------------------------------------------------------------------------

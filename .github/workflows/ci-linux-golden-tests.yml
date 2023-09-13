@@ -1,0 +1,97 @@
+# Workflow that builds libabvif with aom and libyuv, also builds MP4box,
+# and runs tests with "golden" in their name. Test results are saved as artifacts
+# which can be downloaded from GitHub'S UI or with 'gh run download'.
+
+name: CI Linux Golden Tests
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  build-shared-run-golden-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set GCC & G++ 10 compiler (on Linux)
+      run: echo "CC=gcc-10" >> $GITHUB_ENV && echo "CXX=g++-10" >> $GITHUB_ENV
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@v3
+      with:
+        path: ext
+        key: ${{ runner.os }}-golden-tests-${{ hashFiles('ext/aom.cmd', 'ext/libyuv.cmd', 'ext/libxml2.cmd', 'ext/mp4box.sh') }}
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835
+      with:
+        # CMake 3.18 or higher is required for libxml2
+        cmake-version: '3.18.x'
+    - name: Print cmake version
+      run: cmake --version
+    - uses: ilammy/setup-nasm@v1
+      with:
+        version: 2.15.05
+    - uses: seanmiddleditch/gha-setup-ninja@v3
+    - name: Build aom
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash -e aom.cmd
+    - name: Build libyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash -e libyuv.cmd
+    - name: Build libxml2
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash -e libxml2.cmd
+    - name: Build mp4box
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash -e mp4box.sh
+
+    - name: Prepare libavif (cmake)
+      run: >
+        mkdir build && cd build
+
+        cmake .. -G Ninja
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
+        -DAVIF_LOCAL_LIBYUV=ON
+        -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+        -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
+        -DAVIF_LOCAL_LIBXML2=ON
+        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GOLDEN_TESTS=ON
+        -DAVIF_ENABLE_GTEST=OFF
+        -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp	}}/golden_tests
+    - name: Build libavif (ninja)
+      working-directory: ./build
+      run: ninja
+    - name: Run AVIF golden tests
+      working-directory: ./build
+      # Runs test that have "golden" in their name.
+      run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure -R golden
+
+    # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+    - name: Archive golden tests output for debugging
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: golden-tests-output
+        path: ${{ runner.temp	}}/golden_tests/**/*
+
+    # Print instructions to help fix the tests.
+    - name: How to fix failing tests
+      if: failure()
+      run: >
+        echo "If the tests fail, download the test results from the Artifacts list at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} or with:
+          gh run download --dir /tmp/golden-tests-output --repo ${{ github.repository }} --name golden-tests-output ${{ github.run_id }}
+        Then look at the instructions in the unzipped file or in /tmp/golden-tests-output if you used the command line."

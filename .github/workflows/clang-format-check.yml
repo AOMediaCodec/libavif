@@ -1,11 +1,15 @@
-name: CI
+name: CI Format Check
 on: [push]
+
+permissions:
+  contents: read
+
 jobs:
   clang-format-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: RafikFarhad/clang-format-github-action@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+      - uses: RafikFarhad/clang-format-github-action@0061b39593fe96f861c3aefcf1aff084d42744e1 # v3.0.0
         with:
           style: file
           sources: "apps/*.c,apps/**/*.h,apps/**/*.c,examples/*.c,include/avif/*.h,src/*.c,tests/*.c,tests/**/*.h,tests/**/*.cc"

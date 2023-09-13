@@ -261,7 +261,10 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
     frame.displayFilename = inputFilename;
 
     avifRWData raw = AVIF_DATA_EMPTY;
-    avifRWDataRealloc(&raw, Y4M_MAX_LINE_SIZE);
+    if (avifRWDataRealloc(&raw, Y4M_MAX_LINE_SIZE) != AVIF_RESULT_OK) {
+        fprintf(stderr, "Out of memory\n");
+        goto cleanup;
+    }
 
     if (iter && *iter) {
         // Continue reading FRAMEs from this y4m stream

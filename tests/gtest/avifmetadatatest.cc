@@ -1,7 +1,7 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <array>
+#include <cstring>
 #include <tuple>
 
 #include "avif/avif.h"
@@ -21,24 +21,6 @@ namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
-
-// ICC color profiles are not checked by libavif so the content does not matter.
-// This is a truncated widespread ICC color profile.
-const std::array<uint8_t, 24> kSampleIcc = {
-    0x00, 0x00, 0x02, 0x0c, 0x6c, 0x63, 0x6d, 0x73, 0x02, 0x10, 0x00, 0x00,
-    0x6d, 0x6e, 0x74, 0x72, 0x52, 0x47, 0x42, 0x20, 0x58, 0x59, 0x5a, 0x20};
-
-// Exif bytes are partially checked by libavif. This is a truncated widespread
-// Exif metadata chunk.
-const std::array<uint8_t, 24> kSampleExif = {
-    0xff, 0x1,  0x45, 0x78, 0x69, 0x76, 0x32, 0xff, 0xe1, 0x12, 0x5a, 0x45,
-    0x78, 0x69, 0x66, 0x0,  0x0,  0x49, 0x49, 0x2a, 0x0,  0x8,  0x0,  0x0};
-
-// XMP bytes are not checked by libavif so the content does not matter.
-// This is a truncated widespread XMP metadata chunk.
-const std::array<uint8_t, 24> kSampleXmp = {
-    0x3c, 0x3f, 0x78, 0x70, 0x61, 0x63, 0x6b, 0x65, 0x74, 0x20, 0x62, 0x65,
-    0x67, 0x69, 0x6e, 0x3d, 0x22, 0xef, 0xbb, 0xbf, 0x22, 0x20, 0x69, 0x64};
 
 //------------------------------------------------------------------------------
 // AVIF encode/decode metadata tests
@@ -60,22 +42,28 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());  // The pixels do not matter.
   if (use_icc) {
-    avifImageSetProfileICC(image.get(), kSampleIcc.data(), kSampleIcc.size());
+    ASSERT_EQ(avifImageSetProfileICC(image.get(), testutil::kSampleIcc.data(),
+                                     testutil::kSampleIcc.size()),
+              AVIF_RESULT_OK);
   }
   if (use_exif) {
     const avifTransformFlags old_transform_flags = image->transformFlags;
     const uint8_t old_irot_angle = image->irot.angle;
-    const uint8_t old_imir_mode = image->imir.mode;
-    avifImageSetMetadataExif(image.get(), kSampleExif.data(),
-                             kSampleExif.size());
-    // kSampleExif is not a valid Exif payload, just some part of it. These
-    // fields should not be modified.
+    const uint8_t old_imir_axis = image->imir.axis;
+    ASSERT_EQ(
+        avifImageSetMetadataExif(image.get(), testutil::kSampleExif.data(),
+                                 testutil::kSampleExif.size()),
+        AVIF_RESULT_OK);
+    // testutil::kSampleExif is not a valid Exif payload, just some part of it.
+    // These fields should not be modified.
     EXPECT_EQ(image->transformFlags, old_transform_flags);
     EXPECT_EQ(image->irot.angle, old_irot_angle);
-    EXPECT_EQ(image->imir.mode, old_imir_mode);
+    EXPECT_EQ(image->imir.axis, old_imir_axis);
   }
   if (use_xmp) {
-    avifImageSetMetadataXMP(image.get(), kSampleXmp.data(), kSampleXmp.size());
+    ASSERT_EQ(avifImageSetMetadataXMP(image.get(), testutil::kSampleXmp.data(),
+                                      testutil::kSampleXmp.size()),
+              AVIF_RESULT_OK);
   }
 
   // Encode.
@@ -97,14 +85,14 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
 
   // Compare input and output metadata.
   EXPECT_TRUE(testutil::AreByteSequencesEqual(
-      decoded->icc.data, decoded->icc.size, kSampleIcc.data(),
-      use_icc ? kSampleIcc.size() : 0u));
+      decoded->icc.data, decoded->icc.size, testutil::kSampleIcc.data(),
+      use_icc ? testutil::kSampleIcc.size() : 0u));
   EXPECT_TRUE(testutil::AreByteSequencesEqual(
-      decoded->exif.data, decoded->exif.size, kSampleExif.data(),
-      use_exif ? kSampleExif.size() : 0u));
+      decoded->exif.data, decoded->exif.size, testutil::kSampleExif.data(),
+      use_exif ? testutil::kSampleExif.size() : 0u));
   EXPECT_TRUE(testutil::AreByteSequencesEqual(
-      decoded->xmp.data, decoded->xmp.size, kSampleXmp.data(),
-      use_xmp ? kSampleXmp.size() : 0u));
+      decoded->xmp.data, decoded->xmp.size, testutil::kSampleXmp.data(),
+      use_xmp ? testutil::kSampleXmp.size() : 0u));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, AvifMetadataTest,
@@ -258,7 +246,7 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(image->irot.angle, 1u);
-  EXPECT_EQ(image->imir.mode, 0u);
+  EXPECT_EQ(image->imir.axis, 0u);
 
   const testutil::AvifRwData encoded =
       testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
@@ -272,7 +260,7 @@ TEST(MetadataTest, ExifOrientation) {
       decoded->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(decoded->irot.angle, 1u);
-  EXPECT_EQ(decoded->imir.mode, 0u);
+  EXPECT_EQ(decoded->imir.axis, 0u);
 
   // Exif orientation is kept in JPEG export.
   testutil::AvifImagePtr temp_image =
@@ -281,7 +269,7 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
   EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
   EXPECT_EQ(image->irot.angle, temp_image->irot.angle);
-  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->imir.axis, temp_image->imir.axis);
   EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
 
   // Exif orientation in PNG export should be ignored or discarded.
@@ -304,7 +292,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   // This is not recommended but for testing only.
   EXPECT_GT(image->exif.size, 0u);
   image->transformFlags = AVIF_TRANSFORM_IMIR;
-  image->imir.mode = 1;
+  image->imir.axis = 1;
 
   const testutil::AvifRwData encoded =
       testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
@@ -316,7 +304,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, decoded->exif));
   EXPECT_EQ(decoded->transformFlags, avifTransformFlags{AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(decoded->irot.angle, 0u);
-  EXPECT_EQ(decoded->imir.mode, image->imir.mode);
+  EXPECT_EQ(decoded->imir.axis, image->imir.axis);
 
   // Exif orientation is set equivalent to irot/imir in JPEG export.
   // Existing Exif orientation is overwritten.
@@ -325,7 +313,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   ASSERT_NE(temp_image, nullptr);
   EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
   EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
-  EXPECT_EQ(image->imir.mode, temp_image->imir.mode);
+  EXPECT_EQ(image->imir.axis, temp_image->imir.axis);
   EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
 }
 
@@ -333,12 +321,13 @@ TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   const testutil::AvifImagePtr image =
       testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
   ASSERT_NE(image, nullptr);
-  avifImageSetMetadataExif(image.get(), nullptr, 0);  // Clear Exif.
+  EXPECT_EQ(avifImageSetMetadataExif(image.get(), nullptr, 0),
+            AVIF_RESULT_OK);  // Clear Exif.
   // Orientation is kept in irot/imir.
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(image->irot.angle, 1u);
-  EXPECT_EQ(image->imir.mode, 0u);
+  EXPECT_EQ(image->imir.axis, 0u);
 
   // No Exif metadata to store the orientation: the samples should be rotated.
   const testutil::AvifImagePtr temp_image =
@@ -366,14 +355,10 @@ TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
   // avifImageExtractExifOrientationToIrotImir() internally.
   // The avifImageExtractExifOrientationToIrotImir() call should not enter an
   // infinite loop.
-  //
-  // TODO(wtc): When we change avifImageSetMetadataExif() to return avifResult,
-  // assert that the avifImageSetMetadataExif() call returns AVIF_RESULT_OK
-  // because avifImageExtractExifOrientationToIrotImir() does not verify the
-  // whole payload, only the parts necessary to extract Exif orientation.
-  avifImageSetMetadataExif(
-      image.get(), kBadExifPayload,
-      sizeof(kBadExifPayload) / sizeof(kBadExifPayload[0]));
+  ASSERT_EQ(avifImageSetMetadataExif(
+                image.get(), kBadExifPayload,
+                sizeof(kBadExifPayload) / sizeof(kBadExifPayload[0])),
+            AVIF_RESULT_OK);
 }
 
 //------------------------------------------------------------------------------
@@ -409,6 +394,32 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
   temp_image = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
   ASSERT_NE(temp_image, nullptr);
   ASSERT_EQ(temp_image->xmp.size, 0u);  // XMP was dropped.
+}
+
+//------------------------------------------------------------------------------
+
+// Regression test for https://github.com/AOMediaCodec/libavif/issues/1333.
+// Coverage for avifImageFixXMP().
+TEST(MetadataTest, XMPWithTrailingNullCharacter) {
+  testutil::AvifImagePtr jpg =
+      testutil::ReadImage(data_path, "paris_xmp_trailing_null.jpg");
+  ASSERT_NE(jpg, nullptr);
+  ASSERT_NE(jpg->xmp.size, 0u);
+  // avifJPEGRead() should strip the trailing null character.
+  ASSERT_EQ(std::memchr(jpg->xmp.data, '\0', jpg->xmp.size), nullptr);
+
+  // Append a zero byte to see what happens when encoded with libpng.
+  ASSERT_EQ(avifRWDataRealloc(&jpg->xmp, jpg->xmp.size + 1), AVIF_RESULT_OK);
+  jpg->xmp.data[jpg->xmp.size - 1] = '\0';
+  testutil::WriteImage(jpg.get(),
+                       (testing::TempDir() + "xmp_trailing_null.png").c_str());
+  const testutil::AvifImagePtr png =
+      testutil::ReadImage(testing::TempDir().c_str(), "xmp_trailing_null.png");
+  ASSERT_NE(png, nullptr);
+  ASSERT_NE(png->xmp.size, 0u);
+  // avifPNGRead() should strip the trailing null character, but the libpng
+  // export during testutil::WriteImage() probably took care of that anyway.
+  ASSERT_EQ(std::memchr(png->xmp.data, '\0', png->xmp.size), nullptr);
 }
 
 //------------------------------------------------------------------------------

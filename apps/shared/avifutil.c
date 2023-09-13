@@ -117,7 +117,7 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
             printf("    * irot (Rotation)      : %u\n", avif->irot.angle);
         }
         if (avif->transformFlags & AVIF_TRANSFORM_IMIR) {
-            printf("    * imir (Mirror)        : Mode %u (%s)\n", avif->imir.mode, (avif->imir.mode == 0) ? "top-to-bottom" : "left-to-right");
+            printf("    * imir (Mirror)        : %u (%s)\n", avif->imir.axis, (avif->imir.axis == 0) ? "top-to-bottom" : "left-to-right");
         }
     }
     printf(" * Progressive    : %s\n", avifProgressiveStateToString(progressiveState));
@@ -243,9 +243,11 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
                                 avifChromaDownsampling chromaDownsampling,
-                                avifBool ignoreICC,
+                                avifBool ignoreColorProfile,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
+                                avifBool allowChangingCicp,
+                                avifBool ignoreGainMap,
                                 avifImage * image,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
@@ -260,14 +262,14 @@ avifAppFileFormat avifReadImage(const char * filename,
             *outDepth = image->depth;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreICC, ignoreExif, ignoreXMP)) {
+        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreICC, ignoreExif, ignoreXMP, outDepth)) {
+        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, allowChangingCicp, outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {
@@ -275,6 +277,22 @@ avifAppFileFormat avifReadImage(const char * filename,
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
     return format;
+}
+
+void avifImageFixXMP(avifImage * image)
+{
+    // Zero bytes are forbidden in UTF-8 XML: https://en.wikipedia.org/wiki/Valid_characters_in_XML
+    // Keeping zero bytes in XMP may lead to issues at encoding or decoding.
+    // For example, the PNG specification forbids null characters in XMP. See avifPNGWrite().
+    // The XMP Specification Part 3 says "When XMP is encoded as UTF-8,
+    // there are no zero bytes in the XMP packet" for GIF.
+
+    // Consider a single trailing null character following a non-null character
+    // as a programming error. Leave other null characters as is.
+    // See the discussion at https://github.com/AOMediaCodec/libavif/issues/1333.
+    if (image->xmp.size >= 2 && image->xmp.data[image->xmp.size - 1] == '\0' && image->xmp.data[image->xmp.size - 2] != '\0') {
+        --image->xmp.size;
+    }
 }
 
 void avifDumpDiagnostics(const avifDiagnostics * diag)

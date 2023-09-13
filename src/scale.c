@@ -2,27 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
-
-#if !defined(AVIF_LIBYUV_ENABLED)
-
-avifBool avifImageScale(avifImage * image,
-                        uint32_t dstWidth,
-                        uint32_t dstHeight,
-                        uint32_t imageSizeLimit,
-                        uint32_t imageDimensionLimit,
-                        avifDiagnostics * diag)
-{
-    (void)image;
-    (void)dstWidth;
-    (void)dstHeight;
-    (void)imageSizeLimit;
-    (void)imageDimensionLimit;
-    avifDiagnosticsPrintf(diag, "avifImageScale() called, but is unimplemented without libyuv!");
-    return AVIF_FALSE;
-}
-
-#else
-
 #include <limits.h>
 
 #if defined(__clang__)
@@ -32,7 +11,7 @@ avifBool avifImageScale(avifImage * image,
 // in version 1813:
 // https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3183182
 // https://chromium-review.googlesource.com/c/libyuv/libyuv/+/3527834
-#pragma clang diagnostic ignored "-Wnewline-eof"       // "no newline at end of file"
+#pragma clang diagnostic ignored "-Wnewline-eof" // "no newline at end of file"
 #endif
 #include <libyuv.h>
 #if defined(__clang__)
@@ -82,8 +61,10 @@ avifBool avifImageScale(avifImage * image,
     image->imageOwnsAlphaPlane = AVIF_FALSE;
 
     const uint32_t srcWidth = image->width;
-    image->width = dstWidth;
     const uint32_t srcHeight = image->height;
+    const uint32_t srcUVWidth = avifImagePlaneWidth(image, AVIF_CHAN_U);
+    const uint32_t srcUVHeight = avifImagePlaneHeight(image, AVIF_CHAN_U);
+    image->width = dstWidth;
     image->height = dstHeight;
 
     if (srcYUVPlanes[0] || srcAlphaPlane) {
@@ -106,13 +87,6 @@ avifBool avifImageScale(avifImage * image,
             return AVIF_FALSE;
         }
 
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
-        const uint32_t srcUVWidth = (srcWidth + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
-        const uint32_t srcUVHeight = (srcHeight + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
-        const uint32_t dstUVWidth = (dstWidth + formatInfo.chromaShiftX) >> formatInfo.chromaShiftX;
-        const uint32_t dstUVHeight = (dstHeight + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY;
-
         for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
             if (!srcYUVPlanes[i]) {
                 continue;
@@ -120,8 +94,8 @@ avifBool avifImageScale(avifImage * image,
 
             const uint32_t srcW = (i == AVIF_CHAN_Y) ? srcWidth : srcUVWidth;
             const uint32_t srcH = (i == AVIF_CHAN_Y) ? srcHeight : srcUVHeight;
-            const uint32_t dstW = (i == AVIF_CHAN_Y) ? dstWidth : dstUVWidth;
-            const uint32_t dstH = (i == AVIF_CHAN_Y) ? dstHeight : dstUVHeight;
+            const uint32_t dstW = avifImagePlaneWidth(image, i);
+            const uint32_t dstH = avifImagePlaneHeight(image, i);
             if (image->depth > 8) {
                 uint16_t * const srcPlane = (uint16_t *)srcYUVPlanes[i];
                 const uint32_t srcStride = srcYUVRowBytes[i] / 2;
@@ -178,5 +152,3 @@ avifBool avifImageScale(avifImage * image,
 
     return AVIF_TRUE;
 }
-
-#endif

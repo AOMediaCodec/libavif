@@ -60,17 +60,26 @@ struct y4mFrameIterator;
 // Reads an image from a file with the requested format and depth.
 // In case of a y4m file, sourceTiming and frameIter can be set.
 // Returns AVIF_APP_FILE_FORMAT_UNKNOWN in case of error.
+// 'ignoreGainMap' is only relevant for jpeg files that have a gain map
+// and only if AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION is ON
+// (requires AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP and libxml2). Otherwise
+// it has no effect.
 avifAppFileFormat avifReadImage(const char * filename,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
                                 avifChromaDownsampling chromaDownsampling,
-                                avifBool ignoreICC,
+                                avifBool ignoreColorProfile,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
+                                avifBool allowChangingCicp,
+                                avifBool ignoreGainMap,
                                 avifImage * image,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter);
+
+// Removes a single trailing null character from the image->xmp, if there is exactly one.
+void avifImageFixXMP(avifImage * image);
 
 // Used by image decoders when the user doesn't explicitly choose a format with --yuv
 // This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.

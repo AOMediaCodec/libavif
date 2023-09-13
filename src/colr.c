@@ -69,6 +69,36 @@ avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char
     return AVIF_COLOR_PRIMARIES_UNKNOWN;
 }
 
+avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, float * gamma)
+{
+    switch (atc) {
+        case AVIF_TRANSFER_CHARACTERISTICS_BT470M:
+            *gamma = 2.2f;
+            return AVIF_RESULT_OK;
+        case AVIF_TRANSFER_CHARACTERISTICS_BT470BG:
+            *gamma = 2.8f;
+            return AVIF_RESULT_OK;
+        case AVIF_TRANSFER_CHARACTERISTICS_LINEAR:
+            *gamma = 1.0f;
+            return AVIF_RESULT_OK;
+        default:
+            return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+}
+
+avifTransferCharacteristics avifTransferCharacteristicsFindByGamma(float gamma)
+{
+    if (matchesTo3RoundedPlaces(gamma, 2.2f)) {
+        return AVIF_TRANSFER_CHARACTERISTICS_BT470M;
+    } else if (matchesTo3RoundedPlaces(gamma, 1.0f)) {
+        return AVIF_TRANSFER_CHARACTERISTICS_LINEAR;
+    } else if (matchesTo3RoundedPlaces(gamma, 2.8f)) {
+        return AVIF_TRANSFER_CHARACTERISTICS_BT470BG;
+    }
+
+    return AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN;
+}
+
 struct avifMatrixCoefficientsTable
 {
     avifMatrixCoefficients matrixCoefficientsEnum;

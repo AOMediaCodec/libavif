@@ -6,6 +6,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+* Add experimental API for reading and writing gain maps in AVIF files.
+  If enabled at compile time, add `gainMap` field to `avifImage`,
+  add `qualityGainMap` field to `avifEncoder`, add `gainMapPresent`,
+  `enableDecodingGainMap`, `enableParsingGainMapMetadata` and 
+  `ignoreColorAndAlpha` to `avifDecoder`.
+  Gain maps allow readers that support them to display HDR images that look
+  good on both HDR and SDR displays.
+  This feature is highly experimental. The API might change or be removed
+  in the future. Files created now might not decode in a future version.
+  This feature is off by default and must be enabled with the
+  AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compilation flag.
+* Add experimental support for converting jpeg files with gain maps to AVIF
+  files with gain maps. Requires libxml2, and the AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+  compilation flag.
+* Add the headerFormat member of new type avifHeaderFormat to avifEncoder.
+* Add experimental API for reading and writing "avir"-branded AVIF files
+  behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_AVIR.
+* Implement avifImageScale() fallback when libyuv is not available.
+* Partial import of libyuv to third_party/libyuv (new LICENSE).
+* Add avifenc flag suffixes ":update" and ":u". Quality-relative,
+  tiling-relative and codec-specific flags can now be positional, relative to
+  input files.
+* Add experimental support for layered AVIF encoding in avifenc.
+  Use the --layered flag to enable layered AVIF encoding.
+  Layered AVIF has multiple layers, which works like frame of animated AVIF, 
+  and layers can be rendered in progressive manner on supported viewers
+  (e.g. Chrome 94 or newer).
+  Only aom supports layered AVIF encoding at the time of writing.
+  Add --scaling-mode flag to set scaling mode of each layer.
+  This part of AV1 encoder is not as thoroughly tested, so there are higher
+  possibility encoder may crash when given certain configuration or input.
+
+### Changed
+* Update aom.cmd: v3.7.0
+* Update svt.cmd/svt.sh: v1.7.0
+* Update zlibpng.cmd: zlib 1.3 and libpng 1.6.40
+
+## [1.0.1] - 2023-08-29
+
+### Changed
+* gdk-pixbuf: Explicitly pass link directories
+* gdk-pixbuf: Fix build failure after imir.mode -> imir.axis rename
+
+## [1.0.0] - 2023-08-24
+
+With the 1.0.0 release, the ABI will be more stable from now on. Please note
+the allocation and initialization requirements for avifImage, avifDecoder,
+avifEncoder, and avifRGBImage in the "avif/avif.h" header.
+
 List of incompatible ABI changes in this release:
 
 * The clli member was added to the avifImage struct.
@@ -16,6 +66,14 @@ List of incompatible ABI changes in this release:
   those pointers.
 * Check the return value of avifEncoderSetCodecSpecificOption().
 * The maxThreads member was added to the avifRGBImage struct.
+* Check the return value of avifRGBImageAllocatePixels(), avifRWDataRealloc(),
+  avifRWDataSet(), avifImageSetProfileICC(), avifImageSetMetadataExif() and
+  avifImageSetMetadataXMP().
+* The meaning of the keyframeInterval member of avifEncoder struct has changed
+  slightly. When set to a value of "n",
+    * Before: It forces a keyframe on every nth frame.
+    * After: Any set of "n" consecutive frame will have at least one keyframe
+      (every nth frame may or may not be a keyframe).
 
 ### Added
 * Add STATIC library target avif_internal to allow tests to access functions
@@ -28,19 +86,33 @@ List of incompatible ABI changes in this release:
   should be updated to set quality (and qualityAlpha if applicable) and leave
   minQuantizer, maxQuantizer, minQuantizerAlpha, and maxQuantizerAlpha
   initialized to the default values.
-* The --targetSize flag in avifenc was added to adapt the quality so that the
+* The --target-size flag in avifenc was added to adapt the quality so that the
   output file size is as close to the given number of bytes as possible.
 * Add the public API function avifImageIsOpaque() in avif.h.
+* Add the public API functions avifImagePlane(), avifImagePlaneRowBytes(),
+  avifImagePlaneWidth(), and avifImagePlaneHeight() in avif.h.
 * Add experimental API for progressive AVIF encoding.
 * Add API for multi-threaded YUV to RGB color conversion.
+* Add experimental support for AV2 behind the compilation flag AVIF_CODEC_AVM.
+  AVIF_CODEC_CHOICE_AVM is now part of avifCodecChoice.
+* Add experimental YCgCo-R support behind the compilation flag
+  AVIF_ENABLE_EXPERIMENTAL_YCGCO_R.
+* Allow lossless 4:0:0 on grayscale input.
+* Add avifenc --no-overwrite flag to avoid overwriting output file.
+* Add avifenc --clli flag to set clli.
+* Add support for all transfer functions when using libsharpyuv.
 
 ### Changed
+* Enable the libaom AV1E_SET_SKIP_POSTPROC_FILTERING codec control by default.
+* Use the constant rate factor (CRF) instead of the constant quantization
+  parameter (CQP) rate control mode with the SVT-AV1 encoder.
 * Exif and XMP metadata is exported to PNG and JPEG files by default,
   except XMP payloads larger than 65502 bytes in JPEG.
 * The --grid flag in avifenc can be used for images that are not evenly divided
   into cells.
 * Apps must be built with libpng version 1.6.32 or above.
-* Update svt.cmd/svt.sh: v1.4.1
+* Change the encoder to write the boxes within the "stbl" box in the order of
+  stsd, stts, stsc, stsz, stco, stss.
 * avifImageCopy() no longer accepts source U and V channels to be NULL for
   non-4:0:0 input if Y is not NULL and if AVIF_PLANES_YUV is specified.
 * The default values of the maxQuantizer and maxQuantizerAlpha members of
@@ -52,14 +124,30 @@ List of incompatible ABI changes in this release:
 * avifImageRGBToYUV() and avifImageYUVToRGB() handle avifImage bit depths 8, 10,
   12 and now also 16. Files read by apps/shared/ can output 16-bit avifImage
   instances.
-* Update aom.cmd: v3.6.0
-* Update dav1d.cmd: 1.1.0
-* Update rav1e.cmd: v0.6.3
+* Update aom.cmd: v3.6.1
+* Update dav1d.cmd: 1.2.1
+* Update libsharpyuv: 0.4.0
+* Update rav1e.cmd: v0.6.6
+* Update svt.cmd/svt.sh: v1.6.0
+* Update zlibpng.cmd: zlib 1.2.13 and libpng 1.6.39
 * avifImageCreate(), avifImageCreateEmpty(), avifEncoderCreate() and other
   internal functions now return NULL if a memory allocation failed.
 * avifEncoderSetCodecSpecificOption() now returns avifResult instead of void to
   report memory allocation failures.
 * At decoding, avifIOStats now returns the same values as at encoding.
+* avifRGBImageAllocatePixels(), avifRWDataRealloc(), avifRWDataSet(),
+  avifImageSetProfileICC(), avifImageSetMetadataExif() and
+  avifImageSetMetadataXMP() now return avifResult instead of void to report
+  memory allocation failures.
+* avifReadImage(), avifJPEGRead() and avifPNGRead() now remove the trailing zero
+  byte from read XMP chunks, if any. See avifImageFixXMP().
+* Force keyframe for alpha if color is a keyframe.
+* Write primaries and transfer characteritics info in decoded PNG.
+* Add support for reading PNG gAMA, cHRM and sRGB chunks.
+* The 'mode' member of the avifImageMirror struct was renamed 'axis'.
+* Change the type of the 'depth' parameter from int to uint32_t in
+  avifFullToLimitedY(), avifFullToLimitedUV(), avifLimitedToFullY(), and
+  avifLimitedToFullUV().
 
 ## [0.11.1] - 2022-10-19
 
@@ -860,7 +948,7 @@ code.
 - Added decoder and image timings for image sequences
 
 ### Changed
-- Reorganized internal struct avifCodec to accomodate multiple codecs simultaneously (compile time; not exposed to API)
+- Reorganized internal struct avifCodec to accommodate multiple codecs simultaneously (compile time; not exposed to API)
 - Fix some compiler warnings
 - Sanity check offsets and sizes in items table before using
 - Bail out of box header advertises an impossible size
@@ -929,7 +1017,9 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/AOMediaCodec/libavif/compare/v0.11.1...v1.0.0
 [0.11.1]: https://github.com/AOMediaCodec/libavif/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/AOMediaCodec/libavif/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/AOMediaCodec/libavif/compare/v0.10.0...v0.10.1

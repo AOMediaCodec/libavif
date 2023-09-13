@@ -1,11 +1,15 @@
-# This is a copy of ci.yml with gtest disabled. It differs from ci.yml as follows:
+# This is a copy of ci-unix-static.yml with gtest disabled. It differs from ci-unix-static.yml as follows:
 #
 #   * The os matrix consists of ubuntu-latest only.
 #   * Does not build libgav1. (Building libgav1 would enable CXX in CMakeLists.txt.)
 #   * Disables gtest.
 
-name: CI
+name: CI Disable GTest
 on: [push, pull_request]
+
+permissions:
+  contents: read
+
 jobs:
   build-disable-gtest:
     runs-on: ${{ matrix.os }}
@@ -15,14 +19,14 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
     - name: Set GCC & G++ 10 compiler (on Linux)
       if: runner.os == 'Linux'
       run: echo "CC=gcc-10" >> $GITHUB_ENV && echo "CXX=g++-10" >> $GITHUB_ENV
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
       with:
         python-version: '3.x'
-    - uses: actions-rs/toolchain@v1
+    - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
       with:
         profile: minimal
         toolchain: stable
@@ -30,46 +34,46 @@ jobs:
 
     - name: Cache external dependencies
       id: cache-ext
-      uses: actions/cache@v3
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ext
         key: ${{ runner.os }}-disable-gtest-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835 # v1.14.1
       with:
         # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
         cmake-version: '3.17.x'
     - name: Print cmake version
       run: cmake --version
-    - uses: ilammy/setup-nasm@v1
+    - uses: ilammy/setup-nasm@321e6ed62a1fc77024a3bd853deb33645e8b22c4 # v1.4.0
       with:
         version: 2.15.05
-    - uses: seanmiddleditch/gha-setup-ninja@v3
+    - uses: seanmiddleditch/gha-setup-ninja@16b940825621068d98711680b6c3ff92201f8fc0 # v3
     - run: pip install meson
     - name: Build aom
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash aom.cmd
+      run: bash -e aom.cmd
     - name: Build dav1d
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash dav1d.cmd
+      run: bash -e dav1d.cmd
     - name: Build rav1e
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash rav1e.cmd
+      run: bash -e rav1e.cmd
     - name: Build SVT-AV1
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash svt.cmd
+      run: bash -e svt.cmd
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libyuv.cmd
+      run: bash -e libyuv.cmd
     - name: Build libsharpyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
-      run: bash libsharpyuv.cmd
+      run: bash -e libsharpyuv.cmd
 
     - name: Prepare libavif (cmake)
       run: >
