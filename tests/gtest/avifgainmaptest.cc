@@ -358,7 +358,7 @@ TEST(GainMapTest, SequenceNotSupported) {
       << avifResultToString(result) << " " << encoder->diag.error;
 }
 
-TEST(GainMapTest, enableDecodingGainMap) {
+TEST(GainMapTest, IgnoreGainMap) {
   testutil::AvifImagePtr image =
       CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
@@ -390,7 +390,7 @@ TEST(GainMapTest, enableDecodingGainMap) {
   CheckGainMapMetadataMatches(decoded->gainMap.metadata, avifGainMapMetadata());
 }
 
-TEST(GainMapTest, enableDecodingGainMapButReadMetadata) {
+TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   testutil::AvifImagePtr image =
       CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
