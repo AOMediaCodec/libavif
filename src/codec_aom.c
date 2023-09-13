@@ -559,7 +559,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
     avifBool alpha = category == AVIF_ITEM_ALPHA;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     avifBool gainMap = category == AVIF_ITEM_GAIN_MAP;
+#else
+    avifBool gainMap = AVIF_FALSE;
+#endif
     const int aomVersion = aom_codec_version();
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AOM
