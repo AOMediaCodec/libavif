@@ -107,8 +107,8 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
-  decoder->ignoreGainMap = AVIF_FALSE;
-  decoder->ignoreGainMapMetadata = AVIF_FALSE;
+  decoder->enableDecodingGainMap = AVIF_TRUE;
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -149,8 +149,8 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
-  decoder->ignoreGainMap = AVIF_FALSE;
-  decoder->ignoreGainMapMetadata = AVIF_FALSE;
+  decoder->enableDecodingGainMap = AVIF_TRUE;
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;
   ASSERT_NE(decoder, nullptr);
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
@@ -223,8 +223,8 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
-  decoder->ignoreGainMap = AVIF_FALSE;
-  decoder->ignoreGainMapMetadata = AVIF_FALSE;
+  decoder->enableDecodingGainMap = AVIF_TRUE;
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -358,7 +358,7 @@ TEST(GainMapTest, SequenceNotSupported) {
       << avifResultToString(result) << " " << encoder->diag.error;
 }
 
-TEST(GainMapTest, IgnoreGainMap) {
+TEST(GainMapTest, enableDecodingGainMap) {
   testutil::AvifImagePtr image =
       CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
@@ -370,7 +370,7 @@ TEST(GainMapTest, IgnoreGainMap) {
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  // Decode image, with ignoreGainMap true by default.
+  // Decode image, with enableDecodingGainMap false by default.
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
@@ -384,13 +384,13 @@ TEST(GainMapTest, IgnoreGainMap) {
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
   // Verify that the gain map was detected...
   EXPECT_TRUE(decoder->gainMapPresent);
-  // ... but not decoded because ignoreGainMap is true by default.
+  // ... but not decoded because enableDecodingGainMap is false by default.
   EXPECT_EQ(decoded->gainMap.image, nullptr);
   // Check that the gain map metadata was not populated either.
   CheckGainMapMetadataMatches(decoded->gainMap.metadata, avifGainMapMetadata());
 }
 
-TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
+TEST(GainMapTest, enableDecodingGainMapButReadMetadata) {
   testutil::AvifImagePtr image =
       CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
@@ -402,12 +402,12 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  // Decode image, with ignoreGainMap true by default.
+  // Decode image, with enableDecodingGainMap false by default.
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
-  decoder->ignoreGainMapMetadata = AVIF_FALSE;  // Read gain map metadata.
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;  // Read gain map metadata.
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -417,7 +417,7 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
   // Verify that the gain map was detected...
   EXPECT_TRUE(decoder->gainMapPresent);
-  // ... but not decoded because ignoreGainMap is true by default.
+  // ... but not decoded because enableDecodingGainMap is false by default.
   EXPECT_EQ(decoded->gainMap.image, nullptr);
   // Check that the gain map metadata WAS populated.
   CheckGainMapMetadataMatches(decoded->gainMap.metadata,
@@ -442,8 +442,8 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   ASSERT_NE(decoder, nullptr);
   // Decode just the gain map.
   decoder->ignoreColorAndAlpha = AVIF_TRUE;
-  decoder->ignoreGainMap = AVIF_FALSE;
-  decoder->ignoreGainMapMetadata = AVIF_FALSE;
+  decoder->enableDecodingGainMap = AVIF_TRUE;
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -482,9 +482,9 @@ TEST(GainMapTest, IgnoreAll) {
   ASSERT_NE(decoder, nullptr);
   // Ignore both the main image and the gain map.
   decoder->ignoreColorAndAlpha = AVIF_TRUE;
-  decoder->ignoreGainMap = AVIF_TRUE;
+  decoder->enableDecodingGainMap = AVIF_FALSE;
   // But do read the gain map metadata.
-  decoder->ignoreGainMapMetadata = AVIF_FALSE;
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;
 
   // Parsing just the header should work.
   ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
@@ -497,7 +497,7 @@ TEST(GainMapTest, IgnoreAll) {
   ASSERT_EQ(decoder->image->gainMap.image, nullptr);
 
   // But trying to access the next image should give an error because both
-  // ignoreColorAndAlpha and ignoreGainMap are set.
+  // ignoreColorAndAlpha and enableDecodingGainMap are set.
   ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_NO_CONTENT);
 }
 
@@ -521,8 +521,8 @@ TEST(GainMapTest, NoGainMap) {
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
   // Enable gain map decoding.
-  decoder->ignoreGainMap = AVIF_FALSE;
-  decoder->ignoreGainMapMetadata = AVIF_FALSE;
+  decoder->enableDecodingGainMap = AVIF_TRUE;
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)

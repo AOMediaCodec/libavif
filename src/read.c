@@ -3767,10 +3767,6 @@ avifDecoder * avifDecoderCreate(void)
     decoder->imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
     decoder->strictFlags = AVIF_STRICT_ENABLED;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    decoder->ignoreGainMap = AVIF_TRUE;
-    decoder->ignoreGainMapMetadata = AVIF_TRUE;
-#endif
     return decoder;
 }
 
@@ -4335,7 +4331,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         assert(*gainMapCodecType != AVIF_CODEC_TYPE_UNKNOWN);
     }
 
-    if (!decoder->ignoreGainMap) {
+    if (decoder->enableDecodingGainMap) {
         decoder->image->gainMap.image = avifImageCreateEmpty();
 
         // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
@@ -4637,7 +4633,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         avifCodecType gainMapCodecType;
         avifResult findGainMapResult =
             avifDecoderFindGainMapItem(decoder, colorItem, &toneMappedImageItem, &gainMapItem, &gainMapCodecType);
-        if (decoder->ignoreGainMap) {
+        if (!decoder->enableDecodingGainMap) {
             // When ignoring the gain map, we still report whether one is present or not,
             // but do not fail if there was any error with the gain map.
             if (findGainMapResult != AVIF_RESULT_OK) {
@@ -4652,7 +4648,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         } else {
             AVIF_CHECKRES(findGainMapResult);
         }
-        if (toneMappedImageItem != NULL && !decoder->ignoreGainMapMetadata) {
+        if (toneMappedImageItem != NULL && decoder->enableParsingGainMapMetadata) {
             // Read the gain map's metadata.
             avifROData tmapData;
             AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
