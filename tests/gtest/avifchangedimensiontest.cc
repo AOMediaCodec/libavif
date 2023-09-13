@@ -53,7 +53,7 @@ TEST_P(ChangeDimensionTest, EncodeDecode) {
     ASSERT_FALSE(version_code.empty());
     size_t parsed = 0;
     version[i] = std::stoi(version_code, &parsed);
-    ASSERT_NE(parsed, 0);
+    ASSERT_NE(parsed, size_t(0));
     if (i != 2) {
       ASSERT_GT(version_code.size(), parsed + 1);
       version_code = version_code.substr(parsed + 1);
