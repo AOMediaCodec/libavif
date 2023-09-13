@@ -57,10 +57,37 @@ cleanup() {
 trap cleanup EXIT
 
 pushd ${TMP_DIR}
-  echo "Testing basic progressive"
+  echo "Testing automatic layered encoding"
   "${AVIFENC}" --progressive -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
+
+  echo "Testing manual layered encoding"
+  "${AVIFENC}" -s 8 --layered -q:u 2 "${INPUT_Y4M}" -q:u 60 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+  "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
+
+  # libavif relies on libyuv to do scaling
+  echo "Testing layered encoding with frame scaling"
+  if avifenc -V | grep -o "libyuv : available" --quiet; then
+    for SCALE in 1/4 1/2 1; do
+      "${AVIFENC}" -s 8 --layered --scaling-mode:u ${SCALE} "${INPUT_Y4M}" --scaling-mode:u 1 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+      "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+      "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
+    done
+  fi
+
+  echo "Testing too few layers"
+  "${AVIFENC}" -s 8 --layered -q:u 60 "${INPUT_Y4M}" -o "${ENCODED_FILE}" && exit 1
+
+  echo "Testing too many layers"
+  "${AVIFENC}" -s 8 --layered \
+    -q:u 10 "${INPUT_Y4M}" \
+    -q:u 20 "${INPUT_Y4M}" \
+    -q:u 30 "${INPUT_Y4M}" \
+    -q:u 40 "${INPUT_Y4M}" \
+    -q:u 50 "${INPUT_Y4M}" \
+    -o "${ENCODED_FILE}" && exit 1
 popd
 
 exit 0

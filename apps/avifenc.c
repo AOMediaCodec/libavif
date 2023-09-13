@@ -36,18 +36,20 @@ typedef struct
     avifBool qualityAlphaIsConstrained; // true if qualityAlpha explicitly set by the user
     int overrideQuality;
     int overrideQualityAlpha;
-    avifBool progressive;
+    avifBool progressive; // automatic layered encoding (progressive) with single input
+    avifBool layered;     // manual layered encoding by specifying each layer
+    int layers;
     int speed;
     avifHeaderFormat headerFormat;
 
-    int paspCount;
-    uint32_t paspValues[8]; // only the first two are used
-    int clapCount;
+    avifBool paspPresent;
+    uint32_t paspValues[2];
+    avifBool clapValid; // clapValues may contain 4 crop values and need conversion. In this case clapValid is also false.
     uint32_t clapValues[8];
-    int gridDimsCount;
-    uint32_t gridDims[8]; // only the first two are used
-    int clliCount;
-    uint32_t clliValues[8]; // only the first two are used
+    avifBool gridDimsPresent;
+    uint32_t gridDims[2];
+    avifBool clliPresent;
+    uint32_t clliValues[2];
 
     int repetitionCount;
     int keyframeInterval;
@@ -95,6 +97,19 @@ static avifSettingsEntryBool boolSettingsEntryOf(avifBool value)
     return intSettingsEntryOf(value);
 }
 
+typedef struct avifSettingsEntryScalingMode
+{
+    avifScalingMode value;
+    avifBool set;
+} avifSettingsEntryScalingMode;
+
+static avifSettingsEntryScalingMode scalingModeSettingsEntryOf(uint32_t n, uint32_t d)
+{
+    avifFraction mode = { (int32_t)n, (int32_t)d };
+    avifSettingsEntryScalingMode entry = { { mode, mode }, AVIF_TRUE };
+    return entry;
+}
+
 // Each entry records an "update" action to the corresponding field in avifEncoder.
 // Fields in avifEncoder are not reset after encoding an image,
 // so updates naturally apply to all following inputs,
@@ -110,6 +125,7 @@ typedef struct avifInputFileSettings
     avifSettingsEntryInt tileRowsLog2;
     avifSettingsEntryInt tileColsLog2;
     avifSettingsEntryBool autoTiling;
+    avifSettingsEntryScalingMode scalingMode;
 
     avifCodecSpecificOptions codecSpecificOptions;
 } avifInputFileSettings;
@@ -196,7 +212,9 @@ static void syntaxLong(void)
     printf("                                        (use 2 for any you wish to leave unspecified)\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
-    printf("    --progressive                     : EXPERIMENTAL: Encode a progressive image\n");
+    printf("    --progressive                     : EXPERIMENTAL: Auto set parameters to encode a simple layered image supporting progressive rendering from a single input frame.\n");
+    printf("    --layered                         : EXPERIMENTAL: Encode a layered AVIF. Each input is encoded as one layer and at most %d layers can be encoded.\n",
+           AVIF_MAX_AV1_LAYER_COUNT);
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
@@ -251,6 +269,7 @@ static void syntaxLong(void)
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
            AVIF_QUANTIZER_LOSSLESS);
+    printf("    --scaling-mode N[/D]              : EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1)\n");
     printf("    --duration D                      : Set frame durations (in timescales) to D; default 1. This option always apply to following inputs with or without suffix.\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("\n");
@@ -297,49 +316,38 @@ static const char * qualityString(int quality)
     return "Low";
 }
 
-static avifBool parseCICP(int cicp[3], const char * arg)
+// Parse exactly n uint32_t from arg with separator character delim.
+// Output must be able to hold at least n elements.
+// Length of arg shall not exceed 127 characters or result can be truncated.
+static avifBool parseU32List(uint32_t output[], int n, const char * arg, const char delim)
 {
     char buffer[128];
     strncpy(buffer, arg, 127);
     buffer[127] = 0;
 
-    int index = 0;
-    char * token = strtok(buffer, "/");
-    while (token != NULL) {
-        cicp[index] = atoi(token);
-        ++index;
-        if (index >= 3) {
-            break;
-        }
-
-        token = strtok(NULL, "/");
-    }
-
-    if (index == 3) {
-        return AVIF_TRUE;
-    }
-    return AVIF_FALSE;
-}
-
-// Returns the count of uint32_t (up to 8)
-static int parseU32List(uint32_t output[8], const char * arg)
-{
-    char buffer[128];
-    strncpy(buffer, arg, 127);
-    buffer[127] = 0;
+    // strtok wants a string for delim, so build a single character string here.
+    const char delims[2] = { delim, '\0' };
 
     int index = 0;
-    char * token = strtok(buffer, ",x");
+    char * token = buffer;
+    if (n > 1) {
+        token = strtok(buffer, delims);
+    }
     while (token != NULL) {
         output[index] = (uint32_t)atoi(token);
         ++index;
-        if (index >= 8) {
+        if (index >= n) {
             break;
         }
 
-        token = strtok(NULL, ",x");
+        token = strtok(NULL, delims);
     }
-    return index;
+
+    // Exactly n, and no more separator character
+    if (index == n && strchr(token, delim) == NULL) {
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
 }
 
 typedef enum avifOptionSuffixType
@@ -817,8 +825,8 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 #define INVALID_QUALITY (-1)
 #define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
 #define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
-#define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto progressive below this quality
-#define PROGRESSIVE_START_QUALITY 2  // First progressive layer use this quality
+#define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto automatic layered encoding below this quality
+#define PROGRESSIVE_START_QUALITY 2  // First layer use this quality
 
 static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avifInputFileSettings * settings)
 {
@@ -853,6 +861,9 @@ static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avi
     if (settings->autoTiling.set) {
         encoder->autoTiling = settings->autoTiling.value;
     }
+    if (settings->scalingMode.set) {
+        encoder->scalingMode = settings->scalingMode.value;
+    }
     for (int i = 0; i < settings->codecSpecificOptions.count; ++i) {
         if (avifEncoderSetCodecSpecificOption(encoder, settings->codecSpecificOptions.keys[i], settings->codecSpecificOptions.values[i]) !=
             AVIF_RESULT_OK) {
@@ -862,6 +873,55 @@ static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avi
                     settings->codecSpecificOptions.values[i]);
             return AVIF_FALSE;
         }
+    }
+
+    return AVIF_TRUE;
+}
+
+static avifBool avifEncoderVerifyImageCompatibility(const avifImage * refImage,
+                                                    const avifImage * testImage,
+                                                    const char * seriesType,
+                                                    const char * filename)
+{
+    // Verify that this frame's properties matches the first frame's properties
+    if ((refImage->width != testImage->width) || (refImage->height != testImage->height)) {
+        fprintf(stderr,
+                "ERROR: Image %s dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
+                seriesType,
+                refImage->width,
+                refImage->height,
+                testImage->width,
+                testImage->height,
+                filename);
+        return AVIF_FALSE;
+    }
+    if (refImage->depth != testImage->depth) {
+        fprintf(stderr, "ERROR: Image %s depth mismatch, [%u] vs [%u]: %s\n", seriesType, refImage->depth, testImage->depth, filename);
+        return AVIF_FALSE;
+    }
+    if ((refImage->colorPrimaries != testImage->colorPrimaries) ||
+        (refImage->transferCharacteristics != testImage->transferCharacteristics) ||
+        (refImage->matrixCoefficients != testImage->matrixCoefficients)) {
+        fprintf(stderr,
+                "ERROR: Image %s CICP mismatch, [%u/%u/%u] vs [%u/%u/%u]: %s\n",
+                seriesType,
+                refImage->colorPrimaries,
+                refImage->matrixCoefficients,
+                refImage->transferCharacteristics,
+                testImage->colorPrimaries,
+                testImage->transferCharacteristics,
+                testImage->matrixCoefficients,
+                filename);
+        return AVIF_FALSE;
+    }
+    if (refImage->yuvRange != testImage->yuvRange) {
+        fprintf(stderr,
+                "ERROR: Image %s range mismatch, [%s] vs [%s]: %s\n",
+                seriesType,
+                (refImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                (testImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+                filename);
+        return AVIF_FALSE;
     }
 
     return AVIF_TRUE;
@@ -919,53 +979,12 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 settings->chromaDownsampling)) {
             goto cleanup;
         }
-
-        // Verify that this frame's properties matches the first frame's properties
-        if ((firstImage->width != nextImage->width) || (firstImage->height != nextImage->height)) {
-            fprintf(stderr,
-                    "ERROR: Image sequence dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
-                    firstImage->width,
-                    firstImage->height,
-                    nextImage->width,
-                    nextImage->height,
-                    nextFile->filename);
+        if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", nextFile->filename)) {
             goto cleanup;
         }
-        if (firstImage->depth != nextImage->depth) {
-            fprintf(stderr,
-                    "ERROR: Image sequence depth mismatch, [%u] vs [%u]: %s\n",
-                    firstImage->depth,
-                    nextImage->depth,
-                    nextFile->filename);
-            goto cleanup;
-        }
-        if ((firstImage->colorPrimaries != nextImage->colorPrimaries) ||
-            (firstImage->transferCharacteristics != nextImage->transferCharacteristics) ||
-            (firstImage->matrixCoefficients != nextImage->matrixCoefficients)) {
-            fprintf(stderr,
-                    "ERROR: Image sequence CICP mismatch, [%u/%u/%u] vs [%u/%u/%u]: %s\n",
-                    firstImage->colorPrimaries,
-                    firstImage->matrixCoefficients,
-                    firstImage->transferCharacteristics,
-                    nextImage->colorPrimaries,
-                    nextImage->transferCharacteristics,
-                    nextImage->matrixCoefficients,
-                    nextFile->filename);
-            goto cleanup;
-        }
-        if (firstImage->yuvRange != nextImage->yuvRange) {
-            fprintf(stderr,
-                    "ERROR: Image sequence range mismatch, [%s] vs [%s]: %s\n",
-                    (firstImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                    (nextImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-                    nextFile->filename);
-            goto cleanup;
-        }
-
         if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
             goto cleanup;
         }
-
         const avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
         if (nextImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
@@ -993,15 +1012,72 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
     // --progressive only allows one input, so directly read from it.
     int targetQuality = (settings->overrideQuality != INVALID_QUALITY) ? settings->overrideQuality
                                                                        : input->files[0].settings.quality.value;
-    int targetQualityAlpha = (settings->overrideQualityAlpha != INVALID_QUALITY) ? settings->overrideQualityAlpha
-                                                                                 : input->files[0].settings.qualityAlpha.value;
+
+    avifImage * nextImage = NULL;
+    const avifImage * encodingImage = firstImage;
+    const avifInputFileSettings * nextSettings = NULL;
+
+    if (settings->progressive && avifInputHasRemainingData(input, layerIndex)) {
+        fprintf(stderr, "ERROR: Automatic layered encoding can only have one input image.\n");
+        goto cleanup;
+    }
 
     while (layerIndex < layers) {
-        // reversed lerp such that last layer reaches exact targetQuality
-        encoder->quality = targetQuality - (targetQuality - PROGRESSIVE_START_QUALITY) * (encoder->extraLayerCount - layerIndex) /
-                                               encoder->extraLayerCount;
-        encoder->qualityAlpha = targetQualityAlpha - (targetQualityAlpha - PROGRESSIVE_START_QUALITY) *
-                                                         (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
+        if (settings->progressive) {
+            // reversed lerp, so that last layer reaches exact targetQuality
+            encoder->quality = targetQuality - (targetQuality - PROGRESSIVE_START_QUALITY) *
+                                                   (encoder->extraLayerCount - layerIndex) / encoder->extraLayerCount;
+        } else {
+            const avifInputFile * nextFile = avifInputGetFile(input, layerIndex);
+            // main() function should set number of layers to number of input,
+            // so nextFile should not be NULL.
+            assert(nextFile);
+
+            if (nextImage) {
+                avifImageDestroy(nextImage);
+            }
+            nextImage = avifImageCreateEmpty();
+            if (!nextImage) {
+                fprintf(stderr, "ERROR: Out of memory\n");
+                goto cleanup;
+            }
+            nextImage->colorPrimaries = firstImage->colorPrimaries;
+            nextImage->transferCharacteristics = firstImage->transferCharacteristics;
+            nextImage->matrixCoefficients = firstImage->matrixCoefficients;
+            nextImage->yuvRange = firstImage->yuvRange;
+            nextImage->alphaPremultiplied = firstImage->alphaPremultiplied;
+
+            // Ignore ICC, Exif and XMP because only the metadata of the first frame is taken into
+            // account by the libavif API.
+            // Ignore gain map because the two features are currently incompatible.
+            if (!avifInputReadImage(input,
+                                    layerIndex,
+                                    /*ignoreColorProfile=*/AVIF_TRUE,
+                                    /*ignoreExif=*/AVIF_TRUE,
+                                    /*ignoreXMP=*/AVIF_TRUE,
+                                    !settings->cicpExplicitlySet,
+                                    /*ignoreGainMap=*/AVIF_TRUE,
+                                    nextImage,
+                                    &nextSettings,
+                                    /*outDepth=*/NULL,
+                                    /*sourceIsRGB=*/NULL,
+                                    /*sourceTiming=*/NULL,
+                                    settings->chromaDownsampling)) {
+                goto cleanup;
+            }
+            // frameIter is NULL if y4m reached end, so single frame y4m is still supported.
+            if (input->frameIter) {
+                fprintf(stderr, "ERROR: Layered encoding does not support input with multiple frames: %s.\n", nextFile->filename);
+                goto cleanup;
+            }
+            if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "layer", nextFile->filename)) {
+                goto cleanup;
+            }
+            if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
+                goto cleanup;
+            }
+            encodingImage = nextImage;
+        }
 
         printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
                layerIndex,
@@ -1010,16 +1086,22 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                encoder->qualityAlpha,
                qualityString(encoder->qualityAlpha));
 
-        const avifResult result = avifEncoderAddImage(encoder, firstImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
+        const avifResult result = avifEncoderAddImage(encoder, encodingImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(result));
             goto cleanup;
         }
         ++layerIndex;
     }
-    success = AVIF_TRUE;
 
+    // main() function should set number of layers to number of input,
+    // so there should be no input left.
+    assert(!avifInputHasRemainingData(input, layerIndex));
+    success = AVIF_TRUE;
 cleanup:
+    if (nextImage) {
+        avifImageDestroy(nextImage);
+    }
     return success;
 }
 
@@ -1053,6 +1135,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     encoder->keyframeInterval = settings->keyframeInterval;
     encoder->repetitionCount = settings->repetitionCount;
     encoder->headerFormat = settings->headerFormat;
+    encoder->extraLayerCount = settings->layers - 1;
     if (!avifEncodeUpdateEncoderSettings(encoder, &firstFile->settings)) {
         goto cleanup;
     }
@@ -1082,16 +1165,15 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
            settings->jobs);
 
     if (settings->progressive) {
-        // If the color quality or alpha quality is less than 10, the main()
-        // function overrides --progressive and sets settings->progressive to
-        // false.
-        assert((encoder->quality >= PROGRESSIVE_WORST_QUALITY) && (encoder->qualityAlpha >= PROGRESSIVE_WORST_QUALITY));
-        encoder->extraLayerCount = 1;
+        // If the color quality is less than 10, the main() function overrides
+        // --progressive and sets settings->autoProgressive to false.
+        assert(encoder->quality >= PROGRESSIVE_WORST_QUALITY);
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
-        if (firstImage->alphaPlane && firstImage->alphaRowBytes) {
-            encoder->qualityAlpha = 2;
-        }
+        // Low alpha quality resulted in weird artifact, so we don't do it.
+    }
+
+    if (settings->layers > 1) {
         printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
                0,
                encoder->quality,
@@ -1100,7 +1182,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
                qualityString(encoder->qualityAlpha));
     }
 
-    if (settings->gridDimsCount > 0) {
+    if (settings->gridDimsPresent) {
         const avifResult addImageResult =
             avifEncoderAddImageGrid(encoder, settings->gridDims[0], settings->gridDims[1], gridCells, AVIF_ADD_IMAGE_FLAG_SINGLE);
         if (addImageResult != AVIF_RESULT_OK) {
@@ -1111,12 +1193,12 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         int imageIndex = 1; // firstImage with imageIndex 0 is already available.
 
         avifAddImageFlags addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
-        if (!avifInputHasRemainingData(input, imageIndex) && !settings->progressive) {
+        if (!avifInputHasRemainingData(input, imageIndex) && (settings->layers == 1)) {
             addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
-        if (input->useStdin || (input->filesCount > 1)) {
+        if (input->useStdin || (settings->layers == 1 && input->filesCount > 1)) {
             printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
                    0,
                    firstDurationInTimescales,
@@ -1129,7 +1211,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
             goto cleanup;
         }
 
-        if (settings->progressive) {
+        if (settings->layers > 1) {
             if (!avifEncodeRestOfLayeredImage(encoder, settings, input, imageIndex, firstImage)) {
                 goto cleanup;
             }
@@ -1282,6 +1364,8 @@ int main(int argc, char * argv[])
     settings.overrideQuality = INVALID_QUALITY;
     settings.overrideQualityAlpha = INVALID_QUALITY;
     settings.progressive = AVIF_FALSE;
+    settings.layered = AVIF_FALSE;
+    settings.layers = 0;
     settings.speed = 6;
     settings.headerFormat = AVIF_HEADER_FULL;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
@@ -1562,15 +1646,45 @@ int main(int argc, char * argv[])
                 input.files[0].settings.autoTiling = boolSettingsEntryOf(AVIF_TRUE);
             }
         } else if (!strcmp(arg, "--progressive")) {
+            if (settings.layered) {
+                fprintf(stderr, "ERROR: Can not use both --progressive and --layered\n");
+                returnCode = 1;
+                goto cleanup;
+            }
             settings.progressive = AVIF_TRUE;
+        } else if (!strcmp(arg, "--layered")) {
+            if (settings.progressive) {
+                fprintf(stderr, "ERROR: Can not use both --progressive and --layered\n");
+                returnCode = 1;
+                goto cleanup;
+            }
+            settings.layered = AVIF_TRUE;
+        } else if (!strcmp(arg, "--scaling-mode") || strpre(arg, "--scaling-mode:")) {
+            avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
+            if (type == AVIF_OPTION_SUFFIX_INVALID) {
+                returnCode = 1;
+                goto cleanup;
+            }
+            NEXTARG();
+            uint32_t frac[2] = { 0, 1 };
+            if (!(parseU32List(frac, 1, arg, '/') || parseU32List(frac, 2, arg, '/')) || frac[0] > INT32_MAX || frac[1] > INT32_MAX) {
+                fprintf(stderr, "ERROR: Invalid scaling mode: %s\n", arg);
+                returnCode = 1;
+                goto cleanup;
+            }
+            if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
+                pendingSettings.scalingMode = scalingModeSettingsEntryOf(frac[0], frac[1]);
+            } else {
+                input.files[0].settings.scalingMode = scalingModeSettingsEntryOf(frac[0], frac[1]);
+            }
         } else if (!strcmp(arg, "-g") || !strcmp(arg, "--grid")) {
             NEXTARG();
-            settings.gridDimsCount = parseU32List(settings.gridDims, arg);
-            if (settings.gridDimsCount != 2) {
+            if (!parseU32List(settings.gridDims, 2, arg, 'x')) {
                 fprintf(stderr, "ERROR: Invalid grid dims: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
+            settings.gridDimsPresent = AVIF_TRUE;
             if ((settings.gridDims[0] == 0) || (settings.gridDims[0] > 256) || (settings.gridDims[1] == 0) ||
                 (settings.gridDims[1] > 256)) {
                 fprintf(stderr, "ERROR: Invalid grid dims (valid dim range [1-256]): %s\n", arg);
@@ -1579,8 +1693,9 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--cicp") || !strcmp(arg, "--nclx")) {
             NEXTARG();
-            int cicp[3];
-            if (!parseCICP(cicp, arg)) {
+            uint32_t cicp[3];
+            if (!parseU32List(cicp, 3, arg, '/')) {
+                fprintf(stderr, "ERROR: Invalid CICP value: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
@@ -1701,16 +1816,15 @@ int main(int argc, char * argv[])
 #endif
         } else if (!strcmp(arg, "--pasp")) {
             NEXTARG();
-            settings.paspCount = parseU32List(settings.paspValues, arg);
-            if (settings.paspCount != 2) {
+            if (!parseU32List(settings.paspValues, 2, arg, ',')) {
                 fprintf(stderr, "ERROR: Invalid pasp values: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
+            settings.paspPresent = AVIF_TRUE;
         } else if (!strcmp(arg, "--crop")) {
             NEXTARG();
-            settings.clapCount = parseU32List(settings.clapValues, arg);
-            if (settings.clapCount != 4) {
+            if (!parseU32List(settings.clapValues, 4, arg, ',')) {
                 fprintf(stderr, "ERROR: Invalid crop values: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
@@ -1718,12 +1832,12 @@ int main(int argc, char * argv[])
             cropConversionRequired = AVIF_TRUE;
         } else if (!strcmp(arg, "--clap")) {
             NEXTARG();
-            settings.clapCount = parseU32List(settings.clapValues, arg);
-            if (settings.clapCount != 8) {
+            if (!parseU32List(settings.clapValues, 8, arg, ',')) {
                 fprintf(stderr, "ERROR: Invalid clap values: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
+            settings.clapValid = AVIF_TRUE;
         } else if (!strcmp(arg, "--irot")) {
             NEXTARG();
             irotAngle = (uint8_t)atoi(arg);
@@ -1742,12 +1856,13 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--clli")) {
             NEXTARG();
-            settings.clliCount = parseU32List(settings.clliValues, arg);
-            if (settings.clliCount != 2 || settings.clliValues[0] >= (1u << 16) || settings.clliValues[1] >= (1u << 16)) {
+            if (!parseU32List(settings.clliValues, 2, arg, ',') || settings.clliValues[0] >= (1u << 16) ||
+                settings.clliValues[1] >= (1u << 16)) {
                 fprintf(stderr, "ERROR: Invalid clli values: %s\n", arg);
                 returnCode = 1;
                 goto cleanup;
             }
+            settings.clliPresent = AVIF_TRUE;
         } else if (!strcmp(arg, "--repetition-count")) {
             NEXTARG();
             if (!strcmp(arg, "infinite")) {
@@ -1826,7 +1941,7 @@ int main(int argc, char * argv[])
             settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
         }
         if (settings.progressive) {
-            fprintf(stderr, "Automatic progressive is unsupported in lossless mode.\n");
+            fprintf(stderr, "Automatic layered encoding is unsupported in lossless mode.\n");
         }
         if (returnCode == 1)
             goto cleanup;
@@ -1869,8 +1984,33 @@ int main(int argc, char * argv[])
         fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
     }
 
-    if (settings.progressive && input.filesCount > 1) {
-        fprintf(stderr, "ERROR: --progressive only supports one input.\n");
+    // Check layer config
+    if (settings.progressive) {
+        assert(!settings.layered);
+        if (input.filesCount > 1) {
+            fprintf(stderr, "ERROR: --progressive only supports one input.\n");
+            returnCode = 1;
+            goto cleanup;
+        }
+        // for automatic layered encoding, make a 2 layer AVIF.
+        settings.layers = 2;
+    } else if (settings.layered) {
+        // For manual layered encoding, infer number of layers from input count.
+        // For multi-frame input (Y4Ms) layered encoding only use the first frame,
+        // so that we can assume number of inputs is number of layers.
+        // We don't support changing config halfway encoding on input,
+        // therefore encoding layered AVIF with single multi-frame input is not very meaningful.
+        if (input.filesCount < 2 || input.filesCount > AVIF_MAX_AV1_LAYER_COUNT) {
+            fprintf(stderr, "Encoding layered AVIF required 2 to %d inputs, but got %d.\n", AVIF_MAX_AV1_LAYER_COUNT, input.filesCount);
+            returnCode = 1;
+            goto cleanup;
+        }
+        settings.layers = input.filesCount;
+    } else {
+        settings.layers = 1;
+    }
+    if (settings.layers > 1 && settings.gridDimsPresent) {
+        fprintf(stderr, "Layered grid image unimplemented in avifenc.\n");
         returnCode = 1;
         goto cleanup;
     }
@@ -1920,17 +2060,12 @@ int main(int argc, char * argv[])
         } else {
             if (settings.progressive) {
                 assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
-                assert(DEFAULT_QUALITY_ALPHA >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
                     fprintf(stderr, "ERROR: --qcolor must be at least %d when using --progressive.\n", PROGRESSIVE_WORST_QUALITY);
                     returnCode = 1;
                     goto cleanup;
                 }
-                if (fileSettings->qualityAlpha.set && fileSettings->qualityAlpha.value < PROGRESSIVE_WORST_QUALITY) {
-                    fprintf(stderr, "ERROR: --qalpha must be at least %d when using --progressive.\n", PROGRESSIVE_WORST_QUALITY);
-                    returnCode = 1;
-                    goto cleanup;
-                }
+                // --progressive only adjust color quality
             }
         }
 
@@ -2007,6 +2142,10 @@ int main(int argc, char * argv[])
                     fileSettings->maxQuantizerAlpha = intSettingsEntryOf(AVIF_QUANTIZER_WORST_QUALITY);
                 }
             }
+
+            if (!fileSettings->scalingMode.set) {
+                fileSettings->scalingMode = scalingModeSettingsEntryOf(1, 1);
+            }
         }
     }
 
@@ -2046,7 +2185,7 @@ int main(int argc, char * argv[])
     uint32_t sourceDepth = 0;
     avifBool sourceWasRGB = AVIF_FALSE;
     avifAppSourceTiming firstSourceTiming;
-    const avifBool isImageSequence = (settings.gridDimsCount == 0) && (input.filesCount > 1);
+    const avifBool isImageSequence = (!settings.gridDimsPresent) && (settings.layers == 1) && (input.filesCount > 1);
     // Gain maps are not supported for animations or layered images.
     const avifBool ignoreGainMap = settings.ignoreGainMap || isImageSequence || settings.progressive;
     if (!avifInputReadImage(&input,
@@ -2117,7 +2256,7 @@ int main(int argc, char * argv[])
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
     }
 
-    if (settings.paspCount == 2) {
+    if (settings.paspPresent) {
         image->transformFlags |= AVIF_TRANSFORM_PASP;
         image->pasp.hSpacing = settings.paspValues[0];
         image->pasp.vSpacing = settings.paspValues[1];
@@ -2127,9 +2266,9 @@ int main(int argc, char * argv[])
             returnCode = 1;
             goto cleanup;
         }
-        settings.clapCount = 8;
+        settings.clapValid = AVIF_TRUE;
     }
-    if (settings.clapCount == 8) {
+    if (settings.clapValid) {
         image->transformFlags |= AVIF_TRANSFORM_CLAP;
         image->clap.widthN = settings.clapValues[0];
         image->clap.widthD = settings.clapValues[1];
@@ -2168,7 +2307,7 @@ int main(int argc, char * argv[])
         image->transformFlags |= AVIF_TRANSFORM_IMIR;
         image->imir.axis = imirAxis;
     }
-    if (settings.clliCount == 2) {
+    if (settings.clliPresent) {
         image->clli.maxCLL = (uint16_t)settings.clliValues[0];
         image->clli.maxPALL = (uint16_t)settings.clliValues[1];
     }
@@ -2242,7 +2381,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (settings.gridDimsCount > 0) {
+    if (settings.gridDimsPresent) {
         // Grid image!
 
         gridCellCount = settings.gridDims[0] * settings.gridDims[1];
@@ -2336,7 +2475,7 @@ int main(int argc, char * argv[])
     avifImageDump(avif,
                   settings.gridDims[0],
                   settings.gridDims[1],
-                  settings.progressive ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+                  settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
     avifIOStats ioStats = { 0, 0 };
     if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage * const *)gridCells, &raw, &ioStats)) {
