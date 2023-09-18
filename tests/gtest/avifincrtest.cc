@@ -55,10 +55,11 @@ TEST(IncrementalTest, Decode) {
 
   // Cell height is hardcoded because there is no API to extract it from an
   // encoded payload.
-  testutil::DecodeIncrementally(
-      encoded_avif, /*is_persistent=*/true, /*give_size_hint=*/true,
-      /*use_nth_image_api=*/false, *reference, /*cell_height=*/154,
-      /*enable_fine_incremental_check=*/true);
+  testutil::DecodeIncrementally(encoded_avif, decoder.get(),
+                                /*is_persistent=*/true, /*give_size_hint=*/true,
+                                /*use_nth_image_api=*/false, *reference,
+                                /*cell_height=*/154,
+                                /*enable_fine_incremental_check=*/true);
 }
 
 //------------------------------------------------------------------------------
@@ -98,8 +99,9 @@ TEST_P(IncrementalTest, EncodeDecode) {
   testutil::EncodeRectAsIncremental(*image, width, height, create_alpha,
                                     flat_cells, &encoded_avif, &cell_width,
                                     &cell_height);
+
   testutil::DecodeNonIncrementallyAndIncrementally(
-      encoded_avif, encoded_avif_is_persistent, give_size_hint,
+      encoded_avif, decoder.get(), encoded_avif_is_persistent, give_size_hint,
       use_nth_image_api, cell_height, /*enable_fine_incremental_check=*/true);
 }
 

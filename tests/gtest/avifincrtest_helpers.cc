@@ -4,7 +4,9 @@
 #include "avifincrtest_helpers.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
+#include <memory>
 #include <vector>
 
 #include "avif/avif.h"
@@ -275,9 +277,10 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
 
 //------------------------------------------------------------------------------
 
-void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
-                         bool give_size_hint, bool use_nth_image_api,
-                         const avifImage& reference, uint32_t cell_height,
+void DecodeIncrementally(const avifRWData& encoded_avif, avifDecoder* decoder,
+                         bool is_persistent, bool give_size_hint,
+                         bool use_nth_image_api, const avifImage& reference,
+                         uint32_t cell_height,
                          bool enable_fine_incremental_check) {
   // AVIF cells are at least 64 pixels tall.
   if (cell_height != reference.height) {
@@ -292,35 +295,39 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
       /*destroy=*/nullptr, PartialRead,
       /*write=*/nullptr,   give_size_hint ? encoded_avif.size : 0,
       is_persistent,       &data};
+  avifDecoderSetIO(decoder, &io);
+  // Reset the decoder's IO to nullptr before 'io' goes out of scope and becomes
+  // invalid.
+  auto cleanup_io_fn = [](avifDecoder* decoder) {
+    avifDecoderSetIO(decoder, nullptr);
+  };
+  std::unique_ptr<avifDecoder, decltype(cleanup_io_fn)> cleanup_io(
+      decoder, cleanup_io_fn);  // Call automatically at end of scope.
 
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
-  ASSERT_NE(decoder, nullptr);
-  avifDecoderSetIO(decoder.get(), &io);
   decoder->allowIncremental = AVIF_TRUE;
   const size_t step = std::max<size_t>(1, data.full_size / 10000);
 
   // Parsing is not incremental.
-  avifResult parse_result = avifDecoderParse(decoder.get());
+  avifResult parse_result = avifDecoderParse(decoder);
   while (parse_result == AVIF_RESULT_WAITING_ON_IO) {
     ASSERT_LT(data.available.size, data.full_size)
         << "avifDecoderParse() returned WAITING_ON_IO instead of OK";
     data.available.size = std::min(data.available.size + step, data.full_size);
-    parse_result = avifDecoderParse(decoder.get());
+    parse_result = avifDecoderParse(decoder);
   }
   ASSERT_EQ(parse_result, AVIF_RESULT_OK);
 
   // Decoding is incremental.
   uint32_t previously_decoded_row_count = 0;
   avifResult next_image_result = use_nth_image_api
-                                     ? avifDecoderNthImage(decoder.get(), 0)
-                                     : avifDecoderNextImage(decoder.get());
+                                     ? avifDecoderNthImage(decoder, 0)
+                                     : avifDecoderNextImage(decoder);
   while (next_image_result == AVIF_RESULT_WAITING_ON_IO) {
     ASSERT_LT(data.available.size, data.full_size)
         << (use_nth_image_api ? "avifDecoderNthImage(0)"
                               : "avifDecoderNextImage()")
         << " returned WAITING_ON_IO instead of OK";
-    const uint32_t decoded_row_count =
-        avifDecoderDecodedRowCount(decoder.get());
+    const uint32_t decoded_row_count = avifDecoderDecodedRowCount(decoder);
     ASSERT_GE(decoded_row_count, previously_decoded_row_count);
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
         reference.height, cell_height, reference.alphaPlane != nullptr,
@@ -330,30 +337,28 @@ void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
 
     previously_decoded_row_count = decoded_row_count;
     data.available.size = std::min(data.available.size + step, data.full_size);
-    next_image_result = use_nth_image_api
-                            ? avifDecoderNthImage(decoder.get(), 0)
-                            : avifDecoderNextImage(decoder.get());
+    next_image_result = use_nth_image_api ? avifDecoderNthImage(decoder, 0)
+                                          : avifDecoderNextImage(decoder);
   }
   ASSERT_EQ(next_image_result, AVIF_RESULT_OK);
   ASSERT_EQ(data.available.size, data.full_size);
-  ASSERT_EQ(avifDecoderDecodedRowCount(decoder.get()), decoder->image->height);
+  ASSERT_EQ(avifDecoderDecodedRowCount(decoder), decoder->image->height);
 
   ComparePartialYuva(reference, *decoder->image, reference.height);
 }
 
 void DecodeNonIncrementallyAndIncrementally(
-    const avifRWData& encoded_avif, bool is_persistent, bool give_size_hint,
-    bool use_nth_image_api, uint32_t cell_height,
+    const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
+    bool give_size_hint, bool use_nth_image_api, uint32_t cell_height,
     bool enable_fine_incremental_check) {
   AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(reference, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
-  ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(),
-                                  encoded_avif.data, encoded_avif.size),
+  decoder->allowIncremental = AVIF_FALSE;
+  ASSERT_EQ(avifDecoderReadMemory(decoder, reference.get(), encoded_avif.data,
+                                  encoded_avif.size),
             AVIF_RESULT_OK);
 
-  DecodeIncrementally(encoded_avif, is_persistent, give_size_hint,
+  DecodeIncrementally(encoded_avif, decoder, is_persistent, give_size_hint,
                       use_nth_image_api, *reference, cell_height,
                       enable_fine_incremental_check);
 }
