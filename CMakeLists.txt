@@ -66,6 +66,9 @@ option(AVIF_LOCAL_SVT
 option(AVIF_LOCAL_GTEST
        "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)" OFF
 )
+option(AVIF_LOCAL_FUZZTEST
+       "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)" OFF
+)
 option(AVIF_LOCAL_AVM "Build the AVM (AV2) codec by providing your own copy of the repo in ext/avm (see Local Builds in README)"
        OFF
 )
@@ -645,6 +648,9 @@ option(AVIF_ENABLE_GOLDEN_TESTS
 )
 option(AVIF_ENABLE_GTEST
        "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
+)
+option(AVIF_ENABLE_FUZZTEST
+       "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS and AVIF_ENABLE_GTEST are ON." OFF
 )
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
