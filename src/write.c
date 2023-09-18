@@ -446,6 +446,8 @@ avifEncoder * avifEncoderCreate(void)
     encoder->maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
     encoder->minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
     encoder->maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+    encoder->width = 0;
+    encoder->height = 0;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
     encoder->autoTiling = AVIF_FALSE;
@@ -490,6 +492,8 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     lastEncoder->timescale = encoder->timescale;
     lastEncoder->repetitionCount = encoder->repetitionCount;
     lastEncoder->extraLayerCount = encoder->extraLayerCount;
+    lastEncoder->width = encoder->width;
+    lastEncoder->height = encoder->height;
     lastEncoder->minQuantizer = encoder->minQuantizer;
     lastEncoder->maxQuantizer = encoder->maxQuantizer;
     lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
@@ -517,7 +521,8 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
     if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->maxThreads != encoder->maxThreads) ||
         (lastEncoder->speed != encoder->speed) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
         (lastEncoder->timescale != encoder->timescale) || (lastEncoder->repetitionCount != encoder->repetitionCount) ||
-        (lastEncoder->extraLayerCount != encoder->extraLayerCount)) {
+        (lastEncoder->extraLayerCount != encoder->extraLayerCount) || (lastEncoder->width != encoder->width) ||
+        (lastEncoder->height != encoder->height)) {
         return AVIF_FALSE;
     }
 
@@ -1277,6 +1282,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CONTENT;
     }
 
+    if ((encoder->width && (encoder->width < firstCell->width)) || (encoder->height && (encoder->height < firstCell->height))) {
+        return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+    }
+
     AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_FALSE, &encoder->diag));
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -1592,7 +1601,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             avifResult encodeResult = item->codec->encodeImage(item->codec,
                                                                encoder,
                                                                cellImage,
-                                                               item->itemCategory == AVIF_ITEM_ALPHA,
+                                                               item->itemCategory,
                                                                encoder->data->tileRowsLog2,
                                                                encoder->data->tileColsLog2,
                                                                quantizer,
@@ -2158,6 +2167,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
     const avifImage * imageMetadata = encoder->data->imageMetadata;
+    const uint32_t cellWidth = encoder->width ? encoder->width : imageMetadata->width;
+    const uint32_t cellHeight = encoder->height ? encoder->height : imageMetadata->height;
+
     // The epoch for creation_time and modification_time is midnight, Jan. 1,
     // 1904, in UTC time. Add the number of seconds between that epoch and the
     // Unix epoch.
@@ -2398,14 +2410,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         }
 
         const avifImage * itemMetadata = imageMetadata;
+        uint32_t imageWidth = cellWidth;
+        uint32_t imageHeight = cellHeight;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             itemMetadata = itemMetadata->gainMap.image;
             assert(itemMetadata);
+            imageWidth = itemMetadata->width;
+            imageHeight = itemMetadata->height;
         }
 #endif
-        uint32_t imageWidth = itemMetadata->width;
-        uint32_t imageHeight = itemMetadata->height;
         if (isGrid) {
             imageWidth = item->gridWidth;
             imageHeight = item->gridHeight;
@@ -2646,8 +2660,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0)); // template int(16) volume = {if track_is_audio 0x0100 else 0};
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0)); // const unsigned int(16) reserved = 0;
             AVIF_CHECKRES(avifRWStreamWrite(&s, unityMatrix, sizeof(unityMatrix))); // template int(32)[9] matrix= // { 0x00010000,0,0,0,0x00010000,0,0,0,0x40000000 };
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, imageMetadata->width << 16));  // unsigned int(32) width;
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, imageMetadata->height << 16)); // unsigned int(32) height;
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, cellWidth << 16));  // unsigned int(32) width;
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, cellHeight << 16)); // unsigned int(32) height;
             avifRWStreamFinishBox(&s, tkhd);
 
             if (item->irefToID != 0) {
@@ -2729,16 +2743,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, 1)); // unsigned int(32) entry_count;
             avifBoxMarker imageItem;
             AVIF_CHECKRES(avifRWStreamWriteBox(&s, encoder->data->imageItemType, AVIF_BOX_SIZE_TBD, &imageItem));
-            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 6));                             // const unsigned int(8)[6] reserved = 0;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                               // unsigned int(16) data_reference_index;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                               // unsigned int(16) pre_defined = 0;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                               // const unsigned int(16) reserved = 0;
-            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, sizeof(uint32_t) * 3));          // unsigned int(32)[3] pre_defined = 0;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)imageMetadata->width));  // unsigned int(16) width;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)imageMetadata->height)); // unsigned int(16) height;
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));                      // template unsigned int(32) horizresolution
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));                      // template unsigned int(32) vertresolution
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));                               // const unsigned int(32) reserved = 0;
+            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 6));                    // const unsigned int(8)[6] reserved = 0;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                      // unsigned int(16) data_reference_index;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                      // unsigned int(16) pre_defined = 0;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                      // const unsigned int(16) reserved = 0;
+            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, sizeof(uint32_t) * 3)); // unsigned int(32)[3] pre_defined = 0;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)cellWidth));    // unsigned int(16) width;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)cellHeight));   // unsigned int(16) height;
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));             // template unsigned int(32) horizresolution
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));             // template unsigned int(32) vertresolution
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));                      // const unsigned int(32) reserved = 0;
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                      // template unsigned int(16) frame_count = 1;
             AVIF_CHECKRES(avifRWStreamWriteChars(&s, "\012AOM Coding", 11)); // string[32] compressorname;
             AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 32 - 11));              //

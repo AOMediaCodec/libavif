@@ -107,6 +107,11 @@ if(AVIF_ENABLE_GTEST)
     target_include_directories(avifbasictest PRIVATE ${GTEST_INCLUDE_DIRS})
     add_test(NAME avifbasictest COMMAND avifbasictest)
 
+    add_executable(avifchangedimensiontest gtest/avifchangedimensiontest.cc)
+    target_link_libraries(avifchangedimensiontest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_include_directories(avifchangedimensiontest PRIVATE ${GTEST_INCLUDE_DIRS})
+    add_test(NAME avifchangedimensiontest COMMAND avifchangedimensiontest)
+
     add_executable(avifchangesettingtest gtest/avifchangesettingtest.cc)
     target_link_libraries(avifchangesettingtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
     target_include_directories(avifchangesettingtest PRIVATE ${GTEST_INCLUDE_DIRS})
@@ -197,9 +202,9 @@ if(AVIF_ENABLE_GTEST)
     add_test(NAME avifpng16bittest COMMAND avifpng16bittest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
     add_executable(avifprogressivetest gtest/avifprogressivetest.cc)
-    target_link_libraries(avifprogressivetest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+    target_link_libraries(avifprogressivetest aviftest_helpers ${GTEST_LIBRARIES})
     target_include_directories(avifprogressivetest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifprogressivetest COMMAND avifprogressivetest)
+    add_test(NAME avifprogressivetest COMMAND avifprogressivetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
     add_executable(avifreadimagetest gtest/avifreadimagetest.cc)
     target_link_libraries(avifreadimagetest aviftest_helpers ${GTEST_LIBRARIES})

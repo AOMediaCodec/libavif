@@ -530,7 +530,7 @@ static avifBool avmCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
 static avifResult avmCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
-                                      avifBool alpha,
+                                      avifItemCategory category,
                                       int tileRowsLog2,
                                       int tileColsLog2,
                                       int quantizer,
@@ -541,6 +541,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
+    avifBool alpha = category == AVIF_ITEM_ALPHA;
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AV2
     // encoder, config should be applied for each frame, so we don't care about changes on these

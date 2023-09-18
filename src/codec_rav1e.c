@@ -52,7 +52,7 @@ static avifBool rav1eSupports400(void)
 static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
-                                        avifBool alpha,
+                                        avifItemCategory category,
                                         int tileRowsLog2,
                                         int tileColsLog2,
                                         int quantizer,
@@ -61,6 +61,8 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         uint32_t addImageFlags,
                                         avifCodecEncodeOutput * output)
 {
+    avifBool alpha = category == AVIF_ITEM_ALPHA;
+
     // rav1e does not support changing encoder settings.
     if (encoderChanges) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
@@ -81,6 +83,11 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
 
     // rav1e does not support disabling lagged output. See https://github.com/xiph/rav1e/issues/2267. Ignore this setting.
     (void)disableLaggedOutput;
+
+    // rav1e does not support overriding maximum frame width/height in sequence header
+    if (encoder->width || encoder->height) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
 
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
 

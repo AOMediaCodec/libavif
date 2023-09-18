@@ -1288,6 +1288,9 @@ typedef struct avifScalingMode
 //   a combination of settings are tweaked to simulate this speed range.
 // * Extra layer count: [0 - (AVIF_MAX_AV1_LAYER_COUNT-1)]. Non-zero value indicates a layered
 //   (progressive) image.
+// * Width and height: width and height of encoded image. Default value 0 means infer from first frame.
+//   For grid image, this is the size of one cell. Value must not be smaller than the largest frame
+//   to be encoded.
 // * Some encoder settings can be changed after encoding starts. Changes will take effect in the next
 //   call to avifEncoderAddImage().
 typedef struct avifEncoder
@@ -1333,6 +1336,9 @@ typedef struct avifEncoder
 
     // Defaults to AVIF_HEADER_FULL
     avifHeaderFormat headerFormat;
+
+    uint32_t width;
+    uint32_t height;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting

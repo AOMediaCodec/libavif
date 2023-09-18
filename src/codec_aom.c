@@ -547,7 +547,7 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
 static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
-                                      avifBool alpha,
+                                      avifItemCategory category,
                                       int tileRowsLog2,
                                       int tileColsLog2,
                                       int quantizer,
@@ -558,6 +558,13 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
+    avifBool alpha = category == AVIF_ITEM_ALPHA;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    avifBool gainMap = category == AVIF_ITEM_GAIN_MAP;
+#else
+    avifBool gainMap = AVIF_FALSE;
+#endif
+    const int aomVersion = aom_codec_version();
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AOM
     // encoder, config should be applied for each frame, so we don't care about changes on these
@@ -601,7 +608,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
         // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
         static const int aomVersion_2_0_0 = (2 << 16);
-        const int aomVersion = aom_codec_version();
         if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
             // Due to a known issue with libaom v1.0.0-errata1-avif, 10bpc and
             // 12bpc image encodes will call the wrong variant of
@@ -697,6 +703,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         cfg->g_w = image->width;
         cfg->g_h = image->height;
 
+        // gain map has its own dimension
+        if (!gainMap) {
+            cfg->g_forced_max_frame_width = encoder->width;
+            cfg->g_forced_max_frame_height = encoder->height;
+        }
+
         // Detect the libaom v3.6.0 bug described in
         // https://crbug.com/aomedia/2871#c12. See the changes to
         // av1/encoder/encoder.c in
@@ -746,6 +758,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
         if (disableLaggedOutput) {
             cfg->g_lag_in_frames = 0;
+        }
+        if ((encoder->width || encoder->height) && (cfg->g_lag_in_frames > 1)) {
+            // libaom does not allow changing frame dimension if
+            // g_lag_in_frames > 1.
+            cfg->g_lag_in_frames = 1;
         }
         if (encoder->maxThreads > 1) {
             cfg->g_threads = encoder->maxThreads;
@@ -877,9 +894,33 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
     } else {
         avifBool dimensionsChanged = AVIF_FALSE;
-        if ((cfg->g_w != image->width) || (cfg->g_h != image->height)) {
-            // We are not ready for dimension change for now.
-            return AVIF_RESULT_NOT_IMPLEMENTED;
+        if (!gainMap && ((cfg->g_w != image->width) || (cfg->g_h != image->height))) {
+            static const int aomVersion_3_6_0 = (3 << 16) + (6 << 8);
+            if (aomVersion < aomVersion_3_6_0) {
+                // Due to a bug in libaom before v3.6.0 encoding 10bpc and 12bpc images
+                // with changing dimension will crash the encoder.
+                if (image->depth > 8) {
+                    avifDiagnosticsPrintf(codec->diag,
+                                          "Detected libaom bug with high bitdepth images and changing dimension. Upgrade to libaom v3.6.0 or later.");
+                    return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+                }
+
+                // There exists a bug in libaom's buffer allocation logic before v3.6.0
+                // where it allocates buffers based on g_w and g_h of first frame instead of
+                // g_forced_max_frame_width and g_forced_max_frame_height, so encoding frames
+                // of increasing size will crash the encoder.
+                //
+                // This check is stricter than it needs to be, but we don't track the size of
+                // first image but only the last successful encoded one.
+                if ((cfg->g_w < image->width) || (cfg->g_h < image->height)) {
+                    avifDiagnosticsPrintf(codec->diag,
+                                          "Detected libaom bug with increasing encoding dimension. Upgrade to libaom v3.6.0 or later.");
+                    return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+                }
+            }
+            cfg->g_w = image->width;
+            cfg->g_h = image->height;
+            dimensionsChanged = AVIF_TRUE;
         }
         if (alpha) {
             if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
