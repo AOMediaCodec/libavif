@@ -43,8 +43,7 @@ if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 14)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
-    target_link_libraries(aviftest_helpers avif_apps)
-    target_link_libraries(aviftest_helpers avif_internal)
+    target_link_libraries(aviftest_helpers avif_apps avif_internal)
 endif()
 
 # Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
@@ -252,6 +251,53 @@ if(AVIF_ENABLE_GTEST)
     endif()
 else()
     message(STATUS "Most tests are disabled because AVIF_ENABLE_GTEST is OFF.")
+endif()
+
+################################################################################
+# Experimental FuzzTest support (Linux only)
+
+if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
+    if(AVIF_LOCAL_FUZZTEST)
+        # Run ext/fuzztest.cmd first.
+        # Recommended top-level CMake options:
+        #   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_ENABLE_WERROR=OFF
+        # Reproducing a failure can be done by setting the environment variable
+        #   FUZZTEST_REPLAY=/path/to/repro_file.test
+        # and running one of the targets below.
+        # See https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
+        add_subdirectory(${CMAKE_SOURCE_DIR}/ext/fuzztest ${CMAKE_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL)
+        # FuzzTest bundles GoogleTest so no need for the targets below to link to GTEST_BOTH_LIBRARIES.
+    else()
+        message(FATAL_ERROR "fuzztest: Installed FuzzTest is not supported, please set AVIF_LOCAL_FUZZTEST=ON or AVIF_ENABLE_FUZZTEST=OFF")
+    endif()
+
+    add_executable(avif_fuzztest_dec_incr gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_dec_incr.cc)
+    target_link_libraries(avif_fuzztest_dec_incr PRIVATE avifincrtest_helpers)
+    link_fuzztest(avif_fuzztest_dec_incr)
+    gtest_discover_tests(avif_fuzztest_dec_incr)
+    add_test(NAME avif_fuzztest_dec_incr COMMAND avif_fuzztest_dec_incr)
+
+    add_executable(avif_fuzztest_enc_dec gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec.cc)
+    target_link_libraries(avif_fuzztest_enc_dec PRIVATE aviftest_helpers)
+    link_fuzztest(avif_fuzztest_enc_dec)
+    gtest_discover_tests(avif_fuzztest_enc_dec)
+    add_test(NAME avif_fuzztest_enc_dec COMMAND avif_fuzztest_enc_dec)
+
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        add_executable(avif_fuzztest_enc_dec_experimental gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_experimental.cc)
+        target_link_libraries(avif_fuzztest_enc_dec_experimental PRIVATE aviftest_helpers)
+        link_fuzztest(avif_fuzztest_enc_dec_experimental)
+        gtest_discover_tests(avif_fuzztest_enc_dec_experimental)
+        add_test(NAME avif_fuzztest_enc_dec_experimental COMMAND avif_fuzztest_enc_dec_experimental)
+    endif()
+
+    add_executable(avif_fuzztest_enc_dec_incr gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_incr.cc)
+    target_link_libraries(avif_fuzztest_enc_dec_incr PRIVATE aviftest_helpers avifincrtest_helpers)
+    link_fuzztest(avif_fuzztest_enc_dec_incr)
+    gtest_discover_tests(avif_fuzztest_enc_dec_incr)
+    add_test(NAME avif_fuzztest_enc_dec_incr COMMAND avif_fuzztest_enc_dec_incr)
+elseif(AVIF_ENABLE_GTEST)
+    message(STATUS "FuzzTest targets are disabled because AVIF_ENABLE_FUZZTEST is OFF.")
 endif()
 
 ################################################################################
