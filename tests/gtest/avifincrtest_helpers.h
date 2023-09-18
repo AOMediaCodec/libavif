@@ -4,6 +4,8 @@
 #ifndef LIBAVIF_TESTS_AVIFINCRTEST_HELPERS_H_
 #define LIBAVIF_TESTS_AVIFINCRTEST_HELPERS_H_
 
+#include <cstdint>
+
 #include "avif/avif.h"
 
 namespace libavif {
@@ -24,16 +26,17 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
 // incremental granularity. enable_fine_incremental_check checks that sample
 // rows are gradually output when feeding more and more input bytes to the
 // decoder.
-void DecodeIncrementally(const avifRWData& encoded_avif, bool is_persistent,
-                         bool give_size_hint, bool use_nth_image_api,
-                         const avifImage& reference, uint32_t cell_height,
+void DecodeIncrementally(const avifRWData& encoded_avif, avifDecoder* decoder,
+                         bool is_persistent, bool give_size_hint,
+                         bool use_nth_image_api, const avifImage& reference,
+                         uint32_t cell_height,
                          bool enable_fine_incremental_check = false);
 
 // Calls DecodeIncrementally() with the reference being a regular decoding of
 // encoded_avif.
 void DecodeNonIncrementallyAndIncrementally(
-    const avifRWData& encoded_avif, bool is_persistent, bool give_size_hint,
-    bool use_nth_image_api, uint32_t cell_height,
+    const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
+    bool give_size_hint, bool use_nth_image_api, uint32_t cell_height,
     bool enable_fine_incremental_check = false);
 
 }  // namespace testutil
