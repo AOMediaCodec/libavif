@@ -19,7 +19,9 @@ extern "C" {
 #if defined(AVIF_BREAK_ON_ERROR)
 static inline void avifBreakOnError()
 {
-    abort(); // or replace by a breakpoint
+    // Same mechanisme as OpenCV's error() function.
+    static volatile int * p = 0;
+    *p = 0; // or replace by a breakpoint
 }
 #else
 #define avifBreakOnError()
