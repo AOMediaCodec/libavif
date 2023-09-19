@@ -3374,6 +3374,12 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     AVIF_CHECKERR(avifParseCodecConfiguration(&s, &colorCodecConfig, "coni", diag),
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) main_item_codec_config[];
 
+    // Make sure all extended_meta, metadata and coded chunks fit into the 'coni' box whose size is rawLen.
+    // There should be no missing nor unused byte.
+    AVIF_CHECKERR(avifROStreamRemainingBytes(&s) ==
+                      (uint64_t)extendedMetaSize + iccDataSize + alphaItemDataSize + colorItemDataSize + exifSize + xmpSize,
+                  AVIF_RESULT_BMFF_PARSE_FAILED);
+
     // Store and update the offset for the following item extents and properties.
     // The extendedMeta field is parsed after creating the items defined by the CondensedImageBox
     // so the stream s cannot be used for keeping track of the position.
@@ -3535,18 +3541,10 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     // The ExtendedMetaBox may reuse items and properties created above so it must be parsed last.
 
     if (hasExtendedMeta) {
+        assert(avifROStreamHasBytesLeft(&s, extendedMetaSize));
         AVIF_CHECKERR(avifParseExtendedMeta(meta, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), extendedMetaSize, diag),
                       AVIF_RESULT_BMFF_PARSE_FAILED);
     }
-
-    // Check that the stream s and the variable offset match.
-    AVIF_CHECKERR(avifROStreamSkip(&s, extendedMetaSize), AVIF_RESULT_TRUNCATED_DATA);
-    AVIF_CHECKERR(avifROStreamSkip(&s, iccDataSize), AVIF_RESULT_TRUNCATED_DATA);
-    AVIF_CHECKERR(avifROStreamSkip(&s, alphaItemDataSize), AVIF_RESULT_TRUNCATED_DATA);
-    AVIF_CHECKERR(avifROStreamSkip(&s, colorItemDataSize), AVIF_RESULT_TRUNCATED_DATA);
-    AVIF_CHECKERR(avifROStreamSkip(&s, exifSize), AVIF_RESULT_TRUNCATED_DATA);
-    AVIF_CHECKERR(avifROStreamSkip(&s, xmpSize), AVIF_RESULT_TRUNCATED_DATA);
-    assert(rawOffset + avifROStreamOffset(&s) == offset);
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
