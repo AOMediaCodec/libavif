@@ -43,21 +43,18 @@ AvifImagePtr CreateAvifImage(size_t width, size_t height, int depth,
 
 }  // namespace
 
-avifImage* CreateAvifImage8bRawPtr(size_t width, size_t height,
-                                   avifPixelFormat pixel_format, bool has_alpha,
-                                   const std::vector<uint8_t>& samples) {
+AvifImagePtr CreateAvifImage8b(size_t width, size_t height,
+                               avifPixelFormat pixel_format, bool has_alpha,
+                               const std::vector<uint8_t>& samples) {
   return CreateAvifImage(width, height, 8, pixel_format, has_alpha,
-                         samples.data())
-      .release();
+                         samples.data());
 }
 
-avifImage* CreateAvifImage16bRawPtr(size_t width, size_t height, int depth,
-                                    avifPixelFormat pixel_format,
-                                    bool has_alpha,
-                                    const std::vector<uint16_t>& samples) {
+AvifImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
+                                avifPixelFormat pixel_format, bool has_alpha,
+                                const std::vector<uint16_t>& samples) {
   return CreateAvifImage(width, height, depth, pixel_format, has_alpha,
-                         reinterpret_cast<const uint8_t*>(samples.data()))
-      .release();
+                         reinterpret_cast<const uint8_t*>(samples.data()));
 }
 
 AvifEncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,

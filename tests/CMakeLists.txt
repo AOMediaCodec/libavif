@@ -260,7 +260,7 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
     if(AVIF_LOCAL_FUZZTEST)
         # Run ext/fuzztest.cmd first.
         # Recommended top-level CMake options:
-        #   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_ENABLE_WERROR=OFF
+        #   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_CODEC_DAV1D=ON -DAVIF_ENABLE_WERROR=OFF
         # Reproducing a failure can be done by setting the environment variable
         #   FUZZTEST_REPLAY=/path/to/repro_file.test
         # and running one of the targets below.

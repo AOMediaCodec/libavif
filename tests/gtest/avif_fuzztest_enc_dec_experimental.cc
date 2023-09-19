@@ -98,21 +98,20 @@ void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
   // hard to verify so do not check it.
 }
 
-// Note that the images are passed as raw pointers because unique_ptr didn't
-// seem to work. Similarly, avifGainMapMetadata is passed as a byte array
+// Note that avifGainMapMetadata is passed as a byte array
 // because the C array fields in the struct seem to prevent fuzztest from
 // handling it natively.
 AvifImagePtr AddGainMapToImage(
-    avifImage* image, avifImage* gainMap,
+    AvifImagePtr image, AvifImagePtr gainMap,
     const std::array<uint8_t, sizeof(avifGainMapMetadata)>& metadata) {
-  image->gainMap.image = gainMap;
+  image->gainMap.image = gainMap.release();
   std::memcpy(&image->gainMap.metadata, metadata.data(), metadata.size());
-  return AvifImagePtr(image, avifImageDestroy);
+  return image;
 }
 
 inline auto ArbitraryAvifImageWithGainMap() {
   return fuzztest::Map(
-      AddGainMapToImage, ArbitraryAvifImageRawPtr(), ArbitraryAvifImageRawPtr(),
+      AddGainMapToImage, ArbitraryAvifImage(), ArbitraryAvifImage(),
       fuzztest::Arbitrary<std::array<uint8_t, sizeof(avifGainMapMetadata)>>());
 }
 
