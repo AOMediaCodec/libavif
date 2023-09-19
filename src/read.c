@@ -3376,7 +3376,8 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
 
     // Make sure all extended_meta, metadata and coded chunks fit into the 'coni' box whose size is rawLen.
     // There should be no missing nor unused byte.
-    AVIF_CHECKERR(avifROStreamOffset(&s) + extendedMetaSize + iccDataSize + alphaItemDataSize + colorItemDataSize + exifSize + xmpSize == rawLen,
+    AVIF_CHECKERR(avifROStreamRemainingBytes(&s) ==
+                      (uint64_t)extendedMetaSize + iccDataSize + alphaItemDataSize + colorItemDataSize + exifSize + xmpSize,
                   AVIF_RESULT_BMFF_PARSE_FAILED);
 
     // Store and update the offset for the following item extents and properties.
@@ -3540,7 +3541,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     // The ExtendedMetaBox may reuse items and properties created above so it must be parsed last.
 
     if (hasExtendedMeta) {
-        assert(avifROStreamOffset(&s) + extendedMetaSize <= rawLen);
+        assert(avifROStreamHasBytesLeft(&s, extendedMetaSize));
         AVIF_CHECKERR(avifParseExtendedMeta(meta, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), extendedMetaSize, diag),
                       AVIF_RESULT_BMFF_PARSE_FAILED);
     }
