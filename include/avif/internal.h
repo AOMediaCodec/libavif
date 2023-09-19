@@ -15,6 +15,7 @@ extern "C" {
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+// Used for debugging. Add ! to catch the earliest failure during encoding or decoding.
 #if defined(AVIF_BREAK_ON_ERROR)
 static inline void avifBreakOnError()
 {
