@@ -10,7 +10,7 @@
 git clone https://github.com/google/fuzztest.git
 cd fuzztest
 : # There is no tagged release as of 2023/09/18. Pick the last commit.
-git checkout 867d851afd3d77bbc0067d4007360a1d9e826a22
+git checkout b5500afbac873c884e1e021ea019ad943434df7d
 
 mkdir build.libavif
 cd build.libavif

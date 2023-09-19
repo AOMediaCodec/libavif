@@ -20,13 +20,12 @@ namespace testutil {
 // C++ wrapper for scoped memory management of C API objects.
 
 // Exposed for convenient fuzztest reproducer output.
-avifImage* CreateAvifImage8bRawPtr(size_t width, size_t height,
-                                   avifPixelFormat pixel_format, bool has_alpha,
-                                   const std::vector<uint8_t>& samples);
-avifImage* CreateAvifImage16bRawPtr(size_t width, size_t height, int depth,
-                                    avifPixelFormat pixel_format,
-                                    bool has_alpha,
-                                    const std::vector<uint16_t>& samples);
+AvifImagePtr CreateAvifImage8b(size_t width, size_t height,
+                               avifPixelFormat pixel_format, bool has_alpha,
+                               const std::vector<uint8_t>& samples);
+AvifImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
+                                avifPixelFormat pixel_format, bool has_alpha,
+                                const std::vector<uint16_t>& samples);
 AvifEncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
                                  int min_quantizer, int max_quantizer,
                                  int min_quantizer_alpha,
@@ -40,7 +39,6 @@ AvifDecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                                  uint32_t image_dimension_limit,
                                  uint32_t image_count_limit,
                                  avifStrictFlags strict_flags);
-AvifImagePtr AvifImageToUniquePtr(avifImage* image);
 
 //------------------------------------------------------------------------------
 // Custom fuzztest generators.
@@ -62,14 +60,13 @@ inline auto ArbitraryPixelFormat() {
 }
 
 // avifImage generator type: Width, height, pixel format and 8-bit samples.
-inline auto ArbitraryAvifImage8bRawPtr() {
+inline auto ArbitraryAvifImage8b() {
   return fuzztest::FlatMap(
       [](size_t width, size_t height, avifPixelFormat pixel_format,
          bool has_alpha) {
         return fuzztest::Map(
-            CreateAvifImage8bRawPtr, fuzztest::Just(width),
-            fuzztest::Just(height), fuzztest::Just(pixel_format),
-            fuzztest::Just(has_alpha),
+            CreateAvifImage8b, fuzztest::Just(width), fuzztest::Just(height),
+            fuzztest::Just(pixel_format), fuzztest::Just(has_alpha),
             fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(
                 GetNumSamples(width, height, pixel_format, has_alpha)));
       },
@@ -80,14 +77,14 @@ inline auto ArbitraryAvifImage8bRawPtr() {
 
 // avifImage generator type: Width, height, depth, pixel format and 16-bit
 // samples.
-inline auto ArbitraryAvifImage16bRawPtr() {
+inline auto ArbitraryAvifImage16b() {
   return fuzztest::FlatMap(
       [](size_t width, size_t height, int depth, avifPixelFormat pixel_format,
          bool has_alpha) {
         return fuzztest::Map(
-            CreateAvifImage16bRawPtr, fuzztest::Just(width),
-            fuzztest::Just(height), fuzztest::Just(depth),
-            fuzztest::Just(pixel_format), fuzztest::Just(has_alpha),
+            CreateAvifImage16b, fuzztest::Just(width), fuzztest::Just(height),
+            fuzztest::Just(depth), fuzztest::Just(pixel_format),
+            fuzztest::Just(has_alpha),
             fuzztest::ContainerOf<std::vector<uint16_t>>(
                 fuzztest::InRange<uint16_t>(0, (1 << depth) - 1))
                 .WithSize(
@@ -99,15 +96,9 @@ inline auto ArbitraryAvifImage16bRawPtr() {
       fuzztest::Arbitrary<bool>());
 }
 
-// Generator for an arbitrary avifImage* (raw pointer).
-inline auto ArbitraryAvifImageRawPtr() {
-  return fuzztest::OneOf(ArbitraryAvifImage8bRawPtr(),
-                         ArbitraryAvifImage16bRawPtr());
-}
-
-// Generator for an arbitrary AvifImagePtr (unique pointer).
+// Generator for an arbitrary AvifImagePtr.
 inline auto ArbitraryAvifImage() {
-  return fuzztest::Map(AvifImageToUniquePtr, ArbitraryAvifImageRawPtr());
+  return fuzztest::OneOf(ArbitraryAvifImage8b(), ArbitraryAvifImage16b());
 }
 
 // avifEncoder and avifDecoder generators
