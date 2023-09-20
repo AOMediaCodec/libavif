@@ -152,9 +152,24 @@ struct AvifIOLimitedReader {
 
 avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp);
 
-}  // namespace testutil
-}  // namespace libavif
+//------------------------------------------------------------------------------
+
+// Returns true if the given image has a fully opaque alpha plane, or no alpha
+// plane at all.
+bool IsOpaque(const avifImage* image);
+
+// Splits the input image into grid_cols*grid_rows views to be encoded as a
+// grid. Returns an empty vector if the input image cannot be split that way.
+std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
+                                      uint32_t grid_cols, uint32_t grid_rows);
+
+// Converts a unique_ptr array to a raw pointer array as needed by libavif API.
+std::vector<const avifImage*> UniquePtrToRawPtr(
+    const std::vector<AvifImagePtr>& unique_ptrs);
 
 //------------------------------------------------------------------------------
+
+}  // namespace testutil
+}  // namespace libavif
 
 #endif  // LIBAVIF_TESTS_AVIFTEST_HELPERS_H_

@@ -289,6 +289,12 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
         link_fuzztest(avif_fuzztest_enc_dec_experimental)
         gtest_discover_tests(avif_fuzztest_enc_dec_experimental)
         add_test(NAME avif_fuzztest_enc_dec_experimental COMMAND avif_fuzztest_enc_dec_experimental)
+
+        add_executable(avif_fuzztest_enc_dec_incr_experimental gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_incr_experimental.cc)
+        target_link_libraries(avif_fuzztest_enc_dec_incr_experimental PRIVATE aviftest_helpers avifincrtest_helpers)
+        link_fuzztest(avif_fuzztest_enc_dec_incr_experimental)
+        gtest_discover_tests(avif_fuzztest_enc_dec_incr_experimental)
+        add_test(NAME avif_fuzztest_enc_dec_incr_experimental COMMAND avif_fuzztest_enc_dec_incr_experimental)
     endif()
 
     add_executable(avif_fuzztest_enc_dec_incr gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_incr.cc)
