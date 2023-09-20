@@ -15,13 +15,13 @@ extern "C" {
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-// Used for debugging. Add ! to catch the earliest failure during encoding or decoding.
+// Used for debugging. Define AVIF_BREAK_ON_ERROR to catch the earliest failure during encoding or decoding.
 #if defined(AVIF_BREAK_ON_ERROR)
 static inline void avifBreakOnError()
 {
-    // Same mechanism as OpenCV's error() function.
-    static volatile int * p = 0;
-    *p = 0; // or replace by a breakpoint
+    // Same mechanism as OpenCV's error() function, or replace by a breakpoint.
+    int * p = NULL;
+    *p = 0;
 }
 #else
 #define avifBreakOnError()
