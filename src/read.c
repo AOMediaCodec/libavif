@@ -5304,24 +5304,24 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifTi
 
 uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 {
-    uint32_t gainMapRowCount = decoder->image->height;
+    const uint32_t colorRowCount = avifGetDecodedRowCount(decoder, &decoder->data->color, decoder->image);
+    if (colorRowCount == 0) {
+        return 0;
+    }
+    const uint32_t alphaRowCount = avifGetDecodedRowCount(decoder, &decoder->data->alpha, decoder->image);
+    if (alphaRowCount == 0) {
+        return 0;
+    }
+    uint32_t gainMapRowCount = colorRowCount;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    const avifImage * gainMap = decoder->image->gainMap.image;
+    const avifImage * const gainMap = decoder->image->gainMap.image;
     if (decoder->gainMapPresent && decoder->enableDecodingGainMap && gainMap != NULL) {
         gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->gainMap, gainMap);
         if (gainMap->height != decoder->image->height) {
             gainMapRowCount = (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
         }
     }
-    if (gainMapRowCount == 0) {
-        return 0;
-    }
 #endif
-    const uint32_t colorRowCount = avifGetDecodedRowCount(decoder, &decoder->data->color, decoder->image);
-    if (colorRowCount == 0) {
-        return 0;
-    }
-    const uint32_t alphaRowCount = avifGetDecodedRowCount(decoder, &decoder->data->alpha, decoder->image);
     return AVIF_MIN(AVIF_MIN(colorRowCount, alphaRowCount), gainMapRowCount);
 }
 
