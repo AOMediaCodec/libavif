@@ -213,5 +213,7 @@ public class AvifDecoderTest {
     assertThat(AvifDecoder.versionString()).startsWith("libavif");
     // Ensure that the version string contains "libyuv".
     assertThat(AvifDecoder.versionString()).contains("libyuv");
+    // Ensure that the version string contains "dav1d".
+    assertThat(AvifDecoder.versionString()).contains("dav1d");
   }
 }
