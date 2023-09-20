@@ -211,5 +211,7 @@ public class AvifDecoderTest {
     assertThat(AvifDecoder.resultToString(AVIF_RESULT_OK)).isEqualTo("OK");
     // Ensure that the version string starts with "libavif".
     assertThat(AvifDecoder.versionString()).startsWith("libavif");
+    // Ensure that the version string contains "libyuv".
+    assertThat(AvifDecoder.versionString()).contains("libyuv");
   }
 }

@@ -24,6 +24,9 @@ set(AVIF_CODEC_LIBGAV1 ON CACHE BOOL "" FORCE)
 set(AVIF_LOCAL_DAV1D OFF CACHE BOOL "" FORCE)
 set(AVIF_CODEC_DAV1D OFF CACHE BOOL "" FORCE)
 
+# To disable libyuv, change this variable to OFF.
+set(AVIF_LOCAL_LIBYUV ON CACHE BOOL "" FORCE)
+
 # The current CMake file lives in:
 # $LIBAVIF_ROOT/android_jni/avifandroidjni/src/main/jni.
 # In order to build libavif, we need to go up 5 directories. If a different
