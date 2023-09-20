@@ -7,6 +7,7 @@
 #include "avif/avif.h"
 #include "avif/gainmap.h"
 #include "avif/internal.h"
+#include "avifincrtest_helpers.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
@@ -180,20 +181,22 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   std::vector<const avifImage*> gain_map_ptrs;
   constexpr int kGridCols = 2;
   constexpr int kGridRows = 2;
+  constexpr int kCellWidth = 128;
+  constexpr int kCellHeight = 200;
 
   avifGainMapMetadata gain_map_metadata =
       GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
 
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
     testutil::AvifImagePtr image =
-        testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
+        testutil::CreateImage(kCellWidth, kCellHeight, /*depth=*/10,
                               AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
     ASSERT_NE(image, nullptr);
     image->transferCharacteristics =
         AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
     testutil::FillImageGradient(image.get());
     testutil::AvifImagePtr gain_map =
-        testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/8,
+        testutil::CreateImage(kCellWidth / 2, kCellHeight / 2, /*depth=*/8,
                               AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
     ASSERT_NE(gain_map, nullptr);
     testutil::FillImageGradient(gain_map.get());
@@ -252,6 +255,14 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   ASSERT_NE(decoded->gainMap.image, nullptr);
   ASSERT_GT(testutil::GetPsnr(*merged_gain_map, *decoded->gainMap.image), 40.0);
   CheckGainMapMetadataMatches(decoded->gainMap.metadata, gain_map_metadata);
+
+  // Check that non-incremental and incremental decodings of a grid AVIF produce
+  // the same pixels.
+  testutil::DecodeNonIncrementallyAndIncrementally(
+      encoded, decoder.get(),
+      /*is_persistent=*/true, /*give_size_hint=*/true,
+      /*use_nth_image_api=*/false, kCellHeight,
+      /*enable_fine_incremental_check=*/true);
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_grid.avif", std::ios::binary)
