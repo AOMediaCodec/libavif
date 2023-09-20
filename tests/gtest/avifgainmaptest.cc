@@ -5,7 +5,6 @@
 #include <fstream>
 
 #include "avif/avif.h"
-#include "avif/gainmap.h"
 #include "avif/internal.h"
 #include "avifincrtest_helpers.h"
 #include "aviftest_helpers.h"

@@ -1423,6 +1423,36 @@ AVIF_API uint32_t avifImagePlaneHeight(const avifImage * image, int channel);
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
 AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * input);
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+// ---------------------------------------------------------------------------
+// Gain Map related utilities.
+// Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
+// images containing a gain map encoded with the current version of libavif might
+// not decode with a future version of libavif. The API is not guaranteed
+// to be stable, and might even be removed in the future. Use are your own risk.
+
+// Same as avifGainMapMetadata, but with fields of type double instead of uint32_t fractions.
+// Use avifGainMapMetadataDoubleToFractions() to convert this to a avifGainMapMetadata.
+// See avifGainMapMetadata in avif.h for detailed descriptions of fields.
+typedef struct avifGainMapMetadataDouble
+{
+    double gainMapMin[3];
+    double gainMapMax[3];
+    double gainMapGamma[3];
+    double offsetSdr[3];
+    double offsetHdr[3];
+    double hdrCapacityMin;
+    double hdrCapacityMax;
+    avifBool baseRenditionIsHDR;
+} avifGainMapMetadataDouble;
+
+// Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values
+// to the closest uint32_t fractions.
+// Returns AVIF_FALSE if some field values are < 0 or > UINT32_MAX.
+AVIF_API avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
+
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

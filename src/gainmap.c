@@ -1,7 +1,6 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "avif/gainmap.h"
 #include "avif/avif.h"
 #include "avif/internal.h"
 
