@@ -13,7 +13,7 @@ namespace {
 // between numerator/denominator and v is below relative_tolerance.
 void TestRoundTrip(double v, double relative_tolerance) {
   uint32_t numerator, denominator;
-  ASSERT_TRUE(avifToUnsignedFraction(v, &numerator, &denominator)) << v;
+  ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
   const double reconstructed = (double)numerator / denominator;
   const double tolerance = v * relative_tolerance;
   EXPECT_NEAR(reconstructed, v, tolerance)
@@ -70,7 +70,7 @@ TEST(ToFractionUTest, MaxDifference) {
   for (uint64_t i = 0; i < UINT32_MAX; i += 1000) {
     const double v = i + kLotsOfDecimals;
     uint32_t numerator, denominator;
-    ASSERT_TRUE(avifToUnsignedFraction(v, &numerator, &denominator)) << v;
+    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
     const double reconstructed = (double)numerator / denominator;
     const double error = abs(reconstructed - v);
     const double relative_error = error / v;
@@ -97,7 +97,7 @@ TEST(ToFractionUTest, MaxDifferenceSmall) {
   for (uint64_t i = 1; i < UINT32_MAX; i += 1000) {
     const double v = 1.0 / (i + kLotsOfDecimals);
     uint32_t numerator, denominator;
-    ASSERT_TRUE(avifToUnsignedFraction(v, &numerator, &denominator)) << v;
+    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
     const double reconstructed = (double)numerator / denominator;
     const double error = abs(reconstructed - v);
     const double relative_error = error / v;
@@ -117,10 +117,10 @@ TEST(ToFractionUTest, MaxDifferenceSmall) {
 TEST(ToFractionUTest, BadValues) {
   uint32_t numerator, denominator;
   // Negative value.
-  EXPECT_FALSE(avifToUnsignedFraction(-0.1, &numerator, &denominator));
+  EXPECT_FALSE(avifDoubleToUnsignedFraction(-0.1, &numerator, &denominator));
   // Too large.
-  EXPECT_FALSE(avifToUnsignedFraction(((double)UINT32_MAX) + 1.0, &numerator,
-                                      &denominator));
+  EXPECT_FALSE(avifDoubleToUnsignedFraction(((double)UINT32_MAX) + 1.0,
+                                            &numerator, &denominator));
 }
 
 }  // namespace

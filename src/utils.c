@@ -235,7 +235,7 @@ avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result)
     return AVIF_TRUE;
 }
 
-avifBool avifToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
+avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
 {
     if (isnan(v) || v < 0 || v > UINT32_MAX) {
         return AVIF_FALSE;
