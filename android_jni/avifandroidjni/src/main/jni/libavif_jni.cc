@@ -376,10 +376,17 @@ FUNC(jstring, resultToString, jint result) {
 FUNC(jstring, versionString) {
   char codec_versions[256];
   avifCodecVersions(codec_versions);
+  char libyuv_version[64];
+  if (avifLibYUVVersion() > 0) {
+    snprintf(libyuv_version, sizeof(libyuv_version), " libyuv: %d.",
+             avifLibYUVVersion());
+  } else {
+    *libyuv_version = 0;
+  }
   char version_string[512];
   snprintf(version_string, sizeof(version_string),
-           "libavif: %s. Codecs: %s. libyuv: %d.", avifVersion(),
-           codec_versions, avifLibYUVVersion());
+           "libavif: %s. Codecs: %s.%s", avifVersion(),
+           codec_versions, libyuv_version);
   return env->NewStringUTF(version_string);
 }
 
