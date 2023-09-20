@@ -31,11 +31,18 @@ jobs:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835 # v1.14.1
         with:
-          # This is the minimum cmake version needed to build libgav1.
-          cmake-version: '3.7.x'
-      - name: Build libgav1 with the Android NDK
+          cmake-version: "3.19.x"
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Setup meson
+        run: pip install meson
+      - name: Setup nasm
+        uses: ilammy/setup-nasm@v1
+      - name: Build dav1d with the Android NDK
         working-directory: ext
-        run: bash libgav1_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: bash dav1d_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
       - name: Build libyuv with the Android NDK
         working-directory: ext
         run: bash libyuv_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}

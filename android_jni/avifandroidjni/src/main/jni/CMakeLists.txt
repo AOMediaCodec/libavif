@@ -16,16 +16,16 @@ project(avif_android_jni)
 # https://stackoverflow.com/questions/3766740/overriding-a-default-option-value-in-cmake-from-a-parent-cmakelists-txt
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-# To disable libgav1, change the following two variables to OFF.
-set(AVIF_LOCAL_LIBGAV1 ON CACHE BOOL "" FORCE)
-set(AVIF_CODEC_LIBGAV1 ON CACHE BOOL "" FORCE)
-
-# To disable dav1d, change the following two variables to ON.
-set(AVIF_LOCAL_DAV1D OFF CACHE BOOL "" FORCE)
-set(AVIF_CODEC_DAV1D OFF CACHE BOOL "" FORCE)
+# To disable dav1d, change the following two variables to OFF.
+set(AVIF_CODEC_DAV1D ON CACHE BOOL "" FORCE)
+set(AVIF_LOCAL_DAV1D ON CACHE BOOL "" FORCE)
 
 # To disable libyuv, change this variable to OFF.
 set(AVIF_LOCAL_LIBYUV ON CACHE BOOL "" FORCE)
+
+# To enable libgav1, change the following two variables to ON.
+set(AVIF_CODEC_LIBGAV1 OFF CACHE BOOL "" FORCE)
+set(AVIF_LOCAL_LIBGAV1 OFF CACHE BOOL "" FORCE)
 
 # The current CMake file lives in:
 # $LIBAVIF_ROOT/android_jni/avifandroidjni/src/main/jni.
