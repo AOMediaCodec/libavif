@@ -140,7 +140,7 @@ if(AVIF_ENABLE_GTEST)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         add_executable(avifgainmaptest gtest/avifgainmaptest.cc)
-        target_link_libraries(avifgainmaptest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
+        target_link_libraries(avifgainmaptest aviftest_helpers avifincrtest_helpers ${GTEST_BOTH_LIBRARIES})
         target_include_directories(avifgainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
         add_test(NAME avifgainmaptest COMMAND avifgainmaptest)
 

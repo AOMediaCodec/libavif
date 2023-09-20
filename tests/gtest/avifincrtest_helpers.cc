@@ -4,6 +4,7 @@
 #include "avifincrtest_helpers.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -62,6 +63,15 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
       row2 += row2_bytes;
     }
   }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+  if (image1.gainMap.image != nullptr && image2.gainMap.image != nullptr) {
+    const uint32_t gain_map_row_count = (uint32_t)roundf(
+        (float)row_count / image1.height * image1.gainMap.image->height);
+    ComparePartialYuva(*image1.gainMap.image, *image2.gainMap.image,
+                       gain_map_row_count);
+  }
+#endif
 }
 
 // Returns the expected number of decoded rows when available_byte_count out of
