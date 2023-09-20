@@ -5315,7 +5315,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
     uint32_t gainMapRowCount = colorRowCount;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     const avifImage * const gainMap = decoder->image->gainMap.image;
-    if (decoder->gainMapPresent && decoder->enableDecodingGainMap && gainMap != NULL) {
+    if (decoder->gainMapPresent && decoder->enableDecodingGainMap && gainMap != NULL && gainMap->height != 0) {
         gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->gainMap, gainMap);
         if (gainMap->height != decoder->image->height) {
             gainMapRowCount = (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
