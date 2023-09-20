@@ -501,31 +501,6 @@ avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp) {
 
 //------------------------------------------------------------------------------
 
-template <typename SampleType>
-bool IsOpaque(const avifImage* image) {
-  if (!image->alphaPlane) {
-    return true;
-  }
-
-  const SampleType opaque_alpha = (1 << image->depth) - 1;
-  for (uint32_t j = 0; j < image->height; ++j) {
-    const SampleType* const row = reinterpret_cast<SampleType*>(
-        image->alphaPlane + j * image->alphaRowBytes);
-    for (uint32_t i = 0; i < image->width; ++i) {
-      if (row[i] != opaque_alpha) {
-        assert(row[i] < opaque_alpha);
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool IsOpaque(const avifImage* image) {
-  return avifImageUsesU16(image) ? IsOpaque<uint16_t>(image)
-                                 : IsOpaque<uint8_t>(image);
-}
-
 std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
                                       uint32_t grid_cols, uint32_t grid_rows) {
   if (image->width < grid_cols || image->height < grid_rows) return {};

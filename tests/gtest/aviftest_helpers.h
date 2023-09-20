@@ -154,10 +154,6 @@ avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp);
 
 //------------------------------------------------------------------------------
 
-// Returns true if the given image has a fully opaque alpha plane, or no alpha
-// plane at all.
-bool IsOpaque(const avifImage* image);
-
 // Splits the input image into grid_cols*grid_rows views to be encoded as a
 // grid. Returns an empty vector if the input image cannot be split that way.
 std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
