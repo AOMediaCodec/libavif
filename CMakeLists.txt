@@ -359,7 +359,7 @@ if(AVIF_ENABLE_COMPLIANCE_WARDEN)
     list(
         APPEND
         AVIF_SRCS
-            src/compliance.cc
+        src/compliance.cc
         ext/ComplianceWarden/src/app/cw.cpp
         ext/ComplianceWarden/src/app/options.cpp
         ext/ComplianceWarden/src/app/report_std.cpp
