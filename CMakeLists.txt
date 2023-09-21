@@ -32,6 +32,7 @@ set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" ON)
+option(AVIF_USE_THREAD "Enable threading support" ON)
 
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -346,10 +347,16 @@ endif()
 set(CMAKE_FIND_FRAMEWORK LAST)
 
 if(UNIX)
+    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} m)
+endif()
+
+if(AVIF_USE_THREAD)
     # Find out if we have threading available
-    set(THREADS_PREFER_PTHREAD_FLAG ON)
-    find_package(Threads)
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} m Threads::Threads)
+    find_package(Threads QUIET)
+    if(TARGET Threads::Threads)
+        set(THREADS_PREFER_PTHREAD_FLAG ON)
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} Threads::Threads)
+    endif()
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)
