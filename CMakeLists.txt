@@ -346,7 +346,6 @@ set(CMAKE_FIND_FRAMEWORK LAST)
 
 if(UNIX)
     # Find out if we have threading available
-    set(CMAKE_THREAD_PREFER_PTHREADS ON)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} m Threads::Threads)
