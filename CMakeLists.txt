@@ -339,7 +339,6 @@ set(CMAKE_FIND_FRAMEWORK LAST)
 
 if(UNIX)
     # Find out if we have threading available
-    set(CMAKE_THREAD_PREFER_PTHREADS ON)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} m Threads::Threads)
@@ -748,7 +747,7 @@ endif()
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(
         TARGETS avif
-        EXPORT ${PROJECT_NAME}-targets
+        EXPORT ${PROJECT_NAME}-config
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -756,38 +755,13 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
 
     # Enable CMake configs in VCPKG mode
     if(BUILD_SHARED_LIBS OR VCPKG_TARGET_TRIPLET)
-        install(EXPORT ${PROJECT_NAME}-targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+        install(EXPORT ${PROJECT_NAME}-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
         include(CMakePackageConfigHelpers)
         write_basic_package_version_file(
             ${PROJECT_NAME}-config-version.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion
         )
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
-                DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-        )
-        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake.in "@PACKAGE_INIT@\n")
-        if(UNIX AND NOT BUILD_SHARED_LIBS)
-            file(
-                APPEND ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake.in
-                "
-                include(CMakeFindDependencyMacro)
-                set(CMAKE_THREAD_PREFER_PTHREADS ON)
-                set(THREADS_PREFER_PTHREAD_FLAG ON)
-                find_dependency(Threads)
-                "
-            )
-        endif()
-        file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake.in
-             "include(\${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}-targets.cmake)"
-        )
-
-        # Install CMake configuration export file.
-        configure_package_config_file(
-            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
-            INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME} NO_SET_AND_CHECK_MACRO
-                                                                              NO_CHECK_REQUIRED_COMPONENTS_MACRO
-        )
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
                 DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
         )
     endif()
