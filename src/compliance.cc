@@ -1,8 +1,6 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#if defined(AVIF_ENABLE_COMPLIANCE_WARDEN)
-
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -51,5 +49,3 @@ avifResult avifIsCompliant(uint8_t * data, size_t size)
     AVIF_CHECKERR(!checkComplianceStd(topReader.myBox, topReader.specs[0]), AVIF_RESULT_BMFF_PARSE_FAILED);
     return AVIF_RESULT_OK;
 }
-
-#endif // AVIF_ENABLE_COMPLIANCE_WARDEN
