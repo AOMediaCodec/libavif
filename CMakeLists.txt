@@ -352,9 +352,9 @@ endif()
 
 if(AVIF_USE_THREAD)
     # Find out if we have threading available
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads QUIET)
     if(TARGET Threads::Threads)
-        set(THREADS_PREFER_PTHREAD_FLAG ON)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} Threads::Threads)
     endif()
 endif()
