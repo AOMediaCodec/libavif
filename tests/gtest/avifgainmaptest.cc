@@ -451,6 +451,74 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   //      .write(reinterpret_cast<char*>(encoded.data), encoded.size);
 }
 
+void MakeTestImage(const std::string& path, uint32_t grid_cols,
+                   uint32_t grid_rows, uint32_t cell_width,
+                   uint32_t cell_height, uint32_t gain_map_grid_cols,
+                   uint32_t gain_map_grid_rows, uint32_t gain_map_cell_width,
+                   uint32_t gain_map_cell_height, uint8_t tmap_version = 0,
+                   uint16_t minimum_version = 0, uint16_t writer_version = 0,
+                   bool add_extra_bytes = false) {
+  std::vector<ImagePtr> cells;
+  std::vector<const avifImage*> cell_ptrs;
+  std::vector<ImagePtr> gain_map_cells;
+  std::vector<const avifImage*> gain_map_ptrs;
+
+  avifGainMapMetadata gain_map_metadata =
+      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
+  for (uint32_t i = 0; i < grid_cols * grid_rows; ++i) {
+    ImagePtr image =
+        testutil::CreateImage(cell_width, cell_height, /*depth=*/10,
+                              AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+    ASSERT_NE(image, nullptr);
+    image->gainMap = avifGainMapCreate();
+    image->gainMap->metadata = gain_map_metadata;
+    image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
+    image->gainMap->altDepth = 8;
+    image->gainMap->altPlaneCount = 3;
+    image->gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
+    image->gainMap->altTransferCharacteristics =
+        AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    image->gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+    testutil::FillImageGradient(image.get());
+
+    cell_ptrs.push_back(image.get());
+    cells.push_back(std::move(image));
+  }
+  for (uint32_t i = 0; i < gain_map_grid_cols * gain_map_grid_rows; ++i) {
+    ImagePtr gain_map = testutil::CreateImage(
+        gain_map_cell_width, gain_map_cell_height, /*depth=*/8,
+        AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
+    ASSERT_NE(gain_map, nullptr);
+    gain_map->gainMap = avifGainMapCreate();
+    gain_map->gainMap->metadata = gain_map_metadata;
+    testutil::FillImageGradient(gain_map.get());
+    gain_map_ptrs.push_back(gain_map.get());
+    gain_map_cells.push_back(std::move(gain_map));
+  }
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = 10;
+  avifEncoderInternalOptions internalOptions;
+  internalOptions.tmapVersion = tmap_version;
+  internalOptions.tmapMinimumVersion = minimum_version;
+  internalOptions.tmapWriterVersion = writer_version;
+  internalOptions.tmapAddExtraBytes = add_extra_bytes;
+  avifEncoderSetInternalOptions(encoder.get(), &internalOptions);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderAddImageGridInternal(
+      encoder.get(), grid_cols, grid_rows, cell_ptrs.data(), gain_map_grid_cols,
+      gain_map_grid_rows, gain_map_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+  result = avifEncoderFinish(encoder.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  std::ofstream(path, std::ios::binary)
+      .write(reinterpret_cast<char*>(encoded.data), encoded.size);
+}
+
 TEST(GainMapTest, InvalidGrid) {
   std::vector<ImagePtr> cells;
   std::vector<const avifImage*> cell_ptrs;
@@ -1161,6 +1229,66 @@ TEST(GainMapTest, CreateTestImages) {
           .write(reinterpret_cast<char*>(encoded_small_gainmap.data),
                  encoded_small_gainmap.size);
     }
+  }
+
+  if (kUpdateTestImages) {
+    MakeTestImage(
+        std::string(data_path) + "color_grid_gainmap_different_grid.avif",
+        /*grid_cols=*/4,
+        /*grid_rows=*/3,
+        /*cell_width=*/128, /*cell_heigh=*/200,
+        /*gain_map_grid_cols=*/2, /*gain_map_grid_rows=*/2,
+        /*gain_map_cell_width=*/64, /*gain_map_cell_height=*/80);
+    MakeTestImage(
+        std::string(data_path) + "color_grid_alpha_grid_gainmap_nogrid.avif",
+        /*grid_cols=*/4,
+        /*grid_rows=*/3,
+        /*cell_width=*/128, /*cell_heigh=*/200,
+        /*gain_map_grid_cols=*/1, /*gain_map_grid_rows=*/1,
+        /*gain_map_cell_width=*/64, /*gain_map_cell_height=*/80);
+    MakeTestImage(
+        std::string(data_path) + "color_nogrid_alpha_nogrid_gainmap_grid.avif",
+        /*grid_cols=*/1,
+        /*grid_rows=*/1,
+        /*cell_width=*/128, /*cell_heigh=*/200,
+        /*gain_map_grid_cols=*/2, /*gain_map_grid_rows=*/2,
+        /*gain_map_cell_width=*/64, /*gain_map_cell_height=*/80);
+    MakeTestImage(std::string(data_path) + "unsupported_gainmap_version.avif",
+                  /*grid_cols=*/1,
+                  /*grid_rows=*/1,
+                  /*cell_width=*/100, /*cell_heigh=*/100,
+                  /*gain_map_grid_cols=*/1, /*gain_map_grid_rows=*/1,
+                  /*gain_map_cell_width=*/50, /*gain_map_cell_height=*/50,
+                  /*tmap_version=*/99, /*minimum_version=*/0,
+                  /*writer_version=*/0);
+    MakeTestImage(
+        std::string(data_path) + "unsupported_gainmap_minimum_version.avif",
+        /*grid_cols=*/1,
+        /*grid_rows=*/1,
+        /*cell_width=*/100, /*cell_heigh=*/100,
+        /*gain_map_grid_cols=*/1, /*gain_map_grid_rows=*/1,
+        /*gain_map_cell_width=*/50, /*gain_map_cell_height=*/50,
+        /*tmap_version=*/0, /*minimum_version=*/99, /*writer_version=*/99);
+    MakeTestImage(
+        std::string(data_path) +
+            "unsupported_gainmap_writer_version_with_extra_bytes.avif",
+        /*grid_cols=*/1,
+        /*grid_rows=*/1,
+        /*cell_width=*/100, /*cell_heigh=*/100,
+        /*gain_map_grid_cols=*/1, /*gain_map_grid_rows=*/1,
+        /*gain_map_cell_width=*/50, /*gain_map_cell_height=*/50,
+        /*tmap_version=*/0, /*minimum_version=*/0, /*writer_version=*/99,
+        /*add_extra_bytes=*/1);
+    MakeTestImage(std::string(data_path) +
+                      "supported_gainmap_writer_version_with_extra_bytes.avif",
+                  /*grid_cols=*/1,
+                  /*grid_rows=*/1,
+                  /*cell_width=*/100, /*cell_heigh=*/100,
+                  /*gain_map_grid_cols=*/1, /*gain_map_grid_rows=*/1,
+                  /*gain_map_cell_width=*/50, /*gain_map_cell_height=*/50,
+                  /*tmap_version=*/0, /*minimum_version=*/0,
+                  /*writer_version=*/0,
+                  /*add_extra_bytes=*/1);
   }
 }
 
