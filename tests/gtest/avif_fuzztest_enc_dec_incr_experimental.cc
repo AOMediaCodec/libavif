@@ -89,10 +89,9 @@ void EncodeDecodeGridValid(AvifImagePtr image, AvifEncoderPtr encoder,
 
   decoder->enableParsingGainMapMetadata = true;
   decoder->enableDecodingGainMap = true;
-  DecodeNonIncrementallyAndIncrementally(encoded_data, decoder.get(),
-                                         is_encoded_data_persistent,
-                                         give_size_hint_to_decoder,
-                                         /*useNthImageApi=*/true, cell_height);
+  DecodeNonIncrementallyAndIncrementally(
+      encoded_data, decoder.get(), is_encoded_data_persistent,
+      give_size_hint_to_decoder, /*use_nth_image_api=*/true, cell_height);
 }
 
 // Note that avifGainMapMetadata is passed as a byte array
