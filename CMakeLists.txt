@@ -67,7 +67,8 @@ option(AVIF_LOCAL_GTEST
        "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)" OFF
 )
 option(AVIF_LOCAL_FUZZTEST
-       "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)" OFF
+       "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)"
+       OFF
 )
 option(AVIF_LOCAL_AVM "Build the AVM (AV2) codec by providing your own copy of the repo in ext/avm (see Local Builds in README)"
        OFF
@@ -358,12 +359,9 @@ set(AVIF_CODEC_SYSTEM_INCLUDES)
 set(AVIF_CODEC_LIBRARIES)
 
 if(NOT libyuv_FOUND)
-    set(AVIF_SRCS ${AVIF_SRCS}
-        third_party/libyuv/source/scale.c
-        third_party/libyuv/source/scale_common.c
-        third_party/libyuv/source/scale_any.c
-        third_party/libyuv/source/row_common.c
-        third_party/libyuv/source/planar_functions.c
+    set(AVIF_SRCS
+        ${AVIF_SRCS} third_party/libyuv/source/scale.c third_party/libyuv/source/scale_common.c
+        third_party/libyuv/source/scale_any.c third_party/libyuv/source/row_common.c third_party/libyuv/source/planar_functions.c
     )
     if(DEFINED ANDROID_ABI OR DEFINED APPLE)
         # When building third_party/libyuv/source/scale.c, some functions use
@@ -650,14 +648,18 @@ endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
-option(AVIF_ENABLE_GOLDEN_TESTS
-       "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON, and depends on MP4box which can be built with ext/mp4box.sh" OFF
+option(
+    AVIF_ENABLE_GOLDEN_TESTS
+    "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON, and depends on MP4box which can be built with ext/mp4box.sh"
+    OFF
 )
 option(AVIF_ENABLE_GTEST
        "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
 )
-option(AVIF_ENABLE_FUZZTEST
-       "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS and AVIF_ENABLE_GTEST are ON." OFF
+option(
+    AVIF_ENABLE_FUZZTEST
+    "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS and AVIF_ENABLE_GTEST are ON."
+    OFF
 )
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))

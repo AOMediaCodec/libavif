@@ -268,7 +268,10 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
         add_subdirectory(${CMAKE_SOURCE_DIR}/ext/fuzztest ${CMAKE_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL)
         # FuzzTest bundles GoogleTest so no need for the targets below to link to GTEST_BOTH_LIBRARIES.
     else()
-        message(FATAL_ERROR "fuzztest: Installed FuzzTest is not supported, please set AVIF_LOCAL_FUZZTEST=ON or AVIF_ENABLE_FUZZTEST=OFF")
+        message(
+            FATAL_ERROR
+                "fuzztest: Installed FuzzTest is not supported, please set AVIF_LOCAL_FUZZTEST=ON or AVIF_ENABLE_FUZZTEST=OFF"
+        )
     endif()
 
     add_executable(avif_fuzztest_dec_incr gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_dec_incr.cc)
@@ -284,13 +287,18 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
     add_test(NAME avif_fuzztest_enc_dec COMMAND avif_fuzztest_enc_dec)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        add_executable(avif_fuzztest_enc_dec_experimental gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_experimental.cc)
+        add_executable(
+            avif_fuzztest_enc_dec_experimental gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_experimental.cc
+        )
         target_link_libraries(avif_fuzztest_enc_dec_experimental PRIVATE aviftest_helpers)
         link_fuzztest(avif_fuzztest_enc_dec_experimental)
         gtest_discover_tests(avif_fuzztest_enc_dec_experimental)
         add_test(NAME avif_fuzztest_enc_dec_experimental COMMAND avif_fuzztest_enc_dec_experimental)
 
-        add_executable(avif_fuzztest_enc_dec_incr_experimental gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_incr_experimental.cc)
+        add_executable(
+            avif_fuzztest_enc_dec_incr_experimental gtest/avif_fuzztest_helpers.cc
+                                                    gtest/avif_fuzztest_enc_dec_incr_experimental.cc
+        )
         target_link_libraries(avif_fuzztest_enc_dec_incr_experimental PRIVATE aviftest_helpers avifincrtest_helpers)
         link_fuzztest(avif_fuzztest_enc_dec_incr_experimental)
         gtest_discover_tests(avif_fuzztest_enc_dec_incr_experimental)
@@ -356,8 +364,8 @@ if(AVIF_BUILD_APPS)
 
         if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
             add_test(NAME test_cmd_enc_gainmap_boxes_golden
-                    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_gainmap_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
-                            ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
+                     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_gainmap_boxes_golden.sh ${CMAKE_BINARY_DIR}
+                             ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
             )
         endif()
     endif()
