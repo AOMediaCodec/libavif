@@ -60,6 +60,19 @@ add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
 ################################################################################
 # GoogleTest
 
+# Adds a gtest from file TEST_NAME.cc located in the gtest folder. Extra arguments
+# are considered as extra linked libraries.
+macro(add_avif_gtest TEST_NAME USE_DATA)
+    add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
+    target_include_directories(${TEST_NAME} PRIVATE ${GTEST_INCLUDE_DIRS})
+    target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${GTEST_BOTH_LIBRARIES} ${ARGN})
+    if(${USE_DATA})
+        add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    else()
+        add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    endif()
+endmacro()
+
 if(AVIF_ENABLE_GTEST)
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
@@ -81,86 +94,32 @@ if(AVIF_ENABLE_GTEST)
         find_package(GTest REQUIRED)
     endif()
 
-    add_executable(avifallocationtest gtest/avifallocationtest.cc)
-    target_link_libraries(avifallocationtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifallocationtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifallocationtest COMMAND avifallocationtest)
-
-    add_executable(avifalphanoispetest gtest/avifalphanoispetest.cc)
-    target_link_libraries(avifalphanoispetest aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifalphanoispetest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifalphanoispetest COMMAND avifalphanoispetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(avifalphapremtest gtest/avifalphapremtest.cc)
-    target_link_libraries(avifalphapremtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifalphapremtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifalphapremtest COMMAND avifalphapremtest)
-
-    add_executable(avifanimationtest gtest/avifanimationtest.cc)
-    target_link_libraries(avifanimationtest aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifanimationtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifanimationtest COMMAND avifanimationtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(avifbasictest gtest/avifbasictest.cc)
-    target_link_libraries(avifbasictest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifbasictest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifbasictest COMMAND avifbasictest)
-
-    add_executable(avifchangesettingtest gtest/avifchangesettingtest.cc)
-    target_link_libraries(avifchangesettingtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifchangesettingtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifchangesettingtest COMMAND avifchangesettingtest)
-
-    add_executable(avifclaptest gtest/avifclaptest.cc)
-    target_link_libraries(avifclaptest avif ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifclaptest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifclaptest COMMAND avifclaptest)
-
-    add_executable(avifcllitest gtest/avifcllitest.cc)
-    target_link_libraries(avifcllitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifcllitest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifcllitest COMMAND avifcllitest)
-
-    add_executable(avifcodectest gtest/avifcodectest.cc)
-    target_link_libraries(avifcodectest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifcodectest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifcodectest COMMAND avifcodectest)
+    add_avif_gtest(avifallocationtest 0)
+    add_avif_gtest(avifalphanoispetest 1)
+    add_avif_gtest(avifalphapremtest 0)
+    add_avif_gtest(avifanimationtest 1)
+    add_avif_gtest(avifbasictest 0)
+    add_avif_gtest(avifchangesettingtest 0)
+    add_avif_gtest(avifclaptest 0)
+    add_avif_gtest(avifcllitest 0)
+    add_avif_gtest(avifcodectest 0)
 
     if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-        add_executable(avifconitest gtest/avifconitest.cc)
-        target_link_libraries(avifconitest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-        target_include_directories(avifconitest PRIVATE ${GTEST_INCLUDE_DIRS})
-        add_test(NAME avifconitest COMMAND avifconitest)
+        add_avif_gtest(avifconitest 0)
     endif()
 
-    add_executable(avifdecodetest gtest/avifdecodetest.cc)
-    target_link_libraries(avifdecodetest aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifdecodetest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifdecodetest COMMAND avifdecodetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    add_avif_gtest(avifdecodetest 1)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        add_executable(avifgainmaptest gtest/avifgainmaptest.cc)
-        target_link_libraries(avifgainmaptest aviftest_helpers avifincrtest_helpers ${GTEST_BOTH_LIBRARIES})
-        target_include_directories(avifgainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
-        add_test(NAME avifgainmaptest COMMAND avifgainmaptest)
+        add_avif_gtest(avifgainmaptest 0 avifincrtest_helpers)
 
         if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-            add_executable(avifjpeggainmaptest gtest/avifjpeggainmaptest.cc)
-            target_link_libraries(avifjpeggainmaptest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-            target_include_directories(avifjpeggainmaptest PRIVATE ${GTEST_INCLUDE_DIRS})
-            add_test(NAME avifjpeggainmaptest COMMAND avifjpeggainmaptest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+            add_avif_gtest(avifjpeggainmaptest 1)
         endif()
     endif()
 
-    add_executable(avifgridapitest gtest/avifgridapitest.cc)
-    target_link_libraries(avifgridapitest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifgridapitest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifgridapitest COMMAND avifgridapitest)
-
-    add_executable(avifimagetest gtest/avifimagetest.cc)
-    target_link_libraries(avifimagetest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifimagetest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifimagetest COMMAND avifimagetest)
+    add_avif_gtest(avifgridapitest 0)
+    add_avif_gtest(avifimagetest 0)
 
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
     target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
@@ -170,70 +129,19 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
     add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
-    add_executable(avifiostatstest gtest/avifiostatstest.cc)
-    target_link_libraries(avifiostatstest avif_internal aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifiostatstest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifiostatstest COMMAND avifiostatstest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(aviflosslesstest gtest/aviflosslesstest.cc)
-    target_link_libraries(aviflosslesstest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(aviflosslesstest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME aviflosslesstest COMMAND aviflosslesstest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(avifmetadatatest gtest/avifmetadatatest.cc)
-    target_link_libraries(avifmetadatatest aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifmetadatatest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifmetadatatest COMMAND avifmetadatatest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(avifopaquetest gtest/avifopaquetest.cc)
-    target_link_libraries(avifopaquetest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifopaquetest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifopaquetest COMMAND avifopaquetest)
-
-    add_executable(avifpng16bittest gtest/avifpng16bittest.cc)
-    target_link_libraries(avifpng16bittest aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifpng16bittest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifpng16bittest COMMAND avifpng16bittest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(avifprogressivetest gtest/avifprogressivetest.cc)
-    target_link_libraries(avifprogressivetest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifprogressivetest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifprogressivetest COMMAND avifprogressivetest)
-
-    add_executable(avifreadimagetest gtest/avifreadimagetest.cc)
-    target_link_libraries(avifreadimagetest aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifreadimagetest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifreadimagetest COMMAND avifreadimagetest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(avifrgbtoyuvtest gtest/avifrgbtoyuvtest.cc)
-    target_link_libraries(avifrgbtoyuvtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifrgbtoyuvtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifrgbtoyuvtest COMMAND avifrgbtoyuvtest)
-
-    add_executable(avifscaletest gtest/avifscaletest.cc)
-    target_link_libraries(avifscaletest avif_internal aviftest_helpers ${GTEST_LIBRARIES})
-    target_include_directories(avifscaletest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifscaletest COMMAND avifscaletest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(avifstreamtest gtest/avifstreamtest.cc)
-    target_link_libraries(avifstreamtest avif_internal aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifstreamtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifstreamtest COMMAND avifstreamtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-
-    add_executable(aviftilingtest gtest/aviftilingtest.cc)
-    target_link_libraries(aviftilingtest avif_internal ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(aviftilingtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME aviftilingtest COMMAND aviftilingtest)
-
-    add_executable(avifutilstest gtest/avifutilstest.cc)
-    target_link_libraries(avifutilstest avif_internal ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avifutilstest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avifutilstest COMMAND avifutilstest)
-
-    add_executable(avify4mtest gtest/avify4mtest.cc)
-    target_link_libraries(avify4mtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-    target_include_directories(avify4mtest PRIVATE ${GTEST_INCLUDE_DIRS})
-    add_test(NAME avify4mtest COMMAND avify4mtest)
+    add_avif_gtest(avifiostatstest 1)
+    add_avif_gtest(aviflosslesstest 1)
+    add_avif_gtest(avifmetadatatest 1)
+    add_avif_gtest(avifopaquetest 0)
+    add_avif_gtest(avifpng16bittest 1)
+    add_avif_gtest(avifprogressivetest 0)
+    add_avif_gtest(avifreadimagetest 1)
+    add_avif_gtest(avifrgbtoyuvtest 0)
+    add_avif_gtest(avifscaletest 1)
+    add_avif_gtest(avifstreamtest 1)
+    add_avif_gtest(aviftilingtest 0)
+    add_avif_gtest(avifutilstest 0)
+    add_avif_gtest(avify4mtest 0)
 
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE OR NOT AVIF_CODEC_AOM_DECODE)
         # These tests are supported with aom being the encoder and decoder. If aom is unavailable,
@@ -257,6 +165,17 @@ endif()
 # Experimental FuzzTest support (Linux only)
 
 if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
+    # Adds a fuzztest from file TEST_FILE located in the gtest folder. Extra arguments
+    # are considered as extra linked libraries.
+    macro(add_avif_fuzztest TEST_NAME)
+        add_executable(${TEST_NAME} gtest/${TEST_FILE}.cc gtest/avif_fuzztest_helpers.cc)
+        target_include_directories(${TEST_NAME} PRIVATE ${GTEST_INCLUDE_DIRS})
+        target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${ARGN})
+        link_fuzztest(${TEST_NAME})
+        gtest_discover_tests(${TEST_NAME})
+        add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    endmacro()
+
     if(AVIF_LOCAL_FUZZTEST)
         # Run ext/fuzztest.cmd first.
         # Recommended top-level CMake options:
@@ -274,42 +193,15 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
         )
     endif()
 
-    add_executable(avif_fuzztest_dec_incr gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_dec_incr.cc)
-    target_link_libraries(avif_fuzztest_dec_incr PRIVATE avifincrtest_helpers)
-    link_fuzztest(avif_fuzztest_dec_incr)
-    gtest_discover_tests(avif_fuzztest_dec_incr)
-    add_test(NAME avif_fuzztest_dec_incr COMMAND avif_fuzztest_dec_incr)
-
-    add_executable(avif_fuzztest_enc_dec gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec.cc)
-    target_link_libraries(avif_fuzztest_enc_dec PRIVATE aviftest_helpers)
-    link_fuzztest(avif_fuzztest_enc_dec)
-    gtest_discover_tests(avif_fuzztest_enc_dec)
-    add_test(NAME avif_fuzztest_enc_dec COMMAND avif_fuzztest_enc_dec)
+    add_avif_fuzztest(avif_fuzztest_dec_incr avifincrtest_helpers)
+    add_avif_fuzztest(avif_fuzztest_enc_dec)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        add_executable(
-            avif_fuzztest_enc_dec_experimental gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_experimental.cc
-        )
-        target_link_libraries(avif_fuzztest_enc_dec_experimental PRIVATE aviftest_helpers)
-        link_fuzztest(avif_fuzztest_enc_dec_experimental)
-        gtest_discover_tests(avif_fuzztest_enc_dec_experimental)
-        add_test(NAME avif_fuzztest_enc_dec_experimental COMMAND avif_fuzztest_enc_dec_experimental)
-
-        add_executable(
-            avif_fuzztest_enc_dec_incr_experimental gtest/avif_fuzztest_helpers.cc
-                                                    gtest/avif_fuzztest_enc_dec_incr_experimental.cc
-        )
-        target_link_libraries(avif_fuzztest_enc_dec_incr_experimental PRIVATE aviftest_helpers avifincrtest_helpers)
-        link_fuzztest(avif_fuzztest_enc_dec_incr_experimental)
-        gtest_discover_tests(avif_fuzztest_enc_dec_incr_experimental)
-        add_test(NAME avif_fuzztest_enc_dec_incr_experimental COMMAND avif_fuzztest_enc_dec_incr_experimental)
+        add_avif_fuzztest(avif_fuzztest_enc_dec_experimental)
+        add_avif_fuzztest(avif_fuzztest_enc_dec_incr_experimental avifincrtest_helpers)
     endif()
 
-    add_executable(avif_fuzztest_enc_dec_incr gtest/avif_fuzztest_helpers.cc gtest/avif_fuzztest_enc_dec_incr.cc)
-    target_link_libraries(avif_fuzztest_enc_dec_incr PRIVATE aviftest_helpers avifincrtest_helpers)
-    link_fuzztest(avif_fuzztest_enc_dec_incr)
-    gtest_discover_tests(avif_fuzztest_enc_dec_incr)
-    add_test(NAME avif_fuzztest_enc_dec_incr COMMAND avif_fuzztest_enc_dec_incr)
+    add_avif_fuzztest(avif_fuzztest_enc_dec_incr avifincrtest_helpers)
 elseif(AVIF_ENABLE_GTEST)
     message(STATUS "FuzzTest targets are disabled because AVIF_ENABLE_FUZZTEST is OFF.")
 endif()
@@ -394,10 +286,7 @@ endif()
 
 if(AVIF_CODEC_AVM)
     if(AVIF_ENABLE_GTEST)
-        add_executable(avifavmtest gtest/avifavmtest.cc)
-        target_link_libraries(avifavmtest aviftest_helpers ${GTEST_BOTH_LIBRARIES})
-        target_include_directories(avifavmtest PRIVATE ${GTEST_INCLUDE_DIRS})
-        add_test(NAME avifavmtest COMMAND avifavmtest)
+        add_avif_gtest(avifavmtest 0)
     endif()
 
     if(AVIF_BUILD_APPS)
