@@ -790,9 +790,6 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
     install(FILES include/avif/avif.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
-    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        install(FILES include/avif/gainmap.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
-    endif()
 endif()
 
 # ---------------------------------------------------------------------------------------

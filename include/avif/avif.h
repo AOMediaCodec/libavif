@@ -605,6 +605,27 @@ typedef struct avifGainMap
     // For an image grid, the metadata shall be identical for all cells.
     avifGainMapMetadata metadata;
 } avifGainMap;
+
+// Same as avifGainMapMetadata, but with fields of type double instead of uint32_t fractions.
+// Use avifGainMapMetadataDoubleToFractions() to convert this to a avifGainMapMetadata.
+// See avifGainMapMetadata for detailed descriptions of fields.
+typedef struct avifGainMapMetadataDouble
+{
+    double gainMapMin[3];
+    double gainMapMax[3];
+    double gainMapGamma[3];
+    double offsetSdr[3];
+    double offsetHdr[3];
+    double hdrCapacityMin;
+    double hdrCapacityMax;
+    avifBool baseRenditionIsHDR;
+} avifGainMapMetadataDouble;
+
+// Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values
+// to the closest uint32_t fractions.
+// Returns AVIF_FALSE if some field values are < 0 or > UINT32_MAX.
+AVIF_API avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
+
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 // ---------------------------------------------------------------------------

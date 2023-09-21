@@ -19,7 +19,6 @@
 #include "iccjpeg.h"
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-#include "avif/gainmap.h"
 #include <libxml/parser.h>
 #endif
 
