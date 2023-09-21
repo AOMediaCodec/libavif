@@ -6,6 +6,8 @@
 #include <limits>
 
 #include "avif/internal.h"
+
+// From ../ext/ComplianceWarden/src/utils/
 #include "box_reader_impl.h"
 #include "spec.h"
 
@@ -30,7 +32,7 @@ avifResult avifIsCompliant(uint8_t * data, size_t size)
         registerSpec(globalSpecMiaf);
     }
 
-    // Inspired from ComplianceWarden/src/app/cw.cpp
+    // Inspired from ext/ComplianceWarden/src/app/cw.cpp
     BoxReader topReader;
     for (char sym : { 'f', 'i', 'l', 'e', '.', 'a', 'v', 'i', 'f' }) {
         // Setting made-up file name (letter by letter).
@@ -46,6 +48,7 @@ avifResult avifIsCompliant(uint8_t * data, size_t size)
     AVIF_CHECKERR(topReader.specs[0] != nullptr, AVIF_RESULT_UNKNOWN_ERROR);
     auto parseFunc = getParseFunction(topReader.myBox.fourcc);
     parseFunc(&topReader);
+    // gpac/ComplianceWarden will print the formatted result page to stdout, warnings and errors inclusive.
     AVIF_CHECKERR(!checkComplianceStd(topReader.myBox, topReader.specs[0]), AVIF_RESULT_BMFF_PARSE_FAILED);
     return AVIF_RESULT_OK;
 }
