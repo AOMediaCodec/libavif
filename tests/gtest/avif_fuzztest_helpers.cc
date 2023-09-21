@@ -17,8 +17,10 @@ namespace {
 AvifImagePtr CreateAvifImage(size_t width, size_t height, int depth,
                              avifPixelFormat pixel_format, bool has_alpha,
                              const uint8_t* samples) {
-  AvifImagePtr image(avifImageCreate(width, height, depth, pixel_format),
-                     avifImageDestroy);
+  AvifImagePtr image(
+      avifImageCreate(static_cast<uint32_t>(width),
+                      static_cast<uint32_t>(height), depth, pixel_format),
+      avifImageDestroy);
   if (image.get() == nullptr) {
     return image;
   }
@@ -166,33 +168,6 @@ std::vector<uint8_t> GetWhiteSinglePixelAvif() {
       0x0,  0x1f, 0x6d, 0x64, 0x61, 0x74, 0x12, 0x0,  0xa,  0x7,  0x38, 0x0,
       0x6,  0x10, 0x10, 0xd0, 0x69, 0x32, 0xa,  0x1f, 0xf0, 0x3f, 0xff, 0xff,
       0xc4, 0x0,  0x0,  0xaf, 0x70};
-}
-
-//------------------------------------------------------------------------------
-
-template <typename SampleType>
-bool IsOpaque(const avifImage* image) {
-  if (!image->alphaPlane) {
-    return true;
-  }
-
-  const SampleType opaque_alpha = (1 << image->depth) - 1;
-  for (uint32_t j = 0; j < image->height; ++j) {
-    const SampleType* const row = reinterpret_cast<SampleType*>(
-        image->alphaPlane + j * image->alphaRowBytes);
-    for (uint32_t i = 0; i < image->width; ++i) {
-      if (row[i] != opaque_alpha) {
-        assert(row[i] < opaque_alpha);
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool IsOpaque(const avifImage* image) {
-  return avifImageUsesU16(image) ? IsOpaque<uint16_t>(image)
-                                 : IsOpaque<uint8_t>(image);
 }
 
 //------------------------------------------------------------------------------

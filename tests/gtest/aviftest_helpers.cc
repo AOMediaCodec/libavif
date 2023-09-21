@@ -501,5 +501,60 @@ avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp) {
 
 //------------------------------------------------------------------------------
 
+std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
+                                      uint32_t grid_cols, uint32_t grid_rows) {
+  if (image->width < grid_cols || image->height < grid_rows) return {};
+
+  // Round up, to make sure all samples are used by exactly one cell.
+  uint32_t cell_width = (image->width + grid_cols - 1) / grid_cols;
+  uint32_t cell_height = (image->height + grid_rows - 1) / grid_rows;
+
+  if ((grid_cols - 1) * cell_width >= image->width) {
+    // Some cells are completely outside the image. Fallback to a grid entirely
+    // contained within the image boundaries. Some samples will be discarded but
+    // at least the test can go on.
+    cell_width = image->width / grid_cols;
+  }
+  if ((grid_rows - 1) * cell_height >= image->height) {
+    cell_height = image->height / grid_rows;
+  }
+
+  std::vector<AvifImagePtr> cells;
+  for (uint32_t row = 0; row < grid_rows; ++row) {
+    for (uint32_t col = 0; col < grid_cols; ++col) {
+      avifCropRect rect{col * cell_width, row * cell_height, cell_width,
+                        cell_height};
+      assert(rect.x < image->width);
+      assert(rect.y < image->height);
+      // The right-most and bottom-most cells may be smaller than others.
+      // The encoder will pad them.
+      if (rect.x + rect.width > image->width) {
+        rect.width = image->width - rect.x;
+      }
+      if (rect.y + rect.height > image->height) {
+        rect.height = image->height - rect.y;
+      }
+      cells.emplace_back(avifImageCreateEmpty(), avifImageDestroy);
+      if (avifImageSetViewRect(cells.back().get(), image, &rect) !=
+          AVIF_RESULT_OK) {
+        return {};
+      }
+    }
+  }
+  return cells;
+}
+
+std::vector<const avifImage*> UniquePtrToRawPtr(
+    const std::vector<AvifImagePtr>& unique_ptrs) {
+  std::vector<const avifImage*> rawPtrs;
+  rawPtrs.reserve(unique_ptrs.size());
+  for (const AvifImagePtr& unique_ptr : unique_ptrs) {
+    rawPtrs.emplace_back(unique_ptr.get());
+  }
+  return rawPtrs;
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace testutil
 }  // namespace libavif

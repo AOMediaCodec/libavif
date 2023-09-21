@@ -42,8 +42,8 @@ void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
   EXPECT_EQ(decoded_image->yuvFormat, image->yuvFormat);
 
   // Verify that an opaque input leads to an opaque output.
-  if (IsOpaque(image.get())) {
-    EXPECT_TRUE(IsOpaque(decoded_image.get()));
+  if (avifImageIsOpaque(image.get())) {
+    EXPECT_TRUE(avifImageIsOpaque(decoded_image.get()));
   }
   // A transparent image may be heavily compressed to an opaque image. This is
   // hard to verify so do not check it.

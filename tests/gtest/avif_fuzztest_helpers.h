@@ -127,8 +127,8 @@ inline auto ArbitraryAvifEncoder() {
 }
 
 inline auto ArbitraryAvifDecoder(
-    const std::vector<avifCodecChoice>& codecChoices) {
-  const auto codec_choice = fuzztest::ElementOf<avifCodecChoice>(codecChoices);
+    const std::vector<avifCodecChoice>& codec_choices) {
+  const auto codec_choice = fuzztest::ElementOf<avifCodecChoice>(codec_choices);
   // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
   const auto max_threads = fuzztest::InRange(0, 64);
   return fuzztest::Map(
@@ -167,12 +167,6 @@ class FuzztestStackLimitEnvironment : public ::testing::Environment {
  private:
   const char* stack_limit_;
 };
-
-//------------------------------------------------------------------------------
-
-// Returns true if the given image has a fully opaque alpha plane, or no alpha
-// plane at all.
-bool IsOpaque(const avifImage* image);
 
 //------------------------------------------------------------------------------
 
