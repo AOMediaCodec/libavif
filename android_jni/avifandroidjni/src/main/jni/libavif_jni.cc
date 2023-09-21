@@ -378,10 +378,10 @@ FUNC(jstring, versionString) {
   avifCodecVersions(codec_versions);
   char libyuv_version[64];
   if (avifLibYUVVersion() > 0) {
-    snprintf(libyuv_version, sizeof(libyuv_version), " libyuv: %d.",
+    snprintf(libyuv_version, sizeof(libyuv_version), " libyuv: %u.",
              avifLibYUVVersion());
   } else {
-    *libyuv_version = 0;
+    libyuv_version[0] = '\0';
   }
   char version_string[512];
   snprintf(version_string, sizeof(version_string),
