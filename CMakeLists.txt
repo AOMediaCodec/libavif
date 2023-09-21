@@ -74,8 +74,16 @@ option(AVIF_LOCAL_AVM "Build the AVM (AV2) codec by providing your own copy of t
        OFF
 )
 
+option(
+    AVIF_ENABLE_COMPLIANCE_WARDEN
+    "Check all avifEncoderFinish() output for AVIF specification compliance. Depends on gpac/ComplianceWarden which can be added with ext/compliance_warden.sh"
+    OFF
+)
+
+set(AVIF_USE_CXX OFF)
+
 if(AVIF_LOCAL_LIBGAV1)
-    enable_language(CXX)
+    set(AVIF_USE_CXX ON)
 endif()
 
 if(APPLE)
@@ -340,6 +348,45 @@ if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     list(APPEND AVIF_SRCS src/gainmap.c)
 endif()
 
+if(AVIF_ENABLE_COMPLIANCE_WARDEN)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/ComplianceWarden")
+        message(FATAL_ERROR "AVIF_ENABLE_COMPLIANCE_WARDEN: ext/ComplianceWarden is missing, bailing out")
+    endif()
+
+    set(AVIF_USE_CXX ON)
+    add_compile_definitions(AVIF_ENABLE_COMPLIANCE_WARDEN)
+
+    list(
+        APPEND
+        AVIF_SRCS
+        src/compliance.cc
+        ext/ComplianceWarden/src/app/cw.cpp
+        ext/ComplianceWarden/src/app/options.cpp
+        ext/ComplianceWarden/src/app/report_std.cpp
+        ext/ComplianceWarden/src/app/report_json.cpp
+        ext/ComplianceWarden/src/utils/common_boxes.cpp
+        ext/ComplianceWarden/src/utils/tools.cpp
+        ext/ComplianceWarden/src/utils/av1_utils.cpp
+        ext/ComplianceWarden/src/utils/isobmff_utils.cpp
+        ext/ComplianceWarden/src/utils/isobmff_derivations.cpp
+        ext/ComplianceWarden/src/utils/spec_utils.cpp
+        ext/ComplianceWarden/src/specs/av1_hdr10plus/av1_hdr10plus.cpp
+        ext/ComplianceWarden/src/specs/avif/avif.cpp
+        ext/ComplianceWarden/src/specs/avif/profiles.cpp
+        ext/ComplianceWarden/src/specs/avif/utils.cpp
+        ext/ComplianceWarden/src/specs/isobmff/isobmff.cpp
+        ext/ComplianceWarden/src/specs/heif/heif.cpp
+        ext/ComplianceWarden/src/specs/miaf/miaf.cpp
+        ext/ComplianceWarden/src/specs/miaf/audio.cpp
+        ext/ComplianceWarden/src/specs/miaf/brands.cpp
+        ext/ComplianceWarden/src/specs/miaf/derivations.cpp
+        ext/ComplianceWarden/src/specs/miaf/colours.cpp
+        ext/ComplianceWarden/src/specs/miaf/num_pixels.cpp
+        ext/ComplianceWarden/src/specs/miaf/profiles.cpp
+        ext/ComplianceWarden/src/cw_version.cpp
+    )
+endif()
+
 # Only applicable to macOS. In GitHub CI's macos-latest os image, this prevents using the libpng
 # and libjpeg headers from /Library/Frameworks/Mono.framework/Headers instead of
 # /usr/local/include.
@@ -594,11 +641,14 @@ target_include_directories(avif SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} 
 if(NOT libyuv_FOUND)
     target_include_directories(avif PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
 endif()
+if(AVIF_ENABLE_COMPLIANCE_WARDEN)
+    target_include_directories(avif PRIVATE ${libavif_SOURCE_DIR}/ext/ComplianceWarden/src/utils/)
+endif()
 set(AVIF_PKG_CONFIG_EXTRA_CFLAGS "")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif PUBLIC AVIF_DLL PRIVATE AVIF_BUILDING_SHARED_LIBS)
     set(AVIF_PKG_CONFIG_EXTRA_CFLAGS " -DAVIF_DLL")
-    if(AVIF_LOCAL_LIBGAV1)
+    if(AVIF_USE_CXX)
         set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
 endif()
@@ -626,7 +676,7 @@ if(AVIF_BUILD_EXAMPLES)
 
     foreach(EXAMPLE ${AVIF_EXAMPLES})
         add_executable(${EXAMPLE} examples/${EXAMPLE}.c)
-        if(AVIF_LOCAL_LIBGAV1)
+        if(AVIF_USE_CXX)
             set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
         endif()
         target_link_libraries(${EXAMPLE} avif ${AVIF_PLATFORM_LIBRARIES})
@@ -642,6 +692,11 @@ if(NOT SKIP_INSTALL_ALL)
 endif()
 
 if(AVIF_CODEC_LIBRARIES MATCHES vmaf)
+    # vmaf only impacts the avifenc and avifdec targets below, not the library avif target above.
+    set(AVIF_USE_CXX ON)
+endif()
+
+if(AVIF_USE_CXX)
     enable_language(CXX)
 endif()
 
@@ -697,12 +752,12 @@ endif()
 
 if(AVIF_BUILD_APPS)
     add_executable(avifenc apps/avifenc.c)
-    if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
+    if(AVIF_USE_CXX)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifenc avif_apps)
     add_executable(avifdec apps/avifdec.c)
-    if(AVIF_LOCAL_LIBGAV1 OR AVIF_CODEC_LIBRARIES MATCHES vmaf)
+    if(AVIF_USE_CXX)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifdec avif_apps)

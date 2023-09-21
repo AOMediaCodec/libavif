@@ -2866,6 +2866,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifRWStreamFinishWrite(&s);
 
+#if defined(AVIF_ENABLE_COMPLIANCE_WARDEN)
+    AVIF_CHECKRES(avifIsCompliant(output->data, output->size));
+#endif
+
     return AVIF_RESULT_OK;
 }
 
