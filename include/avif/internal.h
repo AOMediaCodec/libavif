@@ -473,7 +473,7 @@ __attribute__((__format__(__printf__, 2, 3)))
 void avifDiagnosticsPrintf(avifDiagnostics * diag, const char * format, ...);
 
 #if defined(AVIF_ENABLE_COMPLIANCE_WARDEN)
-avifResult avifIsCompliant(uint8_t * data, size_t size);
+avifResult avifIsCompliant(const uint8_t * data, size_t size);
 #endif
 
 // ---------------------------------------------------------------------------

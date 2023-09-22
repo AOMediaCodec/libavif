@@ -21,7 +21,7 @@ extern const SpecDesc * const globalSpecHeif;
 extern const SpecDesc * const globalSpecIsobmff;
 extern const SpecDesc * const globalSpecMiaf;
 
-avifResult avifIsCompliant(uint8_t * data, size_t size)
+extern "C" avifResult avifIsCompliant(const uint8_t * data, size_t size)
 {
     // See compliance_warden.sh.
     if (g_allSpecs().empty()) {
@@ -39,8 +39,8 @@ avifResult avifIsCompliant(uint8_t * data, size_t size)
         topReader.myBox.syms.push_back({ "filename", static_cast<int64_t>(sym), 8 });
     }
     AVIF_CHECKERR(size <= std::numeric_limits<int>::max(), AVIF_RESULT_INVALID_ARGUMENT);
-    topReader.br = { data, static_cast<int>(size) };
-    topReader.myBox.original = data;
+    topReader.br = { const_cast<uint8_t *>(data), static_cast<int>(size) };
+    topReader.myBox.original = const_cast<uint8_t *>(data);
     topReader.myBox.position = 0;
     topReader.myBox.size = size;
     topReader.myBox.fourcc = FOURCC("root");

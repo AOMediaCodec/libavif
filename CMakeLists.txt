@@ -692,7 +692,7 @@ if(NOT SKIP_INSTALL_ALL)
 endif()
 
 if(AVIF_CODEC_LIBRARIES MATCHES vmaf)
-    # vmaf only impacts the avifenc and avifdec targets below, not the library avif target above.
+    # vmaf only affects the avifenc and avifdec targets below, not the avif library nor examples targets.
     set(AVIF_USE_CXX ON)
 endif()
 
