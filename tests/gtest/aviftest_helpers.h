@@ -7,6 +7,7 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "avif/avif.h"
@@ -132,6 +133,10 @@ AvifRwData Encode(const avifImage* image, int speed = AVIF_SPEED_DEFAULT);
 // Decodes the bytes to an image with default parameters.
 // Returns nullptr in case of error.
 AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes);
+
+// Decodes the file to an image with default parameters.
+// Returns nullptr in case of error.
+AvifImagePtr DecodFile(const std::string& path);
 
 // Returns true if an AV1 encoder is available.
 bool Av1EncoderAvailable();

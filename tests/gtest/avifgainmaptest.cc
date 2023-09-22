@@ -13,6 +13,8 @@
 namespace libavif {
 namespace {
 
+using ::testing::Values;
+
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
 
@@ -735,6 +737,157 @@ TEST(GainMapTest, ConvertMetadataToDoubleInvalid) {
   ASSERT_FALSE(
       avifGainMapMetadataFractionsToDouble(&metadata_double, &metadata));
 }
+
+class ToneMapTest
+    : public testing::TestWithParam<std::tuple<
+          /*source=*/std::string, /*hdr_capacity=*/float,
+          /*out_depth=*/int,
+          /*out_transfer_characteristics=*/avifTransferCharacteristics,
+          /*reference=*/std::string, /*min_psnr=*/float>> {};
+
+TEST_P(ToneMapTest, ToneMapImage) {
+  const std::string source = std::get<0>(GetParam());
+  const float hdr_capacity = std::get<1>(GetParam());
+  // out_depth and out_transfer_characteristics should match the reference image
+  // when ther eis one, so that GetPsnr works.
+  const int out_depth = std::get<2>(GetParam());
+  const avifTransferCharacteristics out_transfer_characteristics =
+      std::get<3>(GetParam());
+  const std::string reference = std::get<4>(GetParam());
+  const float min_psnr = std::get<5>(GetParam());
+
+  testutil::AvifImagePtr reference_image = {nullptr, nullptr};
+  if (!source.empty()) {
+    reference_image = testutil::DecodFile(std::string(data_path) + reference);
+  }
+
+  // Load the source image (that should contain a gain map).
+  const std::string path = std::string(data_path) + source;
+  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(image, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableDecodingGainMap = true;
+  decoder->enableParsingGainMapMetadata = true;
+  avifResult result =
+      avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  ASSERT_NE(image->gainMap.image, nullptr);
+
+  testutil::AvifRgbImage tone_mapped_rgb(image.get(), out_depth,
+                                         AVIF_RGB_FORMAT_RGB);
+  testutil::AvifImagePtr tone_mapped(
+      avifImageCreate(tone_mapped_rgb.width, tone_mapped_rgb.height,
+                      tone_mapped_rgb.depth, AVIF_PIXEL_FORMAT_YUV444),
+      avifImageDestroy);
+  tone_mapped->transferCharacteristics = out_transfer_characteristics;
+  tone_mapped->colorPrimaries = image->colorPrimaries;
+
+  avifDiagnostics diag;
+  result = avifImageApplyGainMap(image.get(), &image->gainMap, hdr_capacity,
+                                 tone_mapped->transferCharacteristics,
+                                 &tone_mapped_rgb, &tone_mapped->clli, &diag);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+  ASSERT_EQ(avifImageRGBToYUV(tone_mapped.get(), &tone_mapped_rgb),
+            AVIF_RESULT_OK);
+  if (reference_image != nullptr) {
+    EXPECT_GT(testutil::GetPsnr(*reference_image, *tone_mapped), min_psnr);
+  }
+
+  // Uncomment the following to save the encoded image as an AVIF file.
+  //   testutil::AvifEncoderPtr encoder(avifEncoderCreate(),
+  //     avifEncoderDestroy);
+  //   ASSERT_NE(encoder, nullptr);
+  //   encoder->speed = 9;
+  //   encoder->quality = 90;
+  //   encoder->qualityGainMap = 90;
+  //   testutil::AvifRwData encoded;
+  //   ASSERT_EQ(avifEncoderWrite(encoder.get(), tone_mapped.get(), &encoded),
+  //             AVIF_RESULT_OK);
+  //   std::ofstream(
+  //       "/tmp/tone_mapped_" + std::to_string(hdr_capacity) + "_" + source,
+  //       std::ios::binary)
+  //       .write(reinterpret_cast<char*>(encoded.data), encoded.size);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All, ToneMapTest,
+    Values(
+        // ------ SDR BASE IMAGE ------
+
+        // hdr_capacity=1, the image should stay SDR (base image untouched).
+        // A small loss is expected due to YUV/RGB conversion.
+        std::make_tuple(
+            /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/1.0f,
+            /*out_depth=*/8,
+            /*out_transfer_characteristics=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/60.0f),
+
+        // hdr_capacity=3, the gain map should be fully applied.
+        std::make_tuple(
+            /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/3.0f,
+            /*out_depth=*/10,
+            /*out_transfer_characteristics=*/
+            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f),
+
+        // hdr_capacity=3, the gain map should be fully applied.
+        // Version with a gain map that is larger than the base image (needs
+        // rescaling).
+        std::make_tuple(
+            /*source=*/"seine_sdr_gainmap_big_srgb.avif", /*hdr_capacity=*/3.0f,
+            /*out_depth=*/10,
+            /*out_transfer_characteristics=*/
+            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f),
+
+        // hdr_capacity=1.5 No reference image.
+        std::make_tuple(
+            /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/1.5f,
+            /*out_depth=*/10,
+            /*out_transfer_characteristics=*/
+            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*reference=*/"", /*min_psnr=*/0.0f),
+
+        // ------ HDR BASE IMAGE ------
+
+        // hdr_capacity=1, the gain map should be fully applied.
+        std::make_tuple(
+            /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_capacity=*/1.0f,
+            /*out_depth=*/8,
+            /*out_transfer_characteristics=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/38.0f),
+
+        // hdr_capacity=1, the gain map should be fully applied.
+        // Version with a gain map that is smaller than the base image (needs
+        // rescaling). The PSNR is a bit lower than above due to quality loss on
+        // the gain map.
+        std::make_tuple(
+            /*source=*/"seine_hdr_gainmap_small_srgb.avif",
+            /*hdr_capacity=*/1.0f,
+            /*out_depth=*/8,
+            /*out_transfer_characteristics=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/36.0f),
+
+        // hdr_capacity=3, the image should stay HDR (base image untouched).
+        // A small loss is expected due to YUV/RGB conversion.
+        std::make_tuple(
+            /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_capacity=*/3.0f,
+            /*out_depth=*/10,
+            /*out_transfer_characteristics=*/
+            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*reference=*/"seine_hdr_gainmap_srgb.avif", /*min_psnr=*/60.0f),
+
+        // hdr_capacity=1.5 No reference image.
+        std::make_tuple(
+            /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_capacity=*/1.5f,
+            /*out_depth=*/10,
+            /*out_transfer_characteristics=*/
+            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*reference=*/"", /*min_psnr=*/0.0f)));
 
 }  // namespace
 }  // namespace libavif

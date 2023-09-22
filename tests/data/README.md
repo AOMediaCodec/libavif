@@ -242,55 +242,6 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Encoded from `paris_icc_exif_xmp.png` using `avifenc -s 10` at commit ed52c1b.
 
-### File [paris_exif_xmp_gainmap_littleendian.jpg](paris_exif_xmp_gainmap_littleendian.jpg)
-
-![](paris_exif_xmp_gainmap_littleendian.jpg)
-
-License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
-
-Source: Based on paris_exif_xmp_icc.jpg with ICC stripped out and a gain map added.
-Contains a MPF (Multi-Picture Format) segment with metadata pointing to a second image
-at offset 33487. The MPF metadata is in little endian order, as signaled by the four bytes
-'II*\0'.
-
-| address | marker      | length | data                                         |
-|--------:|-------------|-------:|----------------------------------------------|
-|       0 | 0xffd8 SOI  |        |                                              |
-|       2 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
-|      20 | 0xffe1 APP1 |    838 | `Exif..II*......................`            |
-|    1156 | 0xffe1 APP1 |   2808 | `http://ns.adobe.com/xap/1.0/.<?x`           |
-|    3670 | 0xffe1 APP1 |    392 | `http://ns.adobe.com/xmp/extension/`         |
-|    4064 | 0xffe2 APP2 |     88 | `MPF..II*.....                   `           |
-|         |             |        | ...                                          |
-|   33487 | 0xffd8 SOI  |        |                                              |
-|   33489 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
-|   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
-|         |             |        | ...                                          |
-
-### File [paris_exif_xmp_gainmap_bigendian.jpg](paris_exif_xmp_gainmap_bigendian.jpg)
-
-![](paris_exif_xmp_gainmap_bigendian.jpg)
-
-License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
-
-Source: Same as paris_exif_xmp_gainmap_littleendian.jpg but manually edited with
-a hex editor to make the MPF metadata big endian, as signaled by the four bytes
-'MM\0*'.
-
-| address | marker      | length | data                                         |
-|--------:|-------------|-------:|----------------------------------------------|
-|       0 | 0xffd8 SOI  |        |                                              |
-|       2 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
-|      20 | 0xffe1 APP1 |    838 | `Exif..II*......................`            |
-|    1156 | 0xffe1 APP1 |   2808 | `http://ns.adobe.com/xap/1.0/.<?x`           |
-|    3670 | 0xffe1 APP1 |    392 | `http://ns.adobe.com/xmp/extension/`         |
-|    4064 | 0xffe2 APP2 |     88 | `MPF..MM.*....                   `           |
-|         |             |        | ...                                          |
-|   33487 | 0xffd8 SOI  |        |                                              |
-|   33489 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
-|   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
-|         |             |        | ...                                          |
-
 ### File [ffffcc-gamma1.6.png](ffffcc-gamma1.6.png)
 
 ![](ffffcc-gamma1.6.png)
@@ -427,7 +378,61 @@ Source: Same pixels as `color_grid_alpha_nogrid.avif` encoded with
 [`cavif-rs`](https://github.com/kornelski/cavif-rs) with the
 [alpha `ispe` fix](https://github.com/kornelski/avif-serialize/pull/4) removed.
 
+## Gain Maps
+
+### File [paris_exif_xmp_gainmap_littleendian.jpg](paris_exif_xmp_gainmap_littleendian.jpg)
+
+![](paris_exif_xmp_gainmap_littleendian.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Based on paris_exif_xmp_icc.jpg with ICC stripped out and a gain map added.
+Contains a MPF (Multi-Picture Format) segment with metadata pointing to a second image
+at offset 33487. The MPF metadata is in little endian order, as signaled by the four bytes
+'II*\0'.
+
+| address | marker      | length | data                                         |
+|--------:|-------------|-------:|----------------------------------------------|
+|       0 | 0xffd8 SOI  |        |                                              |
+|       2 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|      20 | 0xffe1 APP1 |    838 | `Exif..II*......................`            |
+|    1156 | 0xffe1 APP1 |   2808 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|    3670 | 0xffe1 APP1 |    392 | `http://ns.adobe.com/xmp/extension/`         |
+|    4064 | 0xffe2 APP2 |     88 | `MPF..II*.....                   `           |
+|         |             |        | ...                                          |
+|   33487 | 0xffd8 SOI  |        |                                              |
+|   33489 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|         |             |        | ...                                          |
+
+### File [paris_exif_xmp_gainmap_bigendian.jpg](paris_exif_xmp_gainmap_bigendian.jpg)
+
+![](paris_exif_xmp_gainmap_bigendian.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as paris_exif_xmp_gainmap_littleendian.jpg but manually edited with
+a hex editor to make the MPF metadata big endian, as signaled by the four bytes
+'MM\0*'.
+
+| address | marker      | length | data                                         |
+|--------:|-------------|-------:|----------------------------------------------|
+|       0 | 0xffd8 SOI  |        |                                              |
+|       2 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|      20 | 0xffe1 APP1 |    838 | `Exif..II*......................`            |
+|    1156 | 0xffe1 APP1 |   2808 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|    3670 | 0xffe1 APP1 |    392 | `http://ns.adobe.com/xmp/extension/`         |
+|    4064 | 0xffe2 APP2 |     88 | `MPF..MM.*....                   `           |
+|         |             |        | ...                                          |
+|   33487 | 0xffd8 SOI  |        |                                              |
+|   33489 | 0xffe0 APP0 |     16 | `JFIF.....,.,.`                              |
+|   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
+|         |             |        | ...                                          |
+
+
 ### File [color_grid_gainmap_different_grid.avif](color_grid_gainmap_different_grid.avif)
+
+![](color_grid_gainmap_different_grid.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
@@ -437,6 +442,8 @@ Contains a 4x3 color grid, a 4x3 alpha grid, and a 2x2 gain map grid.
 
 ### File [color_nogrid_alpha_nogrid_gainmap_grid.avif](color_nogrid_alpha_nogrid_gainmap_grid.avif)
 
+![](color_nogrid_alpha_nogrid_gainmap_grid.avif)
+
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
@@ -445,11 +452,64 @@ Contains a single color image, single alpha image, and a 2x2 gain map grid.
 
 ### File [color_grid_alpha_grid_gainmap_nogrid.avif](color_grid_alpha_grid_gainmap_nogrid.avif)
 
+![](color_grid_alpha_grid_gainmap_nogrid.avif)
+
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
 
 Contains a 4x3 color grid, a 4x3 alpha grid, and a single gain map image.
+
+### File [seine_hdr_srgb.avif](seine_hdr_srgb.avif)
+
+![](seine_hdr_srgb.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source : created from a personal photo, convertd to HDR using Photoshop.
+
+HDR image using the P3 transfer curve. Contains a gain map in
+[Adobe's format](https://helpx.adobe.com/camera-raw/using/gain-map.html) that is not recogniazed by
+libavif and ignored by the tests.
+
+### File [seine_sdr_gainmap_srgb.avif](seine_sdr_gainmap_srgb.avif)
+
+![](seine_sdr_gainmap_srgb.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source : created from a personal photo, convertd to HDR using Photoshop, then saved as JPEG+gainmap,
+and converted to avif with avifenc.
+
+SDR image with a gain map to allow tone mapping to HDR.
+
+### File [seine_sdr_gainmap_big_srgb.avif](seine_sdr_gainmap_big_srgb.avif)
+
+![](seine_sdr_gainmap_big_srgb.avif)
+
+Source : modified version of `seine_sdr_gainmap_srgb.avif` with an upscaled gain map, generated using libavif's API.
+
+SDR image with a gain map to allow tone mapping to HDR. The gain map's width and height are doubled compared to the base image. This is an atypical image just for testing. Typically, the gain map would be either the same size or smaller as the base image.
+
+### File [seine_hdr_gainmap_srgb.avif](seine_hdr_gainmap_srgb.avif)
+
+![](seine_hdr_gainmap_srgb.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source : created from `seine_hdr_srgb.avif` (for the base image) and `seine_sdr_gainmap_srgb.avif` (for the gain map) with libavif's API.
+
+HDR image with a gain map to allow tone mapping to SDR.
+
+### File [seine_hdr_gainmap_small_srgb.avif](seine_hdr_gainmap_small_srgb.avif)
+
+![](seine_hdr_gainmap_small_srgb.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source : modified version of `seine_hdr_gainmap_srgb.avif` with a downscaled gain map, generated using libavif's API.
+
+SDR image with a gain map to allow tone mapping to HDR. The gain map's width and height are halved compared to the base image.
 
 ## Animated Images
 
