@@ -4680,7 +4680,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-            if (decoder->ignoreColorAndAlpha && c != AVIF_ITEM_GAIN_MAP) {
+            if (decoder->ignoreColorAndAlpha && (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_ALPHA)) {
                 continue;
             }
 #endif
@@ -5291,23 +5291,27 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 {
     uint32_t minRowCount = decoder->image->height;
     for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (c == AVIF_ITEM_GAIN_MAP) {
+            const avifImage * const gainMap = decoder->image->gainMap.image;
+            if (decoder->gainMapPresent && decoder->enableDecodingGainMap && gainMap != NULL && gainMap->height != 0) {
+                uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
+                if (gainMap->height != decoder->image->height) {
+                    const uint32_t scaledGainMapRowCount =
+                        (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
+                    // Make sure it matches the formula described in the comment of avifDecoderDecodedRowCount() in avif.h.
+                    assert((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height *
+                                            decoder->image->gainMap.image->height) <= gainMapRowCount);
+                    gainMapRowCount = scaledGainMapRowCount;
+                }
+                minRowCount = AVIF_MIN(minRowCount, gainMapRowCount);
+            }
+            continue;
+        }
+#endif
         const uint32_t rowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[c], decoder->image);
         minRowCount = AVIF_MIN(minRowCount, rowCount);
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    const avifImage * const gainMap = decoder->image->gainMap.image;
-    if (decoder->gainMapPresent && decoder->enableDecodingGainMap && gainMap != NULL && gainMap->height != 0) {
-        uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
-        if (gainMap->height != decoder->image->height) {
-            const uint32_t scaledGainMapRowCount = (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
-            // Make sure it matches the formula described in the comment of avifDecoderDecodedRowCount() in avif.h.
-            assert((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height * decoder->image->gainMap.image->height) <=
-                   gainMapRowCount);
-            gainMapRowCount = scaledGainMapRowCount;
-        }
-        minRowCount = AVIF_MIN(minRowCount, gainMapRowCount);
-    }
-#endif
     return minRowCount;
 }
 
