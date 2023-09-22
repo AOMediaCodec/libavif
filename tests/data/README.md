@@ -423,7 +423,7 @@ Source: Same pixels as `color_grid_alpha_nogrid.avif` encoded with
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/pull/new/weirdgainmaps
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
 
 Contains a 4x3 color grid, a 4x3 alpha grid, and a 2x2 gain map grid.
 
@@ -431,7 +431,7 @@ Contains a 4x3 color grid, a 4x3 alpha grid, and a 2x2 gain map grid.
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/pull/new/weirdgainmaps
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
 
 Contains a single color image, single alpha image, and a 2x2 gain map grid.
 
@@ -439,7 +439,7 @@ Contains a single color image, single alpha image, and a 2x2 gain map grid.
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/pull/new/weirdgainmaps
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
 
 Contains a 4x3 color grid, a 4x3 alpha grid, and a single gain map image.
 
