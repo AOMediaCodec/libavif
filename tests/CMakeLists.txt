@@ -113,7 +113,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest_with_data(avifdecodetest)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        add_avif_gtest(avifgainmaptest avifincrtest_helpers)
+        add_avif_gtest_with_data(avifgainmaptest avifincrtest_helpers)
 
         if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
             add_avif_gtest_with_data(avifjpeggainmaptest)

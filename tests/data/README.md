@@ -419,6 +419,30 @@ Source: Same pixels as `color_grid_alpha_nogrid.avif` encoded with
 [`cavif-rs`](https://github.com/kornelski/cavif-rs) with the
 [alpha `ispe` fix](https://github.com/kornelski/avif-serialize/pull/4) removed.
 
+### File [color_grid_gainmap_different_grid.avif](color_grid_gainmap_different_grid.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+
+Contains a 4x3 color grid, a 4x3 alpha grid, and a 2x2 gain map grid.
+
+### File [color_nogrid_alpha_nogrid_gainmap_grid.avif](color_nogrid_alpha_nogrid_gainmap_grid.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+
+Contains a single color image, single alpha image, and a 2x2 gain map grid.
+
+### File [color_grid_alpha_grid_gainmap_nogrid.avif](color_grid_alpha_grid_gainmap_nogrid.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+
+Contains a 4x3 color grid, a 4x3 alpha grid, and a single gain map image.
+
 ## Animated Images
 
 ### File [colors-animated-8bpc.avif](colors-animated-8bpc.avif)

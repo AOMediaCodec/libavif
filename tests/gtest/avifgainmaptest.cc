@@ -13,6 +13,9 @@
 namespace libavif {
 namespace {
 
+// Used to pass the data folder path to the GoogleTest suites.
+const char* data_path = nullptr;
+
 void CheckGainMapMetadataMatches(const avifGainMapMetadata& lhs,
                                  const avifGainMapMetadata& rhs) {
   EXPECT_EQ(lhs.baseRenditionIsHDR, rhs.baseRenditionIsHDR);
@@ -546,6 +549,75 @@ TEST(GainMapTest, NoGainMap) {
   CheckGainMapMetadataMatches(decoded->gainMap.metadata, avifGainMapMetadata());
 }
 
+TEST(GainMapTest, DecodeGainMapGrid) {
+  const std::string path =
+      std::string(data_path) + "color_grid_gainmap_different_grid.avif";
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableDecodingGainMap = true;
+  decoder->enableParsingGainMapMetadata = true;
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+            AVIF_RESULT_OK);
+
+  // Color+alpha: 4x3 grid of 128x200 tiles.
+  EXPECT_EQ(decoded->width, 128u * 4u);
+  EXPECT_EQ(decoded->height, 200u * 3u);
+  ASSERT_NE(decoded->gainMap.image, nullptr);
+  // Gain map: 2x2 grid of 64x80 tiles.
+  EXPECT_EQ(decoded->gainMap.image->width, 64u * 2u);
+  EXPECT_EQ(decoded->gainMap.image->height, 80u * 2u);
+  EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxN, 16u);
+  EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxD, 2u);
+}
+
+TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
+  const std::string path =
+      std::string(data_path) + "color_grid_alpha_grid_gainmap_nogrid.avif";
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableDecodingGainMap = true;
+  decoder->enableParsingGainMapMetadata = true;
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+            AVIF_RESULT_OK);
+
+  // Color+alpha: 4x3 grid of 128x200 tiles.
+  EXPECT_EQ(decoded->width, 128u * 4u);
+  EXPECT_EQ(decoded->height, 200u * 3u);
+  ASSERT_NE(decoded->gainMap.image, nullptr);
+  // Gain map: single image of size 64x80.
+  EXPECT_EQ(decoded->gainMap.image->width, 64u);
+  EXPECT_EQ(decoded->gainMap.image->height, 80u);
+  EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxN, 16u);
+  EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxD, 2u);
+}
+
+TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
+  const std::string path =
+      std::string(data_path) + "color_nogrid_alpha_nogrid_gainmap_grid.avif";
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded, nullptr);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableDecodingGainMap = true;
+  decoder->enableParsingGainMapMetadata = true;
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+            AVIF_RESULT_OK);
+
+  // Color+alpha: single image of size 128x200 .
+  EXPECT_EQ(decoded->width, 128u);
+  EXPECT_EQ(decoded->height, 200u);
+  ASSERT_NE(decoded->gainMap.image, nullptr);
+  // Gain map: 2x2 grid of 64x80 tiles.
+  EXPECT_EQ(decoded->gainMap.image->width, 64u * 2u);
+  EXPECT_EQ(decoded->gainMap.image->height, 80u * 2u);
+  EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxN, 16u);
+  EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxD, 2u);
+}
+
 #define EXPECT_FRACTION_NEAR(numerator, denominator, expected)     \
   EXPECT_NEAR(std::abs((double)numerator / denominator), expected, \
               expected * 0.001);
@@ -603,3 +675,15 @@ TEST(GainMapTest, Invalid) {
 
 }  // namespace
 }  // namespace libavif
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  if (argc != 2) {
+    std::cerr << "There must be exactly one argument containing the path to "
+                 "the test data folder"
+              << std::endl;
+    return 1;
+  }
+  libavif::data_path = argv[1];
+  return RUN_ALL_TESTS();
+}
