@@ -4065,8 +4065,7 @@ static avifResult avifCodecCreateInternal(avifCodecChoice choice, const avifTile
 
 static avifBool avifTilesCanBeDecodedWithSameCodecInstance(avifDecoderData * data)
 {
-    int32_t numImageBuffers = 0;
-    avifBool numStolenImageBuffers = AVIF_FALSE;
+    int32_t numImageBuffers = 0, numStolenImageBuffers = 0;
     for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
         if (data->tileInfos[c].tileCount > 0) {
             ++numImageBuffers;
