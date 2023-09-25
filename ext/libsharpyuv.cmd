@@ -16,6 +16,6 @@ git checkout e2c85878f6a33f29948b43d3492d9cdaf801aa54
 
 mkdir build
 cd build
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release ..
+cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release ..
 ninja sharpyuv
 cd ../..
