@@ -10,7 +10,7 @@
 avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * rgb, const avifReformatState * state)
 {
     const SharpYuvColorSpace colorSpace = {
-        state->kr, state->kb, image->depth, (state->yuvRange == AVIF_RANGE_LIMITED) ? kSharpYuvRangeLimited : kSharpYuvRangeFull
+        state->yuv.kr, state->yuv.kb, image->depth, (state->yuv.range == AVIF_RANGE_LIMITED) ? kSharpYuvRangeLimited : kSharpYuvRangeFull
     };
 
     SharpYuvConversionMatrix matrix;
@@ -25,10 +25,10 @@ avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * 
     } else {
         options.transfer_type = (SharpYuvTransferFunctionType)image->transferCharacteristics;
     }
-    const int sharpyuvRes = SharpYuvConvertWithOptions(&rgb->pixels[state->rgbOffsetBytesR],
-                                                       &rgb->pixels[state->rgbOffsetBytesG],
-                                                       &rgb->pixels[state->rgbOffsetBytesB],
-                                                       state->rgbPixelBytes,
+    const int sharpyuvRes = SharpYuvConvertWithOptions(&rgb->pixels[state->rgb.offsetBytesR],
+                                                       &rgb->pixels[state->rgb.offsetBytesG],
+                                                       &rgb->pixels[state->rgb.offsetBytesB],
+                                                       state->rgb.pixelBytes,
                                                        rgb->rowBytes,
                                                        rgb->depth,
                                                        image->yuvPlanes[AVIF_CHAN_Y],
@@ -42,10 +42,10 @@ avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * 
                                                        rgb->height,
                                                        &options);
 #else
-    const int sharpyuvRes = SharpYuvConvert(&rgb->pixels[state->rgbOffsetBytesR],
-                                            &rgb->pixels[state->rgbOffsetBytesG],
-                                            &rgb->pixels[state->rgbOffsetBytesB],
-                                            state->rgbPixelBytes,
+    const int sharpyuvRes = SharpYuvConvert(&rgb->pixels[state->rgb.offsetBytesR],
+                                            &rgb->pixels[state->rgb.offsetBytesG],
+                                            &rgb->pixels[state->rgb.offsetBytesB],
+                                            state->rgb.pixelBytes,
                                             rgb->rowBytes,
                                             rgb->depth,
                                             image->yuvPlanes[AVIF_CHAN_Y],

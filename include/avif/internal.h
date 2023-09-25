@@ -158,33 +158,42 @@ typedef enum avifAlphaMultiplyMode
     AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
 } avifAlphaMultiplyMode;
 
-typedef struct avifReformatState
+typedef struct avifRGBSpaceInfo
+{
+    uint32_t channelBytes;
+    uint32_t pixelBytes;
+    uint32_t offsetBytesR;
+    uint32_t offsetBytesG;
+    uint32_t offsetBytesB;
+    uint32_t offsetBytesA;
+
+    int maxChannel;
+    float maxChannelF;
+} avifRGBSpaceInfo;
+
+typedef struct avifYUVSpaceInfo
 {
     // YUV coefficients
     float kr;
     float kg;
     float kb;
 
-    uint32_t yuvChannelBytes;
-    uint32_t rgbChannelBytes;
-    uint32_t rgbPixelBytes;
-    uint32_t rgbOffsetBytesR;
-    uint32_t rgbOffsetBytesG;
-    uint32_t rgbOffsetBytesB;
-    uint32_t rgbOffsetBytesA;
-
-    uint32_t yuvDepth;
-    avifRange yuvRange;
-    int yuvMaxChannel;
-    int rgbMaxChannel;
-    float rgbMaxChannelF;
+    uint32_t channelBytes;
+    uint32_t depth;
+    avifRange range;
+    int maxChannel;
     float biasY;   // minimum Y value
     float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
     float rangeY;  // difference between max and min Y
     float rangeUV; // difference between max and min UV
 
     avifPixelFormatInfo formatInfo;
+} avifYUVSpaceInfo;
 
+typedef struct avifReformatState
+{
+    avifRGBSpaceInfo rgb;
+    avifYUVSpaceInfo yuv;
     avifReformatMode mode;
 } avifReformatState;
 
