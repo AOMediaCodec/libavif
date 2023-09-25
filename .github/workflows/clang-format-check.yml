@@ -8,7 +8,7 @@ jobs:
   clang-format-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v3.6.0
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
       - uses: RafikFarhad/clang-format-github-action@0061b39593fe96f861c3aefcf1aff084d42744e1 # v3.0.0
         with:
           style: file
