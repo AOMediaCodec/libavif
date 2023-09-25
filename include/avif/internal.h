@@ -158,43 +158,45 @@ typedef enum avifAlphaMultiplyMode
     AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
 } avifAlphaMultiplyMode;
 
-typedef struct avifRGBSpaceInfo
+// Information about an RGB color space.
+typedef struct avifRGBColorSpaceInfo
 {
-    uint32_t channelBytes;
-    uint32_t pixelBytes;
-    uint32_t offsetBytesR;
-    uint32_t offsetBytesG;
-    uint32_t offsetBytesB;
-    uint32_t offsetBytesA;
+    uint32_t channelBytes; // Number of bytes per channel.
+    uint32_t pixelBytes;   // Number of bytes per pixel (= channelBytes * num channels).
+    uint32_t offsetBytesR; // Offset in bytes of the red channel in a pixel.
+    uint32_t offsetBytesG; // Offset in bytes of the green channel in a pixel.
+    uint32_t offsetBytesB; // Offset in bytes of the blue channel in a pixel.
+    uint32_t offsetBytesA; // Offset in bytes of the alpha channel in a pixel.
 
-    int maxChannel;
-    float maxChannelF;
-} avifRGBSpaceInfo;
+    int maxChannel;    // Maximum value for a channel (e.g. 255 for 8 bit).
+    float maxChannelF; // Same as maxChannel but as a float.
+} avifRGBColorSpaceInfo;
 
-typedef struct avifYUVSpaceInfo
+// Information about a YUV color space.
+typedef struct avifYUVColorSpaceInfo
 {
-    // YUV coefficients
+    // YUV coefficients. Y = kr*R + kg*G + kb*B.
     float kr;
     float kg;
     float kb;
 
-    uint32_t channelBytes;
-    uint32_t depth;
-    avifRange range;
-    int maxChannel;
-    float biasY;   // minimum Y value
-    float biasUV;  // the value of 0.5 for the appropriate bit depth [128, 512, 2048]
-    float rangeY;  // difference between max and min Y
-    float rangeUV; // difference between max and min UV
+    uint32_t channelBytes; // Number of bytes per channel.
+    uint32_t depth;        // Bit depth.
+    avifRange range;       // Full or limited range.
+    int maxChannel;        // Maximum value for a channel (e.g. 255 for 8 bit).
+    float biasY;           // Minimum Y value.
+    float biasUV;          // The value of 0.5 for the appropriate bit depth (128 for 8 bit, 512 for 10 bit, 2048 for 12 bit).
+    float rangeY;          // Difference between max and min Y.
+    float rangeUV;         // Difference between max and min UV.
 
-    avifPixelFormatInfo formatInfo;
-} avifYUVSpaceInfo;
+    avifPixelFormatInfo formatInfo; // Chroma subsampling information.
+    avifReformatMode mode;          // Appropriate RGB<->YUV conversion mode.
+} avifYUVColorSpaceInfo;
 
 typedef struct avifReformatState
 {
-    avifRGBSpaceInfo rgb;
-    avifYUVSpaceInfo yuv;
-    avifReformatMode mode;
+    avifRGBColorSpaceInfo rgb;
+    avifYUVColorSpaceInfo yuv;
 } avifReformatState;
 
 // Returns:
