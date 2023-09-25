@@ -105,6 +105,22 @@ set(AVIF_PLATFORM_INCLUDES)
 set(AVIF_PLATFORM_SYSTEM_INCLUDES)
 set(AVIF_PLATFORM_LIBRARIES)
 
+# A macro that wraps find_package, preferring static libraries if this is a static build
+# Should only be used for libraries linked against avif, not for those only used
+# by avif_apps or tests
+macro(find_package_libavif)
+    set(_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES, "${CMAKE_FIND_LIBRARY_SUFFIXES}")
+    if(NOT BUILD_SHARED_LIBS)
+        if (WIN32 OR MINGW)
+            set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
+        else()
+            set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+        endif()
+    endif()
+    find_package(${ARGV})
+    set(CMAKE_FIND_LIBRARY_SUFFIXES, "${_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES}")
+endmacro()
+
 # ---------------------------------------------------------------------------------------
 # This insanity is for people embedding libavif or making fully static or Windows builds.
 # Any proper unix environment should ignore these entire following blocks.
@@ -175,7 +191,7 @@ if(AVIF_LOCAL_LIBYUV)
     set(libyuv_FOUND TRUE)
     message(STATUS "libavif: local libyuv found; libyuv-based fast paths enabled.")
 else(AVIF_LOCAL_LIBYUV)
-    find_package(libyuv QUIET) # not required
+    find_package_libavif(libyuv QUIET) # not required
     if(libyuv_FOUND)
         # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
         # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
@@ -217,7 +233,7 @@ if(AVIF_LOCAL_LIBSHARPYUV)
     endif()
     set(libsharpyuv_FOUND TRUE)
 else(AVIF_LOCAL_LIBSHARPYUV)
-    find_package(libsharpyuv QUIET) # not required
+    find_package_libavif(libsharpyuv QUIET) # not required
 endif()
 if(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
@@ -440,7 +456,7 @@ if(AVIF_CODEC_DAV1D)
     else()
         # Check to see if dav1d is independently being built by the outer CMake project
         if(NOT TARGET dav1d)
-            find_package(dav1d REQUIRED)
+            find_package_libavif(dav1d REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${DAV1D_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
@@ -473,7 +489,7 @@ if(AVIF_CODEC_LIBGAV1)
     else()
         # Check to see if libgav1 is independently being built by the outer CMake project
         if(NOT TARGET libgav1)
-            find_package(libgav1 REQUIRED)
+            find_package_libavif(libgav1 REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${LIBGAV1_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
@@ -499,7 +515,7 @@ if(AVIF_CODEC_RAV1E)
     else()
         # Check to see if rav1e is independently being built by the outer CMake project
         if(NOT TARGET rav1e)
-            find_package(rav1e REQUIRED)
+            find_package_libavif(rav1e REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${RAV1E_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${RAV1E_LIBRARIES})
@@ -507,7 +523,7 @@ if(AVIF_CODEC_RAV1E)
 
     # Unfortunately, rav1e requires a few more libraries
     if(WIN32)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ws2_32.lib bcrypt.lib userenv.lib ntdll.lib)
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} legacy_stdio_definitions.lib ntdll.lib advapi32.lib userenv.lib ws2_32.lib bcrypt.lib msvcrt.lib)
     elseif(UNIX AND NOT APPLE)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
     endif()
@@ -532,7 +548,7 @@ if(AVIF_CODEC_SVT)
     else()
         # Check to see if svt is independently being built by the outer CMake project
         if(NOT TARGET svt)
-            find_package(svt REQUIRED)
+            find_package_libavif(svt REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${SVT_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
@@ -570,7 +586,7 @@ if(AVIF_CODEC_AOM)
     else()
         # Check to see if aom is independently being built by the outer CMake project
         if(NOT TARGET aom)
-            find_package(aom REQUIRED)
+            find_package_libavif(aom REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AOM_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
@@ -605,7 +621,7 @@ if(AVIF_CODEC_AVM)
     else()
         # Check to see if avm is independently being built by the outer CMake project
         if(NOT TARGET avm)
-            find_package(avm REQUIRED)
+            find_package_libavif(avm REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AVM_INCLUDE_DIR})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AVM_LIBRARIES})
@@ -659,6 +675,8 @@ if(BUILD_SHARED_LIBS)
     endif()
 else()
     add_library(avif_internal ALIAS avif)
+    include(merge_static_libs)
+    merge_static_libs(avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
