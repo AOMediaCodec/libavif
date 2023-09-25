@@ -36,7 +36,7 @@ jobs:
       uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ext
-        key: ${{ runner.os }}-static-av2-${{ hashFiles('CMakeLists.txt', 'ext/*.cmd') }}
+        key: ${{ runner.os }}-static-av2-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835 # v1.14.1
       with:
