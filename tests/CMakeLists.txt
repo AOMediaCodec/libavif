@@ -167,10 +167,10 @@ endif()
 # Experimental FuzzTest support (Linux only)
 
 if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
-    # Adds a fuzztest from file TEST_FILE located in the gtest folder. Extra arguments
+    # Adds a fuzztest from file TEST_NAME.cc located in the gtest folder. Extra arguments
     # are considered as extra linked libraries.
     macro(add_avif_fuzztest TEST_NAME)
-        add_executable(${TEST_NAME} gtest/${TEST_FILE}.cc gtest/avif_fuzztest_helpers.cc)
+        add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc gtest/avif_fuzztest_helpers.cc)
         target_include_directories(${TEST_NAME} PRIVATE ${GTEST_INCLUDE_DIRS})
         target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${ARGN})
         link_fuzztest(${TEST_NAME})
