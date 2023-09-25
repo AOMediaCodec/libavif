@@ -26,7 +26,7 @@ find_path(AOM_INCLUDE_DIR NAMES aom/aom.h PATHS ${_AOM_INCLUDEDIR})
 
 find_library(AOM_LIBRARY NAMES aom PATHS ${_AOM_LIBDIR})
 
-set(AOM_LIBRARIES ${AOM_LIBRARIES} ${AOM_LIBRARY} ${_AOM_LDFLAGS})
+set(AOM_LIBRARIES ${AOM_LIBRARIES} ${AOM_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
