@@ -51,7 +51,7 @@ jobs:
           distribution: "zulu"
           java-version: 11
       - name: Download and Setup the Android SDK
-        uses: android-actions/setup-android@7c5672355aaa8fde5f97a91aa9a99616d1ace6bc # v2.0.10
+        uses: android-actions/setup-android@13f81365a437096ca29f87b1e7389bf0ea1385ed # v3.0.0
       - name: Install CMake in the Android SDK
         # This is the same version of cmake that is found in build.gradle. This
         # will be used to build libavif and the JNI bindings.
