@@ -538,7 +538,7 @@ typedef struct avifGainMapMetadata
     // gainMapLog = lerp(log(gainMapMin), log(gainMapMax), pow(gainMapEncoded, gainMapGamma));
     // where 'lerp' is a linear interpolation function.
 
-    // Minimum value in the gain map (in linear space), per RGB channel (numerator and denomi).
+    // Minimum value in the gain map (in linear space), per RGB channel.
     uint32_t gainMapMinN[3];
     uint32_t gainMapMinD[3];
     // Maximum value in the gain map (in linear space), per RGB channel.
