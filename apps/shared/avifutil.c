@@ -201,39 +201,8 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
         fclose(f);
 
         if (bytesRead > 0) {
-            avifROData header;
-            header.data = headerBuffer;
-            header.size = bytesRead;
-
-            if (avifPeekCompatibleFileType(&header)) {
-                return AVIF_APP_FILE_FORMAT_AVIF;
-            }
-
-            static const uint8_t signatureJPEG[2] = { 0xFF, 0xD8 };
-            static const uint8_t signaturePNG[8] = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
-            static const uint8_t signatureY4M[9] = { 0x59, 0x55, 0x56, 0x34, 0x4D, 0x50, 0x45, 0x47, 0x32 }; // "YUV4MPEG2"
-            struct avifHeaderSignature
-            {
-                avifAppFileFormat format;
-                const uint8_t * magic;
-                size_t magicSize;
-            } signatures[] = { { AVIF_APP_FILE_FORMAT_JPEG, signatureJPEG, sizeof(signatureJPEG) },
-                               { AVIF_APP_FILE_FORMAT_PNG, signaturePNG, sizeof(signaturePNG) },
-                               { AVIF_APP_FILE_FORMAT_Y4M, signatureY4M, sizeof(signatureY4M) } };
-            const size_t signaturesCount = sizeof(signatures) / sizeof(signatures[0]);
-
-            for (size_t signatureIndex = 0; signatureIndex < signaturesCount; ++signatureIndex) {
-                struct avifHeaderSignature * signature = &signatures[signatureIndex];
-                if (header.size < signature->magicSize) {
-                    continue;
-                }
-                if (!memcmp(header.data, signature->magic, signature->magicSize)) {
-                    return signature->format;
-                }
-            }
-
-            // If none of these signatures match, bail out here. Guessing by extension won't help.
-            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+            // If the file could be read, use the first bytes to guess the file format.
+            return avifGuessBufferFileFormat(headerBuffer, bytesRead);
         }
     }
 
@@ -265,6 +234,46 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
     } else if (!strcmp(lowercaseExt, "png")) {
         return AVIF_APP_FILE_FORMAT_PNG;
     }
+    return AVIF_APP_FILE_FORMAT_UNKNOWN;
+}
+
+avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size)
+{
+    if (size == 0) {
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
+    }
+
+    avifROData header;
+    header.data = data;
+    header.size = size;
+
+    if (avifPeekCompatibleFileType(&header)) {
+        return AVIF_APP_FILE_FORMAT_AVIF;
+    }
+
+    static const uint8_t signatureJPEG[2] = { 0xFF, 0xD8 };
+    static const uint8_t signaturePNG[8] = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+    static const uint8_t signatureY4M[9] = { 0x59, 0x55, 0x56, 0x34, 0x4D, 0x50, 0x45, 0x47, 0x32 }; // "YUV4MPEG2"
+    struct avifHeaderSignature
+    {
+        avifAppFileFormat format;
+        const uint8_t * magic;
+        size_t magicSize;
+    } signatures[] = { { AVIF_APP_FILE_FORMAT_JPEG, signatureJPEG, sizeof(signatureJPEG) },
+                       { AVIF_APP_FILE_FORMAT_PNG, signaturePNG, sizeof(signaturePNG) },
+                       { AVIF_APP_FILE_FORMAT_Y4M, signatureY4M, sizeof(signatureY4M) } };
+    const size_t signaturesCount = sizeof(signatures) / sizeof(signatures[0]);
+
+    for (size_t signatureIndex = 0; signatureIndex < signaturesCount; ++signatureIndex) {
+        struct avifHeaderSignature * signature = &signatures[signatureIndex];
+        if (header.size < signature->magicSize) {
+            continue;
+        }
+        if (!memcmp(header.data, signature->magic, signature->magicSize)) {
+            return signature->format;
+        }
+    }
+
     return AVIF_APP_FILE_FORMAT_UNKNOWN;
 }
 

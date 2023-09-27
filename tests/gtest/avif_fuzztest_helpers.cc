@@ -172,5 +172,42 @@ std::vector<uint8_t> GetWhiteSinglePixelAvif() {
 
 //------------------------------------------------------------------------------
 
+std::vector<std::string> GetTestImagesContents(
+    size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats) {
+  // Use an environment variable to get the test data directory because
+  // fuzztest seeds are created before the main() function is called, so the
+  // test has no chance to parse command line arguments.
+  const char* test_data_dir = std::getenv("TEST_DATA_DIR");
+  if (test_data_dir == nullptr) {
+    // Do not fail, this can happen in normal circumstances when calling
+    // gtest_discover_tests() in cmake.
+    std::cout << "TEST_DATA_DIR not set, returning an empty seed set\n";
+    return {};
+  }
+
+  std::cout << "Reading seeds from " << test_data_dir << "\n";
+  auto tuple_vector = fuzztest::ReadFilesFromDirectory(test_data_dir);
+  std::vector<std::string> seeds;
+  seeds.reserve(tuple_vector.size());
+  for (auto& [file_content] : tuple_vector) {
+    if (file_content.size() > max_file_size) continue;
+    if (!image_formats.empty()) {
+      const avifAppFileFormat format = avifGuessBufferFileFormat(
+          reinterpret_cast<const uint8_t*>(file_content.data()),
+          file_content.size());
+      if (std::find(image_formats.begin(), image_formats.end(), format) ==
+          image_formats.end()) {
+        continue;
+      }
+    }
+
+    seeds.push_back(std::move(file_content));
+  }
+  std::cout << "Returning " << seeds.size() << " seed images\n";
+  return seeds;
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace testutil
 }  // namespace libavif

@@ -10,6 +10,7 @@
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
+#include "avifutil.h"
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
@@ -167,6 +168,16 @@ class FuzztestStackLimitEnvironment : public ::testing::Environment {
  private:
   const char* stack_limit_;
 };
+
+//------------------------------------------------------------------------------
+
+// Returns a list of test images contents (not paths) from the directory set in
+// the 'TEST_DATA_DIR' environment variable, that are smaller than
+// 'max_file_size' and have one of the formats in 'image_formats' (or any format
+// if 'image_formats' is empty).
+// Typically used to create image file seeds for fuzzing.
+std::vector<std::string> GetTestImagesContents(
+    size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats);
 
 //------------------------------------------------------------------------------
 

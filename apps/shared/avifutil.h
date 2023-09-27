@@ -44,7 +44,11 @@ typedef enum avifAppFileFormat
     AVIF_APP_FILE_FORMAT_Y4M
 } avifAppFileFormat;
 
+// Gusses the format of a file by looking at the first bytes, or at the extension if the file
+// can't be read or is empty.
 avifAppFileFormat avifGuessFileFormat(const char * filename);
+// Guesses the format of a buffer by looking at the first bytes.
+avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size);
 
 // This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
 // into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
