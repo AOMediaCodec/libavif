@@ -176,6 +176,7 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
         link_fuzztest(${TEST_NAME})
         gtest_discover_tests(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+        set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/data/")
     endmacro()
 
     if(AVIF_LOCAL_FUZZTEST)
@@ -197,6 +198,7 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
 
     add_avif_fuzztest(avif_fuzztest_dec_incr avifincrtest_helpers)
     add_avif_fuzztest(avif_fuzztest_enc_dec)
+    add_avif_fuzztest(avif_fuzztest_read_image)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         add_avif_fuzztest(avif_fuzztest_enc_dec_experimental)
