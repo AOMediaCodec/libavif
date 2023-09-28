@@ -113,6 +113,19 @@ AvifImagePtr AvifImageToUniquePtr(avifImage* image) {
   return AvifImagePtr(image, avifImageDestroy);
 }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+AvifDecoderPtr AddExperimentalOptionsToDecoder(
+    AvifDecoderPtr decoder, bool enable_parsing_gain_map_metadata,
+    bool enable_decoding_gain_map) {
+  decoder->enableParsingGainMapMetadata = enable_parsing_gain_map_metadata;
+  decoder->enableDecodingGainMap = enable_decoding_gain_map;
+  // Do not fuzz 'ignoreColorAndAlpha' since most tests assume that if the
+  // file/buffer is successfully decoded, then the main image was decoded, which
+  // is no longer the case when this option is on.
+  return decoder;
+}
+#endif
+
 //------------------------------------------------------------------------------
 
 size_t GetNumSamples(size_t width, size_t height, avifPixelFormat pixel_format,

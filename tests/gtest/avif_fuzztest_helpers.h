@@ -40,6 +40,11 @@ AvifDecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                                  uint32_t image_dimension_limit,
                                  uint32_t image_count_limit,
                                  avifStrictFlags strict_flags);
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+AvifDecoderPtr AddExperimentalOptionsToDecoder(
+    AvifDecoderPtr decoder, bool enable_parsing_gain_map_metadata,
+    bool enable_decoding_gain_map);
+#endif
 
 //------------------------------------------------------------------------------
 // Custom fuzztest generators.
@@ -102,7 +107,7 @@ inline auto ArbitraryAvifImage() {
   return fuzztest::OneOf(ArbitraryAvifImage8b(), ArbitraryAvifImage16b());
 }
 
-// avifEncoder and avifDecoder generators
+// Generator for an arbitrary AvifEncoderPtr.
 inline auto ArbitraryAvifEncoder() {
   const auto codec_choice = fuzztest::ElementOf<avifCodecChoice>(
       {AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_CHOICE_AOM});
@@ -127,7 +132,9 @@ inline auto ArbitraryAvifEncoder() {
                        speed);
 }
 
-inline auto ArbitraryAvifDecoder(
+// Generator for an arbitrary AvifEncoderPtr with base options fuzzed (i.e.
+// without "experimental" options hidden behind compile flags).
+inline auto ArbitraryNonExperimentalAvifDecoder(
     const std::vector<avifCodecChoice>& codec_choices) {
   const auto codec_choice = fuzztest::ElementOf<avifCodecChoice>(codec_choices);
   // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
@@ -149,6 +156,32 @@ inline auto ArbitraryAvifDecoder(
                                       AVIF_STRICT_CLAP_VALID,
                                       AVIF_STRICT_ALPHA_ISPE_REQUIRED}));
 }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+// Generator for an arbitrary AvifEncoderPtr with base options and gain map
+// options fuzzed, with the exception of 'ignoreColorAndAlpha' (because it would
+// break most tests' assumptions).
+inline auto ArbitraryExperimentalAvifDecoder(
+    const std::vector<avifCodecChoice>& codec_choices) {
+  return fuzztest::Map(
+      AddExperimentalOptionsToDecoder,
+      ArbitraryNonExperimentalAvifDecoder(codec_choices),
+      /*enable_parsing_gain_map_metadata=*/fuzztest::Arbitrary<bool>(),
+      /*enable_decoding_gain_map=*/fuzztest::Arbitrary<bool>());
+}
+
+// Generator for an arbitrary AvifDecoderPtr.
+inline auto ArbitraryAvifDecoder(
+    const std::vector<avifCodecChoice>& codec_choices) {
+  return ArbitraryExperimentalAvifDecoder(codec_choices);
+}
+#else
+// Generator for an arbitrary AvifDecoderPtr.
+inline auto ArbitraryAvifDecoder(
+    const std::vector<avifCodecChoice>& codec_choices) {
+  return ArbitraryNonExperimentalAvifDecoder(codec_choices);
+}
+#endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 //------------------------------------------------------------------------------
 

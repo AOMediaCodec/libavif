@@ -291,7 +291,8 @@ void DecodeIncrementally(const avifRWData& encoded_avif, avifDecoder* decoder,
                          bool is_persistent, bool give_size_hint,
                          bool use_nth_image_api, const avifImage& reference,
                          uint32_t cell_height,
-                         bool enable_fine_incremental_check) {
+                         bool enable_fine_incremental_check,
+                         bool expect_whole_file_read) {
   // AVIF cells are at least 64 pixels tall.
   if (cell_height != reference.height) {
     ASSERT_GE(cell_height, 64u);
@@ -351,7 +352,9 @@ void DecodeIncrementally(const avifRWData& encoded_avif, avifDecoder* decoder,
                                           : avifDecoderNextImage(decoder);
   }
   ASSERT_EQ(next_image_result, AVIF_RESULT_OK);
-  ASSERT_EQ(data.available.size, data.full_size);
+  if (expect_whole_file_read) {
+    ASSERT_EQ(data.available.size, data.full_size);
+  }
   ASSERT_EQ(avifDecoderDecodedRowCount(decoder), decoder->image->height);
 
   ComparePartialYuva(reference, *decoder->image, reference.height);
@@ -360,7 +363,7 @@ void DecodeIncrementally(const avifRWData& encoded_avif, avifDecoder* decoder,
 void DecodeNonIncrementallyAndIncrementally(
     const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
     bool give_size_hint, bool use_nth_image_api, uint32_t cell_height,
-    bool enable_fine_incremental_check) {
+    bool enable_fine_incremental_check, bool expect_whole_file_read) {
   AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(reference, nullptr);
   decoder->allowIncremental = AVIF_FALSE;
@@ -370,7 +373,7 @@ void DecodeNonIncrementallyAndIncrementally(
 
   DecodeIncrementally(encoded_avif, decoder, is_persistent, give_size_hint,
                       use_nth_image_api, *reference, cell_height,
-                      enable_fine_incremental_check);
+                      enable_fine_incremental_check, expect_whole_file_read);
 }
 
 //------------------------------------------------------------------------------
