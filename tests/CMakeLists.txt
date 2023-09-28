@@ -196,6 +196,7 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
         )
     endif()
 
+    add_avif_fuzztest(avif_fuzztest_dec)
     add_avif_fuzztest(avif_fuzztest_dec_incr avifincrtest_helpers)
     add_avif_fuzztest(avif_fuzztest_enc_dec)
     add_avif_fuzztest(avif_fuzztest_read_image)
