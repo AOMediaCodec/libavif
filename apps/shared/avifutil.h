@@ -44,7 +44,7 @@ typedef enum avifAppFileFormat
     AVIF_APP_FILE_FORMAT_Y4M
 } avifAppFileFormat;
 
-// Gusses the format of a file by looking at the first bytes, or at the extension if the file
+// Guesses the format of a file by looking at the first bytes, or at the extension if the file
 // can't be read or is empty.
 avifAppFileFormat avifGuessFileFormat(const char * filename);
 // Guesses the format of a buffer by looking at the first bytes.

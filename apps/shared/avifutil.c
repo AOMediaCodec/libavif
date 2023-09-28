@@ -265,7 +265,7 @@ avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size)
     const size_t signaturesCount = sizeof(signatures) / sizeof(signatures[0]);
 
     for (size_t signatureIndex = 0; signatureIndex < signaturesCount; ++signatureIndex) {
-        struct avifHeaderSignature * signature = &signatures[signatureIndex];
+        const struct avifHeaderSignature * const signature = &signatures[signatureIndex];
         if (header.size < signature->magicSize) {
             continue;
         }
