@@ -67,7 +67,7 @@ void EncodeDecodeGridValid(AvifImagePtr image, AvifEncoderPtr encoder,
                                          /*useNthImageApi=*/true, cell_height);
 }
 
-FUZZ_TEST(EncodeDecodeAvifTest, EncodeDecodeGridValid)
+FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeGridValid)
     .WithDomains(ArbitraryAvifImage(), ArbitraryAvifEncoder(),
                  ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO}),
                  /*grid_cols=*/InRange<uint32_t>(1, 32),

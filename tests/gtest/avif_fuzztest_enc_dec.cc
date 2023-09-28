@@ -49,7 +49,7 @@ void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
   // hard to verify so do not check it.
 }
 
-FUZZ_TEST(EncodeDecodeAvifTest, EncodeDecodeValid)
+FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeValid)
     .WithDomains(ArbitraryAvifImage(), ArbitraryAvifEncoder(),
                  ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO,
                                        AVIF_CODEC_CHOICE_DAV1D}));

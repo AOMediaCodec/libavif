@@ -86,7 +86,7 @@ void DecodeIncr(const std::vector<uint8_t>& arbitrary_bytes, bool is_persistent,
   }
 }
 
-FUZZ_TEST(DecodeAvifTest, DecodeIncr)
+FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
     .WithDomains(Arbitrary<std::vector<uint8_t>>(), Arbitrary<bool>(),
                  Arbitrary<bool>(), Arbitrary<bool>())
     .WithSeeds({{GetWhiteSinglePixelAvif(), false, false, false}});

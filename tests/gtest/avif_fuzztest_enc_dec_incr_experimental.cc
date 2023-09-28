@@ -111,7 +111,7 @@ inline auto ArbitraryAvifImageWithGainMap() {
       fuzztest::Arbitrary<std::array<uint8_t, sizeof(avifGainMapMetadata)>>());
 }
 
-FUZZ_TEST(EncodeDecodeAvifTest, EncodeDecodeGridValid)
+FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeGridValid)
     .WithDomains(fuzztest::OneOf(ArbitraryAvifImage(),
                                  ArbitraryAvifImageWithGainMap()),
                  ArbitraryAvifEncoder(),

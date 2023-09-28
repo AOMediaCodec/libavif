@@ -92,7 +92,7 @@ void ReadImageFile(const std::string& arbitrary_bytes,
 
 constexpr uint32_t kMaxFileSize = 1024 * 1024;  // 1MB.
 
-FUZZ_TEST(DecodeAvifTest, ReadImageFile)
+FUZZ_TEST(ReadImageFuzzTest, ReadImageFile)
     .WithDomains(
         Arbitrary<std::string>()
             .WithMaxSize(kMaxFileSize)
