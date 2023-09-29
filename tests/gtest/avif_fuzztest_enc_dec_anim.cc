@@ -1,0 +1,100 @@
+// Copyright 2023 Google LLC
+// SPDX-License-Identifier: BSD-2-Clause
+
+#include <vector>
+
+#include "avif/avif.h"
+#include "avif_fuzztest_helpers.h"
+#include "aviftest_helpers.h"
+#include "fuzztest/fuzztest.h"
+#include "gtest/gtest.h"
+
+namespace libavif {
+namespace testutil {
+namespace {
+
+::testing::Environment* const stack_limit_env =
+    ::testing::AddGlobalTestEnvironment(
+        new FuzztestStackLimitEnvironment("524288"));  // 512 * 1024
+
+struct FrameOptions {
+  uint64_t duration;
+  avifAddImageFlags flags;
+};
+
+// Encodes an animation and decodes it.
+// For simplicity, there is only one source image, all frames are identical.
+void EncodeDecodeAnimation(AvifImagePtr frame,
+                           const std::vector<FrameOptions>& frame_options,
+                           AvifEncoderPtr encoder, AvifDecoderPtr decoder) {
+  ASSERT_NE(encoder, nullptr);
+  ASSERT_NE(decoder, nullptr);
+  AvifImagePtr decoded_image(avifImageCreateEmpty(), avifImageDestroy);
+  ASSERT_NE(decoded_image, nullptr);
+
+  const int num_frames = static_cast<int>(frame_options.size());
+  int total_duration = 0;
+
+  // Encode.
+  for (const FrameOptions& options : frame_options) {
+    total_duration += options.duration;
+    const avifResult result = avifEncoderAddImage(
+        encoder.get(), frame.get(), options.duration, options.flags);
+    ASSERT_EQ(result, AVIF_RESULT_OK)
+        << avifResultToString(result) << " " << encoder->diag.error;
+  }
+  AvifRwData encoded_data;
+  avifResult result = avifEncoderFinish(encoder.get(), &encoded_data);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  // Decode.
+  result = avifDecoderSetIOMemory(decoder.get(), encoded_data.data,
+                                  encoded_data.size);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  result = avifDecoderParse(decoder.get());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  if (decoder->requestedSource == AVIF_DECODER_SOURCE_PRIMARY_ITEM) {
+    ASSERT_EQ(decoder->imageCount, 1);
+  } else {
+    ASSERT_EQ(decoder->imageCount, num_frames);
+    EXPECT_EQ(decoder->durationInTimescales, total_duration);
+
+    for (int i = 0; i < num_frames; ++i) {
+      result = avifDecoderNextImage(decoder.get());
+      ASSERT_EQ(result, AVIF_RESULT_OK)
+          << " frame " << i << " " << avifResultToString(result) << " "
+          << decoder->diag.error;
+      EXPECT_EQ(decoder->image->width, frame->width);
+      EXPECT_EQ(decoder->image->height, frame->height);
+      EXPECT_EQ(decoder->image->depth, frame->depth);
+      EXPECT_EQ(decoder->image->yuvFormat, frame->yuvFormat);
+    }
+    result = avifDecoderNextImage(decoder.get());
+    ASSERT_EQ(result, AVIF_RESULT_NO_IMAGES_REMAINING)
+        << avifResultToString(result) << " " << decoder->diag.error;
+  }
+}
+
+constexpr int kMaxFrames = 10;
+
+FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
+    .WithDomains(ArbitraryAvifImage(),
+                 fuzztest::VectorOf(
+                     fuzztest::StructOf<FrameOptions>(
+                         /*duration=*/fuzztest::InRange(1, 10),
+                         fuzztest::BitFlagCombinationOf<avifAddImageFlags>(
+                             {AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME})))
+                     .WithMinSize(2)
+                     .WithMaxSize(kMaxFrames),
+                 ArbitraryAvifEncoder(),
+                 ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO,
+                                       AVIF_CODEC_CHOICE_DAV1D}));
+
+}  // namespace
+}  // namespace testutil
+}  // namespace libavif

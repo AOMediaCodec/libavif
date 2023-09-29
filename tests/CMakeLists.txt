@@ -198,6 +198,7 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
     add_avif_fuzztest(avif_fuzztest_dec)
     add_avif_fuzztest(avif_fuzztest_dec_incr avifincrtest_helpers)
     add_avif_fuzztest(avif_fuzztest_enc_dec)
+    add_avif_fuzztest(avif_fuzztest_enc_dec_anim)
     add_avif_fuzztest(avif_fuzztest_read_image)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
