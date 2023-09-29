@@ -114,9 +114,9 @@ AvifImagePtr AvifImageToUniquePtr(avifImage* image) {
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-AvifDecoderPtr AddExperimentalOptionsToDecoder(
-    AvifDecoderPtr decoder, bool enable_parsing_gain_map_metadata,
-    bool enable_decoding_gain_map) {
+AvifDecoderPtr AddGainMapOptionsToDecoder(AvifDecoderPtr decoder,
+                                          bool enable_parsing_gain_map_metadata,
+                                          bool enable_decoding_gain_map) {
   decoder->enableParsingGainMapMetadata = enable_parsing_gain_map_metadata;
   decoder->enableDecodingGainMap = enable_decoding_gain_map;
   // Do not fuzz 'ignoreColorAndAlpha' since most tests assume that if the
