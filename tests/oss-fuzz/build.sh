@@ -19,21 +19,76 @@
 # https://github.com/google/oss-fuzz/blob/master/projects/libavif/build.sh
 # It builds the different fuzz targets.
 
-# build dav1d
-cd ext && bash dav1d.cmd && bash libyuv.cmd && cd ..
+# To test changes to this file:
+# - make changes and commit to your REPO
+# - run:
+#     git clone --depth=1 git@github.com:google/oss-fuzz.git
+#     cd oss-fuzz
+# - modify projects/libavif/Dockerfile to point to your REPO
+# - run:
+#     python3 infra/helper.py build_image libavif
+#     # enter 'y' and wait for everything to be downloaded
+# - run:
+#     python3 infra/helper.py build_fuzzers --sanitizer address libavif
+#     # wait for the tests to be built
+# And then run the fuzzer locally, for example:
+#     python3 infra/helper.py run_fuzzer libavif \
+#     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
+#     --sanitizer address
+
+ln -s $SRC/fuzztest $SRC/libavif/ext/fuzztest
+mkdir $SRC/libavif/ext/fuzztest/build.libavif
+cd $SRC/libavif/ext/fuzztest/build.libavif
+cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
+ninja
+cd ../../../
+
+
+# build dependencies
+cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.cmd && bash libyuv && bash zlibpng.cmd && cd ..
 
 # build libavif
 mkdir build
 cd build
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF \
-    -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON \
-    -DAVIF_LOCAL_LIBYUV=ON ..
+cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_CODEC_DAV1D=ON \
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_ENABLE_WERROR=OFF \
+      -DAVIF_LOCAL_AOM=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_LOCAL_FUZZTEST=ON \
+      -DAVIF_LOCAL_GTEST=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_ZLIBPNG=ON \
+      -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_ENABLE_FUZZTEST=ON ..
+
 ninja
 
 # build fuzzer
 $CXX $CXXFLAGS -std=c++11 -I../include \
     ../tests/oss-fuzz/avif_decode_fuzzer.cc -o $OUT/avif_decode_fuzzer \
-    $LIB_FUZZING_ENGINE libavif.a ../ext/dav1d/build/src/libdav1d.a
+    $LIB_FUZZING_ENGINE libavif.a ../ext/dav1d/build/src/libdav1d.a ../ext/aom/build.libavif/libaom.a
+
+# build fuzztests
+# The following is taken from https://github.com/google/oss-fuzz/blob/31ac7244748ea7390015455fb034b1f4eda039d9/infra/base-images/base-builder/compile_fuzztests.sh#L59
+# Iterate the fuzz binaries and list each fuzz entrypoint in the binary. For
+# each entrypoint create a wrapper script that calls into the binaries the
+# given entrypoint as argument.
+# The scripts will be named:
+# {binary_name}@{fuzztest_entrypoint}
+FUZZ_TEST_BINARIES_OUT_PATHS=`ls ./tests/avif_fuzztest_*`
+#cp ./bin/opencv_fuzz_* $OUT/
+echo "Fuzz binaries: $FUZZ_TEST_BINARIES_OUT_PATHS"
+for fuzz_main_file in $FUZZ_TEST_BINARIES_OUT_PATHS; do
+  FUZZ_TESTS=$($fuzz_main_file --list_fuzz_tests | cut -d ' ' -f 4)
+  cp -f ${fuzz_main_file} $OUT/
+  fuzz_basename=$(basename $fuzz_main_file)
+  chmod -x $OUT/$fuzz_basename
+  for fuzz_entrypoint in $FUZZ_TESTS; do
+    TARGET_FUZZER="${fuzz_basename}@$fuzz_entrypoint"
+    # Write executer script
+    echo "#!/bin/sh
+# LLVMFuzzerTestOneInput for fuzzer detection.
+this_dir=\$(dirname \"\$0\")
+chmod +x \$this_dir/$fuzz_basename
+$fuzz_basename --fuzz=$fuzz_entrypoint -- \$@" > $OUT/$TARGET_FUZZER
+    chmod +x $OUT/$TARGET_FUZZER
+  done
+done
 
 # copy seed corpus
 cp $SRC/avif_decode_seed_corpus.zip $OUT/
