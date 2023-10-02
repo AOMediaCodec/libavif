@@ -45,7 +45,8 @@ cd ../../../
 
 
 # build dependencies
-cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.cmd && bash libyuv && bash zlibpng.cmd && cd ..
+cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.cmd && \
+      bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
 mkdir build
@@ -53,7 +54,8 @@ cd build
 cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_CODEC_DAV1D=ON \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_ENABLE_WERROR=OFF \
       -DAVIF_LOCAL_AOM=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_LOCAL_FUZZTEST=ON \
-      -DAVIF_LOCAL_GTEST=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_ZLIBPNG=ON \
+      -DAVIF_LOCAL_GTEST=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBSHARPYUV=ON \
+      -DAVIF_LOCAL_LIBYUV=ON \-DAVIF_LOCAL_ZLIBPNG=ON \
       -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_ENABLE_FUZZTEST=ON ..
 
 ninja
@@ -71,7 +73,6 @@ $CXX $CXXFLAGS -std=c++11 -I../include \
 # The scripts will be named:
 # {binary_name}@{fuzztest_entrypoint}
 FUZZ_TEST_BINARIES_OUT_PATHS=`ls ./tests/avif_fuzztest_*`
-#cp ./bin/opencv_fuzz_* $OUT/
 echo "Fuzz binaries: $FUZZ_TEST_BINARIES_OUT_PATHS"
 for fuzz_main_file in $FUZZ_TEST_BINARIES_OUT_PATHS; do
   FUZZ_TESTS=$($fuzz_main_file --list_fuzz_tests | cut -d ' ' -f 4)
