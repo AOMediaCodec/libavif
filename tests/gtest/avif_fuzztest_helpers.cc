@@ -178,14 +178,17 @@ std::vector<std::string> GetTestImagesContents(
   // fuzztest seeds are created before the main() function is called, so the
   // test has no chance to parse command line arguments.
   const char* const test_data_dir = std::getenv("TEST_DATA_DIR");
+
   if (test_data_dir == nullptr) {
     // Do not fail, this can happen in normal circumstances when calling
     // gtest_discover_tests() in cmake.
-    std::cout << "TEST_DATA_DIR not set, returning an empty seed set\n";
-    return {};
+    std::cerr << "ERROR: the TEST_DATA_DIR environment variable is not set, "
+                 "please set it "
+                 "to the path of a directory containing test image files\n";
+    std::abort();
   }
 
-  std::cout << "Reading seeds from " << test_data_dir << "\n";
+  std::cout << "Reading seeds from " << test_data_dir << " (non recursively)\n";
   auto tuple_vector = fuzztest::ReadFilesFromDirectory(test_data_dir);
   std::vector<std::string> seeds;
   seeds.reserve(tuple_vector.size());
@@ -202,6 +205,11 @@ std::vector<std::string> GetTestImagesContents(
     }
 
     seeds.push_back(std::move(file_content));
+  }
+  if (seeds.empty()) {
+    std::cerr << "ERROR: no files found in " << test_data_dir
+              << " that match the given file size and format criteria\n";
+    std::abort();
   }
   std::cout << "Returning " << seeds.size() << " seed images\n";
   return seeds;

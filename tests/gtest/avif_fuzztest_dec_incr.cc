@@ -4,7 +4,7 @@
 // sequence.
 
 #include <cstdint>
-#include <vector>
+#include <string>
 
 #include "avif/avif.h"
 #include "avif_fuzztest_helpers.h"
@@ -46,12 +46,13 @@ avifResult AvifIoRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
 
 //------------------------------------------------------------------------------
 
-void DecodeIncr(const std::vector<uint8_t>& arbitrary_bytes, bool is_persistent,
+void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
                 bool give_size_hint, bool use_nth_image_api) {
   AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(reference.get(), nullptr);
 
-  DecoderInput data = {arbitrary_bytes.data(), arbitrary_bytes.size(), 0};
+  DecoderInput data = {reinterpret_cast<const uint8_t*>(arbitrary_bytes.data()),
+                       arbitrary_bytes.size(), 0};
   avifIO io = {.read = AvifIoRead,
                .sizeHint = arbitrary_bytes.size(),
                .persistent = AVIF_TRUE,
@@ -86,10 +87,12 @@ void DecodeIncr(const std::vector<uint8_t>& arbitrary_bytes, bool is_persistent,
   }
 }
 
+constexpr uint32_t kMaxFileSize = 1024 * 1024;  // 1MB.
+
 FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
-    .WithDomains(Arbitrary<std::vector<uint8_t>>(), Arbitrary<bool>(),
-                 Arbitrary<bool>(), Arbitrary<bool>())
-    .WithSeeds({{GetWhiteSinglePixelAvif(), false, false, false}});
+    .WithDomains(ArbitraryImagesWithSeeds(kMaxFileSize,
+                                          {AVIF_APP_FILE_FORMAT_AVIF}),
+                 Arbitrary<bool>(), Arbitrary<bool>(), Arbitrary<bool>());
 
 //------------------------------------------------------------------------------
 

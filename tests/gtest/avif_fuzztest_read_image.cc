@@ -94,12 +94,9 @@ constexpr uint32_t kMaxFileSize = 1024 * 1024;  // 1MB.
 
 FUZZ_TEST(ReadImageFuzzTest, ReadImageFile)
     .WithDomains(
-        Arbitrary<std::string>()
-            .WithMaxSize(kMaxFileSize)
-            .WithSeeds(GetTestImagesContents(kMaxFileSize,
-                                             {AVIF_APP_FILE_FORMAT_JPEG,
-                                              AVIF_APP_FILE_FORMAT_PNG,
-                                              AVIF_APP_FILE_FORMAT_Y4M})),
+        ArbitraryImagesWithSeeds(kMaxFileSize, {AVIF_APP_FILE_FORMAT_JPEG,
+                                                AVIF_APP_FILE_FORMAT_PNG,
+                                                AVIF_APP_FILE_FORMAT_Y4M}),
         ArbitraryPixelFormat(),
         /*requested_depth=*/ElementOf({0, 8, 10, 12}),
         ElementOf({AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,

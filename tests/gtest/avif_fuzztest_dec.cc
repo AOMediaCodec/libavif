@@ -6,6 +6,7 @@
 
 #include "avif/avif.h"
 #include "avif_fuzztest_helpers.h"
+#include "aviftest_helpers.h"
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
@@ -37,10 +38,8 @@ void Decode(const std::string& arbitrary_bytes, AvifDecoderPtr decoder) {
 constexpr uint32_t kMaxFileSize = 1024 * 1024;  // 1MB.
 
 FUZZ_TEST(DecodeAvifTest, Decode)
-    .WithDomains(Arbitrary<std::string>()
-                     .WithMaxSize(kMaxFileSize)
-                     .WithSeeds(GetTestImagesContents(
-                         kMaxFileSize, {AVIF_APP_FILE_FORMAT_AVIF})),
+    .WithDomains(ArbitraryImagesWithSeeds(kMaxFileSize,
+                                          {AVIF_APP_FILE_FORMAT_AVIF}),
                  ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO}));
 
 //------------------------------------------------------------------------------
