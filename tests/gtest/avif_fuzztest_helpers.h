@@ -185,11 +185,12 @@ std::vector<std::string> GetTestImagesContents(
 // Expects the 'TEST_DATA_DIR' environment variable to be set.
 // Terminates the program with abort() if TEST_DATA_DIR is not set or if it
 // doesn't contain any matching images.
-inline auto ArbitraryImagesWithSeeds(
-    size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats) {
+inline auto ArbitraryImageWithSeeds(
+    const std::vector<avifAppFileFormat>& image_formats) {
+  constexpr uint32_t kMaxSeedFileSize = 1024 * 1024;  // 1MB.
   return fuzztest::Arbitrary<std::string>()
-      .WithMaxSize(max_file_size)
-      .WithSeeds(GetTestImagesContents(max_file_size, image_formats));
+      .WithMaxSize(kMaxSeedFileSize)
+      .WithSeeds(GetTestImagesContents(kMaxSeedFileSize, image_formats));
 }
 
 //------------------------------------------------------------------------------

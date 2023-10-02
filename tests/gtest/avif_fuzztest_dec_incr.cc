@@ -87,11 +87,8 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
   }
 }
 
-constexpr uint32_t kMaxFileSize = 1024 * 1024;  // 1MB.
-
 FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
-    .WithDomains(ArbitraryImagesWithSeeds(kMaxFileSize,
-                                          {AVIF_APP_FILE_FORMAT_AVIF}),
+    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
                  Arbitrary<bool>(), Arbitrary<bool>(), Arbitrary<bool>());
 
 //------------------------------------------------------------------------------
