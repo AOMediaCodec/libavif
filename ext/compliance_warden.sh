@@ -5,7 +5,8 @@
 
 set -e
 
-git clone -b v33 --depth 1 https://github.com/gpac/ComplianceWarden.git
+git clone https://github.com/gpac/ComplianceWarden.git
+cd ComplianceWarden && git checkout e26973641f747cf3282004dcfb0747881207e748 && cd ..
 # The provided Makefile only builds bin/cw.exe and objects.
 # We are interested in the library, so the files are directly used instead of building with make -j.
 ComplianceWarden/scripts/version.sh > ComplianceWarden/src/cw_version.cpp
