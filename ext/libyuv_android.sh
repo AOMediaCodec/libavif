@@ -29,6 +29,7 @@ for abi in ${ABI_LIST}; do
   mkdir "${abi}"
   cd "${abi}"
   cmake ../.. \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DCMAKE_TOOLCHAIN_FILE=${1}/build/cmake/android.toolchain.cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DANDROID_ABI=${abi}

@@ -124,3 +124,22 @@ jobs:
     - name: Run AVIF Tests
       working-directory: ./build
       run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+    - name: Check static link bundling
+      run: >
+        cl .\apps\avifenc.c .\apps\shared\*.c /nologo
+        /DWIN32 /D_WINDOWS /MD /O2 /Ob2
+        -I.\apps\shared -I.\include
+        -external:W0
+        -external:I.\ext\libpng
+        -external:I.\ext\libjpeg
+        -external:I.\ext\zlib
+        -external:I.\build\ext\libpng
+        -external:I.\build\ext\zlib
+        /link
+        build\ext\libjpeg\jpeg.lib
+        build\ext\libpng\libpng16_static.lib
+        build\ext\zlib\zlibstatic.lib
+        build\avif.lib
+        /out:avifenc.exe
+
+        .\avifenc.exe --help

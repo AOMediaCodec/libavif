@@ -29,6 +29,7 @@ for abi in ${ABI_LIST}; do
   cmake ../.. \
     -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchains/android.cmake \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DCMAKE_BUILD_TYPE=Release \
     -DLIBGAV1_ANDROID_NDK_PATH=${1} \
     -DLIBGAV1_THREADPOOL_USE_STD_MUTEX=1 \

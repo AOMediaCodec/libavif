@@ -14,6 +14,6 @@ cd build
 : # The gtest_force_shared_crt option makes gtest link the Microsoft C runtime library (CRT) dynamically
 : # on Windows:
 : # https://github.com/google/googletest/blob/main/googletest/README.md#visual-studio-dynamic-vs-static-runtimes
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF -Dgtest_force_shared_crt=ON ..
+cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF -Dgtest_force_shared_crt=ON ..
 ninja
 cd ../..

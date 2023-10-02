@@ -22,6 +22,6 @@ git checkout 464c51a0
 mkdir build
 cd build
 
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
 ninja yuv
 cd ../..
