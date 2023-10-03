@@ -116,8 +116,7 @@ inline auto ArbitraryAvifImageWithGainMap() {
 FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeValid)
     .WithDomains(fuzztest::OneOf(ArbitraryAvifImage(),
                                  ArbitraryAvifImageWithGainMap()),
-                 ArbitraryAvifEncoder(),
-                 ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO}));
+                 ArbitraryAvifEncoder(), ArbitraryAvifDecoder());
 
 }  // namespace
 }  // namespace testutil

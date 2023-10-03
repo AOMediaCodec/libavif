@@ -116,8 +116,7 @@ inline auto ArbitraryAvifImageWithGainMap() {
 FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeGridValid)
     .WithDomains(fuzztest::OneOf(ArbitraryAvifImage(),
                                  ArbitraryAvifImageWithGainMap()),
-                 ArbitraryAvifEncoder(),
-                 ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO}),
+                 ArbitraryAvifEncoder(), ArbitraryAvifDecoder(),
                  /*grid_cols=*/InRange<uint32_t>(1, 32),
                  /*grid_rows=*/InRange<uint32_t>(1, 32),
                  /*is_encoded_data_persistent=*/Arbitrary<bool>(),

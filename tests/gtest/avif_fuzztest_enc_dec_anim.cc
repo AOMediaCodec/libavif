@@ -95,9 +95,7 @@ FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
                     {AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME})))
             .WithMinSize(1)
             .WithMaxSize(kMaxFrames),
-        ArbitraryAvifEncoder(),
-        ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO,
-                              AVIF_CODEC_CHOICE_DAV1D}));
+        ArbitraryAvifEncoder(), ArbitraryAvifDecoder());
 
 }  // namespace
 }  // namespace testutil
