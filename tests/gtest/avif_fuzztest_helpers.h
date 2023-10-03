@@ -176,10 +176,7 @@ inline auto ArbitraryAvifDecoder() {
 }
 #else
 // Generator for an arbitrary AvifDecoderPtr.
-inline auto ArbitraryAvifDecoder(
-    const std::vector<avifCodecChoice>& codec_choices) {
-  return ArbitraryBaseAvifDecoder(codec_choices);
-}
+inline auto ArbitraryAvifDecoder() { return ArbitraryBaseAvifDecoder(); }
 #endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 //------------------------------------------------------------------------------
