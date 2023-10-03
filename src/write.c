@@ -2818,16 +2818,26 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, 1)); // unsigned int(32) chunk_offset; (set later)
             avifRWStreamFinishBox(&s, stco);
 
-            avifBoxMarker stss;
-            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stss", AVIF_BOX_SIZE_TBD, 0, 0, &stss));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, syncSamplesCount)); // unsigned int(32) entry_count;
+            avifBool hasNonSyncSample = AVIF_FALSE;
             for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
-                avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
-                if (sample->sync) {
-                    AVIF_CHECKRES(avifRWStreamWriteU32(&s, sampleIndex + 1)); // unsigned int(32) sample_number;
+                if (!item->encodeOutput->samples.sample[sampleIndex].sync) {
+                    hasNonSyncSample = AVIF_TRUE;
                 }
             }
-            avifRWStreamFinishBox(&s, stss);
+            // ISO/IEC 14496-12, Section 8.6.2.1:
+            //   If the SyncSampleBox is not present, every sample is a sync sample.
+            if (hasNonSyncSample) {
+                avifBoxMarker stss;
+                AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "stss", AVIF_BOX_SIZE_TBD, 0, 0, &stss));
+                AVIF_CHECKRES(avifRWStreamWriteU32(&s, syncSamplesCount)); // unsigned int(32) entry_count;
+                for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
+                    avifEncodeSample * sample = &item->encodeOutput->samples.sample[sampleIndex];
+                    if (sample->sync) {
+                        AVIF_CHECKRES(avifRWStreamWriteU32(&s, sampleIndex + 1)); // unsigned int(32) sample_number;
+                    }
+                }
+                avifRWStreamFinishBox(&s, stss);
+            }
 
             avifRWStreamFinishBox(&s, stbl);
 
