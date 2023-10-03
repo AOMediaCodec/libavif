@@ -36,6 +36,14 @@ Source: Generated with ImageMagick's `convert` command:
 
 It is of color type 3 (PNG_COLOR_TYPE_PALETTE) and has a tRNS chunk.
 
+### File [white_1x1.avif](white_1x1.avif)
+
+![](white_1x1.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: from `GetWhiteSinglePixelAvif()` in `avif_fuzztest_helpers.cc`.
+
 ### Files `kodim*`
 
 #### File [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif)

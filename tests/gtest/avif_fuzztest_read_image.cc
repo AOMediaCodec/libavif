@@ -90,39 +90,36 @@ void ReadImageFile(const std::string& arbitrary_bytes,
   }
 }
 
-constexpr uint32_t kMaxFileSize = 1024 * 1024;  // 1MB.
-
 FUZZ_TEST(ReadImageFuzzTest, ReadImageFile)
-    .WithDomains(
-        Arbitrary<std::string>()
-            .WithMaxSize(kMaxFileSize)
-            .WithSeeds(GetTestImagesContents(kMaxFileSize,
-                                             {AVIF_APP_FILE_FORMAT_JPEG,
-                                              AVIF_APP_FILE_FORMAT_PNG,
-                                              AVIF_APP_FILE_FORMAT_Y4M})),
-        ArbitraryPixelFormat(),
-        /*requested_depth=*/ElementOf({0, 8, 10, 12}),
-        ElementOf({AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                   AVIF_CHROMA_DOWNSAMPLING_FASTEST,
-                   AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY,
-                   AVIF_CHROMA_DOWNSAMPLING_AVERAGE,
-                   AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV}),
-        /*ignore_color_profile=*/Arbitrary<bool>(),
-        /*ignore_exif=*/Arbitrary<bool>(),
-        /*ignore_xmp=*/Arbitrary<bool>(),
-        /*allow_changing_cicp=*/Arbitrary<bool>(),
-        /*ignore_gain_map=*/Arbitrary<bool>(),
-        ElementOf(
-            {AVIF_MATRIX_COEFFICIENTS_IDENTITY, AVIF_MATRIX_COEFFICIENTS_BT709,
-             AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED, AVIF_MATRIX_COEFFICIENTS_FCC,
-             AVIF_MATRIX_COEFFICIENTS_BT470BG, AVIF_MATRIX_COEFFICIENTS_BT601,
-             AVIF_MATRIX_COEFFICIENTS_SMPTE240, AVIF_MATRIX_COEFFICIENTS_YCGCO,
-             AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
-             AVIF_MATRIX_COEFFICIENTS_BT2020_CL,
-             AVIF_MATRIX_COEFFICIENTS_SMPTE2085,
-             AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL,
-             AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL,
-             AVIF_MATRIX_COEFFICIENTS_ICTCP}));
+    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_JPEG,
+                                          AVIF_APP_FILE_FORMAT_PNG,
+                                          AVIF_APP_FILE_FORMAT_Y4M}),
+                 ArbitraryPixelFormat(),
+                 /*requested_depth=*/ElementOf({0, 8, 10, 12}),
+                 ElementOf({AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                            AVIF_CHROMA_DOWNSAMPLING_FASTEST,
+                            AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY,
+                            AVIF_CHROMA_DOWNSAMPLING_AVERAGE,
+                            AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV}),
+                 /*ignore_color_profile=*/Arbitrary<bool>(),
+                 /*ignore_exif=*/Arbitrary<bool>(),
+                 /*ignore_xmp=*/Arbitrary<bool>(),
+                 /*allow_changing_cicp=*/Arbitrary<bool>(),
+                 /*ignore_gain_map=*/Arbitrary<bool>(),
+                 ElementOf({AVIF_MATRIX_COEFFICIENTS_IDENTITY,
+                            AVIF_MATRIX_COEFFICIENTS_BT709,
+                            AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED,
+                            AVIF_MATRIX_COEFFICIENTS_FCC,
+                            AVIF_MATRIX_COEFFICIENTS_BT470BG,
+                            AVIF_MATRIX_COEFFICIENTS_BT601,
+                            AVIF_MATRIX_COEFFICIENTS_SMPTE240,
+                            AVIF_MATRIX_COEFFICIENTS_YCGCO,
+                            AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
+                            AVIF_MATRIX_COEFFICIENTS_BT2020_CL,
+                            AVIF_MATRIX_COEFFICIENTS_SMPTE2085,
+                            AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL,
+                            AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL,
+                            AVIF_MATRIX_COEFFICIENTS_ICTCP}));
 
 //------------------------------------------------------------------------------
 
