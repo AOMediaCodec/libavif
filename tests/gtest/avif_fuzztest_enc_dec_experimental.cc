@@ -54,10 +54,6 @@ void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
   ASSERT_NE(decoder.get(), nullptr);
   ASSERT_NE(decoded_image.get(), nullptr);
 
-  // TODO(maryla): fuzz with different settings.
-  decoder->enableDecodingGainMap = true;
-  decoder->enableParsingGainMapMetadata = true;
-
   AvifRwData encoded_data;
   const avifResult encoder_result =
       avifEncoderWrite(encoder.get(), image.get(), &encoded_data);
@@ -74,9 +70,9 @@ void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
   EXPECT_EQ(decoded_image->depth, image->depth);
   EXPECT_EQ(decoded_image->yuvFormat, image->yuvFormat);
 
-  EXPECT_EQ(image->gainMap.image != nullptr,
-            decoded_image->gainMap.image != nullptr);
-  if (image->gainMap.image != nullptr) {
+  EXPECT_EQ(image->gainMap.image != nullptr, decoder->gainMapPresent);
+  if (decoder->gainMapPresent && decoder->enableDecodingGainMap) {
+    ASSERT_NE(decoded_image->gainMap.image, nullptr);
     EXPECT_EQ(decoded_image->gainMap.image->width, image->gainMap.image->width);
     EXPECT_EQ(decoded_image->gainMap.image->height,
               image->gainMap.image->height);
@@ -86,8 +82,10 @@ void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
     EXPECT_EQ(image->gainMap.image->gainMap.image, nullptr);
     EXPECT_EQ(decoded_image->gainMap.image->alphaPlane, nullptr);
 
-    CheckGainMapMetadataMatches(decoded_image->gainMap.metadata,
-                                image->gainMap.metadata);
+    if (decoder->enableParsingGainMapMetadata) {
+      CheckGainMapMetadataMatches(decoded_image->gainMap.metadata,
+                                  image->gainMap.metadata);
+    }
   }
 
   // Verify that an opaque input leads to an opaque output.
