@@ -409,7 +409,6 @@ void ScalePlaneVertical_16(int src_height,
   assert(dst_width > 0);
   assert(dst_height > 0);
   src_argb += (x >> 16) * wpp;
-
   for (j = 0; j < dst_height; ++j) {
     int yi;
     int yf;
