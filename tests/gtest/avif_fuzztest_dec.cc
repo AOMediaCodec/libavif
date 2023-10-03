@@ -37,7 +37,7 @@ void Decode(const std::string& arbitrary_bytes, AvifDecoderPtr decoder) {
 
 FUZZ_TEST(DecodeAvifTest, Decode)
     .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
-                 ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO}));
+                 ArbitraryAvifDecoder());
 
 //------------------------------------------------------------------------------
 

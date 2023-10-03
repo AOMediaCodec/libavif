@@ -134,13 +134,15 @@ inline auto ArbitraryAvifEncoder() {
 
 // Generator for an arbitrary AvifEncoderPtr with base options fuzzed (i.e.
 // without "experimental" options hidden behind compile flags).
-inline auto ArbitraryBaseAvifDecoder(
-    const std::vector<avifCodecChoice>& codec_choices) {
-  const auto codec_choice = fuzztest::ElementOf<avifCodecChoice>(codec_choices);
+inline auto ArbitraryBaseAvifDecoder() {
   // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
   const auto max_threads = fuzztest::InRange(0, 64);
   return fuzztest::Map(
-      CreateAvifDecoder, codec_choice, max_threads,
+      CreateAvifDecoder,
+      fuzztest::ElementOf<avifCodecChoice>({AVIF_CODEC_CHOICE_AUTO,
+                                            AVIF_CODEC_CHOICE_AOM,
+                                            AVIF_CODEC_CHOICE_DAV1D}),
+      max_threads,
       /*requested_source=*/
       fuzztest::ElementOf(
           {AVIF_DECODER_SOURCE_AUTO, AVIF_DECODER_SOURCE_PRIMARY_ITEM}),
@@ -161,18 +163,16 @@ inline auto ArbitraryBaseAvifDecoder(
 // Generator for an arbitrary AvifEncoderPtr with base options and gain map
 // options fuzzed, with the exception of 'ignoreColorAndAlpha' (because it would
 // break most tests' assumptions).
-inline auto ArbitraryAvifDecoderWithGainMapOptions(
-    const std::vector<avifCodecChoice>& codec_choices) {
+inline auto ArbitraryAvifDecoderWithGainMapOptions() {
   return fuzztest::Map(
-      AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(codec_choices),
+      AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
       /*enable_parsing_gain_map_metadata=*/fuzztest::Arbitrary<bool>(),
       /*enable_decoding_gain_map=*/fuzztest::Arbitrary<bool>());
 }
 
 // Generator for an arbitrary AvifDecoderPtr.
-inline auto ArbitraryAvifDecoder(
-    const std::vector<avifCodecChoice>& codec_choices) {
-  return ArbitraryAvifDecoderWithGainMapOptions(codec_choices);
+inline auto ArbitraryAvifDecoder() {
+  return ArbitraryAvifDecoderWithGainMapOptions();
 }
 #else
 // Generator for an arbitrary AvifDecoderPtr.

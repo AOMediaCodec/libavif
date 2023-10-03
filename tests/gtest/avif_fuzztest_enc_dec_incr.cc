@@ -69,7 +69,7 @@ void EncodeDecodeGridValid(AvifImagePtr image, AvifEncoderPtr encoder,
 
 FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeGridValid)
     .WithDomains(ArbitraryAvifImage(), ArbitraryAvifEncoder(),
-                 ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO}),
+                 ArbitraryAvifDecoder(),
                  /*grid_cols=*/InRange<uint32_t>(1, 32),
                  /*grid_rows=*/InRange<uint32_t>(1, 32),
                  /*is_encoded_data_persistent=*/Arbitrary<bool>(),

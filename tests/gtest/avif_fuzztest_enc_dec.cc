@@ -51,8 +51,7 @@ void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
 
 FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeValid)
     .WithDomains(ArbitraryAvifImage(), ArbitraryAvifEncoder(),
-                 ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO,
-                                       AVIF_CODEC_CHOICE_DAV1D}));
+                 ArbitraryAvifDecoder());
 
 }  // namespace
 }  // namespace testutil
