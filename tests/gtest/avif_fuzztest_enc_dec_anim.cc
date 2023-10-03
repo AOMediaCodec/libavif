@@ -1,6 +1,7 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cstdint>
 #include <vector>
 
 #include "avif/avif.h"
@@ -88,7 +89,7 @@ FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
         ArbitraryAvifImage(),
         fuzztest::VectorOf(
             fuzztest::StructOf<FrameOptions>(
-                /*duration=*/fuzztest::InRange(1, 10),
+                /*duration=*/fuzztest::InRange<uint64_t>(1, 10),
                 // BitFlagCombinationOf() requires non zero flags as input.
                 // AVIF_ADD_IMAGE_FLAG_NONE (0) is implicitly part of the set.
                 fuzztest::BitFlagCombinationOf<avifAddImageFlags>(
