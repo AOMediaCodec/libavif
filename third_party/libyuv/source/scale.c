@@ -445,7 +445,6 @@ static void ScalePlaneBilinearUp(int src_width,
   }
 }
 
-
 // Scale plane, horizontally up by 2 times.
 // Uses linear filter horizontally, nearest vertically.
 // This is an optimized version for scaling up a plane to 2 times of
@@ -928,7 +927,6 @@ void ScalePlane_16(const uint16_t* src,
                           dst_stride, src, dst, 0, y, dy, /*bpp=*/1, filtering);
     return;
   }
-
   if (filtering == kFilterBox && dst_height * 2 < src_height) {
     ScalePlaneBox_16(src_width, src_height, dst_width, dst_height, src_stride,
                      dst_stride, src, dst);

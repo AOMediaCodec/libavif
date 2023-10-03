@@ -52,7 +52,6 @@ enum FilterMode ScaleFilterReduce(int src_width,
 int FixedDiv_C(int num, int div);
 // Divide num - 1 by div - 1 and return as 16.16 fixed point result.
 int FixedDiv1_C(int num, int div);
-
 #define FixedDiv FixedDiv_C
 #define FixedDiv1 FixedDiv1_C
 
