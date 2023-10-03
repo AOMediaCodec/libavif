@@ -58,7 +58,8 @@ void EncodeDecodeAnimation(AvifImagePtr frame,
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << decoder->diag.error;
 
-  if (decoder->requestedSource == AVIF_DECODER_SOURCE_PRIMARY_ITEM) {
+  if (decoder->requestedSource == AVIF_DECODER_SOURCE_PRIMARY_ITEM ||
+      num_frames == 1) {
     ASSERT_EQ(decoder->imageCount, 1);
   } else {
     ASSERT_EQ(decoder->imageCount, num_frames);
@@ -83,17 +84,20 @@ void EncodeDecodeAnimation(AvifImagePtr frame,
 constexpr int kMaxFrames = 10;
 
 FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
-    .WithDomains(ArbitraryAvifImage(),
-                 fuzztest::VectorOf(
-                     fuzztest::StructOf<FrameOptions>(
-                         /*duration=*/fuzztest::InRange(1, 10),
-                         fuzztest::BitFlagCombinationOf<avifAddImageFlags>(
-                             {AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME})))
-                     .WithMinSize(2)
-                     .WithMaxSize(kMaxFrames),
-                 ArbitraryAvifEncoder(),
-                 ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO,
-                                       AVIF_CODEC_CHOICE_DAV1D}));
+    .WithDomains(
+        ArbitraryAvifImage(),
+        fuzztest::VectorOf(
+            fuzztest::StructOf<FrameOptions>(
+                /*duration=*/fuzztest::InRange(1, 10),
+                // BitFlagCombinationOf() requires non zero flags as input.
+                // AVIF_ADD_IMAGE_FLAG_NONE (0) is implicitly part of the set.
+                fuzztest::BitFlagCombinationOf<avifAddImageFlags>(
+                    {AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME})))
+            .WithMinSize(1)
+            .WithMaxSize(kMaxFrames),
+        ArbitraryAvifEncoder(),
+        ArbitraryAvifDecoder({AVIF_CODEC_CHOICE_AUTO,
+                              AVIF_CODEC_CHOICE_DAV1D}));
 
 }  // namespace
 }  // namespace testutil
