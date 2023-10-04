@@ -523,7 +523,7 @@ if(AVIF_CODEC_RAV1E)
 
     # Unfortunately, rav1e requires a few more libraries
     if(WIN32)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ntdll.lib advapi32.lib userenv.lib ws2_32.lib bcrypt.lib msvcrt.lib)
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
     elseif(UNIX AND NOT APPLE)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
     endif()
