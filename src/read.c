@@ -4061,8 +4061,7 @@ static avifResult avifCodecCreateInternal(avifCodecChoice choice, const avifTile
         choice = AVIF_CODEC_CHOICE_AVM;
     }
 #endif
-    AVIF_CHECKERR(tile->codecType == avifCodecTypeFromChoice(choice, AVIF_CODEC_FLAG_CAN_DECODE), AVIF_RESULT_NO_CODEC_AVAILABLE);
-    *codec = avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE);
+    AVIF_CHECKRES(avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE, codec));
     AVIF_CHECKERR(*codec, AVIF_RESULT_OUT_OF_MEMORY);
     (*codec)->diag = diag;
     (*codec)->operatingPoint = tile->operatingPoint;

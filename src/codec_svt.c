@@ -280,12 +280,19 @@ static void svtCodecDestroyInternal(avifCodec * codec)
 avifCodec * avifCodecCreateSvt(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    if (codec == NULL) {
+        return NULL;
+    }
     memset(codec, 0, sizeof(struct avifCodec));
     codec->encodeImage = svtCodecEncodeImage;
     codec->encodeFinish = svtCodecEncodeFinish;
     codec->destroyInternal = svtCodecDestroyInternal;
 
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(avifCodecInternal));
+    if (codec->internal == NULL) {
+        avifFree(codec);
+        return NULL;
+    }
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     return codec;
 }

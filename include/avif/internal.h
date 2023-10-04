@@ -459,7 +459,7 @@ typedef struct avifCodec
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-avifCodec * avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags);
+avifResult avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags, avifCodec ** codec);
 void avifCodecDestroy(avifCodec * codec);
 
 avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM (codec_aom.c)
