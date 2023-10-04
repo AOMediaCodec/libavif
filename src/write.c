@@ -233,7 +233,6 @@ typedef struct avifEncoderData
     uint16_t primaryItemID;
     avifEncoderItemIdArray alternativeItemIDs; // list of item ids for an 'altr' box (group of alternatives to each other)
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
-    avifBool allIntra;    // if true, there was no call to avifEncoderAddImage() past the first one with AVIF_ADD_IMAGE_FLAG_NONE
     avifBool alphaPresent;
     // Fields specific to AV1/AV2
     const char * imageItemType;  // "av01" for AV1 ("av02" for AV2 if AVIF_CODEC_AVM)
@@ -1539,10 +1538,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
     }
 
-    if (encoder->data->frames.count == 0) {
-        // The first frame is always a keyframe / sync frame / intra frame.
-        encoder->data->allIntra = AVIF_TRUE;
-    } else {
+    if (encoder->data->frames.count == 1) {
         // We will be writing an image sequence. When writing the AV1SampleEntry (derived from
         // VisualSampleEntry) in the stsd box, we need to cast imageMetadata->width and
         // imageMetadata->height to uint16_t:
@@ -1559,9 +1555,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if ((imageMetadata->width > 65535) || (imageMetadata->height > 65535)) {
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
-
-        // Keep track of the presence of any inter frame.
-        encoder->data->allIntra = encoder->data->allIntra && (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME);
     }
 
     // -----------------------------------------------------------------------
@@ -2192,16 +2185,26 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     }
 #endif
 
+    // According to section 5.2 of AV1 Image File Format specification v1.1.0:
+    //   If the the primary item or all the items referenced by the primary item are AV1 image items made only
+    //   of Intra Frames, the brand "avio" should be used in the compatible_brands field of the FileTypeBox.
+    // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#image-and-image-collection-brand.
+    // Use the "avio" brand in all cases except for layered images, because:
+    //  - Non-layered still images are always Intra Frames, even with grids;
+    //  - Sequences cannot be combined with layers or grids, and the first frame of the sequence
+    //    (referred to by the primary image item) is always an Intra Frame.
+    const avifBool useAvioBrand = encoder->extraLayerCount == 0;
+
     avifBoxMarker ftyp;
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
     AVIF_CHECKRES(avifRWStreamWriteChars(&s, majorBrand, 4));              // unsigned int(32) major_brand;
     AVIF_CHECKRES(avifRWStreamWriteU32(&s, minorVersion));                 // unsigned int(32) minor_version;
     AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avif", 4));                  // unsigned int(32) compatible_brands[];
+    if (useAvioBrand) {                                                    //
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avio", 4));              // ... compatible_brands[]
+    }                                                                      //
     if (isSequence) {                                                      //
         AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avis", 4));              // ... compatible_brands[]
-        if (encoder->data->allIntra) {                                     //
-            AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avio", 4));          // ... compatible_brands[]
-        }                                                                  //
         AVIF_CHECKRES(avifRWStreamWriteChars(&s, "msf1", 4));              // ... compatible_brands[]
         AVIF_CHECKRES(avifRWStreamWriteChars(&s, "iso8", 4));              // ... compatible_brands[]
     }                                                                      //
