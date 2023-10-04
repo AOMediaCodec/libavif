@@ -2,8 +2,9 @@
 <ISOBaseMediaFileTrace>
 <!--MP4Box dump trace-->
 <IsoMediaFile xmlns="urn:mpeg:isobmff:schema:file:2016" Name="kodim03_23_animation.avif">
-<FileTypeBox Size="44" Type="ftyp" Specification="p12" Container="file otyp" MajorBrand="avis" MinorVersion="0">
+<FileTypeBox Size="48" Type="ftyp" Specification="p12" Container="file otyp" MajorBrand="avis" MinorVersion="0">
 <BrandEntry AlternateBrand="avif"/>
+<BrandEntry AlternateBrand="avio"/>
 <BrandEntry AlternateBrand="avis"/>
 <BrandEntry AlternateBrand="msf1"/>
 <BrandEntry AlternateBrand="iso8"/>
@@ -105,7 +106,7 @@
 <SampleSizeEntry Size="REDACTED"/>
 </SampleSizeBox>
 <ChunkOffsetBox Size="20" Type="stco" Version="0" Flags="0" Specification="p12" Container="stbl" EntryCount="1">
-<ChunkEntry offset="1011"/>
+<ChunkEntry offset="1015"/>
 </ChunkOffsetBox>
 <SyncSampleBox Size="20" Type="stss" Version="0" Flags="0" Specification="p12" Container="stbl" EntryCount="1">
 <SyncSampleEntry sampleNumber="1"/>
