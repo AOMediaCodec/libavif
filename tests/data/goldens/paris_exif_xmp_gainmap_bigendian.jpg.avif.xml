@@ -2,9 +2,8 @@
 <ISOBaseMediaFileTrace>
 <!--MP4Box dump trace-->
 <IsoMediaFile xmlns="urn:mpeg:isobmff:schema:file:2016" Name="paris_exif_xmp_gainmap_bigendian.jpg.avif">
-<FileTypeBox Size="36" Type="ftyp" Specification="p12" Container="file otyp" MajorBrand="avif" MinorVersion="0">
+<FileTypeBox Size="32" Type="ftyp" Specification="p12" Container="file otyp" MajorBrand="avif" MinorVersion="0">
 <BrandEntry AlternateBrand="avif"/>
-<BrandEntry AlternateBrand="avio"/>
 <BrandEntry AlternateBrand="mif1"/>
 <BrandEntry AlternateBrand="miaf"/>
 <BrandEntry AlternateBrand="MA1B"/>
