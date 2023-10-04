@@ -1087,13 +1087,14 @@ avifCodecChoice avifCodecChoiceFromName(const char * name)
     return AVIF_CODEC_CHOICE_AUTO;
 }
 
-avifCodec * avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags)
+avifResult avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags, avifCodec ** codec)
 {
+    *codec = NULL;
     struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
-    if (availableCodec) {
-        return availableCodec->create();
-    }
-    return NULL;
+    AVIF_CHECKERR(availableCodec != NULL, AVIF_RESULT_NO_CODEC_AVAILABLE);
+    *codec = availableCodec->create();
+    AVIF_CHECKERR(*codec != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    return AVIF_RESULT_OK;
 }
 
 static void append(char ** writePos, size_t * remainingLen, const char * appendStr)

@@ -1085,8 +1085,7 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
         avifEncoderItem * item =
             avifEncoderDataCreateItem(encoder->data, encoder->data->imageItemType, infeName, infeNameSize, cellIndex);
         AVIF_CHECKERR(item, AVIF_RESULT_OUT_OF_MEMORY);
-        item->codec = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-        AVIF_CHECKERR(item->codec, AVIF_RESULT_NO_CODEC_AVAILABLE);
+        AVIF_CHECKRES(avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE, &item->codec));
         item->codec->csOptions = encoder->csOptions;
         item->codec->diag = &encoder->diag;
         item->itemCategory = itemCategory;
