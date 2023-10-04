@@ -495,11 +495,11 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
             params.srcOffsetBytes = state.rgb.offsetBytesA;
             params.srcPixelBytes = state.rgb.pixelBytes;
 
-            avifReformatAlpha(&params);
+            AVIF_CHECKERR(avifReformatAlpha(&params), AVIF_RESULT_REFORMAT_FAILED);
         } else {
             // libyuv does not fill alpha when converting from RGB to YUV so
             // fill it regardless of the value of convertedWithLibYUV.
-            avifFillAlpha(&params);
+            AVIF_CHECKERR(avifFillAlpha(&params), AVIF_RESULT_REFORMAT_FAILED);
         }
     }
     return AVIF_RESULT_OK;
@@ -1357,9 +1357,9 @@ static avifResult avifImageYUVToRGBImpl(const avifImage * image, avifRGBImage * 
             params.srcOffsetBytes = 0;
             params.srcPixelBytes = state->yuv.channelBytes;
 
-            avifReformatAlpha(&params);
+            AVIF_CHECKERR(avifReformatAlpha(&params), AVIF_RESULT_REFORMAT_FAILED);
         } else {
-            avifFillAlpha(&params);
+            AVIF_CHECKERR(avifFillAlpha(&params), AVIF_RESULT_REFORMAT_FAILED);
         }
     }
 
