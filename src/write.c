@@ -2450,7 +2450,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         } else if (item->itemCategory == AVIF_ITEM_COLOR) {
             // Color specific properties
 
-            avifEncoderWriteColorProperties(&s, itemMetadata, &item->ipma, dedup);
+            AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, itemMetadata, &item->ipma, dedup));
             if (isToneMappedImage) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                 if (!imageMetadata->gainMap.metadata.baseRenditionIsHDR) {

@@ -221,8 +221,13 @@ int main(int argc, char * argv[])
                                 }
                             }
 
-                            avifImageRGBToYUV(image, &srcRGB);
-                            avifImageYUVToRGB(image, &dstRGB);
+                            if (avifImageRGBToYUV(image, &srcRGB) != AVIF_RESULT_OK || avifImageYUVToRGB(image, &dstRGB) != AVIF_RESULT_OK) {
+                                avifRGBImageFreePixels(&srcRGB);
+                                avifRGBImageFreePixels(&dstRGB);
+                                avifImageDestroy(image);
+                                fprintf(stderr, "ERROR: Conversion failed\n");
+                                return 1;
+                            }
 
                             for (int y = 0; y < dim; ++y) {
                                 const uint8_t * srcRow = &srcRGB.pixels[y * srcRGB.rowBytes];
@@ -373,7 +378,12 @@ int main(int argc, char * argv[])
                         avifImageFreePlanes(image, AVIF_PLANES_ALL);
                         image->depth = yuvDepth;
                         image->yuvRange = yuvRange;
-                        avifImageRGBToYUV(image, &srcRGB);
+                        if (avifImageRGBToYUV(image, &srcRGB) != AVIF_RESULT_OK) {
+                            avifRGBImageFreePixels(&srcRGB);
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Conversion failed\n");
+                            return 1;
+                        }
 
                         avifRGBImage intermediateRGB;
                         avifRGBImageSetDefaults(&intermediateRGB, image);
@@ -385,10 +395,22 @@ int main(int argc, char * argv[])
                             fprintf(stderr, "ERROR: Out of memory\n");
                             return 1;
                         }
-                        avifImageYUVToRGB(image, &intermediateRGB);
+                        if (avifImageYUVToRGB(image, &intermediateRGB) != AVIF_RESULT_OK) {
+                            avifRGBImageFreePixels(&intermediateRGB);
+                            avifRGBImageFreePixels(&srcRGB);
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Conversion failed\n");
+                            return 1;
+                        }
 
                         avifImageFreePlanes(image, AVIF_PLANES_ALL);
-                        avifImageRGBToYUV(image, &intermediateRGB);
+                        if (avifImageRGBToYUV(image, &intermediateRGB) != AVIF_RESULT_OK) {
+                            avifRGBImageFreePixels(&intermediateRGB);
+                            avifRGBImageFreePixels(&srcRGB);
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Conversion failed\n");
+                            return 1;
+                        }
 
                         avifRGBImage dstRGB;
                         avifRGBImageSetDefaults(&dstRGB, image);
@@ -400,7 +422,13 @@ int main(int argc, char * argv[])
                             fprintf(stderr, "ERROR: Out of memory\n");
                             return 1;
                         }
-                        avifImageYUVToRGB(image, &dstRGB);
+                        if (avifImageYUVToRGB(image, &dstRGB) != AVIF_RESULT_OK) {
+                            avifRGBImageFreePixels(&intermediateRGB);
+                            avifRGBImageFreePixels(&srcRGB);
+                            avifImageDestroy(image);
+                            fprintf(stderr, "ERROR: Conversion failed\n");
+                            return 1;
+                        }
 
                         avifBool moveOn = AVIF_FALSE;
                         for (uint32_t j = 0; j < originalHeight; ++j) {
@@ -515,14 +543,17 @@ int main(int argc, char * argv[])
                 }
 
                 rgb.width = a + 1;
-                avifRGBImageUnpremultiplyAlpha(&rgb);
-                avifRGBImagePremultiplyAlpha(&rgb);
+                if (avifRGBImageUnpremultiplyAlpha(&rgb) != AVIF_RESULT_OK || avifRGBImagePremultiplyAlpha(&rgb) != AVIF_RESULT_OK) {
+                    avifRGBImageFreePixels(&rgb);
+                    fprintf(stderr, "ERROR: Alpha premultiplication failed\n");
+                }
 
                 for (uint32_t r = 0; r <= a; ++r) {
                     if (rgbDepth == 8) {
                         uint8_t * pixel = &rgb.pixels[r * sizeof(uint8_t) * 4];
                         int drift = abs((int)pixel[0] - (int)r);
                         if (drift >= MAX_DRIFT) {
+                            avifRGBImageFreePixels(&rgb);
                             fprintf(stderr,
                                     "ERROR: Premultiply round-trip difference greater than or equal to MAX_DRIFT(%d): RGB depth: %d, src: %d, dst: %d, alpha: %d.\n",
                                     MAX_DRIFT,

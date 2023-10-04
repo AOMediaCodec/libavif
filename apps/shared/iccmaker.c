@@ -420,7 +420,9 @@ avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries
     matMul(adaptation, bradford, tmp);
 
     double bradfordInv[3][3];
-    matInv(bradford, bradfordInv);
+    if (!matInv(bradford, bradfordInv)) {
+        return AVIF_FALSE;
+    }
     matMul(bradfordInv, tmp, adaptation);
 
     double rgbXYZD50[3][3];
