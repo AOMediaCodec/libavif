@@ -2822,6 +2822,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
                 if (!item->encodeOutput->samples.sample[sampleIndex].sync) {
                     hasNonSyncSample = AVIF_TRUE;
+                    break;
                 }
             }
             // ISO/IEC 14496-12, Section 8.6.2.1:
