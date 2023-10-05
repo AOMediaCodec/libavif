@@ -2184,11 +2184,54 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     }
 #endif
 
+    // According to section 5.2 of AV1 Image File Format specification v1.1.0:
+    //   If the primary item or all the items referenced by the primary item are AV1 image items made only
+    //   of Intra Frames, the brand "avio" should be used in the compatible_brands field of the FileTypeBox.
+    // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#image-and-image-collection-brand.
+    // This rule corresponds to using the "avio" brand in all cases except for layered images, because:
+    //  - Non-layered still images are always Intra Frames, even with grids;
+    //  - Sequences cannot be combined with layers or grids, and the first frame of the sequence
+    //    (referred to by the primary image item) is always an Intra Frame.
+    avifBool useAvioBrand;
+    if (isSequence) {
+        // According to section 5.3 of AV1 Image File Format specification v1.1.0:
+        //   Additionally, if a file contains AV1 image sequences and the brand avio is used in the
+        //   compatible_brands field of the FileTypeBox, the item constraints for this brand shall be met
+        //   and at least one of the AV1 image sequences shall be made only of AV1 Samples marked as sync.
+        // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#image-sequence-brand.
+        useAvioBrand = AVIF_FALSE;
+        for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+            avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+            if (item->encodeOutput->samples.count == 0) {
+                continue; // Not a track.
+            }
+            avifBool onlySyncSamples = AVIF_TRUE;
+            for (uint32_t sampleIndex = 0; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
+                if (!item->encodeOutput->samples.sample[sampleIndex].sync) {
+                    onlySyncSamples = AVIF_FALSE;
+                    break;
+                }
+            }
+            if (onlySyncSamples) {
+                useAvioBrand = AVIF_TRUE; // at least one of the AV1 image sequences is made only of sync samples
+                break;
+            }
+        }
+    } else {
+        // The gpac/ComplianceWarden tool only warns about the lack of the "avio" brand for sequences,
+        // and the specification says the brand "should" be used, not "shall". Leverage that opportunity
+        // to save four bytes for still images.
+        useAvioBrand = AVIF_FALSE; // Should be (encoder->extraLayerCount == 0) to be fully compliant.
+    }
+
     avifBoxMarker ftyp;
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
     AVIF_CHECKRES(avifRWStreamWriteChars(&s, majorBrand, 4));              // unsigned int(32) major_brand;
     AVIF_CHECKRES(avifRWStreamWriteU32(&s, minorVersion));                 // unsigned int(32) minor_version;
     AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avif", 4));                  // unsigned int(32) compatible_brands[];
+    if (useAvioBrand) {                                                    //
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avio", 4));              // ... compatible_brands[]
+    }                                                                      //
     if (isSequence) {                                                      //
         AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avis", 4));              // ... compatible_brands[]
         AVIF_CHECKRES(avifRWStreamWriteChars(&s, "msf1", 4));              // ... compatible_brands[]
