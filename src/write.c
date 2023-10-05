@@ -2214,7 +2214,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 }
             }
             if (onlySyncSamples) {
-                useAvioBrand = AVIF_TRUE; // at least one of the AV1 image sequences made only of sync samples
+                useAvioBrand = AVIF_TRUE; // at least one of the AV1 image sequences is made only of sync samples
                 break;
             }
         }
