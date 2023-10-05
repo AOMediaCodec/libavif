@@ -31,8 +31,11 @@ AvifImagePtr CreateAvifImage(size_t width, size_t height, int depth,
   if (image.get() == nullptr) {
     return image;
   }
-  avifImageAllocatePlanes(image.get(),
-                          has_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
+  if (avifImageAllocatePlanes(image.get(),
+                              has_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV) !=
+      AVIF_RESULT_OK) {
+    return AvifImagePtr(nullptr, nullptr);
+  }
 
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {

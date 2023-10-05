@@ -32,6 +32,7 @@ set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" ON)
+option(AVIF_ENABLE_WUNUSED_RESULT "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23" OFF)
 
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -307,6 +308,17 @@ if(AVIF_ENABLE_WERROR)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
+endif()
+
+if(AVIF_ENABLE_WUNUSED_RESULT)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
+        set(CMAKE_C_STANDARD 23)
+    else()
+        unset(CMAKE_C_STANDARD)
+        add_compile_options($<$<COMPILE_LANGUAGE:C>:-std=gnu2x>)
+    endif()
+    add_compile_options(-Wunused-result)
+    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_ENABLE_NODISCARD=1)
 endif()
 
 if(AVIF_ENABLE_COVERAGE)

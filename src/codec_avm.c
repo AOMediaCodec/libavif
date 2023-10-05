@@ -173,7 +173,7 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         // avifImage assumes that a depth of 8 bits means an 8-bit buffer.
         // aom_image does not. The buffer depth depends on fmt|AOM_IMG_FMT_HIGHBITDEPTH, even for 8-bit values.
         if (!avifImageUsesU16(image) && (codec->internal->image->fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
-            avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+            AVIF_CHECK(avifImageAllocatePlanes(image, AVIF_PLANES_YUV) == AVIF_RESULT_OK);
             for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
                 const uint32_t planeWidth = avifImagePlaneWidth(image, yuvPlane);
                 const uint32_t planeHeight = avifImagePlaneHeight(image, yuvPlane);
@@ -214,7 +214,7 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         avifImageFreePlanes(image, AVIF_PLANES_A);
 
         if (!avifImageUsesU16(image) && (codec->internal->image->fmt & AOM_IMG_FMT_HIGHBITDEPTH)) {
-            avifImageAllocatePlanes(image, AVIF_PLANES_A);
+            AVIF_CHECK(avifImageAllocatePlanes(image, AVIF_PLANES_A) == AVIF_RESULT_OK);
             const uint8_t * srcRow = codec->internal->image->planes[0];
             uint8_t * dstRow = image->alphaPlane;
             for (uint32_t y = 0; y < image->height; ++y) {

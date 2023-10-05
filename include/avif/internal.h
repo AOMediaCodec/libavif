@@ -101,20 +101,20 @@ avifTransferFunction avifTransferCharacteristicsGetLinearToGammaFunction(avifTra
         uint32_t count;                                    \
         uint32_t capacity;                                 \
     } TYPENAME
-avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
-void * avifArrayPush(void * arrayStruct);
+AVIF_NODISCARD avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
+AVIF_NODISCARD void * avifArrayPush(void * arrayStruct);
 void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
 
 void avifFractionSimplify(avifFraction * f);
 // Makes the fractions have a common denominator.
-avifBool avifFractionCD(avifFraction * a, avifFraction * b);
-avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
-avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
+AVIF_NODISCARD avifBool avifFractionCD(avifFraction * a, avifFraction * b);
+AVIF_NODISCARD avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
+AVIF_NODISCARD avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
 
 // Creates a uint32 fraction that is approximately equal to 'v'.
 // Returns AVIF_FALSE if 'v' is < 0 or > UINT32_MAX or NaN.
-avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator);
+AVIF_NODISCARD avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator);
 
 void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
@@ -257,7 +257,7 @@ avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb);
 avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
-avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit);
+AVIF_NODISCARD avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit);
 
 // Given the number of encoding threads or decoding threads available and the image dimensions,
 // chooses suitable values of *tileRowsLog2 and *tileColsLog2.
@@ -271,12 +271,12 @@ void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int 
 // Scaling
 
 // Scales the YUV/A planes in-place.
-avifResult avifImageScaleWithLimit(avifImage * image,
-                                   uint32_t dstWidth,
-                                   uint32_t dstHeight,
-                                   uint32_t imageSizeLimit,
-                                   uint32_t imageDimensionLimit,
-                                   avifDiagnostics * diag);
+AVIF_NODISCARD avifResult avifImageScaleWithLimit(avifImage * image,
+                                                  uint32_t dstWidth,
+                                                  uint32_t dstHeight,
+                                                  uint32_t imageSizeLimit,
+                                                  uint32_t imageDimensionLimit,
+                                                  avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // AVIF item category
@@ -309,7 +309,12 @@ typedef enum avifConiColorType
 
 // Returns false if the tiles in a grid image violate any standards.
 // The image contains imageW*imageH pixels. The tiles are of tileW*tileH pixels each.
-avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, uint32_t imageH, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag);
+AVIF_NODISCARD avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
+                                                   uint32_t imageW,
+                                                   uint32_t imageH,
+                                                   uint32_t tileW,
+                                                   uint32_t tileH,
+                                                   avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
 // Metadata
@@ -346,7 +351,7 @@ typedef struct avifCodecDecodeInput
     avifItemCategory itemCategory; // category of item being decoded
 } avifCodecDecodeInput;
 
-avifCodecDecodeInput * avifCodecDecodeInputCreate(void);
+AVIF_NODISCARD avifCodecDecodeInput * avifCodecDecodeInputCreate(void);
 void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput);
 
 // ---------------------------------------------------------------------------
@@ -364,7 +369,7 @@ typedef struct avifCodecEncodeOutput
     avifEncodeSampleArray samples;
 } avifCodecEncodeOutput;
 
-avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void);
+AVIF_NODISCARD avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void);
 avifResult avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync);
 void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput);
 
@@ -379,7 +384,7 @@ typedef struct avifCodecSpecificOption
 AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
 
 // Returns NULL if a memory allocation failed.
-avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
+AVIF_NODISCARD avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
 void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
 avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
@@ -481,18 +486,18 @@ typedef struct avifCodec
 avifResult avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags, avifCodec ** codec);
 void avifCodecDestroy(avifCodec * codec);
 
-avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM (codec_aom.c)
-const char * avifCodecVersionAOM(void);   // requires AVIF_CODEC_AOM (codec_aom.c)
-avifCodec * avifCodecCreateDav1d(void);   // requires AVIF_CODEC_DAV1D (codec_dav1d.c)
-const char * avifCodecVersionDav1d(void); // requires AVIF_CODEC_DAV1D (codec_dav1d.c)
-avifCodec * avifCodecCreateGav1(void);    // requires AVIF_CODEC_LIBGAV1 (codec_libgav1.c)
-const char * avifCodecVersionGav1(void);  // requires AVIF_CODEC_LIBGAV1 (codec_libgav1.c)
-avifCodec * avifCodecCreateRav1e(void);   // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
-const char * avifCodecVersionRav1e(void); // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
-avifCodec * avifCodecCreateSvt(void);     // requires AVIF_CODEC_SVT (codec_svt.c)
-const char * avifCodecVersionSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
-avifCodec * avifCodecCreateAVM(void);     // requires AVIF_CODEC_AVM (codec_avm.c)
-const char * avifCodecVersionAVM(void);   // requires AVIF_CODEC_AVM (codec_avm.c)
+AVIF_NODISCARD avifCodec * avifCodecCreateAOM(void);   // requires AVIF_CODEC_AOM (codec_aom.c)
+const char * avifCodecVersionAOM(void);                // requires AVIF_CODEC_AOM (codec_aom.c)
+AVIF_NODISCARD avifCodec * avifCodecCreateDav1d(void); // requires AVIF_CODEC_DAV1D (codec_dav1d.c)
+const char * avifCodecVersionDav1d(void);              // requires AVIF_CODEC_DAV1D (codec_dav1d.c)
+AVIF_NODISCARD avifCodec * avifCodecCreateGav1(void);  // requires AVIF_CODEC_LIBGAV1 (codec_libgav1.c)
+const char * avifCodecVersionGav1(void);               // requires AVIF_CODEC_LIBGAV1 (codec_libgav1.c)
+AVIF_NODISCARD avifCodec * avifCodecCreateRav1e(void); // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
+const char * avifCodecVersionRav1e(void);              // requires AVIF_CODEC_RAV1E (codec_rav1e.c)
+AVIF_NODISCARD avifCodec * avifCodecCreateSvt(void);   // requires AVIF_CODEC_SVT (codec_svt.c)
+const char * avifCodecVersionSvt(void);                // requires AVIF_CODEC_SVT (codec_svt.c)
+AVIF_NODISCARD avifCodec * avifCodecCreateAVM(void);   // requires AVIF_CODEC_AVM (codec_avm.c)
+const char * avifCodecVersionAVM(void);                // requires AVIF_CODEC_AVM (codec_avm.c)
 
 // ---------------------------------------------------------------------------
 // avifDiagnostics
@@ -543,26 +548,26 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics 
 size_t avifROStreamOffset(const avifROStream * stream);
 void avifROStreamSetOffset(avifROStream * stream, size_t offset);
 
-avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount);
+AVIF_NODISCARD avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount);
 size_t avifROStreamRemainingBytes(const avifROStream * stream);
 // The following functions require byte alignment.
-avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount);
-avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size);
-avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v);
-avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avifBool littleEndian);
-avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v);
-avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avifBool littleEndian);
-avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
-avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v);
-avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize);
-avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header); // This fails if the size reported by the header cannot fit in the stream
-avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header); // This doesn't require that the full box can fit in the stream
-avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags); // version and flags ptrs are both optional
-avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion); // currently discards flags
+AVIF_NODISCARD avifBool avifROStreamSkip(avifROStream * stream, size_t byteCount);
+AVIF_NODISCARD avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size);
+AVIF_NODISCARD avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v);
+AVIF_NODISCARD avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avifBool littleEndian);
+AVIF_NODISCARD avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v);
+AVIF_NODISCARD avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avifBool littleEndian);
+AVIF_NODISCARD avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
+AVIF_NODISCARD avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v);
+AVIF_NODISCARD avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize);
+AVIF_NODISCARD avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header); // This fails if the size reported by the header cannot fit in the stream
+AVIF_NODISCARD avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header); // This doesn't require that the full box can fit in the stream
+AVIF_NODISCARD avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags); // version and flags ptrs are both optional
+AVIF_NODISCARD avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion); // currently discards flags
 // The following functions can write non-aligned bits.
-avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount);
-avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount);
-avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v);
+AVIF_NODISCARD avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount);
+AVIF_NODISCARD avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount);
+AVIF_NODISCARD avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v);
 
 typedef struct avifRWStream
 {
@@ -640,7 +645,7 @@ typedef struct avifSequenceHeader
     avifCodecConfigurationBox av1C; // TODO(yguyon): Rename or add av2C
 } avifSequenceHeader;
 
-avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
+AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
