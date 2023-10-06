@@ -4986,7 +4986,6 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                                         decoder->imageSizeLimit,
                                         decoder->imageDimensionLimit,
                                         &decoder->diag) != AVIF_RESULT_OK) {
-                avifDiagnosticsPrintf(&decoder->diag, "avifImageScaleWithLimit() failed");
                 return avifGetErrorForItemCategory(tile->input->itemCategory);
             }
         }
