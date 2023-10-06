@@ -2094,6 +2094,16 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
+#define AVIF_CHECKRES_AND_FREE_DEDUP(A)          \
+    do {                                         \
+        const avifResult result__ = (A);         \
+        if (result__ != AVIF_RESULT_OK) {        \
+            avifBreakOnError();                  \
+            avifItemPropertyDedupDestroy(dedup); \
+            return result__;                     \
+        }                                        \
+    } while (0)
+
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
     avifDiagnosticsClearError(&encoder->diag);
@@ -2457,27 +2467,27 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         avifItemPropertyDedupStart(dedup);
         avifBoxMarker ispe;
-        AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0, &ispe));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, imageWidth));  // unsigned int(32) image_width;
-        AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, imageHeight)); // unsigned int(32) image_height;
+        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0, &ispe));
+        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU32(&dedup->s, imageWidth));  // unsigned int(32) image_width;
+        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU32(&dedup->s, imageHeight)); // unsigned int(32) image_height;
         avifRWStreamFinishBox(&dedup->s, ispe);
-        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
+        AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
 
         avifItemPropertyDedupStart(dedup);
         uint8_t channelCount = (item->itemCategory == AVIF_ITEM_ALPHA || (itemMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
         avifBoxMarker pixi;
-        AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
-        AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
+        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
+        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
         for (uint8_t chan = 0; chan < channelCount; ++chan) {
-            AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, (uint8_t)itemMetadata->depth)); // unsigned int (8) bits_per_channel;
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU8(&dedup->s, (uint8_t)itemMetadata->depth)); // unsigned int (8) bits_per_channel;
         }
         avifRWStreamFinishBox(&dedup->s, pixi);
-        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
+        AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
 
         if (item->codec) {
             avifItemPropertyDedupStart(dedup);
-            AVIF_CHECKRES(writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName));
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_TRUE));
+            AVIF_CHECKRES_AND_FREE_DEDUP(writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName));
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_TRUE));
         }
 
         if (item->itemCategory == AVIF_ITEM_ALPHA) {
@@ -2485,14 +2495,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             avifItemPropertyDedupStart(dedup);
             avifBoxMarker auxC;
-            AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0, &auxC));
-            AVIF_CHECKRES(avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize)); //  string aux_type;
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0, &auxC));
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize)); //  string aux_type;
             avifRWStreamFinishBox(&dedup->s, auxC);
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
         } else if (item->itemCategory == AVIF_ITEM_COLOR) {
             // Color specific properties
 
-            AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, itemMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifEncoderWriteColorProperties(&s, itemMetadata, &item->ipma, dedup));
             if (isToneMappedImage) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                 if (!imageMetadata->gainMap.metadata.baseRenditionIsHDR) {
@@ -2500,18 +2510,19 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                     // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
                     // place to put this data.
 
-                    AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, &s, imageMetadata->gainMap.image, &item->ipma, dedup));
+                    AVIF_CHECKRES_AND_FREE_DEDUP(
+                        avifEncoderWriteHDRProperties(&dedup->s, &s, imageMetadata->gainMap.image, &item->ipma, dedup));
                 }
 #endif
             } else {
-                AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
+                AVIF_CHECKRES_AND_FREE_DEDUP(avifEncoderWriteHDRProperties(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
             }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             // Gain map specific properties
 
             // Write just the colr nclx box
-            AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifEncoderWriteNclxProperty(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
 #endif
         }
 
@@ -2520,7 +2531,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             avifItemPropertyDedupStart(dedup);
             avifBoxMarker a1lx;
-            AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD, &a1lx));
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD, &a1lx));
             uint32_t layerSize[AVIF_MAX_AV1_LAYER_COUNT - 1] = { 0 };
             avifBool largeSize = AVIF_FALSE;
 
@@ -2532,20 +2543,20 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 }
             }
 
-            AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/7));                 // unsigned int(7) reserved = 0;
-            AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, largeSize ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) large_size;
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteBits(&dedup->s, largeSize ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) large_size;
 
             // FieldLength = (large_size + 1) * 16;
             // unsigned int(FieldLength) layer_size[3];
             for (uint32_t layer = 0; layer < AVIF_MAX_AV1_LAYER_COUNT - 1; ++layer) {
                 if (largeSize) {
-                    AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, layerSize[layer]));
+                    AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU32(&dedup->s, layerSize[layer]));
                 } else {
-                    AVIF_CHECKRES(avifRWStreamWriteU16(&dedup->s, (uint16_t)layerSize[layer]));
+                    AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU16(&dedup->s, (uint16_t)layerSize[layer]));
                 }
             }
             avifRWStreamFinishBox(&dedup->s, a1lx);
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
+            AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
         }
     }
     avifRWStreamFinishBox(&s, ipco);
@@ -2925,6 +2936,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     return AVIF_RESULT_OK;
 }
+
+#undef AVIF_CHECKRES_AND_FREE_DEDUP
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
 {
