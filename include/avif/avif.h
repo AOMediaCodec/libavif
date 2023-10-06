@@ -954,7 +954,9 @@ typedef struct avifIO
     void * data;
 } avifIO;
 
+// Returns NULL if the reader cannot be allocated.
 AVIF_API avifIO * avifIOCreateMemoryReader(const uint8_t * data, size_t size);
+// Returns NULL if the file cannot be opened or if the reader cannot be allocated.
 AVIF_API avifIO * avifIOCreateFileReader(const char * filename);
 AVIF_API void avifIODestroy(avifIO * io);
 

@@ -57,6 +57,9 @@ static void avifIOMemoryReaderDestroy(struct avifIO * io)
 avifIO * avifIOCreateMemoryReader(const uint8_t * data, size_t size)
 {
     avifIOMemoryReader * reader = avifAlloc(sizeof(avifIOMemoryReader));
+    if (reader == NULL) {
+        return NULL;
+    }
     memset(reader, 0, sizeof(avifIOMemoryReader));
     reader->io.destroy = avifIOMemoryReaderDestroy;
     reader->io.read = avifIOMemoryReaderRead;
