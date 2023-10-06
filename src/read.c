@@ -3833,7 +3833,7 @@ void avifDecoderSetIO(avifDecoder * decoder, avifIO * io)
 avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const uint8_t * data, size_t size)
 {
     avifIO * io = avifIOCreateMemoryReader(data, size);
-    assert(io);
+    AVIF_CHECKERR(io != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     avifDecoderSetIO(decoder, io);
     return AVIF_RESULT_OK;
 }
