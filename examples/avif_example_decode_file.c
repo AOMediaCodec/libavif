@@ -20,6 +20,10 @@ int main(int argc, char * argv[])
     memset(&rgb, 0, sizeof(rgb));
 
     avifDecoder * decoder = avifDecoderCreate();
+    if (decoder == NULL) {
+        fprintf(stderr, "Memory allocation failure\n");
+        return 1;
+    }
     // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
 
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);

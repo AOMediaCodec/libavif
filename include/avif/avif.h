@@ -1197,6 +1197,7 @@ typedef struct avifDecoder
     avifBool imageSequenceTrackPresent;
 } avifDecoder;
 
+// Returns NULL in case of memory allocation failure.
 AVIF_API avifDecoder * avifDecoderCreate(void);
 AVIF_API void avifDecoderDestroy(avifDecoder * decoder);
 
