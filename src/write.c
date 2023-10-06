@@ -2909,7 +2909,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifEncoderItemReferenceArray layeredColorItems;
     avifEncoderItemReferenceArray layeredAlphaItems;
-    result = AVIF_RESULT_OK;
     if (!avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1)) {
         result = AVIF_RESULT_OUT_OF_MEMORY;
     }
