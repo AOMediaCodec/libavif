@@ -2094,15 +2094,155 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
-#define AVIF_CHECKRES_AND_FREE_DEDUP(A)          \
-    do {                                         \
-        const avifResult result__ = (A);         \
-        if (result__ != AVIF_RESULT_OK) {        \
-            avifBreakOnError();                  \
-            avifItemPropertyDedupDestroy(dedup); \
-            return result__;                     \
-        }                                        \
-    } while (0)
+static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedup,
+                                              avifRWStream * const s,
+                                              const avifEncoder * const encoder,
+                                              const avifImage * const imageMetadata)
+{
+    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+        avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+        const avifBool isGrid = (item->gridCols > 0);
+        const avifBool isToneMappedImage = !memcmp(item->type, "tmap", 4);
+        memset(&item->ipma, 0, sizeof(item->ipma));
+        if (!item->codec && !isGrid && !isToneMappedImage) {
+            // No ipma to write for this item
+            continue;
+        }
+
+        if (item->dimgFromID && (item->extraLayerCount == 0)) {
+            avifEncoderItem * parentItem = avifEncoderDataFindItemByID(encoder->data, item->dimgFromID);
+            if (parentItem && !memcmp(parentItem->type, "grid", 4)) {
+                // All image cells from a grid should share the exact same properties unless they are
+                // layered image which have different al1x, so see if we've already written properties
+                // out for another cell in this grid, and if so, just steal their ipma and move on.
+                // This is a sneaky way to provide iprp deduplication.
+
+                avifBool foundPreviousCell = AVIF_FALSE;
+                for (uint32_t dedupIndex = 0; dedupIndex < itemIndex; ++dedupIndex) {
+                    avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
+                    if ((item->dimgFromID == dedupItem->dimgFromID) && (dedupItem->extraLayerCount == 0)) {
+                        // We've already written dedup's items out. Steal their ipma indices and move on!
+                        item->ipma = dedupItem->ipma;
+                        foundPreviousCell = AVIF_TRUE;
+                        break;
+                    }
+                }
+                if (foundPreviousCell) {
+                    continue;
+                }
+            }
+        }
+
+        const avifImage * itemMetadata = imageMetadata;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+            itemMetadata = itemMetadata->gainMap.image;
+            assert(itemMetadata);
+        }
+#endif
+        uint32_t imageWidth = itemMetadata->width;
+        uint32_t imageHeight = itemMetadata->height;
+        if (isGrid) {
+            imageWidth = item->gridWidth;
+            imageHeight = item->gridHeight;
+        }
+
+        // Properties all image items need
+        avifItemPropertyDedupStart(dedup);
+        avifBoxMarker ispe;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0, &ispe));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, imageWidth));  // unsigned int(32) image_width;
+        AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, imageHeight)); // unsigned int(32) image_height;
+        avifRWStreamFinishBox(&dedup->s, ispe);
+        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+
+        avifItemPropertyDedupStart(dedup);
+        uint8_t channelCount = (item->itemCategory == AVIF_ITEM_ALPHA || (itemMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
+        avifBoxMarker pixi;
+        AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
+        AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
+        for (uint8_t chan = 0; chan < channelCount; ++chan) {
+            AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, (uint8_t)itemMetadata->depth)); // unsigned int (8) bits_per_channel;
+        }
+        avifRWStreamFinishBox(&dedup->s, pixi);
+        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+
+        if (item->codec) {
+            avifItemPropertyDedupStart(dedup);
+            AVIF_CHECKRES(writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_TRUE));
+        }
+
+        if (item->itemCategory == AVIF_ITEM_ALPHA) {
+            // Alpha specific properties
+
+            avifItemPropertyDedupStart(dedup);
+            avifBoxMarker auxC;
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0, &auxC));
+            AVIF_CHECKRES(avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize)); //  string aux_type;
+            avifRWStreamFinishBox(&dedup->s, auxC);
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+        } else if (item->itemCategory == AVIF_ITEM_COLOR) {
+            // Color specific properties
+
+            AVIF_CHECKRES(avifEncoderWriteColorProperties(s, itemMetadata, &item->ipma, dedup));
+            if (isToneMappedImage) {
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                if (!imageMetadata->gainMap.metadata.baseRenditionIsHDR) {
+                    // HDR properties for the tone mapped image ('tmap' box) are taken from the gain map image.
+                    // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
+                    // place to put this data.
+
+                    AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, s, imageMetadata->gainMap.image, &item->ipma, dedup));
+                }
+#endif
+            } else {
+                AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+            }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+            // Gain map specific properties
+
+            // Write just the colr nclx box
+            AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+#endif
+        }
+
+        if (item->extraLayerCount > 0) {
+            // Layered Image Indexing Property
+
+            avifItemPropertyDedupStart(dedup);
+            avifBoxMarker a1lx;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD, &a1lx));
+            uint32_t layerSize[AVIF_MAX_AV1_LAYER_COUNT - 1] = { 0 };
+            avifBool largeSize = AVIF_FALSE;
+
+            for (uint32_t validLayer = 0; validLayer < item->extraLayerCount; ++validLayer) {
+                uint32_t size = (uint32_t)item->encodeOutput->samples.sample[validLayer].data.size;
+                layerSize[validLayer] = size;
+                if (size > 0xffff) {
+                    largeSize = AVIF_TRUE;
+                }
+            }
+
+            AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/7));                 // unsigned int(7) reserved = 0;
+            AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, largeSize ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) large_size;
+
+            // FieldLength = (large_size + 1) * 16;
+            // unsigned int(FieldLength) layer_size[3];
+            for (uint32_t layer = 0; layer < AVIF_MAX_AV1_LAYER_COUNT - 1; ++layer) {
+                if (largeSize) {
+                    AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, layerSize[layer]));
+                } else {
+                    AVIF_CHECKRES(avifRWStreamWriteU16(&dedup->s, (uint16_t)layerSize[layer]));
+                }
+            }
+            avifRWStreamFinishBox(&dedup->s, a1lx);
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+        }
+    }
+    return AVIF_RESULT_OK;
+}
 
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
@@ -2415,152 +2555,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifItemPropertyDedup * dedup = avifItemPropertyDedupCreate();
     avifBoxMarker ipco;
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ipco", AVIF_BOX_SIZE_TBD, &ipco));
-    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
-        avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-        const avifBool isGrid = (item->gridCols > 0);
-        const avifBool isToneMappedImage = !memcmp(item->type, "tmap", 4);
-        memset(&item->ipma, 0, sizeof(item->ipma));
-        if (!item->codec && !isGrid && !isToneMappedImage) {
-            // No ipma to write for this item
-            continue;
-        }
-
-        if (item->dimgFromID && (item->extraLayerCount == 0)) {
-            avifEncoderItem * parentItem = avifEncoderDataFindItemByID(encoder->data, item->dimgFromID);
-            if (parentItem && !memcmp(parentItem->type, "grid", 4)) {
-                // All image cells from a grid should share the exact same properties unless they are
-                // layered image which have different al1x, so see if we've already written properties
-                // out for another cell in this grid, and if so, just steal their ipma and move on.
-                // This is a sneaky way to provide iprp deduplication.
-
-                avifBool foundPreviousCell = AVIF_FALSE;
-                for (uint32_t dedupIndex = 0; dedupIndex < itemIndex; ++dedupIndex) {
-                    avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
-                    if ((item->dimgFromID == dedupItem->dimgFromID) && (dedupItem->extraLayerCount == 0)) {
-                        // We've already written dedup's items out. Steal their ipma indices and move on!
-                        item->ipma = dedupItem->ipma;
-                        foundPreviousCell = AVIF_TRUE;
-                        break;
-                    }
-                }
-                if (foundPreviousCell) {
-                    continue;
-                }
-            }
-        }
-
-        const avifImage * itemMetadata = imageMetadata;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
-            itemMetadata = itemMetadata->gainMap.image;
-            assert(itemMetadata);
-        }
-#endif
-        uint32_t imageWidth = itemMetadata->width;
-        uint32_t imageHeight = itemMetadata->height;
-        if (isGrid) {
-            imageWidth = item->gridWidth;
-            imageHeight = item->gridHeight;
-        }
-
-        // Properties all image items need
-
-        avifItemPropertyDedupStart(dedup);
-        avifBoxMarker ispe;
-        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteFullBox(&dedup->s, "ispe", AVIF_BOX_SIZE_TBD, 0, 0, &ispe));
-        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU32(&dedup->s, imageWidth));  // unsigned int(32) image_width;
-        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU32(&dedup->s, imageHeight)); // unsigned int(32) image_height;
-        avifRWStreamFinishBox(&dedup->s, ispe);
-        AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
-
-        avifItemPropertyDedupStart(dedup);
-        uint8_t channelCount = (item->itemCategory == AVIF_ITEM_ALPHA || (itemMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
-        avifBoxMarker pixi;
-        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
-        AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
-        for (uint8_t chan = 0; chan < channelCount; ++chan) {
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU8(&dedup->s, (uint8_t)itemMetadata->depth)); // unsigned int (8) bits_per_channel;
-        }
-        avifRWStreamFinishBox(&dedup->s, pixi);
-        AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
-
-        if (item->codec) {
-            avifItemPropertyDedupStart(dedup);
-            AVIF_CHECKRES_AND_FREE_DEDUP(writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName));
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_TRUE));
-        }
-
-        if (item->itemCategory == AVIF_ITEM_ALPHA) {
-            // Alpha specific properties
-
-            avifItemPropertyDedupStart(dedup);
-            avifBoxMarker auxC;
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0, &auxC));
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize)); //  string aux_type;
-            avifRWStreamFinishBox(&dedup->s, auxC);
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
-        } else if (item->itemCategory == AVIF_ITEM_COLOR) {
-            // Color specific properties
-
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifEncoderWriteColorProperties(&s, itemMetadata, &item->ipma, dedup));
-            if (isToneMappedImage) {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-                if (!imageMetadata->gainMap.metadata.baseRenditionIsHDR) {
-                    // HDR properties for the tone mapped image ('tmap' box) are taken from the gain map image.
-                    // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
-                    // place to put this data.
-
-                    AVIF_CHECKRES_AND_FREE_DEDUP(
-                        avifEncoderWriteHDRProperties(&dedup->s, &s, imageMetadata->gainMap.image, &item->ipma, dedup));
-                }
-#endif
-            } else {
-                AVIF_CHECKRES_AND_FREE_DEDUP(avifEncoderWriteHDRProperties(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
-            }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
-            // Gain map specific properties
-
-            // Write just the colr nclx box
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifEncoderWriteNclxProperty(&dedup->s, &s, itemMetadata, &item->ipma, dedup));
-#endif
-        }
-
-        if (item->extraLayerCount > 0) {
-            // Layered Image Indexing Property
-
-            avifItemPropertyDedupStart(dedup);
-            avifBoxMarker a1lx;
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD, &a1lx));
-            uint32_t layerSize[AVIF_MAX_AV1_LAYER_COUNT - 1] = { 0 };
-            avifBool largeSize = AVIF_FALSE;
-
-            for (uint32_t validLayer = 0; validLayer < item->extraLayerCount; ++validLayer) {
-                uint32_t size = (uint32_t)item->encodeOutput->samples.sample[validLayer].data.size;
-                layerSize[validLayer] = size;
-                if (size > 0xffff) {
-                    largeSize = AVIF_TRUE;
-                }
-            }
-
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteBits(&dedup->s, largeSize ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) large_size;
-
-            // FieldLength = (large_size + 1) * 16;
-            // unsigned int(FieldLength) layer_size[3];
-            for (uint32_t layer = 0; layer < AVIF_MAX_AV1_LAYER_COUNT - 1; ++layer) {
-                if (largeSize) {
-                    AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU32(&dedup->s, layerSize[layer]));
-                } else {
-                    AVIF_CHECKRES_AND_FREE_DEDUP(avifRWStreamWriteU16(&dedup->s, (uint16_t)layerSize[layer]));
-                }
-            }
-            avifRWStreamFinishBox(&dedup->s, a1lx);
-            AVIF_CHECKRES_AND_FREE_DEDUP(avifItemPropertyDedupFinish(dedup, &s, &item->ipma, AVIF_FALSE));
-        }
-    }
-    avifRWStreamFinishBox(&s, ipco);
+    avifResult result = avifRWStreamWriteProperties(dedup, &s, encoder, imageMetadata);
     avifItemPropertyDedupDestroy(dedup);
+    AVIF_CHECKRES(result);
+    avifRWStreamFinishBox(&s, ipco);
     dedup = NULL;
 
     avifBoxMarker ipma;
@@ -2911,7 +2909,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifEncoderItemReferenceArray layeredColorItems;
     avifEncoderItemReferenceArray layeredAlphaItems;
-    avifResult result = AVIF_RESULT_OK;
+    result = AVIF_RESULT_OK;
     if (!avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1)) {
         result = AVIF_RESULT_OUT_OF_MEMORY;
     }
@@ -2936,8 +2934,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     return AVIF_RESULT_OK;
 }
-
-#undef AVIF_CHECKRES_AND_FREE_DEDUP
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
 {
