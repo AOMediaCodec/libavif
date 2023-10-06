@@ -116,6 +116,9 @@ unsigned int avifLibYUVVersion(void)
 #endif
 #if LIBYUV_VERSION < 1780
 #define I410ToARGBMatrix NULL
+#define I410AlphaToARGBMatrix NULL
+#define I210AlphaToARGBMatrix NULL
+#define I010AlphaToARGBMatrix NULL
 #endif
 #if LIBYUV_VERSION < 1771
 #define I422AlphaToARGBMatrix NULL
