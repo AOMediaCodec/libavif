@@ -152,7 +152,7 @@ void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput)
 typedef struct avifEncoderItem
 {
     uint16_t id;
-    uint8_t type[4];                      // 4-character 'item_type' field in the 'infe' (item info) box
+    uint8_t type[4];                      // 4-character 'item_type' field in the 'infe' (item info entry) box
     avifCodec * codec;                    // only present on image items
     avifCodecEncodeOutput * encodeOutput; // AV1 sample data
     avifRWData metadataPayload;           // Exif/XMP data
