@@ -1083,7 +1083,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                                                     avifDiagnostics * diag,
                                                     const avifStrictFlags strictFlags)
 {
-    const avifProperty * configProp = avifPropertyArrayFind(&item->properties, configPropName);
+    const avifProperty * const configProp = avifPropertyArrayFind(&item->properties, configPropName);
     if (!configProp) {
         // An item configuration property box is mandatory in all valid AVIF configurations. Bail out.
         avifDiagnosticsPrintf(diag, "Item ID %u of type '%.4s' is missing mandatory %s property", item->id, (const char *)item->type, configPropName);
@@ -4421,6 +4421,31 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileI
     return AVIF_RESULT_OK;
 }
 
+// Populates depth, yuvFormat and yuvChromaSamplePosition fields on 'image' based on data from the codec config property (e.g. "av1C").
+static avifResult avifReadCodecConfigProperty(avifImage * image, const avifPropertyArray * properties, avifCodecType codecType)
+{
+    const avifProperty * configProp = avifPropertyArrayFind(properties, avifGetConfigurationPropertyName(codecType));
+    if (configProp) {
+        image->depth = avifCodecConfigurationBoxGetDepth(&configProp->u.av1C);
+        if (configProp->u.av1C.monochrome) {
+            image->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+        } else {
+            if (configProp->u.av1C.chromaSubsamplingX && configProp->u.av1C.chromaSubsamplingY) {
+                image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
+            } else if (configProp->u.av1C.chromaSubsamplingX) {
+                image->yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
+            } else {
+                image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
+            }
+        }
+        image->yuvChromaSamplePosition = (avifChromaSamplePosition)configProp->u.av1C.chromaSamplePosition;
+    } else {
+        // A configuration property box is mandatory in all valid AVIF configurations. Bail out.
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+    return AVIF_RESULT_OK;
+}
+
 avifResult avifDecoderReset(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
@@ -4737,6 +4762,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->image->gainMap.image->width = mainItems[AVIF_ITEM_GAIN_MAP]->width;
             decoder->image->gainMap.image->height = mainItems[AVIF_ITEM_GAIN_MAP]->height;
             decoder->gainMapPresent = AVIF_TRUE;
+            // Must be called after avifDecoderGenerateImageTiles() which among other things copies the
+            // codec config property from the first tile of a grid to the grid item (when grids are used).
+            AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image->gainMap.image,
+                                                      &mainItems[AVIF_ITEM_GAIN_MAP]->properties,
+                                                      codecType[AVIF_ITEM_GAIN_MAP]));
         }
 #endif
     }
@@ -4860,25 +4890,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
     }
 
-    const avifProperty * configProp = avifPropertyArrayFind(colorProperties, avifGetConfigurationPropertyName(colorCodecType));
-    if (configProp) {
-        decoder->image->depth = avifCodecConfigurationBoxGetDepth(&configProp->u.av1C);
-        if (configProp->u.av1C.monochrome) {
-            decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
-        } else {
-            if (configProp->u.av1C.chromaSubsamplingX && configProp->u.av1C.chromaSubsamplingY) {
-                decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
-            } else if (configProp->u.av1C.chromaSubsamplingX) {
-                decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
-            } else {
-                decoder->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-            }
-        }
-        decoder->image->yuvChromaSamplePosition = (avifChromaSamplePosition)configProp->u.av1C.chromaSamplePosition;
-    } else {
-        // A configuration property box is mandatory in all valid AVIF configurations. Bail out.
-        return AVIF_RESULT_BMFF_PARSE_FAILED;
-    }
+    AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image, colorProperties, colorCodecType));
 
     return AVIF_RESULT_OK;
 }

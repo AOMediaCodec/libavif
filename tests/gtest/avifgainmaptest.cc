@@ -106,32 +106,46 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
-  ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = AVIF_TRUE;
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
-  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
-                                 encoded.size);
+
+  result = avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << decoder->diag.error;
 
-  // Verify that the input and decoded images are close.
-  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
+  // Just parse the image first.
+  result = avifDecoderParse(decoder.get());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+  avifImage* decoded = decoder->image;
+  ASSERT_NE(decoded, nullptr);
+
   // Verify that the gain map is present and matches the input.
   EXPECT_TRUE(decoder->gainMapPresent);
   ASSERT_NE(decoded->gainMap.image, nullptr);
-  EXPECT_GT(testutil::GetPsnr(*image->gainMap.image, *decoded->gainMap.image),
-            40.0);
   EXPECT_EQ(decoded->gainMap.image->matrixCoefficients,
             image->gainMap.image->matrixCoefficients);
   EXPECT_EQ(decoded->gainMap.image->clli.maxCLL,
             image->gainMap.image->clli.maxCLL);
   EXPECT_EQ(decoded->gainMap.image->clli.maxPALL,
             image->gainMap.image->clli.maxPALL);
+  EXPECT_EQ(decoded->gainMap.image->width, image->gainMap.image->width);
+  EXPECT_EQ(decoded->gainMap.image->height, image->gainMap.image->height);
+  EXPECT_EQ(decoded->gainMap.image->depth, image->gainMap.image->depth);
   CheckGainMapMetadataMatches(decoded->gainMap.metadata,
                               image->gainMap.metadata);
+
+  // Decode the image.
+  result = avifDecoderNextImage(decoder.get());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  // Verify that the input and decoded images are close.
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
+  EXPECT_GT(testutil::GetPsnr(*image->gainMap.image, *decoded->gainMap.image),
+            40.0);
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_basesdr.avif", std::ios::binary)
@@ -552,24 +566,40 @@ TEST(GainMapTest, NoGainMap) {
 TEST(GainMapTest, DecodeGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_gainmap_different_grid.avif";
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
-  ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
-  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
-            AVIF_RESULT_OK);
 
+  avifResult result = avifDecoderSetIOFile(decoder.get(), path.c_str());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  // Just parse the image first.
+  result = avifDecoderParse(decoder.get());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+  avifImage* decoded = decoder->image;
+  ASSERT_NE(decoded, nullptr);
+
+  // Verify that the gain map is present and matches the input.
+  EXPECT_TRUE(decoder->gainMapPresent);
   // Color+alpha: 4x3 grid of 128x200 tiles.
   EXPECT_EQ(decoded->width, 128u * 4u);
   EXPECT_EQ(decoded->height, 200u * 3u);
+  EXPECT_EQ(decoded->depth, 10u);
   ASSERT_NE(decoded->gainMap.image, nullptr);
   // Gain map: 2x2 grid of 64x80 tiles.
   EXPECT_EQ(decoded->gainMap.image->width, 64u * 2u);
   EXPECT_EQ(decoded->gainMap.image->height, 80u * 2u);
+  EXPECT_EQ(decoded->gainMap.image->depth, 8u);
   EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxN, 16u);
   EXPECT_EQ(decoded->gainMap.metadata.hdrCapacityMaxD, 2u);
+
+  // Decode the image.
+  result = avifDecoderNextImage(decoder.get());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
 }
 
 TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
