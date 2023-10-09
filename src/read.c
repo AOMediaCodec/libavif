@@ -1091,7 +1091,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                                                     avifDiagnostics * diag,
                                                     const avifStrictFlags strictFlags)
 {
-    const avifProperty * configProp = avifPropertyArrayFind(&item->properties, configPropName);
+    const avifProperty * const configProp = avifPropertyArrayFind(&item->properties, configPropName);
     if (!configProp) {
         // An item configuration property box is mandatory in all valid AVIF configurations. Bail out.
         avifDiagnosticsPrintf(diag, "Item ID %u of type '%.4s' is missing mandatory %s property", item->id, (const char *)item->type, configPropName);
@@ -4431,7 +4431,7 @@ static avifResult avifReadCodecConfigProperty(avifImage * image, const avifPrope
         image->yuvChromaSamplePosition = (avifChromaSamplePosition)configProp->u.av1C.chromaSamplePosition;
     } else {
         // A configuration property box is mandatory in all valid AVIF configurations. Bail out.
-        // return AVIF_RESULT_BMFF_PARSE_FAILED;
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     return AVIF_RESULT_OK;
 }
