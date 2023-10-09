@@ -175,7 +175,17 @@ public class AvifDecoderTest {
     assertThat(info.alphaPresent).isEqualTo(image.alphaPresent);
     Bitmap bitmap = Bitmap.createBitmap(info.width/2, info.height/2, config);
     assertThat(bitmap).isNotNull();
-    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap, 0, true)).isTrue();
+    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
+    buffer.remaining();
+    float scale = 1.3f;
+    bitmap = Bitmap.createBitmap((int) (info.width*scale), (int) (info.height*scale), config);
+    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
+    buffer.remaining();
+    bitmap = Bitmap.createBitmap((int) (info.width*scale), (int) (info.height/scale), config);
+    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
+    buffer.remaining();
+    bitmap = Bitmap.createBitmap((int) (info.width/scale), (int) (info.height*scale), config);
+    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
   }
 
   // Tests AvifDecoder by using it as a regular instantiated class.

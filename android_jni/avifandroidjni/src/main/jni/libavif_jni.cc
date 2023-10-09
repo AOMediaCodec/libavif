@@ -95,22 +95,22 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
 
 avifResult AvifImageToBitmap(JNIEnv* const env,
                              AvifDecoderWrapper* const decoder,
-                             jobject bitmap, jboolean is_scale) {
+                             jobject bitmap) {
   AndroidBitmapInfo bitmap_info;
   if (AndroidBitmap_getInfo(env, bitmap, &bitmap_info) < 0) {
     LOGE("AndroidBitmap_getInfo failed.");
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
   // Ensure that the bitmap is large enough to store the decoded image.
-  if (!is_scale && (bitmap_info.width < decoder->crop.width ||
-                   bitmap_info.height < decoder->crop.height)) {
-    LOGE(
-        "Bitmap is not large enough to fit the image. Bitmap %dx%d Image "
-        "%dx%d.",
-        bitmap_info.width, bitmap_info.height, decoder->decoder->image->width,
-        decoder->decoder->image->height);
-    return AVIF_RESULT_UNKNOWN_ERROR;
-  }
+//  if ((bitmap_info.width < decoder->crop.width ||
+//                   bitmap_info.height < decoder->crop.height)) {
+//    LOGE(
+//        "Bitmap is not large enough to fit the image. Bitmap %dx%d Image "
+//        "%dx%d.",
+//        bitmap_info.width, bitmap_info.height, decoder->decoder->image->width,
+//        decoder->decoder->image->height);
+//    return AVIF_RESULT_UNKNOWN_ERROR;
+//  }
   // Ensure that the bitmap format is RGBA_8888, RGB_565 or RGBA_F16.
   if (bitmap_info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 &&
       bitmap_info.format != ANDROID_BITMAP_FORMAT_RGB_565 &&
@@ -147,12 +147,10 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
     image = cropped_image.get();
   }
   avifDiagnostics diag;
-  if (is_scale) {
-    res = avifImageScale(image, bitmap_info.width, bitmap_info.height, &diag);
-    if (res != AVIF_RESULT_OK) {
-      LOGE("Failed to scale image. Status: %d", res);
-      return res;
-    }
+  res = avifImageScale(image, bitmap_info.width, bitmap_info.height, &diag);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to scale image. Status: %d", res);
+    return res;
   }
 
   avifRGBImage rgb_image;
@@ -188,17 +186,7 @@ avifResult DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
     LOGE("Failed to decode AVIF image. Status: %d", res);
     return res;
   }
-  return AvifImageToBitmap(env, decoder, bitmap, false);
-}
-
-avifResult DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
-                           jobject bitmap, jboolean is_scale) {
-  avifResult res = avifDecoderNextImage(decoder->decoder);
-  if (res != AVIF_RESULT_OK) {
-    LOGE("Failed to decode AVIF image. Status: %d", res);
-    return res;
-  }
-  return AvifImageToBitmap(env, decoder, bitmap, is_scale);
+  return AvifImageToBitmap(env, decoder, bitmap);
 }
 
 avifResult DecodeNthImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
@@ -208,7 +196,7 @@ avifResult DecodeNthImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
     LOGE("Failed to decode AVIF image. Status: %d", res);
     return res;
   }
-  return AvifImageToBitmap(env, decoder, bitmap, false);
+  return AvifImageToBitmap(env, decoder, bitmap);
 }
 
 int getThreadCount(int threads) {
@@ -284,7 +272,7 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
 }
 
 FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
-     jint threads, jboolean is_scale) {
+     jint threads) {
   if (threads < 0) {
     LOGE("Invalid value for threads (%d).", threads);
     return false;
@@ -296,7 +284,7 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
                              getThreadCount(threads))) {
     return false;
   }
-  return DecodeNextImage(env, &decoder, bitmap, is_scale) == AVIF_RESULT_OK;
+  return DecodeNextImage(env, &decoder, bitmap) == AVIF_RESULT_OK;
 }
 
 FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
