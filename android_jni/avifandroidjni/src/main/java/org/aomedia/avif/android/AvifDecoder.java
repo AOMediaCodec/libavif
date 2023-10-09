@@ -97,7 +97,7 @@ public class AvifDecoder {
    *     was not valid AVIF. 2) Bitmap was not large enough to store the decoded image.
    */
   public static boolean decode(ByteBuffer encoded, int length, Bitmap bitmap) {
-    return decode(encoded, length, bitmap, 0);
+    return decode(encoded, length, bitmap, 0, false);
   }
 
   /**
@@ -110,11 +110,12 @@ public class AvifDecoder {
    *     cores as the thread count. Negative values are invalid. When this value is > 0, it is
    *     simply mapped to the maxThreads parameter in libavif. For more details, see the
    *     documentation for maxThreads variable in avif.h.
+   * @param isScale
    * @return true on success and false on failure. A few possible reasons for failure are: 1) Input
    *     was not valid AVIF. 2) Bitmap was not large enough to store the decoded image. 3) Negative
    *     value was passed for the threads parameter.
    */
-  public static native boolean decode(ByteBuffer encoded, int length, Bitmap bitmap, int threads);
+  public static native boolean decode(ByteBuffer encoded, int length, Bitmap bitmap, int threads, boolean isScale);
 
   /** Get the width of the image. */
   public int getWidth() {

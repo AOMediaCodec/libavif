@@ -95,15 +95,15 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
 
 avifResult AvifImageToBitmap(JNIEnv* const env,
                              AvifDecoderWrapper* const decoder,
-                             jobject bitmap) {
+                             jobject bitmap, jboolean isScale) {
   AndroidBitmapInfo bitmap_info;
   if (AndroidBitmap_getInfo(env, bitmap, &bitmap_info) < 0) {
     LOGE("AndroidBitmap_getInfo failed.");
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
   // Ensure that the bitmap is large enough to store the decoded image.
-  if (bitmap_info.width < decoder->crop.width ||
-      bitmap_info.height < decoder->crop.height) {
+  if (!isScale && (bitmap_info.width < decoder->crop.width ||
+                   bitmap_info.height < decoder->crop.height)) {
     LOGE(
         "Bitmap is not large enough to fit the image. Bitmap %dx%d Image "
         "%dx%d.",
@@ -146,6 +146,14 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
     }
     image = cropped_image.get();
   }
+  if (isScale) {
+    res = avifImageScale(image, bitmap_info.width, bitmap_info.height, &decoder->decoder->diag);
+    if (res != AVIF_RESULT_OK) {
+      LOGE("Failed to scale image. Status: %d", res);
+      return res;
+    }
+  }
+
   avifRGBImage rgb_image;
   avifRGBImageSetDefaults(&rgb_image, image);
   if (bitmap_info.format == ANDROID_BITMAP_FORMAT_RGBA_F16) {
@@ -179,7 +187,17 @@ avifResult DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
     LOGE("Failed to decode AVIF image. Status: %d", res);
     return res;
   }
-  return AvifImageToBitmap(env, decoder, bitmap);
+  return AvifImageToBitmap(env, decoder, bitmap, false);
+}
+
+avifResult DecodeNextImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
+                           jobject bitmap, jboolean isScale) {
+  avifResult res = avifDecoderNextImage(decoder->decoder);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to decode AVIF image. Status: %d", res);
+    return res;
+  }
+  return AvifImageToBitmap(env, decoder, bitmap, isScale);
 }
 
 avifResult DecodeNthImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
@@ -189,7 +207,7 @@ avifResult DecodeNthImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
     LOGE("Failed to decode AVIF image. Status: %d", res);
     return res;
   }
-  return AvifImageToBitmap(env, decoder, bitmap);
+  return AvifImageToBitmap(env, decoder, bitmap, false);
 }
 
 int getThreadCount(int threads) {
@@ -265,7 +283,7 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
 }
 
 FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
-     jint threads) {
+     jint threads, jboolean isScale) {
   if (threads < 0) {
     LOGE("Invalid value for threads (%d).", threads);
     return false;
@@ -277,7 +295,7 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
                              getThreadCount(threads))) {
     return false;
   }
-  return DecodeNextImage(env, &decoder, bitmap) == AVIF_RESULT_OK;
+  return DecodeNextImage(env, &decoder, bitmap, isScale) == AVIF_RESULT_OK;
 }
 
 FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
