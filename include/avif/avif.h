@@ -48,7 +48,9 @@ extern "C" {
 #define AVIF_API
 #endif // defined(AVIF_DLL)
 
-#if defined(AVIF_ENABLE_NODISCARD) || (defined(__cplusplus) && __cplusplus >= 201700L) || \
+#if defined(__has_attribute) && __has_attribute(warn_unused_result)
+#define AVIF_NODISCARD __attribute__((warn_unused_result))
+#elif defined(AVIF_ENABLE_NODISCARD) || (defined(__cplusplus) && __cplusplus >= 201700L) || \
     (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
 #define AVIF_NODISCARD [[nodiscard]]
 #else
