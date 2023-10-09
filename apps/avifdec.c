@@ -228,6 +228,10 @@ int main(int argc, char * argv[])
         }
 
         avifDecoder * decoder = avifDecoderCreate();
+        if (!decoder) {
+            fprintf(stderr, "Memory allocation failure\n");
+            return 1;
+        }
         decoder->maxThreads = jobs;
         decoder->codecChoice = codecChoice;
         decoder->imageSizeLimit = imageSizeLimit;
@@ -298,6 +302,11 @@ int main(int argc, char * argv[])
 
     int returnCode = 0;
     avifDecoder * decoder = avifDecoderCreate();
+    if (!decoder) {
+        fprintf(stderr, "Memory allocation failure\n");
+        returnCode = 1;
+        goto cleanup;
+    }
     decoder->maxThreads = jobs;
     decoder->codecChoice = codecChoice;
     decoder->imageSizeLimit = imageSizeLimit;
@@ -370,6 +379,8 @@ cleanup:
     if (returnCode != 0) {
         avifDumpDiagnostics(&decoder->diag);
     }
-    avifDecoderDestroy(decoder);
+    if (decoder != NULL) {
+        avifDecoderDestroy(decoder);
+    }
     return returnCode;
 }

@@ -3798,6 +3798,9 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
 avifDecoder * avifDecoderCreate(void)
 {
     avifDecoder * decoder = (avifDecoder *)avifAlloc(sizeof(avifDecoder));
+    if (decoder == NULL) {
+        return NULL;
+    }
     memset(decoder, 0, sizeof(avifDecoder));
     decoder->maxThreads = 1;
     decoder->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;

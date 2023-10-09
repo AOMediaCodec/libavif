@@ -152,9 +152,9 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = AVIF_TRUE;
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
-  ASSERT_NE(decoder, nullptr);
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)

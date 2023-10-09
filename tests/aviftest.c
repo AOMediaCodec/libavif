@@ -217,6 +217,11 @@ static int runIOTests(const char * dataDir)
         fclose(f);
 
         avifDecoder * decoder = avifDecoderCreate();
+        if (decoder == NULL) {
+            printf("Memory allocation failure\n");
+            retCode = 1;
+            break;
+        }
         avifIOTestReader * io = avifIOCreateTestReader(fileBuffer.data, fileBuffer.size);
         avifDecoderSetIO(decoder, (avifIO *)io);
 
