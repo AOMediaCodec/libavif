@@ -200,20 +200,32 @@ class FuzztestStackLimitEnvironment : public ::testing::Environment {
 
 //------------------------------------------------------------------------------
 
+// Returns the value of the 'TEST_DATA_DIR' environment variable.
+// Returns nullptr if not set.
+// Tests that use ArbitraryImageWithSeeds() should
+// ASSERT_NE(GetSeedDataDir(), nullptr) if they want to make sure that seeds are
+// actually used.
+const char* GetSeedDataDir();
+
 // Returns a list of test images contents (not paths) from the directory set in
 // the 'TEST_DATA_DIR' environment variable, that are smaller than
 // 'max_file_size' and have one of the formats in 'image_formats' (or any format
 // if 'image_formats' is empty).
-// Terminates the program with abort() if TEST_DATA_DIR is not set or if it
-// doesn't contain any matching images. Typically used to create image file
-// seeds for fuzzing.
+// If TEST_DATA_DIR is not set, returns an empty set.
+// Tests that use this should ASSERT_NE(GetSeedDataDir(), nullptr)
+// if they want to make sure that seeds are actually used.
+// Terminates the program with abort() if TEST_DATA_DIR is set but doesn't
+// contain any matching images.
 std::vector<std::string> GetTestImagesContents(
     size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats);
 
 // Generator for an arbitrary AvifImagePtr that uses test image files as seeds.
-// Expects the 'TEST_DATA_DIR' environment variable to be set.
-// Terminates the program with abort() if TEST_DATA_DIR is not set or if it
-// doesn't contain any matching images.
+// Uses the 'TEST_DATA_DIR' environment variable to load the seeds.
+// If TEST_DATA_DIR is not set, no seeds are used.
+// Tests that use this should ASSERT_NE(GetSeedDataDir(), nullptr)
+// if they want to make sure that seeds are actually used.
+// Terminates the program with abort() if TEST_DATA_DIR is set but doesn't
+// contain any matching images.
 inline auto ArbitraryImageWithSeeds(
     const std::vector<avifAppFileFormat>& image_formats) {
   constexpr uint32_t kMaxSeedFileSize = 1024 * 1024;  // 1MB.

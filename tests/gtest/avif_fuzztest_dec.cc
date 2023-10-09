@@ -23,6 +23,8 @@ namespace {
 //------------------------------------------------------------------------------
 
 void Decode(const std::string& arbitrary_bytes, AvifDecoderPtr decoder) {
+  ASSERT_NE(GetSeedDataDir(), nullptr);  // Make sure seeds are available.
+
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
   const avifResult result = avifDecoderReadMemory(
