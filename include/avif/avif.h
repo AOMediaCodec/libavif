@@ -580,7 +580,7 @@ typedef struct avifGainMapMetadata
     // If 'H' is the display's current HDR capacity (HDR to SDR ratio), then
     // the weight 'w' to apply the gain map is computed as follows:
     // f = clamp((log(H) - log(hdrCapacityMin)) /
-    //           (log(hdrCapacityMax) − log(hdrCapacityMin)), 0, 1);
+    //           (log(hdrCapacityMax) - log(hdrCapacityMin)), 0, 1);
     // w = baseRenditionIsHDR ? f - 1 : f;
     uint32_t hdrCapacityMinN;
     uint32_t hdrCapacityMinD;
