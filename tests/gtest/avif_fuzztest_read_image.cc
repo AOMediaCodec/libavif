@@ -48,6 +48,8 @@ void ReadImageFile(const std::string& arbitrary_bytes,
                    bool ignore_color_profile, bool ignore_exif, bool ignore_xmp,
                    bool allow_changing_cicp, bool ignore_gain_map,
                    avifMatrixCoefficients matrix_coefficients) {
+  ASSERT_NE(GetSeedDataDir(), nullptr);  // Make sure seeds are available.
+
   // Write the byte stream to a temp file since avifReadImage() takes a file
   // path as input.
   const std::string file_path = testing::TempDir() + "inputimage";

@@ -5,8 +5,15 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
+#include <cstdlib>
+#include <iostream>
+#include <utility>
+#include <vector>
 
 #include "avif/avif.h"
+#include "avifutil.h"
+#include "fuzztest/fuzztest.h"
 
 namespace libavif {
 namespace testutil {
@@ -185,20 +192,20 @@ std::vector<uint8_t> GetWhiteSinglePixelAvif() {
 
 //------------------------------------------------------------------------------
 
+const char* GetSeedDataDir() { return std::getenv("TEST_DATA_DIR"); }
+
 std::vector<std::string> GetTestImagesContents(
     size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats) {
   // Use an environment variable to get the test data directory because
   // fuzztest seeds are created before the main() function is called, so the
   // test has no chance to parse command line arguments.
-  const char* const test_data_dir = std::getenv("TEST_DATA_DIR");
-
+  const char* const test_data_dir = GetSeedDataDir();
   if (test_data_dir == nullptr) {
-    // Do not fail, this can happen in normal circumstances when calling
-    // gtest_discover_tests() in cmake.
-    std::cerr << "ERROR: the TEST_DATA_DIR environment variable is not set, "
-                 "please set it "
-                 "to the path of a directory containing test image files\n";
-    std::abort();
+    // Only a warning because this can happen when running the binary with
+    // --list_fuzz_tests (such as with gtest_discover_tests() in cmake).
+    std::cerr << "WARNING: TEST_DATA_DIR env variable not set, unable to read "
+                 "seed files";
+    return {};
   }
 
   std::cout << "Reading seeds from " << test_data_dir << " (non recursively)\n";
