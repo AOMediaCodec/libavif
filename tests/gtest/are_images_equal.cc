@@ -8,17 +8,27 @@
 #include "aviftest_helpers.h"
 #include "avifutil.h"
 
+#if defined(_WIN32)
+#include <locale.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 using libavif::testutil::AvifImagePtr;
 
-int main(int argc, char** argv) {
+MAIN() {
+  AvifImagePtr decoded[2] = {
+      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy),
+      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy)};
+
+  INIT_ARGV()
+
   if (argc != 4 && argc != 5) {
     std::cerr << "Wrong argument: " << argv[0]
               << " file1 file2 ignore_alpha_flag [psnr_threshold]" << std::endl;
     return 2;
   }
-  AvifImagePtr decoded[2] = {
-      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy),
-      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy)};
+
   if (!decoded[0] || !decoded[1]) {
     std::cerr << "Cannot create AVIF images." << std::endl;
     return 2;
@@ -71,6 +81,11 @@ int main(int argc, char** argv) {
     std::cout << "PSNR: " << psnr << ", images " << argv[1] << " and "
               << argv[2] << " are similar." << std::endl;
   }
+
+#if defined(_WIN32)
+cleanup:
+#endif
+  FREE_ARGV()
 
   return 0;
 }

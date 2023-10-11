@@ -14,14 +14,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEFAULT_JPEG_QUALITY 90
+#if defined(_WIN32)
+#include <locale.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
-#define NEXTARG()                                                     \
-    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
-        fprintf(stderr, "%s requires an argument.", arg);             \
-        return 1;                                                     \
-    }                                                                 \
-    arg = argv[++argIndex]
+#define DEFAULT_JPEG_QUALITY 90
 
 static void syntax(void)
 {
@@ -53,7 +52,7 @@ static void syntax(void)
     avifPrintVersions();
 }
 
-int main(int argc, char * argv[])
+MAIN()
 {
     const char * inputFilename = NULL;
     const char * outputFilename = NULL;
@@ -77,6 +76,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    INIT_ARGV()
     int argIndex = 1;
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
@@ -384,5 +384,6 @@ cleanup:
     if (decoder != NULL) {
         avifDecoderDestroy(decoder);
     }
+    FREE_ARGV()
     return returnCode;
 }

@@ -18,14 +18,12 @@
 // for setmode()
 #include <fcntl.h>
 #include <io.h>
+#include <locale.h>
+#define WIN32_LEAN_AND_MEAN
+// Avoid the DEFAULT_QUALITY macro redefinition warning caused by including wingdi.h.
+#define NOGDI
+#include <windows.h>
 #endif
-
-#define NEXTARG()                                                     \
-    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
-        fprintf(stderr, "%s requires an argument.", arg);             \
-        goto cleanup;                                                 \
-    }                                                                 \
-    arg = argv[++argIndex]
 
 typedef struct
 {
@@ -1382,7 +1380,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
     return AVIF_TRUE;
 }
 
-int main(int argc, char * argv[])
+MAIN()
 {
     if (argc < 2) {
         syntaxShort();
@@ -1441,6 +1439,8 @@ int main(int argc, char * argv[])
     uint32_t gridCellCount = 0;
     avifImage ** gridCells = NULL;
     avifImage * gridSplitImage = NULL; // used for cleanup tracking
+
+    INIT_ARGV()
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
@@ -2554,6 +2554,6 @@ cleanup:
         avifCodecSpecificOptionsFree(&file->settings.codecSpecificOptions);
     }
     free(input.files);
-
+    FREE_ARGV()
     return returnCode;
 }
