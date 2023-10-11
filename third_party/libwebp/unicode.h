@@ -18,28 +18,27 @@
 
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(_WIN32) && defined(_UNICODE)
 
 // wchar_t is used instead of TCHAR because we only perform additional work when
 // Unicode is enabled and because the output of CommandLineToArgvW() is wchar_t.
 
-#include <fcntl.h>
-#include <io.h>
 #include <wchar.h>
-#include <windows.h>
-#include <shellapi.h>
 
 // Create a wchar_t array containing Unicode parameters.
-#define INIT_WARGV(ARGC, ARGV)                                                \
-  int wargc;                                                                  \
-  const W_CHAR** const wargv =                                                \
-      (const W_CHAR**)CommandLineToArgvW(GetCommandLineW(), &wargc);          \
-  do {                                                                        \
-    if (wargv == NULL || wargc != (ARGC)) {                                   \
-      fprintf(stderr, "Error: Unable to get Unicode arguments.\n");           \
-      FREE_WARGV_AND_RETURN(-1);                                              \
-    }                                                                         \
-  } while (0)
+#define INIT_WARGV(ARGC, ARGV)                                                                              \
+    int wargc;                                                                                              \
+    const W_CHAR ** const wargv = (const W_CHAR **)AVIF_CommandLineToArgvW(AVIF_GetCommandLineW(), &wargc); \
+    do {                                                                                                    \
+        if (wargv == NULL || wargc != (ARGC)) {                                                             \
+            fprintf(stderr, "Error: Unable to get Unicode arguments.\n");                                   \
+            FREE_WARGV_AND_RETURN(-1);                                                                      \
+        }                                                                                                   \
+    } while (0)
 
 // Use this to get a Unicode argument (e.g. file path).
 #define GET_WARGV(UNUSED, C) wargv[C]
@@ -49,31 +48,41 @@
 
 // Release resources. LocalFree() is needed after CommandLineToArgvW().
 #define FREE_WARGV() LOCAL_FREE((W_CHAR** const)wargv)
-#define LOCAL_FREE(WARGV)                  \
-  do {                                     \
-    if ((WARGV) != NULL) LocalFree(WARGV); \
-  } while (0)
+#define LOCAL_FREE(WARGV)          \
+    do {                           \
+        if ((WARGV) != NULL)       \
+            AVIF_LocalFree(WARGV); \
+    } while (0)
 
 #define W_CHAR wchar_t  // WCHAR without underscore might already be defined.
 #define TO_W_CHAR(STR) (L##STR)
 
-#define WFOPEN(ARG, OPT) _wfopen((const W_CHAR*)ARG, TO_W_CHAR(OPT))
+#define WFOPEN(ARG, OPT) AVIF_wfopen((const W_CHAR *)ARG, TO_W_CHAR(OPT))
 
-#define WFPRINTF(STREAM, STR, ...)                    \
-  do {                                                \
-    int prev_mode;                                    \
-    fflush(STREAM);                                   \
-    prev_mode = _setmode(_fileno(STREAM), _O_U8TEXT); \
-    fwprintf(STREAM, TO_W_CHAR(STR), __VA_ARGS__);    \
-    fflush(STREAM);                                   \
-    (void)_setmode(_fileno(STREAM), prev_mode);       \
-  } while (0)
+#define WFPRINTF(STREAM, STR, ...)                          \
+    do {                                                    \
+        int prev_mode;                                      \
+        fflush(STREAM);                                     \
+        prev_mode = AVIF_setmode_u8(AVIF_fileno(STREAM));   \
+        fwprintf(STREAM, TO_W_CHAR(STR), __VA_ARGS__);      \
+        fflush(STREAM);                                     \
+        (void)AVIF_setmode(AVIF_fileno(STREAM), prev_mode); \
+    } while (0)
 #define WPRINTF(STR, ...) WFPRINTF(stdout, STR, __VA_ARGS__)
 
 #define WSTRLEN(FILENAME) wcslen((const W_CHAR*)FILENAME)
 #define WSTRCMP(FILENAME, STR) wcscmp((const W_CHAR*)FILENAME, TO_W_CHAR(STR))
 #define WSTRRCHR(FILENAME, STR) wcsrchr((const W_CHAR*)FILENAME, TO_W_CHAR(STR))
 #define WSNPRINTF(A, B, STR, ...) _snwprintf(A, B, TO_W_CHAR(STR), __VA_ARGS__)
+#define WTOLOWER(CHR) towlower(CHR)
+
+W_CHAR** AVIF_CommandLineToArgvW(const W_CHAR* lpCmdLine, int * pNumArgs);
+W_CHAR* AVIF_GetCommandLineW();
+int AVIF_fileno(FILE * stream);
+FILE * AVIF_wfopen(const W_CHAR * filename, const W_CHAR * mode);
+int AVIF_setmode(int fd, int mode);
+int AVIF_setmode_u8(int fd);
+void AVIF_LocalFree(W_CHAR * * wargv);
 
 #else
 
@@ -103,6 +112,7 @@
 #define WSTRCMP(FILENAME, STR) strcmp(FILENAME, STR)
 #define WSTRRCHR(FILENAME, STR) strrchr(FILENAME, STR)
 #define WSNPRINTF(A, B, STR, ...) snprintf(A, B, STR, __VA_ARGS__)
+#define WTOLOWER(CHR) tolower(CHR)
 
 #endif  // defined(_WIN32) && defined(_UNICODE)
 
@@ -114,3 +124,7 @@
   } while (0)
 
 #endif  // WEBP_EXAMPLES_UNICODE_H_
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

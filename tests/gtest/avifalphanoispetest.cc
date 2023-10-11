@@ -19,8 +19,8 @@ TEST(AvifDecodeTest, AlphaNoIspe) {
   const char* file_name = "alpha_noispe.avif";
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
-                                 (std::string(data_path) + file_name).c_str()),
+  ASSERT_EQ(testutil::DecoderSetIOFile(decoder.get(),
+                                       std::string(data_path) + file_name),
             AVIF_RESULT_OK);
   // By default, loose files are refused. Cast to avoid C4389 Windows warning.
   EXPECT_EQ(decoder->strictFlags, (avifStrictFlags)AVIF_STRICT_ENABLED);

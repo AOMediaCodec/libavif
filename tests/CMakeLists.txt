@@ -43,6 +43,7 @@ if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 14)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
+    target_include_directories(aviftest_helpers PUBLIC ${CMAKE_SOURCE_DIR}/apps/shared)
     target_link_libraries(aviftest_helpers avif_apps avif_internal)
 endif()
 
@@ -125,7 +126,7 @@ if(AVIF_ENABLE_GTEST)
 
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
     target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
-    target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})
+    target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/apps/shared)
 
     add_executable(avifincrtest gtest/avifincrtest.cc)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
@@ -220,7 +221,7 @@ if(AVIF_BUILD_APPS)
     # When building apps, test the avifenc/avifdec.
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
     add_executable(are_images_equal gtest/are_images_equal.cc)
-    target_link_libraries(are_images_equal aviftest_helpers)
+    target_link_libraries(are_images_equal aviftest_helpers avif_unicode)
     add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
     )

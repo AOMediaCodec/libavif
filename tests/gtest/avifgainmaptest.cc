@@ -571,7 +571,7 @@ TEST(GainMapTest, DecodeGainMapGrid) {
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
 
-  avifResult result = avifDecoderSetIOFile(decoder.get(), path.c_str());
+  avifResult result = testutil::DecoderSetIOFile(decoder.get(), path);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << decoder->diag.error;
 
@@ -611,8 +611,9 @@ TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
-  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
-            AVIF_RESULT_OK);
+  ASSERT_EQ(
+      testutil::DecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+      AVIF_RESULT_OK);
 
   // Color+alpha: 4x3 grid of 128x200 tiles.
   EXPECT_EQ(decoded->width, 128u * 4u);
@@ -634,8 +635,9 @@ TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
-  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
-            AVIF_RESULT_OK);
+  ASSERT_EQ(
+      testutil::DecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+      AVIF_RESULT_OK);
 
   // Color+alpha: single image of size 128x200 .
   EXPECT_EQ(decoded->width, 128u);

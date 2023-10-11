@@ -31,8 +31,8 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
       ASSERT_NE(image, nullptr);
       image->matrixCoefficients = (avifMatrixCoefficients)matrix_coefficient;
-      const avifAppFileFormat file_format = avifReadImage(
-          file_path.c_str(),
+      const avifAppFileFormat file_format = testutil::ReadImage(
+          file_path,
           /*requestedFormat=*/AVIF_PIXEL_FORMAT_NONE,
           /*requestedDepth=*/0,
           /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,

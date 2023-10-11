@@ -7,9 +7,11 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "avif/avif.h"
+#include "avifutil.h"
 
 namespace libavif {
 namespace testutil {
@@ -138,6 +140,37 @@ bool Av1EncoderAvailable();
 
 // Returns true if an AV1 decoder is available.
 bool Av1DecoderAvailable();
+
+//------------------------------------------------------------------------------
+// Non UTF-8 versions of libavif functions
+
+avifAppFileFormat ReadImage(const std::string& filename,
+                            avifPixelFormat requestedFormat, int requestedDepth,
+                            avifChromaDownsampling chromaDownsampling,
+                            avifBool ignoreColorProfile, avifBool ignoreExif,
+                            avifBool ignoreXMP, avifBool allowChangingCicp,
+                            avifBool ignoreGainMap, avifImage* image,
+                            uint32_t* outDepth,
+                            avifAppSourceTiming* sourceTiming,
+                            struct y4mFrameIterator** frameIter);
+
+avifBool y4mRead(const std::string& inputFilename, avifImage* avif,
+                 avifAppSourceTiming* sourceTiming,
+                 struct y4mFrameIterator** iter);
+
+avifBool PNGWrite(const std::string& outputFilename, const avifImage* avif,
+                  uint32_t requestedDepth,
+                  avifChromaUpsampling chromaUpsampling, int compressionLevel);
+
+avifBool JPEGWrite(const std::string& outputFilename, const avifImage* avif,
+                   int jpegQuality, avifChromaUpsampling chromaUpsampling);
+
+avifBool y4mWrite(const std::string& outputFilename, const avifImage* avif);
+
+avifResult DecoderSetIOFile(avifDecoder* decoder, const std::string& filename);
+
+avifResult DecoderReadFile(avifDecoder* decoder, avifImage* image,
+                           const std::string& filename);
 
 //------------------------------------------------------------------------------
 // avifIO overlay

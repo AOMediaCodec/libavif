@@ -18,8 +18,8 @@ TEST(AvifDecodeTest, AnimatedImage) {
   const char* file_name = "colors-animated-8bpc.avif";
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
-                                 (std::string(data_path) + file_name).c_str()),
+  ASSERT_EQ(testutil::DecoderSetIOFile(decoder.get(),
+                                       std::string(data_path) + file_name),
             AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   EXPECT_EQ(decoder->alphaPresent, AVIF_FALSE);
@@ -38,8 +38,8 @@ TEST(AvifDecodeTest, AnimatedImageWithSourceSetToPrimaryItem) {
   const char* file_name = "colors-animated-8bpc.avif";
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
-                                 (std::string(data_path) + file_name).c_str()),
+  ASSERT_EQ(testutil::DecoderSetIOFile(decoder.get(),
+                                       std::string(data_path) + file_name),
             AVIF_RESULT_OK);
   ASSERT_EQ(
       avifDecoderSetSource(decoder.get(), AVIF_DECODER_SOURCE_PRIMARY_ITEM),

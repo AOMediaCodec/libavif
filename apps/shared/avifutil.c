@@ -9,6 +9,7 @@
 
 #include "avifjpeg.h"
 #include "avifpng.h"
+#include "unicode.h"
 #include "y4m.h"
 
 // |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT32_MIN without
@@ -195,7 +196,7 @@ void avifPrintVersions(void)
 avifAppFileFormat avifGuessFileFormat(const char * filename)
 {
     // Guess from the file header
-    FILE * f = fopen(filename, "rb");
+    FILE * f = WFOPEN(filename, "rb");
     if (f) {
         uint8_t headerBuffer[144];
         size_t bytesRead = fread(headerBuffer, 1, sizeof(headerBuffer), f);
@@ -209,30 +210,30 @@ avifAppFileFormat avifGuessFileFormat(const char * filename)
 
     // If we get here, the file header couldn't be read for some reason. Guess from the extension.
 
-    const char * fileExt = strrchr(filename, '.');
+    const W_CHAR * fileExt = WSTRRCHR(filename, '.');
     if (!fileExt) {
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
     ++fileExt; // skip past the dot
 
-    char lowercaseExt[8]; // This only needs to fit up to "jpeg", so this is plenty
-    const size_t fileExtLen = strlen(fileExt);
+    W_CHAR lowercaseExt[8]; // This only needs to fit up to "jpeg", so this is plenty
+    const size_t fileExtLen = WSTRLEN(fileExt);
     if (fileExtLen >= sizeof(lowercaseExt)) { // >= accounts for NULL terminator
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
 
     for (size_t i = 0; i < fileExtLen; ++i) {
-        lowercaseExt[i] = (char)tolower((unsigned char)fileExt[i]);
+        lowercaseExt[i] = (W_CHAR)WTOLOWER(fileExt[i]);
     }
     lowercaseExt[fileExtLen] = 0;
 
-    if (!strcmp(lowercaseExt, "avif")) {
+    if (!WSTRCMP(lowercaseExt, "avif")) {
         return AVIF_APP_FILE_FORMAT_AVIF;
-    } else if (!strcmp(lowercaseExt, "y4m")) {
+    } else if (!WSTRCMP(lowercaseExt, "y4m")) {
         return AVIF_APP_FILE_FORMAT_Y4M;
-    } else if (!strcmp(lowercaseExt, "jpg") || !strcmp(lowercaseExt, "jpeg")) {
+    } else if (!WSTRCMP(lowercaseExt, "jpg") || !WSTRCMP(lowercaseExt, "jpeg")) {
         return AVIF_APP_FILE_FORMAT_JPEG;
-    } else if (!strcmp(lowercaseExt, "png")) {
+    } else if (!WSTRCMP(lowercaseExt, "png")) {
         return AVIF_APP_FILE_FORMAT_PNG;
     }
     return AVIF_APP_FILE_FORMAT_UNKNOWN;
@@ -312,7 +313,7 @@ avifAppFileFormat avifReadImage(const char * filename,
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {
-        fprintf(stderr, "Unrecognized file format for input file: %s\n", filename);
+        WFPRINTF(stderr, "Unrecognized file format for input file: %s\n", (const W_CHAR *)filename);
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
     return format;

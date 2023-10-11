@@ -4,6 +4,7 @@
 #include "avifjpeg.h"
 #include "avifexif.h"
 #include "avifutil.h"
+#include "unicode.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -920,7 +921,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
             iccData = iccDataTmp;
             if (avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen) != AVIF_RESULT_OK) {
-                fprintf(stderr, "Setting ICC profile failed: %s (out of memory)\n", inputFilename);
+                WFPRINTF(stderr, "Setting ICC profile failed: %s (out of memory)\n", (const W_CHAR *)inputFilename);
                 goto cleanup;
             }
         }
@@ -935,7 +936,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
         // JPEG pixels were successfully copied without conversion. Notify the enduser.
 
         assert(inputFilename); // JPEG read doesn't support stdin
-        printf("Directly copied JPEG pixel data (no YUV conversion): %s\n", inputFilename);
+        WPRINTF("Directly copied JPEG pixel data (no YUV conversion): %s\n", (const W_CHAR *)inputFilename);
     } else {
         // JPEG pixels could not be copied without conversion. Request (converted) RGB pixels from
         // libjpeg and convert to YUV with libavif instead.
@@ -979,7 +980,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
         rgb.chromaDownsampling = chromaDownsampling;
         rgb.depth = 8;
         if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
-            fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
+            WFPRINTF(stderr, "Conversion to YUV failed: %s (out of memory)\n", (const W_CHAR *)inputFilename);
             goto cleanup;
         }
 
@@ -991,7 +992,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
             ++row;
         }
         if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
-            fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
+            WFPRINTF(stderr, "Conversion to YUV failed: %s\n", (const W_CHAR *)inputFilename);
             goto cleanup;
         }
     }
@@ -1011,7 +1012,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
                 // libheif has the same behavior, see
                 // https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/heif_enc.cc#L403
                 if (avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size) != AVIF_RESULT_OK) {
-                    fprintf(stderr, "Setting Exif metadata failed: %s (out of memory)\n", inputFilename);
+                    WFPRINTF(stderr, "Setting Exif metadata failed: %s (out of memory)\n", (const W_CHAR *)inputFilename);
                     goto cleanup;
                 }
                 found = AVIF_TRUE;
@@ -1196,9 +1197,9 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifBool ignoreXMP,
                       avifBool ignoreGainMap)
 {
-    FILE * f = fopen(inputFilename, "rb");
+    FILE * f = WFOPEN(inputFilename, "rb");
     if (!f) {
-        fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
+        WFPRINTF(stderr, "Can't open JPEG file for read: %s\n", (const W_CHAR *)inputFilename);
         return AVIF_FALSE;
     }
     const avifBool res =
@@ -1224,17 +1225,17 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
-        fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);
+        WFPRINTF(stderr, "Conversion to RGB failed: %s (out of memory)\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
     if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
-        fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
+        WFPRINTF(stderr, "Conversion to RGB failed: %s\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
 
-    f = fopen(outputFilename, "wb");
+    f = WFOPEN(outputFilename, "wb");
     if (!f) {
-        fprintf(stderr, "Can't open JPEG file for write: %s\n", outputFilename);
+        WFPRINTF(stderr, "Can't open JPEG file for write: %s\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
 
@@ -1328,7 +1329,7 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
 
     jpeg_finish_compress(&cinfo);
     ret = AVIF_TRUE;
-    printf("Wrote JPEG: %s\n", outputFilename);
+    WPRINTF("Wrote JPEG: %s\n", (const W_CHAR *)outputFilename);
 cleanup:
     if (f) {
         fclose(f);

@@ -6,6 +6,7 @@
 #include "avifjpeg.h"
 #include "avifpng.h"
 #include "avifutil.h"
+#include "unicode.h"
 #include "y4m.h"
 
 #include <assert.h>
@@ -448,7 +449,7 @@ static avifBool avifInputAddCachedImage(avifInput * input)
 
 static avifBool fileExists(const char * filename)
 {
-    FILE * outfile = fopen(filename, "rb");
+    FILE * outfile = WFOPEN(filename, "rb");
     if (outfile) {
         fclose(outfile);
         return AVIF_TRUE;
@@ -629,7 +630,7 @@ static avifBool avifInputReadImage(avifInput * input,
 
 static avifBool readEntireFile(const char * filename, avifRWData * raw)
 {
-    FILE * f = fopen(filename, "rb");
+    FILE * f = WFOPEN(filename, "rb");
     if (!f) {
         return AVIF_FALSE;
     }
@@ -1337,6 +1338,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
 
 int main(int argc, char * argv[])
 {
+    INIT_WARGV(argc, argv);
     if (argc < 2) {
         syntaxShort();
         return 1;
@@ -1412,7 +1414,7 @@ int main(int argc, char * argv[])
             ++argIndex;
             // Parse additional positional arguments if any
             while (argIndex < argc) {
-                arg = argv[argIndex];
+                arg = (const char *)GET_WARGV(argv, argIndex);
                 input.files[input.filesCount].filename = arg;
                 input.files[input.filesCount].duration = settings.outputTiming.duration;
                 input.files[input.filesCount].settings = pendingSettings;
@@ -1443,7 +1445,7 @@ int main(int argc, char * argv[])
             input.useStdin = AVIF_TRUE;
         } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
             NEXTARG();
-            outputFilename = arg;
+            outputFilename = (const char *)GET_WARGV(argv, argIndex);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
         } else if (!strcmp(arg, "--avir")) {
             settings.headerFormat = AVIF_HEADER_REDUCED;
@@ -1888,7 +1890,7 @@ int main(int argc, char * argv[])
             goto cleanup;
         } else {
             // Positional argument
-            input.files[input.filesCount].filename = arg;
+            input.files[input.filesCount].filename = (const char *)GET_WARGV(argv, argIndex);
             input.files[input.filesCount].duration = settings.outputTiming.duration;
             input.files[input.filesCount].settings = pendingSettings;
             memset(&pendingSettings, 0, sizeof(pendingSettings));
@@ -1970,7 +1972,7 @@ int main(int argc, char * argv[])
     }
 
     if (noOverwrite && fileExists(outputFilename)) {
-        fprintf(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", outputFilename);
+        WFPRINTF(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
 
@@ -2074,14 +2076,16 @@ int main(int argc, char * argv[])
             // This check only applies to the first input.
             // Following inputs can change only one and leave the other unchanged.
             if (fileSettings->minQuantizer.set != fileSettings->maxQuantizer.set) {
-                fprintf(stderr, "ERROR: --min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
+                WFPRINTF(stderr,
+                         "ERROR: --min and --max must be either both specified or both unspecified for input %s.\n",
+                         (const W_CHAR *)file->filename);
                 returnCode = 1;
                 goto cleanup;
             }
             if (fileSettings->minQuantizerAlpha.set != fileSettings->maxQuantizerAlpha.set) {
-                fprintf(stderr,
-                        "ERROR: --minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n",
-                        file->filename);
+                WFPRINTF(stderr,
+                         "ERROR: --minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n",
+                         (const W_CHAR *)file->filename);
                 returnCode = 1;
                 goto cleanup;
             }
@@ -2222,7 +2226,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    printf("Successfully loaded: %s\n", firstFile->filename);
+    WPRINTF("Successfully loaded: %s\n", (const W_CHAR *)firstFile->filename);
 
     // Prepare image timings
     if ((settings.outputTiming.duration == 0) && (settings.outputTiming.timescale == 0) && (firstSourceTiming.duration > 0) &&
@@ -2500,20 +2504,20 @@ int main(int argc, char * argv[])
     }
     if (noOverwrite && fileExists(outputFilename)) {
         // check again before write
-        fprintf(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", outputFilename);
+        WFPRINTF(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
-    FILE * f = fopen(outputFilename, "wb");
+    FILE * f = WFOPEN(outputFilename, "wb");
     if (!f) {
-        fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
+        WFPRINTF(stderr, "ERROR: Failed to open file for write: %s\n", (const W_CHAR *)outputFilename);
         returnCode = 1;
         goto cleanup;
     }
     if (fwrite(raw.data, 1, raw.size, f) != raw.size) {
-        fprintf(stderr, "Failed to write %" AVIF_FMT_ZU " bytes: %s\n", raw.size, outputFilename);
+        WFPRINTF(stderr, "Failed to write %" AVIF_FMT_ZU " bytes: %s\n", raw.size, (const W_CHAR *)outputFilename);
         returnCode = 1;
     } else {
-        printf("Wrote AVIF: %s\n", outputFilename);
+        WPRINTF("Wrote AVIF: %s\n", (const W_CHAR *)outputFilename);
     }
     fclose(f);
 
@@ -2549,6 +2553,7 @@ cleanup:
         avifCodecSpecificOptionsFree(&file->settings.codecSpecificOptions);
     }
     free(input.files);
+    FREE_WARGV();
 
     return returnCode;
 }

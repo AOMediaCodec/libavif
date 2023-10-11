@@ -38,6 +38,10 @@ option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
        "Enable experimental gain map code (for HDR images that look good both on HDR and SDR displays)" OFF
 )
 option(AVIF_ENABLE_EXPERIMENTAL_AVIR "Enable experimental reduced header" OFF)
+# Option needed for handling Unicode file names on Windows.
+if(WIN32)
+    option(AVIF_ENABLE_UNICODE "Build Unicode executables." ON)
+endif()
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding/decoding (see AVIF_CODEC_AOM_DECODE/AVIF_CODEC_AOM_ENCODE)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding" OFF)
@@ -638,12 +642,18 @@ if(NOT AVIF_CODEC_AOM
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
+add_library(avif_unicode OBJECT third_party/libwebp/unicode.c third_party/libwebp/unicode.h)
+target_include_directories(avif_unicode INTERFACE third_party/libwebp)
+if(AVIF_ENABLE_UNICODE)
+    # Windows recommends setting both UNICODE and _UNICODE.
+    target_compile_definitions(avif_unicode PUBLIC -DUNICODE -D_UNICODE)
+endif()
 add_library(avif ${AVIF_SRCS})
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
-target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES} avif_unicode)
 target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
-target_include_directories(avif PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+target_include_directories(avif PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES} third_party/libwebp)
 target_include_directories(avif SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
 if(NOT libyuv_FOUND)
     target_include_directories(avif PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
@@ -738,12 +748,12 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
                          apps/shared/iccjpeg.c apps/shared/iccmaker.c apps/shared/y4m.c
     )
-    target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avif_apps avif avif_unicode ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
     # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
     # headers from /usr/local/include.
-    target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> $<TARGET_PROPERTY:avif_unicode,INTERFACE_INCLUDE_DIRECTORIES>)
     target_include_directories(avif_apps SYSTEM PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
     target_include_directories(avif_apps INTERFACE apps/shared)
 
@@ -764,12 +774,12 @@ if(AVIF_BUILD_APPS)
     if(AVIF_USE_CXX)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif_apps)
+    target_link_libraries(avifenc avif_apps avif_unicode)
     add_executable(avifdec apps/avifdec.c)
     if(AVIF_USE_CXX)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif_apps)
+    target_link_libraries(avifdec avif_apps avif_unicode)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(

@@ -6,6 +6,7 @@
 #include "avifjpeg.h"
 #include "avifpng.h"
 #include "avifutil.h"
+#include "unicode.h"
 #include "y4m.h"
 
 #include <assert.h>
@@ -77,6 +78,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    INIT_WARGV(argc, argv);
     int argIndex = 1;
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
@@ -86,7 +88,7 @@ int main(int argc, char * argv[])
             ++argIndex;
             // Parse additional positional arguments if any.
             while (argIndex < argc) {
-                arg = argv[argIndex];
+                arg = (const char *)GET_WARGV(argv, argIndex);
                 if (!inputFilename) {
                     inputFilename = arg;
                 } else if (!outputFilename) {
@@ -203,9 +205,9 @@ int main(int argc, char * argv[])
         } else {
             // Positional argument
             if (!inputFilename) {
-                inputFilename = arg;
+                inputFilename = (const char *)GET_WARGV(argv, argIndex);
             } else if (!outputFilename) {
-                outputFilename = arg;
+                outputFilename = (const char *)GET_WARGV(argv, argIndex);
             } else {
                 fprintf(stderr, "Too many positional arguments: %s\n\n", arg);
                 syntax();
@@ -245,13 +247,13 @@ int main(int argc, char * argv[])
 #endif
         avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
         if (result != AVIF_RESULT_OK) {
-            fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+            WFPRINTF(stderr, "Cannot open file for read: %s\n", (const W_CHAR *)inputFilename);
             avifDecoderDestroy(decoder);
             return 1;
         }
         result = avifDecoderParse(decoder);
         if (result == AVIF_RESULT_OK) {
-            printf("Image decoded: %s\n", inputFilename);
+            WPRINTF("Image decoded: %s\n", (const W_CHAR *)inputFilename);
             avifContainerDump(decoder);
 
             printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
@@ -321,7 +323,7 @@ int main(int argc, char * argv[])
 
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
     if (result != AVIF_RESULT_OK) {
-        fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+        WFPRINTF(stderr, "Cannot open file for read: %s\n", (const W_CHAR *)inputFilename);
         returnCode = 1;
         goto cleanup;
     }
@@ -340,7 +342,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    printf("Image decoded: %s\n", inputFilename);
+    WPRINTF("Image decoded: %s\n", (const W_CHAR *)inputFilename);
     printf("Image details:\n");
     avifBool gainMapPresent = AVIF_FALSE;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -357,7 +359,7 @@ int main(int argc, char * argv[])
 
     avifAppFileFormat outputFormat = avifGuessFileFormat(outputFilename);
     if (outputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-        fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
+        WFPRINTF(stderr, "Cannot determine output file extension: %s\n", (const W_CHAR *)outputFilename);
         returnCode = 1;
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (!y4mWrite(outputFilename, decoder->image)) {
@@ -376,7 +378,7 @@ int main(int argc, char * argv[])
             returnCode = 1;
         }
     } else {
-        fprintf(stderr, "Unsupported output file extension: %s\n", outputFilename);
+        WFPRINTF(stderr, "Unsupported output file extension: %s\n", (const W_CHAR *)outputFilename);
         returnCode = 1;
     }
 

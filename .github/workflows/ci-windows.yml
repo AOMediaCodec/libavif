@@ -128,7 +128,7 @@ jobs:
       run: >
         cl .\apps\avifenc.c .\apps\shared\*.c /nologo
         /DWIN32 /D_WINDOWS /MD /O2 /Ob2
-        -I.\apps\shared -I.\include
+        -I.\apps\shared -I.\include -I.\third_party\libwebp
         -external:W0
         -external:I.\ext\libpng
         -external:I.\ext\libjpeg
@@ -136,6 +136,7 @@ jobs:
         -external:I.\build\ext\libpng
         -external:I.\build\ext\zlib
         /link
+        shell32.lib
         build\ext\libjpeg\jpeg.lib
         build\ext\libpng\libpng16_static.lib
         build\ext\zlib\zlibstatic.lib

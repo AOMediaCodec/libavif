@@ -5,8 +5,6 @@
 #include <tuple>
 
 #include "avif/avif.h"
-#include "avifjpeg.h"
-#include "avifpng.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
@@ -106,14 +104,16 @@ testutil::AvifImagePtr WriteAndReadImage(const avifImage& image,
                                          const std::string& file_name) {
   const std::string file_path = testing::TempDir() + file_name;
   if (file_name.substr(file_name.size() - 4) == ".png") {
-    if (!avifPNGWrite(file_path.c_str(), &image, /*requestedDepth=*/0,
-                      AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
-                      /*compressionLevel=*/0)) {
+    if (!testutil::PNGWrite(file_path.c_str(), &image,
+                            /*requestedDepth=*/0,
+                            AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
+                            /*compressionLevel=*/0)) {
       return {nullptr, nullptr};
     }
   } else {
-    if (!avifJPEGWrite(file_path.c_str(), &image, /*jpegQuality=*/100,
-                       AVIF_CHROMA_UPSAMPLING_AUTOMATIC)) {
+    if (!testutil::JPEGWrite(file_path.c_str(), &image,
+                             /*jpegQuality=*/100,
+                             AVIF_CHROMA_UPSAMPLING_AUTOMATIC)) {
       return {nullptr, nullptr};
     }
   }
@@ -202,7 +202,7 @@ TEST(MetadataTest, DecoderParseICC) {
   std::string file_path = std::string(data_path) + "paris_icc_exif_xmp.avif";
   avifDecoder* decoder = avifDecoderCreate();
   ASSERT_NE(decoder, nullptr);
-  EXPECT_EQ(avifDecoderSetIOFile(decoder, file_path.c_str()), AVIF_RESULT_OK);
+  EXPECT_EQ(testutil::DecoderSetIOFile(decoder, file_path), AVIF_RESULT_OK);
   EXPECT_EQ(avifDecoderParse(decoder), AVIF_RESULT_OK);
   // Check the first four bytes of the ICC profile.
   ASSERT_GE(decoder->image->icc.size, 4u);

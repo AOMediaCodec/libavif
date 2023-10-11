@@ -14,8 +14,10 @@
 
 #include "avif/avif.h"
 #include "avif/internal.h"
+#include "avifjpeg.h"
 #include "avifpng.h"
 #include "avifutil.h"
+#include "y4m.h"
 
 namespace libavif {
 namespace testutil {
@@ -404,12 +406,12 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
                        avifBool ignore_gain_map) {
   testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
   if (!image ||
-      avifReadImage((std::string(folder_path) + file_name).c_str(),
-                    requested_format, requested_depth, chroma_downsampling,
-                    ignore_icc, ignore_exif, ignore_xmp, allow_changing_cicp,
-                    ignore_gain_map, image.get(),
-                    /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
-                    /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+      ReadImage((std::string(folder_path) + file_name).c_str(),
+                requested_format, requested_depth, chroma_downsampling,
+                ignore_icc, ignore_exif, ignore_xmp, allow_changing_cicp,
+                ignore_gain_map, image.get(),
+                /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+                /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return {nullptr, nullptr};
   }
   return image;
@@ -419,9 +421,9 @@ bool WriteImage(const avifImage* image, const char* file_path) {
   if (!image || !file_path) return false;
   const size_t str_len = std::strlen(file_path);
   if (str_len >= 4 && !std::strncmp(file_path + str_len - 4, ".png", 4)) {
-    return avifPNGWrite(file_path, image, /*requestedDepth=*/0,
-                        AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
-                        /*compressionLevel=*/0);
+    return PNGWrite(file_path, image,
+                    /*requestedDepth=*/0, AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
+                    /*compressionLevel=*/0);
   }
   // Other formats are not supported.
   return false;
@@ -460,6 +462,70 @@ bool Av1DecoderAvailable() {
       avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_DECODE);
   return decoding_codec != nullptr && std::string(decoding_codec) != "avm";
 }
+
+#if defined(_WIN32) && defined(_UNICODE)
+#define TEST_HELPERS_CSTRING(STR)                    \
+  const std::string sstr(STR);                       \
+  const std::wstring wstr(sstr.begin(), sstr.end()); \
+  const char* cstr = (const char*)wstr.c_str();
+#else
+#define TEST_HELPERS_CSTRING(STR) const char* cstr = STR.c_str();
+#endif
+
+avifAppFileFormat ReadImage(const std::string& filename,
+                            avifPixelFormat requestedFormat, int requestedDepth,
+                            avifChromaDownsampling chromaDownsampling,
+                            avifBool ignoreColorProfile, avifBool ignoreExif,
+                            avifBool ignoreXMP, avifBool allowChangingCicp,
+                            avifBool ignoreGainMap, avifImage* image,
+                            uint32_t* outDepth,
+                            avifAppSourceTiming* sourceTiming,
+                            struct y4mFrameIterator** frameIter) {
+  TEST_HELPERS_CSTRING(filename)
+  return ::avifReadImage(cstr, requestedFormat, requestedDepth,
+                         chromaDownsampling, ignoreColorProfile, ignoreExif,
+                         ignoreXMP, allowChangingCicp, ignoreGainMap, image,
+                         outDepth, sourceTiming, frameIter);
+}
+
+avifBool y4mRead(const std::string& inputFilename, avifImage* avif,
+                 avifAppSourceTiming* sourceTiming,
+                 struct y4mFrameIterator** iter) {
+  TEST_HELPERS_CSTRING(inputFilename)
+  return ::y4mRead(cstr, avif, sourceTiming, iter);
+}
+
+avifBool PNGWrite(const std::string& outputFilename, const avifImage* avif,
+                  uint32_t requestedDepth,
+                  avifChromaUpsampling chromaUpsampling, int compressionLevel) {
+  TEST_HELPERS_CSTRING(outputFilename)
+  return ::avifPNGWrite(cstr, avif, requestedDepth, chromaUpsampling,
+                        compressionLevel);
+}
+
+avifBool JPEGWrite(const std::string& outputFilename, const avifImage* avif,
+                   int jpegQuality, avifChromaUpsampling chromaUpsampling) {
+  TEST_HELPERS_CSTRING(outputFilename)
+  return ::avifJPEGWrite(cstr, avif, jpegQuality, chromaUpsampling);
+}
+
+avifBool y4mWrite(const std::string& outputFilename, const avifImage* avif) {
+  TEST_HELPERS_CSTRING(outputFilename)
+  return ::y4mWrite(cstr, avif);
+}
+
+avifResult DecoderSetIOFile(avifDecoder* decoder, const std::string& filename) {
+  TEST_HELPERS_CSTRING(filename);
+  return ::avifDecoderSetIOFile(decoder, cstr);
+}
+
+avifResult DecoderReadFile(avifDecoder* decoder, avifImage* image,
+                           const std::string& filename) {
+  TEST_HELPERS_CSTRING(filename);
+  return ::avifDecoderReadFile(decoder, image, cstr);
+}
+
+#undef TEST_HELPERS_CSTRING
 
 //------------------------------------------------------------------------------
 

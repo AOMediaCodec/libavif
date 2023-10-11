@@ -5,6 +5,7 @@
 #include "avifexif.h"
 #include "avifutil.h"
 #include "iccmaker.h"
+#include "unicode.h"
 
 #include "png.h"
 
@@ -243,36 +244,36 @@ avifBool avifPNGRead(const char * inputFilename,
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
 
-    FILE * f = fopen(inputFilename, "rb");
+    FILE * f = WFOPEN(inputFilename, "rb");
     if (!f) {
-        fprintf(stderr, "Can't open PNG file for read: %s\n", inputFilename);
+        WFPRINTF(stderr, "Can't open PNG file for read: %s\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
 
     uint8_t header[8];
     size_t bytesRead = fread(header, 1, 8, f);
     if (bytesRead != 8) {
-        fprintf(stderr, "Can't read PNG header: %s\n", inputFilename);
+        WFPRINTF(stderr, "Can't read PNG header: %s\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
     if (png_sig_cmp(header, 0, 8)) {
-        fprintf(stderr, "Not a PNG: %s\n", inputFilename);
+        WFPRINTF(stderr, "Not a PNG: %s\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
 
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        fprintf(stderr, "Cannot init libpng (png): %s\n", inputFilename);
+        WFPRINTF(stderr, "Cannot init libpng (png): %s\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
     info = png_create_info_struct(png);
     if (!info) {
-        fprintf(stderr, "Cannot init libpng (info): %s\n", inputFilename);
+        WFPRINTF(stderr, "Cannot init libpng (info): %s\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
 
     if (setjmp(png_jmpbuf(png))) {
-        fprintf(stderr, "Error reading PNG: %s\n", inputFilename);
+        WFPRINTF(stderr, "Error reading PNG: %s\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
 
@@ -422,10 +423,10 @@ avifBool avifPNGRead(const char * inputFilename,
                 if (needToGenerateICC) {
                     avif->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
                     avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-                    fprintf(stderr,
-                            "INFO: legacy PNG color space information found in file %s not matching any CICP value. libavif is generating an ICC profile for it."
-                            " Use --ignore-profile to ignore color space information instead (may affect the colors of the encoded AVIF image).\n",
-                            inputFilename);
+                    WFPRINTF(stderr,
+                             "INFO: legacy PNG color space information found in file %s not matching any CICP value. libavif is generating an ICC profile for it."
+                             " Use --ignore-profile to ignore color space information instead (may affect the colors of the encoded AVIF image).\n",
+                             (const W_CHAR *)inputFilename);
 
                     avifBool generateICCResult = AVIF_FALSE;
                     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
@@ -435,11 +436,11 @@ avifBool avifPNGRead(const char * inputFilename,
                     }
 
                     if (!generateICCResult) {
-                        fprintf(stderr,
-                                "WARNING: libavif could not generate an ICC profile for file %s. "
-                                "It may be caused by invalid values in the color space information. "
-                                "The encoded AVIF image's colors may be affected.\n",
-                                inputFilename);
+                        WFPRINTF(stderr,
+                                 "WARNING: libavif could not generate an ICC profile for file %s. "
+                                 "It may be caused by invalid values in the color space information. "
+                                 "The encoded AVIF image's colors may be affected.\n",
+                                 (const W_CHAR *)inputFilename);
                     }
                 }
             }
@@ -461,7 +462,7 @@ avifBool avifPNGRead(const char * inputFilename,
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
-        fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
+        WFPRINTF(stderr, "Conversion to YUV failed: %s (out of memory)\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
     // png_read_image() receives the row pointers but not the row buffer size. Verify the row
@@ -478,7 +479,7 @@ avifBool avifPNGRead(const char * inputFilename,
     }
     png_read_image(png, rowPointers);
     if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
-        fprintf(stderr, "Conversion to YUV failed: %s\n", inputFilename);
+        WFPRINTF(stderr, "Conversion to YUV failed: %s\n", (const W_CHAR *)inputFilename);
         goto cleanup;
     }
 
@@ -563,34 +564,34 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             rgb.format = AVIF_RGB_FORMAT_RGB;
         }
         if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
-            fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);
+            WFPRINTF(stderr, "Conversion to RGB failed: %s (out of memory)\n", (const W_CHAR *)outputFilename);
             goto cleanup;
         }
         if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
-            fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
+            WFPRINTF(stderr, "Conversion to RGB failed: %s\n", (const W_CHAR *)outputFilename);
             goto cleanup;
         }
     }
 
-    f = fopen(outputFilename, "wb");
+    f = WFOPEN(outputFilename, "wb");
     if (!f) {
-        fprintf(stderr, "Can't open PNG file for write: %s\n", outputFilename);
+        WFPRINTF(stderr, "Can't open PNG file for write: %s\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
 
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        fprintf(stderr, "Cannot init libpng (png): %s\n", outputFilename);
+        WFPRINTF(stderr, "Cannot init libpng (png): %s\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
     info = png_create_info_struct(png);
     if (!info) {
-        fprintf(stderr, "Cannot init libpng (info): %s\n", outputFilename);
+        WFPRINTF(stderr, "Cannot init libpng (info): %s\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
 
     if (setjmp(png_jmpbuf(png))) {
-        fprintf(stderr, "Error writing PNG: %s\n", outputFilename);
+        WFPRINTF(stderr, "Error writing PNG: %s\n", (const W_CHAR *)outputFilename);
         goto cleanup;
     }
 
@@ -720,7 +721,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     png_write_end(png, NULL);
 
     writeResult = AVIF_TRUE;
-    printf("Wrote PNG: %s\n", outputFilename);
+    WPRINTF("Wrote PNG: %s\n", (const W_CHAR *)outputFilename);
 cleanup:
     if (f) {
         fclose(f);

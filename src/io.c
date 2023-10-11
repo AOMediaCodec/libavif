@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "unicode.h"
+
 void avifIODestroy(avifIO * io)
 {
     if (io && io->destroy) {
@@ -135,7 +137,7 @@ static void avifIOFileReaderDestroy(struct avifIO * io)
 
 avifIO * avifIOCreateFileReader(const char * filename)
 {
-    FILE * f = fopen(filename, "rb");
+    FILE * f = WFOPEN(filename, "rb");
     if (!f) {
         return NULL;
     }

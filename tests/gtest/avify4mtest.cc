@@ -46,12 +46,12 @@ TEST_P(Y4mTest, EncodeDecode) {
                                         : ((1u << bit_depth) - 1),
       (1u << bit_depth) - 1};
   testutil::FillImagePlain(image.get(), yuva);
-  ASSERT_TRUE(y4mWrite(file_path.str().c_str(), image.get()));
+  ASSERT_TRUE(testutil::y4mWrite(file_path.str().c_str(), image.get()));
 
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
-  ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),
-                      /*sourceTiming=*/nullptr, /*iter=*/nullptr));
+  ASSERT_TRUE(testutil::y4mRead(file_path.str().c_str(), decoded.get(),
+                                /*sourceTiming=*/nullptr, /*iter=*/nullptr));
 
   EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
 }
@@ -79,7 +79,7 @@ TEST_P(Y4mTest, OutOfRange) {
   const uint32_t yuva16[] = {0, (1u << 16) - 1u, 0, (1u << 16) - 1u};
   testutil::FillImagePlain(image.get(),
                            avifImageUsesU16(image.get()) ? yuva16 : yuva8);
-  ASSERT_TRUE(y4mWrite(file_path.str().c_str(), image.get()));
+  ASSERT_TRUE(testutil::y4mWrite(file_path.str().c_str(), image.get()));
 
   // y4mRead() should clamp the values to respect the specified depth in order
   // to avoid computation with unexpected sample values. However, it does not
@@ -87,8 +87,8 @@ TEST_P(Y4mTest, OutOfRange) {
   // that tag along, it is ignored by the compression algorithm.
   testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
   ASSERT_NE(decoded, nullptr);
-  ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),
-                      /*sourceTiming=*/nullptr, /*iter=*/nullptr));
+  ASSERT_TRUE(testutil::y4mRead(file_path.str().c_str(), decoded.get(),
+                                /*sourceTiming=*/nullptr, /*iter=*/nullptr));
 
   // Pass it through the libavif API to make sure reading a bad y4m does not
   // trigger undefined behavior.

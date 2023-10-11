@@ -4,6 +4,7 @@
 // This is a barebones y4m reader/writer for basic libavif testing. It is NOT comprehensive!
 
 #include "y4m.h"
+#include "unicode.h"
 
 #include <assert.h>
 #include <inttypes.h>
@@ -185,7 +186,7 @@ static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayF
 
     for (;;) {
         if (fread(front, 1, 1, inputFile) != 1) {
-            fprintf(stderr, "Failed to read line: %s\n", displayFilename);
+            WFPRINTF(stderr, "Failed to read line: %s\n", (const W_CHAR *)displayFilename);
             break;
         }
 
@@ -273,9 +274,9 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         // Open a fresh y4m and read its header
 
         if (inputFilename) {
-            frame.inputFile = fopen(inputFilename, "rb");
+            frame.inputFile = WFOPEN(inputFilename, "rb");
             if (!frame.inputFile) {
-                fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
+                WFPRINTF(stderr, "Cannot open file for read: %s\n", (const W_CHAR *)inputFilename);
                 goto cleanup;
             }
         } else {
@@ -285,11 +286,11 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
 
         int headerBytes = y4mReadLine(frame.inputFile, &raw, frame.displayFilename);
         if (headerBytes < 0) {
-            fprintf(stderr, "Y4M header too large: %s\n", frame.displayFilename);
+            WFPRINTF(stderr, "Y4M header too large: %s\n", (const W_CHAR *)frame.displayFilename);
             goto cleanup;
         }
         if (headerBytes < 10) {
-            fprintf(stderr, "Y4M header too small: %s\n", frame.displayFilename);
+            WFPRINTF(stderr, "Y4M header too small: %s\n", (const W_CHAR *)frame.displayFilename);
             goto cleanup;
         }
 
@@ -297,7 +298,7 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         uint8_t * p = raw.data;
 
         if (memcmp(p, "YUV4MPEG2 ", 10) != 0) {
-            fprintf(stderr, "Not a y4m file: %s\n", frame.displayFilename);
+            WFPRINTF(stderr, "Not a y4m file: %s\n", (const W_CHAR *)frame.displayFilename);
             goto cleanup;
         }
         ADVANCE(10); // skip past header
@@ -314,27 +315,27 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
                     break;
                 case 'C': // color space
                     if (!getHeaderString(p, end, tmpBuffer, 31)) {
-                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        WFPRINTF(stderr, "Bad y4m header: %s\n", (const W_CHAR *)frame.displayFilename);
                         goto cleanup;
                     }
                     if (!y4mColorSpaceParse(tmpBuffer, &frame)) {
-                        fprintf(stderr, "Unsupported y4m pixel format: %s\n", frame.displayFilename);
+                        WFPRINTF(stderr, "Unsupported y4m pixel format: %s\n", (const W_CHAR *)frame.displayFilename);
                         goto cleanup;
                     }
                     break;
                 case 'F': // framerate
                     if (!getHeaderString(p, end, tmpBuffer, 31)) {
-                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        WFPRINTF(stderr, "Bad y4m header: %s\n", (const W_CHAR *)frame.displayFilename);
                         goto cleanup;
                     }
                     if (!y4mFramerateParse(tmpBuffer, &frame.sourceTiming)) {
-                        fprintf(stderr, "Unsupported framerate: %s\n", frame.displayFilename);
+                        WFPRINTF(stderr, "Unsupported framerate: %s\n", (const W_CHAR *)frame.displayFilename);
                         goto cleanup;
                     }
                     break;
                 case 'X':
                     if (!getHeaderString(p, end, tmpBuffer, 31)) {
-                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        WFPRINTF(stderr, "Bad y4m header: %s\n", (const W_CHAR *)frame.displayFilename);
                         goto cleanup;
                     }
                     if (!strcmp(tmpBuffer, "XCOLORRANGE=FULL")) {
@@ -358,27 +359,27 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         }
 
         if (*p != '\n') {
-            fprintf(stderr, "Truncated y4m header (no newline): %s\n", frame.displayFilename);
+            WFPRINTF(stderr, "Truncated y4m header (no newline): %s\n", (const W_CHAR *)frame.displayFilename);
             goto cleanup;
         }
     }
 
     int frameHeaderBytes = y4mReadLine(frame.inputFile, &raw, frame.displayFilename);
     if (frameHeaderBytes < 0) {
-        fprintf(stderr, "Y4M frame header too large: %s\n", frame.displayFilename);
+        WFPRINTF(stderr, "Y4M frame header too large: %s\n", (const W_CHAR *)frame.displayFilename);
         goto cleanup;
     }
     if (frameHeaderBytes < 6) {
-        fprintf(stderr, "Y4M frame header too small: %s\n", frame.displayFilename);
+        WFPRINTF(stderr, "Y4M frame header too small: %s\n", (const W_CHAR *)frame.displayFilename);
         goto cleanup;
     }
     if (memcmp(raw.data, "FRAME", 5) != 0) {
-        fprintf(stderr, "Truncated y4m (no frame): %s\n", frame.displayFilename);
+        WFPRINTF(stderr, "Truncated y4m (no frame): %s\n", (const W_CHAR *)frame.displayFilename);
         goto cleanup;
     }
 
     if ((frame.width < 1) || (frame.height < 1) || ((frame.depth != 8) && (frame.depth != 10) && (frame.depth != 12))) {
-        fprintf(stderr, "Failed to parse y4m header (not enough information): %s\n", frame.displayFilename);
+        WFPRINTF(stderr, "Failed to parse y4m header (not enough information): %s\n", (const W_CHAR *)frame.displayFilename);
         goto cleanup;
     }
 
@@ -407,11 +408,11 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         for (uint32_t y = 0; y < planeHeight; ++y) {
             uint32_t bytesRead = (uint32_t)fread(row, 1, planeWidthBytes, frame.inputFile);
             if (bytesRead != planeWidthBytes) {
-                fprintf(stderr,
-                        "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
-                        planeWidthBytes,
-                        bytesRead,
-                        frame.displayFilename);
+                WFPRINTF(stderr,
+                         "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                         planeWidthBytes,
+                         bytesRead,
+                         (const W_CHAR *)frame.displayFilename);
                 goto cleanup;
             }
             row += rowBytes;
@@ -457,7 +458,9 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
     char * y4mHeaderFormat = NULL;
 
     if (hasAlpha && ((avif->depth != 8) || (avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV444))) {
-        fprintf(stderr, "WARNING: writing alpha is currently only supported in 8bpc YUV444, ignoring alpha channel: %s\n", outputFilename);
+        WFPRINTF(stderr,
+                 "WARNING: writing alpha is currently only supported in 8bpc YUV444, ignoring alpha channel: %s\n",
+                 (const W_CHAR *)outputFilename);
     }
 
     switch (avif->depth) {
@@ -541,15 +544,15 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         rangeString = "XCOLORRANGE=LIMITED";
     }
 
-    FILE * f = fopen(outputFilename, "wb");
+    FILE * f = WFOPEN(outputFilename, "wb");
     if (!f) {
-        fprintf(stderr, "Cannot open file for write: %s\n", outputFilename);
+        WFPRINTF(stderr, "Cannot open file for write: %s\n", (const W_CHAR *)outputFilename);
         return AVIF_FALSE;
     }
 
     avifBool success = AVIF_TRUE;
     if (fprintf(f, "YUV4MPEG2 W%d H%d F25:1 Ip A0:0 %s %s\nFRAME\n", avif->width, avif->height, y4mHeaderFormat, rangeString) < 0) {
-        fprintf(stderr, "Cannot write to file: %s\n", outputFilename);
+        WFPRINTF(stderr, "Cannot write to file: %s\n", (const W_CHAR *)outputFilename);
         success = AVIF_FALSE;
         goto cleanup;
     }
@@ -562,7 +565,7 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
         for (uint32_t y = 0; y < planeHeight; ++y) {
             if (fwrite(row, 1, planeWidthBytes, f) != planeWidthBytes) {
-                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeWidthBytes, outputFilename);
+                WFPRINTF(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeWidthBytes, (const W_CHAR *)outputFilename);
                 success = AVIF_FALSE;
                 goto cleanup;
             }

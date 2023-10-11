@@ -19,8 +19,8 @@ TEST(AvifDecodeTest, ColorGridAlphaNoGrid) {
   const char* file_name = "color_grid_alpha_nogrid.avif";
   testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
   ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
-                                 (std::string(data_path) + file_name).c_str()),
+  ASSERT_EQ(testutil::DecoderSetIOFile(decoder.get(),
+                                       std::string(data_path) + file_name),
             AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);

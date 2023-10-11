@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "avif/avif.h"
-#include "avifpng.h"
 #include "aviftest_helpers.h"
 #include "avifutil.h"
 #include "gtest/gtest.h"
@@ -29,14 +28,15 @@ testutil::AvifImagePtr ReadImageLosslessBitDepth(const std::string& path,
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
 
   uint32_t output_depth;
-  if (avifReadImage(path.c_str(), AVIF_PIXEL_FORMAT_YUV444, bit_depth,
-                    AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                    /*ignoreColorProfile=*/true,
-                    /*ignoreExif=*/true, /*ignoreXMP=*/true,
-                    /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
-                    image.get(), &output_depth,
-                    /*sourceTiming=*/nullptr,
-                    /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+  if (testutil::ReadImage(path.c_str(), AVIF_PIXEL_FORMAT_YUV444, bit_depth,
+                          AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                          /*ignoreColorProfile=*/true,
+                          /*ignoreExif=*/true, /*ignoreXMP=*/true,
+                          /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
+                          image.get(), &output_depth,
+                          /*sourceTiming=*/nullptr,
+                          /*frameIter=*/nullptr) ==
+      AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return {nullptr, nullptr};
   }
   EXPECT_EQ(output_depth, bit_depth);
@@ -79,9 +79,10 @@ TEST(BitDepthTest, Png16b) {
   // Write and read it as a 16-bit PNG.
   const std::string file_path =
       testing::TempDir() + "avifpng16bittest_weld_16bit.png";
-  ASSERT_TRUE(avifPNGWrite(file_path.c_str(), original.get(), original->depth,
-                           AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
-                           /*compressionLevel=*/0));
+  ASSERT_TRUE(testutil::PNGWrite(file_path.c_str(), original.get(),
+                                 original->depth,
+                                 AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
+                                 /*compressionLevel=*/0));
   testutil::AvifImagePtr image =
       ReadImageLosslessBitDepth(file_path, original->depth);
   ASSERT_NE(image, nullptr);
