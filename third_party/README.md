@@ -23,3 +23,8 @@ When importing source code from upstream libyuv, the following changes must be d
 4. The commit hash of libyuv from where the files got imported in this README.md file must be updated.
 5. `LIBYUV_API` must be removed from any and all imported functions as these files are always built static.
 6. Replace .cc file extension by .c.
+
+## libwebp
+
+This subdirectory contains source code imported from libwebp as of `d2cb2d8cfc4acd7a2d146cc023cf2067c9d65347`, with
+modifications intended to keep them relatively small and simple.
