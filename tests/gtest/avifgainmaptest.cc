@@ -700,7 +700,7 @@ TEST(GainMapTest, ConvertMetadata) {
   ASSERT_TRUE(
       avifGainMapMetadataFractionsToDouble(&metadata_double2, &metadata));
 
-  constexpr float kEpsilon = 0.000001f;
+  constexpr double kEpsilon = 0.000001;
   for (int i = 0; i < 3; ++i) {
     EXPECT_NEAR(metadata_double2.gainMapMin[i], metadata_double.gainMapMin[i],
                 kEpsilon);
