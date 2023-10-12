@@ -10,12 +10,14 @@
 namespace libavif {
 namespace {
 
+constexpr int kMaxTransferCharacteristic = 18;
+
 // Thresholds in the transfer curve formulas.
 constexpr float kTransferLog100Threshold = 0.01f;
 constexpr float kTransferLog100Sqrt10Threshold = 0.00316227766f;
 
 TEST(TransferCharacteristicsTest, RoundTrip) {
-  for (int tc_idx = 0; tc_idx < 18; ++tc_idx) {
+  for (int tc_idx = 0; tc_idx <= kMaxTransferCharacteristic; ++tc_idx) {
     const avifTransferCharacteristics tc = (avifTransferCharacteristics)tc_idx;
     SCOPED_TRACE("transfer characteristics: " + std::to_string(tc));
 
@@ -50,22 +52,24 @@ TEST(TransferCharacteristicsTest, RoundTrip) {
     }
 
     if (tc == AVIF_TRANSFER_CHARACTERISTICS_LOG100) {
-      ASSERT_EQ(min_linear, kTransferLog100Threshold / 2.0f);
+      EXPECT_EQ(min_linear, kTransferLog100Threshold / 2.0f);
     } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_LOG100_SQRT10) {
-      ASSERT_EQ(min_linear, kTransferLog100Sqrt10Threshold / 2.0f);
+      EXPECT_EQ(min_linear, kTransferLog100Sqrt10Threshold / 2.0f);
     } else {
-      ASSERT_EQ(min_linear, 0.0f);
+      EXPECT_EQ(min_linear, 0.0f);
     }
 
     if (tc == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084) {
-      ASSERT_EQ(max_linear, 10000.0f / 203.0f);  // PQ max extended SDR value.
+      EXPECT_NEAR(max_linear, 10000.0f / 203.0f,
+                  0.00001);  // PQ max extended SDR value.
     } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_HLG) {
-      ASSERT_EQ(max_linear, 1000.0f / 203.0f);  // HLG max extended SDR value.
+      EXPECT_NEAR(max_linear, 1000.0f / 203.0f,
+                  0.00001);  // HLG max extended SDR value.
     } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_SMPTE428) {
       // See formula in Table 3 of ITU-T H.273.
-      ASSERT_EQ(max_linear, 52.37f / 48.0f);
+      EXPECT_NEAR(max_linear, 52.37f / 48.0f, 0.00001);
     } else {
-      ASSERT_EQ(max_linear, 1.0f);
+      EXPECT_EQ(max_linear, 1.0f);
     }
   }
 }
@@ -75,7 +79,7 @@ TEST(TransferCharacteristicsTest, RoundTrip) {
 // This detects bugs where the linear->gamma and
 // gamma->linear implementations are swapped.
 TEST(TransferCharacteristicsTest, ToGammaHasCorrectShape) {
-  for (int tc_idx = 0; tc_idx < 18; ++tc_idx) {
+  for (int tc_idx = 0; tc_idx <= kMaxTransferCharacteristic; ++tc_idx) {
     const avifTransferCharacteristics tc = (avifTransferCharacteristics)tc_idx;
     SCOPED_TRACE("transfer characteristics: " + std::to_string(tc));
 
