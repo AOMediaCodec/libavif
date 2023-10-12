@@ -224,7 +224,7 @@ public class AvifDecoderTest {
     decoder.release();
   }
 
-//  @Test
+  @Test
   public void testUtilityFunctions() throws IOException {
     // Test the avifResult value whose value and string representations are least likely to change.
     assertThat(AvifDecoder.resultToString(AVIF_RESULT_OK)).isEqualTo("OK");
