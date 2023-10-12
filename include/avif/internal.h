@@ -172,6 +172,8 @@ typedef struct avifRGBColorSpaceInfo
     float maxChannelF; // Same as maxChannel but as a float.
 } avifRGBColorSpaceInfo;
 
+avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInfo * info);
+
 // Information about a YUV color space.
 typedef struct avifYUVColorSpaceInfo
 {
@@ -193,11 +195,20 @@ typedef struct avifYUVColorSpaceInfo
     avifReformatMode mode;          // Appropriate RGB<->YUV conversion mode.
 } avifYUVColorSpaceInfo;
 
+avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo * info);
+
 typedef struct avifReformatState
 {
     avifRGBColorSpaceInfo rgb;
     avifYUVColorSpaceInfo yuv;
 } avifReformatState;
+
+// Retrieves the pixel value at position (i, j) expressed as floats in [0;1]. If the image's format doesn't have alpha,
+// rgbaPixel[3] is set to 1.0f.
+void avifGetRGBAPixel(const avifRGBImage * src, int i, int j, float rgbaPixel[4], const avifRGBColorSpaceInfo * info);
+// Sets the pixel value at position (i, j) from RGBA values expressed as floats in [0;1]. If the image's format doesn't
+// support alpha, rgbaPixel[3] is ignored.
+void avifSetRGBAPixel(const avifRGBImage * dst, int i, int j, const float rgbaPixel[4], const avifRGBColorSpaceInfo * info);
 
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libyuv
