@@ -203,12 +203,12 @@ typedef struct avifReformatState
     avifYUVColorSpaceInfo yuv;
 } avifReformatState;
 
-// Retrieves the pixel value at position (i, j) expressed as floats in [0;1]. If the image's format doesn't have alpha,
+// Retrieves the pixel value at position (x, y) expressed as floats in [0, 1]. If the image's format doesn't have alpha,
 // rgbaPixel[3] is set to 1.0f.
-void avifGetRGBAPixel(const avifRGBImage * src, int i, int j, float rgbaPixel[4], const avifRGBColorSpaceInfo * info);
-// Sets the pixel value at position (i, j) from RGBA values expressed as floats in [0;1]. If the image's format doesn't
+void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const avifRGBColorSpaceInfo * info, float rgbaPixel[4]);
+// Sets the pixel value at position (i, j) from RGBA values expressed as floats in [0, 1]. If the image's format doesn't
 // support alpha, rgbaPixel[3] is ignored.
-void avifSetRGBAPixel(const avifRGBImage * dst, int i, int j, const float rgbaPixel[4], const avifRGBColorSpaceInfo * info);
+void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const avifRGBColorSpaceInfo * info, const float rgbaPixel[4]);
 
 // Returns:
 // * AVIF_RESULT_OK              - Converted successfully with libyuv

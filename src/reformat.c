@@ -1742,13 +1742,13 @@ static inline float avifF16ToFloat(uint16_t v)
     return f16.f / F16_MULTIPLIER;
 }
 
-void avifGetRGBAPixel(const avifRGBImage * src, int i, int j, float rgbaPixel[4], const avifRGBColorSpaceInfo * info)
+void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const avifRGBColorSpaceInfo * info, float rgbaPixel[4])
 {
     assert(src != NULL);
     assert(!src->isFloat || src->depth == 16);
     assert(src->format != AVIF_RGB_FORMAT_RGB_565 || src->depth == 8);
 
-    const uint8_t * const srcPixel = &src->pixels[j * src->rowBytes + i * info->pixelBytes];
+    const uint8_t * const srcPixel = &src->pixels[y * src->rowBytes + x * info->pixelBytes];
     if (info->channelBytes > 1) {
         uint16_t r = *((uint16_t *)(&srcPixel[info->offsetBytesR]));
         uint16_t g = *((uint16_t *)(&srcPixel[info->offsetBytesG]));
@@ -1758,7 +1758,7 @@ void avifGetRGBAPixel(const avifRGBImage * src, int i, int j, float rgbaPixel[4]
             rgbaPixel[0] = avifF16ToFloat(r);
             rgbaPixel[1] = avifF16ToFloat(g);
             rgbaPixel[2] = avifF16ToFloat(b);
-            rgbaPixel[3] = avifF16ToFloat(a);
+            rgbaPixel[3] = avifRGBFormatHasAlpha(src->format) ? avifF16ToFloat(a) : 1.0f;
         } else {
             rgbaPixel[0] = r / info->maxChannelF;
             rgbaPixel[1] = g / info->maxChannelF;
@@ -1782,13 +1782,13 @@ void avifGetRGBAPixel(const avifRGBImage * src, int i, int j, float rgbaPixel[4]
     }
 }
 
-void avifSetRGBAPixel(const avifRGBImage * dst, int i, int j, const float rgbaPixel[4], const avifRGBColorSpaceInfo * info)
+void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const avifRGBColorSpaceInfo * info, const float rgbaPixel[4])
 {
     assert(dst != NULL);
     assert(!dst->isFloat || dst->depth == 16);
     assert(dst->format != AVIF_RGB_FORMAT_RGB_565 || dst->depth == 8);
 
-    uint8_t * const dstPixel = &dst->pixels[j * dst->rowBytes + i * info->pixelBytes];
+    uint8_t * const dstPixel = &dst->pixels[y * dst->rowBytes + x * info->pixelBytes];
 
     uint8_t * const ptrR = &dstPixel[info->offsetBytesR];
     uint8_t * const ptrG = &dstPixel[info->offsetBytesG];
