@@ -569,11 +569,16 @@ static void avifStoreRGB8Pixel(avifRGBFormat format, uint8_t R, uint8_t G, uint8
 
 static void avifGetRGB565(const uint8_t * ptrR, uint8_t * R, uint8_t * G, uint8_t * B)
 {
-    // See https://docs.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb
+    // References for RGB565 color conversion:
+    // * https://docs.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb
+    // * http://google3/third_party/libyuv/files/source/row_common.cc;l=185;rcl=573160022
     const uint16_t rgb656 = ((const uint16_t *)ptrR)[0];
-    *R = (uint8_t)(((rgb656 & 0xF800) >> 11) << 3);
-    *G = (uint8_t)(((rgb656 & 0x07E0) >> 5) << 2);
-    *B = (uint8_t)(((rgb656 & 0x001F)) << 3);
+    const uint16_t r5 = (rgb656 & 0xF800) >> 11;
+    const uint16_t g6 = (rgb656 & 0x07E0) >> 5;
+    const uint16_t b5 = (rgb656 & 0x001F);
+    *R = (uint8_t)((r5 << 3) | (r5 >> 2));
+    *G = (uint8_t)((g6 << 2) | (g6 >> 4));
+    *B = (uint8_t)((b5 << 3) | (b5 >> 2));
 }
 
 // Note: This function handles alpha (un)multiply.

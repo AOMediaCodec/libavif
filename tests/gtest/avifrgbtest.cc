@@ -63,6 +63,23 @@ TEST_P(SetGetRGBATest, SetGetTest) {
       }
     }
   }
+
+  // Check that 0 maps to 0 and 1.0f maps to 1.0f.
+  const float pixel_zero[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  avifSetRGBAPixel(&rgb, 0, 0, &color_space, pixel_zero);
+  avifGetRGBAPixel(&rgb, 0, 0, &color_space, pixel_read);
+  EXPECT_EQ(pixel_read[0], pixel_zero[0]);
+  EXPECT_EQ(pixel_read[1], pixel_zero[1]);
+  EXPECT_EQ(pixel_read[2], pixel_zero[2]);
+  EXPECT_EQ(pixel_read[3], pixel_zero[3]);
+
+  const float pixel_one[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  avifSetRGBAPixel(&rgb, 0, 0, &color_space, pixel_one);
+  avifGetRGBAPixel(&rgb, 0, 0, &color_space, pixel_read);
+  EXPECT_EQ(pixel_read[0], pixel_one[0]);
+  EXPECT_EQ(pixel_read[1], pixel_one[1]);
+  EXPECT_EQ(pixel_read[2], pixel_one[2]);
+  EXPECT_EQ(pixel_read[3], pixel_one[3]);
 }
 
 INSTANTIATE_TEST_SUITE_P(
