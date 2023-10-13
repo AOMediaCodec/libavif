@@ -214,8 +214,8 @@ void avifCalcYUVCoefficients(const avifImage * image, float * outR, float * outG
 //   range of linear values that are gamma-encoded to 0.0 in order to reduce the max round trip error,
 //   based on vrabaud's change in
 //   https://chromium.googlesource.com/webm/libwebp/+/25d94f473b10882b8bee9288d00539001b692042
-// - In this file, PQ and HLG return "extended SDR" linear values in [0;10000/203] and
-//   [0;1000/203] respectively, where a value of 1.0 means SDR white brightness (203 nits), and any
+// - In this file, PQ and HLG return "extended SDR" linear values in [0.0, 10000/203] and
+//   [0.0, 1000/203] respectively, where a value of 1.0 means SDR white brightness (203 nits), and any
 //   value above 1.0 is brigther.
 // See git history for further changes.
 
@@ -318,7 +318,7 @@ static float avifToGammaLog100(float linear)
 
 static float avifToLinearLog100Sqrt10(float gamma)
 {
-    // The function is non-bijective so choose the middle of [0, 0.00316227766f[.
+    // The function is non-bijective so choose the middle of [0, 0.00316227766f].
     const float mid_interval = 0.00316227766f / 2.f;
     return (gamma <= 0.0f) ? mid_interval : powf(10.0f, 2.5f * (AVIF_MIN(gamma, 1.f) - 1.0f));
 }
@@ -427,7 +427,7 @@ static float avifToLinearPQ(float gamma)
 static float avifToGammaPQ(float linear)
 {
     if (linear > 0.0f) {
-        // Scale from extended SDR range to [0.0;1.0].
+        // Scale from extended SDR range to [0.0, 1.0].
         linear = AVIF_CLAMP(linear * SDR_WHITE_NITS / PQ_MAX_NITS, 0.0f, 1.0f);
         const float powLinear = powf(linear, 0.1593017578125f);
         const float num = 0.1640625f * powLinear - 0.1640625f;
@@ -471,7 +471,7 @@ static float avifToLinearHLG(float gamma)
 
 static float avifToGammaHLG(float linear)
 {
-    // Scale from extended SDR range to [0.0;1.0].
+    // Scale from extended SDR range to [0.0, 1.0].
     linear = AVIF_CLAMP(linear * SDR_WHITE_NITS / HLG_PEAK_LUMINANCE_NITS, 0.0f, 1.0f);
     // Inverse OOTF followed by OETF see Table 5 and Note 5i in ITU-R BT.2100-2 page 7-8.
     linear = powf(linear, 1.0f / 1.2f);
