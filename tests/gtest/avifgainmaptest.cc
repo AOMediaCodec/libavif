@@ -652,7 +652,7 @@ TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
   EXPECT_NEAR(std::abs((double)numerator / denominator), expected, \
               expected * 0.001);
 
-TEST(GainMapTest, Convert) {
+TEST(GainMapTest, ConvertMetadata) {
   avifGainMapMetadataDouble metadata_double = {};
   metadata_double.gainMapMin[0] = 1.0;
   metadata_double.gainMapMin[1] = 1.1;
@@ -672,6 +672,7 @@ TEST(GainMapTest, Convert) {
   metadata_double.hdrCapacityMax = 10.0;
   metadata_double.baseRenditionIsHDR = AVIF_TRUE;
 
+  // Convert to avifGainMapMetadata.
   avifGainMapMetadata metadata = {};
   ASSERT_TRUE(
       avifGainMapMetadataDoubleToFractions(&metadata, &metadata_double));
@@ -693,14 +694,46 @@ TEST(GainMapTest, Convert) {
   EXPECT_FRACTION_NEAR(metadata.hdrCapacityMaxN, metadata.hdrCapacityMaxD,
                        metadata_double.hdrCapacityMax);
   EXPECT_EQ(metadata.baseRenditionIsHDR, metadata_double.baseRenditionIsHDR);
+
+  // Convert back to avifGainMapMetadataDouble.
+  avifGainMapMetadataDouble metadata_double2 = {};
+  ASSERT_TRUE(
+      avifGainMapMetadataFractionsToDouble(&metadata_double2, &metadata));
+
+  constexpr double kEpsilon = 0.000001;
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_NEAR(metadata_double2.gainMapMin[i], metadata_double.gainMapMin[i],
+                kEpsilon);
+    EXPECT_NEAR(metadata_double2.gainMapMax[i], metadata_double.gainMapMax[i],
+                kEpsilon);
+    EXPECT_NEAR(metadata_double2.gainMapGamma[i],
+                metadata_double.gainMapGamma[i], kEpsilon);
+    EXPECT_NEAR(metadata_double2.offsetSdr[i], metadata_double.offsetSdr[i],
+                kEpsilon);
+    EXPECT_NEAR(metadata_double2.offsetHdr[i], metadata_double.offsetHdr[i],
+                kEpsilon);
+  }
+  EXPECT_NEAR(metadata_double2.hdrCapacityMin, metadata_double.hdrCapacityMin,
+              kEpsilon);
+  EXPECT_NEAR(metadata_double2.hdrCapacityMax, metadata_double.hdrCapacityMax,
+              kEpsilon);
+  EXPECT_EQ(metadata_double2.baseRenditionIsHDR,
+            metadata_double.baseRenditionIsHDR);
 }
 
-TEST(GainMapTest, Invalid) {
+TEST(GainMapTest, ConvertMetadataToFractionInvalid) {
   avifGainMapMetadataDouble metadata_double = {};
   metadata_double.gainMapGamma[0] = -42;  // A negative value is invalid!
   avifGainMapMetadata metadata = {};
   ASSERT_FALSE(
       avifGainMapMetadataDoubleToFractions(&metadata, &metadata_double));
+}
+
+TEST(GainMapTest, ConvertMetadataToDoubleInvalid) {
+  avifGainMapMetadata metadata = {};  // Denominators are zero.
+  avifGainMapMetadataDouble metadata_double = {};
+  ASSERT_FALSE(
+      avifGainMapMetadataFractionsToDouble(&metadata_double, &metadata));
 }
 
 }  // namespace
