@@ -12,7 +12,7 @@ add_executable(aviftest aviftest.c)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(aviftest ${AVIF_LINK_LIBRARIES})
 add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
 if(AVIF_ENABLE_COVERAGE)
@@ -34,7 +34,7 @@ add_executable(avifyuv avifyuv.c)
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(avifyuv ${AVIF_LINK_LIBRARIES})
 foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2 minutes each so they are disabled.
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
@@ -51,7 +51,7 @@ add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/
 if(AVIF_LOCAL_LIBGAV1)
     set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(repro_avif_decode_fuzzer avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(repro_avif_decode_fuzzer ${AVIF_LINK_LIBRARIES})
 # The test below exists for coverage and as a usage example: repro_avif_decode_fuzzer [reproducer file path]
 add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
                                                ${CMAKE_CURRENT_SOURCE_DIR}/data/color_grid_alpha_nogrid.avif
@@ -126,7 +126,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest(avifimagetest)
 
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
-    target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
+    target_link_libraries(avifincrtest_helpers ${AVIF_LINK_LIBRARIES} ${GTEST_LIBRARIES})
     target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})
 
     add_executable(avifincrtest gtest/avifincrtest.cc)

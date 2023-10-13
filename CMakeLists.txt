@@ -104,6 +104,10 @@ set(AVIF_PLATFORM_DEFINITIONS)
 set(AVIF_PLATFORM_INCLUDES)
 set(AVIF_PLATFORM_SYSTEM_INCLUDES)
 set(AVIF_PLATFORM_LIBRARIES)
+# The libraries that apps, examples, and tests are linked against.
+# This includes libavif itself, as well as any codec or platform
+# libraries that are not already merged into libavif.
+set(AVIF_LINK_LIBRARIES)
 
 # A macro that wraps find_package, preferring static libraries if this is a static build
 # Should only be used for libraries linked against avif, not for those only used
@@ -644,7 +648,28 @@ if(NOT AVIF_CODEC_AOM
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-add_library(avif ${AVIF_SRCS})
+# Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
+# The avif_internal target should not be used by external code.
+add_library(avif_internal STATIC ${AVIF_SRCS})
+# Copy or duplicate most properties from the public avif library target.
+target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
+target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
+target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
+target_include_directories(avif_internal PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+target_include_directories(avif_internal SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
+if(NOT libyuv_FOUND)
+    target_include_directories(avif_internal PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
+endif()
+
+if(BUILD_SHARED_LIBS)
+    add_library(avif ${AVIF_SRCS})
+    list(APPEND AVIF_LINK_LIBRARIES avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+else()
+    include(merge_static_libs)
+    merge_static_libs(avif UNMERGED_LIBRARIES avif_internal ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+    list(APPEND AVIF_LINK_LIBRARIES avif ${UNMERGED_LIBRARIES})
+endif()
+
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
@@ -666,25 +691,6 @@ if(BUILD_SHARED_LIBS)
     endif()
 endif()
 
-# Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
-# The avif_internal target should not be used by external code.
-if(BUILD_SHARED_LIBS)
-    add_library(avif_internal STATIC ${AVIF_SRCS})
-    # Copy or duplicate most properties from the public avif library target.
-    target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
-    target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
-    target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
-    target_include_directories(avif_internal PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
-    target_include_directories(avif_internal SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
-    if(NOT libyuv_FOUND)
-        target_include_directories(avif_internal PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
-    endif()
-else()
-    add_library(avif_internal ALIAS avif)
-    include(merge_static_libs)
-    merge_static_libs(avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-endif()
-
 option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     set(AVIF_EXAMPLES avif_example_decode_memory avif_example_decode_file avif_example_decode_streaming avif_example_encode)
@@ -694,7 +700,7 @@ if(AVIF_BUILD_EXAMPLES)
         if(AVIF_USE_CXX)
             set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
         endif()
-        target_link_libraries(${EXAMPLE} avif ${AVIF_PLATFORM_LIBRARIES})
+        target_link_libraries(${EXAMPLE} ${AVIF_LINK_LIBRARIES})
     endforeach()
 endif()
 
@@ -744,7 +750,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
                          apps/shared/iccjpeg.c apps/shared/iccmaker.c apps/shared/y4m.c
     )
-    target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avif_apps ${AVIF_LINK_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
     # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
