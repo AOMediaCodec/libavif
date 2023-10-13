@@ -82,6 +82,36 @@ TEST_P(SetGetRGBATest, SetGetTest) {
   EXPECT_EQ(pixel_read[3], pixel_one[3]);
 }
 
+TEST_P(SetGetRGBATest, GradientTest) {
+  const int rgb_depth = std::get<0>(GetParam());
+  const avifRGBFormat rgb_format = std::get<1>(GetParam());
+  const bool is_float = std::get<2>(GetParam());
+
+  // Only used for convenience to generate RGB values.
+  testutil::AvifImagePtr yuv =
+      testutil::CreateImage(/*width=*/13, /*height=*/17, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  testutil::FillImageGradient(yuv.get());
+
+  testutil::AvifRgbImage input_rgb(yuv.get(), rgb_depth, rgb_format);
+  testutil::AvifRgbImage output_rgb(yuv.get(), rgb_depth, rgb_format);
+  input_rgb.isFloat = is_float;
+  output_rgb.isFloat = is_float;
+  ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &input_rgb), AVIF_RESULT_OK);
+
+  avifRGBColorSpaceInfo color_space;
+  ASSERT_TRUE(avifGetRGBColorSpaceInfo(&input_rgb, &color_space));
+
+  for (uint32_t j = 0; j < input_rgb.height; ++j) {
+    for (uint32_t i = 0; i < input_rgb.width; ++i) {
+      float pixel[4];
+      avifGetRGBAPixel(&input_rgb, i, j, &color_space, pixel);
+      avifSetRGBAPixel(&output_rgb, i, j, &color_space, pixel);
+    }
+  }
+  EXPECT_TRUE(testutil::AreImagesEqual(input_rgb, output_rgb));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     NonFloatNonRgb565, SetGetRGBATest,
     Combine(/*rgb_depth=*/Values(8, 10, 12, 16),
