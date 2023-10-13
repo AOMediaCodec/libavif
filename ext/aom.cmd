@@ -8,10 +8,10 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone --single-branch https://aomedia.googlesource.com/aom
+git clone -b ironbark --single-branch https://aomedia.googlesource.com/aom
 
 cd aom
-git checkout 2603b3a2d63ba6b1265cde65316950ad301966aa
+git checkout 67d97ee720d57b71c23e500007d8c54577615b89
 
 mkdir build.libavif
 cd build.libavif
