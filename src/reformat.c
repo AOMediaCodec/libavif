@@ -571,7 +571,7 @@ static void avifGetRGB565(const uint8_t * ptrR, uint8_t * R, uint8_t * G, uint8_
 {
     // References for RGB565 color conversion:
     // * https://docs.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb
-    // * http://google3/third_party/libyuv/files/source/row_common.cc;l=185;rcl=573160022
+    // * https://chromium.googlesource.com/libyuv/libyuv/+/331c361581896292fb46c8c6905e41262b7ca95f/source/row_common.cc#185
     const uint16_t rgb656 = ((const uint16_t *)ptrR)[0];
     const uint16_t r5 = (rgb656 & 0xF800) >> 11;
     const uint16_t g6 = (rgb656 & 0x07E0) >> 5;
