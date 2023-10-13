@@ -131,6 +131,7 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
     add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
+    add_avif_gtest(avifcolrtest)
     add_avif_gtest_with_data(avifiostatstest)
     add_avif_gtest_with_data(aviflosslesstest)
     add_avif_gtest_with_data(avifmetadatatest)
