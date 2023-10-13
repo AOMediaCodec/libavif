@@ -32,10 +32,12 @@ typedef struct
     avifCodecChoice codecChoice;
     int jobs;
     int targetSize;
-    avifBool qualityIsConstrained;      // true if quality explicitly set by the user
-    avifBool qualityAlphaIsConstrained; // true if qualityAlpha explicitly set by the user
+    avifBool qualityIsConstrained;        // true if quality explicitly set by the user
+    avifBool qualityAlphaIsConstrained;   // true if qualityAlpha explicitly set by the user
+    avifBool qualityGainMapIsConstrained; // true if qualityGainMap explicitly set by the user
     int overrideQuality;
     int overrideQualityAlpha;
+    int qualityGainMap;
     avifBool progressive; // automatic layered encoding (progressive) with single input
     avifBool layered;     // manual layered encoding by specifying each layer
     int layers;
@@ -163,6 +165,13 @@ typedef struct avifInput
     int cacheCount;
 } avifInput;
 
+typedef struct avifEncodedByteSizes
+{
+    size_t colorSizeBytes;
+    size_t alphaSizeBytes;
+    size_t gainMapSizeBytes;
+} avifEncodedByteSizes;
+
 static void syntaxShort(void)
 {
     printf("Syntax: avifenc [options] -q quality input.[jpg|jpeg|png|y4m] output.avif\n");
@@ -230,6 +239,10 @@ static void syntaxLong(void)
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
+    printf("    --qgainmap Q                      : Set quality for the gain map (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
     // TODO(maryla): add quality setting for the gain map.
 #endif
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
@@ -509,6 +522,15 @@ static avifBool avifInputReadImage(avifInput * input,
         if (avifImageSetViewRect(image, cached->image, &rect) != AVIF_RESULT_OK) {
             assert(AVIF_FALSE);
         }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        if (cached->image->gainMap.image != NULL) {
+            image->gainMap.image = avifImageCreateEmpty();
+            const avifCropRect gainMapRect = { 0, 0, cached->image->gainMap.image->width, cached->image->gainMap.image->height };
+            if (avifImageSetViewRect(image->gainMap.image, cached->image->gainMap.image, &gainMapRect) != AVIF_RESULT_OK) {
+                assert(AVIF_FALSE);
+            }
+        }
+#endif
         if (settings) {
             *settings = cached->settings;
         }
@@ -1111,7 +1133,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
                                              const avifImage * firstImage,
                                              const avifImage * const * gridCells,
                                              avifRWData * encoded,
-                                             avifIOStats * ioStats)
+                                             avifEncodedByteSizes * byteSizes)
 {
     avifBool success = AVIF_FALSE;
     avifRWDataFree(encoded);
@@ -1146,6 +1168,11 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     if (settings->overrideQualityAlpha != INVALID_QUALITY) {
         encoder->qualityAlpha = settings->overrideQualityAlpha;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+    if (settings->qualityGainMap != INVALID_QUALITY) {
+        encoder->qualityGainMap = settings->qualityGainMap;
+    }
+#endif
 
     const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     char speed_str[16];
@@ -1230,7 +1257,11 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         goto cleanup;
     }
     success = AVIF_TRUE;
-    memcpy(ioStats, &encoder->ioStats, sizeof(*ioStats));
+    byteSizes->colorSizeBytes = encoder->ioStats.colorOBUSize;
+    byteSizes->alphaSizeBytes = encoder->ioStats.alphaOBUSize;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    byteSizes->gainMapSizeBytes = avifEncoderGetGainMapSizeBytes(encoder);
+#endif
 
 cleanup:
     if (encoder) {
@@ -1248,20 +1279,30 @@ static avifBool avifEncodeImages(avifSettings * settings,
                                  const avifImage * firstImage,
                                  const avifImage * const * gridCells,
                                  avifRWData * encoded,
-                                 avifIOStats * ioStats)
+                                 avifEncodedByteSizes * byteSizes)
 {
     if (settings->targetSize == -1) {
-        return avifEncodeImagesFixedQuality(settings, input, firstFile, firstImage, gridCells, encoded, ioStats);
+        return avifEncodeImagesFixedQuality(settings, input, firstFile, firstImage, gridCells, encoded, byteSizes);
     }
 
-    if (settings->qualityIsConstrained && settings->qualityAlphaIsConstrained) {
-        fprintf(stderr, "ERROR: --target_size is used with constrained --qcolor and --qalpha\n");
+    avifBool hasGainMap = AVIF_FALSE;
+    avifBool allQualitiesConstrained = settings->qualityIsConstrained && settings->qualityAlphaIsConstrained;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    hasGainMap = (firstImage->gainMap.image != NULL);
+    if (hasGainMap) {
+        allQualitiesConstrained = allQualitiesConstrained && settings->qualityGainMapIsConstrained;
+    }
+#endif
+
+    if (allQualitiesConstrained) {
+        fprintf(stderr, "ERROR: --target-size is used with constrained --qcolor and --qalpha %s\n", (hasGainMap ? "and --qgainmap" : ""));
         return AVIF_FALSE;
     }
 
-    printf("Starting a binary search to find the %s generating the encoded image size closest to %d bytes, please wait...\n",
+    printf("Starting a binary search to find the %s%s generating the encoded image size closest to %d bytes, please wait...\n",
            settings->qualityAlphaIsConstrained ? "color quality"
                                                : (settings->qualityIsConstrained ? "alpha quality" : "color and alpha qualities"),
+           (hasGainMap && !settings->qualityGainMapIsConstrained) ? " and gain map quality" : "",
            settings->targetSize);
     const size_t targetSize = (size_t)settings->targetSize;
 
@@ -1269,7 +1310,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
     int closestQuality = INVALID_QUALITY;
     avifRWData closestEncoded = { NULL, 0 };
     size_t closestSizeDiff = 0;
-    avifIOStats closestIoStats = { 0, 0 };
+    avifEncodedByteSizes closestByteSizes = { 0, 0, 0 };
 
     int minQuality = settings->progressive ? PROGRESSIVE_WORST_QUALITY : AVIF_QUALITY_WORST; // inclusive
     int maxQuality = AVIF_QUALITY_BEST;                                                      // inclusive
@@ -1281,8 +1322,11 @@ static avifBool avifEncodeImages(avifSettings * settings,
         if (!settings->qualityAlphaIsConstrained) {
             settings->overrideQualityAlpha = quality;
         }
+        if (!settings->qualityGainMapIsConstrained) {
+            settings->qualityGainMap = quality;
+        }
 
-        if (!avifEncodeImagesFixedQuality(settings, input, firstFile, firstImage, gridCells, encoded, ioStats)) {
+        if (!avifEncodeImagesFixedQuality(settings, input, firstFile, firstImage, gridCells, encoded, byteSizes)) {
             avifRWDataFree(&closestEncoded);
             return AVIF_FALSE;
         }
@@ -1308,7 +1352,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
             encoded->size = 0;
             encoded->data = NULL;
             closestSizeDiff = sizeDiff;
-            closestIoStats = *ioStats;
+            closestByteSizes = *byteSizes;
         }
     }
 
@@ -1320,7 +1364,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
     }
     avifRWDataFree(encoded);
     *encoded = closestEncoded;
-    *ioStats = closestIoStats;
+    *byteSizes = closestByteSizes;
     printf("Kept the encoded image of size %" AVIF_FMT_ZU " bytes generated with ", encoded->size);
     if (!settings->qualityIsConstrained) {
         printf("color quality %d", settings->overrideQuality);
@@ -1363,6 +1407,7 @@ int main(int argc, char * argv[])
     settings.qualityAlphaIsConstrained = AVIF_FALSE;
     settings.overrideQuality = INVALID_QUALITY;
     settings.overrideQualityAlpha = INVALID_QUALITY;
+    settings.qualityGainMap = INVALID_QUALITY;
     settings.progressive = AVIF_FALSE;
     settings.layered = AVIF_FALSE;
     settings.layers = 0;
@@ -1813,6 +1858,17 @@ int main(int argc, char * argv[])
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
         } else if (!strcmp(arg, "--ignore-gain-map")) {
             settings.ignoreGainMap = AVIF_TRUE;
+        } else if (!strcmp(arg, "--qgainmap")) {
+            NEXTARG();
+            int qualityGainMap = atoi(arg);
+            if (qualityGainMap < AVIF_QUALITY_WORST) {
+                qualityGainMap = AVIF_QUALITY_WORST;
+            }
+            if (qualityGainMap > AVIF_QUALITY_BEST) {
+                qualityGainMap = AVIF_QUALITY_BEST;
+            }
+            settings.qualityGainMap = qualityGainMap;
+            settings.qualityGainMapIsConstrained = AVIF_TRUE;
 #endif
         } else if (!strcmp(arg, "--pasp")) {
             NEXTARG();
@@ -2482,15 +2538,18 @@ int main(int argc, char * argv[])
                   gainMapPresent,
                   settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
-    avifIOStats ioStats = { 0, 0 };
-    if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage * const *)gridCells, &raw, &ioStats)) {
+    avifEncodedByteSizes byteSizes = { 0, 0, 0 };
+    if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage * const *)gridCells, &raw, &byteSizes)) {
         returnCode = 1;
         goto cleanup;
     }
 
     printf("Encoded successfully.\n");
-    printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.colorOBUSize);
-    printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", ioStats.alphaOBUSize);
+    printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.colorSizeBytes);
+    printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.alphaSizeBytes);
+    if (byteSizes.gainMapSizeBytes > 0) {
+        printf(" * Gain Map AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.gainMapSizeBytes);
+    }
     if (isImageSequence) {
         if (settings.repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repetition Count: Infinite\n");

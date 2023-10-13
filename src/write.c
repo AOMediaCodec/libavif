@@ -234,6 +234,7 @@ typedef struct avifEncoderData
     avifEncoderItemIdArray alternativeItemIDs; // list of item ids for an 'altr' box (group of alternatives to each other)
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
+    size_t gainMapSizeBytes;
     // Fields specific to AV1/AV2
     const char * imageItemType;  // "av01" for AV1 ("av02" for AV2 if AVIF_CODEC_AVM)
     const char * configPropName; // "av1C" for AV1 ("av2C" for AV2 if AVIF_CODEC_AVM)
@@ -915,6 +916,11 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
 
     avifRWStreamFinishWrite(&s);
     return AVIF_TRUE;
+}
+
+size_t avifEncoderGetGainMapSizeBytes(avifEncoder * encoder)
+{
+    return encoder->data->gainMapSizeBytes;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
@@ -1665,6 +1671,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
 {
     encoder->ioStats.colorOBUSize = 0;
     encoder->ioStats.alphaOBUSize = 0;
+    encoder->data->gainMapSizeBytes = 0;
 
     avifBoxMarker mdat;
     AVIF_CHECKRES(avifRWStreamWriteBox(s, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
@@ -1738,6 +1745,10 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
                             encoder->ioStats.alphaOBUSize += sample->data.size;
                         } else if (item->itemCategory == AVIF_ITEM_COLOR) {
                             encoder->ioStats.colorOBUSize += sample->data.size;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                        } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                            encoder->data->gainMapSizeBytes += sample->data.size;
+#endif
                         }
                     }
                 } else {
