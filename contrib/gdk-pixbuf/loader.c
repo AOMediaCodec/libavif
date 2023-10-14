@@ -50,6 +50,7 @@ struct _AvifAnimationIter {
     size_t current_frame;
     uint64_t current_animation_time;
     uint64_t time_offset;
+    gboolean is_playing;
 };
 
 #define GDK_TYPE_AVIF_ANIMATION_ITER avif_animation_iter_get_type()
@@ -116,6 +117,7 @@ static GdkPixbufAnimationIter * avif_animation_get_iter(GdkPixbufAnimation * ani
 
     iter->time_offset = start_time->tv_sec * 1000 + start_time->tv_usec / 1000;
     iter->current_frame = 0;
+    iter->is_playing = TRUE;
 
     return (GdkPixbufAnimationIter *)iter;
 }
@@ -156,6 +158,7 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
 
     if (context->decoder->repetitionCount > 0 && elapsed_time > context->total_animation_time * (context->decoder->repetitionCount + 1)) {
         avif_iter->current_frame = context->decoder->imageCount - 1;
+        avif_iter->is_playing = FALSE;
     } else {
 
         /* only use buffering if animation doesn't fit into given buffer */
@@ -203,8 +206,11 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 
 static int avif_animation_iter_get_delay_time(GdkPixbufAnimationIter * iter)
 {
-    AvifAnimationIter * avif_iter = (AvifAnimationIter *)iter;
-    return g_array_index(avif_iter->animation->frames, AvifAnimationFrame, avif_iter->current_frame).duration_ms;
+    AvifAnimationIter * avif_iter = (AvifAnimationIter*)iter;
+    if (avif_iter->is_playing == TRUE) {
+        return g_array_index(avif_iter->animation->frames, AvifAnimationFrame, avif_iter->current_frame).duration_ms;
+    }
+    return -1;
 }
 
 static GdkPixbuf * avif_animation_iter_get_pixbuf(GdkPixbufAnimationIter * iter)
