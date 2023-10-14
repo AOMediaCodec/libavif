@@ -18,7 +18,7 @@ G_BEGIN_DECLS
 
 typedef struct {
     GdkPixbuf * pixbuf;
-    uint64_t duration_ms;
+    int duration_ms;
 } AvifAnimationFrame;
 
 struct _AvifAnimation {
@@ -47,7 +47,7 @@ G_DEFINE_TYPE(AvifAnimation, avif_animation, GDK_TYPE_PIXBUF_ANIMATION);
 struct _AvifAnimationIter {
     GdkPixbufAnimationIter parent_instance;
     AvifAnimation * animation;
-    size_t current_frame;
+    guint current_frame;
     uint64_t current_animation_time;
     uint64_t time_offset;
     gboolean is_playing;
@@ -65,6 +65,10 @@ static void avif_animation_finalize(GObject * obj)
     if (!context) {
         return;
     }
+
+    g_async_queue_push(context->queue, "0");
+    g_thread_join(context->decoder_thread);
+    g_async_queue_unref(context->queue);
 
     if (context->decoder) {
         avifDecoderDestroy(context->decoder);
@@ -88,9 +92,6 @@ static void avif_animation_finalize(GObject * obj)
         g_array_free(context->frames, TRUE);
     }
 
-    g_async_queue_push(context->queue, "0");
-    g_thread_join(context->decoder_thread);
-    g_async_queue_unref(context->queue);
     g_object_unref(context);
     context = NULL;
 }
@@ -463,7 +464,7 @@ gboolean decode_animation_frames(AvifAnimation * context, GError ** error)
         }
 
         frame.pixbuf = set_pixbuf(context, error);
-        frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+        frame.duration_ms = (int)(decoder->imageTiming.duration * 1000);
 
         if (frame.pixbuf == NULL) {
             return FALSE;
@@ -536,7 +537,7 @@ static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
 
     AvifAnimationFrame frame;
     frame.pixbuf = set_pixbuf(context, error);
-    frame.duration_ms = (uint64_t)(decoder->imageTiming.duration * 1000);
+    frame.duration_ms = (int)(decoder->imageTiming.duration * 1000);
     context->total_animation_time = frame.duration_ms;
 
     if (frame.pixbuf == NULL) {
