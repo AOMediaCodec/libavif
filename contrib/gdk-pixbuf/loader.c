@@ -61,8 +61,9 @@ G_DEFINE_TYPE(AvifAnimationIter, avif_animation_iter, GDK_TYPE_PIXBUF_ANIMATION_
 static void avif_animation_finalize(GObject * obj)
 {
     AvifAnimation * context = (AvifAnimation *)obj;
-    if (!context)
+    if (!context) {
         return;
+    }
 
     if (context->decoder) {
         avifDecoderDestroy(context->decoder);
@@ -243,6 +244,113 @@ static void avif_animation_iter_class_init(AvifAnimationIterClass * class) {
 
 G_END_DECLS
 
+void set_transformations_clap(avifImage * image, int width, int height, GdkPixbuf ** output)
+{
+    if ((image->clap.widthD > 0) && (image->clap.heightD > 0) &&
+        (image->clap.horizOffD > 0) && (image->clap.vertOffD > 0)) {
+
+        int new_width, new_height;
+
+        new_width = (int)((double)(image->clap.widthN)  / (image->clap.widthD) + 0.5);
+        if (new_width > width) {
+            new_width = width;
+        }
+
+        new_height = (int)((double)(image->clap.heightN) / (image->clap.heightD) + 0.5);
+        if (new_height > height) {
+            new_height = height;
+        }
+
+        if (new_width > 0 && new_height > 0) {
+            int offx, offy;
+            GdkPixbuf *output_cropped;
+            GdkPixbuf *cropped_copy;
+
+            offx = ((double)((int32_t) image->clap.horizOffN)) / (image->clap.horizOffD) +
+                   (width - new_width) / 2.0 + 0.5;
+            if (offx < 0) {
+                offx = 0;
+            } else if (offx > (width - new_width)) {
+                offx = width - new_width;
+            }
+
+            offy = ((double)((int32_t) image->clap.vertOffN)) / (image->clap.vertOffD) +
+                   (height - new_height) / 2.0 + 0.5;
+            if (offy < 0) {
+                offy = 0;
+            } else if (offy > (height - new_height)) {
+                offy = height - new_height;
+            }
+
+            output_cropped = gdk_pixbuf_new_subpixbuf(*output, offx, offy, new_width, new_height);
+            cropped_copy = gdk_pixbuf_copy(output_cropped);
+            g_clear_object(&output_cropped);
+
+            if (cropped_copy) {
+                g_object_unref(*output);
+                *output = cropped_copy;
+            }
+        }
+    } else {
+        /* Zero values, we need to avoid 0 divide. */
+        g_warning("Wrong values in avifCleanApertureBox\n");
+    }
+}
+
+void set_transformations_rotation(avifImage * image, GdkPixbuf ** output)
+{
+    GdkPixbuf *output_rotated = NULL;
+
+    switch (image->irot.angle) {
+    case 1:
+        output_rotated = gdk_pixbuf_rotate_simple(*output, GDK_PIXBUF_ROTATE_COUNTERCLOCKWISE);
+        break;
+    case 2:
+        output_rotated = gdk_pixbuf_rotate_simple(*output, GDK_PIXBUF_ROTATE_UPSIDEDOWN);
+        break;
+    case 3:
+        output_rotated = gdk_pixbuf_rotate_simple(*output, GDK_PIXBUF_ROTATE_CLOCKWISE);
+        break;
+    }
+
+    if (output_rotated) {
+      g_object_unref(*output);
+      *output = output_rotated;
+    }
+}
+
+void set_transformations_mirror(avifImage * image, GdkPixbuf ** output)
+{
+    GdkPixbuf *output_mirrored = NULL;
+
+    switch (image->imir.axis) {
+    case 0:
+        output_mirrored = gdk_pixbuf_flip(*output, FALSE);
+        break;
+    case 1:
+        output_mirrored = gdk_pixbuf_flip(*output, TRUE);
+        break;
+    }
+
+    if (output_mirrored) {
+        g_object_unref(*output);
+        *output = output_mirrored;
+    }
+}
+
+void set_transformations(avifImage * image, int width, int height, GdkPixbuf ** output)
+{
+    if (image->transformFlags & AVIF_TRANSFORM_CLAP) {
+        set_transformations_clap(image, width, height, output);
+    }
+    if (image->transformFlags & AVIF_TRANSFORM_IROT) {
+        set_transformations_rotation(image, output);
+    }
+    if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
+        set_transformations_mirror(image, output);
+    }
+}
+
 GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
 {
     avifResult ret;
@@ -251,10 +359,9 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
 
     avifImage * image;
     avifRGBImage rgb;
-    int width, height;
     image = decoder->image;
-    width = image->width;
-    height = image->height;
+    int width = image->width;
+    int height = image->height;
 
     avifRGBImageSetDefaults(&rgb, image);
     rgb.depth = 8;
@@ -262,11 +369,11 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
     if (image->alphaPlane) {
         rgb.format = AVIF_RGB_FORMAT_RGBA;
         output = gdk_pixbuf_new(GDK_COLORSPACE_RGB,
-                                TRUE, 8, width, height);
+                                TRUE, rgb.depth, width, height);
     } else {
         rgb.format = AVIF_RGB_FORMAT_RGB;
         output = gdk_pixbuf_new(GDK_COLORSPACE_RGB,
-                                FALSE, 8, width, height);
+                                FALSE, rgb.depth, width, height);
     }
 
     if (output == NULL) {
@@ -289,97 +396,7 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
         return NULL;
     }
 
-    /* transformations */
-    if (image->transformFlags & AVIF_TRANSFORM_CLAP) {
-        if ((image->clap.widthD > 0) && (image->clap.heightD > 0) &&
-            (image->clap.horizOffD > 0) && (image->clap.vertOffD > 0)) {
-
-            int new_width, new_height;
-
-            new_width = (int)((double)(image->clap.widthN)  / (image->clap.widthD) + 0.5);
-            if (new_width > width) {
-                new_width = width;
-            }
-
-            new_height = (int)((double)(image->clap.heightN) / (image->clap.heightD) + 0.5);
-            if (new_height > height) {
-                new_height = height;
-            }
-
-            if (new_width > 0 && new_height > 0) {
-                int offx, offy;
-                GdkPixbuf *output_cropped;
-                GdkPixbuf *cropped_copy;
-
-                offx = ((double)((int32_t) image->clap.horizOffN)) / (image->clap.horizOffD) +
-                       (width - new_width) / 2.0 + 0.5;
-                if (offx < 0) {
-                    offx = 0;
-                } else if (offx > (width - new_width)) {
-                    offx = width - new_width;
-                }
-
-                offy = ((double)((int32_t) image->clap.vertOffN)) / (image->clap.vertOffD) +
-                       (height - new_height) / 2.0 + 0.5;
-                if (offy < 0) {
-                    offy = 0;
-                } else if (offy > (height - new_height)) {
-                    offy = height - new_height;
-                }
-
-                output_cropped = gdk_pixbuf_new_subpixbuf(output, offx, offy, new_width, new_height);
-                cropped_copy = gdk_pixbuf_copy(output_cropped);
-                g_clear_object(&output_cropped);
-
-                if (cropped_copy) {
-                    g_object_unref(output);
-                    output = cropped_copy;
-                }
-            }
-        } else {
-            /* Zero values, we need to avoid 0 divide. */
-            g_warning("Wrong values in avifCleanApertureBox\n");
-        }
-    }
-
-    if (image->transformFlags & AVIF_TRANSFORM_IROT) {
-        GdkPixbuf *output_rotated = NULL;
-
-        switch (image->irot.angle) {
-        case 1:
-            output_rotated = gdk_pixbuf_rotate_simple(output, GDK_PIXBUF_ROTATE_COUNTERCLOCKWISE);
-            break;
-        case 2:
-            output_rotated = gdk_pixbuf_rotate_simple(output, GDK_PIXBUF_ROTATE_UPSIDEDOWN);
-            break;
-        case 3:
-            output_rotated = gdk_pixbuf_rotate_simple(output, GDK_PIXBUF_ROTATE_CLOCKWISE);
-            break;
-        }
-
-        if (output_rotated) {
-          g_object_unref(output);
-          output = output_rotated;
-        }
-    }
-
-    if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
-        GdkPixbuf *output_mirrored = NULL;
-
-        switch (image->imir.axis) {
-        case 0:
-            output_mirrored = gdk_pixbuf_flip(output, FALSE);
-            break;
-        case 1:
-            output_mirrored = gdk_pixbuf_flip(output, TRUE);
-            break;
-        }
-
-        if (output_mirrored) {
-            g_object_unref(output);
-            output = output_mirrored;
-        }
-    }
+    set_transformations(image, width, height, &output);
 
     /* width, height could be different after applied transformations */
     width = gdk_pixbuf_get_width(output);
@@ -432,7 +449,8 @@ gboolean decode_animation_frames(AvifAnimation * context, GError ** error)
 
         if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
             return TRUE;
-        } else if (ret != AVIF_RESULT_OK) {
+        }
+        if (ret != AVIF_RESULT_OK) {
             g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
                         "Failed to decode all frames: %s", avifResultToString(ret));
             return FALSE;
@@ -503,7 +521,8 @@ static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
     if (ret == AVIF_RESULT_NO_IMAGES_REMAINING) {
         /* No more images, bail out. Verify that you got the expected amount of images decoded. */
         return TRUE;
-    } else if (ret != AVIF_RESULT_OK) {
+    }
+    if (ret != AVIF_RESULT_OK) {
         g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED,
                     "Failed to decode all frames: %s", avifResultToString(ret));
         return FALSE;
@@ -544,8 +563,9 @@ static gpointer begin_load(GdkPixbufModuleSizeFunc size_func,
     }
 
     context = g_object_new(GDK_TYPE_AVIF_ANIMATION, NULL);
-    if (!context)
+    if (!context) {
         return NULL;
+    }
 
     context->size_func = size_func;
     context->updated_func = updated_func;
@@ -574,8 +594,9 @@ static gboolean load_increment(gpointer data, const guchar * buf, guint size, GE
 {
     AvifAnimation * context = (AvifAnimation *) data;
     g_byte_array_append(context->data, buf, size);
-    if (error)
+    if (error) {
         *error = NULL;
+    }
     return TRUE;
 }
 
