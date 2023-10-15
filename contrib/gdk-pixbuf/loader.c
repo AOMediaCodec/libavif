@@ -498,8 +498,8 @@ void * decoder_thread(void * animation)
 
 static gboolean avif_context_try_load(AvifAnimation * context, GError ** error)
 {
-    context->decoder_thread = g_thread_new(NULL, decoder_thread, context);
     context->queue = g_async_queue_new();
+    context->decoder_thread = g_thread_new(NULL, decoder_thread, context);
 
     context->frames = g_array_sized_new(FALSE, TRUE, sizeof(AvifAnimationFrame), BUFFER);
 
