@@ -80,12 +80,12 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     EbErrorType res = EB_ErrorNone;
 
     int y_shift = 0;
-    // EbColorRange svt_range;
+    EbColorRange svt_range;
     if (alpha) {
-        // svt_range = EB_CR_FULL_RANGE;
+        svt_range = EB_CR_FULL_RANGE;
         y_shift = 1;
     } else {
-        // svt_range = (image->yuvRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
+        svt_range = (image->yuvRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
         switch (image->yuvFormat) {
             case AVIF_PIXEL_FORMAT_YUV444:
                 color_format = EB_YUV444;
@@ -117,6 +117,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
+        svt_config->color_range = svt_range;
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;
 #endif

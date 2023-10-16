@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update zlibpng.cmd: zlib 1.3 and libpng 1.6.40
 * AVIF sequences encoded by libavif will now also have the "avio" brand when
   there is at least one track made only of AV1 keyframes.
+* Fix SVT-AV1 codec interface which was not setting video range at encoding.
 
 ## [1.0.1] - 2023-08-29
 
