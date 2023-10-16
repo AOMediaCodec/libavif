@@ -409,12 +409,14 @@ GdkPixbuf* set_pixbuf(AvifAnimation * context, GError ** error)
     width = gdk_pixbuf_get_width(output);
     height = gdk_pixbuf_get_height(output);
 
-    /*
-     * for some reason this will brick the whole thing
     if (context->size_func) {
         (*context->size_func)(&width, &height, context->user_data);
+        /*
+         * In practice, this is to forbid the decoder thread from  calling this function
+         * Not sure why, but if it's allowed to do it, it will segfault
+         */
+        context->size_func = NULL; 
     }
-    */
 
     if (width == 0 || height == 0) {
         g_set_error_literal(error,
