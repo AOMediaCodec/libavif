@@ -1444,6 +1444,11 @@ AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().
 AVIF_API avifResult avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+// Returns the size in bytes of the AV1 image item containing gain map samples, or 0 if no gain map was encoded.
+AVIF_API size_t avifEncoderGetGainMapSizeBytes(avifEncoder * encoder);
+#endif
+
 // Helpers
 AVIF_API avifBool avifImageUsesU16(const avifImage * image);
 AVIF_API avifBool avifImageIsOpaque(const avifImage * image);
