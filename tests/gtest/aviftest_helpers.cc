@@ -427,10 +427,15 @@ bool WriteImage(const avifImage* image, const char* file_path) {
   return false;
 }
 
-AvifRwData Encode(const avifImage* image, int speed) {
+AvifRwData Encode(const avifImage* image, int speed, int quality) {
   testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
   if (!encoder) return {};
   encoder->speed = speed;
+  encoder->quality = quality;
+  encoder->qualityAlpha = quality;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+  encoder->qualityGainMap = quality;
+#endif
   testutil::AvifRwData bytes;
   if (avifEncoderWrite(encoder.get(), image, &bytes) != AVIF_RESULT_OK) {
     return {};

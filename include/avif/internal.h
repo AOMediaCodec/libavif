@@ -114,6 +114,7 @@ AVIF_NODISCARD avifBool avifFractionSub(avifFraction a, avifFraction b, avifFrac
 
 // Creates a uint32 fraction that is approximately equal to 'v'.
 // Returns AVIF_FALSE if 'v' is < 0 or > UINT32_MAX or NaN.
+AVIF_NODISCARD avifBool avifDoubleToSignedFraction(double v, int32_t * numerator, uint32_t * denominator);
 AVIF_NODISCARD avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator);
 
 void avifImageSetDefaults(avifImage * image);
@@ -649,15 +650,14 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 // Performs tone mapping on a base image using the provided gain map.
-// The HDR capacity (also known as HDR headroom or ratio) is the ratio of HDR to
-// SDR white brightness of the display to tone map for, in linear space.
+// The HDR headroom is log2 of the ratio of HDR to SDR white brightness of the display to tone map for.
 // 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
 // If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
 // NOTE: only used in tests for now, might be added to the public API at some point.
 struct avifRGBImage;
 avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                  const avifGainMap * gainMap,
-                                 float hdrCapacity,
+                                 float hdrHeadroom,
                                  avifTransferCharacteristics outputTransferCharacteristics,
                                  avifRGBImage * toneMappedImage,
                                  avifContentLightLevelInformationBox * clli,
@@ -666,7 +666,7 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
 avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                                     avifTransferCharacteristics transferCharacteristics,
                                     const avifGainMap * gainMap,
-                                    float hdrCapacity,
+                                    float hdrHeadroom,
                                     avifTransferCharacteristics outputTransferCharacteristics,
                                     avifRGBImage * toneMappedImage,
                                     avifContentLightLevelInformationBox * clli,

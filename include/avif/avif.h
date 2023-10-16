@@ -546,67 +546,76 @@ typedef struct avifContentLightLevelInformationBox
 
 struct avifImage;
 
-// Gain map metadata, for tone mapping between SDR and HDR.
+// Gain map metadata, to apply the gain map. Fully applying the gain map to the "base"
+// image results in the "alternate" image.
 // All field pairs ending with 'N' and 'D' are fractional values (numerator and denominator).
 typedef struct avifGainMapMetadata
 {
-    // Parameters for converting the gain map from its image encoding to log
-    // space.
-    // gainMapLog = lerp(log(gainMapMin), log(gainMapMax), pow(gainMapEncoded, gainMapGamma));
+    // Parameters for converting the gain map from its image encoding to log2 space.
+    // gainMapLog2 = lerp(gainMapMin, gainMapMax, pow(gainMapEncoded, gainMapGamma));
     // where 'lerp' is a linear interpolation function.
 
-    // Minimum value in the gain map (in linear space), per RGB channel.
-    uint32_t gainMapMinN[3];
+    // Minimum value in the gain map, log2-encoded, per RGB channel.
+    int32_t gainMapMinN[3];
     uint32_t gainMapMinD[3];
-    // Maximum value in the gain map (in linear space), per RGB channel.
-    uint32_t gainMapMaxN[3];
+    // Maximum value in the gain map, log2-encoded, per RGB channel.
+    int32_t gainMapMaxN[3];
     uint32_t gainMapMaxD[3];
-    // Gain map gamma value, per RGB channel. If set to 1.0 and the transferCharacteristics
-    // of the gain map image is different from 2 (AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED)
-    // then the transferCharacteristics field should be used instead.
+    // Gain map gamma value with which the gain map was encoded, per RGB channel.
+    // For decoding, the inverse value (1/gamma) should be used.
     uint32_t gainMapGammaN[3];
     uint32_t gainMapGammaD[3];
 
     // Parameters used in gain map computation/tone mapping to avoid numerical
     // instability.
-    // toneMappedLinear = ((baseImageLinear + offsetBase) * exp(gainMapLog * w)) - offsetOther;
+    // toneMappedLinear = ((baseImageLinear + baseOffset) * exp(gainMapLog * w)) - alternateOffset;
     // Where 'w' is a weight parameter based on the display's HDR capacity
     // (see below).
 
-    // Offset constants for the SDR image, per RGB channel.
-    uint32_t offsetSdrN[3];
-    uint32_t offsetSdrD[3];
-    // Offset constants for the HDR image, per RGB channel.
-    uint32_t offsetHdrN[3];
-    uint32_t offsetHdrD[3];
+    // Offset constants for the base image, per RGB channel.
+    int32_t baseOffsetN[3];
+    uint32_t baseOffsetD[3];
+    // Offset constants for the alternate image, per RGB channel.
+    int32_t alternateOffsetN[3];
+    uint32_t alternateOffsetD[3];
 
     // -----------------------------------------------------------------------
 
     // Parameters below can be manually tuned after the gain map has been
     // created.
 
-    // Minimum and maximum HDR capacity (ratio of HDR white over SDR white, in
-    // linear space). The result of tone mapping for a display with an HDR
-    // capacity <= hdrCapacityMin is the SDR image. The result of tone mapping
-    // for a display with an HDR capacity >= hdrCapacityMax is the HDR image.
-    // For a display with a capacity between hdrCapacityMin and hdrCapacityMax,
-    // tone mapping results in an interpolation between the SDR and HDR
-    // versions. hdrCapacityMin and hdrCapacityMax can be tuned to change how
+    // Log2-encoded HDR headroom of the base and alternate images respectively.
+    // If baseHdrHeadroom is < alternateHdrHeadroom, the result of tone mapping
+    // for a display with an HDR headroom that is <= baseHdrHeadroom is the base
+    // image, and the result of tone mapping for a display with an HDR headroom >=
+    // alternateHdrHeadroom is the alternate image.
+    // Conversely, if baseHdrHeadroom is > alternateHdrHeadroom, the result of
+    // tone mapping for a display with an HDR headroom that is >= baseHdrHeadroom
+    // is the base image, and the result of tone mapping for a display with an HDR
+    //  headroom <= alternateHdrHeadroom is the alternate image.
+    // For a display with a capacity between baseHdrHeadroom and alternateHdrHeadroom,
+    // tone mapping results in an interpolation between the base and alternate
+    // versions. baseHdrHeadroom and alternateHdrHeadroom can be tuned to change how
     // the gain map should be applied.
     //
-    // If 'H' is the display's current HDR capacity (HDR to SDR ratio), then
-    // the weight 'w' to apply the gain map is computed as follows:
-    // f = clamp((log(H) - log(hdrCapacityMin)) /
-    //           (log(hdrCapacityMax) - log(hdrCapacityMin)), 0, 1);
-    // w = baseRenditionIsHDR ? f - 1 : f;
-    uint32_t hdrCapacityMinN;
-    uint32_t hdrCapacityMinD;
-    uint32_t hdrCapacityMaxN;
-    uint32_t hdrCapacityMaxD;
+    // If 'H' is the display's current log2-encoded HDR capacity (HDR to SDR ratio),
+    // then the weight 'w' to apply the gain map is computed as follows:
+    // f = clamp((H - hdrCapacityMin) /
+    //           (hdrCapacityMax - hdrCapacityMin), 0, 1);
+    // w = backwardDirection ? f * -1 : f;
+    uint32_t baseHdrHeadroomN;
+    uint32_t baseHdrHeadroomD;
+    uint32_t alternateHdrHeadroomN;
+    uint32_t alternateHdrHeadroomD;
 
-    // AVIF_TRUE if the base image is the HDR version, AVIF_FALSE if it is the
-    // SDR version.
-    avifBool baseRenditionIsHDR;
+    // True if the gain map should be applied in reverse, see weight formula above.
+    avifBool backwardDirection;
+
+    // True if tone mapping should be performed in the color space of the
+    // base image. If false, the color space of the alternate image should
+    // be used.
+    // TODO(maryla): implement.
+    avifBool useBaseColorSpace;
 } avifGainMapMetadata;
 
 // Gain map image and associated metadata.
@@ -631,11 +640,11 @@ typedef struct avifGainMapMetadataDouble
     double gainMapMin[3];
     double gainMapMax[3];
     double gainMapGamma[3];
-    double offsetSdr[3];
-    double offsetHdr[3];
-    double hdrCapacityMin;
-    double hdrCapacityMax;
-    avifBool baseRenditionIsHDR;
+    double baseOffset[3];
+    double alternateOffset[3];
+    double baseHdrHeadroom;
+    double alternateHdrHeadroom;
+    avifBool backwardDirection;
 } avifGainMapMetadataDouble;
 
 // Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values

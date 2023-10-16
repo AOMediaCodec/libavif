@@ -224,14 +224,14 @@ avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result)
     return AVIF_TRUE;
 }
 
-avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
+static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator, uint32_t * numerator, uint32_t * denominator)
 {
-    if (isnan(v) || v < 0 || v > UINT32_MAX) {
+    if (isnan(v) || v < 0 || v > maxNumerator) {
         return AVIF_FALSE;
     }
 
-    // Maximum denominator: makes sure that both the numerator and denominator are <= UINT32_MAX.
-    const uint64_t maxD = (v <= 1) ? UINT32_MAX : (uint64_t)floor(UINT32_MAX / v);
+    // Maximum denominator: makes sure that the numerator is <= maxNumerator and the denominator is <= UINT32_MAX.
+    const uint64_t maxD = (v <= 1) ? UINT32_MAX : (uint64_t)floor(maxNumerator / v);
 
     // Find the best approximation of v as a fraction using continued fractions, see
     // https://en.wikipedia.org/wiki/Continued_fraction
@@ -245,7 +245,7 @@ avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t *
     const int maxIter = 39;
     while (iter < maxIter) {
         const double numeratorDouble = (double)(*denominator) * v;
-        assert(numeratorDouble <= UINT32_MAX);
+        assert(numeratorDouble <= maxNumerator);
         *numerator = (uint32_t)round(numeratorDouble);
         if (fabs(numeratorDouble - (*numerator)) == 0.0) {
             return AVIF_TRUE;
@@ -267,4 +267,22 @@ avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t *
     // to a lower value to speed up the algorithm if needed.
     *numerator = (uint32_t)round((double)(*denominator) * v);
     return AVIF_TRUE;
+}
+
+avifBool avifDoubleToSignedFraction(double v, int32_t * numerator, uint32_t * denominator)
+{
+    uint32_t positive_numerator;
+    if (!avifDoubleToUnsignedFractionImpl(fabs(v), INT32_MAX, &positive_numerator, denominator)) {
+        return AVIF_FALSE;
+    }
+    *numerator = (int32_t)positive_numerator;
+    if (v < 0) {
+        *numerator *= -1;
+    }
+    return AVIF_TRUE;
+}
+
+avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
+{
+    return avifDoubleToUnsignedFractionImpl(v, UINT32_MAX, numerator, denominator);
 }

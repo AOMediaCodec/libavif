@@ -14,15 +14,15 @@ avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const a
     AVIF_CHECK(dst != NULL && src != NULL);
 
     for (int i = 0; i < 3; ++i) {
-        AVIF_CHECK(avifDoubleToUnsignedFraction(src->gainMapMin[i], &dst->gainMapMinN[i], &dst->gainMapMinD[i]));
-        AVIF_CHECK(avifDoubleToUnsignedFraction(src->gainMapMax[i], &dst->gainMapMaxN[i], &dst->gainMapMaxD[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(src->gainMapMin[i], &dst->gainMapMinN[i], &dst->gainMapMinD[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(src->gainMapMax[i], &dst->gainMapMaxN[i], &dst->gainMapMaxD[i]));
         AVIF_CHECK(avifDoubleToUnsignedFraction(src->gainMapGamma[i], &dst->gainMapGammaN[i], &dst->gainMapGammaD[i]));
-        AVIF_CHECK(avifDoubleToUnsignedFraction(src->offsetSdr[i], &dst->offsetSdrN[i], &dst->offsetSdrD[i]));
-        AVIF_CHECK(avifDoubleToUnsignedFraction(src->offsetHdr[i], &dst->offsetHdrN[i], &dst->offsetHdrD[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(src->baseOffset[i], &dst->baseOffsetN[i], &dst->baseOffsetD[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(src->alternateOffset[i], &dst->alternateOffsetN[i], &dst->alternateOffsetD[i]));
     }
-    AVIF_CHECK(avifDoubleToUnsignedFraction(src->hdrCapacityMin, &dst->hdrCapacityMinN, &dst->hdrCapacityMinD));
-    AVIF_CHECK(avifDoubleToUnsignedFraction(src->hdrCapacityMax, &dst->hdrCapacityMaxN, &dst->hdrCapacityMaxD));
-    dst->baseRenditionIsHDR = src->baseRenditionIsHDR;
+    AVIF_CHECK(avifDoubleToUnsignedFraction(src->baseHdrHeadroom, &dst->baseHdrHeadroomN, &dst->baseHdrHeadroomD));
+    AVIF_CHECK(avifDoubleToUnsignedFraction(src->alternateHdrHeadroom, &dst->alternateHdrHeadroomN, &dst->alternateHdrHeadroomD));
+    dst->backwardDirection = src->backwardDirection;
     return AVIF_TRUE;
 }
 
@@ -30,49 +30,40 @@ avifBool avifGainMapMetadataFractionsToDouble(avifGainMapMetadataDouble * dst, c
 {
     AVIF_CHECK(dst != NULL && src != NULL);
 
-    AVIF_CHECK(src->hdrCapacityMinD != 0);
-    AVIF_CHECK(src->hdrCapacityMaxD != 0);
+    AVIF_CHECK(src->baseHdrHeadroomD != 0);
+    AVIF_CHECK(src->alternateHdrHeadroomD != 0);
     for (int i = 0; i < 3; ++i) {
         AVIF_CHECK(src->gainMapMaxD[i] != 0);
         AVIF_CHECK(src->gainMapGammaD[i] != 0);
         AVIF_CHECK(src->gainMapMinD[i] != 0);
-        AVIF_CHECK(src->offsetSdrD[i] != 0);
-        AVIF_CHECK(src->offsetHdrD[i] != 0);
+        AVIF_CHECK(src->baseOffsetD[i] != 0);
+        AVIF_CHECK(src->alternateOffsetD[i] != 0);
     }
 
     for (int i = 0; i < 3; ++i) {
         dst->gainMapMin[i] = (double)src->gainMapMinN[i] / src->gainMapMinD[i];
         dst->gainMapMax[i] = (double)src->gainMapMaxN[i] / src->gainMapMaxD[i];
         dst->gainMapGamma[i] = (double)src->gainMapGammaN[i] / src->gainMapGammaD[i];
-        dst->offsetSdr[i] = (double)src->offsetSdrN[i] / src->offsetSdrD[i];
-        dst->offsetHdr[i] = (double)src->offsetHdrN[i] / src->offsetHdrD[i];
+        dst->baseOffset[i] = (double)src->baseOffsetN[i] / src->baseOffsetD[i];
+        dst->alternateOffset[i] = (double)src->alternateOffsetN[i] / src->alternateOffsetD[i];
     }
-    dst->hdrCapacityMin = (double)src->hdrCapacityMinN / src->hdrCapacityMinD;
-    dst->hdrCapacityMax = (double)src->hdrCapacityMaxN / src->hdrCapacityMaxD;
-    dst->baseRenditionIsHDR = src->baseRenditionIsHDR;
+    dst->baseHdrHeadroom = (double)src->baseHdrHeadroomN / src->baseHdrHeadroomD;
+    dst->alternateHdrHeadroom = (double)src->alternateHdrHeadroomN / src->alternateHdrHeadroomD;
+    dst->backwardDirection = src->backwardDirection;
     return AVIF_TRUE;
 }
 
 // ---------------------------------------------------------------------------
 
 // Returns a weight in [-1.0, 1.0] that represents how much the gain map should be applied.
-static float avifGetGainMapWeight(float hdrCapacity, const avifGainMapMetadataDouble * metadata)
+static float avifGetGainMapWeight(float hdrHeadroom, const avifGainMapMetadataDouble * metadata)
 {
-    const float hdrCapacityMin = (float)metadata->hdrCapacityMin;
-    const float hdrCapacityMax = (float)metadata->hdrCapacityMax;
-    float w = 0.0f;
-    if (hdrCapacity > hdrCapacityMin) {
-        if (hdrCapacity < hdrCapacityMax) {
-            w = (logf(hdrCapacity) - logf(hdrCapacityMin)) / (logf(hdrCapacityMax) - logf(hdrCapacityMin));
-        } else {
-            w = 1.0f;
-        }
+    const float baseHdrHeadroom = (float)metadata->baseHdrHeadroom;
+    const float alternateHdrHeadroom = (float)metadata->alternateHdrHeadroom;
+    float w = AVIF_CLAMP((hdrHeadroom - baseHdrHeadroom) / (alternateHdrHeadroom - baseHdrHeadroom), 0.0f, 1.0f);
+    if (metadata->backwardDirection) {
+        w *= -1.0f;
     }
-
-    if (metadata->baseRenditionIsHDR) {
-        w -= 1.0f;
-    }
-
     return w;
 }
 
@@ -87,7 +78,7 @@ static inline float lerp(float a, float b, float w)
 avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                                     avifTransferCharacteristics transferCharacteristics,
                                     const avifGainMap * gainMap,
-                                    float hdrCapacity,
+                                    float hdrHeadroom,
                                     avifTransferCharacteristics outputTransferCharacteristics,
                                     avifRGBImage * toneMappedImage,
                                     avifContentLightLevelInformationBox * clli,
@@ -95,8 +86,8 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 {
     avifDiagnosticsClearError(diag);
 
-    if (hdrCapacity < 1.0) {
-        avifDiagnosticsPrintf(diag, "hdrCapacity should be >= 1, got %f", hdrCapacity);
+    if (hdrHeadroom < 0.0f) {
+        avifDiagnosticsPrintf(diag, "hdrHeadroom should be >= 0, got %f", hdrHeadroom);
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     if (baseImage == NULL || gainMap == NULL || toneMappedImage == NULL) {
@@ -107,13 +98,6 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     avifGainMapMetadataDouble metadata;
     if (!avifGainMapMetadataFractionsToDouble(&metadata, &gainMap->metadata)) {
         avifDiagnosticsPrintf(diag, "Invalid gain map metadata, a denominator value is zero");
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
-    if (metadata.hdrCapacityMin > metadata.hdrCapacityMax) {
-        avifDiagnosticsPrintf(diag,
-                              "Invalid gain map metadata, hdrCapacityMin should be <= hdrCapacityMax, got min %f and max %f",
-                              metadata.hdrCapacityMin,
-                              metadata.hdrCapacityMax);
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     for (int i = 0; i < 3; ++i) {
@@ -137,7 +121,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
     // --- After this point, the function should exit with 'goto cleanup' to free allocated pixels.
 
-    const float weight = avifGetGainMapWeight(hdrCapacity, &metadata);
+    const float weight = avifGetGainMapWeight(hdrHeadroom, &metadata);
 
     // Early exit if the gain map does not need to be applied and the pixel format is the same.
     if (weight == 0.0f && outputTransferCharacteristics == transferCharacteristics && baseImage->format == toneMappedImage->format &&
@@ -209,18 +193,11 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         goto cleanup;
     }
 
-    float gainMapMinLog[3];
-    float gainMapMaxLog[3];
-    for (int i = 0; i < 3; ++i) {
-        gainMapMinLog[i] = (float)log(metadata.gainMapMin[i]);
-        gainMapMaxLog[i] = (float)log(metadata.gainMapMax[i]);
-    }
-
-    const double * offsetBase = gainMap->metadata.baseRenditionIsHDR ? metadata.offsetHdr : metadata.offsetSdr;
-    const double * offsetOther = gainMap->metadata.baseRenditionIsHDR ? metadata.offsetSdr : metadata.offsetHdr;
-
     float rgbMaxLinear = 0; // Max tone mapped pixel value across R, G and B channels.
     float rgbSumLinear = 0; // Sum of max(r, g, b) for mapped pixels.
+    const float gammaInv[3] = { 1.0f / (float)metadata.gainMapGamma[0],
+                                1.0f / (float)metadata.gainMapGamma[1],
+                                1.0f / (float)metadata.gainMapGamma[2] };
 
     for (uint32_t j = 0; j < height; ++j) {
         for (uint32_t i = 0; i < width; ++i) {
@@ -236,9 +213,11 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                 const float baseLinear = gammaToLinear(basePixelRGBA[c]);
                 const float gainMapValue = gainMapRGBA[c];
 
-                // Undo gamma & affine transform; the result is in log space.
-                const float gainMapLog = lerp(gainMapMinLog[c], gainMapMaxLog[c], powf(gainMapValue, (float)metadata.gainMapGamma[c]));
-                const float toneMappedLinear = (baseLinear + (float)offsetBase[c]) * expf(gainMapLog * weight) - (float)offsetOther[c];
+                // Undo gamma & affine transform; the result is in log2 space.
+                const float gainMapLog2 =
+                    lerp((float)metadata.gainMapMin[c], (float)metadata.gainMapMax[c], powf(gainMapValue, gammaInv[c]));
+                const float toneMappedLinear = (baseLinear + (float)metadata.baseOffset[c]) * exp2f(gainMapLog2 * weight) -
+                                               (float)metadata.alternateOffset[c];
 
                 if (toneMappedLinear > rgbMaxLinear) {
                     rgbMaxLinear = toneMappedLinear;
@@ -276,7 +255,7 @@ cleanup:
 
 avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                  const avifGainMap * gainMap,
-                                 float hdrCapacity,
+                                 float hdrHeadroom,
                                  avifTransferCharacteristics outputTransferCharacteristics,
                                  avifRGBImage * toneMappedImage,
                                  avifContentLightLevelInformationBox * clli,
@@ -295,7 +274,7 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
     res = avifRGBImageApplyGainMap(&baseImageRgb,
                                    baseImage->transferCharacteristics,
                                    gainMap,
-                                   hdrCapacity,
+                                   hdrHeadroom,
                                    outputTransferCharacteristics,
                                    toneMappedImage,
                                    clli,

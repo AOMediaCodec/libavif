@@ -1851,13 +1851,6 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid,
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-static avifBool avifParseU32Array(avifROStream * s, uint32_t * v, int numValues)
-{
-    for (int i = 0; i < numValues; ++i) {
-        AVIF_CHECK(avifROStreamReadU32(s, &v[i]));
-    }
-    return AVIF_TRUE;
-}
 
 static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
@@ -1874,22 +1867,50 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
     AVIF_CHECK(avifROStreamRead(&s, &flags, 1)); // unsigned int(8) flags;
     uint8_t channelCount = (flags & 1) * 2 + 1;
     assert(channelCount == 1 || channelCount == 3);
-    metadata->baseRenditionIsHDR = flags & 2 ? AVIF_TRUE : AVIF_FALSE;
+    metadata->useBaseColorSpace = (flags & 2) != 0;
+    metadata->backwardDirection = (flags & 4) != 0;
+    const avifBool useCommonDenominator = (flags & 8) != 0;
 
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMinN));
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMinD));
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMaxN));
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->hdrCapacityMaxD));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMinN, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMinD, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMaxN, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapMaxD, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapGammaN, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->gainMapGammaD, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetSdrN, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetSdrD, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetHdrN, channelCount));
-    AVIF_CHECK(avifParseU32Array(&s, (uint32_t *)&metadata->offsetHdrD, channelCount));
+    if (useCommonDenominator) {
+        uint32_t commonDenominator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &commonDenominator));
+
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));
+        metadata->baseHdrHeadroomD = commonDenominator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN));
+        metadata->alternateHdrHeadroomD = commonDenominator;
+
+        for (int c = 0; c < channelCount; ++c) {
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c]));
+            metadata->gainMapMinD[c] = commonDenominator;
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c]));
+            metadata->gainMapMaxD[c] = commonDenominator;
+            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));
+            metadata->gainMapGammaD[c] = commonDenominator;
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c]));
+            metadata->baseOffsetD[c] = commonDenominator;
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c]));
+            metadata->alternateOffsetD[c] = commonDenominator;
+        }
+    } else {
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomD));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomD));
+
+        for (int c = 0; c < channelCount; ++c) {
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMinD[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMaxD[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaD[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseOffsetD[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c]));
+            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateOffsetD[c]));
+        }
+    }
 
     // Fill the remaining values by copying those from the first channel.
     for (int c = channelCount; c < 3; ++c) {
@@ -1899,10 +1920,10 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
         metadata->gainMapMaxD[c] = metadata->gainMapMaxD[0];
         metadata->gainMapGammaN[c] = metadata->gainMapGammaN[0];
         metadata->gainMapGammaD[c] = metadata->gainMapGammaD[0];
-        metadata->offsetSdrN[c] = metadata->offsetSdrN[0];
-        metadata->offsetSdrD[c] = metadata->offsetSdrD[0];
-        metadata->offsetHdrN[c] = metadata->offsetHdrN[0];
-        metadata->offsetHdrD[c] = metadata->offsetHdrD[0];
+        metadata->baseOffsetN[c] = metadata->baseOffsetN[0];
+        metadata->baseOffsetD[c] = metadata->baseOffsetD[0];
+        metadata->alternateOffsetN[c] = metadata->alternateOffsetN[0];
+        metadata->alternateOffsetD[c] = metadata->alternateOffsetD[0];
     }
 
     return avifROStreamRemainingBytes(&s) == 0;
@@ -4396,16 +4417,13 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
             }
         }
 
-        // If the base image is not HDR, then the tone mapped image is.
         // Copy HDR properties associated with the tmap box to the gain map image.
         // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
         // place to put this data.
-        if (!decoder->image->gainMap.metadata.baseRenditionIsHDR) {
-            // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
-            const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clli");
-            if (clliProp) {
-                decoder->image->gainMap.image->clli = clliProp->u.clli;
-            }
+        // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
+        const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clli");
+        if (clliProp) {
+            decoder->image->gainMap.image->clli = clliProp->u.clli;
         }
     }
 

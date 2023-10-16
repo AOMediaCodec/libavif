@@ -544,11 +544,7 @@ static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
 // values for this property, since the array will be left untouched if the property is not found.
 // Returns AVIF_TRUE if the property was successfully parsed, or if it was not found, since all properties
 // are optional. Returns AVIF_FALSE in case of error (invalid metadata XMP).
-static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNode,
-                                                   const char * propertyName,
-                                                   avifBool log2Encoded,
-                                                   double * values,
-                                                   uint32_t numDoubles)
+static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNode, const char * propertyName, double * values, uint32_t numDoubles)
 {
     assert(numDoubles <= GAIN_MAP_PROPERTY_MAX_VALUES);
     const char * textValues[GAIN_MAP_PROPERTY_MAX_VALUES];
@@ -564,9 +560,8 @@ static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNo
             // If there is only 1 value, it's copied into the rest of the array.
             values[i] = values[i - 1];
         } else {
-            double valueD;
             int charsRead;
-            if (sscanf(textValues[i], "%lf%n", &valueD, &charsRead) < 1) {
+            if (sscanf(textValues[i], "%lf%n", &values[i], &charsRead) < 1) {
                 return AVIF_FALSE; // Was not able to parse the full string value as a double.
             }
             // Make sure that remaining characters (if any) are only whitespace.
@@ -577,14 +572,17 @@ static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNo
                 }
                 ++charsRead;
             }
-            if (log2Encoded) {
-                valueD = exp2(valueD);
-            }
-            values[i] = valueD;
         }
     }
 
     return AVIF_TRUE;
+}
+
+static inline void SwapDoubles(double * x, double * y)
+{
+    double tmp = *x;
+    *x = *y;
+    *y = tmp;
 }
 
 // Parses gain map metadata from XMP.
@@ -599,66 +597,51 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 
     avifGainMapMetadataDouble metadataDouble;
     // Set default values from Adobe's spec.
-    metadataDouble.baseRenditionIsHDR = AVIF_FALSE;
-    metadataDouble.hdrCapacityMin = 1.0; // exp2(0) = 1
-    metadataDouble.hdrCapacityMax = exp2(1);
+    metadataDouble.backwardDirection = AVIF_FALSE;
+    metadataDouble.baseHdrHeadroom = 0.0;
+    metadataDouble.alternateHdrHeadroom = 1.0;
     for (int i = 0; i < 3; ++i) {
-        metadataDouble.gainMapMin[i] = 1.0; // exp2(0) = 1
-        metadataDouble.gainMapMax[i] = exp2(1.0);
-        metadataDouble.offsetSdr[i] = 1.0 / 64.0;
-        metadataDouble.offsetHdr[i] = 1.0 / 64.0;
+        metadataDouble.gainMapMin[i] = 0.0;
+        metadataDouble.gainMapMax[i] = 1.0;
+        metadataDouble.baseOffset[i] = 1.0 / 64.0;
+        metadataDouble.alternateOffset[i] = 1.0 / 64.0;
         metadataDouble.gainMapGamma[i] = 1.0;
+    }
+
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &metadataDouble.baseHdrHeadroom, /*numDoubles=*/1));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &metadataDouble.alternateHdrHeadroom, /*numDoubles=*/1));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", metadataDouble.baseOffset, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", metadataDouble.alternateOffset, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", metadataDouble.gainMapMin, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", metadataDouble.gainMapMax, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", metadataDouble.gainMapGamma, /*numDoubles=*/3));
+
+    // Should have HDRCapacityMax > HDRCapacityMin.
+    if (metadataDouble.alternateHdrHeadroom <= (double)metadataDouble.baseHdrHeadroom) {
+        return AVIF_FALSE;
     }
 
     uint32_t numValues;
     const char * baseRenditionIsHDR;
     if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues)) {
         if (!strcmp(baseRenditionIsHDR, "True")) {
-            metadataDouble.baseRenditionIsHDR = AVIF_TRUE;
+            metadataDouble.backwardDirection = AVIF_TRUE;
+            SwapDoubles(&metadataDouble.baseHdrHeadroom, &metadataDouble.alternateHdrHeadroom);
+            for (int c = 0; c < 3; ++c) {
+                SwapDoubles(&metadataDouble.baseOffset[c], &metadataDouble.alternateOffset[c]);
+            }
         } else if (!strcmp(baseRenditionIsHDR, "False")) {
-            metadataDouble.baseRenditionIsHDR = AVIF_FALSE;
+            metadataDouble.backwardDirection = AVIF_FALSE;
         } else {
             return AVIF_FALSE; // Unexpected value.
         }
     }
 
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode,
-                                                  "HDRCapacityMin",
-                                                  /*log2Encoded=*/AVIF_TRUE,
-                                                  &metadataDouble.hdrCapacityMin,
-                                                  /*numDoubles=*/1));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode,
-                                                  "HDRCapacityMax",
-                                                  /*log2Encoded=*/AVIF_TRUE,
-                                                  &metadataDouble.hdrCapacityMax,
-                                                  /*numDoubles=*/1));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", /*log2Encoded=*/AVIF_FALSE, metadataDouble.offsetSdr, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", /*log2Encoded=*/AVIF_FALSE, metadataDouble.offsetHdr, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode,
-                                                  "GainMapMin",
-                                                  /*log2Encoded=*/AVIF_TRUE,
-                                                  metadataDouble.gainMapMin,
-                                                  /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode,
-                                                  "GainMapMax",
-                                                  /*log2Encoded=*/AVIF_TRUE,
-                                                  metadataDouble.gainMapMax,
-                                                  /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode,
-                                                  "Gamma",
-                                                  /*log2Encoded=*/AVIF_FALSE,
-                                                  metadataDouble.gainMapGamma,
-                                                  /*numDoubles=*/3));
-    // Change gammma to 1.0/gamma (we are using a different convention from the metadata XMP).
+    // Gamma should be > 0.
     for (int i = 0; i < 3; ++i) {
         if (metadataDouble.gainMapGamma[i] == 0) {
             return AVIF_FALSE; // Invalid value, the spec says that gamma should be > 0
         }
-        metadataDouble.gainMapGamma[i] = 1.0 / metadataDouble.gainMapGamma[i];
-    }
-    // Should have HDRCapacityMax > HDRCapacityMin.
-    if (metadataDouble.hdrCapacityMax <= (double)metadataDouble.hdrCapacityMin) {
-        return AVIF_FALSE;
     }
     // Should have GainMapMax >= GainMapMin.
     for (int i = 0; i < 3; ++i) {
