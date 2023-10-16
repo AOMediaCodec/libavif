@@ -1484,6 +1484,7 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
         dstImage->yuvFormat = tile->image->yuvFormat;
         // Keep dstImage->yuvRange which is already set to its correct value
         // (extracted from the 'colr' box if parsed or from a Sequence Header OBU otherwise).
+
         if (!data->cicpSet) {
             data->cicpSet = AVIF_TRUE;
             dstImage->colorPrimaries = tile->image->colorPrimaries;
