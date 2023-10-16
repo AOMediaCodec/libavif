@@ -1477,7 +1477,9 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
         dstImage->height = grid->outputHeight;
         dstImage->depth = tile->image->depth;
         dstImage->yuvFormat = tile->image->yuvFormat;
-        dstImage->yuvRange = tile->image->yuvRange;
+        // Keep dstImage->yuvRange which is already set to its correct value
+        // (extracted from the 'colr' box if parsed or from a Sequence Header OBU otherwise).
+
         if (!data->cicpSet) {
             data->cicpSet = AVIF_TRUE;
             dstImage->colorPrimaries = tile->image->colorPrimaries;
@@ -4258,6 +4260,25 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             avifDiagnosticsPrintf(&decoder->diag, "tile->codec->getNextImage() failed");
             return avifGetErrorForItemCategory(tile->input->itemCategory);
         }
+
+        // Section 2.3.4 of AV1 Codec ISO Media File Format Binding v1.2.0 says:
+        //   the full_range_flag in the colr box shall match the color_range
+        //   flag in the Sequence Header OBU.
+        // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-semantics.
+        // If a 'colr' box of colour_type 'nclx' was parsed, a mismatch between
+        // the 'colr' decoder->image->yuvRange and the AV1 OBU
+        // tile->image->yuvRange should be treated as an error.
+        // However codec_svt.c was not encoding the color_range field for
+        // multiple years, so there probably are files in the wild that will
+        // fail decoding if this is enforced. Thus this pattern is allowed.
+        // Section 12.1.5.1 of ISO 14496-12 (ISOBMFF) says:
+        //   If colour information is supplied in both this [colr] box, and also
+        //   in the video bitstream, this box takes precedence, and over-rides
+        //   the information in the bitstream.
+        // So decoder->image->yuvRange is kept because it was either the 'colr'
+        // value set when the 'colr' box was parsed, or it was the AV1 OBU value
+        // extracted from the sequence header OBU of the first tile of the first
+        // frame (if no 'colr' box of colour_type 'nclx' was found).
 
         // Alpha plane with limited range is not allowed by the latest revision
         // of the specification. However, it was allowed in version 1.0.0 of the
