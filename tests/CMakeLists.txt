@@ -138,6 +138,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest(avifopaquetest)
     add_avif_gtest_with_data(avifpng16bittest)
     add_avif_gtest(avifprogressivetest)
+    add_avif_gtest(avifrangetest)
     add_avif_gtest_with_data(avifreadimagetest)
     add_avif_gtest(avifrgbtest)
     add_avif_gtest(avifrgbtoyuvtest)
@@ -315,7 +316,7 @@ if(AVIF_CODEC_AVM)
         if(AVIF_ENABLE_GTEST)
             set_tests_properties(
                 avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
-                avifmetadatatest avifprogressivetest avify4mtest PROPERTIES DISABLED True
+                avifmetadatatest avifprogressivetest avifrangetest avify4mtest PROPERTIES DISABLED True
             )
 
             if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
