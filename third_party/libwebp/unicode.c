@@ -1,6 +1,7 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+// Functions wrapping their windows versions to not include Windows headers publicly.
 #include "unicode.h"
 
 #if defined(_WIN32) && defined(_UNICODE)
@@ -22,7 +23,7 @@ W_CHAR* AVIF_GetCommandLineW() {
 
 int AVIF_fileno(FILE * stream)
 {
-    return fileno(stream);
+    return _fileno(stream);
 }
 
 FILE * AVIF_wfopen(const W_CHAR * filename, const W_CHAR * mode)

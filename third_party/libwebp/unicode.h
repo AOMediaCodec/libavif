@@ -55,7 +55,7 @@ extern "C" {
     } while (0)
 
 #define W_CHAR wchar_t  // WCHAR without underscore might already be defined.
-#define TO_W_CHAR(STR) (L##STR)
+#define TO_W_CHAR(STR) L##STR
 
 #define WFOPEN(ARG, OPT) AVIF_wfopen((const W_CHAR *)ARG, TO_W_CHAR(OPT))
 
@@ -101,7 +101,7 @@ void AVIF_LocalFree(W_CHAR * * wargv);
 #define LOCAL_FREE(WARGV)
 
 #define W_CHAR char
-#define TO_W_CHAR(STR) (STR)
+#define TO_W_CHAR(STR) STR
 
 #define WFOPEN(ARG, OPT) fopen(ARG, OPT)
 
