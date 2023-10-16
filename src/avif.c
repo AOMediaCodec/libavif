@@ -188,7 +188,9 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
 {
     assert(srcImage->depth == dstImage->depth);
     if (planes & AVIF_PLANES_YUV) {
-        assert((srcImage->yuvFormat == dstImage->yuvFormat) && (srcImage->yuvRange == dstImage->yuvRange));
+        assert(srcImage->yuvFormat == dstImage->yuvFormat);
+        // Note that there may be a mismatch between srcImage->yuvRange and dstImage->yuvRange
+        // because libavif allows for 'colr' and AV1 OBU video range values to differ.
     }
     const size_t bytesPerPixel = avifImageUsesU16(srcImage) ? 2 : 1;
 
