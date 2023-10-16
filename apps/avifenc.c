@@ -32,12 +32,10 @@ typedef struct
     avifCodecChoice codecChoice;
     int jobs;
     int targetSize;
-    avifBool qualityIsConstrained;        // true if quality explicitly set by the user
-    avifBool qualityAlphaIsConstrained;   // true if qualityAlpha explicitly set by the user
-    avifBool qualityGainMapIsConstrained; // true if qualityGainMap explicitly set by the user
+    avifBool qualityIsConstrained;      // true if quality explicitly set by the user
+    avifBool qualityAlphaIsConstrained; // true if qualityAlpha explicitly set by the user
     int overrideQuality;
     int overrideQualityAlpha;
-    int qualityGainMap;
     avifBool progressive; // automatic layered encoding (progressive) with single input
     avifBool layered;     // manual layered encoding by specifying each layer
     int layers;
@@ -58,7 +56,12 @@ typedef struct
     avifBool ignoreExif;
     avifBool ignoreXMP;
     avifBool ignoreColorProfile;
-    avifBool ignoreGainMap; // only relevant when compiled with AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
+
+    // These settings are only relevant when compiled with AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
+    // (which also implies AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP).
+    avifBool qualityGainMapIsConstrained; // true if qualityGainMap explicitly set by the user
+    int qualityGainMap;
+    avifBool ignoreGainMap; // ignore any gain map present in the input file.
 
     // This holds the output timing for image sequences. The timescale member in this struct will
     // become the timescale set on avifEncoder, and the duration member will be the default duration
@@ -522,7 +525,7 @@ static avifBool avifInputReadImage(avifInput * input,
         if (avifImageSetViewRect(image, cached->image, &rect) != AVIF_RESULT_OK) {
             assert(AVIF_FALSE);
         }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
         if (cached->image->gainMap.image != NULL) {
             image->gainMap.image = avifImageCreateEmpty();
             const avifCropRect gainMapRect = { 0, 0, cached->image->gainMap.image->width, cached->image->gainMap.image->height };
@@ -1259,7 +1262,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     success = AVIF_TRUE;
     byteSizes->colorSizeBytes = encoder->ioStats.colorOBUSize;
     byteSizes->alphaSizeBytes = encoder->ioStats.alphaOBUSize;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
     byteSizes->gainMapSizeBytes = avifEncoderGetGainMapSizeBytes(encoder);
 #endif
 
@@ -1287,7 +1290,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
 
     avifBool hasGainMap = AVIF_FALSE;
     avifBool allQualitiesConstrained = settings->qualityIsConstrained && settings->qualityAlphaIsConstrained;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
     hasGainMap = (firstImage->gainMap.image != NULL);
     if (hasGainMap) {
         allQualitiesConstrained = allQualitiesConstrained && settings->qualityGainMapIsConstrained;
@@ -2529,7 +2532,7 @@ int main(int argc, char * argv[])
     printf("AVIF to be written:%s\n", lossyHint);
     const avifImage * avif = gridCells ? gridCells[0] : image;
     avifBool gainMapPresent = AVIF_FALSE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
     gainMapPresent = (avif->gainMap.image != NULL);
 #endif
     avifImageDump(avif,
