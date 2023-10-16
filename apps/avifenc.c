@@ -242,7 +242,7 @@ static void syntaxLong(void)
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
-    printf("    --qgainmap Q                      : Set quality for the gain map (%d-%d, where %d is lossless)\n",
+    printf("    --qgain-map Q                      : Set quality for the gain map (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
@@ -1298,7 +1298,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
 #endif
 
     if (allQualitiesConstrained) {
-        fprintf(stderr, "ERROR: --target-size is used with constrained --qcolor and --qalpha %s\n", (hasGainMap ? "and --qgainmap" : ""));
+        fprintf(stderr, "ERROR: --target-size is used with constrained --qcolor and --qalpha %s\n", (hasGainMap ? "and --qgain-map" : ""));
         return AVIF_FALSE;
     }
 
@@ -1861,7 +1861,7 @@ int main(int argc, char * argv[])
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
         } else if (!strcmp(arg, "--ignore-gain-map")) {
             settings.ignoreGainMap = AVIF_TRUE;
-        } else if (!strcmp(arg, "--qgainmap")) {
+        } else if (!strcmp(arg, "--qgain-map")) {
             NEXTARG();
             int qualityGainMap = atoi(arg);
             if (qualityGainMap < AVIF_QUALITY_WORST) {
