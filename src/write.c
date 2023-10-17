@@ -112,15 +112,15 @@ void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int 
 avifCodecEncodeOutput * avifCodecEncodeOutputCreate(void)
 {
     avifCodecEncodeOutput * encodeOutput = (avifCodecEncodeOutput *)avifAlloc(sizeof(avifCodecEncodeOutput));
+    if (encodeOutput == NULL) {
+        return NULL;
+    }
     memset(encodeOutput, 0, sizeof(avifCodecEncodeOutput));
     if (!avifArrayCreate(&encodeOutput->samples, sizeof(avifEncodeSample), 1)) {
-        goto error;
+        avifCodecEncodeOutputDestroy(encodeOutput);
+        return NULL;
     }
     return encodeOutput;
-
-error:
-    avifCodecEncodeOutputDestroy(encodeOutput);
-    return NULL;
 }
 
 avifResult avifCodecEncodeOutputAddSample(avifCodecEncodeOutput * encodeOutput, const uint8_t * data, size_t len, avifBool sync)
@@ -279,6 +279,9 @@ static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const
     item->infeName = infeName;
     item->infeNameSize = infeNameSize;
     item->encodeOutput = avifCodecEncodeOutputCreate();
+    if (item->encodeOutput == NULL) {
+        goto error;
+    }
     item->cellIndex = cellIndex;
     if (!avifArrayCreate(&item->mdatFixups, sizeof(avifOffsetFixup), 4)) {
         goto error;
@@ -286,7 +289,9 @@ static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const
     return item;
 
 error:
-    avifCodecEncodeOutputDestroy(item->encodeOutput);
+    if (item->encodeOutput != NULL) {
+        avifCodecEncodeOutputDestroy(item->encodeOutput);
+    }
     --data->lastItemID;
     avifArrayPop(&data->items);
     return NULL;
