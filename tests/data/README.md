@@ -468,7 +468,7 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source : created from a personal photo, convertd to HDR using Photoshop.
 
-HDR image using the P3 transfer curve. Contains a gain map in
+HDR image using the PQ transfer curve. Contains a gain map in
 [Adobe's format](https://helpx.adobe.com/camera-raw/using/gain-map.html) that is not recogniazed by
 libavif and ignored by the tests.
 
