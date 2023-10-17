@@ -964,6 +964,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                 size_t monoUVSize = (size_t)monoUVHeight * monoUVRowBytes;
 
                 monoUVPlane = avifAlloc(monoUVSize);
+                AVIF_CHECKERR(monoUVPlane != NULL, AVIF_RESULT_OUT_OF_MEMORY); // No need for aom_img_free() because !aomImageAllocated
                 aomImage.planes[1] = monoUVPlane;
                 aomImage.stride[1] = monoUVRowBytes;
             }
