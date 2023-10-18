@@ -139,12 +139,42 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
 
     const float weight = avifGetGainMapWeight(hdrCapacity, &metadata);
 
-    if (weight == 0. && outputTransferCharacteristics == transferCharacteristics &&
-        baseImage->format == toneMappedImage->format && baseImage->isFloat == toneMappedImage->isFloat) {
+    // Early exit if the gain map does not need to be applied and the pixel format is the same.
+    if (weight == 0.0f && outputTransferCharacteristics == transferCharacteristics && baseImage->format == toneMappedImage->format &&
+        baseImage->depth == toneMappedImage->depth && baseImage->isFloat == toneMappedImage->isFloat) {
         assert(baseImage->rowBytes == toneMappedImage->rowBytes);
         assert(baseImage->height == toneMappedImage->height);
         // Copy the base image.
         memcpy(toneMappedImage->pixels, baseImage->pixels, baseImage->rowBytes * baseImage->height);
+        goto cleanup;
+    }
+
+    avifRGBColorSpaceInfo baseRGBInfo;
+    avifRGBColorSpaceInfo toneMappedPixelRGBState;
+    if (!avifGetRGBColorSpaceInfo(baseImage, &baseRGBInfo) || !avifGetRGBColorSpaceInfo(toneMappedImage, &toneMappedPixelRGBState)) {
+        avifDiagnosticsPrintf(diag, "Unsupported RGB color space");
+        res = AVIF_RESULT_NOT_IMPLEMENTED;
+        goto cleanup;
+    }
+
+    const avifTransferFunction gammaToLinear = avifTransferCharacteristicsGetGammaToLinearFunction(transferCharacteristics);
+    const avifTransferFunction linearToGamma = avifTransferCharacteristicsGetLinearToGammaFunction(outputTransferCharacteristics);
+
+    // Early exit if the gain map does not need to be applied.
+    if (weight == 0.0f) {
+        // Just convert from one rgb format to another.
+        for (uint32_t j = 0; j < height; ++j) {
+            for (uint32_t i = 0; i < width; ++i) {
+                float basePixelRGBA[4];
+                avifGetRGBAPixel(baseImage, i, j, &baseRGBInfo, basePixelRGBA);
+                if (outputTransferCharacteristics != transferCharacteristics) {
+                    for (int c = 0; c < 3; ++c) {
+                        basePixelRGBA[c] = AVIF_CLAMP(linearToGamma(gammaToLinear(basePixelRGBA[c])), 0.0f, 1.0f);
+                    }
+                }
+                avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBState, basePixelRGBA);
+            }
+        }
         goto cleanup;
     }
 
@@ -159,29 +189,24 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
             goto cleanup;
         }
     }
+    const avifImage * const gainMapImage = (rescaledGainMap != NULL) ? rescaledGainMap : gainMap->image;
 
-    avifRGBImageSetDefaults(&rgbGainMap, rescaledGainMap != NULL ? rescaledGainMap : gainMap->image);
+    avifRGBImageSetDefaults(&rgbGainMap, gainMapImage);
     res = avifRGBImageAllocatePixels(&rgbGainMap);
     if (res != AVIF_RESULT_OK) {
         goto cleanup;
     }
-    res = avifImageYUVToRGB(rescaledGainMap != NULL ? rescaledGainMap : gainMap->image, &rgbGainMap);
+    res = avifImageYUVToRGB(gainMapImage, &rgbGainMap);
     if (res != AVIF_RESULT_OK) {
         goto cleanup;
     }
 
     avifRGBColorSpaceInfo gainMapRGBInfo;
-    avifRGBColorSpaceInfo baseRGBInfo;
-    avifRGBColorSpaceInfo toneMappedPixelRGBState;
-    if (!avifGetRGBColorSpaceInfo(&rgbGainMap, &gainMapRGBInfo) || !avifGetRGBColorSpaceInfo(baseImage, &baseRGBInfo) ||
-        !avifGetRGBColorSpaceInfo(toneMappedImage, &toneMappedPixelRGBState)) {
+    if (!avifGetRGBColorSpaceInfo(&rgbGainMap, &gainMapRGBInfo)) {
         avifDiagnosticsPrintf(diag, "Unsupported RGB color space");
         res = AVIF_RESULT_NOT_IMPLEMENTED;
         goto cleanup;
     }
-
-    const avifTransferFunction gammaToLinear = avifTransferCharacteristicsGetGammaToLinearFunction(transferCharacteristics);
-    const avifTransferFunction linearToGamma = avifTransferCharacteristicsGetLinearToGammaFunction(outputTransferCharacteristics);
 
     float gainMapMinLog[3];
     float gainMapMaxLog[3];
@@ -200,12 +225,6 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
         for (uint32_t i = 0; i < width; ++i) {
             float basePixelRGBA[4];
             avifGetRGBAPixel(baseImage, i, j, &baseRGBInfo, basePixelRGBA);
-            if (weight == 0.0 && outputTransferCharacteristics == transferCharacteristics) {
-                // Copy the pixel value directly.
-                avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBState, basePixelRGBA);
-                continue;
-            }
-
             float gainMapRGBA[4];
             avifGetRGBAPixel(&rgbGainMap, i, j, &gainMapRGBInfo, gainMapRGBA);
 
@@ -240,15 +259,16 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
         // at https://standards.iso.org/ittf/PubliclyAvailableStandards/index.html
 
         // Convert extended SDR (where 1.0 is SDR white) to nits.
-        clli->maxCLL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbMaxLinear * SDR_WHITE_NITS), 0.0f, (float)INT16_MAX);
+        clli->maxCLL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbMaxLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
         const float rgbAverageLinear = rgbSumLinear / (width * height);
-        clli->maxPALL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbAverageLinear * SDR_WHITE_NITS), 0, (float)INT16_MAX);
+        clli->maxPALL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbAverageLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
     }
 
 cleanup:
     avifRGBImageFreePixels(&rgbGainMap);
-    if (rescaledGainMap != NULL)
+    if (rescaledGainMap != NULL) {
         avifImageDestroy(rescaledGainMap);
+    }
 
     return res;
 }
@@ -261,6 +281,8 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                  avifContentLightLevelInformationBox * clli,
                                  avifDiagnostics * diag)
 {
+    avifDiagnosticsClearError(diag);
+
     avifRGBImage baseImageRgb;
     avifRGBImageSetDefaults(&baseImageRgb, baseImage);
     AVIF_CHECKRES(avifRGBImageAllocatePixels(&baseImageRgb));
@@ -277,9 +299,6 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                    toneMappedImage,
                                    clli,
                                    diag);
-    if (res != AVIF_RESULT_OK) {
-        goto cleanup;
-    }
 
 cleanup:
     avifRGBImageFreePixels(&baseImageRgb);

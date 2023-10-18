@@ -655,20 +655,20 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 // If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
 // NOTE: only used in tests for now, might be added to the public API at some point.
 struct avifRGBImage;
-avifResult avifImageApplyGainMap(const struct avifImage * baseImage,
+avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                  const avifGainMap * gainMap,
                                  float hdrCapacity,
                                  avifTransferCharacteristics outputTransferCharacteristics,
-                                 struct avifRGBImage * toneMappedImage,
+                                 avifRGBImage * toneMappedImage,
                                  avifContentLightLevelInformationBox * clli,
                                  avifDiagnostics * diag);
 // Same as above but takes an avifRGBImage as input instead of avifImage.
-avifResult avifImageApplyGainMapRGB(const struct avifRGBImage * baseImage,
+avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
                                     avifTransferCharacteristics transferCharacteristics,
                                     const avifGainMap * gainMap,
                                     float hdrCapacity,
                                     avifTransferCharacteristics outputTransferCharacteristics,
-                                    struct avifRGBImage * toneMappedImage,
+                                    avifRGBImage * toneMappedImage,
                                     avifContentLightLevelInformationBox * clli,
                                     avifDiagnostics * diag);
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP

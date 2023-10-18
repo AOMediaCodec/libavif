@@ -742,8 +742,10 @@ class ToneMapTest
     : public testing::TestWithParam<std::tuple<
           /*source=*/std::string, /*hdr_capacity=*/float,
           /*out_depth=*/int,
-          /*out_transfer_characteristics=*/avifTransferCharacteristics,
-          /*reference=*/std::string, /*min_psnr=*/float>> {};
+          /*out_transfer=*/avifTransferCharacteristics,
+          /*out_rgb_format=*/avifRGBFormat,
+          /*reference=*/std::string, /*min_psnr=*/float, /*max_psnr=*/float>> {
+};
 
 TEST_P(ToneMapTest, ToneMapImage) {
   const std::string source = std::get<0>(GetParam());
@@ -753,8 +755,10 @@ TEST_P(ToneMapTest, ToneMapImage) {
   const int out_depth = std::get<2>(GetParam());
   const avifTransferCharacteristics out_transfer_characteristics =
       std::get<3>(GetParam());
-  const std::string reference = std::get<4>(GetParam());
-  const float min_psnr = std::get<5>(GetParam());
+  const avifRGBFormat out_rgb_format = std::get<4>(GetParam());
+  const std::string reference = std::get<5>(GetParam());
+  const float min_psnr = std::get<6>(GetParam());
+  const float max_psnr = std::get<7>(GetParam());
 
   testutil::AvifImagePtr reference_image = {nullptr, nullptr};
   if (!source.empty()) {
@@ -777,7 +781,7 @@ TEST_P(ToneMapTest, ToneMapImage) {
   ASSERT_NE(image->gainMap.image, nullptr);
 
   testutil::AvifRgbImage tone_mapped_rgb(image.get(), out_depth,
-                                         AVIF_RGB_FORMAT_RGB);
+                                         out_rgb_format);
   testutil::AvifImagePtr tone_mapped(
       avifImageCreate(tone_mapped_rgb.width, tone_mapped_rgb.height,
                       tone_mapped_rgb.depth, AVIF_PIXEL_FORMAT_YUV444),
@@ -794,7 +798,9 @@ TEST_P(ToneMapTest, ToneMapImage) {
   ASSERT_EQ(avifImageRGBToYUV(tone_mapped.get(), &tone_mapped_rgb),
             AVIF_RESULT_OK);
   if (reference_image != nullptr) {
-    EXPECT_GT(testutil::GetPsnr(*reference_image, *tone_mapped), min_psnr);
+    const double psnr = testutil::GetPsnr(*reference_image, *tone_mapped);
+    EXPECT_GE(psnr, min_psnr);
+    EXPECT_LE(psnr, max_psnr);
   }
 
   // Uncomment the following to save the encoded image as an AVIF file.
@@ -823,16 +829,39 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/1.0f,
             /*out_depth=*/8,
-            /*out_transfer_characteristics=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
-            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/60.0f),
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/60.0f,
+            /*max_psnr=*/80.0f),
+
+        // Same as above, outputting to RGBA.
+        std::make_tuple(
+            /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/1.0f,
+            /*out_depth=*/8,
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGBA,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/60.0f,
+            /*max_psnr=*/80.0f),
+
+        // Same as above, outputting to a different transfer characteristic.
+        // As a result we expect a low PSNR (since the PSNR function is not
+        // aware of the transfer curve difference).
+        std::make_tuple(
+            /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/1.0f,
+            /*out_depth=*/8,
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_LOG100,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGBA,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/20.0f,
+            /*max_psnr=*/30.0f),
 
         // hdr_capacity=3, the gain map should be fully applied.
         std::make_tuple(
             /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/3.0f,
             /*out_depth=*/10,
-            /*out_transfer_characteristics=*/
-            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
-            /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f),
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f,
+            /*max_psnr=*/60.0f),
 
         // hdr_capacity=3, the gain map should be fully applied.
         // Version with a gain map that is larger than the base image (needs
@@ -840,17 +869,19 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_sdr_gainmap_big_srgb.avif", /*hdr_capacity=*/3.0f,
             /*out_depth=*/10,
-            /*out_transfer_characteristics=*/
-            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
-            /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f),
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f,
+            /*max_psnr=*/60.0f),
 
         // hdr_capacity=1.5 No reference image.
         std::make_tuple(
             /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_capacity=*/1.5f,
             /*out_depth=*/10,
-            /*out_transfer_characteristics=*/
-            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
-            /*reference=*/"", /*min_psnr=*/0.0f),
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"", /*min_psnr=*/0.0f,
+            /*max_psnr=*/0.0f),
 
         // ------ HDR BASE IMAGE ------
 
@@ -858,8 +889,10 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_capacity=*/1.0f,
             /*out_depth=*/8,
-            /*out_transfer_characteristics=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
-            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/38.0f),
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/38.0f,
+            /*max_psnr=*/60.0f),
 
         // hdr_capacity=1, the gain map should be fully applied.
         // Version with a gain map that is smaller than the base image (needs
@@ -869,25 +902,28 @@ INSTANTIATE_TEST_SUITE_P(
             /*source=*/"seine_hdr_gainmap_small_srgb.avif",
             /*hdr_capacity=*/1.0f,
             /*out_depth=*/8,
-            /*out_transfer_characteristics=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
-            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/36.0f),
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+            AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/36.0f,
+            /*max_psnr=*/60.0f),
 
         // hdr_capacity=3, the image should stay HDR (base image untouched).
         // A small loss is expected due to YUV/RGB conversion.
         std::make_tuple(
             /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_capacity=*/3.0f,
             /*out_depth=*/10,
-            /*out_transfer_characteristics=*/
-            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
-            /*reference=*/"seine_hdr_gainmap_srgb.avif", /*min_psnr=*/60.0f),
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"seine_hdr_gainmap_srgb.avif", /*min_psnr=*/60.0f,
+            /*max_psnr=*/80.0f),
 
         // hdr_capacity=1.5 No reference image.
         std::make_tuple(
             /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_capacity=*/1.5f,
             /*out_depth=*/10,
-            /*out_transfer_characteristics=*/
-            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
-            /*reference=*/"", /*min_psnr=*/0.0f)));
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
+            /*reference=*/"", /*min_psnr=*/0.0f, /*max_psnr=*/0.0f)));
 
 }  // namespace
 }  // namespace libavif
