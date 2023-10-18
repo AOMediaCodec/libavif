@@ -99,34 +99,23 @@ avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t init
     return AVIF_TRUE;
 }
 
-uint32_t avifArrayPushIndex(void * arrayStruct)
+void * avifArrayPush(void * arrayStruct)
 {
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
     if (arr->count == arr->capacity) {
         uint8_t * oldPtr = arr->ptr;
         size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
         arr->ptr = (uint8_t *)avifAlloc(oldByteCount * 2);
+        if (arr->ptr == NULL) {
+            return NULL;
+        }
         memset(arr->ptr + oldByteCount, 0, oldByteCount);
         memcpy(arr->ptr, oldPtr, oldByteCount);
         arr->capacity *= 2;
         avifFree(oldPtr);
     }
     ++arr->count;
-    return arr->count - 1;
-}
-
-void * avifArrayPushPtr(void * arrayStruct)
-{
-    uint32_t index = avifArrayPushIndex(arrayStruct);
-    avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
-    return &arr->ptr[index * (size_t)arr->elementSize];
-}
-
-void avifArrayPush(void * arrayStruct, void * element)
-{
-    avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
-    void * newElement = avifArrayPushPtr(arr);
-    memcpy(newElement, element, arr->elementSize);
+    return &arr->ptr[(arr->count - 1) * (size_t)arr->elementSize];
 }
 
 void avifArrayPop(void * arrayStruct)

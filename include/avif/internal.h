@@ -102,9 +102,7 @@ avifTransferFunction avifTransferCharacteristicsGetLinearToGammaFunction(avifTra
         uint32_t capacity;                                 \
     } TYPENAME
 avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity);
-uint32_t avifArrayPushIndex(void * arrayStruct);
-void * avifArrayPushPtr(void * arrayStruct);
-void avifArrayPush(void * arrayStruct, void * element);
+void * avifArrayPush(void * arrayStruct);
 void avifArrayPop(void * arrayStruct);
 void avifArrayDestroy(void * arrayStruct);
 
