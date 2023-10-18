@@ -975,7 +975,7 @@ avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, con
 
     if (value) {
         // Add a new key
-        avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPushPtr(csOptions);
+        avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPush(csOptions);
         AVIF_CHECKERR(entry, AVIF_RESULT_OUT_OF_MEMORY);
         entry->key = avifStrdup(key);
         AVIF_CHECKERR(entry->key, AVIF_RESULT_OUT_OF_MEMORY);

@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * AVIF sequences encoded by libavif will now also have the "avio" brand when
   there is at least one track made only of AV1 keyframes.
 * Fix SVT-AV1 codec interface which was not setting video range at encoding.
+* Any item ID being 0 in an "iref" box with version 0 or 1 is now treated as an
+  error instead of being ignored.
 
 ## [1.0.1] - 2023-08-29
 
