@@ -111,7 +111,7 @@ set(AVIF_PLATFORM_LIBRARIES)
 macro(find_package_libavif)
     set(_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES, "${CMAKE_FIND_LIBRARY_SUFFIXES}")
     if(NOT BUILD_SHARED_LIBS)
-        if (WIN32 OR MINGW)
+        if(WIN32 OR MINGW)
             set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
         else()
             set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
@@ -444,7 +444,9 @@ if(AVIF_CODEC_DAV1D)
                 # See https://github.com/mesonbuild/meson/issues/8153.
                 set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
                 if(NOT EXISTS "${LIB_FILENAME}")
-                    message(FATAL_ERROR "libavif: ${LIB_FILENAME} (or libdav1d${CMAKE_STATIC_LIBRARY_SUFFIX}) is missing, bailing out")
+                    message(
+                        FATAL_ERROR "libavif: ${LIB_FILENAME} (or libdav1d${CMAKE_STATIC_LIBRARY_SUFFIX}) is missing, bailing out"
+                    )
                 endif()
             endif()
         endif()
@@ -576,7 +578,9 @@ if(AVIF_CODEC_AOM)
     endif()
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_aom.c)
     if(AVIF_LOCAL_AOM)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(LIB_FILENAME
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        )
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
         endif()
@@ -608,7 +612,9 @@ if(AVIF_CODEC_AVM)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_avm.c)
     if(AVIF_LOCAL_AVM)
         # Building the avm repository generates files such as "libaom.a" because it is a fork of aom.
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/avm/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(LIB_FILENAME
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/avm/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        )
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: ${LIB_FILENAME} (from avm) is missing, bailing out")
         endif()
