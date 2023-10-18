@@ -78,7 +78,9 @@ endmacro()
 if(AVIF_ENABLE_GTEST)
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
-        set(GTEST_LIBRARIES ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(GTEST_LIBRARIES
+            ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}
+        )
         set(GTEST_MAIN_LIBRARIES
             ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX}
         )
@@ -315,8 +317,18 @@ if(AVIF_CODEC_AVM)
         set_tests_properties(aviftest PROPERTIES DISABLED True)
         if(AVIF_ENABLE_GTEST)
             set_tests_properties(
-                avifallocationtest avifbasictest avifchangesettingtest avifcllitest avifgridapitest avifincrtest avifiostatstest
-                avifmetadatatest avifprogressivetest avifrangetest avify4mtest PROPERTIES DISABLED True
+                avifallocationtest
+                avifbasictest
+                avifchangesettingtest
+                avifcllitest
+                avifgridapitest
+                avifincrtest
+                avifiostatstest
+                avifmetadatatest
+                avifprogressivetest
+                avifrangetest
+                avify4mtest
+                PROPERTIES DISABLED True
             )
 
             if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
