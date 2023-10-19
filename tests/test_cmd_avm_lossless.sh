@@ -42,11 +42,11 @@ AVIFDEC="${BINARY_DIR}/avifdec"
 ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Input file paths.
-INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
+INPUT_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-orig.png"
 # Output file names.
-ENCODED_FILE="avif_test_cmd_lossless_encoded.avif"
-DECODED_FILE="avif_test_cmd_lossless_decoded.png"
-DECODED_FILE_LOSSLESS="avif_test_cmd_lossless_decoded_lossless.png"
+ENCODED_FILE="avif_test_cmd_avm_lossless_encoded.avif"
+DECODED_FILE="avif_test_cmd_avm_lossless_decoded.png"
+DECODED_FILE_LOSSLESS="avif_test_cmd_avm_lossless_decoded_lossless.png"
 
 # Cleanup
 cleanup() {
