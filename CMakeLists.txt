@@ -105,8 +105,8 @@ set(AVIF_PLATFORM_INCLUDES)
 set(AVIF_PLATFORM_SYSTEM_INCLUDES)
 set(AVIF_PLATFORM_LIBRARIES)
 # The libraries that apps, examples, and tests are linked against.
-# This includes libavif itself, as well as any codec or platform
-# libraries that are not already merged into libavif.
+# This includes avif for shared builds and avif_internal for static
+# builds, as well as any codec or platform libraries.
 set(AVIF_LINK_LIBRARIES)
 
 # A macro that wraps find_package, preferring static libraries if this is a static build
@@ -666,8 +666,8 @@ if(BUILD_SHARED_LIBS)
     list(APPEND AVIF_LINK_LIBRARIES avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 else()
     include(merge_static_libs)
-    merge_static_libs(avif UNMERGED_LIBRARIES avif_internal ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-    list(APPEND AVIF_LINK_LIBRARIES avif ${UNMERGED_LIBRARIES})
+    list(APPEND AVIF_LINK_LIBRARIES avif_internal ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+    merge_static_libs(avif ${AVIF_LINK_LIBRARIES})
 endif()
 
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
