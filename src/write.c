@@ -358,23 +358,23 @@ typedef struct avifItemPropertyDedup
     uint8_t nextIndex; // 1-indexed, incremented every time another unique property is finished
 } avifItemPropertyDedup;
 
-static void avifItemPropertyDedupDestroy(avifItemPropertyDedup * dedup);
-
 static avifItemPropertyDedup * avifItemPropertyDedupCreate(void)
 {
     avifItemPropertyDedup * dedup = (avifItemPropertyDedup *)avifAlloc(sizeof(avifItemPropertyDedup));
+    if (dedup == NULL) {
+        return NULL;
+    }
     memset(dedup, 0, sizeof(avifItemPropertyDedup));
     if (!avifArrayCreate(&dedup->properties, sizeof(avifItemProperty), 8)) {
-        goto error;
+        avifFree(dedup);
+        return NULL;
     }
     if (avifRWDataRealloc(&dedup->buffer, 2048) != AVIF_RESULT_OK) {
-        goto error;
+        avifArrayDestroy(&dedup->properties);
+        avifFree(dedup);
+        return NULL;
     }
     return dedup;
-
-error:
-    avifItemPropertyDedupDestroy(dedup);
-    return NULL;
 }
 
 static void avifItemPropertyDedupDestroy(avifItemPropertyDedup * dedup)
@@ -2583,6 +2583,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "iprp", AVIF_BOX_SIZE_TBD, &iprp));
 
     avifItemPropertyDedup * dedup = avifItemPropertyDedupCreate();
+    AVIF_CHECKERR(dedup != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     avifBoxMarker ipco;
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ipco", AVIF_BOX_SIZE_TBD, &ipco));
     avifResult result = avifRWStreamWriteProperties(dedup, &s, encoder, imageMetadata);
