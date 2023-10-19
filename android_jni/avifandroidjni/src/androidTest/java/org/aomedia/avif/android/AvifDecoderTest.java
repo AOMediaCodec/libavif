@@ -225,7 +225,7 @@ public class AvifDecoderTest {
       assertThat(decoder.nthFrame(image.frameCount, bitmap)).isNotEqualTo(AVIF_RESULT_OK);
 
       // The following block of code that tests scaling assumes that the animated image under test
-      // have at least 10 frames.
+      // has at least 10 frames.
       if (image.frameCount >= 10) {
         // Reset the decoder to the first frame.
         assertThat(decoder.nthFrame(0, bitmap)).isEqualTo(AVIF_RESULT_OK);
