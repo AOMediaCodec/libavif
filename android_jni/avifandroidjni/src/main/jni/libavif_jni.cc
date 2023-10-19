@@ -136,11 +136,27 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
     }
     image = cropped_image.get();
   }
-  avifDiagnostics diag;
-  res = avifImageScale(image, bitmap_info.width, bitmap_info.height, &diag);
-  if (res != AVIF_RESULT_OK) {
-    LOGE("Failed to scale image. Status: %d", res);
-    return res;
+  std::unique_ptr<avifImage, decltype(&avifImageDestroy)> image_copy(
+      nullptr, avifImageDestroy);
+  if (image->width != bitmap_info.width ||
+      image->height != bitmap_info.height) {
+    // If the avifImage does not own the planes, then create a copy for safe
+    // scaling.
+    if (!image->imageOwnsYUVPlanes || !image->imageOwnsAlphaPlane) {
+      image_copy.reset(avifImageCreateEmpty());
+      res = avifImageCopy(image_copy.get(), image, AVIF_PLANES_ALL);
+      if (res != AVIF_RESULT_OK) {
+        LOGE("Failed to make a copy of the image for scaling. Status: %d", res);
+        return res;
+      }
+      image = image_copy.get();
+    }
+    avifDiagnostics diag;
+    res = avifImageScale(image, bitmap_info.width, bitmap_info.height, &diag);
+    if (res != AVIF_RESULT_OK) {
+      LOGE("Failed to scale image. Status: %d", res);
+      return res;
+    }
   }
 
   avifRGBImage rgb_image;

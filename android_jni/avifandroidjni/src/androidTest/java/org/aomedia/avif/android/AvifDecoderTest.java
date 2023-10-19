@@ -95,6 +95,8 @@ public class AvifDecoderTest {
 
   private static final int AVIF_RESULT_OK = 0;
 
+  private static final float[] SCALE_FACTORS = {0.5f, 1.3f, 2.0f};
+
   private static final Image[] IMAGES = {
     // Parameter ordering for still images: directory, filename, width, height, depth, alphaPresent,
     // threads.
@@ -157,35 +159,26 @@ public class AvifDecoderTest {
     Bitmap bitmap = Bitmap.createBitmap(info.width, info.height, config);
     assertThat(bitmap).isNotNull();
     assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
-  }
 
-  @Test
-  public void testDecodeScale() throws IOException {
-    if (image.isAnimated) {
-      return;
+    // Test scaling.
+    for (float scale_factor : SCALE_FACTORS) {
+      // Scale both width and height.
+      bitmap =
+          Bitmap.createBitmap(
+              (int) (info.width * scale_factor), (int) (info.height * scale_factor), config);
+      assertThat(bitmap).isNotNull();
+      assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
+
+      // Scale width only.
+      bitmap = Bitmap.createBitmap((int) (info.width * scale_factor), info.height, config);
+      assertThat(bitmap).isNotNull();
+      assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
+
+      // Scale height only.
+      bitmap = Bitmap.createBitmap(info.width, (int) (info.height * scale_factor), config);
+      assertThat(bitmap).isNotNull();
+      assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
     }
-    ByteBuffer buffer = image.getBuffer();
-    assertThat(buffer).isNotNull();
-    assertThat(AvifDecoder.isAvifImage(buffer)).isTrue();
-    Info info = new Info();
-    assertThat(AvifDecoder.getInfo(buffer, buffer.remaining(), info)).isTrue();
-    assertThat(info.width).isEqualTo(image.width);
-    assertThat(info.height).isEqualTo(image.height);
-    assertThat(info.depth).isEqualTo(image.depth);
-    assertThat(info.alphaPresent).isEqualTo(image.alphaPresent);
-    Bitmap bitmap = Bitmap.createBitmap(info.width/2, info.height/2, config);
-    assertThat(bitmap).isNotNull();
-    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
-    buffer.remaining();
-    float scale = 1.3f;
-    bitmap = Bitmap.createBitmap((int) (info.width*scale), (int) (info.height*scale), config);
-    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
-    buffer.remaining();
-    bitmap = Bitmap.createBitmap((int) (info.width*scale), (int) (info.height/scale), config);
-    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
-    buffer.remaining();
-    bitmap = Bitmap.createBitmap((int) (info.width/scale), (int) (info.height*scale), config);
-    assertThat(AvifDecoder.decode(buffer, buffer.remaining(), bitmap)).isTrue();
   }
 
   // Tests AvifDecoder by using it as a regular instantiated class.
@@ -230,6 +223,31 @@ public class AvifDecoderTest {
       // Passing out of bound values for n should fail.
       assertThat(decoder.nthFrame(-1, bitmap)).isNotEqualTo(AVIF_RESULT_OK);
       assertThat(decoder.nthFrame(image.frameCount, bitmap)).isNotEqualTo(AVIF_RESULT_OK);
+
+      // The following block of code that tests scaling assumes that the animated image under test
+      // have at least 10 frames.
+      if (image.frameCount >= 10) {
+        // Reset the decoder to the first frame.
+        assertThat(decoder.nthFrame(0, bitmap)).isEqualTo(AVIF_RESULT_OK);
+        for (float scale_factor : SCALE_FACTORS) {
+          // Scale both width and height.
+          bitmap =
+              Bitmap.createBitmap(
+                  (int) (image.width * scale_factor), (int) (image.height * scale_factor), config);
+          assertThat(bitmap).isNotNull();
+          assertThat(decoder.nextFrame(bitmap)).isEqualTo(AVIF_RESULT_OK);
+
+          // Scale width only.
+          bitmap = Bitmap.createBitmap((int) (image.width * scale_factor), image.height, config);
+          assertThat(bitmap).isNotNull();
+          assertThat(decoder.nextFrame(bitmap)).isEqualTo(AVIF_RESULT_OK);
+
+          // Scale height only.
+          bitmap = Bitmap.createBitmap(image.width, (int) (image.height * scale_factor), config);
+          assertThat(bitmap).isNotNull();
+          assertThat(decoder.nextFrame(bitmap)).isEqualTo(AVIF_RESULT_OK);
+        }
+      }
     }
     decoder.release();
   }
