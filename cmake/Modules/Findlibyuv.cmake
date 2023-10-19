@@ -20,10 +20,19 @@
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
     pkg_check_modules(_LIBYUV libyuv)
+    if(_LIBYUV_FOUND)
+        if(BUILD_SHARED_LIBS)
+            set(_PC_TYPE)
+        else()
+            set(_PC_TYPE _STATIC)
+        endif()
+        set(LIBYUV_LIBRARY_DIRS ${_LIBYUV${_PC_TYPE}_LIBRARY_DIRS})
+        set(LIBYUV_LIBRARIES ${_LIBYUV${_PC_TYPE}_LIBRARIES})
+    endif()
 endif(PKG_CONFIG_FOUND)
 
 if(NOT LIBYUV_INCLUDE_DIR)
-    find_path(LIBYUV_INCLUDE_DIR NAMES libyuv.h PATHS ${_LIBYUV_INCLUDEDIR})
+    find_path(LIBYUV_INCLUDE_DIR NAMES libyuv.h PATHS ${_LIBYUV_INCLUDE_DIRS})
 endif()
 
 if(LIBYUV_INCLUDE_DIR AND NOT LIBYUV_VERSION)
@@ -41,12 +50,14 @@ if(LIBYUV_INCLUDE_DIR AND NOT LIBYUV_VERSION)
 endif()
 
 if(NOT LIBYUV_LIBRARY)
-    find_library(LIBYUV_LIBRARY NAMES yuv PATHS ${_LIBYUV_LIBDIR})
+    find_library(LIBYUV_LIBRARY NAMES yuv PATHS ${_LIBYUV_LIBRARY_DIRS})
 endif()
 
-if(LIBYUV_LIBRARY)
-    set(LIBYUV_LIBRARIES ${LIBYUV_LIBRARIES} ${LIBYUV_LIBRARY})
-endif(LIBYUV_LIBRARY)
+# Remove -lyuv since it will be replaced with full libyuv library path
+if(LIBYUV_LIBRARIES)
+    list(REMOVE_ITEM LIBYUV_LIBRARIES "yuv")
+endif()
+set(LIBYUV_LIBRARIES ${LIBYUV_LIBRARY} ${LIBYUV_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(

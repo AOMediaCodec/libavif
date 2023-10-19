@@ -20,15 +20,26 @@
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
     pkg_check_modules(_SVT SvtAv1Enc)
+    if(_SVT_FOUND)
+        if(BUILD_SHARED_LIBS)
+            set(_PC_TYPE)
+        else()
+            set(_PC_TYPE _STATIC)
+        endif()
+        set(SVT_LIBRARY_DIRS ${_SVT${_PC_TYPE}_LIBRARY_DIRS})
+        set(SVT_LIBRARIES ${_SVT${_PC_TYPE}_LIBRARIES})
+    endif()
 endif(PKG_CONFIG_FOUND)
 
-find_path(SVT_INCLUDE_DIR NAMES svt-av1/EbSvtAv1Enc.h PATHS ${_SVT_INCLUDEDIR})
+find_path(SVT_INCLUDE_DIR NAMES svt-av1/EbSvtAv1Enc.h PATHS ${_SVT_INCLUDE_DIRS})
 
-find_library(SVT_LIBRARY NAMES SvtAv1Enc PATHS ${_SVT_LIBDIR})
+find_library(SVT_LIBRARY NAMES SvtAv1Enc PATHS ${_SVT_LIBRARY_DIRS})
 
-if(SVT_LIBRARY)
-    set(SVT_LIBRARIES ${SVT_LIBRARIES} ${SVT_LIBRARY})
-endif(SVT_LIBRARY)
+# Remove -lSvtAv1Enc since it will be replaced with full library path
+if(SVT_LIBRARIES)
+    list(REMOVE_ITEM SVT_LIBRARIES "SvtAv1Enc")
+endif()
+set(SVT_LIBRARIES ${SVT_LIBRARY} ${SVT_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(

@@ -81,9 +81,11 @@ option(
     OFF
 )
 
+option(AVIF_STATIC_SYSTEM_LIBRARY_MERGE "If building static libraries, include system static libraries in the merged archive" OFF)
+
 set(AVIF_USE_CXX OFF)
 
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_CODEC_LIBGAV1)
     set(AVIF_USE_CXX ON)
 endif()
 
@@ -105,6 +107,15 @@ set(AVIF_PLATFORM_DEFINITIONS)
 set(AVIF_PLATFORM_INCLUDES)
 set(AVIF_PLATFORM_SYSTEM_INCLUDES)
 set(AVIF_PLATFORM_LIBRARIES)
+# The libraries that apps, examples, and tests are linked against.
+# This includes avif for shared builds and avif_internal for static
+# builds, as well as any codec or platform libraries.
+set(AVIF_LINK_LIBRARIES)
+set(AVIF_LINK_DIRS)
+
+set(AVIF_PKG_CONFIG_LIBS)
+set(AVIF_PKG_CONFIG_LIBS_PRIVATE)
+set(AVIF_PKG_CONFIG_REQUIRES)
 
 # A macro that wraps find_package, preferring static libraries if this is a static build
 # Should only be used for libraries linked against avif, not for those only used
@@ -167,6 +178,7 @@ if(AVIF_LOCAL_JPEG)
         set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg" PARENT_SCOPE)
         set(JPEG_LIBRARY jpeg PARENT_SCOPE)
     endif()
+    set(JPEG_LIBRARIES ${JPEG_LIBRARY})
 endif()
 
 option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
@@ -217,6 +229,14 @@ if(libyuv_FOUND)
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
     set(AVIF_PLATFORM_SYSTEM_INCLUDES ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
+    set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${LIBYUV_LIBRARY_DIRS})
+    if(NOT AVIF_LOCAL_LIBYUV)
+        if(BUILD_SHARED_LIBS)
+            list(APPEND AVIF_PKG_CONFIG_LIBS "-lyuv")
+        else()
+            list(APPEND AVIF_PKG_CONFIG_LIBS_PRIVATE "-lyuv")
+        endif()
+    endif()
 endif(libyuv_FOUND)
 
 option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
@@ -245,6 +265,10 @@ if(libsharpyuv_FOUND)
         set(AVIF_PLATFORM_SYSTEM_INCLUDES ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
     endif()
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
+    set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${LIBSHARPYUV_LIBRARY_DIRS})
+    if(NOT AVIF_LOCAL_LIBSHARPYUV)
+        list(APPEND AVIF_PKG_CONFIG_REQUIRES libsharpyuv)
+    endif()
 else(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv not found")
 endif(libsharpyuv_FOUND)
@@ -266,9 +290,10 @@ if(AVIF_LOCAL_LIBXML2)
         set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libavif/include/libxml2" PARENT_SCOPE)
         set(LIBXML2_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
+    set(LIBXML2_LIBRARIES ${LIBXML2_LIBRARY})
     set(LIBXML2_FOUND TRUE)
 else()
-    find_package(LibXml2 QUIET) # not required
+    find_package_libavif(LibXml2 QUIET) # not required
 endif()
 # ---------------------------------------------------------------------------------------
 
@@ -415,7 +440,11 @@ if(UNIX)
     # Find out if we have threading available
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
+    if(CMAKE_THREAD_LIBS_INIT)
+        list(APPEND AVIF_PKG_CONFIG_LIBS_PRIVATE "${CMAKE_THREAD_LIBS_INIT}")
+    endif()
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} m Threads::Threads)
+    list(APPEND AVIF_PKG_CONFIG_LIBS_PRIVATE "-lm")
 endif()
 
 set(AVIF_CODEC_DEFINITIONS)
@@ -472,8 +501,11 @@ if(AVIF_CODEC_DAV1D)
         if(NOT TARGET dav1d)
             find_package_libavif(dav1d REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${DAV1D_INCLUDE_DIR})
+            set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${DAV1D_LIBRARY_DIRS})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
+
+        list(APPEND AVIF_PKG_CONFIG_REQUIRES dav1d)
     endif()
 
     if(UNIX AND NOT APPLE)
@@ -505,12 +537,32 @@ if(AVIF_CODEC_LIBGAV1)
         if(NOT TARGET libgav1)
             find_package_libavif(libgav1 REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${LIBGAV1_INCLUDE_DIR})
+            set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${LIBGAV1_LIBRARY_DIRS})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
+        list(APPEND AVIF_PKG_CONFIG_REQUIRES libgav1)
     endif()
 
     message(STATUS "libavif: Codec enabled: libgav1 (decode)")
 endif()
+
+# Extract the library dependencies from the local rav1e pkg-config file from
+# Libs and Libs.private for shared and static builds, respectively.
+function(avif_parse_local_rav1e_pc_libs target)
+    if(BUILD_SHARED_LIBS)
+        set(RAV1E_PC_LIB_REGEX "Libs: -L\\$\\{libdir\\} -lrav1e ([^\n]+)\n")
+    else()
+        set(RAV1E_PC_LIB_REGEX "Libs\\.private: +(.+)\n")
+    endif()
+    set(RAV1E_PC "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/pkgconfig/rav1e.pc")
+    file(READ ${RAV1E_PC} RAV1E_PC_CONTENTS)
+    string(REGEX MATCH "${RAV1E_PC_LIB_REGEX}" _ ${RAV1E_PC_CONTENTS})
+    if(CMAKE_MATCH_1)
+        string(STRIP ${CMAKE_MATCH_1} RAV1E_LIBS_PRIVATE)
+        string(REPLACE " " ";" RAV1E_LIBS_PRIVATE ${RAV1E_LIBS_PRIVATE})
+        set(${target} ${${target}} ${RAV1E_LIBS_PRIVATE} PARENT_SCOPE)
+    endif()
+endfunction()
 
 if(AVIF_CODEC_RAV1E)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_RAV1E=1)
@@ -523,24 +575,47 @@ if(AVIF_CODEC_RAV1E)
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/build.libavif/usr/lib), bailing out")
         endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/include/rav1e")
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
+        set(RAV1E_LIBRARY ${LIB_FILENAME})
+        list(APPEND RAV1E_LIBRARIES ${RAV1E_LIBRARY})
+        set(RAV1E_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/include/rav1e")
+        avif_parse_local_rav1e_pc_libs(RAV1E_LIBRARIES)
     else()
         # Check to see if rav1e is independently being built by the outer CMake project
         if(NOT TARGET rav1e)
             find_package_libavif(rav1e REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${RAV1E_INCLUDE_DIR})
+            set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${RAV1E_LIBRARY_DIRS})
         endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${RAV1E_LIBRARIES})
+
+        # Unfortunately, rav1e requires a few more libraries, which we add if rav1e was not found by pkg-config
+        if(NOT RAV1E_PC_FOUND)
+            if(WIN32)
+                set(RAV1E_LIBRARIES ${RAV1E_LIBRARIES} ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
+            elseif(UNIX AND NOT APPLE)
+                set(RAV1E_LIBRARIES ${RAV1E_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
+            endif()
+        endif()
+
+        list(APPEND AVIF_PKG_CONFIG_REQUIRES rav1e)
     endif()
 
-    # Unfortunately, rav1e requires a few more libraries
     if(WIN32)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
-    elseif(UNIX AND NOT APPLE)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
+        # Remove msvcrt from RAV1E_LIBRARIES since it's linked by default
+        list(REMOVE_ITEM RAV1E_LIBRARIES "msvcrt.lib" "-lmsvcrt")
+
+        # If we have system libraries that include kernel32 but not ntdll, add it to address
+        # https://github.com/rust-lang/rust/issues/115813
+        if("kernel32.lib" IN_LIST RAV1E_LIBRARIES AND NOT "ntdll.lib" IN_LIST RAV1E_LIBRARIES)
+            list(APPEND RAV1E_LIBRARIES "ntdll.lib")
+        endif()
+        # cygwin and msys2 libraries are formatted with a -l prefix
+        if("-lkernel32" IN_LIST RAV1E_LIBRARIES AND NOT "-lntdll" IN_LIST RAV1E_LIBRARIES)
+            list(APPEND RAV1E_LIBRARIES "-lntdll")
+        endif()
     endif()
+
+    set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} ${RAV1E_INCLUDE_DIR})
+    set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${RAV1E_LIBRARIES})
 
     message(STATUS "libavif: Codec enabled: rav1e (encode)")
 endif()
@@ -564,8 +639,10 @@ if(AVIF_CODEC_SVT)
         if(NOT TARGET svt)
             find_package_libavif(svt REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${SVT_INCLUDE_DIR})
+            set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${SVT_LIBRARY_DIRS})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
+        list(APPEND AVIF_PKG_CONFIG_REQUIRES SvtAv1Enc)
     endif()
 
     message(STATUS "libavif: Codec enabled: svt (encode)")
@@ -604,7 +681,9 @@ if(AVIF_CODEC_AOM)
         if(NOT TARGET aom)
             find_package_libavif(aom REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AOM_INCLUDE_DIR})
+            set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${AOM_LIBRARY_DIRS})
         endif()
+        list(APPEND AVIF_PKG_CONFIG_REQUIRES aom)
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
     endif()
 
@@ -641,8 +720,10 @@ if(AVIF_CODEC_AVM)
         if(NOT TARGET avm)
             find_package_libavif(avm REQUIRED)
             set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AVM_INCLUDE_DIR})
+            set(AVIF_LINK_DIRS ${AVIF_LINK_DIRS} ${AVM_LIBRARY_DIRS})
         endif()
         set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AVM_LIBRARIES})
+        list(APPEND AVIF_PKG_CONFIG_REQUIRES avm)
     endif()
 
     message(STATUS "libavif: Codec enabled: avm (encode/decode)")
@@ -656,10 +737,33 @@ if(NOT AVIF_CODEC_AOM
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-add_library(avif ${AVIF_SRCS})
+# Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
+# The avif_internal target should not be used by external code.
+add_library(avif_internal STATIC ${AVIF_SRCS})
+# Copy or duplicate most properties from the public avif library target.
+target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
+target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
+target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
+target_include_directories(avif_internal PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
+target_include_directories(avif_internal SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
+target_link_directories(avif_internal PRIVATE ${AVIF_LINK_DIRS})
+if(NOT libyuv_FOUND)
+    target_include_directories(avif_internal PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
+endif()
+
+if(BUILD_SHARED_LIBS)
+    add_library(avif ${AVIF_SRCS})
+    list(APPEND AVIF_LINK_LIBRARIES avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+else()
+    include(merge_static_libs)
+    merge_static_libs(avif avif_internal ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+    list(APPEND AVIF_LINK_LIBRARIES avif_internal ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+endif()
+
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
 target_compile_definitions(avif PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
 target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+target_link_directories(avif PRIVATE ${AVIF_LINK_DIRS})
 target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_include_directories(avif PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
 target_include_directories(avif SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
@@ -678,25 +782,6 @@ if(BUILD_SHARED_LIBS)
     endif()
 endif()
 
-# Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
-# The avif_internal target should not be used by external code.
-if(BUILD_SHARED_LIBS)
-    add_library(avif_internal STATIC ${AVIF_SRCS})
-    # Copy or duplicate most properties from the public avif library target.
-    target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
-    target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
-    target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
-    target_include_directories(avif_internal PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
-    target_include_directories(avif_internal SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
-    if(NOT libyuv_FOUND)
-        target_include_directories(avif_internal PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
-    endif()
-else()
-    add_library(avif_internal ALIAS avif)
-    include(merge_static_libs)
-    merge_static_libs(avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
-endif()
-
 option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     set(AVIF_EXAMPLES avif_example_decode_memory avif_example_decode_file avif_example_decode_streaming avif_example_encode)
@@ -706,7 +791,8 @@ if(AVIF_BUILD_EXAMPLES)
         if(AVIF_USE_CXX)
             set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
         endif()
-        target_link_libraries(${EXAMPLE} avif ${AVIF_PLATFORM_LIBRARIES})
+        target_link_libraries(${EXAMPLE} ${AVIF_LINK_LIBRARIES})
+        target_link_directories(${EXAMPLE} PRIVATE ${AVIF_LINK_DIRS})
     endforeach()
 endif()
 
@@ -745,18 +831,19 @@ option(
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST)))
     if(NOT AVIF_LOCAL_ZLIBPNG)
-        find_package(ZLIB REQUIRED)
-        find_package(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).
+        find_package_libavif(ZLIB REQUIRED)
+        find_package_libavif(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).
     endif()
     if(NOT AVIF_LOCAL_JPEG)
-        find_package(JPEG REQUIRED)
+        find_package_libavif(JPEG REQUIRED)
     endif()
 
     add_library(
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
                          apps/shared/iccjpeg.c apps/shared/iccmaker.c apps/shared/y4m.c
     )
-    target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avif_apps ${AVIF_LINK_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARIES})
+    target_link_directories(avif_apps PUBLIC ${AVIF_LINK_DIRS} ${JPEG_LIBRARY_DIRS})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
     # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
@@ -769,8 +856,9 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         if(LIBXML2_FOUND)
             set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
             add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-            target_link_libraries(avif_apps ${LIBXML2_LIBRARY})
+            target_link_libraries(avif_apps ${LIBXML2_LIBRARIES})
             target_include_directories(avif_apps SYSTEM PRIVATE ${LIBXML2_INCLUDE_DIR})
+            target_link_directories(avif_apps PRIVATE ${LIBXML2_LIBRARY_DIRS})
         else()
             message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
         endif()
@@ -833,6 +921,21 @@ if(AVIF_BUILD_MAN_PAGES)
     else()
         message(WARNING "libavif: No man pages are built (AVIF_BUILD_MAN_PAGES); AVIF_BUILD_APPS must be on.")
     endif()
+endif()
+
+# Convert pkg-config Requires, Libs, and Libs.private variables from lists to space-separated strings
+if(AVIF_PKG_CONFIG_REQUIRES)
+    string(REPLACE ";" " " AVIF_PKG_CONFIG_REQUIRES " ${AVIF_PKG_CONFIG_REQUIRES}")
+endif()
+if(AVIF_PKG_CONFIG_LIBS)
+    string(REPLACE ";" " " AVIF_PKG_CONFIG_LIBS " ${AVIF_PKG_CONFIG_LIBS}")
+endif()
+if(AVIF_PKG_CONFIG_LIBS_PRIVATE)
+    string(REPLACE ";" " " AVIF_PKG_CONFIG_LIBS_PRIVATE " ${AVIF_PKG_CONFIG_LIBS_PRIVATE}")
+endif()
+
+if(AVIF_STATIC_SYSTEM_LIBRARY_MERGE)
+    set(AVIF_PKG_CONFIG_REQUIRES "")
 endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)

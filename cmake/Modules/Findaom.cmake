@@ -22,11 +22,25 @@ if(PKG_CONFIG_FOUND)
     pkg_check_modules(_AOM aom)
 endif(PKG_CONFIG_FOUND)
 
-find_path(AOM_INCLUDE_DIR NAMES aom/aom.h PATHS ${_AOM_INCLUDEDIR})
+if(_AOM_FOUND)
+    if(BUILD_SHARED_LIBS)
+        set(_PC_TYPE)
+    else()
+        set(_PC_TYPE _STATIC)
+    endif()
+    set(AOM_LIBRARY_DIRS ${_AOM${_PC_TYPE}_LIBRARY_DIRS})
+    set(AOM_LIBRARIES ${_AOM${_PC_TYPE}_LIBRARIES})
+endif()
 
-find_library(AOM_LIBRARY NAMES aom PATHS ${_AOM_LIBDIR})
+find_path(AOM_INCLUDE_DIR NAMES aom/aom.h PATHS ${_AOM_INCLUDE_DIRS})
 
-set(AOM_LIBRARIES ${AOM_LIBRARIES} ${AOM_LIBRARY})
+find_library(AOM_LIBRARY NAMES aom PATHS ${_AOM_LIBRARY_DIRS})
+
+# Remove -laom since it will be replaced with full libaom library path
+if(AOM_LIBRARIES)
+    list(REMOVE_ITEM AOM_LIBRARIES "aom")
+endif()
+set(AOM_LIBRARIES ${AOM_LIBRARY} ${AOM_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(

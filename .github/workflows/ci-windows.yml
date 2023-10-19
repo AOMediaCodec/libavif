@@ -24,10 +24,16 @@ concurrency:
 jobs:
   build-static:
     runs-on: ${{ matrix.os }}
+    name: "build-static ${{ matrix.os }} AVIF_STATIC_SYSTEM_LIBRARY_MERGE=${{ matrix.system-lib-merge }}"
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest]
+        system-lib-merge: ["ON", "OFF"]
+        include:
+          - system-lib-merge: "OFF"
+            # See https://github.com/rust-lang/rust/blob/9e3f784eb2c7c847b6c3578b373c0e0bc9233ca3/library/std/src/sys/windows/c/windows_sys.rs#L625
+            static-link-libraries: ws2_32.lib userenv.lib advapi32.lib bcrypt.lib ntdll.lib
 
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
@@ -118,28 +124,35 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
         -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_AVIR=ON
+        -DAVIF_STATIC_SYSTEM_LIBRARY_MERGE=${{ matrix.system-lib-merge }}
     - name: Build libavif (ninja)
       working-directory: ./build
-      run: ninja
+      run: ninja -v
     - name: Run AVIF Tests
       working-directory: ./build
       run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+    - name: Check .pc file contents
+      working-directory: ./build
+      shell: pwsh
+      run: cat libavif.pc
+    - name: Save source file for static link bundling test
+      shell: pwsh
+      run: |
+        @"
+        #include "avif/avif.h"
+        #include <stdio.h>
+
+        int main(int argc, char * argv[])
+        {
+            char codecVersions[256];
+            avifCodecVersions(codecVersions);
+            printf("Version: %s (%s)\n", avifVersion(), codecVersions);
+        }
+        "@ | Out-File test.c
     - name: Check static link bundling
       run: >
-        cl .\apps\avifenc.c .\apps\shared\*.c /nologo
-        /DWIN32 /D_WINDOWS /MD /O2 /Ob2
-        -I.\apps\shared -I.\include
-        -external:W0
-        -external:I.\ext\libpng
-        -external:I.\ext\libjpeg
-        -external:I.\ext\zlib
-        -external:I.\build\ext\libpng
-        -external:I.\build\ext\zlib
-        /link
-        build\ext\libjpeg\jpeg.lib
-        build\ext\libpng\libpng16_static.lib
-        build\ext\zlib\zlibstatic.lib
-        build\avif.lib
-        /out:avifenc.exe
+        cl .\test.c /nologo /DWIN32 /D_WINDOWS /MD /O2 /Ob2 -I.\include
+        /link ${{ matrix.static-link-libraries }} build\avif.lib
+        /out:test.exe
 
-        .\avifenc.exe --help
+        .\test.exe

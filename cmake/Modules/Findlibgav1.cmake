@@ -20,15 +20,27 @@
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
     pkg_check_modules(_LIBGAV1 libgav1)
+
+    if(_LIBGAV1_FOUND)
+        if(BUILD_SHARED_LIBS)
+            set(_PC_TYPE)
+        else()
+            set(_PC_TYPE _STATIC)
+        endif()
+        set(LIBGAV1_LIBRARY_DIRS ${_LIBGAV1${_PC_TYPE}_LIBRARY_DIRS})
+        set(LIBGAV1_LIBRARIES ${_LIBGAV1${_PC_TYPE}_LIBRARIES})
+    endif()
 endif(PKG_CONFIG_FOUND)
 
-find_path(LIBGAV1_INCLUDE_DIR NAMES gav1/decoder.h PATHS ${_LIBGAV1_INCLUDEDIR})
+find_path(LIBGAV1_INCLUDE_DIR NAMES gav1/decoder.h PATHS ${_LIBGAV1_INCLUDE_DIRS})
 
-find_library(LIBGAV1_LIBRARY NAMES gav1 PATHS ${_LIBGAV1_LIBDIR})
+find_library(LIBGAV1_LIBRARY NAMES gav1 PATHS ${_LIBGAV1_LIBRARY_DIRS})
 
-if(LIBGAV1_LIBRARY)
-    set(LIBGAV1_LIBRARIES ${LIBGAV1_LIBRARIES} ${LIBGAV1_LIBRARY})
-endif(LIBGAV1_LIBRARY)
+# Remove -lgav1 since it will be replaced with full libgav1 library path
+if(LIBGAV1_LIBRARIES)
+    list(REMOVE_ITEM LIBGAV1_LIBRARIES "gav1")
+endif()
+set(LIBGAV1_LIBRARIES ${LIBGAV1_LIBRARY} ${LIBGAV1_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(

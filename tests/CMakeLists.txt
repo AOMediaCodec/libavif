@@ -9,10 +9,11 @@ enable_testing()
 # C tests and tools
 
 add_executable(aviftest aviftest.c)
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_USE_CXX)
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(aviftest ${AVIF_LINK_LIBRARIES})
+target_link_directories(aviftest PUBLIC ${AVIF_LINK_DIRS})
 add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
 if(AVIF_ENABLE_COVERAGE)
@@ -31,10 +32,11 @@ if(AVIF_ENABLE_COVERAGE)
 endif()
 
 add_executable(avifyuv avifyuv.c)
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_USE_CXX)
     set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(avifyuv ${AVIF_LINK_LIBRARIES})
+target_link_directories(avifyuv PUBLIC ${AVIF_LINK_DIRS})
 foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2 minutes each so they are disabled.
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
@@ -48,10 +50,11 @@ endif()
 
 # Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
 add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_USE_CXX)
     set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(repro_avif_decode_fuzzer avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(repro_avif_decode_fuzzer ${AVIF_LINK_LIBRARIES})
+target_link_directories(repro_avif_decode_fuzzer PUBLIC ${AVIF_LINK_DIRS})
 # The test below exists for coverage and as a usage example: repro_avif_decode_fuzzer [reproducer file path]
 add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
                                                ${CMAKE_CURRENT_SOURCE_DIR}/data/color_grid_alpha_nogrid.avif
@@ -66,6 +69,7 @@ macro(add_avif_gtest TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_include_directories(${TEST_NAME} PRIVATE ${GTEST_INCLUDE_DIRS})
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${GTEST_BOTH_LIBRARIES} ${ARGN})
+
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endmacro()
 macro(add_avif_gtest_with_data TEST_NAME)
@@ -99,7 +103,8 @@ if(AVIF_ENABLE_GTEST OR AVIF_ENABLE_FUZZTEST)
     endif()
 
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
-    target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
+    target_link_libraries(avifincrtest_helpers ${AVIF_LINK_LIBRARIES} ${GTEST_LIBRARIES})
+    target_link_directories(avifincrtest_helpers PUBLIC ${AVIF_LINK_DIRS})
     target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})
 endif()
 
