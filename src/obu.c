@@ -36,6 +36,7 @@
 
 #include "avif/internal.h"
 
+#include <stdint.h>
 #include <string.h>
 
 #if defined(AVIF_CODEC_AVM)
@@ -206,7 +207,7 @@ static avifBool parseSequenceHeaderProfile(avifBits * bits, avifSequenceHeader *
     return !bits->error;
 }
 
-static avifBool parseSequenceHeaderFeatures(avifBits * bits, avifSequenceHeader * header)
+static avifBool parseSequenceHeaderFrameMaxDimensions(avifBits * bits, avifSequenceHeader * header)
 {
     uint32_t frame_width_bits = avifBitsRead(bits, 4) + 1;
     uint32_t frame_height_bits = avifBitsRead(bits, 4) + 1;
@@ -219,8 +220,12 @@ static avifBool parseSequenceHeaderFeatures(avifBits * bits, avifSequenceHeader 
     if (frame_id_numbers_present_flag) {
         avifBitsRead(bits, 7); // delta_frame_id_length_minus_2, additional_frame_id_length_minus_1
     }
+    return !bits->error;
+}
 
-    avifBitsRead(bits, 3); // use_128x128_superblock, enable_filter_intra, enable_intra_edge_filter
+static avifBool parseSequenceHeaderEnabledFeatures(avifBits * bits, avifSequenceHeader * header)
+{
+    avifBitsRead(bits, 2); // enable_filter_intra, enable_intra_edge_filter
 
     if (!header->reduced_still_picture_header) {
         avifBitsRead(bits, 4); // enable_interintra_compound, enable_masked_compound, enable_warped_motion, enable_dual_filter
@@ -344,7 +349,10 @@ static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 {
     AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
 
-    AVIF_CHECK(parseSequenceHeaderFeatures(bits, header));
+    AVIF_CHECK(parseSequenceHeaderFrameMaxDimensions(bits, header));
+    avifBitsRead(bits, 1); // use_128x128_superblock
+    AVIF_CHECK(parseSequenceHeaderEnabledFeatures(bits, header));
+
     avifBitsRead(bits, 3); // enable_superres, enable_cdef, enable_restoration
 
     AVIF_CHECK(parseSequenceHeaderColorConfig(bits, header));
@@ -361,7 +369,13 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
 
     // See av1_read_sequence_header() in avm.
-    AVIF_CHECK(parseSequenceHeaderFeatures(bits, header));
+    AVIF_CHECK(parseSequenceHeaderFrameMaxDimensions(bits, header));
+#if CONFIG_BLOCK_256
+    if (!avifBitsRead(bits, 1)) // BLOCK_256X256
+#endif
+        avifBitsRead(bits, 1); // BLOCK_128X128
+    AVIF_CHECK(parseSequenceHeaderEnabledFeatures(bits, header));
+
     avifBitsRead(bits, 2);       // enable_superres, enable_cdef
     if (avifBitsRead(bits, 1)) { // enable_restoration
 #if CONFIG_LR_FLEX_SYNTAX
