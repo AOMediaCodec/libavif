@@ -20,12 +20,14 @@
 # It builds the different fuzz targets.
 
 # build dav1d
-cd ext && bash dav1d.cmd && cd ..
+cd ext && bash dav1d.cmd && bash libyuv.cmd && cd ..
 
 # build libavif
 mkdir build
 cd build
-cmake -G Ninja -DBUILD_SHARED_LIBS=0 -DAVIF_CODEC_DAV1D=1 -DAVIF_LOCAL_DAV1D=1 ..
+cmake -G Ninja -DBUILD_SHARED_LIBS=OFF \
+    -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON \
+    -DAVIF_LOCAL_LIBYUV=ON ..
 ninja
 
 # build fuzzer
