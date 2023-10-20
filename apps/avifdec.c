@@ -386,10 +386,10 @@ MAIN()
     returnCode = 0;
 
 cleanup:
-    if (returnCode != 0 && decoder != NULL) {
-        avifDumpDiagnostics(&decoder->diag);
-    }
     if (decoder != NULL) {
+        if (returnCode != 0) {
+            avifDumpDiagnostics(&decoder->diag);
+        }
         avifDecoderDestroy(decoder);
     }
     FREE_ARGV()
