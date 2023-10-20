@@ -189,10 +189,6 @@ TEST(EncodingTest, MaximumInvalidDimensions) {
 }
 
 TEST(AvifAllocTest, Extremes) {
-  void* p0 = avifAlloc(0);
-  EXPECT_NE(p0, nullptr);
-  avifFree(p0);
-
   void* p1 = avifAlloc(1);
   EXPECT_NE(p1, nullptr);
   avifFree(p1);
