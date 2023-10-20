@@ -687,11 +687,11 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
-// Returns NULL if a memory allocation failed.
+// Returns NULL if a memory allocation failed. The return value should be freed with free().
 static char * avifStrdup(const char * str)
 {
     size_t len = strlen(str);
-    char * dup = avifAlloc(len + 1);
+    char * dup = malloc(len + 1);
     if (!dup) {
         return NULL;
     }
