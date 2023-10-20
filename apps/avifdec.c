@@ -22,6 +22,13 @@
 
 #define DEFAULT_JPEG_QUALITY 90
 
+#define NEXTARG()                                                     \
+    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
+        fprintf(stderr, "%s requires an argument.", arg);             \
+        goto cleanup;                                                 \
+    }                                                                 \
+    arg = argv[++argIndex]
+
 static void syntax(void)
 {
     printf("Syntax: avifdec [options] input.avif output.[jpg|jpeg|png|y4m]\n");

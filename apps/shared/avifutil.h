@@ -10,13 +10,6 @@
 extern "C" {
 #endif
 
-#define NEXTARG()                                                     \
-    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
-        fprintf(stderr, "%s requires an argument.", arg);             \
-        goto cleanup;                                                 \
-    }                                                                 \
-    arg = argv[++argIndex]
-
 // MAIN(), INIT_ARGV(), FREE_ARGV() for UTF8-aware command line parsing.
 #if defined(_WIN32)
 #define MAIN() int wmain(int argc, wchar_t * wargv[])

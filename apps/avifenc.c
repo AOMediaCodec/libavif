@@ -25,6 +25,13 @@
 #include <windows.h>
 #endif
 
+#define NEXTARG()                                                     \
+    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
+        fprintf(stderr, "%s requires an argument.", arg);             \
+        goto cleanup;                                                 \
+    }                                                                 \
+    arg = argv[++argIndex]
+
 typedef struct
 {
     avifCodecChoice codecChoice;
