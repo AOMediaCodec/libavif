@@ -6,7 +6,6 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 // This example intends to show how a custom avifIO implementation can be used to decode
 // partially-downloaded AVIFs. Read either the avif_example_decode_file or
@@ -91,16 +90,15 @@ static avifResult avifIOStreamingReaderRead(struct avifIO * io, uint32_t readFla
 
 static void avifIOStreamingReaderDestroy(struct avifIO * io)
 {
-    avifFree(io);
+    free(io);
 }
 
 // Returns null in case of memory allocation failure.
 static avifIOStreamingReader * avifIOCreateStreamingReader(const uint8_t * data, size_t size)
 {
-    avifIOStreamingReader * reader = avifAlloc(sizeof(avifIOStreamingReader));
+    avifIOStreamingReader * reader = calloc(1, sizeof(avifIOStreamingReader));
     if (!reader)
         return NULL;
-    memset(reader, 0, sizeof(avifIOStreamingReader));
 
     // It is legal for io.destroy to be NULL, in which you are responsible for cleaning up
     // your own reader. This allows for a pre-existing, on-the-stack, or member variable to be
