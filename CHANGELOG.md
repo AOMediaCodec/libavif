@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Fix SVT-AV1 codec interface which was not setting video range at encoding.
 * Any item ID being 0 in an "iref" box with version 0 or 1 is now treated as an
   error instead of being ignored.
+* API calls now return AVIF_RESULT_OUT_OF_MEMORY instead of aborting on memory
+  allocation failure.
 
 ## [1.0.1] - 2023-08-29
 
