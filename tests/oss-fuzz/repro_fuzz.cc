@@ -1,11 +1,15 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <vector>
+
+using seconds = std::chrono::duration<double>;
+using chrono = std::chrono::high_resolution_clock;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size);
 
@@ -30,7 +34,9 @@ int main(int argc, char * argv[])
 
     for (int i = 1; i < argc; ++i) {
         const std::vector<uint8_t> buffer = ReadFile(argv[i]);
+        const chrono::time_point start_time = chrono::now();
         LLVMFuzzerTestOneInput(buffer.data(), buffer.size());
+        std::cout << "Reproducing " << argv[i] << " took " << seconds(chrono::now() - start_time).count() << " seconds." << std::endl;
     }
     return 0;
 }
