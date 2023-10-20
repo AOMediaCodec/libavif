@@ -473,6 +473,10 @@ avifBool avifPNGRead(const char * inputFilename,
         goto cleanup;
     }
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
+    if (rowPointers == NULL) {
+        fprintf(stderr, "avifPNGRead internal error: memory allocation failure");
+        goto cleanup;
+    }
     for (uint32_t y = 0; y < rgb.height; ++y) {
         rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
     }
@@ -697,6 +701,10 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     }
 
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * avif->height);
+    if (rowPointers == NULL) {
+        fprintf(stderr, "Error writing PNG: memory allocation failure");
+        goto cleanup;
+    }
     if (monochrome8bit) {
         uint8_t * yPlane = avif->yuvPlanes[AVIF_CHAN_Y];
         uint32_t yRowBytes = avif->yuvRowBytes[AVIF_CHAN_Y];
