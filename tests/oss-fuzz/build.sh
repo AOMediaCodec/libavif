@@ -37,12 +37,6 @@
 #     --sanitizer address
 
 ln -s $SRC/fuzztest $SRC/libavif/ext/fuzztest
-mkdir $SRC/libavif/ext/fuzztest/build.libavif
-cd $SRC/libavif/ext/fuzztest/build.libavif
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
-ninja
-cd ../../../
-
 
 # build dependencies
 cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.cmd && \
@@ -56,7 +50,7 @@ cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_CODEC_DAV1D=ON
       -DAVIF_LOCAL_AOM=ON -DAVIF_LOCAL_DAV1D=ON -DAVIF_LOCAL_FUZZTEST=ON \
       -DAVIF_LOCAL_GTEST=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBSHARPYUV=ON \
       -DAVIF_LOCAL_LIBYUV=ON \-DAVIF_LOCAL_ZLIBPNG=ON \
-      -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_ENABLE_FUZZTEST=ON ..
+      -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF -DAVIF_ENABLE_FUZZTEST=ON ..
 
 ninja
 
