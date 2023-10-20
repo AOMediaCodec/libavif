@@ -3,16 +3,13 @@
 
 #include "avif/avif.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 void * avifAlloc(size_t size)
 {
-    void * out = malloc(size);
-    if (out == NULL) {
-        // TODO(issue #820): Remove once all calling sites propagate the error as AVIF_RESULT_OUT_OF_MEMORY.
-        abort();
-    }
-    return out;
+    assert(size != 0); // Implementation-defined. See https://en.cppreference.com/w/cpp/memory/c/malloc
+    return malloc(size);
 }
 
 void avifFree(void * p)
