@@ -8,9 +8,17 @@
 #include "aviftest_helpers.h"
 #include "avifutil.h"
 
+#if defined(_WIN32)
+#include <locale.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 using libavif::testutil::AvifImagePtr;
 
-int main(int argc, char** argv) {
+MAIN() {
+  INIT_ARGV()
+
   if (argc != 4 && argc != 5) {
     std::cerr << "Wrong argument: " << argv[0]
               << " file1 file2 ignore_alpha_flag [psnr_threshold]" << std::endl;
@@ -71,6 +79,8 @@ int main(int argc, char** argv) {
     std::cout << "PSNR: " << psnr << ", images " << argv[1] << " and "
               << argv[2] << " are similar." << std::endl;
   }
+
+  FREE_ARGV()
 
   return 0;
 }

@@ -47,11 +47,14 @@ ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Input file paths.
 INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
+INPUT_UTF8_Y4M="🐾.y4m"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_encoded.avif"
+ENCODED_UTF8_FILE="🐾.avif"
 ENCODED_FILE_REFERENCE="avif_test_cmd_encoded_ref.avif"
 ENCODED_FILE_WITH_DASH="-avif_test_cmd_encoded.avif"
 DECODED_FILE="avif_test_cmd_decoded.png"
+DECODED_UTF8_FILE="😀.png"
 OUT_MSG="avif_test_cmd_out_msg.txt"
 
 # Cleanup
@@ -68,6 +71,10 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M}" "${DECODED_FILE}" 0 && exit 1
+  cp ${INPUT_Y4M} ${INPUT_UTF8_Y4M}
+  "${AVIFENC}" -s 8 "${INPUT_UTF8_Y4M}" -o "${ENCODED_UTF8_FILE}"
+  "${AVIFDEC}" "${ENCODED_UTF8_FILE}" "${DECODED_UTF8_FILE}"
+  "${ARE_IMAGES_EQUAL}" "${INPUT_UTF8_Y4M}" "${DECODED_UTF8_FILE}" 0 && exit 1
 
   # Argument parsing test with filenames starting with a dash.
   echo "Testing arguments"
