@@ -1386,7 +1386,7 @@ MAIN()
         syntaxShort();
         return 1;
     }
-
+    INIT_ARGV()
     const char * outputFilename = NULL;
 
     avifInput input;
@@ -1439,8 +1439,6 @@ MAIN()
     uint32_t gridCellCount = 0;
     avifImage ** gridCells = NULL;
     avifImage * gridSplitImage = NULL; // used for cleanup tracking
-
-    INIT_ARGV()
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601

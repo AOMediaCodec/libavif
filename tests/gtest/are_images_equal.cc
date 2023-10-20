@@ -17,10 +17,6 @@
 using libavif::testutil::AvifImagePtr;
 
 MAIN() {
-  AvifImagePtr decoded[2] = {
-      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy),
-      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy)};
-
   INIT_ARGV()
 
   if (argc != 4 && argc != 5) {
@@ -28,7 +24,9 @@ MAIN() {
               << " file1 file2 ignore_alpha_flag [psnr_threshold]" << std::endl;
     return 2;
   }
-
+  AvifImagePtr decoded[2] = {
+      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy),
+      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy)};
   if (!decoded[0] || !decoded[1]) {
     std::cerr << "Cannot create AVIF images." << std::endl;
     return 2;
@@ -82,9 +80,6 @@ MAIN() {
               << argv[2] << " are similar." << std::endl;
   }
 
-#if defined(_WIN32)
-cleanup:
-#endif
   FREE_ARGV()
 
   return 0;

@@ -30,19 +30,21 @@ extern "C" {
     char ** argv = NULL;                                                                                      \
     if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
         fprintf(stderr, "setlocale failed\n");                                                                \
-        goto cleanup;                                                                                         \
+        return 1;                                                                                             \
     }                                                                                                         \
     argvAll = (char *)malloc(1024 * argc * sizeof(*argvAll));                                                 \
     argv = (char **)malloc(argc * sizeof(*argv));                                                             \
     if (argv == NULL || argvAll == NULL) {                                                                    \
-        goto cleanup;                                                                                         \
+        FREE_ARGV()                                                                                           \
+        return 1;                                                                                             \
     }                                                                                                         \
     for (int i = 0; i < argc; ++i) {                                                                          \
         argv[i] = argvAll + 1024 * i;                                                                         \
         int rc = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wargv[i], -1, argv[i], 1024, NULL, NULL); \
         if (rc == 0) {                                                                                        \
             fprintf(stderr, "WideCharToMultiByte() failed\n");                                                \
-            goto cleanup;                                                                                     \
+            FREE_ARGV()                                                                                       \
+            return 1;                                                                                         \
         }                                                                                                     \
     }
 #else

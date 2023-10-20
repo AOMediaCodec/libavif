@@ -70,6 +70,8 @@ MAIN()
     uint32_t frameIndex = 0;
     uint32_t imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
     uint32_t imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
+    int returnCode = 1;
+    avifDecoder * decoder = NULL;
 
     if (argc < 2) {
         syntax();
@@ -227,7 +229,7 @@ MAIN()
             return 1;
         }
 
-        avifDecoder * decoder = avifDecoderCreate();
+        decoder = avifDecoderCreate();
         if (!decoder) {
             fprintf(stderr, "Memory allocation failure\n");
             return 1;
@@ -305,8 +307,7 @@ MAIN()
            jobs,
            (jobs == 1) ? "" : "s");
 
-    int returnCode = 1;
-    avifDecoder * decoder = avifDecoderCreate();
+    decoder = avifDecoderCreate();
     if (!decoder) {
         fprintf(stderr, "Memory allocation failure\n");
         goto cleanup;
@@ -378,7 +379,7 @@ MAIN()
     returnCode = 0;
 
 cleanup:
-    if (returnCode != 0) {
+    if (returnCode != 0 && decoder != NULL) {
         avifDumpDiagnostics(&decoder->diag);
     }
     if (decoder != NULL) {
