@@ -1399,6 +1399,10 @@ MAIN()
     avifInput input;
     memset(&input, 0, sizeof(input));
     input.files = malloc(sizeof(avifInputFile) * argc);
+    if (input.files == NULL) {
+        fprintf(stderr, "ERROR: memory allocation failure\n");
+        return 1;
+    }
     input.requestedFormat = AVIF_PIXEL_FORMAT_NONE; // AVIF_PIXEL_FORMAT_NONE is used as a sentinel for "auto"
 
     // See here for the discussion on the semi-arbitrary defaults for speed:
@@ -2401,6 +2405,10 @@ MAIN()
         printf("Preparing to encode a %ux%u grid (%u cells)...\n", settings.gridDims[0], settings.gridDims[1], gridCellCount);
 
         gridCells = calloc(gridCellCount, sizeof(avifImage *));
+        if (gridCells == NULL) {
+            fprintf(stderr, "ERROR: memory allocation failure\n");
+            goto cleanup;
+        }
         gridCells[0] = image; // take ownership of image
 
         int imageIndex = 1; // The first grid cell was loaded into image (imageIndex 0).

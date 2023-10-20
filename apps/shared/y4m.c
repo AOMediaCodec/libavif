@@ -438,7 +438,12 @@ cleanup:
             if (!feof(frame.inputFile)) {
                 // Remember y4m state for next time
                 *iter = malloc(sizeof(struct y4mFrameIterator));
-                **iter = frame;
+                if (*iter == NULL) {
+                    fprintf(stderr, "Inter-frame state memory allocation failure\n");
+                    result = AVIF_FALSE;
+                } else {
+                    **iter = frame;
+                }
             }
         }
     }
