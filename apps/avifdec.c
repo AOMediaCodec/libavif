@@ -305,11 +305,10 @@ int main(int argc, char * argv[])
            jobs,
            (jobs == 1) ? "" : "s");
 
-    int returnCode = 0;
+    int returnCode = 1;
     avifDecoder * decoder = avifDecoderCreate();
     if (!decoder) {
         fprintf(stderr, "Memory allocation failure\n");
-        returnCode = 1;
         goto cleanup;
     }
     decoder->maxThreads = jobs;
@@ -322,21 +321,18 @@ int main(int argc, char * argv[])
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
     if (result != AVIF_RESULT_OK) {
         fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
-        returnCode = 1;
         goto cleanup;
     }
 
     result = avifDecoderParse(decoder);
     if (result != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to parse image: %s\n", avifResultToString(result));
-        returnCode = 1;
         goto cleanup;
     }
 
     result = avifDecoderNthImage(decoder, frameIndex);
     if (result != AVIF_RESULT_OK) {
         fprintf(stderr, "ERROR: Failed to decode image: %s\n", avifResultToString(result));
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -358,10 +354,10 @@ int main(int argc, char * argv[])
     avifAppFileFormat outputFormat = avifGuessFileFormat(outputFilename);
     if (outputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
-        returnCode = 1;
+        goto cleanup;
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (!y4mWrite(outputFilename, decoder->image)) {
-            returnCode = 1;
+            goto cleanup;
         }
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         // Bypass alpha multiply step during conversion
@@ -369,16 +365,17 @@ int main(int argc, char * argv[])
             decoder->image->alphaPremultiplied = AVIF_TRUE;
         }
         if (!avifJPEGWrite(outputFilename, decoder->image, jpegQuality, chromaUpsampling)) {
-            returnCode = 1;
+            goto cleanup;
         }
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
         if (!avifPNGWrite(outputFilename, decoder->image, requestedDepth, chromaUpsampling, pngCompressionLevel)) {
-            returnCode = 1;
+            goto cleanup;
         }
     } else {
         fprintf(stderr, "Unsupported output file extension: %s\n", outputFilename);
-        returnCode = 1;
+        goto cleanup;
     }
+    returnCode = 0;
 
 cleanup:
     if (returnCode != 0) {

@@ -1399,7 +1399,7 @@ int main(int argc, char * argv[])
     // See here for the discussion on the semi-arbitrary defaults for speed:
     //     https://github.com/AOMediaCodec/libavif/issues/440
 
-    int returnCode = 0;
+    int returnCode = 1;
     avifBool noOverwrite = AVIF_FALSE;
     avifSettings settings;
     memset(&settings, 0, sizeof(settings));
@@ -1471,9 +1471,11 @@ int main(int argc, char * argv[])
             break;
         } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             syntaxLong();
+            returnCode = 0;
             goto cleanup;
         } else if (!strcmp(arg, "-V") || !strcmp(arg, "--version")) {
             avifPrintVersions();
+            returnCode = 0;
             goto cleanup;
         } else if (!strcmp(arg, "--no-overwrite")) {
             noOverwrite = AVIF_TRUE;
@@ -1501,7 +1503,6 @@ int main(int argc, char * argv[])
             input.requestedDepth = atoi(arg);
             if ((input.requestedDepth != 8) && (input.requestedDepth != 10) && (input.requestedDepth != 12)) {
                 fprintf(stderr, "ERROR: invalid depth: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "-y") || !strcmp(arg, "--yuv")) {
@@ -1516,7 +1517,6 @@ int main(int argc, char * argv[])
                 input.requestedFormat = AVIF_PIXEL_FORMAT_YUV400;
             } else {
                 fprintf(stderr, "ERROR: invalid format: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "-k") || !strcmp(arg, "--keyframe")) {
@@ -1527,7 +1527,6 @@ int main(int argc, char * argv[])
             // Print a warning if unsuffixed flag appears after input file.
             avifOptionSuffixType type = parseOptionSuffix(arg, /*warnNoSuffix=*/input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1546,7 +1545,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--qalpha") || strpre(arg, "--qalpha:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1565,7 +1563,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--min") || strpre(arg, "--min:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1584,7 +1581,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--max") || strpre(arg, "--max:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1603,7 +1599,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--minalpha") || strpre(arg, "--minalpha:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1622,7 +1617,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--maxalpha") || strpre(arg, "--maxalpha:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1647,7 +1641,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--tilerowslog2") || strpre(arg, "--tilerowslog2:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1666,7 +1659,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--tilecolslog2") || strpre(arg, "--tilecolslog2:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1685,7 +1677,6 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--autotiling") || strpre(arg, "--autotiling:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
@@ -1696,28 +1687,24 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--progressive")) {
             if (settings.layered) {
                 fprintf(stderr, "ERROR: Can not use both --progressive and --layered\n");
-                returnCode = 1;
                 goto cleanup;
             }
             settings.progressive = AVIF_TRUE;
         } else if (!strcmp(arg, "--layered")) {
             if (settings.progressive) {
                 fprintf(stderr, "ERROR: Can not use both --progressive and --layered\n");
-                returnCode = 1;
                 goto cleanup;
             }
             settings.layered = AVIF_TRUE;
         } else if (!strcmp(arg, "--scaling-mode") || strpre(arg, "--scaling-mode:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
             uint32_t frac[2] = { 0, 1 };
             if (!(parseU32List(frac, 1, arg, '/') || parseU32List(frac, 2, arg, '/')) || frac[0] > INT32_MAX || frac[1] > INT32_MAX) {
                 fprintf(stderr, "ERROR: Invalid scaling mode: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             if (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) {
@@ -1729,14 +1716,12 @@ int main(int argc, char * argv[])
             NEXTARG();
             if (!parseU32List(settings.gridDims, 2, arg, 'x')) {
                 fprintf(stderr, "ERROR: Invalid grid dims: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.gridDimsPresent = AVIF_TRUE;
             if ((settings.gridDims[0] == 0) || (settings.gridDims[0] > 256) || (settings.gridDims[1] == 0) ||
                 (settings.gridDims[1] > 256)) {
                 fprintf(stderr, "ERROR: Invalid grid dims (valid dim range [1-256]): %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "--cicp") || !strcmp(arg, "--nclx")) {
@@ -1744,7 +1729,6 @@ int main(int argc, char * argv[])
             uint32_t cicp[3];
             if (!parseU32List(cicp, 3, arg, '/')) {
                 fprintf(stderr, "ERROR: Invalid CICP value: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.colorPrimaries = (avifColorPrimaries)cicp[0];
@@ -1759,7 +1743,6 @@ int main(int argc, char * argv[])
                 requestedRange = AVIF_RANGE_FULL;
             } else {
                 fprintf(stderr, "ERROR: Unknown range: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "-s") || !strcmp(arg, "--speed")) {
@@ -1779,7 +1762,6 @@ int main(int argc, char * argv[])
             NEXTARG();
             if (!readEntireFile(arg, &exifOverride)) {
                 fprintf(stderr, "ERROR: Unable to read Exif metadata: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.ignoreExif = AVIF_TRUE;
@@ -1787,7 +1769,6 @@ int main(int argc, char * argv[])
             NEXTARG();
             if (!readEntireFile(arg, &xmpOverride)) {
                 fprintf(stderr, "ERROR: Unable to read XMP metadata: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.ignoreXMP = AVIF_TRUE;
@@ -1795,7 +1776,6 @@ int main(int argc, char * argv[])
             NEXTARG();
             if (!readEntireFile(arg, &iccOverride)) {
                 fprintf(stderr, "ERROR: Unable to read ICC profile: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.ignoreColorProfile = AVIF_TRUE;
@@ -1803,14 +1783,12 @@ int main(int argc, char * argv[])
             // --duration is special, we always treat it as suffixed with :u, so don't print warning for it.
             avifOptionSuffixType type = parseOptionSuffix(arg, /*warnNoSuffix=*/AVIF_FALSE);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
             int durationInt = atoi(arg);
             if (durationInt < 1) {
                 fprintf(stderr, "ERROR: Invalid duration: %d\n", durationInt);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.outputTiming.duration = (uint64_t)durationInt;
@@ -1819,7 +1797,6 @@ int main(int argc, char * argv[])
             int timescaleInt = atoi(arg);
             if (timescaleInt < 1) {
                 fprintf(stderr, "ERROR: Invalid timescale: %d\n", timescaleInt);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.outputTiming.timescale = (uint64_t)timescaleInt;
@@ -1828,20 +1805,17 @@ int main(int argc, char * argv[])
             settings.codecChoice = avifCodecChoiceFromName(arg);
             if (settings.codecChoice == AVIF_CODEC_CHOICE_AUTO) {
                 fprintf(stderr, "ERROR: Unrecognized codec: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             } else {
                 const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
                 if (codecName == NULL) {
                     fprintf(stderr, "ERROR: AV1 Codec cannot encode: %s\n", arg);
-                    returnCode = 1;
                     goto cleanup;
                 }
             }
         } else if (!strcmp(arg, "-a") || !strcmp(arg, "--advanced") || strpre(arg, "-a:") || strpre(arg, "--advanced:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
-                returnCode = 1;
                 goto cleanup;
             }
             NEXTARG();
@@ -1849,7 +1823,6 @@ int main(int argc, char * argv[])
                 (type == AVIF_OPTION_SUFFIX_UPDATE || input.filesCount == 0) ? &pendingSettings : &input.files[0].settings;
             if (!avifCodecSpecificOptionsAdd(&targetSettings->codecSpecificOptions, arg)) {
                 fprintf(stderr, "ERROR: Out of memory when setting codec specific option: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "--ignore-exif")) {
@@ -1877,7 +1850,6 @@ int main(int argc, char * argv[])
             NEXTARG();
             if (!parseU32List(settings.paspValues, 2, arg, ',')) {
                 fprintf(stderr, "ERROR: Invalid pasp values: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.paspPresent = AVIF_TRUE;
@@ -1885,7 +1857,6 @@ int main(int argc, char * argv[])
             NEXTARG();
             if (!parseU32List(settings.clapValues, 4, arg, ',')) {
                 fprintf(stderr, "ERROR: Invalid crop values: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             cropConversionRequired = AVIF_TRUE;
@@ -1893,7 +1864,6 @@ int main(int argc, char * argv[])
             NEXTARG();
             if (!parseU32List(settings.clapValues, 8, arg, ',')) {
                 fprintf(stderr, "ERROR: Invalid clap values: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.clapValid = AVIF_TRUE;
@@ -1902,7 +1872,6 @@ int main(int argc, char * argv[])
             irotAngle = (uint8_t)atoi(arg);
             if (irotAngle > 3) {
                 fprintf(stderr, "ERROR: Invalid irot angle: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "--imir")) {
@@ -1910,7 +1879,6 @@ int main(int argc, char * argv[])
             imirAxis = (uint8_t)atoi(arg);
             if (imirAxis > 1) {
                 fprintf(stderr, "ERROR: Invalid imir axis: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (!strcmp(arg, "--clli")) {
@@ -1918,7 +1886,6 @@ int main(int argc, char * argv[])
             if (!parseU32List(settings.clliValues, 2, arg, ',') || settings.clliValues[0] >= (1u << 16) ||
                 settings.clliValues[1] >= (1u << 16)) {
                 fprintf(stderr, "ERROR: Invalid clli values: %s\n", arg);
-                returnCode = 1;
                 goto cleanup;
             }
             settings.clliPresent = AVIF_TRUE;
@@ -1930,7 +1897,6 @@ int main(int argc, char * argv[])
                 settings.repetitionCount = atoi(arg);
                 if (settings.repetitionCount < 0) {
                     fprintf(stderr, "ERROR: Invalid repetition count: %s\n", arg);
-                    returnCode = 1;
                     goto cleanup;
                 }
             }
@@ -1943,7 +1909,6 @@ int main(int argc, char * argv[])
         } else if (arg[0] == '-') {
             fprintf(stderr, "ERROR: unrecognized option %s\n\n", arg);
             syntaxLong();
-            returnCode = 1;
             goto cleanup;
         } else {
             // Positional argument
@@ -1965,21 +1930,21 @@ int main(int argc, char * argv[])
             fprintf(stderr,
                     "When set, the pixel format can only be 444 in lossless "
                     "mode. 400 also works if the input is grayscale.\n");
-            returnCode = 1;
+            goto cleanup;
         }
         // Codec.
         const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
         if (codecName && !strcmp(codecName, "rav1e")) {
             fprintf(stderr, "rav1e doesn't support lossless encoding yet: https://github.com/xiph/rav1e/issues/151\n");
-            returnCode = 1;
+            goto cleanup;
         } else if (codecName && !strcmp(codecName, "svt")) {
             fprintf(stderr, "SVT-AV1 doesn't support lossless encoding yet: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636\n");
-            returnCode = 1;
+            goto cleanup;
         }
         // Range.
         if (requestedRange != AVIF_RANGE_FULL) {
             fprintf(stderr, "Range has to be full in lossless mode.\n");
-            returnCode = 1;
+            goto cleanup;
         }
         // Matrix coefficients.
         if (settings.cicpExplicitlySet) {
@@ -1994,7 +1959,7 @@ int main(int argc, char * argv[])
 #else
                 fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
 #endif
-                returnCode = 1;
+                goto cleanup;
             }
         } else {
             settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
@@ -2002,8 +1967,6 @@ int main(int argc, char * argv[])
         if (settings.progressive) {
             fprintf(stderr, "Automatic layered encoding is unsupported in lossless mode.\n");
         }
-        if (returnCode == 1)
-            goto cleanup;
     }
 
     stdinFile.filename = "(stdin)";
@@ -2024,7 +1987,6 @@ int main(int argc, char * argv[])
 
     if (!outputFilename || (input.useStdin && (input.filesCount > 0)) || (!input.useStdin && (input.filesCount < 1))) {
         syntaxShort();
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -2048,7 +2010,6 @@ int main(int argc, char * argv[])
         assert(!settings.layered);
         if (input.filesCount > 1) {
             fprintf(stderr, "ERROR: --progressive only supports one input.\n");
-            returnCode = 1;
             goto cleanup;
         }
         // for automatic layered encoding, make a 2 layer AVIF.
@@ -2061,7 +2022,6 @@ int main(int argc, char * argv[])
         // therefore encoding layered AVIF with single multi-frame input is not very meaningful.
         if (input.filesCount < 2 || input.filesCount > AVIF_MAX_AV1_LAYER_COUNT) {
             fprintf(stderr, "Encoding layered AVIF required 2 to %d inputs, but got %d.\n", AVIF_MAX_AV1_LAYER_COUNT, input.filesCount);
-            returnCode = 1;
             goto cleanup;
         }
         settings.layers = input.filesCount;
@@ -2070,7 +2030,6 @@ int main(int argc, char * argv[])
     }
     if (settings.layers > 1 && settings.gridDimsPresent) {
         fprintf(stderr, "Layered grid image unimplemented in avifenc.\n");
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -2085,7 +2044,6 @@ int main(int argc, char * argv[])
         if (fileSettings->autoTiling.set) {
             if (fileSettings->tileRowsLog2.set || fileSettings->tileColsLog2.set) {
                 fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified for current input.\n");
-                returnCode = 1;
                 goto cleanup;
             }
             // At this point, autoTiling of this input file can only be set by command line.
@@ -2106,7 +2064,7 @@ int main(int argc, char * argv[])
             if ((fileSettings->quality.set && fileSettings->quality.value != AVIF_QUALITY_LOSSLESS) ||
                 (fileSettings->qualityAlpha.set && fileSettings->qualityAlpha.value != AVIF_QUALITY_LOSSLESS)) {
                 fprintf(stderr, "ERROR: Quality cannot be set in lossless mode, except to %d.\n", AVIF_QUALITY_LOSSLESS);
-                returnCode = 1;
+                goto cleanup;
             }
             // Quantizers.
             if ((fileSettings->minQuantizer.set && fileSettings->minQuantizer.value != AVIF_QUANTIZER_LOSSLESS) ||
@@ -2114,14 +2072,13 @@ int main(int argc, char * argv[])
                 (fileSettings->minQuantizerAlpha.set && fileSettings->minQuantizerAlpha.value != AVIF_QUANTIZER_LOSSLESS) ||
                 (fileSettings->maxQuantizerAlpha.set && fileSettings->maxQuantizerAlpha.value != AVIF_QUANTIZER_LOSSLESS)) {
                 fprintf(stderr, "ERROR: Quantizers cannot be set in lossless mode, except to %d.\n", AVIF_QUANTIZER_LOSSLESS);
-                returnCode = 1;
+                goto cleanup;
             }
         } else {
             if (settings.progressive) {
                 assert(DEFAULT_QUALITY >= PROGRESSIVE_WORST_QUALITY);
                 if (fileSettings->quality.set && fileSettings->quality.value < PROGRESSIVE_WORST_QUALITY) {
                     fprintf(stderr, "ERROR: --qcolor must be at least %d when using --progressive.\n", PROGRESSIVE_WORST_QUALITY);
-                    returnCode = 1;
                     goto cleanup;
                 }
                 // --progressive only adjust color quality
@@ -2134,14 +2091,12 @@ int main(int argc, char * argv[])
             // Following inputs can change only one and leave the other unchanged.
             if (fileSettings->minQuantizer.set != fileSettings->maxQuantizer.set) {
                 fprintf(stderr, "ERROR: --min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
-                returnCode = 1;
                 goto cleanup;
             }
             if (fileSettings->minQuantizerAlpha.set != fileSettings->maxQuantizerAlpha.set) {
                 fprintf(stderr,
                         "ERROR: --minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n",
                         file->filename);
-                returnCode = 1;
                 goto cleanup;
             }
 
@@ -2211,7 +2166,6 @@ int main(int argc, char * argv[])
     image = avifImageCreateEmpty();
     if (!image) {
         fprintf(stderr, "ERROR: Out of memory\n");
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -2260,7 +2214,6 @@ int main(int argc, char * argv[])
                             &sourceWasRGB,
                             &firstSourceTiming,
                             settings.chromaDownsampling)) {
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -2277,7 +2230,6 @@ int main(int argc, char * argv[])
     }
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
         fprintf(stderr, "matrixCoefficients may not be set to identity (0) when subsampling.\n");
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -2302,7 +2254,6 @@ int main(int argc, char * argv[])
         (exifOverride.size && (avifImageSetMetadataExif(image, exifOverride.data, exifOverride.size) != AVIF_RESULT_OK)) ||
         (xmpOverride.size && (avifImageSetMetadataXMP(image, xmpOverride.data, xmpOverride.size) != AVIF_RESULT_OK))) {
         fprintf(stderr, "Error when setting overridden metadata: out of memory.\n");
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -2322,7 +2273,6 @@ int main(int argc, char * argv[])
     }
     if (cropConversionRequired) {
         if (!convertCropToClap(image->width, image->height, image->yuvFormat, settings.clapValues)) {
-            returnCode = 1;
             goto cleanup;
         }
         settings.clapValid = AVIF_TRUE;
@@ -2354,7 +2304,6 @@ int main(int argc, char * argv[])
                     (int32_t)image->clap.vertOffN,
                     (int32_t)image->clap.vertOffD,
                     diag.error);
-            returnCode = 1;
             goto cleanup;
         }
     }
@@ -2468,14 +2417,12 @@ int main(int argc, char * argv[])
             // Ensure no settings is set for other cells
             if (memcmp(&nextFile->settings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
                 fprintf(stderr, "ERROR: Grid image cannot use different settings for each cell.\n");
-                returnCode = 1;
                 goto cleanup;
             }
 
             avifImage * cellImage = avifImageCreateEmpty();
             if (!cellImage) {
                 fprintf(stderr, "ERROR: Out of memory\n");
-                returnCode = 1;
                 goto cleanup;
             }
             cellImage->colorPrimaries = image->colorPrimaries;
@@ -2500,7 +2447,6 @@ int main(int argc, char * argv[])
                                     /*sourceIsRGB=*/NULL,
                                     /*sourceTiming=*/NULL,
                                     settings.chromaDownsampling)) {
-                returnCode = 1;
                 goto cleanup;
             }
             // Let avifEncoderAddImageGrid() verify the grid integrity (valid cell sizes, depths etc.).
@@ -2514,12 +2460,10 @@ int main(int argc, char * argv[])
             gridCells[0] = NULL;
 
             if (!avifImageSplitGrid(gridSplitImage, settings.gridDims[0], settings.gridDims[1], gridCells)) {
-                returnCode = 1;
                 goto cleanup;
             }
         } else if (imageIndex != (int)gridCellCount) {
             fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
-            returnCode = 1;
             goto cleanup;
         }
         // TODO(yguyon): Check if it is possible to use frames from a single input file as grid cells. Maybe forbid it.
@@ -2543,7 +2487,6 @@ int main(int argc, char * argv[])
 
     avifEncodedByteSizes byteSizes = { 0, 0, 0 };
     if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage * const *)gridCells, &raw, &byteSizes)) {
-        returnCode = 1;
         goto cleanup;
     }
 
@@ -2568,16 +2511,16 @@ int main(int argc, char * argv[])
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
-        returnCode = 1;
         goto cleanup;
     }
     if (fwrite(raw.data, 1, raw.size, f) != raw.size) {
         fprintf(stderr, "Failed to write %" AVIF_FMT_ZU " bytes: %s\n", raw.size, outputFilename);
-        returnCode = 1;
+        goto cleanup;
     } else {
         printf("Wrote AVIF: %s\n", outputFilename);
     }
     fclose(f);
+    returnCode = 0;
 
 cleanup:
     if (gridCells) {
