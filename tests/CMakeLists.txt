@@ -75,7 +75,7 @@ macro(add_avif_gtest_with_data TEST_NAME)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
 
-if(AVIF_ENABLE_GTEST)
+if(AVIF_ENABLE_GTEST OR AVIF_ENABLE_FUZZTEST)
     if(AVIF_LOCAL_GTEST)
         set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
         set(GTEST_LIBRARIES
@@ -97,7 +97,9 @@ if(AVIF_ENABLE_GTEST)
     else()
         find_package(GTest REQUIRED)
     endif()
+endif()
 
+if(AVIF_ENABLE_GTEST)
     add_avif_gtest(avifallocationtest)
     add_avif_gtest_with_data(avifalphanoispetest)
     add_avif_gtest(avifalphapremtest)
@@ -171,7 +173,7 @@ endif()
 ################################################################################
 # Experimental FuzzTest support (Linux only)
 
-if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
+if(AVIF_ENABLE_FUZZTEST)
     # Adds a fuzztest from file TEST_NAME.cc located in the gtest folder. Extra arguments
     # are considered as extra linked libraries.
     macro(add_avif_fuzztest TEST_NAME)
@@ -212,7 +214,7 @@ if(AVIF_ENABLE_GTEST AND AVIF_ENABLE_FUZZTEST)
     endif()
 
     add_avif_fuzztest(avif_fuzztest_enc_dec_incr avifincrtest_helpers)
-elseif(AVIF_ENABLE_GTEST)
+else()
     message(STATUS "FuzzTest targets are disabled because AVIF_ENABLE_FUZZTEST is OFF.")
 endif()
 
