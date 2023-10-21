@@ -19,3 +19,6 @@ Aperture box is honored, the size of the displayed image will be 180x100.
 
 Test files for animated AVIF decoding.
 [Source](https://github.com/AOMediaCodec/av1-avif/tree/77bd20d59d7cade4ab98f276ff4828433ebd089b/testFiles/Netflix/avis).
+
+alpha_video.avif is patched at 0-indexed byte #259 replaced with 0x04 instead of
+0x00 as [0x00 is an invalid item_id for the iref box](https://github.com/AOMediaCodec/av1-avif/issues/217).
