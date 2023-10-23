@@ -1172,7 +1172,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
 
     if (avif->xmp.size > 0 && ignoreXMP) {
         // Clear XMP in case we read it for something else (like gain map).
-        avifImageSetMetadataXMP(avif, NULL, 0);
+        AVIF_CHECK(avifImageSetMetadataXMP(avif, NULL, 0) == AVIF_RESULT_OK);
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
     jpeg_finish_decompress(&cinfo);

@@ -37,8 +37,9 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());  // The pixels do not matter.
   if (create_icc) {
-    avifImageSetProfileICC(image.get(), testutil::kSampleIcc.data(),
-                           testutil::kSampleIcc.size());
+    ASSERT_EQ(avifImageSetProfileICC(image.get(), testutil::kSampleIcc.data(),
+                                     testutil::kSampleIcc.size()),
+              AVIF_RESULT_OK);
   }
   if (create_exif) {
     size_t exif_tiff_header_offset;  // Must be 0 for 'avir' brand.
@@ -46,13 +47,16 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
                                           testutil::kSampleExif.size(),
                                           &exif_tiff_header_offset),
               AVIF_RESULT_OK);
-    avifImageSetMetadataExif(
-        image.get(), testutil::kSampleExif.data() + exif_tiff_header_offset,
-        testutil::kSampleExif.size() - exif_tiff_header_offset);
+    ASSERT_EQ(
+        avifImageSetMetadataExif(
+            image.get(), testutil::kSampleExif.data() + exif_tiff_header_offset,
+            testutil::kSampleExif.size() - exif_tiff_header_offset),
+        AVIF_RESULT_OK);
   }
   if (create_xmp) {
-    avifImageSetMetadataXMP(image.get(), testutil::kSampleXmp.data(),
-                            testutil::kSampleXmp.size());
+    ASSERT_EQ(avifImageSetMetadataXMP(image.get(), testutil::kSampleXmp.data(),
+                                      testutil::kSampleXmp.size()),
+              AVIF_RESULT_OK);
   }
   if (create_clli) {
     image->clli.maxCLL = 1;

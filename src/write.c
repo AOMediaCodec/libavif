@@ -2098,9 +2098,10 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
     }
 
     if (alphaItem) {
-        writeCodecConfig(s, &alphaItem->av1C); // unsigned int(8) alpha_item_codec_config[];
+        AVIF_CHECKRES(writeCodecConfig(s,
+                                       &alphaItem->av1C)); // unsigned int(8) alpha_item_codec_config[];
     }
-    writeCodecConfig(s, &colorItem->av1C); // unsigned int(8) main_item_codec_config[];
+    AVIF_CHECKRES(writeCodecConfig(s, &colorItem->av1C)); // unsigned int(8) main_item_codec_config[];
 
     if (extendedMeta->size) {
         AVIF_CHECKRES(avifRWStreamWrite(s, extendedMeta->data, extendedMeta->size));
