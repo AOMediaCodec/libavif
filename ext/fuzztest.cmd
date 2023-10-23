@@ -12,8 +12,5 @@ cd fuzztest
 : # There is no tagged release as of 2023/09/18. Pick the last commit.
 git checkout b5500afbac873c884e1e021ea019ad943434df7d
 
-mkdir build.libavif
-cd build.libavif
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
-ninja
-cd ../..
+: # fuzztest is built by the main CMake project through add_subdirectory as recommended at:
+: # https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md

@@ -731,7 +731,7 @@ option(
     OFF
 )
 
-if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND AVIF_ENABLE_GTEST))
+if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST)))
     if(NOT AVIF_LOCAL_ZLIBPNG)
         find_package(ZLIB REQUIRED)
         find_package(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).

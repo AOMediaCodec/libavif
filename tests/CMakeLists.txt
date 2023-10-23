@@ -39,7 +39,7 @@ foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
 
-if(AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
+if(AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 14)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
@@ -97,6 +97,10 @@ if(AVIF_ENABLE_GTEST OR AVIF_ENABLE_FUZZTEST)
     else()
         find_package(GTest REQUIRED)
     endif()
+
+    add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
+    target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
+    target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})
 endif()
 
 if(AVIF_ENABLE_GTEST)
@@ -126,10 +130,6 @@ if(AVIF_ENABLE_GTEST)
 
     add_avif_gtest(avifgridapitest)
     add_avif_gtest(avifimagetest)
-
-    add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
-    target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
-    target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})
 
     add_executable(avifincrtest gtest/avifincrtest.cc)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
