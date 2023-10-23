@@ -27,7 +27,7 @@
 // or avifDecoderNextImage() varies wildly due to the packing of the file. Ideally, the end of the
 // AVIF is simply a large mdat or moov box full of AV1 payloads, and all metadata (meta boxes,
 // Exif/XMP payloads, etc) are as close to the front as possible. Any trailing MP4 boxes (free, etc)
-// will cause avifDecoderParse() to have to wait to download those, as it can't ensure a succesful
+// will cause avifDecoderParse() to have to wait to download those, as it can't ensure a successful
 // parse without knowing what boxes are remaining.
 
 typedef struct avifIOStreamingReader
