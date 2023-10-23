@@ -1,5 +1,12 @@
 name: CI Fuzz
-on: [pull_request]
+on:
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'src/**'
+      - 'tests/oss-fuzz/**'
+    types:
+      - closed
 
 permissions:
   contents: read
@@ -11,6 +18,7 @@ concurrency:
 
 jobs:
   fuzz:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
     - name: Build Fuzzers
