@@ -4,8 +4,8 @@
 #ifndef LIBAVIF_TESTS_OSS_FUZZ_AVIF_FUZZTEST_HELPERS_H_
 #define LIBAVIF_TESTS_OSS_FUZZ_AVIF_FUZZTEST_HELPERS_H_
 
+#include <cstdint>
 #include <cstdlib>
-#include <memory>
 #include <vector>
 
 #include "avif/avif.h"
@@ -184,19 +184,16 @@ inline auto ArbitraryAvifDecoder() { return ArbitraryBaseAvifDecoder(); }
 // Returns a white pixel compressed with AVIF.
 std::vector<uint8_t> GetWhiteSinglePixelAvif();
 
-// Sets the FUZZTEST_STACK_LIMIT environment variable to the value passed to
-// the constructor.
-class FuzztestStackLimitEnvironment : public ::testing::Environment {
- public:
-  FuzztestStackLimitEnvironment(const char* stack_limit)
-      : stack_limit_(stack_limit) {}
-  ~FuzztestStackLimitEnvironment() override {}
+//------------------------------------------------------------------------------
+// Environment setup
 
-  void SetUp() override { setenv("FUZZTEST_STACK_LIMIT", stack_limit_, 1); }
+// Sets the environment variable 'key' to the 'value'.
+::testing::Environment* SetEnv(const char* key, const char* value);
 
- private:
-  const char* stack_limit_;
-};
+// Sets the FUZZTEST_STACK_LIMIT environment variable to 524288.
+inline ::testing::Environment* SetStackLimitTo512x1024Bytes() {
+  return SetEnv("FUZZTEST_STACK_LIMIT", "524288");
+}
 
 //------------------------------------------------------------------------------
 
