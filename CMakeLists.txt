@@ -160,12 +160,13 @@ if(AVIF_LOCAL_ZLIBPNG)
     set(PNG_SHARED OFF CACHE BOOL "")
     set(PNG_TESTS OFF CACHE BOOL "")
     add_subdirectory(ext/libpng)
-    set(PNG_PNG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libpng")
+    set(PNG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libpng")
     set(PNG_LIBRARY png_static)
     include_directories("${CMAKE_CURRENT_BINARY_DIR}/ext/libpng")
     set(ANDROID ${PREV_ANDROID})
 
     set(ZLIB_LIBRARY zlibstatic)
+    set(PNG_LIBRARIES ${PNG_LIBRARY} ${ZLIB_LIBRARY})
 endif()
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST)))
@@ -843,14 +844,14 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
                          apps/shared/iccjpeg.c apps/shared/iccmaker.c apps/shared/y4m.c
     )
-    target_link_libraries(avif_apps ${AVIF_LINK_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARIES})
-    target_link_directories(avif_apps PUBLIC ${AVIF_LINK_DIRS} ${JPEG_LIBRARY_DIRS})
+    target_link_libraries(avif_apps ${AVIF_LINK_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${JPEG_LIBRARIES})
+    target_link_directories(avif_apps PUBLIC ${AVIF_LINK_DIRS} ${JPEG_LIBRARY_DIRS} ${PNG_LIBRARY_DIRS})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
-    # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
+    # directory before ${PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
     # headers from /usr/local/include.
     target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>)
-    target_include_directories(avif_apps SYSTEM PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
+    target_include_directories(avif_apps SYSTEM PRIVATE ${PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
     target_include_directories(avif_apps INTERFACE apps/shared)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
