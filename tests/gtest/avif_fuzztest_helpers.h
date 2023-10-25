@@ -187,10 +187,9 @@ std::vector<uint8_t> GetWhiteSinglePixelAvif();
 //------------------------------------------------------------------------------
 // Environment setup
 
-// Sets the environment variable 'key' to the 'value'.
-::testing::Environment* SetEnv(const char* key, const char* value);
+// Sets the environment variable 'name' to the 'value' during the setup step.
+::testing::Environment* SetEnv(const char* name, const char* value);
 
-// Sets the FUZZTEST_STACK_LIMIT environment variable to 524288.
 inline ::testing::Environment* SetStackLimitTo512x1024Bytes() {
   return SetEnv("FUZZTEST_STACK_LIMIT", "524288");
 }
