@@ -14,6 +14,7 @@
 #include "avif/avif.h"
 #include "avifutil.h"
 #include "fuzztest/fuzztest.h"
+#include "gtest/gtest.h"
 
 namespace libavif {
 namespace testutil {
@@ -191,6 +192,23 @@ std::vector<uint8_t> GetWhiteSinglePixelAvif() {
       0x0,  0x1f, 0x6d, 0x64, 0x61, 0x74, 0x12, 0x0,  0xa,  0x7,  0x38, 0x0,
       0x6,  0x10, 0x10, 0xd0, 0x69, 0x32, 0xa,  0x1f, 0xf0, 0x3f, 0xff, 0xff,
       0xc4, 0x0,  0x0,  0xaf, 0x70};
+}
+
+//------------------------------------------------------------------------------
+// Environment setup
+
+namespace {
+class Environment : public ::testing::Environment {
+ public:
+  Environment(const char* key, const char* value) : key_(key), value_(value) {}
+  void SetUp() override { setenv(key_, value_, 1); }
+  const char* key_;
+  const char* value_;
+};
+}  // namespace
+
+::testing::Environment* SetEnv(const char* key, const char* value) {
+  return ::testing::AddGlobalTestEnvironment(new Environment(key, value));
 }
 
 //------------------------------------------------------------------------------

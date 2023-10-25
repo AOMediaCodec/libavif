@@ -17,9 +17,7 @@ namespace libavif {
 namespace testutil {
 namespace {
 
-::testing::Environment* const stack_limit_env =
-    ::testing::AddGlobalTestEnvironment(
-        new FuzztestStackLimitEnvironment("524288"));  // 512 * 1024
+::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
 
 void CheckGainMapMetadataMatches(const avifGainMapMetadata& actual,
                                  const avifGainMapMetadata& expected) {
