@@ -66,6 +66,10 @@ else()
     set(LIBXML2_LIBRARIES ${LIBXML2_LIBRARY} ${LIBXML2_LIBRARIES})
 endif()
 
+if(ZLIB_LIBRARY)
+    list(TRANSFORM LIBXML2_LIBRARIES REPLACE "^z$" ${ZLIB_LIBRARY})
+endif()
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
     LibXml2

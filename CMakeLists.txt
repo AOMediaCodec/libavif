@@ -168,6 +168,15 @@ if(AVIF_LOCAL_ZLIBPNG)
     set(ZLIB_LIBRARY zlibstatic)
 endif()
 
+if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST)))
+    if(NOT AVIF_LOCAL_ZLIBPNG)
+        find_package_libavif(ZLIB REQUIRED)
+        find_package_libavif(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).
+    endif()
+    if(NOT AVIF_LOCAL_JPEG)
+        find_package_libavif(JPEG REQUIRED)
+    endif()
+endif()
 option(AVIF_LOCAL_JPEG "Build jpeg by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_JPEG)
     add_subdirectory(ext/libjpeg)
@@ -830,14 +839,6 @@ option(
 )
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST)))
-    if(NOT AVIF_LOCAL_ZLIBPNG)
-        find_package_libavif(ZLIB REQUIRED)
-        find_package_libavif(PNG 1.6.32 REQUIRED) # 1.6.32 or above for png_get_eXIf_1()/png_set_eXIf_1() and iTXt (for XMP).
-    endif()
-    if(NOT AVIF_LOCAL_JPEG)
-        find_package_libavif(JPEG REQUIRED)
-    endif()
-
     add_library(
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
                          apps/shared/iccjpeg.c apps/shared/iccmaker.c apps/shared/y4m.c

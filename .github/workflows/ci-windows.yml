@@ -36,6 +36,13 @@ jobs:
             static-link-libraries: ws2_32.lib userenv.lib advapi32.lib bcrypt.lib ntdll.lib
 
     steps:
+    # Fixes an issue with the image where the wrong cmake is used
+    # See https://github.com/actions/runner-images/issues/8598
+    - name: Remove Strawberry Perl from PATH (Windows)
+      shell: pwsh
+      run: |
+        $env:PATH = $env:PATH -replace "C:\\Strawberry\\c\\bin;", ""
+        "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
     - name: Setup Visual Studio shell
       if: runner.os == 'Windows'
