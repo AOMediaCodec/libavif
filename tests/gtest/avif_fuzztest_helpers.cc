@@ -200,15 +200,16 @@ std::vector<uint8_t> GetWhiteSinglePixelAvif() {
 namespace {
 class Environment : public ::testing::Environment {
  public:
-  Environment(const char* key, const char* value) : key_(key), value_(value) {}
-  void SetUp() override { setenv(key_, value_, 1); }
-  const char* key_;
+  Environment(const char* name, const char* value)
+      : name_(name), value_(value) {}
+  void SetUp() override { setenv(name_, value_, 1); }
+  const char* name_;
   const char* value_;
 };
 }  // namespace
 
-::testing::Environment* SetEnv(const char* key, const char* value) {
-  return ::testing::AddGlobalTestEnvironment(new Environment(key, value));
+::testing::Environment* SetEnv(const char* name, const char* value) {
+  return ::testing::AddGlobalTestEnvironment(new Environment(name, value));
 }
 
 //------------------------------------------------------------------------------
