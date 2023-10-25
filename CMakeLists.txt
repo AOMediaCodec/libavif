@@ -133,6 +133,11 @@ macro(find_package_libavif)
     set(CMAKE_FIND_LIBRARY_SUFFIXES, "${_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES}")
 endmacro()
 
+# Only applicable to macOS. In GitHub CI's macos-latest os image, this prevents using the libpng
+# and libjpeg headers from /Library/Frameworks/Mono.framework/Headers instead of
+# /usr/local/include.
+set(CMAKE_FIND_FRAMEWORK LAST)
+
 # ---------------------------------------------------------------------------------------
 # This insanity is for people embedding libavif or making fully static or Windows builds.
 # Any proper unix environment should ignore these entire following blocks.
@@ -440,11 +445,6 @@ if(AVIF_ENABLE_COMPLIANCE_WARDEN)
         ext/ComplianceWarden/src/cw_version.cpp
     )
 endif()
-
-# Only applicable to macOS. In GitHub CI's macos-latest os image, this prevents using the libpng
-# and libjpeg headers from /Library/Frameworks/Mono.framework/Headers instead of
-# /usr/local/include.
-set(CMAKE_FIND_FRAMEWORK LAST)
 
 if(UNIX)
     # Find out if we have threading available
