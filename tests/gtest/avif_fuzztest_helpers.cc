@@ -203,6 +203,8 @@ class Environment : public ::testing::Environment {
   Environment(const char* name, const char* value)
       : name_(name), value_(value) {}
   void SetUp() override { setenv(name_, value_, 1); }
+
+ private:
   const char* name_;
   const char* value_;
 };
