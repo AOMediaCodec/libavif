@@ -84,7 +84,7 @@ static inline float lerp(float a, float b, float w)
 
 #define SDR_WHITE_NITS 203.0f
 
-avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
+avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                                     avifTransferCharacteristics transferCharacteristics,
                                     const avifGainMap * gainMap,
                                     float hdrCapacity,
@@ -150,8 +150,8 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
     }
 
     avifRGBColorSpaceInfo baseRGBInfo;
-    avifRGBColorSpaceInfo toneMappedPixelRGBState;
-    if (!avifGetRGBColorSpaceInfo(baseImage, &baseRGBInfo) || !avifGetRGBColorSpaceInfo(toneMappedImage, &toneMappedPixelRGBState)) {
+    avifRGBColorSpaceInfo toneMappedPixelRGBInfo;
+    if (!avifGetRGBColorSpaceInfo(baseImage, &baseRGBInfo) || !avifGetRGBColorSpaceInfo(toneMappedImage, &toneMappedPixelRGBInfo)) {
         avifDiagnosticsPrintf(diag, "Unsupported RGB color space");
         res = AVIF_RESULT_NOT_IMPLEMENTED;
         goto cleanup;
@@ -172,7 +172,7 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
                         basePixelRGBA[c] = AVIF_CLAMP(linearToGamma(gammaToLinear(basePixelRGBA[c])), 0.0f, 1.0f);
                     }
                 }
-                avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBState, basePixelRGBA);
+                avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBInfo, basePixelRGBA);
             }
         }
         goto cleanup;
@@ -180,7 +180,8 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
 
     if (gainMap->image->width != width || gainMap->image->height != height) {
         rescaledGainMap = avifImageCreateEmpty();
-        res = avifImageCopy(rescaledGainMap, gainMap->image, AVIF_PLANES_YUV);
+        const avifCropRect rect = { 0, 0, gainMap->image->width, gainMap->image->height };
+        res = avifImageSetViewRect(rescaledGainMap, gainMap->image, &rect);
         if (res != AVIF_RESULT_OK) {
             goto cleanup;
         }
@@ -251,7 +252,7 @@ avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
             }
             toneMappedPixelRGBA[3] = basePixelRGBA[3]; // Alpha is unaffected by tone mapping.
             rgbSumLinear += pixelRgbMaxLinear;
-            avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBState, toneMappedPixelRGBA);
+            avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBInfo, toneMappedPixelRGBA);
         }
     }
     if (clli != NULL) {
@@ -291,7 +292,7 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
         goto cleanup;
     }
 
-    res = avifImageApplyGainMapRGB(&baseImageRgb,
+    res = avifRGBImageApplyGainMap(&baseImageRgb,
                                    baseImage->transferCharacteristics,
                                    gainMap,
                                    hdrCapacity,

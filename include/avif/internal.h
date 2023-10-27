@@ -651,7 +651,7 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 // Performs tone mapping on a base image using the provided gain map.
 // The HDR capacity (also known as HDR headroom or ratio) is the ratio of HDR to
 // SDR white brightness of the display to tone map for, in linear space.
-// 'toneMappedImage' should have the 'format' and 'depth' fields set to the desired values.
+// 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
 // If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
 // NOTE: only used in tests for now, might be added to the public API at some point.
 struct avifRGBImage;
@@ -663,7 +663,7 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                  avifContentLightLevelInformationBox * clli,
                                  avifDiagnostics * diag);
 // Same as above but takes an avifRGBImage as input instead of avifImage.
-avifResult avifImageApplyGainMapRGB(const avifRGBImage * baseImage,
+avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                                     avifTransferCharacteristics transferCharacteristics,
                                     const avifGainMap * gainMap,
                                     float hdrCapacity,
