@@ -39,12 +39,6 @@ jobs:
         run: pip install meson
       - name: Setup nasm
         uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
-      - name: Build dav1d with the Android NDK
-        working-directory: ext
-        run: bash dav1d_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
-      - name: Build libyuv with the Android NDK
-        working-directory: ext
-        run: bash libyuv_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
       - name: Setup JDK
         uses: actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8 # v4.1.0
         with:
