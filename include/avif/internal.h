@@ -647,6 +647,32 @@ typedef struct avifSequenceHeader
 
 AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+// Performs tone mapping on a base image using the provided gain map.
+// The HDR capacity (also known as HDR headroom or ratio) is the ratio of HDR to
+// SDR white brightness of the display to tone map for, in linear space.
+// 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
+// If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
+// NOTE: only used in tests for now, might be added to the public API at some point.
+struct avifRGBImage;
+avifResult avifImageApplyGainMap(const avifImage * baseImage,
+                                 const avifGainMap * gainMap,
+                                 float hdrCapacity,
+                                 avifTransferCharacteristics outputTransferCharacteristics,
+                                 avifRGBImage * toneMappedImage,
+                                 avifContentLightLevelInformationBox * clli,
+                                 avifDiagnostics * diag);
+// Same as above but takes an avifRGBImage as input instead of avifImage.
+avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
+                                    avifTransferCharacteristics transferCharacteristics,
+                                    const avifGainMap * gainMap,
+                                    float hdrCapacity,
+                                    avifTransferCharacteristics outputTransferCharacteristics,
+                                    avifRGBImage * toneMappedImage,
+                                    avifContentLightLevelInformationBox * clli,
+                                    avifDiagnostics * diag);
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
 

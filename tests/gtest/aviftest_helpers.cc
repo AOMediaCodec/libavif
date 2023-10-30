@@ -449,6 +449,17 @@ AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
   return decoded;
 }
 
+AvifImagePtr DecodFile(const std::string& path) {
+  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  if (!decoded || !decoder ||
+      (avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()) !=
+       AVIF_RESULT_OK)) {
+    return {nullptr, nullptr};
+  }
+  return decoded;
+}
+
 bool Av1EncoderAvailable() {
   const char* encoding_codec =
       avifCodecName(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_ENCODE);

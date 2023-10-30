@@ -515,6 +515,10 @@ typedef struct avifContentLightLevelInformationBox
     // 'clli' from ISO/IEC 23000-22:2019 (MIAF) 7.4.4.2.2. The SEI message semantics written above
     //  each entry were originally described in ISO/IEC 23008-2.
 
+    // Given the red, green, and blue colour primary intensities in the linear light domain for the
+    // location of a luma sample in a corresponding 4:4:4 representation, denoted as E_R, E_G, and E_B,
+    // the maximum component intensity is defined as E_Max = Max(E_R, Max(E_G, E_B)).
+
     // max_content_light_level, when not equal to 0, indicates an upper bound on the maximum light
     // level among all individual samples in a 4:4:4 representation of red, green, and blue colour
     // primary intensities (in the linear light domain) for the pictures of the CLVS, in units of
