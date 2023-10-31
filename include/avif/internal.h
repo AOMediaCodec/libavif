@@ -93,6 +93,9 @@ avifTransferFunction avifTransferCharacteristicsGetGammaToLinearFunction(avifTra
 // Same as above in the opposite direction. toGamma(toLinear(v)) ~= v.
 avifTransferFunction avifTransferCharacteristicsGetLinearToGammaFunction(avifTransferCharacteristics atc);
 
+// Compute the RGB->YUV conversion coefficients kr, kg, kb, such that Y=kr*R+kg*G+kb*B.
+void avifColorPrimariesComputeYCoeffs(avifColorPrimaries colorPrimaries, float coeffs[3]);
+
 #define AVIF_ARRAY_DECLARE(TYPENAME, ITEMSTYPE, ITEMSNAME) \
     typedef struct TYPENAME                                \
     {                                                      \
@@ -673,6 +676,28 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                                     avifRGBImage * toneMappedImage,
                                     avifContentLightLevelInformationBox * clli,
                                     avifDiagnostics * diag);
+
+// Computes a gain map between two images: a base image and an alternate image.
+// Both images should have the same width and height, and use the same color
+// primaries. TODO(maryla): allow different primaries.
+// gainMap->image should be initialized with avifImageCreate(), with the width,
+// height, depth and yuvFormat fields set to the desired output values for the
+// gain map. All of these fields may differ from the source images.
+AVIF_API avifResult avifComputeGainMapRGB(const struct avifRGBImage * baseRgbImage,
+                                          avifTransferCharacteristics baseTransferCharacteristics,
+                                          const struct avifRGBImage * altRgbImage,
+                                          avifTransferCharacteristics altTransferCharacteristics,
+                                          avifColorPrimaries colorPrimaries,
+                                          avifGainMap * gainMap,
+                                          avifDiagnostics * diag);
+// Convenience function. Same as above but takes avifImage images as input
+// instead of avifRGBImage. Gain map computation is performed in RGB space so
+// the images are converted to RGB first.
+AVIF_API avifResult avifComputeGainMap(const struct avifImage * baseImage,
+                                       const struct avifImage * altImage,
+                                       avifGainMap * gainMap,
+                                       avifDiagnostics * diag);
+
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
