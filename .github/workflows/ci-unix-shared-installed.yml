@@ -21,7 +21,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
     - name: Set GCC & G++ 11 compiler (on Linux)
       if: runner.os == 'Linux'
       run: echo "CC=gcc-11" >> $GITHUB_ENV && echo "CXX=g++-11" >> $GITHUB_ENV
@@ -38,7 +38,7 @@ jobs:
         cmake-version: '3.13.x'
     - name: Print cmake version
       run: cmake --version
-    - uses: seanmiddleditch/gha-setup-ninja@16b940825621068d98711680b6c3ff92201f8fc0 # v3
+    - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       run: |

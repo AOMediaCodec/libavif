@@ -23,16 +23,16 @@ jobs:
 
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Download and Setup the Android NDK
-        uses: nttld/setup-ndk@dbacc5871a0fac6eef9a09d2ca86bc8bf79432c3 # v1.3.1
+        uses: nttld/setup-ndk@3354316c3285ea90da09d047280dd79d00d5a37a # v1.4.1
         id: setup-ndk
         with:
           # r25c is the same as 25.2.9519653.
           ndk-version: r25c
           add-to-path: false
       - name: Setup ninja
-        uses: seanmiddleditch/gha-setup-ninja@16b940825621068d98711680b6c3ff92201f8fc0 # v3
+        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835 # v1.14.1
         with:
