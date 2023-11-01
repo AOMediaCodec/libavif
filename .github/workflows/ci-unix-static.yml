@@ -17,6 +17,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         build-type: [Release, Debug]
+        install-type: [local, system, system-merged]
+        include:
+          - install-type: system-merged
+            static-link-flags: "-lrav1e -lSvtAv1Enc -laom -lsharpyuv -lyuv -lgav1 -ldav1d"
 
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
@@ -37,7 +41,7 @@ jobs:
       uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ext
-        key: ${{ runner.os }}-${{ runner.build-type }}-${{ hashFiles('ext/*.cmd') }}
+        key: ${{ runner.os }}-${{ matrix.build-type }}-${{ hashFiles('ext/*.cmd') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@187efd9581ed20ee4e03c0dfb9ac2cd5896c4835 # v1.14.1
       with:
@@ -80,39 +84,72 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash -e libsharpyuv.cmd
+
+    - name: Install system libraries
+      if: matrix.install-type != 'local'
+      working-directory: ./ext
+      run: |
+        cat<<"EOF" | sudo -E env PATH="$PATH" bash
+        (cd aom/build.libavif && ninja install)
+        (cd dav1d/build && ninja install)
+        (cd libgav1/build && ninja install)
+        (cd libwebp/build && ninja install)
+        (cd libyuv/build && ninja install)
+        (cd SVT-AV1/Build/linux/Release && make install)
+        cp -rf rav1e/build.libavif/usr/* /usr/local/
+        EOF
+
     - name: Build GoogleTest
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
       run: bash -e googletest.cmd
 
-    - name: Prepare libavif (cmake)
+    - name: Prepare libavif install (cmake)
+      env:
+        LOCAL: ${{ matrix.install-type == 'local' && 'ON' || 'OFF' }}
+        MERGE_SYSTEM_LIBS: ${{ matrix.install-type == 'system-merged' && 'ON' || 'OFF' }}
       run: >
         mkdir build && cd build
 
         cmake .. -G Ninja
-        -DCMAKE_BUILD_TYPE=${{ runner.build-type }} -DBUILD_SHARED_LIBS=OFF
-        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
-        -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON
-        -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=ON
-        -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=ON
-        -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=ON
-        -DAVIF_LOCAL_LIBYUV=ON
-        -DAVIF_LOCAL_LIBSHARPYUV=ON
+        -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DBUILD_SHARED_LIBS=OFF
+        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=$LOCAL
+        -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=$LOCAL
+        -DAVIF_CODEC_RAV1E=ON -DAVIF_LOCAL_RAV1E=$LOCAL
+        -DAVIF_CODEC_SVT=ON -DAVIF_LOCAL_SVT=$LOCAL
+        -DAVIF_CODEC_LIBGAV1=ON -DAVIF_LOCAL_LIBGAV1=$LOCAL
+        -DAVIF_LOCAL_LIBYUV=$LOCAL
+        -DAVIF_LOCAL_LIBSHARPYUV=$LOCAL
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
         -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
         -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_AVIR=ON
+        -DAVIF_STATIC_SYSTEM_LIBRARY_MERGE=$MERGE_SYSTEM_LIBS
+
     - name: Build libavif (ninja)
       working-directory: ./build
-      run: ninja
+      run: ninja -v && sudo -E env PATH="$PATH" ninja install
     - name: Run AVIF Tests
       working-directory: ./build
       run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
+    - name: Check .pc file contents
+      run: cat build/libavif.pc
+
     - name: Check static link bundling
       run: |
-        cc -o avifenc  -I./apps/shared -I./include apps/avifenc.c apps/shared/*.c \
-          build/libavif.a -lpng -ljpeg -lz -lm -ldl -lstdc++
+        cat <<EOF > test.c
+        #include "avif/avif.h"
+        #include <stdio.h>
 
-        ./avifenc --help
+        int main(int argc, char * argv[]) {
+            char codecVersions[256];
+            avifCodecVersions(codecVersions);
+            printf("Version: %s (%s)\n", avifVersion(), codecVersions);
+        }
+        EOF
+
+        cc -o test -I./include test.c build/libavif.a $(PKG_CONFIG_PATH=build pkg-config --libs --static libavif) -lstdc++
+
+        ./test
