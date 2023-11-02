@@ -12,18 +12,38 @@ namespace {
 // Converts a double value to a fraction, and checks that the difference
 // between numerator/denominator and v is below relative_tolerance.
 void TestRoundTrip(double v, double relative_tolerance) {
-  uint32_t numerator, denominator;
-  ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
-  const double reconstructed = (double)numerator / denominator;
-  const double tolerance = v * relative_tolerance;
-  EXPECT_NEAR(reconstructed, v, tolerance)
-      << "numerator " << (double)numerator << " denominator "
-      << (double)denominator;
+  // Unsigned.
+  if (v >= 0) {
+    uint32_t numerator, denominator;
+    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
+    const double reconstructed = (double)numerator / denominator;
+    const double tolerance = v * relative_tolerance;
+    EXPECT_NEAR(reconstructed, v, tolerance)
+        << "numerator " << (double)numerator << " denominator "
+        << (double)denominator;
+  }
+
+  // Signed.
+  if (v <= INT32_MAX) {
+    for (double multiplier : {1.0, -1.0}) {
+      double v2 = v * multiplier;
+      int32_t numerator;
+      uint32_t denominator;
+
+      ASSERT_TRUE(avifDoubleToSignedFraction(v2, &numerator, &denominator))
+          << v2;
+      const double reconstructed = (double)numerator / denominator;
+      const double tolerance = v * relative_tolerance;
+      EXPECT_NEAR(reconstructed, v2, tolerance)
+          << "numerator " << (double)numerator << " denominator "
+          << (double)denominator;
+    }
+  }
 }
 
 constexpr double kLotsOfDecimals = 0.14159265358979323846;
 
-TEST(ToFractionUTest, RoundTrip) {
+TEST(ToFractionTest, RoundTrip) {
   // Whole numbers and simple fractions should match perfectly.
   constexpr double kPerfectTolerance = 0.0;
   TestRoundTrip(0.0, kPerfectTolerance);
@@ -41,7 +61,7 @@ TEST(ToFractionUTest, RoundTrip) {
   TestRoundTrip(1253456.456, kPerfectTolerance);
   TestRoundTrip(8598533.9, kPerfectTolerance);
 
-  // // Numbers with a lot of decimals or very large/small can show a small
+  // Numbers with a lot of decimals or very large/small can show a small
   // error.
   constexpr double kSmallTolerance = 1e-9;
   TestRoundTrip(0.0123456, kSmallTolerance);
@@ -62,7 +82,7 @@ TEST(ToFractionUTest, RoundTrip) {
 
 // Tests the max difference between the fraction-ified value and the original
 // value, for a subset of values between 0.0 and UINT32_MAX.
-TEST(ToFractionUTest, MaxDifference) {
+TEST(ToFractionTest, MaxDifference) {
   double max_error = 0;
   double max_error_v = 0;
   double max_relative_error = 0;
@@ -89,7 +109,7 @@ TEST(ToFractionUTest, MaxDifference) {
 
 // Tests the max difference between the fraction-ified value and the original
 // value, for a subset of values between 0 and 1.0/UINT32_MAX.
-TEST(ToFractionUTest, MaxDifferenceSmall) {
+TEST(ToFractionTest, MaxDifferenceSmall) {
   double max_error = 0;
   double max_error_v = 0;
   double max_relative_error = 0;
@@ -114,7 +134,7 @@ TEST(ToFractionUTest, MaxDifferenceSmall) {
   EXPECT_LT(max_relative_error, 1e-5) << max_relative_error_v;
 }
 
-TEST(ToFractionUTest, BadValues) {
+TEST(ToFractionTest, BadValues) {
   uint32_t numerator, denominator;
   // Negative value.
   EXPECT_FALSE(avifDoubleToUnsignedFraction(-0.1, &numerator, &denominator));

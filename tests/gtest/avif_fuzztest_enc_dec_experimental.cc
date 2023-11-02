@@ -24,17 +24,17 @@ void CheckGainMapMetadataMatches(const avifGainMapMetadata& actual,
   // 'expecteed' is the source struct which has arbitrary data and booleans
   // values can contain any value, but the decoded ('actual') struct should
   // be 0 or 1.
-  EXPECT_EQ(actual.baseRenditionIsHDR, expected.baseRenditionIsHDR ? 1 : 0);
-  EXPECT_EQ(actual.hdrCapacityMinN, expected.hdrCapacityMinN);
-  EXPECT_EQ(actual.hdrCapacityMinD, expected.hdrCapacityMinD);
-  EXPECT_EQ(actual.hdrCapacityMaxN, expected.hdrCapacityMaxN);
-  EXPECT_EQ(actual.hdrCapacityMaxD, expected.hdrCapacityMaxD);
+  EXPECT_EQ(actual.backwardDirection, expected.backwardDirection ? 1 : 0);
+  EXPECT_EQ(actual.baseHdrHeadroomN, expected.baseHdrHeadroomN);
+  EXPECT_EQ(actual.baseHdrHeadroomD, expected.baseHdrHeadroomD);
+  EXPECT_EQ(actual.alternateHdrHeadroomN, expected.alternateHdrHeadroomN);
+  EXPECT_EQ(actual.alternateHdrHeadroomD, expected.alternateHdrHeadroomD);
   for (int c = 0; c < 3; ++c) {
     SCOPED_TRACE(c);
-    EXPECT_EQ(actual.offsetSdrN[c], expected.offsetSdrN[c]);
-    EXPECT_EQ(actual.offsetSdrD[c], expected.offsetSdrD[c]);
-    EXPECT_EQ(actual.offsetHdrN[c], expected.offsetHdrN[c]);
-    EXPECT_EQ(actual.offsetHdrD[c], expected.offsetHdrD[c]);
+    EXPECT_EQ(actual.baseOffsetN[c], expected.baseOffsetN[c]);
+    EXPECT_EQ(actual.baseOffsetD[c], expected.baseOffsetD[c]);
+    EXPECT_EQ(actual.alternateOffsetN[c], expected.alternateOffsetN[c]);
+    EXPECT_EQ(actual.alternateOffsetD[c], expected.alternateOffsetD[c]);
     EXPECT_EQ(actual.gainMapGammaN[c], expected.gainMapGammaN[c]);
     EXPECT_EQ(actual.gainMapGammaD[c], expected.gainMapGammaD[c]);
     EXPECT_EQ(actual.gainMapMinN[c], expected.gainMapMinN[c]);

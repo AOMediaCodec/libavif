@@ -128,7 +128,8 @@ bool WriteImage(const avifImage* image, const char* file_path);
 
 // Encodes the image with default parameters.
 // Returns an empty payload in case of error.
-AvifRwData Encode(const avifImage* image, int speed = AVIF_SPEED_DEFAULT);
+AvifRwData Encode(const avifImage* image, int speed = AVIF_SPEED_DEFAULT,
+                  int quality = AVIF_QUALITY_DEFAULT);
 
 // Decodes the bytes to an image with default parameters.
 // Returns nullptr in case of error.
