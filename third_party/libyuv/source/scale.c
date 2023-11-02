@@ -167,6 +167,7 @@ static void ScalePlaneBox(int src_width,
   {
     // Allocate a row buffer of uint16_t.
     align_buffer_64(row16, src_width * 2);
+    if (!row16) return;
     void (*ScaleAddCols)(int dst_width, int boxheight, int x, int dx,
                          const uint16_t* src_ptr, uint8_t* dst_ptr) =
         (dx & 0xffff) ? ScaleAddCols2_C
@@ -216,6 +217,7 @@ static void ScalePlaneBox_16(int src_width,
   {
     // Allocate a row buffer of uint32_t.
     align_buffer_64(row32, src_width * 4);
+    if (!row32) return;
     void (*ScaleAddCols)(int dst_width, int boxheight, int x, int dx,
                          const uint32_t* src_ptr, uint16_t* dst_ptr) =
         (dx & 0xffff) ? ScaleAddCols2_16_C : ScaleAddCols1_16_C;
@@ -267,6 +269,7 @@ static void ScalePlaneBilinearDown(int src_width,
   // TODO(fbarchard): Consider not allocating row buffer for kFilterLinear.
   // Allocate a row buffer.
   align_buffer_64(row, src_width);
+  if (!row) return;
 
   const int max_y = (src_height - 1) << 16;
   int j;
@@ -320,6 +323,7 @@ static void ScalePlaneBilinearDown_16(int src_width,
   // TODO(fbarchard): Consider not allocating row buffer for kFilterLinear.
   // Allocate a row buffer.
   align_buffer_64(row, src_width * 2);
+  if (!row) return;
 
   const int max_y = (src_height - 1) << 16;
   int j;
@@ -400,6 +404,7 @@ static void ScalePlaneBilinearUp(int src_width,
     // Allocate 2 row buffers.
     const int row_size = (dst_width + 31) & ~31;
     align_buffer_64(row, row_size * 2);
+    if (!row) return;
 
     uint8_t* rowptr = row;
     int rowstride = row_size;
@@ -694,6 +699,7 @@ static void ScalePlaneBilinearUp_16(int src_width,
     // Allocate 2 row buffers.
     const int row_size = (dst_width + 31) & ~31;
     align_buffer_64(row, row_size * 4);
+    if (!row) return;
 
     uint16_t* rowptr = (uint16_t*)row;
     int rowstride = row_size;
