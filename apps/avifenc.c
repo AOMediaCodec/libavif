@@ -855,6 +855,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 #define INVALID_QUALITY (-1)
 #define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
 #define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
+#define DEFAULT_QUALITY_GAIN_MAP DEFAULT_QUALITY
 #define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto automatic layered encoding below this quality
 #define PROGRESSIVE_START_QUALITY 2  // First layer use this quality
 
@@ -1183,19 +1184,27 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
 #endif
 
     const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-    char speed_str[16];
+    char speedStr[16];
     if (settings->speed == AVIF_SPEED_DEFAULT) {
-        strcpy(speed_str, "default");
+        strcpy(speedStr, "default");
     } else {
-        snprintf(speed_str, sizeof(speed_str), "%d", settings->speed);
+        snprintf(speedStr, sizeof(speedStr), "%d", settings->speed);
     }
-    printf("Encoding with AV1 codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)], %s, %d worker thread(s), please wait...\n",
+    char gainMapStr[100] = { 0 };
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+    if (firstImage->gainMap.image != NULL) {
+        snprintf(gainMapStr, sizeof(gainMapStr), ", gain map quality [%d (%s)]", encoder->qualityGainMap, qualityString(encoder->qualityGainMap));
+    }
+#endif
+
+    printf("Encoding with AV1 codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
            codecName ? codecName : "none",
-           speed_str,
+           speedStr,
            encoder->quality,
            qualityString(encoder->quality),
            encoder->qualityAlpha,
            qualityString(encoder->qualityAlpha),
+           gainMapStr,
            encoder->autoTiling ? "automatic tiling" : manualTilingStr,
            settings->jobs);
 
@@ -1419,7 +1428,7 @@ MAIN()
     settings.qualityAlphaIsConstrained = AVIF_FALSE;
     settings.overrideQuality = INVALID_QUALITY;
     settings.overrideQualityAlpha = INVALID_QUALITY;
-    settings.qualityGainMap = INVALID_QUALITY;
+    settings.qualityGainMap = DEFAULT_QUALITY_GAIN_MAP;
     settings.progressive = AVIF_FALSE;
     settings.layered = AVIF_FALSE;
     settings.layers = 0;
