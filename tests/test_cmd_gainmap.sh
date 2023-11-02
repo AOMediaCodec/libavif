@@ -42,8 +42,8 @@ AVIFENC="${BINARY_DIR}/avifenc"
 # Input file paths.
 INPUT_JPEG_GAINMAP="${TESTDATA_DIR}/paris_exif_xmp_gainmap_bigendian.jpg"
 # Output file names.
-ENCODED_FILE="avif_test_cmd_encoded.avif"
-OUT_MSG="avif_test_cmd_out_msg.txt"
+ENCODED_FILE="avif_test_cmd_gainmap_encoded.avif"
+OUT_MSG="avif_test_cmd_gainmap_out_msg.txt"
 
 # Cleanup
 cleanup() {
@@ -64,10 +64,8 @@ pushd ${TMP_DIR}
   test "$size_q85" -gt "$size_q60"
   # With --ignore-gain-map, no gain map should be encoded
   "${AVIFENC}" -s 10 --qgain-map 85 --ignore-gain-map "${INPUT_JPEG_GAINMAP}" "${ENCODED_FILE}" > "${OUT_MSG}"
-  if grep -i "gain map quality" "${OUT_MSG}"; then
-    exit 1
-  fi
-  grep -i "Gain map *: Absent" "${OUT_MSG}"
+  grep "gain map quality" "${OUT_MSG}" && exit 1
+  grep "Gain map *: Absent" "${OUT_MSG}"
 popd
 
 exit 0
