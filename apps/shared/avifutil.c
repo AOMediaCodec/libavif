@@ -141,7 +141,7 @@ static void avifImageDumpInternal(const avifImage * avif,
                avifPixelFormatToString(gainMap->yuvFormat),
                (gainMap->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
                gainMap->matrixCoefficients,
-               (avif->gainMap.metadata.baseHdrHeadroomN) == 0 ? "SDR" : "HDR");
+               (avif->gainMap.metadata.baseHdrHeadroomN == 0) ? "SDR" : "HDR");
     } else if (gainMapPresent) {
         printf("Present (but ignored)\n");
     } else {

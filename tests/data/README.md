@@ -466,7 +466,9 @@ Contains a 4x3 color grid, a 4x3 alpha grid, and a single gain map image.
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source : created from a personal photo, convertd to HDR using Photoshop.
+Source : created from a personal photo, converted to HDR using Photoshop, see
+https://helpx.adobe.com/camera-raw/using/hdr-output.html and
+https://gregbenzphotography.com/hdr-images/jpg-hdr-gain-maps-in-adobe-camera-raw/
 
 HDR image using the PQ transfer curve. Contains a gain map in
 [Adobe's format](https://helpx.adobe.com/camera-raw/using/gain-map.html) that is not recognized by
@@ -478,7 +480,9 @@ libavif and ignored by the tests.
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source : created from a personal photo, convertd to HDR using Photoshop, then saved as JPEG+gainmap.
+Source : created from a personal photo, converted to HDR using Photoshop, then saved as JPEG+gainmap,
+see https://helpx.adobe.com/camera-raw/using/hdr-output.html and
+https://gregbenzphotography.com/hdr-images/jpg-hdr-gain-maps-in-adobe-camera-raw/
 
 ### File [seine_sdr_gainmap_srgb.avif](seine_sdr_gainmap_srgb.avif)
 
@@ -486,7 +490,7 @@ Source : created from a personal photo, convertd to HDR using Photoshop, then sa
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source : created with avifenc from `seine_sdr_gainmap_srgb.jpg` from and converted to avif with avifenc build
+Source : created from `seine_sdr_gainmap_srgb.jpg` converted to avif with avifenc built
 with AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP and AVIF_ENABLE_LIBXML2 then:
 
 ```

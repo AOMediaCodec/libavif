@@ -217,7 +217,7 @@ TEST(JpegTest, ExtendedXmp) {
 
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-    <!-- Imagine this is some exetended xmp that avifenc concatenated to
+    <!-- Imagine this is some extended xmp that avifenc concatenated to
       the main XMP. As a result we have invalid XMP but should still be
       able to parse it. -->
     <stuff></stuff>

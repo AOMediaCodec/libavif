@@ -616,9 +616,15 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", metadataDouble.gainMapMax, /*numDoubles=*/3));
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", metadataDouble.gainMapGamma, /*numDoubles=*/3));
 
-    // Should have HDRCapacityMax > HDRCapacityMin.
-    if (metadataDouble.alternateHdrHeadroom <= (double)metadataDouble.baseHdrHeadroom) {
-        return AVIF_FALSE;
+    // See inequality requirements in section 'XMP Representation of Gain Map Metadata' of Adobe's gain map specification
+    // https://helpx.adobe.com/camera-raw/using/gain-map.html
+    AVIF_CHECK(metadataDouble.alternateHdrHeadroom > metadataDouble.baseHdrHeadroom);
+    AVIF_CHECK(metadataDouble.baseHdrHeadroom >= 0);
+    for (int i = 0; i < 3; ++i) {
+        AVIF_CHECK(metadataDouble.gainMapMax[i] >= metadataDouble.gainMapMin[i]);
+        AVIF_CHECK(metadataDouble.baseOffset[i] >= 0.0);
+        AVIF_CHECK(metadataDouble.alternateOffset[i] >= 0.0);
+        AVIF_CHECK(metadataDouble.gainMapGamma[i] > 0.0);
     }
 
     uint32_t numValues;
@@ -634,19 +640,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
             metadataDouble.backwardDirection = AVIF_FALSE;
         } else {
             return AVIF_FALSE; // Unexpected value.
-        }
-    }
-
-    // Gamma should be > 0.
-    for (int i = 0; i < 3; ++i) {
-        if (metadataDouble.gainMapGamma[i] == 0) {
-            return AVIF_FALSE; // Invalid value, the spec says that gamma should be > 0
-        }
-    }
-    // Should have GainMapMax >= GainMapMin.
-    for (int i = 0; i < 3; ++i) {
-        if (metadataDouble.gainMapMax[i] < (double)metadataDouble.gainMapMin[i]) {
-            return AVIF_FALSE;
         }
     }
 

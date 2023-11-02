@@ -592,7 +592,7 @@ typedef struct avifGainMapMetadata
     // Conversely, if baseHdrHeadroom is > alternateHdrHeadroom, the result of
     // tone mapping for a display with an HDR headroom that is >= baseHdrHeadroom
     // is the base image, and the result of tone mapping for a display with an HDR
-    //  headroom <= alternateHdrHeadroom is the alternate image.
+    // headroom <= alternateHdrHeadroom is the alternate image.
     // For a display with a capacity between baseHdrHeadroom and alternateHdrHeadroom,
     // tone mapping results in an interpolation between the base and alternate
     // versions. baseHdrHeadroom and alternateHdrHeadroom can be tuned to change how

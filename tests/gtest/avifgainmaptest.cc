@@ -992,13 +992,13 @@ TEST_P(ToneMapTest, ToneMapImage) {
   }
 
   // Uncomment the following to save the encoded image as an AVIF file.
-  const testutil::AvifRwData encoded =
-      testutil::Encode(tone_mapped.get(), /*speed=*/9, /*quality=*/90);
-  ASSERT_GT(encoded.size, 0u);
-  std::ofstream(
-      "/tmp/tone_mapped_" + std::to_string(hdr_headroom) + "_" + source,
-      std::ios::binary)
-      .write(reinterpret_cast<char*>(encoded.data), encoded.size);
+  //   const testutil::AvifRwData encoded =
+  //       testutil::Encode(tone_mapped.get(), /*speed=*/9, /*quality=*/90);
+  //   ASSERT_GT(encoded.size, 0u);
+  //   std::ofstream(
+  //       "/tmp/tone_mapped_" + std::to_string(hdr_headroom) + "_" + source,
+  //       std::ios::binary)
+  //       .write(reinterpret_cast<char*>(encoded.data), encoded.size);
 }
 
 INSTANTIATE_TEST_SUITE_P(
