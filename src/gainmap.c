@@ -302,7 +302,7 @@ cleanup:
 // ---------------------------------------------------------------------------
 // Create a gain map.
 
-// A histogram of gain map values is used to remove outliers, whic helps with
+// A histogram of gain map values is used to remove outliers, which helps with
 // gain map accuracy/compression.
 #define NUM_HISTOGRAM_BUCKETS 1000 // Empirical value
 // Arbitrary max value, roughly equivalent to bringing SDR white to max PQ white (log2(10000/203) ~= 5.62)
@@ -311,11 +311,13 @@ cleanup:
 #define BUCKET_RANGE (BUCKET_MAX_VALUE - BUCKET_MIN_VALUE)
 #define MAX_OUTLIERS_RATIO 0.001f // 0.1%
 
+// Returns the index of the histogram bucket for a given value.
 static int avifValueToBucketIdx(float v)
 {
     v = AVIF_CLAMP(v, BUCKET_MIN_VALUE, BUCKET_MAX_VALUE);
     return AVIF_MIN((int)avifRoundf((v - BUCKET_MIN_VALUE) / BUCKET_RANGE * NUM_HISTOGRAM_BUCKETS), NUM_HISTOGRAM_BUCKETS - 1);
 }
+// Returns the lower end of the value range belonging to the given histogram bucket.
 static float avifBucketIdxToValue(int idx)
 {
     return idx * BUCKET_RANGE / NUM_HISTOGRAM_BUCKETS + BUCKET_MIN_VALUE;
@@ -341,7 +343,7 @@ static void avifFindMinMaxWithoutOutliers(int histogram[NUM_HISTOGRAM_BUCKETS], 
             break;
         }
         if (histogram[i] == 0) {
-            *rangeMin = avifBucketIdxToValue(i);
+            *rangeMin = avifBucketIdxToValue(i + 1); // +1 to get the higher end of the bucket.
         }
     }
 
@@ -398,14 +400,12 @@ avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
 
     const avifBool singleChannel = (gainMap->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
-    for (int c = 0; c < 3; ++c) {
+    const int numGainMapChannels = singleChannel ? 1 : 3;
+    for (int c = 0; c < numGainMapChannels; ++c) {
         gainMapF[c] = avifAlloc(width * height * sizeof(float));
         if (gainMapF[c] == NULL) {
             res = AVIF_RESULT_OUT_OF_MEMORY;
             goto cleanup;
-        }
-        if (singleChannel) {
-            break;
         }
     }
 
@@ -436,7 +436,7 @@ avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
                 altRGBA[c] = altGammaToLinear(altRGBA[c]);
             }
 
-            for (int c = 0; c < 3; ++c) {
+            for (int c = 0; c < numGainMapChannels; ++c) {
                 float base = baseRGBA[c];
                 float alt = altRGBA[c];
                 if (singleChannel) {
@@ -455,9 +455,6 @@ avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
                 ++(histograms[c][avifValueToBucketIdx(ratioLog2)]);
 
                 gainMapF[c][j * width + i] = ratioLog2;
-                if (singleChannel) {
-                    break;
-                }
             }
         }
     }
@@ -465,7 +462,7 @@ avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
     // Find approximate min/max for each channel, discarding outliers.
     float gainMapMinLog2[3] = { 0.0f, 0.0f, 0.0f };
     float gainMapMaxLog2[3] = { 0.0f, 0.0f, 0.0f };
-    for (int c = 0; c < 3; ++c) {
+    for (int c = 0; c < numGainMapChannels; ++c) {
         avifFindMinMaxWithoutOutliers(histograms[c], &gainMapMinLog2[c], &gainMapMaxLog2[c]);
     }
 
@@ -484,7 +481,7 @@ avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
     }
 
     // Scale the gain map values to map [min, max] range to [0, 1].
-    for (int c = 0; c < 3; ++c) {
+    for (int c = 0; c < numGainMapChannels; ++c) {
         const float range = gainMapMaxLog2[c] - gainMapMinLog2[c];
         if (range <= 0.0f) {
             continue;
@@ -496,9 +493,6 @@ avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
                 const float v = AVIF_CLAMP(gainMapF[c][j * width + i], gainMapMinLog2[c], gainMapMaxLog2[c]);
                 gainMapF[c][j * width + i] = powf((v - gainMapMinLog2[c]) / range, (float)gainMapMetadata.gainMapGamma[c]);
             }
-        }
-        if (singleChannel) {
-            break;
         }
     }
 
@@ -542,7 +536,7 @@ avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
     }
 
     // Scale down the gain map if requested.
-    // Another way would be to scale down the source images, but it seems to perform worse.
+    // Another way would be to scale the source images, but it seems to perform worse.
     if (requestedWidth != gainMapImage->width || requestedHeight != gainMapImage->height) {
         AVIF_CHECKRES(avifImageScale(gainMap->image, requestedWidth, requestedHeight, diag));
     }
@@ -618,7 +612,6 @@ avifResult avifComputeGainMap(const avifImage * baseImage, const avifImage * alt
 cleanup:
     avifRGBImageFreePixels(&baseImageRgb);
     avifRGBImageFreePixels(&altImageRgb);
-
     return res;
 }
 

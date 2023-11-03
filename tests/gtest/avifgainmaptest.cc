@@ -961,7 +961,7 @@ void ToneMapImageAndCompareToReference(
   if (reference_image != nullptr) {
     EXPECT_EQ(out_depth, (int)reference_image->depth);
     const double psnr = testutil::GetPsnr(*reference_image, *tone_mapped);
-    printf("PSNR: %f\n", psnr);
+    printf("PSNR (tone mapped vs reference): %f\n", psnr);
     EXPECT_GE(psnr, min_psnr);
     EXPECT_LE(psnr, max_psnr);
     if (psnr_out != nullptr) {

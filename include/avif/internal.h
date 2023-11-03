@@ -93,7 +93,7 @@ avifTransferFunction avifTransferCharacteristicsGetGammaToLinearFunction(avifTra
 // Same as above in the opposite direction. toGamma(toLinear(v)) ~= v.
 avifTransferFunction avifTransferCharacteristicsGetLinearToGammaFunction(avifTransferCharacteristics atc);
 
-// Compute the RGB->YUV conversion coefficients kr, kg, kb, such that Y=kr*R+kg*G+kb*B.
+// Computes the RGB->YUV conversion coefficients kr, kg, kb, such that Y=kr*R+kg*G+kb*B.
 void avifColorPrimariesComputeYCoeffs(avifColorPrimaries colorPrimaries, float coeffs[3]);
 
 #define AVIF_ARRAY_DECLARE(TYPENAME, ITEMSTYPE, ITEMSNAME) \
