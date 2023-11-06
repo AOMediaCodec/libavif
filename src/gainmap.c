@@ -250,6 +250,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     if (clli != NULL) {
         // For exact CLLI value definitions, see ISO/IEC 23008-2 section D.3.35
         // at https://standards.iso.org/ittf/PubliclyAvailableStandards/index.html
+        // See also discussion in https://github.com/AOMediaCodec/libavif/issues/1727
 
         // Convert extended SDR (where 1.0 is SDR white) to nits.
         clli->maxCLL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbMaxLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
