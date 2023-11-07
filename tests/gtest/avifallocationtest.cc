@@ -21,7 +21,7 @@ void TestAllocation(uint32_t width, uint32_t height, uint32_t depth,
         AVIF_PIXEL_FORMAT_YUV400}) {
     for (avifPlanesFlag planes :
          {AVIF_PLANES_YUV, AVIF_PLANES_A, AVIF_PLANES_ALL}) {
-      testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+      ImagePtr image(avifImageCreateEmpty());
       ASSERT_NE(image, nullptr);
       image->width = width;
       image->height = height;
@@ -95,7 +95,7 @@ TEST(DISABLED_AllocationTest, OutOfMemory) {
 
 void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
                   avifResult expected_result) {
-  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
   image->width = width;
   image->height = height;
@@ -135,7 +135,7 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
   image->alphaPlane = bytes;
 
   // Try to encode.
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   testutil::AvifRwData encoded_avif;

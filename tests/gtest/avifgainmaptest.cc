@@ -3,8 +3,14 @@
 
 #include <cmath>
 #include <fstream>
+#include <iostream>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 #include "avif/avif.h"
+#include "avif/avif_cxx.h"
 #include "avif/internal.h"
 #include "avifincrtest_helpers.h"
 #include "aviftest_helpers.h"
@@ -63,23 +69,23 @@ avifGainMapMetadata GetTestGainMapMetadata(bool base_rendition_is_hdr) {
   return metadata;
 }
 
-testutil::AvifImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
-  testutil::AvifImagePtr image =
+ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
+  ImagePtr image =
       testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
   if (image == nullptr) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   image->transferCharacteristics =
       (avifTransferCharacteristics)(base_rendition_is_hdr
                                         ? AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084
                                         : AVIF_TRANSFER_CHARACTERISTICS_SRGB);
   testutil::FillImageGradient(image.get());
-  testutil::AvifImagePtr gain_map =
+  ImagePtr gain_map =
       testutil::CreateImage(/*width=*/6, /*height=*/17, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
   if (gain_map == nullptr) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   testutil::FillImageGradient(gain_map.get());
   image->gainMap.image = gain_map.release();  // 'image' now owns the gain map.
@@ -99,17 +105,16 @@ testutil::AvifImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
 }
 
 TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = AVIF_TRUE;
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
@@ -156,19 +161,18 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
 }
 
 TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = AVIF_TRUE;
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
@@ -195,8 +199,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
 }
 
 TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
 
   const uint32_t kDenominator = 1000;
   image->gainMap.metadata.baseHdrHeadroomD = kDenominator;
@@ -209,16 +212,16 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
     image->gainMap.metadata.gainMapMaxD[c] = kDenominator;
   }
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = AVIF_FALSE;
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
@@ -233,8 +236,7 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
 }
 
 TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
 
   for (int c = 0; c < 3; ++c) {
     image->gainMap.metadata.baseOffsetN[c] = 1;
@@ -249,16 +251,16 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
     image->gainMap.metadata.gainMapMaxD[c] = 10;
   }
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = AVIF_FALSE;
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
@@ -273,7 +275,7 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
 }
 
 TEST(GainMapTest, EncodeDecodeGrid) {
-  std::vector<testutil::AvifImagePtr> cells;
+  std::vector<ImagePtr> cells;
   std::vector<const avifImage*> cell_ptrs;
   std::vector<const avifImage*> gain_map_ptrs;
   constexpr int kGridCols = 2;
@@ -285,14 +287,14 @@ TEST(GainMapTest, EncodeDecodeGrid) {
       GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
 
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
-    testutil::AvifImagePtr image =
+    ImagePtr image =
         testutil::CreateImage(kCellWidth, kCellHeight, /*depth=*/10,
                               AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
     ASSERT_NE(image, nullptr);
     image->transferCharacteristics =
         AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
     testutil::FillImageGradient(image.get());
-    testutil::AvifImagePtr gain_map =
+    ImagePtr gain_map =
         testutil::CreateImage(kCellWidth / 2, kCellHeight / 2, /*depth=*/8,
                               AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
     ASSERT_NE(gain_map, nullptr);
@@ -307,7 +309,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
     cells.push_back(std::move(image));
   }
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result =
@@ -319,9 +321,9 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = AVIF_TRUE;
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
@@ -330,13 +332,13 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << decoder->diag.error;
 
-  testutil::AvifImagePtr merged = testutil::CreateImage(
+  ImagePtr merged = testutil::CreateImage(
       static_cast<int>(decoded->width), static_cast<int>(decoded->height),
       decoded->depth, decoded->yuvFormat, AVIF_PLANES_ALL);
   ASSERT_EQ(testutil::MergeGrid(kGridCols, kGridRows, cell_ptrs, merged.get()),
             AVIF_RESULT_OK);
 
-  testutil::AvifImagePtr merged_gain_map =
+  ImagePtr merged_gain_map =
       testutil::CreateImage(static_cast<int>(decoded->gainMap.image->width),
                             static_cast<int>(decoded->gainMap.image->height),
                             decoded->gainMap.image->depth,
@@ -367,7 +369,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
 }
 
 TEST(GainMapTest, InvalidGrid) {
-  std::vector<testutil::AvifImagePtr> cells;
+  std::vector<ImagePtr> cells;
   std::vector<const avifImage*> cell_ptrs;
   constexpr int kGridCols = 2;
   constexpr int kGridRows = 2;
@@ -376,14 +378,14 @@ TEST(GainMapTest, InvalidGrid) {
       GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
 
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
-    testutil::AvifImagePtr image =
+    ImagePtr image =
         testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
                               AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
     ASSERT_NE(image, nullptr);
     image->transferCharacteristics =
         AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
     testutil::FillImageGradient(image.get());
-    testutil::AvifImagePtr gain_map =
+    ImagePtr gain_map =
         testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/8,
                               AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
     ASSERT_NE(gain_map, nullptr);
@@ -397,7 +399,7 @@ TEST(GainMapTest, InvalidGrid) {
     cells.push_back(std::move(image));
   }
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
 
@@ -433,14 +435,14 @@ TEST(GainMapTest, InvalidGrid) {
 }
 
 TEST(GainMapTest, SequenceNotSupported) {
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
                             AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
   image->transferCharacteristics =
       AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
   testutil::FillImageGradient(image.get());
-  testutil::AvifImagePtr gain_map =
+  ImagePtr gain_map =
       testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
   ASSERT_NE(gain_map, nullptr);
@@ -448,7 +450,7 @@ TEST(GainMapTest, SequenceNotSupported) {
   // 'image' now owns the gain map.
   image->gainMap.image = gain_map.release();
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   // Add a first frame.
@@ -467,11 +469,10 @@ TEST(GainMapTest, SequenceNotSupported) {
 }
 
 TEST(GainMapTest, IgnoreGainMap) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
@@ -479,9 +480,9 @@ TEST(GainMapTest, IgnoreGainMap) {
       << avifResultToString(result) << " " << encoder->diag.error;
 
   // Decode image, with enableDecodingGainMap false by default.
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
@@ -499,11 +500,10 @@ TEST(GainMapTest, IgnoreGainMap) {
 }
 
 TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
@@ -511,9 +511,9 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
       << avifResultToString(result) << " " << encoder->diag.error;
 
   // Decode image, with enableDecodingGainMap false by default.
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;  // Read gain map metadata.
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
@@ -533,20 +533,19 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
 }
 
 TEST(GainMapTest, IgnoreColorAndAlpha) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   // Decode just the gain map.
   decoder->ignoreColorAndAlpha = AVIF_TRUE;
@@ -575,18 +574,17 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
 }
 
 TEST(GainMapTest, IgnoreAll) {
-  testutil::AvifImagePtr image =
-      CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   // Ignore both the main image and the gain map.
   decoder->ignoreColorAndAlpha = AVIF_TRUE;
@@ -611,22 +609,22 @@ TEST(GainMapTest, IgnoreAll) {
 
 TEST(GainMapTest, NoGainMap) {
   // Create a simple image without a gain map.
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
   image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
   testutil::FillImageGradient(image.get());
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << encoder->diag.error;
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   // Enable gain map decoding.
   decoder->enableDecodingGainMap = AVIF_TRUE;
@@ -647,7 +645,7 @@ TEST(GainMapTest, NoGainMap) {
 TEST(GainMapTest, DecodeGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_gainmap_different_grid.avif";
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
@@ -686,9 +684,9 @@ TEST(GainMapTest, DecodeGainMapGrid) {
 TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_alpha_grid_gainmap_nogrid.avif";
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
@@ -709,9 +707,9 @@ TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
 TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_nogrid_alpha_nogrid_gainmap_grid.avif";
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
@@ -840,12 +838,12 @@ TEST(GainMapTest, CreateTestImages) {
   {
     const std::string path =
         std::string(data_path) + "seine_sdr_gainmap_srgb.avif";
-    testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+    DecoderPtr decoder(avifDecoderCreate());
     ASSERT_NE(decoder, nullptr);
     decoder->enableDecodingGainMap = true;
     decoder->enableParsingGainMapMetadata = true;
 
-    testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+    ImagePtr image(avifImageCreateEmpty());
     ASSERT_NE(image, nullptr);
     avifResult result =
         avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
@@ -872,18 +870,17 @@ TEST(GainMapTest, CreateTestImages) {
 
   // Generate seine_hdr_gainmap_srgb.avif and seine_hdr_gainmap_small_srgb.avif
   {
-    testutil::AvifImagePtr hdr_image =
+    ImagePtr hdr_image =
         testutil::DecodFile(std::string(data_path) + "seine_hdr_srgb.avif");
     ASSERT_NE(hdr_image, nullptr);
 
     const std::string sdr_path =
         std::string(data_path) + "seine_sdr_gainmap_srgb.avif";
-    testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+    DecoderPtr decoder(avifDecoderCreate());
     ASSERT_NE(decoder, nullptr);
     decoder->enableDecodingGainMap = true;
     decoder->enableParsingGainMapMetadata = true;
-    testutil::AvifImagePtr sdr_with_gainmap(avifImageCreateEmpty(),
-                                            avifImageDestroy);
+    ImagePtr sdr_with_gainmap(avifImageCreateEmpty());
     ASSERT_NE(sdr_with_gainmap, nullptr);
     avifResult result = avifDecoderReadFile(
         decoder.get(), sdr_with_gainmap.get(), sdr_path.c_str());
@@ -944,10 +941,9 @@ void ToneMapImageAndCompareToReference(
   SCOPED_TRACE("hdr_headroom: " + std::to_string(hdr_headroom));
 
   testutil::AvifRgbImage tone_mapped_rgb(base_image, out_depth, out_rgb_format);
-  testutil::AvifImagePtr tone_mapped(
+  ImagePtr tone_mapped(
       avifImageCreate(tone_mapped_rgb.width, tone_mapped_rgb.height,
-                      tone_mapped_rgb.depth, AVIF_PIXEL_FORMAT_YUV444),
-      avifImageDestroy);
+                      tone_mapped_rgb.depth, AVIF_PIXEL_FORMAT_YUV444));
   tone_mapped->transferCharacteristics = out_transfer_characteristics;
   tone_mapped->colorPrimaries = base_image->colorPrimaries;
   tone_mapped->matrixCoefficients = base_image->matrixCoefficients;
@@ -993,16 +989,16 @@ TEST_P(ToneMapTest, ToneMapImage) {
   const float min_psnr = std::get<6>(GetParam());
   const float max_psnr = std::get<7>(GetParam());
 
-  testutil::AvifImagePtr reference_image = {nullptr, nullptr};
+  ImagePtr reference_image = nullptr;
   if (!source.empty()) {
     reference_image = testutil::DecodFile(std::string(data_path) + reference);
   }
 
   // Load the source image (that should contain a gain map).
   const std::string path = std::string(data_path) + source;
-  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->enableDecodingGainMap = true;
   decoder->enableParsingGainMapMetadata = true;
@@ -1139,10 +1135,10 @@ TEST_P(CreateGainMapTest, Create) {
 
   const std::string sdr_image_name = "seine_sdr_gainmap_srgb.avif";
   const std::string hdr_image_name = "seine_hdr_gainmap_srgb.avif";
-  testutil::AvifImagePtr sdr_image =
+  ImagePtr sdr_image =
       testutil::DecodFile(std::string(data_path) + sdr_image_name);
   ASSERT_NE(sdr_image, nullptr);
-  testutil::AvifImagePtr hdr_image =
+  ImagePtr hdr_image =
       testutil::DecodFile(std::string(data_path) + hdr_image_name);
   ASSERT_NE(hdr_image, nullptr);
 
@@ -1152,10 +1148,8 @@ TEST_P(CreateGainMapTest, Create) {
       (uint32_t)std::round((float)sdr_image->height / downscaling), 1u);
   avifGainMap gain_map;
   memset(&gain_map, 0, sizeof(gain_map));
-  testutil::AvifImagePtr gain_map_image(
-      avifImageCreate(gain_map_width, gain_map_height, gain_map_depth,
-                      gain_map_format),
-      avifImageDestroy);
+  ImagePtr gain_map_image(avifImageCreate(gain_map_width, gain_map_height,
+                                          gain_map_depth, gain_map_format));
   gain_map.image = gain_map_image.get();
 
   avifDiagnostics diag;

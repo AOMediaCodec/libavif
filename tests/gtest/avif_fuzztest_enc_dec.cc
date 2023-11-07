@@ -15,9 +15,8 @@ namespace {
 
 ::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
 
-void EncodeDecodeValid(AvifImagePtr image, AvifEncoderPtr encoder,
-                       AvifDecoderPtr decoder) {
-  AvifImagePtr decoded_image(avifImageCreateEmpty(), avifImageDestroy);
+void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
+  ImagePtr decoded_image(avifImageCreateEmpty());
   ASSERT_NE(image.get(), nullptr);
   ASSERT_NE(encoder.get(), nullptr);
   ASSERT_NE(decoder.get(), nullptr);

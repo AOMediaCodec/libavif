@@ -206,7 +206,7 @@ void EncodeAsGrid(const avifImage& image, uint32_t grid_cols,
     *cell_height = image.height / grid_rows;
   }
 
-  std::vector<testutil::AvifImagePtr> cell_images;
+  std::vector<ImagePtr> cell_images;
   cell_images.reserve(grid_cols * grid_rows);
   for (uint32_t row = 0, i_cell = 0; row < grid_rows; ++row) {
     for (uint32_t col = 0; col < grid_cols; ++col, ++i_cell) {
@@ -219,14 +219,14 @@ void EncodeAsGrid(const avifImage& image, uint32_t grid_cols,
       cell.height = ((cell.y + *cell_height) <= image.height)
                         ? *cell_height
                         : (image.height - cell.y);
-      cell_images.emplace_back(avifImageCreateEmpty(), avifImageDestroy);
+      cell_images.emplace_back(avifImageCreateEmpty());
       ASSERT_NE(cell_images.back(), nullptr);
       ASSERT_EQ(avifImageSetViewRect(cell_images.back().get(), &image, &cell),
                 AVIF_RESULT_OK);
     }
   }
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   // Just here to match libavif API.
@@ -258,7 +258,7 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
                              uint32_t height, bool create_alpha_if_none,
                              bool flat_cells, avifRWData* output,
                              uint32_t* cell_width, uint32_t* cell_height) {
-  AvifImagePtr sub_image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr sub_image(avifImageCreateEmpty());
   ASSERT_NE(sub_image, nullptr);
   ASSERT_LE(width, image.width);
   ASSERT_LE(height, image.height);
@@ -364,7 +364,7 @@ void DecodeNonIncrementallyAndIncrementally(
     const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
     bool give_size_hint, bool use_nth_image_api, uint32_t cell_height,
     bool enable_fine_incremental_check, bool expect_whole_file_read) {
-  AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr reference(avifImageCreateEmpty());
   ASSERT_NE(reference, nullptr);
   decoder->allowIncremental = AVIF_FALSE;
   ASSERT_EQ(avifDecoderReadMemory(decoder, reference.get(), encoded_avif.data,

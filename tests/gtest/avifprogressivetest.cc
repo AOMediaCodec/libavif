@@ -51,10 +51,10 @@ class ProgressiveTest : public testing::Test {
     // quality layer is more similar.
   }
 
-  testutil::AvifEncoderPtr encoder_{avifEncoderCreate(), avifEncoderDestroy};
-  testutil::AvifDecoderPtr decoder_{avifDecoderCreate(), avifDecoderDestroy};
+  EncoderPtr encoder_{avifEncoderCreate()};
+  DecoderPtr decoder_{avifDecoderCreate()};
 
-  testutil::AvifImagePtr image_ =
+  ImagePtr image_ =
       testutil::CreateImage(kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
                             AVIF_PLANES_YUV, AVIF_RANGE_FULL);
 

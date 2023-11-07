@@ -9,10 +9,12 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <string>
 #include <vector>
 
 #include "avif/avif.h"
+#include "avif/avif_cxx.h"
 #include "avif/internal.h"
 #include "avifpng.h"
 #include "avifutil.h"
@@ -62,17 +64,16 @@ RgbChannelOffsets GetRgbChannelOffsets(avifRGBFormat format) {
 
 //------------------------------------------------------------------------------
 
-AvifImagePtr CreateImage(int width, int height, int depth,
-                         avifPixelFormat yuv_format, avifPlanesFlags planes,
-                         avifRange yuv_range) {
-  AvifImagePtr image(avifImageCreate(width, height, depth, yuv_format),
-                     avifImageDestroy);
+ImagePtr CreateImage(int width, int height, int depth,
+                     avifPixelFormat yuv_format, avifPlanesFlags planes,
+                     avifRange yuv_range) {
+  ImagePtr image(avifImageCreate(width, height, depth, yuv_format));
   if (!image) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   image->yuvRange = yuv_range;
   if (avifImageAllocatePlanes(image.get(), planes) != AVIF_RESULT_OK) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   return image;
 }
@@ -350,8 +351,7 @@ bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
 }
 
 avifResult MergeGrid(int grid_cols, int grid_rows,
-                     const std::vector<AvifImagePtr>& cells,
-                     avifImage* merged) {
+                     const std::vector<ImagePtr>& cells, avifImage* merged) {
   std::vector<const avifImage*> ptrs(cells.size());
   for (size_t i = 0; i < cells.size(); ++i) {
     ptrs[i] = cells[i].get();
@@ -369,7 +369,7 @@ avifResult MergeGrid(int grid_cols, int grid_rows,
   const uint32_t grid_height =
       (grid_rows - 1) * tile_height + cells.back()->height;
 
-  testutil::AvifImagePtr view(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr view(avifImageCreateEmpty());
   AVIF_CHECKERR(view, AVIF_RESULT_OUT_OF_MEMORY);
 
   avifCropRect rect = {};
@@ -396,13 +396,13 @@ avifResult MergeGrid(int grid_cols, int grid_rows,
 
 //------------------------------------------------------------------------------
 
-AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
-                       avifPixelFormat requested_format, int requested_depth,
-                       avifChromaDownsampling chroma_downsampling,
-                       avifBool ignore_icc, avifBool ignore_exif,
-                       avifBool ignore_xmp, avifBool allow_changing_cicp,
-                       avifBool ignore_gain_map) {
-  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+ImagePtr ReadImage(const char* folder_path, const char* file_name,
+                   avifPixelFormat requested_format, int requested_depth,
+                   avifChromaDownsampling chroma_downsampling,
+                   avifBool ignore_icc, avifBool ignore_exif,
+                   avifBool ignore_xmp, avifBool allow_changing_cicp,
+                   avifBool ignore_gain_map) {
+  ImagePtr image(avifImageCreateEmpty());
   if (!image ||
       avifReadImage((std::string(folder_path) + file_name).c_str(),
                     requested_format, requested_depth, chroma_downsampling,
@@ -410,7 +410,7 @@ AvifImagePtr ReadImage(const char* folder_path, const char* file_name,
                     ignore_gain_map, image.get(),
                     /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   return image;
 }
@@ -428,7 +428,7 @@ bool WriteImage(const avifImage* image, const char* file_path) {
 }
 
 AvifRwData Encode(const avifImage* image, int speed, int quality) {
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   if (!encoder) return {};
   encoder->speed = speed;
   encoder->quality = quality;
@@ -443,24 +443,24 @@ AvifRwData Encode(const avifImage* image, int speed, int quality) {
   return bytes;
 }
 
-AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+ImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
+  ImagePtr decoded(avifImageCreateEmpty());
+  DecoderPtr decoder(avifDecoderCreate());
   if (!decoded || !decoder ||
       (avifDecoderReadMemory(decoder.get(), decoded.get(), bytes, num_bytes) !=
        AVIF_RESULT_OK)) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   return decoded;
 }
 
-AvifImagePtr DecodFile(const std::string& path) {
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+ImagePtr DecodFile(const std::string& path) {
+  ImagePtr decoded(avifImageCreateEmpty());
+  DecoderPtr decoder(avifDecoderCreate());
   if (!decoded || !decoder ||
       (avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()) !=
        AVIF_RESULT_OK)) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   return decoded;
 }
@@ -517,8 +517,8 @@ avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp) {
 
 //------------------------------------------------------------------------------
 
-std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
-                                      uint32_t grid_cols, uint32_t grid_rows) {
+std::vector<ImagePtr> ImageToGrid(const avifImage* image, uint32_t grid_cols,
+                                  uint32_t grid_rows) {
   if (image->width < grid_cols || image->height < grid_rows) return {};
 
   // Round up, to make sure all samples are used by exactly one cell.
@@ -535,7 +535,7 @@ std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
     cell_height = image->height / grid_rows;
   }
 
-  std::vector<AvifImagePtr> cells;
+  std::vector<ImagePtr> cells;
   for (uint32_t row = 0; row < grid_rows; ++row) {
     for (uint32_t col = 0; col < grid_cols; ++col) {
       avifCropRect rect{col * cell_width, row * cell_height, cell_width,
@@ -550,7 +550,7 @@ std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
       if (rect.y + rect.height > image->height) {
         rect.height = image->height - rect.y;
       }
-      cells.emplace_back(avifImageCreateEmpty(), avifImageDestroy);
+      cells.emplace_back(avifImageCreateEmpty());
       if (avifImageSetViewRect(cells.back().get(), image, &rect) !=
           AVIF_RESULT_OK) {
         return {};
@@ -561,10 +561,10 @@ std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
 }
 
 std::vector<const avifImage*> UniquePtrToRawPtr(
-    const std::vector<AvifImagePtr>& unique_ptrs) {
+    const std::vector<ImagePtr>& unique_ptrs) {
   std::vector<const avifImage*> rawPtrs;
   rawPtrs.reserve(unique_ptrs.size());
-  for (const AvifImagePtr& unique_ptr : unique_ptrs) {
+  for (const ImagePtr& unique_ptr : unique_ptrs) {
     rawPtrs.emplace_back(unique_ptr.get());
   }
   return rawPtrs;

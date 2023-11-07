@@ -16,7 +16,7 @@ TEST(AvifDecodeTest, AnimatedImage) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
   }
   const char* file_name = "colors-animated-8bpc.avif";
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
                                  (std::string(data_path) + file_name).c_str()),
@@ -36,7 +36,7 @@ TEST(AvifDecodeTest, AnimatedImageWithSourceSetToPrimaryItem) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
   }
   const char* file_name = "colors-animated-8bpc.avif";
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
                                  (std::string(data_path) + file_name).c_str()),

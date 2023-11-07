@@ -131,8 +131,7 @@ void ConvertWholeRange(int rgb_depth, int yuv_depth, avifRGBFormat rgb_format,
   // to test all these possibilities.
   static constexpr int width = 4;
   static constexpr int height = 4;
-  testutil::AvifImagePtr yuv(
-      avifImageCreate(width, height, yuv_depth, yuv_format), avifImageDestroy);
+  ImagePtr yuv(avifImageCreate(width, height, yuv_depth, yuv_format));
   ASSERT_NE(yuv, nullptr);
   yuv->matrixCoefficients = matrix_coefficients;
   yuv->yuvRange = yuv_range;
@@ -248,9 +247,7 @@ void ConvertWholeBuffer(int rgb_depth, int yuv_depth, avifRGBFormat rgb_format,
   int64_t num_diffs = 0;
   for (int width : {1, 2, 127}) {
     for (int height : {1, 2, 251}) {
-      testutil::AvifImagePtr yuv(
-          avifImageCreate(width, height, yuv_depth, yuv_format),
-          avifImageDestroy);
+      ImagePtr yuv(avifImageCreate(width, height, yuv_depth, yuv_format));
       ASSERT_NE(yuv, nullptr);
       yuv->matrixCoefficients = matrix_coefficients;
       yuv->yuvRange = yuv_range;
@@ -760,8 +757,7 @@ TEST_P(YUVToRGBThreadingTest, TestIdentical) {
     return;
   }
 
-  testutil::AvifImagePtr yuv(
-      avifImageCreate(width, height, yuv_depth, yuv_format), avifImageDestroy);
+  ImagePtr yuv(avifImageCreate(width, height, yuv_depth, yuv_format));
   ASSERT_NE(yuv, nullptr);
   yuv->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
   yuv->yuvRange = AVIF_RANGE_FULL;

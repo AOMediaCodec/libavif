@@ -17,7 +17,7 @@ TEST(AvifDecodeTest, ColorGridAlphaNoGrid) {
   }
   // Test case from https://github.com/AOMediaCodec/libavif/issues/1203.
   const char* file_name = "color_grid_alpha_nogrid.avif";
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
                                  (std::string(data_path) + file_name).c_str()),

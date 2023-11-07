@@ -22,20 +22,19 @@ namespace {
 
 //------------------------------------------------------------------------------
 
-AvifImagePtr CreateAvifImage(size_t width, size_t height, int depth,
-                             avifPixelFormat pixel_format, bool has_alpha,
-                             const uint8_t* samples) {
-  AvifImagePtr image(
-      avifImageCreate(static_cast<uint32_t>(width),
-                      static_cast<uint32_t>(height), depth, pixel_format),
-      avifImageDestroy);
+ImagePtr CreateAvifImage(size_t width, size_t height, int depth,
+                         avifPixelFormat pixel_format, bool has_alpha,
+                         const uint8_t* samples) {
+  ImagePtr image(avifImageCreate(static_cast<uint32_t>(width),
+                                 static_cast<uint32_t>(height), depth,
+                                 pixel_format));
   if (image.get() == nullptr) {
     return image;
   }
   if (avifImageAllocatePlanes(image.get(),
                               has_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV) !=
       AVIF_RESULT_OK) {
-    return AvifImagePtr(nullptr, nullptr);
+    return nullptr;
   }
 
   for (avifChannelIndex c :
@@ -56,26 +55,26 @@ AvifImagePtr CreateAvifImage(size_t width, size_t height, int depth,
 
 }  // namespace
 
-AvifImagePtr CreateAvifImage8b(size_t width, size_t height,
-                               avifPixelFormat pixel_format, bool has_alpha,
-                               const std::vector<uint8_t>& samples) {
+ImagePtr CreateAvifImage8b(size_t width, size_t height,
+                           avifPixelFormat pixel_format, bool has_alpha,
+                           const std::vector<uint8_t>& samples) {
   return CreateAvifImage(width, height, 8, pixel_format, has_alpha,
                          samples.data());
 }
 
-AvifImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
-                                avifPixelFormat pixel_format, bool has_alpha,
-                                const std::vector<uint16_t>& samples) {
+ImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
+                            avifPixelFormat pixel_format, bool has_alpha,
+                            const std::vector<uint16_t>& samples) {
   return CreateAvifImage(width, height, depth, pixel_format, has_alpha,
                          reinterpret_cast<const uint8_t*>(samples.data()));
 }
 
-AvifEncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
-                                 int min_quantizer, int max_quantizer,
-                                 int min_quantizer_alpha,
-                                 int max_quantizer_alpha, int tile_rows_log2,
-                                 int tile_cols_log2, int speed) {
-  AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
+                             int min_quantizer, int max_quantizer,
+                             int min_quantizer_alpha, int max_quantizer_alpha,
+                             int tile_rows_log2, int tile_cols_log2,
+                             int speed) {
+  EncoderPtr encoder(avifEncoderCreate());
   if (encoder.get() == nullptr) {
     return encoder;
   }
@@ -94,15 +93,15 @@ AvifEncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
   return encoder;
 }
 
-AvifDecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
-                                 avifDecoderSource requested_source,
-                                 bool allow_progressive, bool allow_incremental,
-                                 bool ignore_exif, bool ignore_xmp,
-                                 uint32_t image_size_limit,
-                                 uint32_t image_dimension_limit,
-                                 uint32_t image_count_limit,
-                                 avifStrictFlags strict_flags) {
-  AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
+                             avifDecoderSource requested_source,
+                             bool allow_progressive, bool allow_incremental,
+                             bool ignore_exif, bool ignore_xmp,
+                             uint32_t image_size_limit,
+                             uint32_t image_dimension_limit,
+                             uint32_t image_count_limit,
+                             avifStrictFlags strict_flags) {
+  DecoderPtr decoder(avifDecoderCreate());
   if (decoder.get() == nullptr) {
     return decoder;
   }
@@ -120,14 +119,12 @@ AvifDecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
   return decoder;
 }
 
-AvifImagePtr AvifImageToUniquePtr(avifImage* image) {
-  return AvifImagePtr(image, avifImageDestroy);
-}
+ImagePtr AvifImageToUniquePtr(avifImage* image) { return ImagePtr(image); }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-AvifDecoderPtr AddGainMapOptionsToDecoder(AvifDecoderPtr decoder,
-                                          bool enable_parsing_gain_map_metadata,
-                                          bool enable_decoding_gain_map) {
+DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
+                                      bool enable_parsing_gain_map_metadata,
+                                      bool enable_decoding_gain_map) {
   decoder->enableParsingGainMapMetadata = enable_parsing_gain_map_metadata;
   decoder->enableDecodingGainMap = enable_decoding_gain_map;
   // Do not fuzz 'ignoreColorAndAlpha' since most tests assume that if the

@@ -5,12 +5,14 @@
 #define LIBAVIF_TESTS_AVIFTEST_HELPERS_H_
 
 #include <array>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "avif/avif.h"
+#include "avif/avif_cxx.h"
 
 namespace libavif {
 namespace testutil {
@@ -38,12 +40,6 @@ static const std::array<uint8_t, 24> kSampleXmp = {
 //------------------------------------------------------------------------------
 // Memory management
 
-using AvifImagePtr = std::unique_ptr<avifImage, decltype(&avifImageDestroy)>;
-using AvifEncoderPtr =
-    std::unique_ptr<avifEncoder, decltype(&avifEncoderDestroy)>;
-using AvifDecoderPtr =
-    std::unique_ptr<avifDecoder, decltype(&avifDecoderDestroy)>;
-
 class AvifRwData : public avifRWData {
  public:
   AvifRwData() : avifRWData{nullptr, 0} {}
@@ -69,9 +65,9 @@ struct RgbChannelOffsets {
 RgbChannelOffsets GetRgbChannelOffsets(avifRGBFormat format);
 
 // Creates an image. Returns null in case of memory failure.
-AvifImagePtr CreateImage(int width, int height, int depth,
-                         avifPixelFormat yuv_format, avifPlanesFlags planes,
-                         avifRange yuv_range = AVIF_RANGE_FULL);
+ImagePtr CreateImage(int width, int height, int depth,
+                     avifPixelFormat yuv_format, avifPlanesFlags planes,
+                     avifRange yuv_range = AVIF_RANGE_FULL);
 
 // Set all pixels of each plane of an image.
 void FillImagePlain(avifImage* image, const uint32_t yuva[4]);
@@ -103,7 +99,7 @@ double GetPsnr(const avifImage& image1, const avifImage& image2,
 
 // Merges the given image grid cells into a single image.
 avifResult MergeGrid(int grid_cols, int grid_rows,
-                     const std::vector<AvifImagePtr>& cells, avifImage* merged);
+                     const std::vector<ImagePtr>& cells, avifImage* merged);
 avifResult MergeGrid(int grid_cols, int grid_rows,
                      const std::vector<const avifImage*>& cells,
                      avifImage* merged);
@@ -113,15 +109,15 @@ avifResult MergeGrid(int grid_cols, int grid_rows,
 
 // Reads the image named file_name located in directory at folder_path.
 // Returns nullptr in case of error.
-AvifImagePtr ReadImage(
-    const char* folder_path, const char* file_name,
-    avifPixelFormat requested_format = AVIF_PIXEL_FORMAT_NONE,
-    int requested_depth = 0,
-    avifChromaDownsampling chroma_downsampling =
-        AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-    avifBool ignore_icc = false, avifBool ignore_exif = false,
-    avifBool ignore_xmp = false, avifBool allow_changing_cicp = true,
-    avifBool ignore_gain_map = false);
+ImagePtr ReadImage(const char* folder_path, const char* file_name,
+                   avifPixelFormat requested_format = AVIF_PIXEL_FORMAT_NONE,
+                   int requested_depth = 0,
+                   avifChromaDownsampling chroma_downsampling =
+                       AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                   avifBool ignore_icc = false, avifBool ignore_exif = false,
+                   avifBool ignore_xmp = false,
+                   avifBool allow_changing_cicp = true,
+                   avifBool ignore_gain_map = false);
 // Convenient wrapper around avifPNGWrite() for debugging purposes.
 // Do not remove.
 bool WriteImage(const avifImage* image, const char* file_path);
@@ -133,11 +129,11 @@ AvifRwData Encode(const avifImage* image, int speed = AVIF_SPEED_DEFAULT,
 
 // Decodes the bytes to an image with default parameters.
 // Returns nullptr in case of error.
-AvifImagePtr Decode(const uint8_t* bytes, size_t num_bytes);
+ImagePtr Decode(const uint8_t* bytes, size_t num_bytes);
 
 // Decodes the file to an image with default parameters.
 // Returns nullptr in case of error.
-AvifImagePtr DecodFile(const std::string& path);
+ImagePtr DecodFile(const std::string& path);
 
 // Returns true if an AV1 encoder is available.
 bool Av1EncoderAvailable();
@@ -162,12 +158,12 @@ avifIO* AvifIOCreateLimitedReader(avifIO* underlyingIO, uint64_t clamp);
 
 // Splits the input image into grid_cols*grid_rows views to be encoded as a
 // grid. Returns an empty vector if the input image cannot be split that way.
-std::vector<AvifImagePtr> ImageToGrid(const avifImage* image,
-                                      uint32_t grid_cols, uint32_t grid_rows);
+std::vector<ImagePtr> ImageToGrid(const avifImage* image, uint32_t grid_cols,
+                                  uint32_t grid_rows);
 
 // Converts a unique_ptr array to a raw pointer array as needed by libavif API.
 std::vector<const avifImage*> UniquePtrToRawPtr(
-    const std::vector<AvifImagePtr>& unique_ptrs);
+    const std::vector<ImagePtr>& unique_ptrs);
 
 //------------------------------------------------------------------------------
 

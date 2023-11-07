@@ -17,7 +17,7 @@ TEST(AvifDecodeTest, AlphaNoIspe) {
   }
   // See https://github.com/AOMediaCodec/libavif/pull/745.
   const char* file_name = "alpha_noispe.avif";
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
                                  (std::string(data_path) + file_name).c_str()),

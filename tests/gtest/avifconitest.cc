@@ -32,7 +32,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
   const bool create_clli = std::get<9>(GetParam());
   const avifTransformFlags create_transform_flags = std::get<10>(GetParam());
 
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(width, height, depth, format, planes, range);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());  // The pixels do not matter.
@@ -85,7 +85,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
 
   // Encode.
   testutil::AvifRwData encoded_coni;
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->headerFormat = AVIF_HEADER_REDUCED;
@@ -93,7 +93,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
             AVIF_RESULT_OK);
 
   // Decode.
-  const testutil::AvifImagePtr decoded_coni =
+  const ImagePtr decoded_coni =
       testutil::Decode(encoded_coni.data, encoded_coni.size);
   ASSERT_NE(decoded_coni, nullptr);
 
@@ -104,7 +104,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
   // At least 200 bytes should be saved.
   EXPECT_LT(encoded_coni.size, encoded_meta.size - 200);
 
-  const testutil::AvifImagePtr decoded_meta =
+  const ImagePtr decoded_meta =
       testutil::Decode(encoded_meta.data, encoded_meta.size);
   ASSERT_NE(decoded_meta, nullptr);
 

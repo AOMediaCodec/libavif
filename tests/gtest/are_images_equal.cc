@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 // Compares two files and returns whether they are the same once decoded.
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 
@@ -14,7 +15,7 @@
 #include <windows.h>
 #endif
 
-using libavif::testutil::AvifImagePtr;
+using libavif::ImagePtr;
 
 MAIN() {
   INIT_ARGV()
@@ -24,9 +25,8 @@ MAIN() {
               << " file1 file2 ignore_alpha_flag [psnr_threshold]" << std::endl;
     return 2;
   }
-  AvifImagePtr decoded[2] = {
-      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy),
-      AvifImagePtr(avifImageCreateEmpty(), avifImageDestroy)};
+  ImagePtr decoded[2] = {ImagePtr(avifImageCreateEmpty()),
+                         ImagePtr(avifImageCreateEmpty())};
   if (!decoded[0] || !decoded[1]) {
     std::cerr << "Cannot create AVIF images." << std::endl;
     return 2;

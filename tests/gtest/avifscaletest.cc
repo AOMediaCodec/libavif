@@ -32,7 +32,7 @@ TEST_P(ScaleTest, Roundtrip) {
   const avifPixelFormat yuv_format = std::get<1>(GetParam());
   const bool create_alpha = std::get<2>(GetParam());
 
-  const testutil::AvifImagePtr image =
+  const ImagePtr image =
       testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg", yuv_format,
                           bit_depth, AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY,
                           kIgnoreMetadata, kIgnoreMetadata, kIgnoreMetadata);
@@ -44,7 +44,7 @@ TEST_P(ScaleTest, Roundtrip) {
     image->imageOwnsAlphaPlane = false;
   }
 
-  testutil::AvifImagePtr scaled_image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr scaled_image(avifImageCreateEmpty());
   ASSERT_NE(scaled_image, nullptr);
   ASSERT_EQ(avifImageCopy(scaled_image.get(), image.get(), AVIF_PLANES_ALL),
             AVIF_RESULT_OK);
@@ -79,7 +79,7 @@ INSTANTIATE_TEST_SUITE_P(
             /*create_alpha=*/Values(true, false)));
 
 TEST(ScaleTest, LargerThanDefaultLimits) {
-  const testutil::AvifImagePtr image = testutil::ReadImage(
+  const ImagePtr image = testutil::ReadImage(
       data_path, "paris_exif_xmp_icc.jpg", AVIF_PIXEL_FORMAT_YUV420, 8,
       AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY, kIgnoreMetadata, kIgnoreMetadata,
       kIgnoreMetadata);

@@ -21,8 +21,7 @@ const char* data_path = nullptr;
 bool GetIoStatsFromEncode(avifIOStats& encoder_io_stats, int quality,
                           int qualityAlpha, bool translucent,
                           int num_frames = 1, bool encode_as_grid = false) {
-  testutil::AvifImagePtr image =
-      testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg");
+  ImagePtr image = testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg");
   AVIF_CHECK(image != nullptr);
   if (translucent) {
     // Make up some alpha from luma.
@@ -31,7 +30,7 @@ bool GetIoStatsFromEncode(avifIOStats& encoder_io_stats, int quality,
     AVIF_CHECK(!image->imageOwnsAlphaPlane);
   }
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   AVIF_CHECK(encoder != nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->quality = quality;
@@ -39,14 +38,12 @@ bool GetIoStatsFromEncode(avifIOStats& encoder_io_stats, int quality,
   for (int frame = 0; frame < num_frames; ++frame) {
     if (encode_as_grid) {
       const avifCropRect left_rect = {0, 0, image->width / 2, image->height};
-      testutil::AvifImagePtr left_cell(avifImageCreateEmpty(),
-                                       avifImageDestroy);
+      ImagePtr left_cell(avifImageCreateEmpty());
       AVIF_CHECK(avifImageSetViewRect(left_cell.get(), image.get(),
                                       &left_rect) == AVIF_RESULT_OK);
       const avifCropRect right_rect = {image->width / 2, 0, image->width / 2,
                                        image->height};
-      testutil::AvifImagePtr right_cell(avifImageCreateEmpty(),
-                                        avifImageDestroy);
+      ImagePtr right_cell(avifImageCreateEmpty());
       AVIF_CHECK(avifImageSetViewRect(right_cell.get(), image.get(),
                                       &right_rect) == AVIF_RESULT_OK);
       const std::array<avifImage*, 2> pointers = {left_cell.get(),
@@ -72,7 +69,7 @@ bool GetIoStatsFromEncode(avifIOStats& encoder_io_stats, int quality,
   encoder_io_stats = encoder->ioStats;
 
   // Make sure decoding gives the same stats.
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   AVIF_CHECK(decoder != nullptr);
   AVIF_CHECK(avifDecoderSetIOMemory(decoder.get(), encoded.data,
                                     encoded.size) == AVIF_RESULT_OK);

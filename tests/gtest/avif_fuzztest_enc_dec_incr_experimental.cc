@@ -24,14 +24,14 @@ namespace {
 ::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
 
 // Encodes an image into an AVIF grid then decodes it.
-void EncodeDecodeGridValid(AvifImagePtr image, AvifEncoderPtr encoder,
-                           AvifDecoderPtr decoder, uint32_t grid_cols,
+void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
+                           DecoderPtr decoder, uint32_t grid_cols,
                            uint32_t grid_rows, bool is_encoded_data_persistent,
                            bool give_size_hint_to_decoder) {
   ASSERT_NE(image, nullptr);
   ASSERT_NE(encoder, nullptr);
 
-  const std::vector<AvifImagePtr> cells =
+  const std::vector<ImagePtr> cells =
       ImageToGrid(image.get(), grid_cols, grid_rows);
   if (cells.empty()) return;
   const uint32_t cell_width = cells.front()->width;
@@ -42,7 +42,7 @@ void EncodeDecodeGridValid(AvifImagePtr image, AvifEncoderPtr encoder,
 
   const avifImage* gain_map = image->gainMap.image;
   if (gain_map != nullptr) {
-    std::vector<AvifImagePtr> gain_map_cells =
+    std::vector<ImagePtr> gain_map_cells =
         ImageToGrid(gain_map, grid_cols, grid_rows);
     if (gain_map_cells.empty()) return;
     ASSERT_EQ(gain_map_cells.size(), cells.size());
@@ -97,8 +97,8 @@ void EncodeDecodeGridValid(AvifImagePtr image, AvifEncoderPtr encoder,
 // Note that avifGainMapMetadata is passed as a byte array
 // because the C array fields in the struct seem to prevent fuzztest from
 // handling it natively.
-AvifImagePtr AddGainMapToImage(
-    AvifImagePtr image, AvifImagePtr gainMap,
+ImagePtr AddGainMapToImage(
+    ImagePtr image, ImagePtr gainMap,
     const std::array<uint8_t, sizeof(avifGainMapMetadata)>& metadata) {
   image->gainMap.image = gainMap.release();
   std::memcpy(&image->gainMap.metadata, metadata.data(), metadata.size());

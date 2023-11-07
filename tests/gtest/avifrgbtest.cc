@@ -23,9 +23,8 @@ TEST_P(SetGetRGBATest, SetGetTest) {
   const bool is_float = std::get<2>(GetParam());
 
   // Unused yuv image, simply needed to initialize the rgb image.
-  testutil::AvifImagePtr yuv(
-      avifImageCreate(/*width=*/13, /*height=*/17, 8, AVIF_PIXEL_FORMAT_YUV444),
-      avifImageDestroy);
+  ImagePtr yuv(avifImageCreate(/*width=*/13, /*height=*/17, 8,
+                               AVIF_PIXEL_FORMAT_YUV444));
 
   testutil::AvifRgbImage rgb(yuv.get(), rgb_depth, rgb_format);
   rgb.isFloat = is_float;
@@ -88,7 +87,7 @@ TEST_P(SetGetRGBATest, GradientTest) {
   const bool is_float = std::get<2>(GetParam());
 
   // Only used for convenience to generate RGB values.
-  testutil::AvifImagePtr yuv =
+  ImagePtr yuv =
       testutil::CreateImage(/*width=*/13, /*height=*/17, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
   testutil::FillImageGradient(yuv.get());

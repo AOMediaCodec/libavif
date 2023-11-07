@@ -18,13 +18,13 @@ enum class InputType { kStillImage, kGrid, kAnimation };
 // in the "colr" box and in the AV1 OBU payload (in the "mdat" box).
 avifResult GenerateEncodedData(avifRange range, InputType input_type,
                                testutil::AvifRwData* encoded) {
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(/*width=*/64, /*height=*/64, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL, range);
   AVIF_CHECKERR(image != nullptr, AVIF_RESULT_OUT_OF_MEMORY);
   testutil::FillImageGradient(image.get());  // Pixel values do not matter.
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   AVIF_CHECKERR(encoder != nullptr, AVIF_RESULT_OUT_OF_MEMORY);
   if (input_type == InputType::kStillImage) {
     AVIF_CHECKRES(avifEncoderWrite(encoder.get(), image.get(), encoded));
@@ -84,9 +84,9 @@ TEST_P(RangeTest, DifferentVideoRangeInColrAndMdat) {
   //   If colour information is supplied in both this [colr] box, and also in
   //   the video bitstream, this box takes precedence, and over-rides the
   //   information in the bitstream.
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                   encoded.size),
@@ -115,9 +115,9 @@ TEST_P(RangeTest, MissingColr) {
   } while (colr_box != encoded.data + encoded.size);
 
   // Make sure the AV1 OBU range is kept.
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                   encoded.size),
