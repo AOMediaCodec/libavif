@@ -18,6 +18,25 @@ extern "C" {
 #endif
 
 #if defined(_WIN32)
+#ifdef __cplusplus
+#define INIT_ARGV()                                                                                           \
+    if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
+        fprintf(stderr, "setlocale failed\n");                                                                \
+        return 1;                                                                                             \
+    }                                                                                                         \
+    std::vector<char> argvAllVector(1024 * argc);                                                             \
+    std::vector<char *> argvVector(argc);                                                                     \
+    char ** argv = argvVector.data();                                                                         \
+    for (int i = 0; i < argc; ++i) {                                                                          \
+        argvVector[i] = &argvAllVector[1024 * i];                                                             \
+        int rc = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wargv[i], -1, argv[i], 1024, NULL, NULL); \
+        if (rc == 0) {                                                                                        \
+            fprintf(stderr, "WideCharToMultiByte() failed\n");                                                \
+            FREE_ARGV()                                                                                       \
+            return 1;                                                                                         \
+        }                                                                                                     \
+    }
+#else
 #define INIT_ARGV()                                                                                           \
     char * argvAll = NULL;                                                                                    \
     char ** argv = NULL;                                                                                      \
@@ -40,14 +59,18 @@ extern "C" {
             return 1;                                                                                         \
         }                                                                                                     \
     }
+#endif // __cplusplus
 #else
 #define INIT_ARGV()
 #endif
-
 #if defined(_WIN32)
+#ifdef __cplusplus
+#define FREE_ARGV()
+#else
 #define FREE_ARGV() \
     free(argv);     \
     free(argvAll);
+#endif // __cplusplus
 #else
 #define FREE_ARGV()
 #endif

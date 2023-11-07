@@ -798,6 +798,16 @@ if(AVIF_BUILD_APPS)
             LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         )
     endif()
+
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        enable_language(CXX)
+        set(CMAKE_CXX_STANDARD 14)
+        add_executable(avifgainmaputil apps/cpp/avifgainmaputil.cc)
+        set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
+        target_include_directories(avifgainmaputil PRIVATE "third_party/popl")
+        target_link_libraries(avifgainmaputil avif_apps)
+        # Don't add avifgainmaputil to installed apps for now.
+    endif()
 endif()
 
 if(AVIF_BUILD_TESTS)
