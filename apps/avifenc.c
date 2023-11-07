@@ -209,7 +209,7 @@ static void syntaxLong(void)
            AVIF_SPEED_FASTEST);
     printf("\n");
     printf("Advanced options:\n");
-    printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
+    printf("    -j,--jobs J                       : Number of jobs (worker threads). Use \"all\" to use all available cores (default: all)\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
@@ -1422,7 +1422,7 @@ MAIN()
     avifSettings settings;
     memset(&settings, 0, sizeof(settings));
     settings.codecChoice = AVIF_CODEC_CHOICE_AUTO;
-    settings.jobs = 1;
+    settings.jobs = -1;
     settings.targetSize = -1;
     settings.qualityIsConstrained = AVIF_FALSE;
     settings.qualityAlphaIsConstrained = AVIF_FALSE;
@@ -1938,6 +1938,10 @@ MAIN()
         }
 
         ++argIndex;
+    }
+
+    if (settings.jobs == -1) {
+        settings.jobs = avifQueryCPUCount();
     }
 
     // Check global lossless parameters and set to default if needed.
