@@ -67,16 +67,19 @@ avifResult avifImageScaleWithLimit(avifImage * image,
     image->width = dstWidth;
     image->height = dstHeight;
 
+    avifResult result = AVIF_RESULT_OK;
     if (srcYUVPlanes[0] || srcAlphaPlane) {
         // A simple conservative check to avoid integer overflows in libyuv's ScalePlane() and
         // ScalePlane_12() functions.
         if (srcWidth > 16384) {
             avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
-            return AVIF_RESULT_NOT_IMPLEMENTED;
+            result = AVIF_RESULT_NOT_IMPLEMENTED;
+            goto cleanup;
         }
         if (srcHeight > 16384) {
             avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
-            return AVIF_RESULT_NOT_IMPLEMENTED;
+            result = AVIF_RESULT_NOT_IMPLEMENTED;
+            goto cleanup;
         }
     }
 
@@ -84,7 +87,8 @@ avifResult avifImageScaleWithLimit(avifImage * image,
         const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
         if (allocationResult != AVIF_RESULT_OK) {
             avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed: %s", avifResultToString(allocationResult));
-            return AVIF_RESULT_OUT_OF_MEMORY;
+            result = AVIF_RESULT_OUT_OF_MEMORY;
+            goto cleanup;
         }
 
         for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
@@ -101,7 +105,13 @@ avifResult avifImageScaleWithLimit(avifImage * image,
                 const uint32_t srcStride = srcYUVRowBytes[i] / 2;
                 uint16_t * const dstPlane = (uint16_t *)image->yuvPlanes[i];
                 const uint32_t dstStride = image->yuvRowBytes[i] / 2;
-#if LIBYUV_VERSION >= 1774
+#if LIBYUV_VERSION >= 1880
+                if (ScalePlane_12(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE)) {
+                    avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
+                    result = AVIF_RESULT_OUT_OF_MEMORY;
+                    goto cleanup;
+                }
+#elif LIBYUV_VERSION >= 1774
                 ScalePlane_12(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
 #else
                 ScalePlane_16(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
@@ -111,11 +121,15 @@ avifResult avifImageScaleWithLimit(avifImage * image,
                 const uint32_t srcStride = srcYUVRowBytes[i];
                 uint8_t * const dstPlane = image->yuvPlanes[i];
                 const uint32_t dstStride = image->yuvRowBytes[i];
+#if LIBYUV_VERSION >= 1880
+                if (ScalePlane(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE)) {
+                    avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
+                    result = AVIF_RESULT_OUT_OF_MEMORY;
+                    goto cleanup;
+                }
+#else
                 ScalePlane(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
-            }
-
-            if (srcImageOwnsYUVPlanes) {
-                avifFree(srcYUVPlanes[i]);
+#endif
             }
         }
     }
@@ -132,7 +146,13 @@ avifResult avifImageScaleWithLimit(avifImage * image,
             const uint32_t srcStride = srcAlphaRowBytes / 2;
             uint16_t * const dstPlane = (uint16_t *)image->alphaPlane;
             const uint32_t dstStride = image->alphaRowBytes / 2;
-#if LIBYUV_VERSION >= 1774
+#if LIBYUV_VERSION >= 1880
+            if (ScalePlane_12(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE)) {
+                avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
+                result = AVIF_RESULT_OUT_OF_MEMORY;
+                goto cleanup;
+            }
+#elif LIBYUV_VERSION >= 1774
             ScalePlane_12(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
 #else
             ScalePlane_16(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
@@ -142,15 +162,28 @@ avifResult avifImageScaleWithLimit(avifImage * image,
             const uint32_t srcStride = srcAlphaRowBytes;
             uint8_t * const dstPlane = image->alphaPlane;
             const uint32_t dstStride = image->alphaRowBytes;
+#if LIBYUV_VERSION >= 1880
+            if (ScalePlane(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE)) {
+                avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
+                result = AVIF_RESULT_OUT_OF_MEMORY;
+                goto cleanup;
+            }
+#else
             ScalePlane(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
-        }
-
-        if (srcImageOwnsAlphaPlane) {
-            avifFree(srcAlphaPlane);
+#endif
         }
     }
 
-    return AVIF_RESULT_OK;
+cleanup:
+    if (srcYUVPlanes[0] && srcImageOwnsYUVPlanes) {
+        for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
+            avifFree(srcYUVPlanes[i]);
+        }
+    }
+    if (srcAlphaPlane && srcImageOwnsAlphaPlane) {
+        avifFree(srcAlphaPlane);
+    }
+    return result;
 }
 
 avifResult avifImageScale(avifImage * image, uint32_t dstWidth, uint32_t dstHeight, avifDiagnostics * diag)
