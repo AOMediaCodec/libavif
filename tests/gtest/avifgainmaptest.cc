@@ -41,8 +41,9 @@ void CheckGainMapMetadataMatches(const avifGainMapMetadata& lhs,
 }
 
 avifGainMapMetadata GetTestGainMapMetadata(bool base_rendition_is_hdr) {
-  avifGainMapMetadata metadata;
+  avifGainMapMetadata metadata = {};
   metadata.backwardDirection = base_rendition_is_hdr;
+  metadata.useBaseColorSpace = true;
   metadata.baseHdrHeadroomN = 0;
   metadata.baseHdrHeadroomD = 1;
   metadata.alternateHdrHeadroomN = 6;

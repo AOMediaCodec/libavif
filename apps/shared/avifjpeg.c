@@ -607,6 +607,8 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
         metadataDouble.alternateOffset[i] = 1.0 / 64.0;
         metadataDouble.gainMapGamma[i] = 1.0;
     }
+    // Not in Adobe's spec but both color spaces should be the same so this value doesn't matter.
+    metadataDouble.useBaseColorSpace = AVIF_TRUE;
 
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &metadataDouble.baseHdrHeadroom, /*numDoubles=*/1));
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &metadataDouble.alternateHdrHeadroom, /*numDoubles=*/1));

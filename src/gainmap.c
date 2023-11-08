@@ -65,6 +65,7 @@ static void avifGainMapMetadataSetDefaults(avifGainMapMetadataDouble * metadata)
     }
     metadata->baseHdrHeadroom = 0.0;
     metadata->alternateHdrHeadroom = 1.0;
+    metadata->useBaseColorSpace = AVIF_TRUE;
 }
 
 // ---------------------------------------------------------------------------
