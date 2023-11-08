@@ -41,8 +41,9 @@ void CheckGainMapMetadataMatches(const avifGainMapMetadata& lhs,
 }
 
 avifGainMapMetadata GetTestGainMapMetadata(bool base_rendition_is_hdr) {
-  avifGainMapMetadata metadata;
+  avifGainMapMetadata metadata = {};
   metadata.backwardDirection = base_rendition_is_hdr;
+  metadata.useBaseColorSpace = true;
   metadata.baseHdrHeadroomN = 0;
   metadata.baseHdrHeadroomD = 1;
   metadata.alternateHdrHeadroomN = 6;
@@ -819,7 +820,8 @@ TEST(GainMapTest, ConvertMetadataToDoubleInvalid) {
 }
 
 static void SwapBaseAndAlternate(avifGainMapMetadata& metadata) {
-  metadata.backwardDirection = true;
+  metadata.backwardDirection = !metadata.backwardDirection;
+  metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
   std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
   std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
   for (int c = 0; c < 3; ++c) {
