@@ -14,7 +14,7 @@
 
 using ::fuzztest::Arbitrary;
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -95,4 +95,4 @@ FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

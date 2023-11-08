@@ -16,7 +16,7 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -259,4 +259,4 @@ std::vector<std::string> GetTestImagesContents(
 //------------------------------------------------------------------------------
 
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

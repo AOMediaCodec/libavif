@@ -10,7 +10,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 //------------------------------------------------------------------------------
@@ -207,4 +207,4 @@ TEST(StreamTest, Roundtrip) {
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

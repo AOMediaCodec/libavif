@@ -10,7 +10,7 @@
 using ::testing::Combine;
 using ::testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 class SetGetRGBATest
@@ -133,4 +133,4 @@ INSTANTIATE_TEST_SUITE_P(
             /*is_float=*/Values(true)));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

@@ -8,7 +8,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // One AVIF cell in an AVIF grid.
@@ -279,4 +279,4 @@ TEST(GridApiTest, DifferentMatrixCoefficients) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

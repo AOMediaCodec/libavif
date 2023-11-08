@@ -12,7 +12,7 @@
 
 using ::fuzztest::Arbitrary;
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -43,4 +43,4 @@ FUZZ_TEST(DecodeAvifTest, Decode)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

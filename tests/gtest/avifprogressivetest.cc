@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 class ProgressiveTest : public testing::Test {
@@ -170,4 +170,4 @@ TEST_F(ProgressiveTest, TooFewLayers) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

@@ -14,7 +14,7 @@
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 
 //------------------------------------------------------------------------------
@@ -168,6 +168,6 @@ std::vector<const avifImage*> UniquePtrToRawPtr(
 //------------------------------------------------------------------------------
 
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif
 
 #endif  // LIBAVIF_TESTS_AVIFTEST_HELPERS_H_

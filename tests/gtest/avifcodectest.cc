@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 class CodecTest : public testing::TestWithParam<
@@ -58,4 +58,4 @@ INSTANTIATE_TEST_SUITE_P(
                          AVIF_CODEC_CHOICE_LIBGAV1)));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

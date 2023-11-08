@@ -9,7 +9,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 enum class InputType { kStillImage, kGrid, kAnimation };
@@ -132,4 +132,4 @@ INSTANTIATE_TEST_SUITE_P(
                                      InputType::kAnimation)));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

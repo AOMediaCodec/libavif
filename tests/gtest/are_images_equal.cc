@@ -15,7 +15,7 @@
 #include <windows.h>
 #endif
 
-using libavif::ImagePtr;
+using avif::ImagePtr;
 
 MAIN() {
   INIT_ARGV()
@@ -60,8 +60,8 @@ MAIN() {
   bool ignore_alpha = std::stoi(argv[3]) != 0;
 
   if (argc == 4) {
-    if (!libavif::testutil::AreImagesEqual(*decoded[0], *decoded[1],
-                                           ignore_alpha)) {
+    if (!avif::testutil::AreImagesEqual(*decoded[0], *decoded[1],
+                                        ignore_alpha)) {
       std::cerr << "Images " << argv[1] << " and " << argv[2]
                 << " are different." << std::endl;
       return 1;
@@ -69,8 +69,7 @@ MAIN() {
     std::cout << "Images " << argv[1] << " and " << argv[2] << " are identical."
               << std::endl;
   } else {
-    auto psnr =
-        libavif::testutil::GetPsnr(*decoded[0], *decoded[1], ignore_alpha);
+    auto psnr = avif::testutil::GetPsnr(*decoded[0], *decoded[1], ignore_alpha);
     if (psnr < std::stod(argv[4])) {
       std::cerr << "PSNR: " << psnr << ", images " << argv[1] << " and "
                 << argv[2] << " are not similar." << std::endl;

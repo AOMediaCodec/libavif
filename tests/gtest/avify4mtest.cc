@@ -12,7 +12,7 @@
 using testing::Combine;
 using testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 class Y4mTest
@@ -116,4 +116,4 @@ INSTANTIATE_TEST_SUITE_P(AlphaCombinations, Y4mTest,
                                  /*create_alpha=*/Values(true)));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

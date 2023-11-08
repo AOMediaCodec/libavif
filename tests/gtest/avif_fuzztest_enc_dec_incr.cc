@@ -17,7 +17,7 @@
 using ::fuzztest::Arbitrary;
 using ::fuzztest::InRange;
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -74,4 +74,4 @@ FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeGridValid)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

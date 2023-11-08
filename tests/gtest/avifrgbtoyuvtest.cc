@@ -15,7 +15,7 @@ using ::testing::Combine;
 using ::testing::Range;
 using ::testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 //------------------------------------------------------------------------------
@@ -836,4 +836,4 @@ INSTANTIATE_TEST_SUITE_P(
             /*has_alpha=*/Bool()));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

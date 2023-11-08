@@ -8,7 +8,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 void TestEncodeDecode(avifCodecChoice codec,
@@ -237,4 +237,4 @@ TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

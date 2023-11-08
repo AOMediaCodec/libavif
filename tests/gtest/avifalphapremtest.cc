@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 //------------------------------------------------------------------------------
@@ -64,4 +64,4 @@ TEST(AlphaMultiplyTest, OpaqueIsNoOp) {
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

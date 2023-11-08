@@ -10,7 +10,7 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -98,4 +98,4 @@ FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

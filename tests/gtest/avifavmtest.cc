@@ -8,7 +8,7 @@
 using testing::Combine;
 using testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 class AvmTest : public testing::TestWithParam<
@@ -118,4 +118,4 @@ TEST(AvmTest, Av1StillWorksWhenAvmIsEnabled) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

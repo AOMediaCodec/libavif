@@ -19,7 +19,7 @@
 #include "avifpng.h"
 #include "avifutil.h"
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 
 //------------------------------------------------------------------------------
@@ -573,4 +573,4 @@ std::vector<const avifImage*> UniquePtrToRawPtr(
 //------------------------------------------------------------------------------
 
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

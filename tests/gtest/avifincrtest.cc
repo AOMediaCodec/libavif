@@ -15,7 +15,7 @@ using testing::Bool;
 using testing::Combine;
 using testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 //------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ INSTANTIATE_TEST_SUITE_P(SinglePixel, IncrementalTest,
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -149,6 +149,6 @@ int main(int argc, char** argv) {
         << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

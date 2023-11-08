@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 TEST(ClliTest, Simple) {
@@ -30,4 +30,4 @@ TEST(ClliTest, Simple) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

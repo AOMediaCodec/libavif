@@ -8,7 +8,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 void TestAllocation(uint32_t width, uint32_t height, uint32_t depth,
@@ -197,4 +197,4 @@ TEST(AvifAllocTest, Extremes) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

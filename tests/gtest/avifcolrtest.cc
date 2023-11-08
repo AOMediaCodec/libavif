@@ -7,7 +7,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 constexpr int kMaxTransferCharacteristic = 18;
@@ -111,4 +111,4 @@ TEST(TransferCharacteristicsTest, ToGammaHasCorrectShape) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

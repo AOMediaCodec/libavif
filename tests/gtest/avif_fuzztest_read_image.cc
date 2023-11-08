@@ -18,7 +18,7 @@
 using ::fuzztest::Arbitrary;
 using ::fuzztest::ElementOf;
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -125,4 +125,4 @@ FUZZ_TEST(ReadImageFuzzTest, ReadImageFile)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

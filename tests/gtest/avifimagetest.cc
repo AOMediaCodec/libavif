@@ -8,7 +8,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 TEST(AvifImageTest, CreateEmpty) {
@@ -50,4 +50,4 @@ TEST(AvifImageTest, WriteImage) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

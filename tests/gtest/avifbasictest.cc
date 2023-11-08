@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 TEST(BasicTest, EncodeDecode) {
@@ -42,4 +42,4 @@ TEST(BasicTest, EncodeDecode) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

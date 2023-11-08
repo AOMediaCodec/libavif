@@ -14,7 +14,7 @@
 
 #include "avif/avif.h"
 
-namespace libavif
+namespace avif
 {
 
 // Struct to call the destroy functions in a unique_ptr.
@@ -30,6 +30,6 @@ using EncoderPtr = std::unique_ptr<avifEncoder, UniquePtrDeleter>;
 using DecoderPtr = std::unique_ptr<avifDecoder, UniquePtrDeleter>;
 using ImagePtr = std::unique_ptr<avifImage, UniquePtrDeleter>;
 
-} // namespace libavif
+} // namespace avif
 
 #endif // AVIF_AVIF_CXX_H

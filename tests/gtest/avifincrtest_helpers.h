@@ -8,7 +8,7 @@
 
 #include "avif/avif.h"
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 
 // Encodes a portion of the image to be decoded incrementally.
@@ -42,6 +42,6 @@ void DecodeNonIncrementallyAndIncrementally(
     bool expect_whole_file_read = true);
 
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif
 
 #endif  // LIBAVIF_TESTS_AVIFINCRTEST_HELPERS_H_

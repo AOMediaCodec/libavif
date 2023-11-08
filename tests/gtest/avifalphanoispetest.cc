@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
@@ -36,7 +36,7 @@ TEST(AvifDecodeTest, AlphaNoIspe) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -46,6 +46,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

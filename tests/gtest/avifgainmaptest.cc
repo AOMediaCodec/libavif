@@ -16,7 +16,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 using ::testing::Values;
@@ -1255,7 +1255,7 @@ INSTANTIATE_TEST_SUITE_P(
                         /*min_psnr=*/35.0f, /*max_psnr=*/45.0f)));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -1265,6 +1265,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

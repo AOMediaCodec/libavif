@@ -8,7 +8,7 @@
 using ::testing::Combine;
 using ::testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 //------------------------------------------------------------------------------
@@ -161,4 +161,4 @@ INSTANTIATE_TEST_SUITE_P(
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

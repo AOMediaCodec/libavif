@@ -6,7 +6,7 @@
 #include "avif/internal.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Converts a double value to a fraction, and checks that the difference
@@ -144,4 +144,4 @@ TEST(ToFractionTest, BadValues) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
