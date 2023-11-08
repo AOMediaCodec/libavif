@@ -23,3 +23,14 @@ When importing source code from upstream libyuv, the following changes must be d
 4. The commit hash of libyuv from where the files got imported in this README.md file must be updated.
 5. `LIBYUV_API` must be removed from any and all imported functions as these files are always built static.
 6. Replace .cc file extension by .c.
+
+## popl
+
+This subdirectory contains source code imported from popl https://github.com/badaix/popl/ v1.3.0 (bda5f43).
+
+popl is a C++ command line arguments parser.
+
+### Importing from upstream
+
+popl is a singler-file header-only library. Simply copy the latest version of popl.hpp
+from https://github.com/badaix/popl/ into the popl/ directory and update the version above.
