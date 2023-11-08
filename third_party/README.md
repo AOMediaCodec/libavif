@@ -26,7 +26,8 @@ When importing source code from upstream libyuv, the following changes must be d
 
 ## popl
 
-This subdirectory contains source code imported from popl https://github.com/badaix/popl/ v1.3.0 (bda5f43)
+This subdirectory contains source code imported from popl https://github.com/badaix/popl/ v1.3.0 (bda5f43).
+
 popl is a C++ command line arguments parser.
 
 ### Importing from upstream
