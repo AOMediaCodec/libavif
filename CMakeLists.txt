@@ -83,7 +83,7 @@ option(
 
 set(AVIF_USE_CXX OFF)
 
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_BUILD_APPS OR AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST OR AVIF_LOCAL_LIBGAV1)
     set(AVIF_USE_CXX ON)
 endif()
 
@@ -725,6 +725,7 @@ endif()
 
 if(AVIF_USE_CXX)
     enable_language(CXX)
+    set(CMAKE_CXX_STANDARD 14)
 endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
