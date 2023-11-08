@@ -8,7 +8,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
@@ -75,7 +75,7 @@ TEST(JpegTest, ReadJpegWithGainMap) {
                                "paris_exif_xmp_gainmap_littleendian.jpg"}) {
     SCOPED_TRACE(filename);
 
-    const testutil::AvifImagePtr image =
+    const ImagePtr image =
         testutil::ReadImage(data_path, filename, AVIF_PIXEL_FORMAT_YUV444, 8,
                             AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
                             /*ignore_icc=*/false, /*ignore_exif=*/false,
@@ -102,7 +102,7 @@ TEST(JpegTest, ReadJpegWithGainMap) {
 }
 
 TEST(JpegTest, IgnoreGainMap) {
-  const testutil::AvifImagePtr image = testutil::ReadImage(
+  const ImagePtr image = testutil::ReadImage(
       data_path, "paris_exif_xmp_gainmap_littleendian.jpg",
       AVIF_PIXEL_FORMAT_YUV444, 8, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignore_icc=*/false, /*ignore_exif=*/false,
@@ -307,7 +307,7 @@ TEST(JpegTest, EmptyXMP) {
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -317,6 +317,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

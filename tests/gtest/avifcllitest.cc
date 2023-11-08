@@ -5,11 +5,11 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 TEST(ClliTest, Simple) {
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(/*width=*/8, /*height=*/8, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_YUV);
   ASSERT_NE(image, nullptr);
@@ -21,8 +21,7 @@ TEST(ClliTest, Simple) {
       image->clli.maxPALL = static_cast<uint16_t>(max_pic_average_light_level);
 
       const testutil::AvifRwData encoded = testutil::Encode(image.get());
-      const testutil::AvifImagePtr decoded =
-          testutil::Decode(encoded.data, encoded.size);
+      const ImagePtr decoded = testutil::Decode(encoded.data, encoded.size);
       ASSERT_NE(decoded, nullptr);
       ASSERT_EQ(decoded->clli.maxCLL, image->clli.maxCLL);
       ASSERT_EQ(decoded->clli.maxPALL, image->clli.maxPALL);
@@ -31,4 +30,4 @@ TEST(ClliTest, Simple) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

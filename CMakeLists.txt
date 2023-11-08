@@ -873,7 +873,7 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
-    install(FILES include/avif/avif.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
+    install(FILES include/avif/avif.h include/avif/avif_cxx.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
 endif()
 
 # ---------------------------------------------------------------------------------------

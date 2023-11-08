@@ -12,7 +12,7 @@
 using testing::Combine;
 using testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 class Y4mTest
@@ -33,7 +33,7 @@ TEST_P(Y4mTest, EncodeDecode) {
             << height << "_" << bit_depth << "_" << yuv_format << "_"
             << yuv_range << "_" << create_alpha;
 
-  testutil::AvifImagePtr image = testutil::CreateImage(
+  ImagePtr image = testutil::CreateImage(
       width, height, bit_depth, yuv_format,
       create_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, yuv_range);
   ASSERT_NE(image, nullptr);
@@ -48,7 +48,7 @@ TEST_P(Y4mTest, EncodeDecode) {
   testutil::FillImagePlain(image.get(), yuva);
   ASSERT_TRUE(y4mWrite(file_path.str().c_str(), image.get()));
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
   ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),
                       /*sourceTiming=*/nullptr, /*iter=*/nullptr));
@@ -68,7 +68,7 @@ TEST_P(Y4mTest, OutOfRange) {
             << height << "_" << bit_depth << "_" << yuv_format << "_"
             << yuv_range << "_" << create_alpha;
 
-  testutil::AvifImagePtr image = testutil::CreateImage(
+  ImagePtr image = testutil::CreateImage(
       width, height, bit_depth, yuv_format,
       create_alpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, yuv_range);
   ASSERT_NE(image, nullptr);
@@ -85,7 +85,7 @@ TEST_P(Y4mTest, OutOfRange) {
   // to avoid computation with unexpected sample values. However, it does not
   // respect the limited ("video") range because the libavif API just passes
   // that tag along, it is ignored by the compression algorithm.
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
   ASSERT_TRUE(y4mRead(file_path.str().c_str(), decoded.get(),
                       /*sourceTiming=*/nullptr, /*iter=*/nullptr));
@@ -116,4 +116,4 @@ INSTANTIATE_TEST_SUITE_P(AlphaCombinations, Y4mTest,
                                  /*create_alpha=*/Values(true)));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

@@ -6,7 +6,7 @@
 #include "avifutil.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
@@ -18,7 +18,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
        {"paris_icc_exif_xmp.png", "paris_exif_xmp_icc.jpg"}) {
     // Read a ground truth image with default matrix coefficients.
     const std::string file_path = std::string(data_path) + file_name;
-    const testutil::AvifImagePtr ground_truth_image =
+    const ImagePtr ground_truth_image =
         testutil::ReadImage(data_path, file_name);
 
     for (auto matrix_coefficient : {
@@ -28,7 +28,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
                AVIF_MATRIX_COEFFICIENTS_IDENTITY, AVIF_MATRIX_COEFFICIENTS_YCGCO
          }) {
       // Read a ground truth image but ask for certain matrix coefficients.
-      testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+      ImagePtr image(avifImageCreateEmpty());
       ASSERT_NE(image, nullptr);
       image->matrixCoefficients = (avifMatrixCoefficients)matrix_coefficient;
       const avifAppFileFormat file_format = avifReadImage(
@@ -52,7 +52,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
 
       // Encode.
-      testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+      EncoderPtr encoder(avifEncoderCreate());
       ASSERT_NE(encoder, nullptr);
       encoder->speed = AVIF_SPEED_FASTEST;
       encoder->quality = AVIF_QUALITY_LOSSLESS;
@@ -63,9 +63,9 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
 
       // Decode to RAM.
-      testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+      ImagePtr decoded(avifImageCreateEmpty());
       ASSERT_NE(decoded, nullptr);
-      testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+      DecoderPtr decoder(avifDecoderCreate());
       ASSERT_NE(decoder, nullptr);
       result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                      encoded.size);
@@ -77,7 +77,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       const std::string temp_file = "decoded_default.png";
       const std::string tmp_path = temp_dir + temp_file;
       ASSERT_TRUE(testutil::WriteImage(decoded.get(), tmp_path.c_str()));
-      const testutil::AvifImagePtr decoded_default =
+      const ImagePtr decoded_default =
           testutil::ReadImage(temp_dir.c_str(), temp_file.c_str());
 
       // Verify that the ground truth and decoded images are the same.
@@ -100,7 +100,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -110,6 +110,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

@@ -14,36 +14,35 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 
 //------------------------------------------------------------------------------
 // C++ wrapper for scoped memory management of C API objects.
 
 // Exposed for convenient fuzztest reproducer output.
-AvifImagePtr CreateAvifImage8b(size_t width, size_t height,
-                               avifPixelFormat pixel_format, bool has_alpha,
-                               const std::vector<uint8_t>& samples);
-AvifImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
-                                avifPixelFormat pixel_format, bool has_alpha,
-                                const std::vector<uint16_t>& samples);
-AvifEncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
-                                 int min_quantizer, int max_quantizer,
-                                 int min_quantizer_alpha,
-                                 int max_quantizer_alpha, int tile_rows_log2,
-                                 int tile_cols_log2, int speed);
-AvifDecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
-                                 avifDecoderSource requested_source,
-                                 bool allow_progressive, bool allow_incremental,
-                                 bool ignore_exif, bool ignore_xmp,
-                                 uint32_t image_size_limit,
-                                 uint32_t image_dimension_limit,
-                                 uint32_t image_count_limit,
-                                 avifStrictFlags strict_flags);
+ImagePtr CreateAvifImage8b(size_t width, size_t height,
+                           avifPixelFormat pixel_format, bool has_alpha,
+                           const std::vector<uint8_t>& samples);
+ImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
+                            avifPixelFormat pixel_format, bool has_alpha,
+                            const std::vector<uint16_t>& samples);
+EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
+                             int min_quantizer, int max_quantizer,
+                             int min_quantizer_alpha, int max_quantizer_alpha,
+                             int tile_rows_log2, int tile_cols_log2, int speed);
+DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
+                             avifDecoderSource requested_source,
+                             bool allow_progressive, bool allow_incremental,
+                             bool ignore_exif, bool ignore_xmp,
+                             uint32_t image_size_limit,
+                             uint32_t image_dimension_limit,
+                             uint32_t image_count_limit,
+                             avifStrictFlags strict_flags);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-AvifDecoderPtr AddGainMapOptionsToDecoder(AvifDecoderPtr decoder,
-                                          bool enable_parsing_gain_map_metadata,
-                                          bool enable_decoding_gain_map);
+DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
+                                      bool enable_parsing_gain_map_metadata,
+                                      bool enable_decoding_gain_map);
 #endif
 
 //------------------------------------------------------------------------------
@@ -102,12 +101,12 @@ inline auto ArbitraryAvifImage16b() {
       fuzztest::Arbitrary<bool>());
 }
 
-// Generator for an arbitrary AvifImagePtr.
+// Generator for an arbitrary ImagePtr.
 inline auto ArbitraryAvifImage() {
   return fuzztest::OneOf(ArbitraryAvifImage8b(), ArbitraryAvifImage16b());
 }
 
-// Generator for an arbitrary AvifEncoderPtr.
+// Generator for an arbitrary EncoderPtr.
 inline auto ArbitraryAvifEncoder() {
   const auto codec_choice = fuzztest::ElementOf<avifCodecChoice>(
       {AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_CHOICE_AOM});
@@ -132,7 +131,7 @@ inline auto ArbitraryAvifEncoder() {
                        speed);
 }
 
-// Generator for an arbitrary AvifEncoderPtr with base options fuzzed (i.e.
+// Generator for an arbitrary EncoderPtr with base options fuzzed (i.e.
 // without "experimental" options hidden behind compile flags).
 inline auto ArbitraryBaseAvifDecoder() {
   // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
@@ -160,7 +159,7 @@ inline auto ArbitraryBaseAvifDecoder() {
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-// Generator for an arbitrary AvifEncoderPtr with base options and gain map
+// Generator for an arbitrary EncoderPtr with base options and gain map
 // options fuzzed, with the exception of 'ignoreColorAndAlpha' (because it would
 // break most tests' assumptions).
 inline auto ArbitraryAvifDecoderWithGainMapOptions() {
@@ -170,12 +169,12 @@ inline auto ArbitraryAvifDecoderWithGainMapOptions() {
       /*enable_decoding_gain_map=*/fuzztest::Arbitrary<bool>());
 }
 
-// Generator for an arbitrary AvifDecoderPtr.
+// Generator for an arbitrary DecoderPtr.
 inline auto ArbitraryAvifDecoder() {
   return ArbitraryAvifDecoderWithGainMapOptions();
 }
 #else
-// Generator for an arbitrary AvifDecoderPtr.
+// Generator for an arbitrary DecoderPtr.
 inline auto ArbitraryAvifDecoder() { return ArbitraryBaseAvifDecoder(); }
 #endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
@@ -215,7 +214,7 @@ const char* GetSeedDataDir();
 std::vector<std::string> GetTestImagesContents(
     size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats);
 
-// Generator for an arbitrary AvifImagePtr that uses test image files as seeds.
+// Generator for an arbitrary ImagePtr that uses test image files as seeds.
 // Uses the 'TEST_DATA_DIR' environment variable to load the seeds.
 // If TEST_DATA_DIR is not set, no seeds are used.
 // Tests that use this should ASSERT_NE(GetSeedDataDir(), nullptr)
@@ -233,6 +232,6 @@ inline auto ArbitraryImageWithSeeds(
 //------------------------------------------------------------------------------
 
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif
 
 #endif  // LIBAVIF_TESTS_OSS_FUZZ_AVIF_FUZZTEST_HELPERS_H_

@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   possibility encoder may crash when given certain configuration or input.
 * Add imageSequenceTrackPresent flag to the avifDecoder struct.
 * avifImageScale() function was made part of the public ABI.
+* Add avif_cxx.h as a C++ header with basic functionality.
 
 ### Changed
 * Update aom.cmd: v3.7.0

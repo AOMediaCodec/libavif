@@ -14,7 +14,7 @@
 
 using ::fuzztest::Arbitrary;
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -48,7 +48,7 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
                 bool give_size_hint, bool use_nth_image_api) {
   ASSERT_NE(GetSeedDataDir(), nullptr);  // Make sure seeds are available.
 
-  AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr reference(avifImageCreateEmpty());
   ASSERT_NE(reference.get(), nullptr);
 
   DecoderInput data = {reinterpret_cast<const uint8_t*>(arbitrary_bytes.data()),
@@ -58,7 +58,7 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
                .persistent = AVIF_TRUE,
                .data = &data};
 
-  AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder.get(), nullptr);
   avifDecoderSetIO(decoder.get(), &io);
 
@@ -95,4 +95,4 @@ FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

@@ -5,15 +5,15 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 TEST(OpaqueTest, AlphaAndNoAlpha) {
   for (bool alpha_is_opaque : {false, true}) {
     for (int depth : {8, 10, 12}) {
-      testutil::AvifImagePtr alpha = testutil::CreateImage(
+      ImagePtr alpha = testutil::CreateImage(
           1, 1, depth, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
-      testutil::AvifImagePtr no_alpha = testutil::CreateImage(
+      ImagePtr no_alpha = testutil::CreateImage(
           1, 1, depth, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_YUV);
 
       const uint32_t max_value = (1u << depth) - 1;
@@ -28,4 +28,4 @@ TEST(OpaqueTest, AlphaAndNoAlpha) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

@@ -8,18 +8,17 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 TEST(AvifImageTest, CreateEmpty) {
-  testutil::AvifImagePtr empty(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr empty(avifImageCreateEmpty());
   EXPECT_NE(empty, nullptr);
 }
 
 bool IsValidAvifImageCreate(uint32_t width, uint32_t height, uint32_t depth,
                             avifPixelFormat format) {
-  testutil::AvifImagePtr image(avifImageCreate(width, height, depth, format),
-                               avifImageDestroy);
+  ImagePtr image(avifImageCreate(width, height, depth, format));
   return image != nullptr;
 }
 
@@ -41,7 +40,7 @@ TEST(AvifImageTest, Invalid) {
 }
 
 TEST(AvifImageTest, WriteImage) {
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
                             AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
@@ -51,4 +50,4 @@ TEST(AvifImageTest, WriteImage) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

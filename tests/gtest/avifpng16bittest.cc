@@ -1,17 +1,20 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cstdint>
+#include <iostream>
 #include <numeric>
 #include <string>
 #include <vector>
 
 #include "avif/avif.h"
+#include "avif/avif_cxx.h"
 #include "avifpng.h"
 #include "aviftest_helpers.h"
 #include "avifutil.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
@@ -20,10 +23,10 @@ const char* data_path = nullptr;
 //------------------------------------------------------------------------------
 
 // Reads samples with an expected bit depth.
-testutil::AvifImagePtr ReadImageLosslessBitDepth(const std::string& path,
-                                                 uint32_t bit_depth) {
-  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
-  if (!image) return {nullptr, nullptr};
+ImagePtr ReadImageLosslessBitDepth(const std::string& path,
+                                   uint32_t bit_depth) {
+  ImagePtr image(avifImageCreateEmpty());
+  if (!image) return nullptr;
   // Lossless.
   image->yuvRange = AVIF_RANGE_FULL;
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
@@ -37,7 +40,7 @@ testutil::AvifImagePtr ReadImageLosslessBitDepth(const std::string& path,
                     image.get(), &output_depth,
                     /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
   EXPECT_EQ(output_depth, bit_depth);
   EXPECT_EQ(image->depth, bit_depth);
@@ -67,7 +70,7 @@ double GetSampleValueSpread(const avifImage& image, avifChannelIndex channel) {
 
 TEST(BitDepthTest, Png16b) {
   // Read 16-bit image.
-  testutil::AvifImagePtr original =
+  ImagePtr original =
       ReadImageLosslessBitDepth(std::string(data_path) + "weld_16bit.png", 16);
   ASSERT_NE(original, nullptr);
   // More than 75% of possible sample values are present in each channel.
@@ -82,8 +85,7 @@ TEST(BitDepthTest, Png16b) {
   ASSERT_TRUE(avifPNGWrite(file_path.c_str(), original.get(), original->depth,
                            AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
                            /*compressionLevel=*/0));
-  testutil::AvifImagePtr image =
-      ReadImageLosslessBitDepth(file_path, original->depth);
+  ImagePtr image = ReadImageLosslessBitDepth(file_path, original->depth);
   ASSERT_NE(image, nullptr);
 
   // They should match exactly.
@@ -93,7 +95,7 @@ TEST(BitDepthTest, Png16b) {
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -103,6 +105,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

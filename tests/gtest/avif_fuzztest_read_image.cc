@@ -18,7 +18,7 @@
 using ::fuzztest::Arbitrary;
 using ::fuzztest::ElementOf;
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -57,7 +57,7 @@ void ReadImageFile(const std::string& arbitrary_bytes,
 
   uint32_t out_depth;
   avifAppSourceTiming timing;
-  testutil::AvifImagePtr avif_image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr avif_image(avifImageCreateEmpty());
   avif_image->matrixCoefficients = matrix_coefficients;
 
   const avifAppFileFormat file_format = avifReadImage(
@@ -125,4 +125,4 @@ FUZZ_TEST(ReadImageFuzzTest, ReadImageFile)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

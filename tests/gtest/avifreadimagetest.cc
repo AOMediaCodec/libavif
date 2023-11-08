@@ -9,7 +9,7 @@
 #include "gtest/gtest.h"
 #include "iccmaker.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
@@ -29,11 +29,11 @@ bool AreSamplesEqualForAllReadSettings(const char* file_name1,
             AVIF_CHROMA_DOWNSAMPLING_FASTEST,
             AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY,
             AVIF_CHROMA_DOWNSAMPLING_AVERAGE}) {
-        const testutil::AvifImagePtr image1 = testutil::ReadImage(
+        const ImagePtr image1 = testutil::ReadImage(
             data_path, file_name1, requested_format, requested_depth,
             chroma_downsampling, kIgnoreMetadata, kIgnoreMetadata,
             kIgnoreMetadata);
-        const testutil::AvifImagePtr image2 = testutil::ReadImage(
+        const ImagePtr image2 = testutil::ReadImage(
             data_path, file_name2, requested_format, requested_depth,
             chroma_downsampling, kIgnoreMetadata, kIgnoreMetadata,
             kIgnoreMetadata);
@@ -58,8 +58,8 @@ TEST(PngTest, ReadAllSubsamplingsAndAllBitDepths) {
 
 // Verify we can read a PNG file with PNG_COLOR_TYPE_PALETTE and a tRNS chunk.
 TEST(PngTest, PaletteColorTypeWithTrnsChunk) {
-  const testutil::AvifImagePtr image = testutil::ReadImage(
-      data_path, "draw_points.png", AVIF_PIXEL_FORMAT_YUV444, 8);
+  const ImagePtr image = testutil::ReadImage(data_path, "draw_points.png",
+                                             AVIF_PIXEL_FORMAT_YUV444, 8);
   ASSERT_NE(image, nullptr);
   EXPECT_EQ(image->width, 33u);
   EXPECT_EQ(image->height, 11u);
@@ -69,7 +69,7 @@ TEST(PngTest, PaletteColorTypeWithTrnsChunk) {
 // Verify we can read a PNG file with PNG_COLOR_TYPE_RGB and a tRNS chunk
 // after a PLTE chunk.
 TEST(PngTest, RgbColorTypeWithTrnsAfterPlte) {
-  const testutil::AvifImagePtr image = testutil::ReadImage(
+  const ImagePtr image = testutil::ReadImage(
       data_path, "circle-trns-after-plte.png", AVIF_PIXEL_FORMAT_YUV444, 8);
   ASSERT_NE(image, nullptr);
   EXPECT_EQ(image->width, 100u);
@@ -81,7 +81,7 @@ TEST(PngTest, RgbColorTypeWithTrnsAfterPlte) {
 // before a PLTE chunk. libpng considers the tRNS chunk as invalid and ignores
 // it, so the decoded image should have no alpha.
 TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
-  const testutil::AvifImagePtr image = testutil::ReadImage(
+  const ImagePtr image = testutil::ReadImage(
       data_path, "circle-trns-before-plte.png", AVIF_PIXEL_FORMAT_YUV444, 8);
   ASSERT_NE(image, nullptr);
   EXPECT_EQ(image->width, 100u);
@@ -283,7 +283,7 @@ TEST(PngTest, GeneratedICCHash) {
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -293,6 +293,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

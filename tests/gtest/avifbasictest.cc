@@ -5,25 +5,25 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 TEST(BasicTest, EncodeDecode) {
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
@@ -42,4 +42,4 @@ TEST(BasicTest, EncodeDecode) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

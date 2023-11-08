@@ -10,7 +10,7 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -23,12 +23,12 @@ struct FrameOptions {
 
 // Encodes an animation and decodes it.
 // For simplicity, there is only one source image, all frames are identical.
-void EncodeDecodeAnimation(AvifImagePtr frame,
+void EncodeDecodeAnimation(ImagePtr frame,
                            const std::vector<FrameOptions>& frame_options,
-                           AvifEncoderPtr encoder, AvifDecoderPtr decoder) {
+                           EncoderPtr encoder, DecoderPtr decoder) {
   ASSERT_NE(encoder, nullptr);
   ASSERT_NE(decoder, nullptr);
-  AvifImagePtr decoded_image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded_image(avifImageCreateEmpty());
   ASSERT_NE(decoded_image, nullptr);
 
   const int num_frames = static_cast<int>(frame_options.size());
@@ -98,4 +98,4 @@ FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

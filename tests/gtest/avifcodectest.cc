@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 class CodecTest : public testing::TestWithParam<
@@ -22,13 +22,13 @@ TEST_P(CodecTest, EncodeDecode) {
   }
 
   // AVIF_CODEC_CHOICE_SVT requires dimensions to be at least 64 pixels.
-  testutil::AvifImagePtr image =
+  ImagePtr image =
       testutil::CreateImage(/*width=*/64, /*height=*/64, /*depth=*/8,
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = encoding_codec;
   encoder->quality = encoder->qualityAlpha = 90;  // Small loss.
@@ -36,10 +36,10 @@ TEST_P(CodecTest, EncodeDecode) {
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
             AVIF_RESULT_OK);
 
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->codecChoice = decoding_codec;
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                   encoded.size),
@@ -58,4 +58,4 @@ INSTANTIATE_TEST_SUITE_P(
                          AVIF_CODEC_CHOICE_LIBGAV1)));
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

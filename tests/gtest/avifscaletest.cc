@@ -12,7 +12,7 @@
 using testing::Combine;
 using testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
@@ -32,7 +32,7 @@ TEST_P(ScaleTest, Roundtrip) {
   const avifPixelFormat yuv_format = std::get<1>(GetParam());
   const bool create_alpha = std::get<2>(GetParam());
 
-  const testutil::AvifImagePtr image =
+  const ImagePtr image =
       testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg", yuv_format,
                           bit_depth, AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY,
                           kIgnoreMetadata, kIgnoreMetadata, kIgnoreMetadata);
@@ -44,7 +44,7 @@ TEST_P(ScaleTest, Roundtrip) {
     image->imageOwnsAlphaPlane = false;
   }
 
-  testutil::AvifImagePtr scaled_image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr scaled_image(avifImageCreateEmpty());
   ASSERT_NE(scaled_image, nullptr);
   ASSERT_EQ(avifImageCopy(scaled_image.get(), image.get(), AVIF_PLANES_ALL),
             AVIF_RESULT_OK);
@@ -79,7 +79,7 @@ INSTANTIATE_TEST_SUITE_P(
             /*create_alpha=*/Values(true, false)));
 
 TEST(ScaleTest, LargerThanDefaultLimits) {
-  const testutil::AvifImagePtr image = testutil::ReadImage(
+  const ImagePtr image = testutil::ReadImage(
       data_path, "paris_exif_xmp_icc.jpg", AVIF_PIXEL_FORMAT_YUV420, 8,
       AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY, kIgnoreMetadata, kIgnoreMetadata,
       kIgnoreMetadata);
@@ -96,7 +96,7 @@ TEST(ScaleTest, LargerThanDefaultLimits) {
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -106,6 +106,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

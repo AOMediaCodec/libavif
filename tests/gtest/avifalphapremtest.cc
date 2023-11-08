@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 //------------------------------------------------------------------------------
@@ -25,14 +25,14 @@ TEST(AlphaMultiplyTest, OpaqueIsNoOp) {
     }
 
     // YUVA.
-    testutil::AvifImagePtr opaque_alpha = testutil::CreateImage(
+    ImagePtr opaque_alpha = testutil::CreateImage(
         1024, 1024, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
     const uint32_t yuva[] = {255, 255, 255, 255};
     testutil::FillImagePlain(opaque_alpha.get(), yuva);
     opaque_alpha->alphaPremultiplied = premultiplied_input;
 
     // View on YUV (no alpha), to make sure the color values are identical.
-    testutil::AvifImagePtr no_alpha(avifImageCreateEmpty(), avifImageDestroy);
+    ImagePtr no_alpha(avifImageCreateEmpty());
     ASSERT_NE(no_alpha, nullptr);
     const avifCropRect rect = {0, 0, opaque_alpha->width, opaque_alpha->height};
     ASSERT_EQ(avifImageSetViewRect(no_alpha.get(), opaque_alpha.get(), &rect),
@@ -64,4 +64,4 @@ TEST(AlphaMultiplyTest, OpaqueIsNoOp) {
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif

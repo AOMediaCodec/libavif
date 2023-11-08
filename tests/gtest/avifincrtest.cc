@@ -15,7 +15,7 @@ using testing::Bool;
 using testing::Combine;
 using testing::Values;
 
-namespace libavif {
+namespace avif {
 namespace {
 
 //------------------------------------------------------------------------------
@@ -45,9 +45,9 @@ testutil::AvifRwData ReadFile(const char* file_name) {
 TEST(IncrementalTest, Decode) {
   const testutil::AvifRwData encoded_avif = ReadFile("sofa_grid1x5_420.avif");
   ASSERT_NE(encoded_avif.size, 0u);
-  testutil::AvifImagePtr reference(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr reference(avifImageCreateEmpty());
   ASSERT_NE(reference, nullptr);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(),
                                   encoded_avif.data, encoded_avif.size),
@@ -83,11 +83,11 @@ TEST_P(IncrementalTest, EncodeDecode) {
   const bool use_nth_image_api = std::get<6>(GetParam());
 
   // Load an image. It does not matter that it comes from an AVIF file.
-  testutil::AvifImagePtr image(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
   const testutil::AvifRwData image_bytes = ReadFile("sofa_grid1x5_420.avif");
   ASSERT_NE(image_bytes.size, 0u);
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), image.get(), image_bytes.data,
                                   image_bytes.size),
@@ -139,7 +139,7 @@ INSTANTIATE_TEST_SUITE_P(SinglePixel, IncrementalTest,
 //------------------------------------------------------------------------------
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -149,6 +149,6 @@ int main(int argc, char** argv) {
         << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

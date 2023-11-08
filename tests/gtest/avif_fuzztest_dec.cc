@@ -12,7 +12,7 @@
 
 using ::fuzztest::Arbitrary;
 
-namespace libavif {
+namespace avif {
 namespace testutil {
 namespace {
 
@@ -20,10 +20,10 @@ namespace {
 
 //------------------------------------------------------------------------------
 
-void Decode(const std::string& arbitrary_bytes, AvifDecoderPtr decoder) {
+void Decode(const std::string& arbitrary_bytes, DecoderPtr decoder) {
   ASSERT_NE(GetSeedDataDir(), nullptr);  // Make sure seeds are available.
 
-  testutil::AvifImagePtr decoded(avifImageCreateEmpty(), avifImageDestroy);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
   const avifResult result = avifDecoderReadMemory(
       decoder.get(), decoded.get(),
@@ -43,4 +43,4 @@ FUZZ_TEST(DecodeAvifTest, Decode)
 
 }  // namespace
 }  // namespace testutil
-}  // namespace libavif
+}  // namespace avif

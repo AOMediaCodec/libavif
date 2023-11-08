@@ -5,7 +5,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
@@ -16,7 +16,7 @@ TEST(AvifDecodeTest, AnimatedImage) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
   }
   const char* file_name = "colors-animated-8bpc.avif";
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
                                  (std::string(data_path) + file_name).c_str()),
@@ -36,7 +36,7 @@ TEST(AvifDecodeTest, AnimatedImageWithSourceSetToPrimaryItem) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
   }
   const char* file_name = "colors-animated-8bpc.avif";
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
                                  (std::string(data_path) + file_name).c_str()),
@@ -59,7 +59,7 @@ TEST(AvifDecodeTest, AnimatedImageWithSourceSetToPrimaryItem) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -69,6 +69,6 @@ int main(int argc, char** argv) {
               << std::endl;
     return 1;
   }
-  libavif::data_path = argv[1];
+  avif::data_path = argv[1];
   return RUN_ALL_TESTS();
 }

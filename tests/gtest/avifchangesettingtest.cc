@@ -8,7 +8,7 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-namespace libavif {
+namespace avif {
 namespace {
 
 void TestEncodeDecode(avifCodecChoice codec,
@@ -19,14 +19,14 @@ void TestEncodeDecode(avifCodecChoice codec,
   }
 
   constexpr uint32_t kImageSize = 512;
-  testutil::AvifImagePtr image = testutil::CreateImage(
-      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
-      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ImagePtr image = testutil::CreateImage(kImageSize, kImageSize, /*depth=*/8,
+                                         AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
   // Encode
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = codec;
   encoder->speed = AVIF_SPEED_FASTEST;
@@ -80,7 +80,7 @@ void TestEncodeDecode(avifCodecChoice codec,
   ASSERT_EQ(avifEncoderFinish(encoder.get(), &encodedAvif), AVIF_RESULT_OK);
 
   // Decode
-  testutil::AvifDecoderPtr decoder(avifDecoderCreate(), avifDecoderDestroy);
+  DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
 
   // The second frame is set to have far better quality,
@@ -124,14 +124,14 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
   }
 
   constexpr uint32_t kImageSize = 512;
-  testutil::AvifImagePtr image = testutil::CreateImage(
-      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
-      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ImagePtr image = testutil::CreateImage(kImageSize, kImageSize, /*depth=*/8,
+                                         AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
 
   // Encode
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
   encoder->speed = AVIF_SPEED_FASTEST;
@@ -167,15 +167,15 @@ TEST(ChangeSettingTest, UnchangeableImageColorRange) {
   }
 
   constexpr uint32_t kImageSize = 512;
-  testutil::AvifImagePtr image = testutil::CreateImage(
-      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
-      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ImagePtr image = testutil::CreateImage(kImageSize, kImageSize, /*depth=*/8,
+                                         AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
   const uint32_t yuva[] = {128, 128, 128, 255};
   testutil::FillImagePlain(image.get(), yuva);
 
   // Encode
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
   encoder->speed = AVIF_SPEED_FASTEST;
@@ -204,15 +204,15 @@ TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
   }
 
   constexpr uint32_t kImageSize = 512;
-  testutil::AvifImagePtr image = testutil::CreateImage(
-      kImageSize, kImageSize, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
-      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ImagePtr image = testutil::CreateImage(kImageSize, kImageSize, /*depth=*/8,
+                                         AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
   const uint32_t yuva[] = {128, 128, 128, 255};
   testutil::FillImagePlain(image.get(), yuva);
 
   // Encode
-  testutil::AvifEncoderPtr encoder(avifEncoderCreate(), avifEncoderDestroy);
+  EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
   encoder->speed = AVIF_SPEED_FASTEST;
@@ -237,4 +237,4 @@ TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
 }
 
 }  // namespace
-}  // namespace libavif
+}  // namespace avif
