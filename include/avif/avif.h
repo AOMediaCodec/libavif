@@ -651,6 +651,7 @@ typedef struct avifGainMapMetadataDouble
     double baseHdrHeadroom;
     double alternateHdrHeadroom;
     avifBool backwardDirection;
+    avifBool useBaseColorSpace;
 } avifGainMapMetadataDouble;
 
 // Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values

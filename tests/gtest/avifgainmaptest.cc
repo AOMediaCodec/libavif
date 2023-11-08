@@ -819,7 +819,8 @@ TEST(GainMapTest, ConvertMetadataToDoubleInvalid) {
 }
 
 static void SwapBaseAndAlternate(avifGainMapMetadata& metadata) {
-  metadata.backwardDirection = true;
+  metadata.backwardDirection = !metadata.backwardDirection;
+  metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
   std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
   std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
   for (int c = 0; c < 3; ++c) {
