@@ -6,7 +6,7 @@
 #ifndef AVIF_AVIF_CXX_H
 #define AVIF_AVIF_CXX_H
 
-#if !(defined(__cplusplus) || defined(c_plusplus))
+#if !defined(__cplusplus)
 #error "This a C++ only header. Use avif/avif.h for C."
 #endif
 
@@ -26,9 +26,9 @@ struct UniquePtrDeleter
 };
 
 // Use these unique_ptr to ensure the structs are automatically destroyed.
-typedef std::unique_ptr<avifEncoder, UniquePtrDeleter> EncoderPtr;
-typedef std::unique_ptr<avifDecoder, UniquePtrDeleter> DecoderPtr;
-typedef std::unique_ptr<avifImage, UniquePtrDeleter> ImagePtr;
+using EncoderPtr = std::unique_ptr<avifEncoder, UniquePtrDeleter>;
+using DecoderPtr = std::unique_ptr<avifDecoder, UniquePtrDeleter>;
+using ImagePtr = std::unique_ptr<avifImage, UniquePtrDeleter>;
 
 } // namespace libavif
 
