@@ -171,7 +171,7 @@ avifResult avifImageScaleWithLimit(avifImage * image,
             const int failure =
                 ScalePlane(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
             if (failure) {
-                avifDiagnosticsPrintf(diag, "ScalePlane_12() failed (%d)", failure);
+                avifDiagnosticsPrintf(diag, "ScalePlane() failed (%d)", failure);
                 result = (failure == 1) ? AVIF_RESULT_OUT_OF_MEMORY : AVIF_RESULT_UNKNOWN_ERROR;
                 goto cleanup;
             }
