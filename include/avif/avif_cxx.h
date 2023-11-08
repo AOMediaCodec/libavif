@@ -1,8 +1,6 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-// This is a header only library.
-
 #ifndef AVIF_AVIF_CXX_H
 #define AVIF_AVIF_CXX_H
 
