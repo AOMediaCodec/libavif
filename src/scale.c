@@ -106,9 +106,11 @@ avifResult avifImageScaleWithLimit(avifImage * image,
                 uint16_t * const dstPlane = (uint16_t *)image->yuvPlanes[i];
                 const uint32_t dstStride = image->yuvRowBytes[i] / 2;
 #if LIBYUV_VERSION >= 1880
-                if (ScalePlane_12(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE)) {
-                    avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
-                    result = AVIF_RESULT_OUT_OF_MEMORY;
+                const int failure =
+                    ScalePlane_12(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
+                if (failure) {
+                    avifDiagnosticsPrintf(diag, "ScalePlane_12() failed (%d)", failure);
+                    result = (failure == 1) ? AVIF_RESULT_OUT_OF_MEMORY : AVIF_RESULT_UNKNOWN_ERROR;
                     goto cleanup;
                 }
 #elif LIBYUV_VERSION >= 1774
@@ -122,9 +124,10 @@ avifResult avifImageScaleWithLimit(avifImage * image,
                 uint8_t * const dstPlane = image->yuvPlanes[i];
                 const uint32_t dstStride = image->yuvRowBytes[i];
 #if LIBYUV_VERSION >= 1880
-                if (ScalePlane(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE)) {
-                    avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
-                    result = AVIF_RESULT_OUT_OF_MEMORY;
+                const int failure = ScalePlane(srcPlane, srcStride, srcW, srcH, dstPlane, dstStride, dstW, dstH, AVIF_LIBYUV_FILTER_MODE);
+                if (failure) {
+                    avifDiagnosticsPrintf(diag, "ScalePlane() failed (%d)", failure);
+                    result = (failure == 1) ? AVIF_RESULT_OUT_OF_MEMORY : AVIF_RESULT_UNKNOWN_ERROR;
                     goto cleanup;
                 }
 #else
@@ -147,9 +150,11 @@ avifResult avifImageScaleWithLimit(avifImage * image,
             uint16_t * const dstPlane = (uint16_t *)image->alphaPlane;
             const uint32_t dstStride = image->alphaRowBytes / 2;
 #if LIBYUV_VERSION >= 1880
-            if (ScalePlane_12(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE)) {
-                avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
-                result = AVIF_RESULT_OUT_OF_MEMORY;
+            const int failure =
+                ScalePlane_12(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
+            if (failure) {
+                avifDiagnosticsPrintf(diag, "ScalePlane_12() failed (%d)", failure);
+                result = (failure == 1) ? AVIF_RESULT_OUT_OF_MEMORY : AVIF_RESULT_UNKNOWN_ERROR;
                 goto cleanup;
             }
 #elif LIBYUV_VERSION >= 1774
@@ -163,9 +168,11 @@ avifResult avifImageScaleWithLimit(avifImage * image,
             uint8_t * const dstPlane = image->alphaPlane;
             const uint32_t dstStride = image->alphaRowBytes;
 #if LIBYUV_VERSION >= 1880
-            if (ScalePlane(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE)) {
-                avifDiagnosticsPrintf(diag, "Allocation of YUV planes failed in libyuv");
-                result = AVIF_RESULT_OUT_OF_MEMORY;
+            const int failure =
+                ScalePlane(srcPlane, srcStride, srcWidth, srcHeight, dstPlane, dstStride, dstWidth, dstHeight, AVIF_LIBYUV_FILTER_MODE);
+            if (failure) {
+                avifDiagnosticsPrintf(diag, "ScalePlane_12() failed (%d)", failure);
+                result = (failure == 1) ? AVIF_RESULT_OUT_OF_MEMORY : AVIF_RESULT_UNKNOWN_ERROR;
                 goto cleanup;
             }
 #else
