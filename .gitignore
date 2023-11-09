@@ -7,6 +7,7 @@
 /ext/fuzztest
 /ext/googletest
 /ext/gpac
+/ext/libargparse
 /ext/libjpeg
 /ext/libgav1
 /ext/libpng

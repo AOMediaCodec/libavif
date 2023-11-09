@@ -32,7 +32,6 @@ extern "C" {
         int rc = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wargv[i], -1, argv[i], 1024, NULL, NULL); \
         if (rc == 0) {                                                                                        \
             fprintf(stderr, "WideCharToMultiByte() failed\n");                                                \
-            FREE_ARGV()                                                                                       \
             return 1;                                                                                         \
         }                                                                                                     \
     }
@@ -63,14 +62,10 @@ extern "C" {
 #else
 #define INIT_ARGV()
 #endif
-#if defined(_WIN32)
-#ifdef __cplusplus
-#define FREE_ARGV()
-#else
+#if defined(_WIN32) && !defined(__cplusplus)
 #define FREE_ARGV() \
     free(argv);     \
     free(argvAll);
-#endif // __cplusplus
 #else
 #define FREE_ARGV()
 #endif

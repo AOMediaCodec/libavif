@@ -85,7 +85,8 @@ sources from the top-level folder:
 
 ```sh
 clang-format -style=file -i \
-  apps/*.c apps/cpp/*.cc apps/shared/avifexif.* apps/shared/avifjpeg.* \
+  apps/*.c apps/avifgainmaputil/*.h apps/avifgainmaputil/*.cc \
+  apps/shared/avifexif.* apps/shared/avifjpeg.* \
   apps/shared/avifpng.* apps/shared/avifutil.* apps/shared/y4m.* \
   examples/*.c include/avif/*.h src/*.c tests/*.c \
   tests/gtest/*.h tests/gtest/*.cc tests/oss-fuzz/*.cc
