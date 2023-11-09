@@ -809,6 +809,7 @@ if(AVIF_BUILD_APPS)
         )
         if(EXISTS "${LIBARGPARSE_FILENAME}")
             set(LIBARGPARSE_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/ext/libargparse/src")
+            set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
 
             set(AVIFGAINMAPUTIL_SRCS
                 apps/avifgainmaputil/avifgainmaputil.cc apps/avifgainmaputil/extractgainmap_command.cc
