@@ -21,24 +21,24 @@ typedef enum FilterMode {
   kFilterBox = 3        // Highest quality.
 } FilterModeEnum;
 
-void ScalePlane(const uint8_t* src,
-                int src_stride,
-                int src_width,
-                int src_height,
-                uint8_t* dst,
-                int dst_stride,
-                int dst_width,
-                int dst_height,
-                enum FilterMode filtering);
+int ScalePlane(const uint8_t* src,
+               int src_stride,
+               int src_width,
+               int src_height,
+               uint8_t* dst,
+               int dst_stride,
+               int dst_width,
+               int dst_height,
+               enum FilterMode filtering);
 
-void ScalePlane_12(const uint16_t* src,
-                   int src_stride,
-                   int src_width,
-                   int src_height,
-                   uint16_t* dst,
-                   int dst_stride,
-                   int dst_width,
-                   int dst_height,
-                   enum FilterMode filtering);
+int ScalePlane_12(const uint16_t* src,
+                  int src_stride,
+                  int src_width,
+                  int src_height,
+                  uint16_t* dst,
+                  int dst_stride,
+                  int dst_width,
+                  int dst_height,
+                  enum FilterMode filtering);
 
 #endif  // INCLUDE_LIBYUV_SCALE_H_
