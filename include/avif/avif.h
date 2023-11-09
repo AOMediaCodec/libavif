@@ -543,6 +543,7 @@ typedef struct avifContentLightLevelInformationBox
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 // ---------------------------------------------------------------------------
 // avifGainMap
+// Gain Map are a solution for a consistent and adaptive display of HDR images.
 // Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
 // images containing a gain map encoded with the current version of libavif might
 // not decode with a future version of libavif. The API is not guaranteed
@@ -1494,6 +1495,54 @@ AVIF_API uint32_t avifImagePlaneHeight(const avifImage * image, int channel);
 // Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
 AVIF_NODISCARD AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * input);
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+// ---------------------------------------------------------------------------
+// Gain Map utilities.
+// Gain Maps are a HIGHLY EXPERIMENTAL FEATURE, see comments in the avifGainMap
+// section above.
+
+// Performs tone mapping on a base image using the provided gain map.
+// The HDR headroom is log2 of the ratio of HDR to SDR white brightness of the display to tone map for.
+// 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
+// If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
+// NOTE: only used in tests for now, might be added to the public API at some point.
+AVIF_API avifResult avifImageApplyGainMap(const avifImage * baseImage,
+                                          const avifGainMap * gainMap,
+                                          float hdrHeadroom,
+                                          avifTransferCharacteristics outputTransferCharacteristics,
+                                          avifRGBImage * toneMappedImage,
+                                          avifContentLightLevelInformationBox * clli,
+                                          avifDiagnostics * diag);
+// Same as above but takes an avifRGBImage as input instead of avifImage.
+AVIF_API avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
+                                             avifTransferCharacteristics transferCharacteristics,
+                                             const avifGainMap * gainMap,
+                                             float hdrHeadroom,
+                                             avifTransferCharacteristics outputTransferCharacteristics,
+                                             avifRGBImage * toneMappedImage,
+                                             avifContentLightLevelInformationBox * clli,
+                                             avifDiagnostics * diag);
+
+// Computes a gain map between two images: a base image and an alternate image.
+// Both images should have the same width and height, and use the same color
+// primaries. TODO(maryla): allow different primaries.
+// gainMap->image should be initialized with avifImageCreate(), with the width,
+// height, depth and yuvFormat fields set to the desired output values for the
+// gain map. All of these fields may differ from the source images.
+AVIF_API avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
+                                          avifTransferCharacteristics baseTransferCharacteristics,
+                                          const avifRGBImage * altRgbImage,
+                                          avifTransferCharacteristics altTransferCharacteristics,
+                                          avifColorPrimaries colorPrimaries,
+                                          avifGainMap * gainMap,
+                                          avifDiagnostics * diag);
+// Convenience function. Same as above but takes avifImage images as input
+// instead of avifRGBImage. Gain map computation is performed in RGB space so
+// the images are converted to RGB first.
+AVIF_API avifResult avifComputeGainMap(const avifImage * baseImage, const avifImage * altImage, avifGainMap * gainMap, avifDiagnostics * diag);
+
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 #ifdef __cplusplus
 } // extern "C"

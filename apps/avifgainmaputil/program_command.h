@@ -44,6 +44,65 @@ class ProgramCommand {
   std::string description_;
 };
 
+// avifPixelFormat converter for use with argparse.
+// Actually converts to int, converting to avifPixelFormat didn't seem to
+// compile.
+struct PixelFormatConverter {
+  argparse::ConvertedValue<int> from_str(std::string str);
+  std::vector<std::string> default_choices();
+};
+
+// Basic flags for image writing.
+struct BasicImageEncodeArgs {
+  argparse::ArgValue<int> speed;
+  argparse::ArgValue<int> quality;
+  argparse::ArgValue<int> quality_alpha;
+
+  // add_quality_alpha should be true if the image can have alpha and the
+  // output format can be avif.
+  void Init(argparse::ArgumentParser& argparse, bool can_have_alpha) {
+    argparse.add_argument(speed, "--speed", "-s")
+        .help("Encoder speed (0-10, slowest-fastest)")
+        .default_value("6");
+    argparse
+        .add_argument(quality, (can_have_alpha ? "--qcolor" : "--quality"),
+                      "-q")
+        .help((can_have_alpha
+                   ? "Quality for color (0-100, where 100 is lossless)"
+                   : "Quality (0-100, where 100 is lossless)"))
+        .default_value("60");
+    if (can_have_alpha) {
+      argparse.add_argument(quality_alpha, "--qalpha")
+          .help("Quality for alpha (0-100, where 100 is lossless)")
+          .default_value("100");
+    }
+  }
+};
+
+// Flags relevant when reading jpeg/png.
+struct ImageReadArgs {
+  argparse::ArgValue<int> depth;
+  argparse::ArgValue<int> pixel_format;
+  argparse::ArgValue<bool> ignore_profile;
+
+  void Init(argparse::ArgumentParser& argparse) {
+    argparse
+        .add_argument<int, PixelFormatConverter>(pixel_format, "--yuv", "-y")
+        .help("Output YUV format for avif (applies to JPEG/PNG input only)")
+        .default_value("444");
+    argparse.add_argument(depth, "--depth", "-d")
+        .choices({"8", "10", "12"})
+        .help("Output depth (applies to JPEG/PNG input only)")
+        .default_value("8");
+    argparse.add_argument(ignore_profile, "--ignore-profile")
+        .help(
+            "If the input file contains an embedded color profile, ignore it "
+            "(no-op if absent)")
+        .action(argparse::Action::STORE_TRUE)
+        .default_value("false");
+  }
+};
+
 }  // namespace avif
 
 #endif  // LIBAVIF_APPS_AVIFGAINMAPUTIL_PROGRAM_COMMAND_H_

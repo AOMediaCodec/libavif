@@ -17,8 +17,7 @@ class ExtractGainMapCommand : public ProgramCommand {
  private:
   argparse::ArgValue<std::string> arg_input_filename_;
   argparse::ArgValue<std::string> arg_output_filename_;
-  argparse::ArgValue<int> arg_quality_;
-  argparse::ArgValue<int> arg_speed_;
+  BasicImageEncodeArgs arg_image_encode_;
 };
 
 }  // namespace avif
