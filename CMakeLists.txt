@@ -83,7 +83,11 @@ option(
 
 set(AVIF_USE_CXX OFF)
 
-if(AVIF_BUILD_APPS OR AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST OR AVIF_LOCAL_LIBGAV1)
+if(AVIF_BUILD_APPS
+   OR AVIF_ENABLE_FUZZTEST
+   OR AVIF_ENABLE_GTEST
+   OR AVIF_LOCAL_LIBGAV1
+)
     set(AVIF_USE_CXX ON)
 endif()
 
@@ -797,6 +801,30 @@ if(AVIF_BUILD_APPS)
             ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
             LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         )
+    endif()
+
+    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        set(LIBARGPARSE_FILENAME
+            "${CMAKE_CURRENT_SOURCE_DIR}/ext/libargparse/build/${AVIF_LIBRARY_PREFIX}argparse${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        )
+        if(EXISTS "${LIBARGPARSE_FILENAME}")
+            set(LIBARGPARSE_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/ext/libargparse/src")
+            set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
+
+            set(AVIFGAINMAPUTIL_SRCS
+                apps/avifgainmaputil/avifgainmaputil.cc apps/avifgainmaputil/extractgainmap_command.cc
+                apps/avifgainmaputil/imageio.cc apps/avifgainmaputil/printmetadata_command.cc
+                apps/avifgainmaputil/program_command.cc
+            )
+
+            add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
+            set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
+            target_include_directories(avifgainmaputil PRIVATE "${LIBARGPARSE_INCLUDES}" apps/avifgainmaputil/)
+            target_link_libraries(avifgainmaputil "${LIBARGPARSE_FILENAME}" avif_apps)
+            # Don't add avifgainmaputil to installed apps for now.
+        else()
+            message(WARNING "${LIBARGPARSE_FILENAME} is missing, not building avifgainmaputil, please run ext/libargparse.cmd")
+        endif()
     endif()
 endif()
 
