@@ -209,7 +209,7 @@ static void syntaxLong(void)
            AVIF_SPEED_FASTEST);
     printf("\n");
     printf("Advanced options:\n");
-    printf("    -j,--jobs J                       : Number of jobs (worker threads). Use \"all\" to use all available cores (default: all)\n");
+    printf("    -j,--jobs J                       : Number of jobs (worker threads). Use \"all\" to potentially use as many cores as possible (default: all)\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
