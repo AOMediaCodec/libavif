@@ -641,7 +641,9 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             cfg->g_lag_in_frames = 0;
         }
         if (encoder->maxThreads > 1) {
-            cfg->g_threads = encoder->maxThreads;
+            // libavm fails if cfg->g_threads is greater than 64 threads. See MAX_NUM_THREADS in
+            // avm/aom_util/aom_thread.h.
+            cfg->g_threads = AVIF_MIN(encoder->maxThreads, 64);
         }
 
         // avm does not handle monochrome as of research-v4.0.0.
