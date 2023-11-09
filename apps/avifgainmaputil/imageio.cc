@@ -41,9 +41,9 @@ avifResult WriteImage(const avifImage* image,
       return AVIF_RESULT_UNKNOWN_ERROR;
     }
   } else if (output_format == AVIF_APP_FILE_FORMAT_PNG) {
-    const int compresion_level = Clamp(10 - speed, 0, 9);
+    const int compression_level = Clamp(10 - speed, 0, 9);
     if (!avifPNGWrite(output_filename.c_str(), image, image->depth,
-                      AVIF_CHROMA_UPSAMPLING_AUTOMATIC, compresion_level)) {
+                      AVIF_CHROMA_UPSAMPLING_AUTOMATIC, compression_level)) {
       return AVIF_RESULT_UNKNOWN_ERROR;
     }
   } else if (output_format == AVIF_APP_FILE_FORMAT_AVIF) {
