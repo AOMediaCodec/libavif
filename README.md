@@ -5,12 +5,12 @@ File Format, as described here:
 
 <https://aomediacodec.github.io/av1-avif/>
 
-It is a work-in-progress, but can already encode and decode all AOM supported
-YUV formats and bit depths (with alpha).
+It can encode and decode all AOM supported YUV formats and bit depths (with
+alpha).
 
-For now, it is recommended that you check out/use
+It is recommended that you check out/use
 [tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of
-just using the master branch. I will regularly create new versions as bugfixes
+just using the main branch. We will regularly create new versions as bug fixes
 and features are added.
 
 ## Usage
