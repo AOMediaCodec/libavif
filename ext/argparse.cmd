@@ -8,7 +8,6 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-: # libsharpyuv is part of the libwebp repo.
 git clone --single-branch https://github.com/kmurray/libargparse.git
 
 cd libargparse

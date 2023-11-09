@@ -50,7 +50,6 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" extractgainmap "${INPUT_AVIF_GAINMAP}" "${AVIF_OUTPUT}" --quality 50
   "${AVIFGAINMAPUTIL}" extractgainmap "${INPUT_AVIF_GAINMAP}" "${JPEG_OUTPUT}"
   "${AVIFGAINMAPUTIL}" extractgainmap --speed 9 "${INPUT_AVIF_GAINMAP}" "${PNG_OUTPUT}"
-
 popd
 
 exit 0

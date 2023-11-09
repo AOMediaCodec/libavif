@@ -38,8 +38,8 @@ void PrintUsage(const std::vector<std::unique_ptr<ProgramCommand>>& commands) {
   std::cout << "Available commands:\n";
   int longest_command_size = 0;
   for (const std::unique_ptr<ProgramCommand>& command : commands) {
-    longest_command_size =
-        std::max(longest_command_size, (int)command->name().size());
+    longest_command_size = std::max(longest_command_size,
+                                    static_cast<int>(command->name().size()));
   }
   for (const std::unique_ptr<ProgramCommand>& command : commands) {
     std::cout << "  " << std::left << std::setw(longest_command_size)
