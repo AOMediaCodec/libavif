@@ -823,7 +823,7 @@ if(AVIF_BUILD_APPS)
             target_link_libraries(avifgainmaputil "${LIBARGPARSE_FILENAME}" avif_apps)
             # Don't add avifgainmaputil to installed apps for now.
         else()
-            message(WARNING "${LIBARGPARSE_FILENAME} is missing, not building avifgainmaputil, please run ext/argparse.cmd")
+            message(WARNING "${LIBARGPARSE_FILENAME} is missing, not building avifgainmaputil, please run ext/libargparse.cmd")
         endif()
     endif()
 endif()
