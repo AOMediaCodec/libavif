@@ -126,9 +126,9 @@ jobs:
       run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
     - name: Check static link bundling
       run: >
-        cl .\apps\avifenc.c .\apps\shared\*.c /nologo
+        cl .\apps\avifenc.c .\apps\shared\*.c .\third_party\iccjpeg\iccjpeg.c /nologo
         /DWIN32 /D_WINDOWS /MD /O2 /Ob2
-        -I.\apps\shared -I.\include
+        -I.\apps\shared -I.\include -I.\third_party\iccjpeg
         -external:W0
         -external:I.\ext\libpng
         -external:I.\ext\libjpeg

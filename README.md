@@ -85,11 +85,9 @@ sources from the top-level folder:
 
 ```sh
 clang-format -style=file -i \
-  apps/*.c apps/avifgainmaputil/*.h apps/avifgainmaputil/*.cc \
-  apps/shared/avifexif.* apps/shared/avifjpeg.* \
-  apps/shared/avifpng.* apps/shared/avifutil.* apps/shared/y4m.* \
-  examples/*.c include/avif/*.h src/*.c tests/*.c \
-  tests/gtest/*.h tests/gtest/*.cc tests/oss-fuzz/*.cc
+  apps/*.c apps/*/*.c apps/*/*.h  examples/*.c \
+  include/avif/*.h src/*.c src/*.cc \
+  tests/*.c tests/*/*.cc tests/*/*.h
 ```
 
 Use [cmake-format](https://github.com/cheshirekow/cmake_format) to format the
