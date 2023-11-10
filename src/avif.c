@@ -624,16 +624,15 @@ static avifBool overflowsInt32(int64_t x)
 static avifBool avifCropRectIsValid(const avifCropRect * cropRect, uint32_t imageW, uint32_t imageH, avifPixelFormat yuvFormat, avifDiagnostics * diag)
 
 {
-    // ISO/IEC 23000-22:2019/DAM 2:2021, Section 7.3.6.7:
+    // ISO/IEC 23000-22:2019/Amd. 2:2021, Section 7.3.6.7:
     //   The clean aperture property is restricted according to the chroma
     //   sampling format of the input image (4:4:4, 4:2:2:, 4:2:0, or 4:0:0) as
     //   follows:
-    //   - when the image is 4:0:0 (monochrome) or 4:4:4, the horizontal and
-    //     vertical cropped offsets and widths shall be integers;
-    //   - when the image is 4:2:2 the horizontal cropped offset and width
-    //     shall be even numbers and the vertical values shall be integers;
-    //   - when the image is 4:2:0 both the horizontal and vertical cropped
-    //     offsets and widths shall be even numbers.
+    //   ...
+    //   - If chroma is subsampled horizontally (i.e., 4:2:2 and 4:2:0), the
+    //     leftmost pixel of the clean aperture shall be even numbers;
+    //   - If chroma is subsampled vertically (i.e., 4:2:0), the topmost line
+    //     of the clean aperture shall be even numbers.
 
     if ((cropRect->width == 0) || (cropRect->height == 0)) {
         avifDiagnosticsPrintf(diag, "[Strict] crop rect width and height must be nonzero");
@@ -646,14 +645,14 @@ static avifBool avifCropRectIsValid(const avifCropRect * cropRect, uint32_t imag
     }
 
     if ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420) || (yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
-        if (((cropRect->x % 2) != 0) || ((cropRect->width % 2) != 0)) {
-            avifDiagnosticsPrintf(diag, "[Strict] crop rect X offset and width must both be even due to this image's YUV subsampling");
+        if ((cropRect->x % 2) != 0) {
+            avifDiagnosticsPrintf(diag, "[Strict] crop rect X offset must be even due to this image's YUV subsampling");
             return AVIF_FALSE;
         }
     }
     if (yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-        if (((cropRect->y % 2) != 0) || ((cropRect->height % 2) != 0)) {
-            avifDiagnosticsPrintf(diag, "[Strict] crop rect Y offset and height must both be even due to this image's YUV subsampling");
+        if ((cropRect->y % 2) != 0) {
+            avifDiagnosticsPrintf(diag, "[Strict] crop rect Y offset must be even due to this image's YUV subsampling");
             return AVIF_FALSE;
         }
     }

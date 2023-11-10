@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+* Update avifCropRectConvertCleanApertureBox() to the revised requirements in
+  ISO/IEC 23000-22:2019/Amd. 2:2021 Section 7.3.6.7.
+
 ## [1.0.1] - 2023-08-29
 
 ### Changed
