@@ -759,14 +759,14 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
 
     add_library(
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
-                         apps/shared/iccjpeg.c apps/shared/iccmaker.c apps/shared/y4m.c
+                         apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
     target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
     # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
     # headers from /usr/local/include.
-    target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_include_directories(avif_apps PRIVATE $<TARGET_PROPERTY:avif,INTERFACE_INCLUDE_DIRECTORIES> third_party/iccjpeg)
     target_include_directories(avif_apps SYSTEM PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
     target_include_directories(avif_apps INTERFACE apps/shared)
 
