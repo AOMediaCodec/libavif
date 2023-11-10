@@ -65,6 +65,15 @@ constexpr InvalidClapPropertyParam kInvalidClapPropertyTestParams[] = {
      722,
      AVIF_PIXEL_FORMAT_YUV420,
      {330, 1, 385, 1, static_cast<uint32_t>(-308), 1, 103, 1}},
+    // pcX = -1/2 + (99 - 1)/2 = 48.5
+    // pcY = -1/2 + (99 - 1)/2 = 48.5
+    // leftmost = 48.5 - (99 - 1)/2 = -0.5 (not an integer)
+    // topmost = 48.5 - (99 - 1)/2 = -0.5 (not an integer)
+    {99,
+     99,
+     AVIF_PIXEL_FORMAT_YUV420,
+     {99, 1, 99, 1, static_cast<uint32_t>(-1), 2, static_cast<uint32_t>(-1),
+      2}},
 };
 
 using InvalidClapPropertyTest =
