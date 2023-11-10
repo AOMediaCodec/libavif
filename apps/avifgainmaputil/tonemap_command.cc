@@ -191,10 +191,10 @@ avifResult TonemapCommand::Run() {
   avifRGBImage tone_mapped_rgb;
   avifRGBImageSetDefaults(&tone_mapped_rgb, tone_mapped.get());
   avifDiagnostics diag;
-  result =
-      avifImageApplyGainMap(decoder->image, image->gainMap, arg_headroom_,
-                            cicp.transfer_characteristics, &tone_mapped_rgb,
-                            clli_set ? nullptr : &clli_box, &diag);
+  result = avifImageApplyGainMap(
+      decoder->image, image->gainMap, arg_headroom_, cicp.color_primaries,
+      cicp.transfer_characteristics, &tone_mapped_rgb,
+      clli_set ? nullptr : &clli_box, &diag);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to tone map image: " << avifResultToString(result)
               << " (" << diag.error << ")\n";

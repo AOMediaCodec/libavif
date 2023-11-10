@@ -58,6 +58,7 @@ avifResult ChangeBase(const avifImage& image, int depth,
 
   avifDiagnostics diag;
   result = avifImageApplyGainMap(&image, image.gainMap, headroom,
+                                 swapped->colorPrimaries,
                                  swapped->transferCharacteristics, &swapped_rgb,
                                  (compute_clli ? &clli : nullptr), &diag);
   if (result != AVIF_RESULT_OK) {

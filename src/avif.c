@@ -1161,6 +1161,7 @@ avifGainMap * avifGainMapCreate()
     gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     gainMap->altYUVRange = AVIF_RANGE_FULL;
+    gainMap->metadata.useBaseColorSpace = AVIF_TRUE;
     return gainMap;
 }
 

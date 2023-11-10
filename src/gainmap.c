@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
-#include <stdio.h>
 #include <string.h>
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -98,9 +97,11 @@ static inline float lerp(float a, float b, float w)
 #define SDR_WHITE_NITS 203.0f
 
 avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
-                                    avifTransferCharacteristics transferCharacteristics,
+                                    avifColorPrimaries baseColorPrimaries,
+                                    avifTransferCharacteristics baseTransferCharacteristics,
                                     const avifGainMap * gainMap,
                                     float hdrHeadroom,
+                                    avifColorPrimaries outputColorPrimaries,
                                     avifTransferCharacteristics outputTransferCharacteristics,
                                     avifRGBImage * toneMappedImage,
                                     avifContentLightLevelInformationBox * clli,
@@ -131,6 +132,14 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
     const uint32_t width = baseImage->width;
     const uint32_t height = baseImage->height;
+
+    const avifBool useBaseColorSpace = gainMap->metadata.useBaseColorSpace;
+    const avifColorPrimaries gainMapMathPrimaries =
+        (useBaseColorSpace || (gainMap->altColorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED)) ? baseColorPrimaries
+                                                                                                : gainMap->altColorPrimaries;
+    const avifBool needsInputColorConversion = (baseColorPrimaries != gainMapMathPrimaries);
+    const avifBool needsOutputColorConversion = (gainMapMathPrimaries != outputColorPrimaries);
+
     avifImage * rescaledGainMap = NULL;
     avifRGBImage rgbGainMap;
     // Basic zero-initialization for now, avifRGBImageSetDefaults() is called later on.
@@ -146,7 +155,8 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     const float weight = avifGetGainMapWeight(hdrHeadroom, &metadata);
 
     // Early exit if the gain map does not need to be applied and the pixel format is the same.
-    if (weight == 0.0f && outputTransferCharacteristics == transferCharacteristics && baseImage->format == toneMappedImage->format &&
+    if (weight == 0.0f && outputTransferCharacteristics == baseTransferCharacteristics &&
+        outputColorPrimaries == baseColorPrimaries && baseImage->format == toneMappedImage->format &&
         baseImage->depth == toneMappedImage->depth && baseImage->isFloat == toneMappedImage->isFloat) {
         assert(baseImage->rowBytes == toneMappedImage->rowBytes);
         assert(baseImage->height == toneMappedImage->height);
@@ -163,24 +173,52 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         goto cleanup;
     }
 
-    const avifTransferFunction gammaToLinear = avifTransferCharacteristicsGetGammaToLinearFunction(transferCharacteristics);
+    const avifTransferFunction gammaToLinear = avifTransferCharacteristicsGetGammaToLinearFunction(baseTransferCharacteristics);
     const avifTransferFunction linearToGamma = avifTransferCharacteristicsGetLinearToGammaFunction(outputTransferCharacteristics);
 
     // Early exit if the gain map does not need to be applied.
     if (weight == 0.0f) {
+        const avifBool primariesDiffer = (baseColorPrimaries != outputColorPrimaries);
+        double conversionCoeffs[3][3];
+        if (primariesDiffer && !avifColorPrimariesComputeRGBToRGBMatrix(baseColorPrimaries, outputColorPrimaries, conversionCoeffs)) {
+            avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
+            res = AVIF_RESULT_NOT_IMPLEMENTED;
+            goto cleanup;
+        }
         // Just convert from one rgb format to another.
         for (uint32_t j = 0; j < height; ++j) {
             for (uint32_t i = 0; i < width; ++i) {
                 float basePixelRGBA[4];
                 avifGetRGBAPixel(baseImage, i, j, &baseRGBInfo, basePixelRGBA);
-                if (outputTransferCharacteristics != transferCharacteristics) {
+                if (outputTransferCharacteristics != baseTransferCharacteristics || primariesDiffer) {
                     for (int c = 0; c < 3; ++c) {
-                        basePixelRGBA[c] = AVIF_CLAMP(linearToGamma(gammaToLinear(basePixelRGBA[c])), 0.0f, 1.0f);
+                        basePixelRGBA[c] = gammaToLinear(basePixelRGBA[c]);
+                    }
+                    if (primariesDiffer) {
+                        avifLinearRGBConvertColorSpace(basePixelRGBA, conversionCoeffs);
+                    }
+                    for (int c = 0; c < 3; ++c) {
+                        basePixelRGBA[c] = AVIF_CLAMP(linearToGamma(basePixelRGBA[c]), 0.0f, 1.0f);
                     }
                 }
                 avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBInfo, basePixelRGBA);
             }
         }
+        goto cleanup;
+    }
+
+    double inputConversionCoeffs[3][3];
+    double outputConversionCoeffs[3][3];
+    if (needsInputColorConversion &&
+        !avifColorPrimariesComputeRGBToRGBMatrix(baseColorPrimaries, gainMapMathPrimaries, inputConversionCoeffs)) {
+        avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
+        res = AVIF_RESULT_NOT_IMPLEMENTED;
+        goto cleanup;
+    }
+    if (needsOutputColorConversion &&
+        !avifColorPrimariesComputeRGBToRGBMatrix(gainMapMathPrimaries, outputColorPrimaries, outputConversionCoeffs)) {
+        avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
+        res = AVIF_RESULT_NOT_IMPLEMENTED;
         goto cleanup;
     }
 
@@ -220,7 +258,6 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     const float gammaInv[3] = { 1.0f / (float)metadata.gainMapGamma[0],
                                 1.0f / (float)metadata.gainMapGamma[1],
                                 1.0f / (float)metadata.gainMapGamma[2] };
-
     for (uint32_t j = 0; j < height; ++j) {
         for (uint32_t i = 0; i < width; ++i) {
             float basePixelRGBA[4];
@@ -231,8 +268,18 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
             // Apply gain map.
             float toneMappedPixelRGBA[4];
             float pixelRgbMaxLinear = 0.0f; //  = max(r, g, b) for this pixel
+
             for (int c = 0; c < 3; ++c) {
-                const float baseLinear = gammaToLinear(basePixelRGBA[c]);
+                basePixelRGBA[c] = gammaToLinear(basePixelRGBA[c]);
+            }
+
+            if (needsInputColorConversion) {
+                // Convert basePixelRGBA to gainMapMathPrimaries.
+                avifLinearRGBConvertColorSpace(basePixelRGBA, inputConversionCoeffs);
+            }
+
+            for (int c = 0; c < 3; ++c) {
+                const float baseLinear = basePixelRGBA[c];
                 const float gainMapValue = gainMapRGBA[c];
 
                 // Undo gamma & affine transform; the result is in log2 space.
@@ -248,9 +295,18 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                     pixelRgbMaxLinear = toneMappedLinear;
                 }
 
-                const float toneMappedGamma = linearToGamma(toneMappedLinear);
-                toneMappedPixelRGBA[c] = AVIF_CLAMP(toneMappedGamma, 0.0f, 1.0f);
+                toneMappedPixelRGBA[c] = toneMappedLinear;
             }
+
+            if (needsOutputColorConversion) {
+                // Convert toneMappedPixelRGBA to outputColorPrimaries.
+                avifLinearRGBConvertColorSpace(toneMappedPixelRGBA, outputConversionCoeffs);
+            }
+
+            for (int c = 0; c < 3; ++c) {
+                toneMappedPixelRGBA[c] = AVIF_CLAMP(linearToGamma(toneMappedPixelRGBA[c]), 0.0f, 1.0f);
+            }
+
             toneMappedPixelRGBA[3] = basePixelRGBA[3]; // Alpha is unaffected by tone mapping.
             rgbSumLinear += pixelRgbMaxLinear;
             avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBInfo, toneMappedPixelRGBA);
@@ -279,6 +335,7 @@ cleanup:
 avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                  const avifGainMap * gainMap,
                                  float hdrHeadroom,
+                                 avifColorPrimaries outputColorPrimaries,
                                  avifTransferCharacteristics outputTransferCharacteristics,
                                  avifRGBImage * toneMappedImage,
                                  avifContentLightLevelInformationBox * clli,
@@ -300,9 +357,11 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
     }
 
     res = avifRGBImageApplyGainMap(&baseImageRgb,
+                                   baseImage->colorPrimaries,
                                    baseImage->transferCharacteristics,
                                    gainMap,
                                    hdrHeadroom,
+                                   outputColorPrimaries,
                                    outputTransferCharacteristics,
                                    toneMappedImage,
                                    clli,
@@ -387,11 +446,59 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, 
     return AVIF_RESULT_OK;
 }
 
+static const float kEpsilon = 1e-10f;
+
+// Decides which of 'basePrimaries' or 'altPrimaries' should be used for doing gain map math.
+// The other image (base or alternate) will be converted to this color space before computing
+// the ratio between the two images.
+// If a pixel color is outside of the target color space, some of the converted channel values will be negative.
+// This should be avoided, as the negative values must either be clamped or offset before computing the log2()
+// (since log2 only works on > 0 values). But a large offset causes artefacts when partially applying the gain map.
+// Therefore we want to do gain map math in the larger of the two color spaces.
+static avifResult avifChooseColorSpaceForGainMapMath(avifColorPrimaries basePrimaries,
+                                                     avifColorPrimaries altPrimaries,
+                                                     avifColorPrimaries * gainMapMathColorSpace)
+{
+    if (basePrimaries == altPrimaries) {
+        *gainMapMathColorSpace = basePrimaries;
+        return AVIF_RESULT_OK;
+    }
+    // Color convert pure red, pure green and pure blue in turn and see if they result in negative values.
+    float rgba[4] = { 0 };
+    double baseToAltCoeffs[3][3];
+    double altToBaseCoeffs[3][3];
+    if (!avifColorPrimariesComputeRGBToRGBMatrix(basePrimaries, altPrimaries, baseToAltCoeffs) ||
+        !avifColorPrimariesComputeRGBToRGBMatrix(altPrimaries, basePrimaries, altToBaseCoeffs)) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    float baseColorspaceChannelMin = 0;
+    float altColorspaceChannelMin = 0;
+    for (int c = 0; c < 3; ++c) {
+        rgba[0] = rgba[1] = rgba[2] = 0;
+        rgba[c] = 1.0f;
+        avifLinearRGBConvertColorSpace(rgba, altToBaseCoeffs);
+        for (int i = 0; i < 3; ++i) {
+            baseColorspaceChannelMin = AVIF_MIN(baseColorspaceChannelMin, rgba[i]);
+        }
+        rgba[0] = rgba[1] = rgba[2] = 0;
+        rgba[c] = 1.0f;
+        avifLinearRGBConvertColorSpace(rgba, baseToAltCoeffs);
+        for (int i = 0; i < 3; ++i) {
+            altColorspaceChannelMin = AVIF_MIN(altColorspaceChannelMin, rgba[i]);
+        }
+    }
+    // Pick the colorspace that has the largest min value (which is more or less the largest color space).
+    *gainMapMathColorSpace = (altColorspaceChannelMin <= baseColorspaceChannelMin) ? basePrimaries : altPrimaries;
+    return AVIF_RESULT_OK;
+}
+
 avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
+                                      avifColorPrimaries baseColorPrimaries,
                                       avifTransferCharacteristics baseTransferCharacteristics,
                                       const avifRGBImage * altRgbImage,
+                                      avifColorPrimaries altColorPrimaries,
                                       avifTransferCharacteristics altTransferCharacteristics,
-                                      avifColorPrimaries colorPrimaries,
                                       avifGainMap * gainMap,
                                       avifDiagnostics * diag)
 {
@@ -404,9 +511,13 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     }
     if (gainMap->image->width == 0 || gainMap->image->height == 0 || gainMap->image->depth == 0 ||
         gainMap->image->yuvFormat <= AVIF_PIXEL_FORMAT_NONE || gainMap->image->yuvFormat >= AVIF_PIXEL_FORMAT_COUNT) {
-        avifDiagnosticsPrintf(diag, "gianMap->image should be non null with desired width, height, depth and yuvFormat set");
+        avifDiagnosticsPrintf(diag, "gainMap->image should be non null with desired width, height, depth and yuvFormat set");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    const avifBool colorSpacesDiffer = (baseColorPrimaries != altColorPrimaries);
+    avifColorPrimaries gainMapMathPrimaries;
+    AVIF_CHECKRES(avifChooseColorSpaceForGainMapMath(baseColorPrimaries, altColorPrimaries, &gainMapMathPrimaries));
+    const avifBool useBaseColorSpace = (gainMapMathPrimaries == baseColorPrimaries);
 
     const int width = baseRgbImage->width;
     const int height = baseRgbImage->height;
@@ -441,8 +552,68 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
 
     float (*baseGammaToLinear)(float) = avifTransferCharacteristicsGetGammaToLinearFunction(baseTransferCharacteristics);
     float (*altGammaToLinear)(float) = avifTransferCharacteristicsGetGammaToLinearFunction(altTransferCharacteristics);
-    float y_coeffs[3];
-    avifColorPrimariesComputeYCoeffs(colorPrimaries, y_coeffs);
+    float yCoeffs[3];
+    avifColorPrimariesComputeYCoeffs(gainMapMathPrimaries, yCoeffs);
+
+    double rgbConversionCoeffs[3][3];
+    if (colorSpacesDiffer) {
+        if (useBaseColorSpace) {
+            if (!avifColorPrimariesComputeRGBToRGBMatrix(altColorPrimaries, baseColorPrimaries, rgbConversionCoeffs)) {
+                avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
+                res = AVIF_RESULT_NOT_IMPLEMENTED;
+                goto cleanup;
+            }
+        } else {
+            if (!avifColorPrimariesComputeRGBToRGBMatrix(baseColorPrimaries, altColorPrimaries, rgbConversionCoeffs)) {
+                avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
+                res = AVIF_RESULT_NOT_IMPLEMENTED;
+                goto cleanup;
+            }
+        }
+    }
+
+    // If we are converting from one colorspace to another, some RGB values may be negative and an offset must be added to
+    // avoid clamping (although the choice of color space to do the gain map computation with
+    // avifChooseColorSpaceForGainMapMath() should mostly avoid this).
+    if (colorSpacesDiffer) {
+        // Color convert pure red, pure green and pure blue in turn and see if they result in negative values.
+        float rgba[4] = { 0 };
+        float channelMin[3] = { 0 };
+        for (int j = 0; j < height; ++j) {
+            for (int i = 0; i < width; ++i) {
+                avifGetRGBAPixel(useBaseColorSpace ? altRgbImage : baseRgbImage, i, j, &baseRGBInfo, rgba);
+
+                // Convert to linear.
+                for (int c = 0; c < 3; ++c) {
+                    if (useBaseColorSpace) {
+                        rgba[c] = altGammaToLinear(rgba[c]);
+                    } else {
+                        rgba[c] = baseGammaToLinear(rgba[c]);
+                    }
+                }
+                avifLinearRGBConvertColorSpace(rgba, rgbConversionCoeffs);
+                for (int c = 0; c < 3; ++c) {
+                    if (rgba[c] < channelMin[c]) {
+                        channelMin[c] = AVIF_MIN(channelMin[c], rgba[c]);
+                    }
+                }
+            }
+        }
+
+        for (int c = 0; c < 3; ++c) {
+            // Large offsets cause artefacts when partially applying the gain map, so set a max (empirical) offset value.
+            // If hte offset is clamped, some gain map values will get be clamped.
+            const float maxOffset = 0.1f;
+            if (channelMin[c] < -kEpsilon) {
+                // Increase the offset to avoid negative values.
+                if (useBaseColorSpace) {
+                    gainMapMetadata.alternateOffset[c] = AVIF_MIN(gainMapMetadata.alternateOffset[c] - channelMin[c], maxOffset);
+                } else {
+                    gainMapMetadata.baseOffset[c] = AVIF_MIN(gainMapMetadata.baseOffset[c] - channelMin[c], maxOffset);
+                }
+            }
+        }
+    }
 
     // Compute raw gain map values.
     float baseMax = 1.0f;
@@ -460,13 +631,23 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                 altRGBA[c] = altGammaToLinear(altRGBA[c]);
             }
 
+            if (colorSpacesDiffer) {
+                if (useBaseColorSpace) {
+                    // convert altRGBA to baseRGBA's color space
+                    avifLinearRGBConvertColorSpace(altRGBA, rgbConversionCoeffs);
+                } else {
+                    // convert baseRGBA to altRGBA's color space
+                    avifLinearRGBConvertColorSpace(baseRGBA, rgbConversionCoeffs);
+                }
+            }
+
             for (int c = 0; c < numGainMapChannels; ++c) {
                 float base = baseRGBA[c];
                 float alt = altRGBA[c];
                 if (singleChannel) {
                     // Convert to grayscale.
-                    base = y_coeffs[0] * baseRGBA[0] + y_coeffs[1] * baseRGBA[1] + y_coeffs[2] * baseRGBA[2];
-                    alt = y_coeffs[0] * altRGBA[0] + y_coeffs[1] * altRGBA[1] + y_coeffs[2] * altRGBA[2];
+                    base = yCoeffs[0] * baseRGBA[0] + yCoeffs[1] * baseRGBA[1] + yCoeffs[2] * baseRGBA[2];
+                    alt = yCoeffs[0] * altRGBA[0] + yCoeffs[1] * altRGBA[1] + yCoeffs[2] * altRGBA[2];
                 }
                 if (base > baseMax) {
                     baseMax = base;
@@ -474,8 +655,8 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                 if (alt > altMax) {
                     altMax = alt;
                 }
-                const float ratioLog2 =
-                    log2f((alt + (float)gainMapMetadata.alternateOffset[c]) / (base + (float)gainMapMetadata.baseOffset[c]));
+                const float ratio = (alt + (float)gainMapMetadata.alternateOffset[c]) / (base + (float)gainMapMetadata.baseOffset[c]);
+                const float ratioLog2 = log2f(AVIF_MAX(ratio, kEpsilon));
                 gainMapF[c][j * width + i] = ratioLog2;
             }
         }
@@ -495,11 +676,12 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     for (int c = 0; c < 3; ++c) {
         gainMapMetadata.gainMapMin[c] = gainMapMinLog2[singleChannel ? 0 : c];
         gainMapMetadata.gainMapMax[c] = gainMapMaxLog2[singleChannel ? 0 : c];
-        gainMapMetadata.baseHdrHeadroom = log2f(baseMax);
-        gainMapMetadata.alternateHdrHeadroom = log2f(altMax);
+        gainMapMetadata.baseHdrHeadroom = log2f(AVIF_MAX(baseMax, kEpsilon));
+        gainMapMetadata.alternateHdrHeadroom = log2f(AVIF_MAX(altMax, kEpsilon));
         // baseOffset, alternateOffset and gainMapGamma are all left to their default values.
         // They could be tweaked based on the images to optimize quality/compression.
     }
+    gainMapMetadata.useBaseColorSpace = useBaseColorSpace;
     if (!avifGainMapMetadataDoubleToFractions(&gainMap->metadata, &gainMapMetadata)) {
         res = AVIF_RESULT_UNKNOWN_ERROR;
         goto cleanup;
@@ -589,13 +771,6 @@ avifResult avifImageComputeGainMap(const avifImage * baseImage, const avifImage 
         avifDiagnosticsPrintf(diag, "Computing gain maps for images with ICC profiles is not supported");
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
-    if (baseImage->colorPrimaries != altImage->colorPrimaries) {
-        avifDiagnosticsPrintf(diag,
-                              "Computing gain maps for images with different color primaries is not supported, got %d and %d",
-                              baseImage->colorPrimaries,
-                              altImage->colorPrimaries);
-        return AVIF_RESULT_NOT_IMPLEMENTED;
-    }
     if (baseImage->width != altImage->width || baseImage->height != altImage->height) {
         avifDiagnosticsPrintf(diag,
                               "Image dimensions don't match, got %dx%d and %dx%d",
@@ -630,10 +805,11 @@ avifResult avifImageComputeGainMap(const avifImage * baseImage, const avifImage 
     }
 
     res = avifRGBImageComputeGainMap(&baseImageRgb,
+                                     baseImage->colorPrimaries,
                                      baseImage->transferCharacteristics,
                                      &altImageRgb,
+                                     altImage->colorPrimaries,
                                      altImage->transferCharacteristics,
-                                     baseImage->colorPrimaries,
                                      gainMap,
                                      diag);
 

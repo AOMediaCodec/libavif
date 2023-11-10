@@ -544,11 +544,17 @@ SDR image with a gain map to allow tone mapping to HDR. The gain map's width and
 
 ## Files colors*_hdr_*.avif and colors*_sdr_srgb.avif
 
-SDR and HDR (PQ) AVIF images in various colorspaces.
-The HDR versions all show the same colors: all colors fit in sRGB but are encoded in various colorspaces.
+![](colors_wcg_hdr_rec2020.avif)
 
-The colors_text* files have text on them. They are not currently used in tests but can be used for manual
-testing of gain maps, as they make it easy to see which version the browser is displaying.
+SDR and HDR (PQ) AVIF images in various colorspaces.
+The files with 'wcg' (wide color gamut) in their name have colors outside of the sRGB color space.
+The files without 'wcg' in their name have sRGB colors, but expressed in various color spaces.
+
+The files with 'text' in their name have text on them. They are not currently used in tests but can be used for manual
+testing of gain maps (e.g. with `avifgainmaputil combine ...`), as they make it easy to see which version
+the browser is displaying.
+
+HDR/wide color gamut images should be viewed on an HDR display, such as on a M1+ Mac Book Pro.
 
 Source : created with Photoshop 25.1.0 (Camera Raw 16.0.1.1683), see sources/colors.psd and
 https://helpx.adobe.com/camera-raw/using/hdr-output.html,
@@ -558,8 +564,15 @@ Basic process: create a 32bit image, export it as png for the SDR version.
 Then open the Camera Raw filter (Filter > Camera Raw Filter...), click HDR at the top right, and drag
 the histogram towards the right to create brighter pixels.
 Click the save icon on the top right. Select AVIF as output format and check "HDR output" then save.
+To create an image with a wider color gamut, choose Edit > Assign Profile... and set the color space
+to e.g. BT 2020.
 
-To export more images from sources/colors.psd, flatten desired layers before opening the Camera Raw dialog.
+To export more images from sources/colors.psd:
+- For SDR, show/hide the layers as desired then export to PNG then convert to avif with avifenc
+- For HDR, show/hide the layers as desired then flatten the image, (Layers > Flatten Image), open
+  the Camera Raw dialog, and click the save icon on the top right.
+- For the wide color gamut version, choose Edit > Assign Profile... and set the color space to
+  Rec.ITU-R BT.2020-1
 
 ## Animated Images
 

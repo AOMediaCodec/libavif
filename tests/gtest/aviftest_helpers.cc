@@ -305,6 +305,21 @@ double GetPsnr(const avifImage& image1, const avifImage& image2,
   }
   assert(image1.width * image1.height > 0);
 
+  if (image1.colorPrimaries != image2.colorPrimaries ||
+      image1.transferCharacteristics != image2.transferCharacteristics ||
+      image1.matrixCoefficients != image2.matrixCoefficients ||
+      image1.yuvRange != image2.yuvRange) {
+    fprintf(stderr,
+            "WARNING: computing PSNR of images with different CICP: %d/%d/%d%s "
+            "vs %d/%d/%d%s\n",
+            image1.colorPrimaries, image1.transferCharacteristics,
+            image1.matrixCoefficients,
+            (image1.yuvRange == AVIF_RANGE_FULL) ? "f" : "l",
+            image2.colorPrimaries, image2.transferCharacteristics,
+            image2.matrixCoefficients,
+            (image2.yuvRange == AVIF_RANGE_FULL) ? "f" : "l");
+  }
+
   uint64_t squared_diff_sum = 0;
   uint32_t num_samples = 0;
   const uint32_t max_sample_value = (1 << image1.depth) - 1;
