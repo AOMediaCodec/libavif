@@ -65,6 +65,15 @@ constexpr InvalidClapPropertyParam kInvalidClapPropertyTestParams[] = {
      722,
      AVIF_PIXEL_FORMAT_YUV420,
      {330, 1, 385, 1, static_cast<uint32_t>(-308), 1, 103, 1}},
+    // pcX = -1/2 + (99 - 1)/2 = 48.5
+    // pcY = -1/2 + (99 - 1)/2 = 48.5
+    // leftmost = 48.5 - (99 - 1)/2 = -0.5 (not an integer)
+    // topmost = 48.5 - (99 - 1)/2 = -0.5 (not an integer)
+    {99,
+     99,
+     AVIF_PIXEL_FORMAT_YUV420,
+     {99, 1, 99, 1, static_cast<uint32_t>(-1), 2, static_cast<uint32_t>(-1),
+      2}},
 };
 
 using InvalidClapPropertyTest =
@@ -112,6 +121,15 @@ constexpr ValidClapPropertyParam kValidClapPropertyTestParams[] = {
      {60, 1, 80, 1, static_cast<uint32_t>(-30), 1, static_cast<uint32_t>(-40),
       1},
      {0, 0, 60, 80}},
+    // pcX = -1/2 + (100 - 1)/2 = 49
+    // pcY = -1/2 + (100 - 1)/2 = 49
+    // leftmost = 49 - (99 - 1)/2 = 0
+    // topmost = 49 - (99 - 1)/2 = 0
+    {100,
+     100,
+     AVIF_PIXEL_FORMAT_YUV420,
+     {99, 1, 99, 1, static_cast<uint32_t>(-1), 2, static_cast<uint32_t>(-1), 2},
+     {0, 0, 99, 99}},
 };
 
 using ValidClapPropertyTest = ::testing::TestWithParam<ValidClapPropertyParam>;
@@ -126,7 +144,8 @@ TEST_P(ValidClapPropertyTest, ValidateClapProperty) {
   avifDiagnostics diag;
   EXPECT_TRUE(avifCropRectConvertCleanApertureBox(&crop_rect, &param.clap,
                                                   param.width, param.height,
-                                                  param.yuv_format, &diag));
+                                                  param.yuv_format, &diag))
+      << diag.error;
   EXPECT_EQ(crop_rect.x, param.expected_crop_rect.x);
   EXPECT_EQ(crop_rect.y, param.expected_crop_rect.y);
   EXPECT_EQ(crop_rect.width, param.expected_crop_rect.width);
