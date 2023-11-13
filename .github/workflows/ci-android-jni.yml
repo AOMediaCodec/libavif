@@ -32,13 +32,13 @@ jobs:
         with:
           cmake-version: "3.19.x"
       - name: Setup python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
         with:
           python-version: '3.x'
       - name: Setup meson
         run: pip install meson
       - name: Setup nasm
-        uses: ilammy/setup-nasm@v1
+        uses: ilammy/setup-nasm@321e6ed62a1fc77024a3bd853deb33645e8b22c4 # v1.4.0
       - name: Build dav1d with the Android NDK
         working-directory: ext
         run: bash dav1d_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
