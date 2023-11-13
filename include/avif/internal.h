@@ -653,53 +653,6 @@ typedef struct avifSequenceHeader
 
 AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-// Performs tone mapping on a base image using the provided gain map.
-// The HDR headroom is log2 of the ratio of HDR to SDR white brightness of the display to tone map for.
-// 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
-// If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
-// NOTE: only used in tests for now, might be added to the public API at some point.
-struct avifRGBImage;
-avifResult avifImageApplyGainMap(const avifImage * baseImage,
-                                 const avifGainMap * gainMap,
-                                 float hdrHeadroom,
-                                 avifTransferCharacteristics outputTransferCharacteristics,
-                                 avifRGBImage * toneMappedImage,
-                                 avifContentLightLevelInformationBox * clli,
-                                 avifDiagnostics * diag);
-// Same as above but takes an avifRGBImage as input instead of avifImage.
-avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
-                                    avifTransferCharacteristics transferCharacteristics,
-                                    const avifGainMap * gainMap,
-                                    float hdrHeadroom,
-                                    avifTransferCharacteristics outputTransferCharacteristics,
-                                    avifRGBImage * toneMappedImage,
-                                    avifContentLightLevelInformationBox * clli,
-                                    avifDiagnostics * diag);
-
-// Computes a gain map between two images: a base image and an alternate image.
-// Both images should have the same width and height, and use the same color
-// primaries. TODO(maryla): allow different primaries.
-// gainMap->image should be initialized with avifImageCreate(), with the width,
-// height, depth and yuvFormat fields set to the desired output values for the
-// gain map. All of these fields may differ from the source images.
-AVIF_API avifResult avifComputeGainMapRGB(const struct avifRGBImage * baseRgbImage,
-                                          avifTransferCharacteristics baseTransferCharacteristics,
-                                          const struct avifRGBImage * altRgbImage,
-                                          avifTransferCharacteristics altTransferCharacteristics,
-                                          avifColorPrimaries colorPrimaries,
-                                          avifGainMap * gainMap,
-                                          avifDiagnostics * diag);
-// Convenience function. Same as above but takes avifImage images as input
-// instead of avifRGBImage. Gain map computation is performed in RGB space so
-// the images are converted to RGB first.
-AVIF_API avifResult avifComputeGainMap(const struct avifImage * baseImage,
-                                       const struct avifImage * altImage,
-                                       avifGainMap * gainMap,
-                                       avifDiagnostics * diag);
-
-#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
-
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
 

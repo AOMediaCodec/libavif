@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   add `qualityGainMap` field to `avifEncoder`, add `gainMapPresent`,
   `enableDecodingGainMap`, `enableParsingGainMapMetadata` and 
   `ignoreColorAndAlpha` to `avifDecoder`.
+  Utility functions for working with gain maps are also added.
   Gain maps allow readers that support them to display HDR images that look
   good on both HDR and SDR displays.
   This feature is highly experimental. The API might change or be removed

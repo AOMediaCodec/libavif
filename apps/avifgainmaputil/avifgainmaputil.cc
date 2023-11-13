@@ -8,6 +8,7 @@
 #include "argparse.hpp"
 #include "avif/avif.h"
 #include "avifutil.h"
+#include "combine_command.h"
 #include "extractgainmap_command.h"
 #include "printmetadata_command.h"
 #include "program_command.h"
@@ -55,6 +56,7 @@ void PrintUsage(const std::vector<std::unique_ptr<ProgramCommand>>& commands) {
 MAIN() {
   std::vector<std::unique_ptr<avif::ProgramCommand>> commands;
   commands.emplace_back(std::make_unique<avif::HelpCommand>());
+  commands.emplace_back(std::make_unique<avif::CreateCommand>());
   commands.emplace_back(std::make_unique<avif::ExtractGainMapCommand>());
   commands.emplace_back(std::make_unique<avif::PrintMetadataCommand>());
 
