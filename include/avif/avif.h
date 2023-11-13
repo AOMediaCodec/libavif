@@ -437,8 +437,11 @@ typedef struct avifPixelAspectRatioBox
 
 // NOTE: The members of the avifCleanApertureBox struct are declared as uint32_t to match the
 // unsigned int(32) type used in ISO/IEC 14496-12:2022 faithfully. However, ISO/IEC 14496-12:2022
-// 12.1.4.1 clearly interprets these values as signed int(32) and talk about them being strictly
-// positive, positive, or negative. Cast these struct members to int32_t before use.
+// 12.1.4.1 clearly interprets these values as signed int(32) and talks about them being strictly
+// positive, positive, or negative. Cast these struct members to int32_t before use. See also the
+// clean aperture extension in the QuickTime File Format:
+// https://developer.apple.com/documentation/quicktime-file-format/clean_aperture
+
 typedef struct avifCleanApertureBox
 {
     // 'clap' from ISO/IEC 14496-12:2022 12.1.4.3
