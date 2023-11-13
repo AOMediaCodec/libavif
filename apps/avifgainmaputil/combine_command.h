@@ -1,8 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#ifndef LIBAVIF_APPS_AVIFGAINMAPUTIL_CREATE_COMMAND_H_
-#define LIBAVIF_APPS_AVIFGAINMAPUTIL_CREATE_COMMAND_H_
+#ifndef LIBAVIF_APPS_AVIFGAINMAPUTIL_COMBINE_COMMAND_H_
+#define LIBAVIF_APPS_AVIFGAINMAPUTIL_COMBINE_COMMAND_H_
 
 #include "avif/avif.h"
 #include "program_command.h"
@@ -19,7 +19,7 @@ class CreateCommand : public ProgramCommand {
   argparse::ArgValue<std::string> arg_alternate_filename_;
   argparse::ArgValue<std::string> arg_output_filename_;
   argparse::ArgValue<int> arg_downscaling_;
-  argparse::ArgValue<int> arg_quality_gain_map_;
+  argparse::ArgValue<int> arg_gain_map_quality_;
   argparse::ArgValue<int> arg_gain_map_depth_;
   argparse::ArgValue<int> arg_gain_map_pixel_format_;
   BasicImageEncodeArgs arg_image_encode_;
@@ -28,4 +28,4 @@ class CreateCommand : public ProgramCommand {
 
 }  // namespace avif
 
-#endif  // LIBAVIF_APPS_AVIFGAINMAPUTIL_CREATE_COMMAND_H_
+#endif  // LIBAVIF_APPS_AVIFGAINMAPUTIL_COMBINE_COMMAND_H_

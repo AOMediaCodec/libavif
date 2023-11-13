@@ -543,7 +543,7 @@ typedef struct avifContentLightLevelInformationBox
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 // ---------------------------------------------------------------------------
 // avifGainMap
-// Gain Map are a solution for a consistent and adaptive display of HDR images.
+// Gain Maps are a solution for a consistent and adaptive display of HDR images.
 // Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
 // images containing a gain map encoded with the current version of libavif might
 // not decode with a future version of libavif. The API is not guaranteed

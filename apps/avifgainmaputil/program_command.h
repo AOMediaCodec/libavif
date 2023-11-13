@@ -48,6 +48,7 @@ class ProgramCommand {
 // Actually converts to int, converting to avifPixelFormat didn't seem to
 // compile.
 struct PixelFormatConverter {
+  // Methods expected by argparse.
   argparse::ConvertedValue<int> from_str(std::string str);
   std::vector<std::string> default_choices();
 };
@@ -58,7 +59,7 @@ struct BasicImageEncodeArgs {
   argparse::ArgValue<int> quality;
   argparse::ArgValue<int> quality_alpha;
 
-  // add_quality_alpha should be true if the image can have alpha and the
+  // can_have_alpha should be true if the image can have alpha and the
   // output format can be avif.
   void Init(argparse::ArgumentParser& argparse, bool can_have_alpha) {
     argparse.add_argument(speed, "--speed", "-s")

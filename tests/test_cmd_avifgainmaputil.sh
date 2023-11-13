@@ -53,11 +53,11 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" extractgainmap "${INPUT_AVIF_GAINMAP_SDR}" "${JPEG_OUTPUT}"
   "${AVIFGAINMAPUTIL}" extractgainmap --speed 9 "${INPUT_AVIF_GAINMAP_SDR}" "${PNG_OUTPUT}"
 
-  "${AVIFGAINMAPUTIL}" create "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
       -q 50 --downscaling 2 --yuv-gain-map 400
-  "${AVIFGAINMAPUTIL}" create "${JPEG_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
-      -q 50 --qgain-map 90 && exit 1 # should fail because of icc profile
-  "${AVIFGAINMAPUTIL}" create "${JPEG_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
+  "${AVIFGAINMAPUTIL}" combine "${JPEG_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
+      -q 50 --qgain-map 90 && exit 1 # should fail because of icc profiles are not supported
+  "${AVIFGAINMAPUTIL}" combine "${JPEG_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
       -q 50 --qgain-map 90 --ignore-profile
 popd
 

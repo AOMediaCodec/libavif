@@ -1,7 +1,7 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "create_command.h"
+#include "combine_command.h"
 
 #include <cmath>
 
@@ -11,7 +11,7 @@
 namespace avif {
 
 CreateCommand::CreateCommand()
-    : ProgramCommand("create",
+    : ProgramCommand("combine",
                      "Creates an avif image with a gain map from a base image "
                      "and an alternate image.") {
   argparse_.add_argument(arg_base_filename_, "base_image");
@@ -20,7 +20,7 @@ CreateCommand::CreateCommand()
   argparse_.add_argument(arg_downscaling_, "--downscaling")
       .help("Downscaling factor for the gain map")
       .default_value("1");
-  argparse_.add_argument(arg_quality_gain_map_, "--qgain-map")
+  argparse_.add_argument(arg_gain_map_quality_, "--qgain-map")
       .help("Quality for the gain map (0-100, where 100 is lossless)")
       .default_value("60");
   argparse_.add_argument(arg_gain_map_depth_, "--depth-gain-map")
@@ -90,7 +90,7 @@ avifResult CreateCommand::Run() {
   }
   encoder->quality = arg_image_encode_.quality;
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
-  encoder->qualityGainMap = arg_quality_gain_map_;
+  encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
   result = WriteAvif(base_image.get(), encoder.get(), arg_output_filename_);
   if (result != AVIF_RESULT_OK) {

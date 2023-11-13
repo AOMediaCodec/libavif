@@ -8,7 +8,7 @@
 #include "argparse.hpp"
 #include "avif/avif.h"
 #include "avifutil.h"
-#include "create_command.h"
+#include "combine_command.h"
 #include "extractgainmap_command.h"
 #include "printmetadata_command.h"
 #include "program_command.h"

@@ -105,15 +105,20 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (result != AVIF_RESULT_OK) {
       return result;
     }
-    result = avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
-    if (result != AVIF_RESULT_OK) {
-      return result;
+    if (decoder->image->imageOwnsYUVPlanes &&
+        (decoder->image->alphaPlane == NULL ||
+         decoder->image->imageOwnsAlphaPlane)) {
+      std::swap(*image, *decoder->image);
+    } else {
+      result = avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
+      if (result != AVIF_RESULT_OK) {
+        return result;
+      }
     }
   } else {
     const avifAppFileFormat file_format =
         avifReadImage(input_filename.c_str(), requested_format, requested_depth,
-                      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                      ignore_profile,
+                      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, ignore_profile,
                       /*ignoreExif=*/false,
                       /*ignoreXMP=*/false,
                       /*allowChangingCicp=*/true,
