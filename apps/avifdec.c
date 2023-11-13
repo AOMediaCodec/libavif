@@ -14,18 +14,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(_WIN32)
-#include <locale.h>
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
-
 #define DEFAULT_JPEG_QUALITY 90
 
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
         fprintf(stderr, "%s requires an argument.", arg);             \
-        goto cleanup;                                                 \
+        return 1;                                                     \
     }                                                                 \
     arg = argv[++argIndex]
 
@@ -59,7 +53,7 @@ static void syntax(void)
     avifPrintVersions();
 }
 
-MAIN()
+int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;
     const char * outputFilename = NULL;
@@ -77,15 +71,12 @@ MAIN()
     uint32_t frameIndex = 0;
     uint32_t imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
     uint32_t imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
-    int returnCode = 1;
-    avifDecoder * decoder = NULL;
 
     if (argc < 2) {
         syntax();
         return 1;
     }
 
-    INIT_ARGV()
     int argIndex = 1;
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
@@ -236,7 +227,7 @@ MAIN()
             return 1;
         }
 
-        decoder = avifDecoderCreate();
+        avifDecoder * decoder = avifDecoderCreate();
         if (!decoder) {
             fprintf(stderr, "Memory allocation failure\n");
             return 1;
@@ -314,7 +305,8 @@ MAIN()
            jobs,
            (jobs == 1) ? "" : "s");
 
-    decoder = avifDecoderCreate();
+    int returnCode = 1;
+    avifDecoder * decoder = avifDecoderCreate();
     if (!decoder) {
         fprintf(stderr, "Memory allocation failure\n");
         goto cleanup;
@@ -386,12 +378,11 @@ MAIN()
     returnCode = 0;
 
 cleanup:
+    if (returnCode != 0) {
+        avifDumpDiagnostics(&decoder->diag);
+    }
     if (decoder != NULL) {
-        if (returnCode != 0) {
-            avifDumpDiagnostics(&decoder->diag);
-        }
         avifDecoderDestroy(decoder);
     }
-    FREE_ARGV()
     return returnCode;
 }
