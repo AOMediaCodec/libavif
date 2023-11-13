@@ -784,16 +784,27 @@ endif()
 
 if(AVIF_BUILD_APPS)
     add_executable(avifenc apps/avifenc.c)
-    if(AVIF_USE_CXX)
-        set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
-    endif()
-    target_link_libraries(avifenc avif_apps)
     add_executable(avifdec apps/avifdec.c)
-    if(AVIF_USE_CXX)
-        set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
-    endif()
-    target_link_libraries(avifdec avif_apps)
-
+    foreach(PROG IN ITEMS avifenc avifdec)
+        if(AVIF_USE_CXX)
+            set_target_properties(${PROG} PROPERTIES LINKER_LANGUAGE "CXX")
+        endif()
+        target_link_libraries(${PROG} avif_apps)
+        if(WIN32)
+            # Add a manifest file to deal with UTF8.
+            if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
+                target_sources(${PROG} PUBLIC ${CMAKE_SOURCE_DIR}/src/utf8.manifest)
+            else()
+                add_custom_command(
+                    TARGET ${PROG}
+                    POST_BUILD
+                    COMMAND "mt.exe" -manifest \"${CMAKE_SOURCE_DIR}\\src\\utf8.manifest\"
+                            -inputresource:\"$<TARGET_FILE:${PROG}>\"\;\#1 -outputresource:\"$<TARGET_FILE:${PROG}>\"\;\#1
+                    COMMENT "Adding manifest..."
+                )
+            endif()
+        endif()
+    endforeach()
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(
             TARGETS avifenc avifdec

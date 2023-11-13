@@ -224,6 +224,22 @@ if(AVIF_BUILD_APPS)
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
     add_executable(are_images_equal gtest/are_images_equal.cc)
     target_link_libraries(are_images_equal aviftest_helpers)
+    if(WIN32)
+        # Add a manifest file to deal with UTF8.
+        if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
+            target_sources(are_images_equal PUBLIC ${CMAKE_SOURCE_DIR}/src/utf8.manifest)
+        else()
+            add_custom_command(
+                TARGET are_images_equal
+                POST_BUILD
+                COMMAND
+                    "mt.exe" -manifest \"${CMAKE_SOURCE_DIR}\\src\\utf8.manifest\"
+                    -inputresource:\"$<TARGET_FILE:are_images_equal>\"\;\#1
+                    -outputresource:\"$<TARGET_FILE:are_images_equal>\"\;\#1
+                COMMENT "Adding manifest..."
+            )
+        endif()
+    endif()
     add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
