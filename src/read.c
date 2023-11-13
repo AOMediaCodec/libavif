@@ -4115,6 +4115,21 @@ static avifResult avifCodecCreateInternal(avifCodecChoice choice, const avifTile
         choice = AVIF_CODEC_CHOICE_AVM;
     }
 #endif
+
+    const avifCodecType codecTypeFromChoice = avifCodecTypeFromChoice(choice, AVIF_CODEC_FLAG_CAN_DECODE);
+    if (codecTypeFromChoice == AVIF_CODEC_TYPE_UNKNOWN) {
+        avifDiagnosticsPrintf(diag,
+                              "Tile type is %s but there is no compatible codec available to decode it",
+                              avifGetConfigurationPropertyName(tile->codecType));
+        return AVIF_RESULT_NO_CODEC_AVAILABLE;
+    } else if (choice != AVIF_CODEC_CHOICE_AUTO && codecTypeFromChoice != tile->codecType) {
+        avifDiagnosticsPrintf(diag,
+                              "Tile type is %s but incompatible %s codec was explicitly set as decoding implementation",
+                              avifGetConfigurationPropertyName(tile->codecType),
+                              avifCodecName(choice, AVIF_CODEC_FLAG_CAN_DECODE));
+        return AVIF_RESULT_DECODE_COLOR_FAILED;
+    }
+
     AVIF_CHECKRES(avifCodecCreate(choice, AVIF_CODEC_FLAG_CAN_DECODE, codec));
     AVIF_CHECKERR(*codec, AVIF_RESULT_OUT_OF_MEMORY);
     (*codec)->diag = diag;
