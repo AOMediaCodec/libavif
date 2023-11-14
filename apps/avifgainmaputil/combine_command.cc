@@ -25,10 +25,11 @@ CreateCommand::CreateCommand()
       .default_value("60");
   argparse_.add_argument(arg_gain_map_depth_, "--depth-gain-map")
       .choices({"8", "10", "12"})
-      .help(
-          "Output depth for the gain map")
+      .help("Output depth for the gain map")
       .default_value("8");
-  argparse_.add_argument<int, PixelFormatConverter>(arg_gain_map_pixel_format_, "--yuv-gain-map")
+  argparse_
+      .add_argument<int, PixelFormatConverter>(arg_gain_map_pixel_format_,
+                                               "--yuv-gain-map")
       .choices({"444", "422", "420", "400"})
       .help("Output format for the gain map")
       .default_value("444");
@@ -38,23 +39,27 @@ CreateCommand::CreateCommand()
 }
 
 avifResult CreateCommand::Run() {
-  const avifPixelFormat pixel_format = static_cast<avifPixelFormat>(arg_image_read_.pixel_format.value());
-  const avifPixelFormat gain_map_pixel_format = static_cast<avifPixelFormat>(arg_gain_map_pixel_format_.value());
+  const avifPixelFormat pixel_format =
+      static_cast<avifPixelFormat>(arg_image_read_.pixel_format.value());
+  const avifPixelFormat gain_map_pixel_format =
+      static_cast<avifPixelFormat>(arg_gain_map_pixel_format_.value());
 
   ImagePtr base_image(avifImageCreateEmpty());
   ImagePtr alternate_image(avifImageCreateEmpty());
   if (base_image == nullptr || alternate_image == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  avifResult result = ReadImage(base_image.get(), arg_base_filename_,
-                                pixel_format, arg_image_read_.depth, arg_image_read_.ignore_profile);
+  avifResult result =
+      ReadImage(base_image.get(), arg_base_filename_, pixel_format,
+                arg_image_read_.depth, arg_image_read_.ignore_profile);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read base image: " << avifResultToString(result)
               << "\n";
     return result;
   }
-  result = ReadImage(alternate_image.get(), arg_alternate_filename_,
-                     pixel_format, arg_image_read_.depth, arg_image_read_.ignore_profile);
+  result =
+      ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
+                arg_image_read_.depth, arg_image_read_.ignore_profile);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read alternate image: "
               << avifResultToString(result) << "\n";

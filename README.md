@@ -85,7 +85,7 @@ sources from the top-level folder:
 
 ```sh
 clang-format -style=file -i \
-  apps/*.c apps/*/*.c apps/*/*.h  examples/*.c \
+  apps/*.c apps/*/*.c apps/*/*.cc apps/*/*.h examples/*.c \
   include/avif/*.h src/*.c src/*.cc \
   tests/*.c tests/*/*.cc tests/*/*.h
 ```

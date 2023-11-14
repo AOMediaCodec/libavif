@@ -90,8 +90,8 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
 }
 
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
-                     avifPixelFormat requested_format,
-                     uint32_t requested_depth, bool ignore_profile) {
+                     avifPixelFormat requested_format, uint32_t requested_depth,
+                     bool ignore_profile) {
   avifAppFileFormat input_format = avifGuessFileFormat(input_filename.c_str());
   if (input_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     std::cerr << "Cannot determine input format: " << input_filename;
@@ -133,8 +133,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (image->icc.size == 0) {
       // Assume sRGB by default.
       if (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED &&
-          image->transferCharacteristics ==
-              AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+          image->transferCharacteristics == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
         image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
       }
@@ -143,32 +142,30 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
   return AVIF_RESULT_OK;
 }
 
-avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename, bool ignore_profile) {
-    avifResult result =
-        avifDecoderSetIOFile(decoder, input_filename.c_str());
-    if (result != AVIF_RESULT_OK) {
-      std::cerr << "Cannot open file for read: " << input_filename << "\n";
-      return result;
-    }
-    result = avifDecoderParse(decoder);
-    if (result != AVIF_RESULT_OK) {
-      std::cerr << "Failed to parse image: "
-                << avifResultToString(result) << " (" << decoder->diag.error
-                << ")\n";
-      return result;
-    }
-    result = avifDecoderNextImage(decoder);
-    if (result != AVIF_RESULT_OK) {
-      std::cerr << "Failed to decode image: "
-                << avifResultToString(result) << " (" << decoder->diag.error
-                << ")\n";
-      return result;
-    }
-    if (ignore_profile) {
-      avifRWDataFree(&decoder->image->icc);
-    }
+avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename,
+                    bool ignore_profile) {
+  avifResult result = avifDecoderSetIOFile(decoder, input_filename.c_str());
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Cannot open file for read: " << input_filename << "\n";
+    return result;
+  }
+  result = avifDecoderParse(decoder);
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Failed to parse image: " << avifResultToString(result) << " ("
+              << decoder->diag.error << ")\n";
+    return result;
+  }
+  result = avifDecoderNextImage(decoder);
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Failed to decode image: " << avifResultToString(result)
+              << " (" << decoder->diag.error << ")\n";
+    return result;
+  }
+  if (ignore_profile) {
+    avifRWDataFree(&decoder->image->icc);
+  }
 
-    return AVIF_RESULT_OK;
+  return AVIF_RESULT_OK;
 }
 
 }  // namespace avif

@@ -24,7 +24,8 @@ avifResult ExtractGainMapCommand::Run() {
   decoder->enableDecodingGainMap = true;
   decoder->ignoreColorAndAlpha = true;
 
-  avifResult result = ReadAvif(decoder.get(), arg_input_filename_, /*ignore_profile=*/true);
+  avifResult result =
+      ReadAvif(decoder.get(), arg_input_filename_, /*ignore_profile=*/true);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
