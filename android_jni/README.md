@@ -61,7 +61,7 @@ $ cd ..
 
 If you do not want to use libyuv, then update
 [CMakeLists.txt](avifandroidjni/src/main/jni/CMakeLists.txt) as follows:
- * Set `AVIF_LOCAL_LIBYUV` to `OFF`.
+ * Set `AVIF_LIBYUV` to `OFF`.
 
 Step 5 - Build the JNI Wrapper and generate the AAR package
 

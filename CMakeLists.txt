@@ -40,7 +40,8 @@ option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 )
 option(AVIF_ENABLE_EXPERIMENTAL_AVIR "Enable experimental reduced header" OFF)
 
-option(AVIF_CODEC_AOM "Use the AOM codec for encoding/decoding (see AVIF_CODEC_AOM_DECODE/AVIF_CODEC_AOM_ENCODE)" OFF)
+set(AVIF_CODEC_AOM "OFF" CACHE STRING "Use the AOM codec for encoding/decoding (see AVIF_CODEC_AOM_DECODE/AVIF_CODEC_AOM_ENCODE)")
+set_property(CACHE AVIF_CODEC_AOM PROPERTY STRINGS OFF LOCAL SYSTEM)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding" OFF)
 option(AVIF_CODEC_LIBGAV1 "Use the libgav1 codec for decoding" OFF)
 option(AVIF_CODEC_RAV1E "Use the rav1e codec for encoding" OFF)
@@ -51,7 +52,6 @@ option(AVIF_CODEC_AVM "Use the AVM (AV2) codec for encoding/decoding (EXPERIMENT
 option(AVIF_CODEC_AOM_DECODE "if AVIF_CODEC_AOM is on, use/offer libaom's decoder" ON)
 option(AVIF_CODEC_AOM_ENCODE "if AVIF_CODEC_AOM is on, use/offer libaom's encoder" ON)
 
-option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom (see Local Builds in README)" OFF)
 option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d (see Local Builds in README)"
        OFF
 )
@@ -173,8 +173,9 @@ if(AVIF_LOCAL_JPEG)
     endif()
 endif()
 
-option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
-if(AVIF_LOCAL_LIBYUV)
+set(AVIF_LIBYUV "OFF" CACHE STRING "Build libyuv by providing your own copy inside the ext subdir.")
+set_property(CACHE AVIF_LIBYUV PROPERTY STRINGS OFF LOCAL SYSTEM)
+if(AVIF_LIBYUV STREQUAL "LOCAL")
     set(AVIF_LIBYUV_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build")
 
     # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
@@ -195,8 +196,8 @@ if(AVIF_LOCAL_LIBYUV)
     endif()
     set(libyuv_FOUND TRUE)
     message(STATUS "libavif: local libyuv found; libyuv-based fast paths enabled.")
-else(AVIF_LOCAL_LIBYUV)
-    find_package_libavif(libyuv QUIET) # not required
+elseif(AVIF_LIBYUV STREQUAL "SYSTEM")
+    find_package_libavif(libyuv REQUIRED)
     if(libyuv_FOUND)
         # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
         # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
@@ -213,8 +214,6 @@ else(AVIF_LOCAL_LIBYUV)
                 message(STATUS "libavif: some libyuv optimizations require at least version 1813 to work.")
             endif()
         endif()
-    else()
-        message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
     endif()
 endif()
 if(libyuv_FOUND)
@@ -593,7 +592,7 @@ if(AVIF_CODEC_AOM)
         )
     endif()
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_aom.c)
-    if(AVIF_LOCAL_AOM)
+    if(AVIF_CODEC_AOM STREQUAL "LOCAL")
         set(LIB_FILENAME
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
         )

@@ -21,7 +21,7 @@ set(AVIF_CODEC_DAV1D ON CACHE BOOL "" FORCE)
 set(AVIF_LOCAL_DAV1D ON CACHE BOOL "" FORCE)
 
 # To disable libyuv, change this variable to OFF.
-set(AVIF_LOCAL_LIBYUV ON CACHE BOOL "" FORCE)
+set(AVIF_LIBYUV "LOCAL" CACHE STRING "" FORCE)
 
 # To enable libgav1, change the following two variables to ON.
 set(AVIF_CODEC_LIBGAV1 OFF CACHE BOOL "" FORCE)
