@@ -9,9 +9,9 @@
 
 namespace avif {
 
-class CreateCommand : public ProgramCommand {
+class CombineCommand : public ProgramCommand {
  public:
-  CreateCommand();
+  CombineCommand();
   avifResult Run() override;
 
  private:

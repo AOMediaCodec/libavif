@@ -39,4 +39,26 @@ std::vector<std::string> PixelFormatConverter::default_choices() {
   return {"444", "422", "420", "400"};
 }
 
+argparse::ConvertedValue<CicpValues> CicpConverter::from_str(std::string str) {
+  argparse::ConvertedValue<CicpValues> converted_value;
+
+  std::vector<uint32_t> cicp_values;
+  if (!ParseList(str, '/', 3, &cicp_values)) {
+    converted_value.set_error(
+        "Invalid cicp values, expected format: P/T/M where each "
+        "value is a positive integer, got: " +
+        str);
+  }
+
+  CicpValues cicp = {};
+  cicp.color_primaries = (avifColorPrimaries)cicp_values[0];
+  cicp.transfer_characteristics = (avifTransferCharacteristics)cicp_values[1];
+  cicp.matrix_coefficients = (avifMatrixCoefficients)cicp_values[2];
+  converted_value.set_value(cicp);
+
+  return converted_value;
+}
+
+std::vector<std::string> CicpConverter::default_choices() { return {}; }
+
 }  // namespace avif

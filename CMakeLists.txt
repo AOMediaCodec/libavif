@@ -813,7 +813,7 @@ if(AVIF_BUILD_APPS)
 
             set(AVIFGAINMAPUTIL_SRCS
                 apps/avifgainmaputil/avifgainmaputil.cc apps/avifgainmaputil/combine_command.cc apps/avifgainmaputil/extractgainmap_command.cc
-                apps/avifgainmaputil/imageio.cc apps/avifgainmaputil/printmetadata_command.cc
+                apps/avifgainmaputil/imageio.cc apps/avifgainmaputil/printmetadata_command.cc apps/avifgainmaputil/tonemap_command.cc
                 apps/avifgainmaputil/program_command.cc
             )
 
