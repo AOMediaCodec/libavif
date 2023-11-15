@@ -32,6 +32,11 @@ jobs:
         toolchain: stable
         override: true
 
+    # Prevent spurious errors on macos, see https://github.com/AOMediaCodec/libavif/issues/1769
+    - name: Disable AVX2 in libaom
+      if: runner.os == 'macOS'
+      working-directory: ./ext
+      run: sed -i'' -e 's/^cmake /cmake -DENABLE_AVX2=OFF /' aom.cmd
     - name: Cache external dependencies
       id: cache-ext
       uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
