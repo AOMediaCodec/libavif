@@ -1,4 +1,4 @@
-: # If you want to use a local build of rav1e, you must clone the rav1e repo in this directory first, then enable CMake's AVIF_CODEC_RAV1E and AVIF_LOCAL_RAV1E options.
+: # If you want to use a local build of rav1e, you must clone the rav1e repo in this directory first, then set CMake's AVIF_CODEC_RAV1E to LOCAL.
 : # The git SHA below is known to work, and will occasionally be updated. Feel free to use a more recent commit.
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
