@@ -9,10 +9,10 @@ enable_testing()
 # C tests and tools
 
 add_executable(aviftest aviftest.c)
-if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
+if(AVIF_CODEC_LIBGAV1_ENABLED)
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(aviftest avif)
 add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
 if(AVIF_ENABLE_COVERAGE)
@@ -31,10 +31,11 @@ if(AVIF_ENABLE_COVERAGE)
 endif()
 
 add_executable(avifyuv avifyuv.c)
-if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
+if(AVIF_CODEC_LIBGAV1_ENABLED)
     set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
+
+target_link_libraries(avifyuv avif)
 foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2 minutes each so they are disabled.
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
@@ -46,10 +47,10 @@ endif()
 
 # Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
 add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
-if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
+if(AVIF_CODEC_LIBGAV1_ENABLED)
     set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
-target_link_libraries(repro_avif_decode_fuzzer avif ${AVIF_PLATFORM_LIBRARIES})
+target_link_libraries(repro_avif_decode_fuzzer avif)
 # The test below exists for coverage and as a usage example: repro_avif_decode_fuzzer [reproducer file path]
 add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
                                                ${CMAKE_CURRENT_SOURCE_DIR}/data/color_grid_alpha_nogrid.avif
@@ -62,43 +63,26 @@ add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
 # are considered as extra linked libraries.
 macro(add_avif_gtest TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
-    target_include_directories(${TEST_NAME} PRIVATE ${GTEST_INCLUDE_DIRS})
-    target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${GTEST_BOTH_LIBRARIES} ${ARGN})
+    target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers GTest::gtest GTest::gtest_main ${ARGN})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endmacro()
 macro(add_avif_gtest_with_data TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
-    target_include_directories(${TEST_NAME} PRIVATE ${GTEST_INCLUDE_DIRS})
-    target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${GTEST_LIBRARIES} ${ARGN})
+    target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers GTest::gtest ${ARGN})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
 
 if(AVIF_ENABLE_GTEST OR AVIF_ENABLE_FUZZTEST)
-    if(AVIF_LOCAL_GTEST)
-        set(GTEST_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ext/googletest/googletest/include)
-        set(GTEST_LIBRARIES
-            ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}
-        )
-        set(GTEST_MAIN_LIBRARIES
-            ${CMAKE_SOURCE_DIR}/ext/googletest/build/lib/${AVIF_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX}
-        )
-        set(GTEST_BOTH_LIBRARIES ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES})
-        if(NOT EXISTS ${GTEST_INCLUDE_DIRS}/gtest/gtest.h)
-            message(FATAL_ERROR "googletest(AVIF_LOCAL_GTEST): ${GTEST_INCLUDE_DIRS}/gtest/gtest.h is missing, bailing out")
-        elseif(NOT EXISTS ${GTEST_LIBRARIES})
-            message(FATAL_ERROR "googletest(AVIF_LOCAL_GTEST): ${GTEST_LIBRARIES} is missing, bailing out")
-        elseif(NOT EXISTS ${GTEST_MAIN_LIBRARIES})
-            message(FATAL_ERROR "googletest(AVIF_LOCAL_GTEST): ${GTEST_MAIN_LIBRARIES} is missing, bailing out")
+    if(NOT TARGET GTest::gtest)
+        if(AVIF_LOCAL_GTEST)
+            include(LocalGoogletest)
         else()
-            message(STATUS "Found local ext/googletest")
+            find_package(GTest REQUIRED)
         endif()
-    else()
-        find_package(GTest REQUIRED)
     endif()
 
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
-    target_link_libraries(avifincrtest_helpers avif ${AVIF_PLATFORM_LIBRARIES} ${GTEST_LIBRARIES})
-    target_include_directories(avifincrtest_helpers PUBLIC ${GTEST_INCLUDE_DIRS})
+    target_link_libraries(avifincrtest_helpers avif GTest::gtest)
 endif()
 
 if(AVIF_ENABLE_GTEST)
@@ -161,7 +145,7 @@ if(AVIF_ENABLE_GTEST)
         message(STATUS "Some tests are disabled because aom is unavailable for encoding or decoding.")
     endif()
 
-    if(NOT libsharpyuv_FOUND)
+    if(NOT AVIF_LIBSHARPYUV_ENABLED)
         message(STATUS "Some tests are skipped because libsharpyuv is unavailable.")
     endif()
 else()
@@ -176,7 +160,6 @@ if(AVIF_ENABLE_FUZZTEST)
     # are considered as extra linked libraries.
     macro(add_avif_fuzztest TEST_NAME)
         add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc gtest/avif_fuzztest_helpers.cc)
-        target_include_directories(${TEST_NAME} PRIVATE ${GTEST_INCLUDE_DIRS})
         target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${ARGN})
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
@@ -191,7 +174,7 @@ if(AVIF_ENABLE_FUZZTEST)
         #   FUZZTEST_REPLAY=/path/to/repro_file.test
         # and running one of the targets below.
         # See https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
-        add_subdirectory(${CMAKE_SOURCE_DIR}/ext/fuzztest ${CMAKE_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL)
+        add_subdirectory(${AVIF_SOURCE_DIR}/ext/fuzztest ${AVIF_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL)
         # FuzzTest bundles GoogleTest so no need for the targets below to link to GTEST_BOTH_LIBRARIES.
     else()
         message(
@@ -258,7 +241,7 @@ if(AVIF_BUILD_APPS)
     if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
         # test_cmd_enc_boxes_golden.sh depends on MP4Box
         # Only allow a locally built version to avoid differences with versioning.
-        set(MP4BOX_DIR ${CMAKE_SOURCE_DIR}/ext/gpac/bin/gcc/)
+        set(MP4BOX_DIR ${AVIF_SOURCE_DIR}/ext/gpac/bin/gcc/)
         if(NOT EXISTS ${MP4BOX_DIR}/MP4Box)
             message(FATAL_ERROR "AVIF_ENABLE_GOLDEN_TESTS is ON but ${MP4BOX_DIR}/MP4Box is missing. Run ext/mp4box.sh")
         endif()
@@ -282,14 +265,14 @@ if(AVIF_BUILD_APPS)
         endif()
     endif()
 
-    if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
+    if(NOT AVIF_CODEC_AOM_ENABLED OR NOT AVIF_CODEC_AOM_ENCODE)
         # Only aom encoder supports AV1 lossless encoding.
         set_property(TEST test_cmd_animation PROPERTY DISABLED True)
         set_property(TEST test_cmd_icc_profile PROPERTY DISABLED True)
         set_property(TEST test_cmd_lossless PROPERTY DISABLED True)
 
         # SVT-AV1 does not support the images with odd dimensions that are used in this test.
-        if(NOT AVIF_CODEC_RAV1E)
+        if(NOT AVIF_CODEC_RAV1E_ENABLED)
             set_property(TEST test_cmd_metadata PROPERTY DISABLED True)
         endif()
 
@@ -304,7 +287,7 @@ endif()
 ################################################################################
 # AV2 tests
 
-if(AVIF_CODEC_AVM)
+if(AVIF_CODEC_AVM_ENABLED)
     if(AVIF_ENABLE_GTEST)
         add_avif_gtest(avifavmtest)
     endif()
@@ -320,8 +303,9 @@ if(AVIF_CODEC_AVM)
 
     # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
     # This may lead to test failures when there is no available AV1 codec.
-    if(((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE) AND NOT AVIF_CODEC_RAV1E AND NOT AVIF_CODEC_SVT)
-       OR ((NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_DECODE) AND NOT AVIF_CODEC_DAV1D AND NOT AVIF_CODEC_LIBGAV1)
+    if(((NOT AVIF_CODEC_AOM_ENABLED OR NOT AVIF_CODEC_AOM_ENCODE) AND NOT AVIF_CODEC_RAV1E_ENABLED AND NOT AVIF_CODEC_SVT_ENABLED)
+       OR ((NOT AVIF_CODEC_AOM_ENABLED OR NOT AVIF_CODEC_AOM_DECODE) AND NOT AVIF_CODEC_DAV1D_ENABLED
+           AND NOT AVIF_CODEC_LIBGAV1_ENABLED)
     )
         # Disable all tests that use avifEncoder without explicitly setting the codec to avm.
         set_tests_properties(aviftest PROPERTIES DISABLED True)

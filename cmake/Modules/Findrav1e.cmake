@@ -48,3 +48,15 @@ find_package_handle_standard_args(
 # show the RAV1E_INCLUDE_DIR, RAV1E_LIBRARY and RAV1E_LIBRARIES variables only
 # in the advanced view
 mark_as_advanced(RAV1E_INCLUDE_DIR RAV1E_LIBRARY RAV1E_LIBRARIES)
+
+if(RAV1E_LIBRARY)
+    if(NOT TARGET rav1e::rav1e)
+        if("${RAV1E_LIBRARY}" MATCHES "\\${CMAKE_STATIC_LIBRARY_SUFFIX}$")
+            add_library(rav1e::rav1e STATIC IMPORTED GLOBAL)
+        else()
+            add_library(rav1e::rav1e SHARED IMPORTED GLOBAL)
+        endif()
+        set_target_properties(rav1e::rav1e PROPERTIES IMPORTED_LOCATION "${RAV1E_LIBRARY}" IMPORTED_SONAME rav1e)
+        target_include_directories(rav1e::rav1e INTERFACE ${RAV1E_INCLUDE_DIR})
+    endif()
+endif()
