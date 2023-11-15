@@ -17,7 +17,7 @@ project(avif_android_jni)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 # To disable dav1d, change the following two variables to OFF.
-set(AVIF_CODEC_DAV1D "LOCAL" CACHE BOOL "" FORCE)
+set(AVIF_CODEC_DAV1D "LOCAL" CACHE STRING "" FORCE)
 
 # To disable libyuv, change this variable to OFF.
 set(AVIF_LIBYUV "LOCAL" CACHE STRING "" FORCE)

@@ -90,7 +90,7 @@ jobs:
         -DAVIF_CODEC_RAV1E=${{ matrix.also-enable-av1-codecs }}
         -DAVIF_CODEC_SVT=${{ matrix.also-enable-av1-codecs }}
         -DAVIF_LIBYUV=LOCAL
-        -DAVIF_LOCAL_LIBSHARPYUV=ON
+        -DAVIF_LIBSHARPYUV=LOCAL
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
     - name: Build libavif (ninja)
