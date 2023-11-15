@@ -1419,7 +1419,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
 
     if (tilesAvailable != grid->rows * grid->columns) {
         avifDiagnosticsPrintf(&decoder->diag,
-                              "Grid image of dimensions %ux%u requires %u tiles, and only %u were found",
+                              "Grid image of dimensions %ux%u requires %u tiles, but %u were found",
                               grid->columns,
                               grid->rows,
                               grid->rows * grid->columns,
@@ -3664,21 +3664,33 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
             maxItemID = item->id;
         }
         if (item->dimgForID == colorItem->id) {
+            avifBool seenAlphaForCurrentItem = AVIF_FALSE;
             for (uint32_t j = 0; j < colorItem->meta->items.count; ++j) {
                 avifDecoderItem * auxlItem = &colorItem->meta->items.item[j];
                 if (avifDecoderItemIsAlphaAux(auxlItem, item->id)) {
+                    if (seenAlphaForCurrentItem || auxlItem->dimgForID != 0) {
+                        // One of the following invalid cases:
+                        // * Multiple items are claiming to be the alpha auxiliary of the current item.
+                        // * Alpha auxiliary is dimg for another item.
+                        avifFree(alphaItemIndices);
+                        *alphaItem = NULL;
+                        *isAlphaItemInInput = AVIF_FALSE;
+                        return AVIF_RESULT_INVALID_IMAGE_GRID;
+                    }
                     alphaItemIndices[alphaItemCount++] = j;
+                    seenAlphaForCurrentItem = AVIF_TRUE;
                 }
+            }
+            if (!seenAlphaForCurrentItem) {
+                // No alpha auxiliary item was found for the current item. Treat this as an image without alpha.
+                avifFree(alphaItemIndices);
+                *alphaItem = NULL;
+                *isAlphaItemInInput = AVIF_FALSE;
+                return AVIF_RESULT_OK;
             }
         }
     }
-    if (alphaItemCount != colorItemCount) {
-        // Not all the color items had an alpha auxiliary attached to it. Report this case as an image without alpha channel.
-        avifFree(alphaItemIndices);
-        *alphaItem = NULL;
-        *isAlphaItemInInput = AVIF_FALSE;
-        return AVIF_RESULT_OK;
-    }
+    assert(alphaItemCount == colorItemCount);
 
     int colorItemIndex = -1;
     for (uint32_t i = 0; i < data->meta->items.count; ++i) {
@@ -3937,6 +3949,16 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                 decoder->imageDimensionLimit,
                                                 data->diag),
                           AVIF_RESULT_INVALID_IMAGE_GRID);
+            // Validate that there are exactly the same number of dimg items to form the grid.
+            uint32_t dimgItemCount = 0;
+            for (uint32_t i = 0; i < colorItem->meta->items.count; ++i) {
+                if (colorItem->meta->items.item[i].dimgForID == colorItem->id) {
+                    ++dimgItemCount;
+                }
+            }
+            if (dimgItemCount != data->color.grid.rows * data->color.grid.columns) {
+                return AVIF_RESULT_INVALID_IMAGE_GRID;
+            }
             colorCodecType = avifDecoderItemGetGridCodecType(colorItem);
             if (colorCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
