@@ -12,8 +12,9 @@ namespace avif {
 
 TonemapCommand::TonemapCommand()
     : ProgramCommand("tonemap",
-                     "Tone maps an avif image that has a gain map to the "
-                     "requested headroom") {
+                     "Tone maps an avif image that has a gain map to a "
+                     "given HDR headroom (how much brighter the display can go "
+                     "compared to an SDR display)") {
   argparse_.add_argument(arg_input_filename_, "input_image");
   argparse_.add_argument(arg_output_filename_, "output_image");
   argparse_.add_argument(arg_headroom_, "--headroom")
@@ -25,19 +26,20 @@ TonemapCommand::TonemapCommand()
       .add_argument<CicpValues, CicpConverter>(arg_input_cicp_, "--input_cicp")
       .help(
           "Override input CICP values, expressed as P/T/M "
-          "where P = color  primaries, T = transfer characteristics, "
+          "where P = color primaries, T = transfer characteristics, "
           "M = matrix coefficients.");
   argparse_
       .add_argument<CicpValues, CicpConverter>(arg_output_cicp_,
                                                "--output_cicp")
       .help(
           "CICP values for the output, expressed as P/T/M "
-          "where P = color  primaries, T = transfer characteristics, "
+          "where P = color primaries, T = transfer characteristics, "
           "M = matrix coefficients. P and M are only relevant when saving to "
           "AVIF. "
-          "If not specified, primaries default to the base image's primaries, "
-          "tranfer characteristics defaults to 16 (PQ) if headroom > 0, or 13 "
-          "(sRGB) otherwise,  matrix coeffcients defaults to 6 (BT601).");
+          "If not specified, 'color primaries' defaults to the base image's "
+          "primaries, 'transfer characteristics' defaults to 16 (PQ) if "
+          "headroom > 0, or 13 (sRGB) otherwise, 'matrix coefficients' "
+          "defaults to 6 (BT601).");
   argparse_.add_argument(arg_clli_str_, "--clli")
       .help(
           "Override content light level information expressed as: "

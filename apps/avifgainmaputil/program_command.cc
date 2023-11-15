@@ -18,7 +18,8 @@ avifResult ProgramCommand::ParseArgs(int argc, const char* const argv[]) {
 // Prints this command's help on stdout.
 void ProgramCommand::PrintUsage() { argparse_.print_help(); }
 
-argparse::ConvertedValue<int> PixelFormatConverter::from_str(std::string str) {
+argparse::ConvertedValue<int> PixelFormatConverter::from_str(
+    const std::string& str) {
   argparse::ConvertedValue<int> converted_value;
 
   if (str == "444") {
@@ -39,7 +40,8 @@ std::vector<std::string> PixelFormatConverter::default_choices() {
   return {"444", "422", "420", "400"};
 }
 
-argparse::ConvertedValue<CicpValues> CicpConverter::from_str(std::string str) {
+argparse::ConvertedValue<CicpValues> CicpConverter::from_str(
+    const std::string& str) {
   argparse::ConvertedValue<CicpValues> converted_value;
 
   std::vector<uint32_t> cicp_values;

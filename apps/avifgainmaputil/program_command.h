@@ -52,7 +52,7 @@ class ProgramCommand {
 // compile.
 struct PixelFormatConverter {
   // Methods expected by argparse.
-  argparse::ConvertedValue<int> from_str(std::string str);
+  argparse::ConvertedValue<int> from_str(const std::string& str);
   std::vector<std::string> default_choices();
 };
 
@@ -65,7 +65,7 @@ struct CicpValues {
 // CicpValues converter for use with argparse.
 struct CicpConverter {
   // Methods expected by argparse.
-  argparse::ConvertedValue<CicpValues> from_str(std::string str);
+  argparse::ConvertedValue<CicpValues> from_str(const std::string& str);
   std::vector<std::string> default_choices();
 };
 
