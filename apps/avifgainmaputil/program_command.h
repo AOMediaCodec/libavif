@@ -44,12 +44,28 @@ class ProgramCommand {
   std::string description_;
 };
 
+//------------------------------------------------------------------------------
+// Utilities for flag parsing.
+
 // avifPixelFormat converter for use with argparse.
 // Actually converts to int, converting to avifPixelFormat didn't seem to
 // compile.
 struct PixelFormatConverter {
   // Methods expected by argparse.
-  argparse::ConvertedValue<int> from_str(std::string str);
+  argparse::ConvertedValue<int> from_str(const std::string& str);
+  std::vector<std::string> default_choices();
+};
+
+struct CicpValues {
+  avifColorPrimaries color_primaries;
+  avifTransferCharacteristics transfer_characteristics;
+  avifMatrixCoefficients matrix_coefficients;
+};
+
+// CicpValues converter for use with argparse.
+struct CicpConverter {
+  // Methods expected by argparse.
+  argparse::ConvertedValue<CicpValues> from_str(const std::string& str);
   std::vector<std::string> default_choices();
 };
 
@@ -89,12 +105,15 @@ struct ImageReadArgs {
   void Init(argparse::ArgumentParser& argparse) {
     argparse
         .add_argument<int, PixelFormatConverter>(pixel_format, "--yuv", "-y")
-        .help("Output YUV format for avif (applies to JPEG/PNG input only)")
+        .help(
+            "Output YUV format for avif (applies to JPEG/PNG input only or "
+            "when tone mapping)")
         .default_value("444");
     argparse.add_argument(depth, "--depth", "-d")
-        .choices({"8", "10", "12"})
-        .help("Output depth (applies to JPEG/PNG input only)")
-        .default_value("8");
+        .choices({"0", "8", "10", "12"})
+        .help(
+            "Output depth (applies to JPEG/PNG input only or when tone "
+            "mapping) (0 = automatic)");
     argparse.add_argument(ignore_profile, "--ignore-profile")
         .help(
             "If the input file contains an embedded color profile, ignore it "
@@ -103,6 +122,27 @@ struct ImageReadArgs {
         .default_value("false");
   }
 };
+
+// Helper to parse flags that contain several delimited values.
+template <typename T>
+bool ParseList(std::string to_parse, char delim, int expected_num,
+               std::vector<T>* out) {
+  std::stringstream ss(to_parse);
+  std::string part;
+  T parsed;
+  while (std::getline(ss, part, delim)) {
+    std::istringstream is(part);
+    is >> parsed;
+    if (is.bad()) {
+      return false;
+    }
+    out->push_back(parsed);
+  }
+  if (expected_num > 0 && (int)out->size() != expected_num) {
+    return false;
+  }
+  return true;
+}
 
 }  // namespace avif
 

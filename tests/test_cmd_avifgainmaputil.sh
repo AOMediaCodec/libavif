@@ -26,6 +26,7 @@ else
 fi
 
 AVIFGAINMAPUTIL="${BINARY_DIR}/avifgainmaputil"
+ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
 
 # Input file paths.
 INPUT_AVIF_GAINMAP_SDR="${TESTDATA_DIR}/seine_sdr_gainmap_srgb.avif"
@@ -59,6 +60,12 @@ pushd ${TMP_DIR}
       -q 50 --qgain-map 90 && exit 1 # should fail because of icc profiles are not supported
   "${AVIFGAINMAPUTIL}" combine "${JPEG_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
       -q 50 --qgain-map 90 --ignore-profile
+
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_HDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
+      -q 90 --qgain-map 90
+  "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${PNG_OUTPUT}" --headroom 0
+  "${AVIFGAINMAPUTIL}" tonemap "${INPUT_AVIF_GAINMAP_SDR}" "${PNG_OUTPUT}" --headroom 0 --clli 400,500
+  "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${JPEG_AVIF_GAINMAP_SDR}" 0 40
 popd
 
 exit 0

@@ -10,7 +10,7 @@
 
 namespace avif {
 
-CreateCommand::CreateCommand()
+CombineCommand::CombineCommand()
     : ProgramCommand("combine",
                      "Creates an avif image with a gain map from a base image "
                      "and an alternate image.") {
@@ -38,7 +38,7 @@ CreateCommand::CreateCommand()
   // TODO(maryla): allow specifying cicp for inputs and output.
 }
 
-avifResult CreateCommand::Run() {
+avifResult CombineCommand::Run() {
   const avifPixelFormat pixel_format =
       static_cast<avifPixelFormat>(arg_image_read_.pixel_format.value());
   const avifPixelFormat gain_map_pixel_format =
