@@ -781,6 +781,8 @@ static void avifMetaDestroy(avifMeta * meta)
     avifFree(meta);
 }
 
+// CAUTION: This function could potentially resize the meta->items array thereby invalidating all existing pointers that are being
+// stored locally. So if this function is being called, exercise caution in the caller to not use invalid pointers.
 static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
 {
     if (itemID == 0) {
@@ -4142,17 +4144,20 @@ static avifBool avifDecoderItemIsAlphaAux(avifDecoderItem * item, uint32_t color
     return auxCProp && isAlphaURN(auxCProp->u.auxC.auxType);
 }
 
-// Finds the alpha item whose parent item is colorItem and sets it in the alphaItem output parameter. Returns AVIF_RESULT_OK on
-// success. Note that *alphaItem can be NULL even if the return value is AVIF_RESULT_OK. If the colorItem is a grid and the alpha
-// item is represented as a set of auxl items to each color tile, then a fake item will be created and *isAlphaItemInInput will be
-// set to AVIF_FALSE. In this case, the alpha item merely exists to hold the locations of the alpha tile items. The data of this
-// item need not be read and the pixi property cannot be validated. Otherwise, *isAlphaItemInInput will be set to AVIF_TRUE when
-// *alphaItem is not NULL.
+// Finds the alpha item whose parent item is *colorItemPtr and sets it in the alphaItem output parameter. Returns AVIF_RESULT_OK
+// on success. Note that *alphaItem can be NULL even if the return value is AVIF_RESULT_OK. If the *colorItemPtr is a grid and the
+// alpha item is represented as a set of auxl items to each color tile, then a fake item will be created and *isAlphaItemInInput
+// will be set to AVIF_FALSE. In this case, the alpha item merely exists to hold the locations of the alpha tile items. The data
+// of this item need not be read and the pixi property cannot be validated. Otherwise, *isAlphaItemInInput will be set to
+// AVIF_TRUE when *alphaItem is not NULL. If the data->meta->items array is resized, then the value in *colorItemPtr could become
+// invalid. This function also resets *colorItemPtr to the right value if an alpha item was found and added to the data->meta->items
+// array.
 static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
-                                               avifDecoderItem * colorItem,
+                                               avifDecoderItem ** colorItemPtr,
                                                avifDecoderItem ** alphaItem,
                                                avifBool * isAlphaItemInInput)
 {
+    const avifDecoderItem * colorItem = *colorItemPtr;
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = &data->meta->items.item[itemIndex];
         if (avifDecoderItemShouldBeSkipped(item)) {
@@ -4202,12 +4207,26 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
         *isAlphaItemInInput = AVIF_FALSE;
         return AVIF_RESULT_OK;
     }
+
+    int colorItemIndex = -1;
+    for (uint32_t i = 0; i < data->meta->items.count; ++i) {
+        if (colorItem->id == data->meta->items.item[i].id) {
+            colorItemIndex = i;
+            break;
+        }
+    }
+    assert(colorItemIndex >= 0);
+
     *alphaItem = avifMetaFindItem(colorItem->meta, maxItemID + 1);
     if (*alphaItem == NULL) {
         avifFree(alphaItemIndices);
         *isAlphaItemInInput = AVIF_FALSE;
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
+    // avifMetaFindItem() could invalidate all existing item pointers. So reset the colorItem pointers.
+    *colorItemPtr = &data->meta->items.item[colorItemIndex];
+    colorItem = *colorItemPtr;
+
     memcpy((*alphaItem)->type, "grid", 4);
     (*alphaItem)->width = colorItem->width;
     (*alphaItem)->height = colorItem->height;
@@ -4597,7 +4616,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         avifBool isAlphaItemInInput;
         avifDecoderItem * alphaItem;
-        AVIF_CHECKRES(avifDecoderDataFindAlphaItem(data, colorItem, &alphaItem, &isAlphaItemInInput));
+        AVIF_CHECKRES(avifDecoderDataFindAlphaItem(data, &colorItem, &alphaItem, &isAlphaItemInInput));
         avifCodecType alphaCodecType = AVIF_CODEC_TYPE_UNKNOWN;
         if (alphaItem) {
             if (!memcmp(alphaItem->type, "grid", 4)) {
