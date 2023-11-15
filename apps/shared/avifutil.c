@@ -134,7 +134,7 @@ static void avifImageDumpInternal(const avifImage * avif,
     printf(" * Gain map       : ");
     avifImage * gainMap = avif->gainMap.image;
     if (gainMap != NULL) {
-        printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Image is %s \n",
+        printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Image is %s",
                gainMap->width,
                gainMap->height,
                gainMap->depth,
@@ -142,6 +142,10 @@ static void avifImageDumpInternal(const avifImage * avif,
                (gainMap->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
                gainMap->matrixCoefficients,
                (avif->gainMap.metadata.baseHdrHeadroomN == 0) ? "SDR" : "HDR");
+        if (gainMap->clli.maxCLL > 0 || gainMap->clli.maxPALL > 0) {
+            printf(", Tone Mapped Image CLLI %hu %hu\n", gainMap->clli.maxCLL, gainMap->clli.maxPALL);
+        }
+        printf("\n");
     } else if (gainMapPresent) {
         printf("Present (but ignored)\n");
     } else {

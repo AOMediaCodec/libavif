@@ -105,15 +105,11 @@ struct ImageReadArgs {
   void Init(argparse::ArgumentParser& argparse) {
     argparse
         .add_argument<int, PixelFormatConverter>(pixel_format, "--yuv", "-y")
-        .help(
-            "Output YUV format for avif (applies to JPEG/PNG input only or "
-            "when tone mapping)")
+        .help("Output YUV format for avif")
         .default_value("444");
     argparse.add_argument(depth, "--depth", "-d")
         .choices({"0", "8", "10", "12"})
-        .help(
-            "Output depth (applies to JPEG/PNG input only or when tone "
-            "mapping) (0 = automatic)");
+        .help("Output depth (0 = automatic)");
     argparse.add_argument(ignore_profile, "--ignore-profile")
         .help(
             "If the input file contains an embedded color profile, ignore it "

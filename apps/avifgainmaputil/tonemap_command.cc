@@ -66,13 +66,16 @@ avifResult TonemapCommand::Run() {
 
   const float headroom = arg_headroom_;
   const bool tone_mapping_to_sdr = (headroom == 0.0f);
-  CicpValues cicp = {AVIF_COLOR_PRIMARIES_UNKNOWN,
-                     tone_mapping_to_sdr
-                         ? AVIF_TRANSFER_CHARACTERISTICS_SRGB
-                         : AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
-                     AVIF_MATRIX_COEFFICIENTS_BT601};
+
+  CicpValues cicp;
   if (arg_output_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
     cicp = arg_output_cicp_;
+  } else {
+    const avifTransferCharacteristics transfer_characteristics =
+        tone_mapping_to_sdr ? AVIF_TRANSFER_CHARACTERISTICS_SRGB
+                            : AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
+    cicp = {AVIF_COLOR_PRIMARIES_UNKNOWN, transfer_characteristics,
+            AVIF_MATRIX_COEFFICIENTS_BT601};
   }
 
   DecoderPtr decoder(avifDecoderCreate());

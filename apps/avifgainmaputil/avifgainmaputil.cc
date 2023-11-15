@@ -12,6 +12,7 @@
 #include "extractgainmap_command.h"
 #include "printmetadata_command.h"
 #include "program_command.h"
+#include "swapbase_command.h"
 #include "tonemap_command.h"
 
 #if defined(_WIN32)
@@ -59,6 +60,7 @@ MAIN() {
   commands.emplace_back(std::make_unique<avif::HelpCommand>());
   commands.emplace_back(std::make_unique<avif::CombineCommand>());
   commands.emplace_back(std::make_unique<avif::TonemapCommand>());
+  commands.emplace_back(std::make_unique<avif::SwapBaseCommand>());
   commands.emplace_back(std::make_unique<avif::ExtractGainMapCommand>());
   commands.emplace_back(std::make_unique<avif::PrintMetadataCommand>());
 
