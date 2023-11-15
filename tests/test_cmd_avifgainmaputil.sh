@@ -66,6 +66,8 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${PNG_OUTPUT}" --headroom 0
   "${AVIFGAINMAPUTIL}" tonemap "${INPUT_AVIF_GAINMAP_SDR}" "${PNG_OUTPUT}" --headroom 0 --clli 400,500
   "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${JPEG_AVIF_GAINMAP_SDR}" 0 40
+
+  "${AVIFGAINMAPUTIL}" swapbase "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" --qcolor 90 --qgain-map 90
 popd
 
 exit 0
