@@ -27,7 +27,7 @@ std::string FormatFractions(const T numerator[3],
          << FormatFraction(numerator[0], denominator[0]) << " G " << std::left
          << std::setw(w) << FormatFraction(numerator[1], denominator[1])
          << " B " << std::left << std::setw(w)
-         << FormatFraction(numerator[1], denominator[1]);
+         << FormatFraction(numerator[2], denominator[2]);
   return stream.str();
 }
 }  // namespace
