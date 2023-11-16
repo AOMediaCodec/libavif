@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2023-11-16
+
 ### Changed
 * Update avifCropRectConvertCleanApertureBox() to the revised requirements in
   ISO/IEC 23000-22:2019/Amd. 2:2021 Section 7.3.6.7.
+* Fix memory errors reported in crbug.com/1501766 and crbug.com/1501770.
 
 ## [1.0.1] - 2023-08-29
 
@@ -984,6 +987,7 @@ code.
 - `avifVersion()` function
 
 [Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...HEAD
+[1.0.2]: https://github.com/AOMediaCodec/libavif/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/AOMediaCodec/libavif/compare/v0.11.1...v1.0.0
 [0.11.1]: https://github.com/AOMediaCodec/libavif/compare/v0.11.0...v0.11.1
