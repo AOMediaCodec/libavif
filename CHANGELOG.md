@@ -55,7 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   error instead of being ignored.
 * API calls now return AVIF_RESULT_OUT_OF_MEMORY instead of aborting on memory
   allocation failure.
-* avifenc: Change the default value of the --jobs option from 1 to "all".
+* avifdec and avifenc: Change the default value of the --jobs option from 1 to
+  "all".
 * Update avifCropRectConvertCleanApertureBox() to the revised requirements in
   ISO/IEC 23000-22:2019/Amd. 2:2021 Section 7.3.6.7.
 
