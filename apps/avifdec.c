@@ -36,7 +36,7 @@ static void syntax(void)
     printf("Options:\n");
     printf("    -h,--help         : Show syntax help\n");
     printf("    -V,--version      : Show the version number\n");
-    printf("    -j,--jobs J       : Number of jobs (worker threads, default: 1. Use \"all\" to use all available cores)\n");
+    printf("    -j,--jobs J       : Number of jobs (worker threads). Use \"all\" to potentially use as many cores as possible (default: all)\n");
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
@@ -64,7 +64,7 @@ MAIN()
     const char * inputFilename = NULL;
     const char * outputFilename = NULL;
     int requestedDepth = 0;
-    int jobs = 1;
+    int jobs = -1;
     int jpegQuality = DEFAULT_JPEG_QUALITY;
     int pngCompressionLevel = -1; // -1 is a sentinel to avifPNGWrite() to skip calling png_set_compression_level()
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
@@ -223,6 +223,10 @@ MAIN()
         }
 
         ++argIndex;
+    }
+
+    if (jobs == -1) {
+        jobs = avifQueryCPUCount();
     }
 
     if (!inputFilename) {
