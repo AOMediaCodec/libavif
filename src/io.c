@@ -35,6 +35,11 @@ static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags,
     avifIOMemoryReader * reader = (avifIOMemoryReader *)io;
 
     // Sanitize/clamp incoming request
+    if (reader->rodata.data == NULL) {
+        // NULL input is definitely an issue. Also prevent the offset addition below to
+        // trigger an undefined behavior sanitizer error (happens even with offset zero).
+        return AVIF_RESULT_IO_ERROR;
+    }
     if (offset > reader->rodata.size) {
         // The offset is past the end of the buffer.
         return AVIF_RESULT_IO_ERROR;
