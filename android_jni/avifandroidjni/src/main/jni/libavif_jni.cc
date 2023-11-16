@@ -24,6 +24,10 @@
   JNIEXPORT RETURN_TYPE Java_org_aomedia_avif_android_AvifDecoder_##NAME( \
       JNIEnv* env, jobject thiz, ##__VA_ARGS__)
 
+#define IGNORE_UNUSED_JNIPARAMETERS \
+  (void) env; \
+  (void) thiz
+
 namespace {
 
 // RAII wrapper class that properly frees the decoder related objects on
@@ -233,6 +237,7 @@ jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
 }
 
 FUNC(jboolean, isAvifImage, jobject encoded, int length) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   const avifROData avif = {buffer, static_cast<size_t>(length)};
@@ -255,6 +260,7 @@ FUNC(jboolean, isAvifImage, jobject encoded, int length) {
   if (var == nullptr) return ret
 
 FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
@@ -279,6 +285,7 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
 
 FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
      jint threads) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   if (threads < 0) {
     LOGE("Invalid value for threads (%d).", threads);
     return false;
@@ -365,28 +372,33 @@ FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
 #undef CHECK_EXCEPTION
 
 FUNC(jint, nextFrame, jlong jdecoder, jobject bitmap) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   AvifDecoderWrapper* const decoder =
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
   return DecodeNextImage(env, decoder, bitmap);
 }
 
 FUNC(jint, nextFrameIndex, jlong jdecoder) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   AvifDecoderWrapper* const decoder =
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
   return decoder->decoder->imageIndex + 1;
 }
 
 FUNC(jint, nthFrame, jlong jdecoder, jint n, jobject bitmap) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   AvifDecoderWrapper* const decoder =
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
   return DecodeNthImage(env, decoder, n, bitmap);
 }
 
 FUNC(jstring, resultToString, jint result) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   return env->NewStringUTF(avifResultToString(static_cast<avifResult>(result)));
 }
 
 FUNC(jstring, versionString) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   char codec_versions[256];
   avifCodecVersions(codec_versions);
   char libyuv_version[64];
@@ -404,6 +416,7 @@ FUNC(jstring, versionString) {
 }
 
 FUNC(void, destroyDecoder, jlong jdecoder) {
+  IGNORE_UNUSED_JNIPARAMETERS;
   AvifDecoderWrapper* const decoder =
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
   delete decoder;
