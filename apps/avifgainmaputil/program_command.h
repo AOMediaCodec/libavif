@@ -81,9 +81,7 @@ struct BasicImageEncodeArgs {
     argparse.add_argument(speed, "--speed", "-s")
         .help("Encoder speed (0-10, slowest-fastest)")
         .default_value("6");
-    argparse
-        .add_argument(quality, (can_have_alpha ? "--qcolor" : "--quality"),
-                      "-q")
+    argparse.add_argument(quality, "--qcolor", "-q")
         .help((can_have_alpha
                    ? "Quality for color (0-100, where 100 is lossless)"
                    : "Quality (0-100, where 100 is lossless)"))

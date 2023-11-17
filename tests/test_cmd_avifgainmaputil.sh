@@ -68,6 +68,12 @@ pushd ${TMP_DIR}
   "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${JPEG_AVIF_GAINMAP_SDR}" 0 40
 
   "${AVIFGAINMAPUTIL}" swapbase "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" --qcolor 90 --qgain-map 90
+
+  "${AVIFGAINMAPUTIL}" convert "${JPEG_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}"
+   # should fail because of icc profiles are not supported
+  "${AVIFGAINMAPUTIL}" convert "${JPEG_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" --swap-base && exit 1
+  "${AVIFGAINMAPUTIL}" convert "${JPEG_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" --swap-base --ignore-profile \
+      --cicp 2/3/4
 popd
 
 exit 0

@@ -8,6 +8,94 @@
 
 namespace avif {
 
+avifResult ChangeBase(avifImage&& image, avifImage* swapped) {
+  if (image.gainMap.image == nullptr) {
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
+
+  const float headroom =
+      static_cast<double>(image.gainMap.metadata.alternateHdrHeadroomN) /
+      image.gainMap.metadata.alternateHdrHeadroomD;
+  const bool tone_mapping_to_sdr = (headroom == 0.0f);
+
+  // The gain map's cicp values are those of the 'tmap' item and describe the
+  // image obtained by fully applying the gain map. See ISO/IEC JTC 1/SC 29/WG 3
+  // m64379v1 4.1.1: A tmap derived item shall be associated with a colr item
+  // property. This property describes the colour properties of the
+  // reconstructed image if the gain map input item is fully applied according
+  // to ISO/AWI 214961.
+  if (image.gainMap.image->transferCharacteristics !=
+          AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED ||
+      image.gainMap.image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+    swapped->colorPrimaries = image.gainMap.image->colorPrimaries;
+    swapped->transferCharacteristics =
+        image.gainMap.image->transferCharacteristics;
+    swapped->matrixCoefficients = image.gainMap.image->matrixCoefficients;
+  } else {
+    // If there is no cicp on the gain map, use the same values as the old base
+    // image, except for the transfer characteristics.
+    swapped->colorPrimaries = image.colorPrimaries;
+    const avifTransferCharacteristics transfer_characteristics =
+        tone_mapping_to_sdr ? AVIF_TRANSFER_CHARACTERISTICS_SRGB
+                            : AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
+    swapped->transferCharacteristics = transfer_characteristics;
+    swapped->matrixCoefficients = image.matrixCoefficients;
+  }
+
+  avifRGBImage swapped_rgb;
+  avifRGBImageSetDefaults(&swapped_rgb, swapped);
+
+  avifContentLightLevelInformationBox clli = image.gainMap.image->clli;
+  const bool compute_clli =
+      !tone_mapping_to_sdr && clli.maxCLL == 0 && clli.maxPALL == 0;
+
+  avifDiagnostics diag;
+  avifResult result = avifImageApplyGainMap(
+      &image, &image.gainMap, headroom, swapped->transferCharacteristics,
+      &swapped_rgb, (compute_clli ? &clli : nullptr), &diag);
+  if (result != AVIF_RESULT_OK) {
+    std::cout << "Failed to tone map image: " << avifResultToString(result)
+              << " (" << diag.error << ")\n";
+    return result;
+  }
+  result = avifImageRGBToYUV(swapped, &swapped_rgb);
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Failed to convert to YUV: " << avifResultToString(result)
+              << "\n";
+    return result;
+  }
+
+  swapped->clli = clli;
+  swapped->gainMap = image.gainMap;
+  // swapped has taken ownership of the gain map image, so remove ownership
+  // from the old image to prevent a double free.
+  image.gainMap.image = nullptr;
+  // Set the gain map's cicp values and clli to the old base image's.
+  swapped->gainMap.image->clli = image.clli;
+  swapped->gainMap.image->colorPrimaries = image.colorPrimaries;
+  swapped->gainMap.image->transferCharacteristics =
+      image.transferCharacteristics;
+  // Don't touch matrixCoefficients as it's needed to correctly decode the gain
+  // map.
+
+  // Swap base and alternate in the gain map metadata.
+  avifGainMapMetadata& metadata = swapped->gainMap.metadata;
+  metadata.backwardDirection = !metadata.backwardDirection;
+  metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
+  std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
+  std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
+  for (int c = 0; c < 3; ++c) {
+    std::swap(metadata.baseOffsetN, metadata.alternateOffsetN);
+    std::swap(metadata.baseOffsetD, metadata.alternateOffsetD);
+  }
+
+  // Steal metadata.
+  std::swap(swapped->xmp, image.xmp);
+  std::swap(swapped->exif, image.exif);
+
+  return AVIF_RESULT_OK;
+}
+
 SwapBaseCommand::SwapBaseCommand()
     : ProgramCommand(
           "swapbase",
@@ -37,19 +125,14 @@ avifResult SwapBaseCommand::Run() {
   }
 
   if (decoder->image->gainMap.image == nullptr) {
-    std::cerr << "Input image " << arg_output_filename_
+    std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
 
   int depth = arg_image_read_.depth;
-  const float headroom =
-      static_cast<double>(
-          decoder->image->gainMap.metadata.alternateHdrHeadroomN) /
-      decoder->image->gainMap.metadata.alternateHdrHeadroomD;
-  const bool tone_mapping_to_sdr = (headroom == 0.0f);
   if (depth == 0) {
-    depth = tone_mapping_to_sdr
+    depth = decoder->image->gainMap.metadata.alternateHdrHeadroomN == 0
                 ? 8
                 : std::max(decoder->image->depth,
                            decoder->image->gainMap.image->depth);
@@ -61,86 +144,10 @@ avifResult SwapBaseCommand::Run() {
   }
   ImagePtr new_base(avifImageCreate(
       decoder->image->width, decoder->image->height, depth, pixel_format));
-  // The gain map's cicp values are those of the 'tmap' item and describe the
-  // image obtained by fully applying the gain map. See ISO/IEC JTC 1/SC 29/WG 3
-  // m64379v1 4.1.1: A tmap derived item shall be associated with a colr item
-  // property. This property describes the colour properties of the
-  // reconstructed image if the gain map input item is fully applied according
-  // to ISO/AWI 214961.
-  if (decoder->image->gainMap.image->transferCharacteristics !=
-          AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED ||
-      decoder->image->gainMap.image->colorPrimaries !=
-          AVIF_COLOR_PRIMARIES_UNSPECIFIED ||
-      decoder->image->gainMap.image->matrixCoefficients !=
-          AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
-    new_base->colorPrimaries = decoder->image->gainMap.image->colorPrimaries;
-    new_base->transferCharacteristics =
-        decoder->image->gainMap.image->transferCharacteristics;
-    new_base->matrixCoefficients =
-        decoder->image->gainMap.image->matrixCoefficients;
-  } else {
-    // If there is no cicp on the gain map, use the same values as the old base
-    // image, except for the transfer characteristics.
-    new_base->colorPrimaries = decoder->image->colorPrimaries;
-    const avifTransferCharacteristics transfer_characteristics =
-        tone_mapping_to_sdr ? AVIF_TRANSFER_CHARACTERISTICS_SRGB
-                            : AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
-    new_base->transferCharacteristics = transfer_characteristics;
-    new_base->matrixCoefficients = decoder->image->matrixCoefficients;
-  }
-
-  avifRGBImage new_base_rgb;
-  avifRGBImageSetDefaults(&new_base_rgb, new_base.get());
-
-  avifContentLightLevelInformationBox clli =
-      decoder->image->gainMap.image->clli;
-  const bool compute_clli =
-      !tone_mapping_to_sdr && clli.maxCLL == 0 && clli.maxPALL == 0;
-
-  avifDiagnostics diag;
-  result =
-      avifImageApplyGainMap(decoder->image, &decoder->image->gainMap, headroom,
-                            new_base->transferCharacteristics, &new_base_rgb,
-                            (compute_clli ? &clli : nullptr), &diag);
+  result = ChangeBase(std::move(*decoder->image), new_base.get());
   if (result != AVIF_RESULT_OK) {
-    std::cout << "Failed to tone map image: " << avifResultToString(result)
-              << " (" << diag.error << ")\n";
     return result;
   }
-  result = avifImageRGBToYUV(new_base.get(), &new_base_rgb);
-  if (result != AVIF_RESULT_OK) {
-    std::cerr << "Failed to convert to YUV: " << avifResultToString(result)
-              << "\n";
-    return result;
-  }
-
-  new_base->clli = clli;
-  new_base->gainMap = decoder->image->gainMap;
-  // new_base has taken ownership of the gain map image, so remove ownership
-  // from the old image to prevent a double free.
-  decoder->image->gainMap.image = nullptr;
-  // Set the gain map's cicp values and clli to the old base image's.
-  new_base->gainMap.image->clli = decoder->image->clli;
-  new_base->gainMap.image->colorPrimaries = decoder->image->colorPrimaries;
-  new_base->gainMap.image->transferCharacteristics =
-      decoder->image->transferCharacteristics;
-  new_base->gainMap.image->matrixCoefficients =
-      decoder->image->matrixCoefficients;
-
-  // Swap base and alternate in the gain map metadata.
-  avifGainMapMetadata& metadata = new_base->gainMap.metadata;
-  metadata.backwardDirection = !metadata.backwardDirection;
-  metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
-  std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
-  std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
-  for (int c = 0; c < 3; ++c) {
-    std::swap(metadata.baseOffsetN, metadata.alternateOffsetN);
-    std::swap(metadata.baseOffsetD, metadata.alternateOffsetD);
-  }
-
-  // Steal metadata.
-  std::swap(new_base->xmp, decoder->image->xmp);
-  std::swap(new_base->exif, decoder->image->exif);
 
   EncoderPtr encoder(avifEncoderCreate());
   if (encoder == nullptr) {

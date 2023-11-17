@@ -31,7 +31,7 @@ avifResult ExtractGainMapCommand::Run() {
   }
 
   if (decoder->image->gainMap.image == nullptr) {
-    std::cerr << "Input image " << arg_output_filename_
+    std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
