@@ -44,7 +44,7 @@ static avifResult avifIOMemoryReaderRead(struct avifIO * io, uint32_t readFlags,
         size = (size_t)availableSize;
     }
 
-    // Prevent the offset addition to trigger an undefined behavior
+    // Prevent the offset addition from triggering an undefined behavior
     // sanitizer error if data is NULL (happens even with offset zero).
     out->data = offset ? reader->rodata.data + offset : reader->rodata.data;
     out->size = size;
