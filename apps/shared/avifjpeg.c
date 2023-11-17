@@ -669,13 +669,7 @@ avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGa
 // See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html
 // and https://helpx.adobe.com/camera-raw/using/gain-map.html in particular Figures 1 to 6.
 // Returns AVIF_FALSE if no gain map was found.
-static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
-                                                   const char * inputFilename,
-                                                   const avifROData * segmentData,
-                                                   avifImage * avif,
-                                                   avifPixelFormat requestedFormat,
-                                                   uint32_t requestedDepth,
-                                                   avifChromaDownsampling chromaDownsampling)
+static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f, const avifROData * segmentData, avifImage * avif, avifChromaDownsampling chromaDownsampling)
 {
     uint32_t offset = 0;
 
@@ -768,10 +762,10 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
         // be gain maps. This could be fixed by having a helper function to get just the XMP without
         // decoding the whole image.
         if (!avifJPEGReadInternal(f,
-                                  inputFilename,
+                                  "gain map",
                                   avif,
-                                  requestedFormat,
-                                  requestedDepth,
+                                  /*requestedFormat=*/AVIF_PIXEL_FORMAT_NONE, // automatic
+                                  /*requestedDepth=*/0,                       // automatic
                                   chromaDownsampling,
                                   /*ignoreColorProfile=*/AVIF_TRUE,
                                   /*ignoreExif=*/AVIF_TRUE,
@@ -793,13 +787,7 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
 // See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html
 // and https://helpx.adobe.com/camera-raw/using/gain-map.html
 // Returns AVIF_TRUE if a gain map was found.
-static avifBool avifJPEGExtractGainMapImage(FILE * f,
-                                            const char * inputFilename,
-                                            struct jpeg_decompress_struct * cinfo,
-                                            avifGainMap * gainMap,
-                                            avifPixelFormat requestedFormat,
-                                            uint32_t requestedDepth,
-                                            avifChromaDownsampling chromaDownsampling)
+static avifBool avifJPEGExtractGainMapImage(FILE * f, struct jpeg_decompress_struct * cinfo, avifGainMap * gainMap, avifChromaDownsampling chromaDownsampling)
 {
     const avifROData tagMpf = { (const uint8_t *)AVIF_JPEG_MPF_HEADER, AVIF_JPEG_MPF_HEADER_LENGTH };
     for (jpeg_saved_marker_ptr marker = cinfo->marker_list; marker != NULL; marker = marker->next) {
@@ -809,9 +797,12 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
         if ((marker->marker == (JPEG_APP0 + 2)) && (marker->data_length > tagMpf.size) &&
             !memcmp(marker->data, tagMpf.data, tagMpf.size)) {
             avifImage * image = avifImageCreateEmpty();
+            // Set jpeg native matrix coefficients to allow copying YUV values directly.
+            image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+            assert(avifJPEGHasCompatibleMatrixCoefficients(image->matrixCoefficients));
 
             const avifROData mpfData = { (const uint8_t *)marker->data + tagMpf.size, marker->data_length - tagMpf.size };
-            if (!avifJPEGExtractGainMapImageFromMpf(f, inputFilename, &mpfData, image, requestedFormat, requestedDepth, chromaDownsampling)) {
+            if (!avifJPEGExtractGainMapImageFromMpf(f, &mpfData, image, chromaDownsampling)) {
                 fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
                 avifImageDestroy(image);
                 return AVIF_FALSE;
@@ -1145,7 +1136,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
     // The primary XMP block (for the main image) must contain a node with an hdrgm:Version field if and only if a gain map is present.
     if (!ignoreGainMap && avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size)) {
         // Ignore the return value: continue even if we fail to find/parse/decode the gain map.
-        avifJPEGExtractGainMapImage(f, inputFilename, &cinfo, &avif->gainMap, requestedFormat, requestedDepth, chromaDownsampling);
+        avifJPEGExtractGainMapImage(f, &cinfo, &avif->gainMap, chromaDownsampling);
     }
 
     if (avif->xmp.size > 0 && ignoreXMP) {
