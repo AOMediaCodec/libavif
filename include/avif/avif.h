@@ -724,7 +724,7 @@ typedef struct avifImage
 
     // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
     avifRWData exif; // exif_payload chunk from the ExifDataBlock specified in ISO/IEC 23008-12:2022 Section A.2.1.
-                     // The value of the 4-byte exif_tiff_header_offset field, that is not part of this avifRWData
+                     // The value of the 4-byte exif_tiff_header_offset field, which is not part of this avifRWData
                      // byte sequence, can be retrieved by calling avifGetExifTiffHeaderOffset(avifImage.exif).
     avifRWData xmp;
 
