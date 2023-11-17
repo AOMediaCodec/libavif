@@ -65,7 +65,7 @@ avifResult WriteImage(const avifImage* image,
 avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
                      const std::string& output_filename) {
   avifRWData encoded = AVIF_DATA_EMPTY;
-  std::cout << "AVIF to be written: ";
+  std::cout << "AVIF to be written:\n";
   avifImageDump(image,
                 /*gridCols=*/1,
                 /*gridRows=*/1,

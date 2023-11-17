@@ -65,31 +65,31 @@ avifResult PrintMetadataCommand::Run() {
 
   const avifGainMapMetadata& metadata = decoder->image->gainMap.metadata;
   const int w = 20;
-  std::cout << std::left << std::setw(w) << "Base headroom: "
+  std::cout << " * " << std::left << std::setw(w) << "Base headroom: "
             << FormatFraction(metadata.baseHdrHeadroomN,
                               metadata.baseHdrHeadroomD)
             << "\n";
-  std::cout << std::left << std::setw(w) << "Alternate headroom: "
+  std::cout << " * " << std::left << std::setw(w) << "Alternate headroom: "
             << FormatFraction(metadata.alternateHdrHeadroomN,
                               metadata.alternateHdrHeadroomD)
             << "\n";
-  std::cout << std::left << std::setw(w) << "Gain Map Min: "
+  std::cout << " * " << std::left << std::setw(w) << "Gain Map Min: "
             << FormatFractions(metadata.gainMapMinN, metadata.gainMapMinD)
             << "\n";
-  std::cout << std::left << std::setw(w) << "Gain Map Max: "
+  std::cout << " * " << std::left << std::setw(w) << "Gain Map Max: "
             << FormatFractions(metadata.gainMapMaxN, metadata.gainMapMaxD)
             << "\n";
-  std::cout << std::left << std::setw(w) << "Base Offset: "
+  std::cout << " * " << std::left << std::setw(w) << "Base Offset: "
             << FormatFractions(metadata.baseOffsetN, metadata.baseOffsetD)
             << "\n";
-  std::cout << std::left << std::setw(w) << "Alternate Offset: "
+  std::cout << " * " << std::left << std::setw(w) << "Alternate Offset: "
             << FormatFractions(metadata.alternateOffsetN,
                                metadata.alternateOffsetD)
             << "\n";
-  std::cout << std::left << std::setw(w) << "Gain Map Gamma: "
+  std::cout << " * " << std::left << std::setw(w) << "Gain Map Gamma: "
             << FormatFractions(metadata.gainMapGammaN, metadata.gainMapGammaD)
             << "\n";
-  std::cout << std::left << std::setw(w) << "Backward Direction: "
+  std::cout << " * " << std::left << std::setw(w) << "Backward Direction: "
             << (metadata.backwardDirection ? "True" : "False") << "\n";
 
   return AVIF_RESULT_OK;
