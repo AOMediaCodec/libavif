@@ -1615,7 +1615,9 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
                 AVIF_CHECKERR(avifROStreamReadU32(&exifBoxStream, &exifTiffHeaderOffset),
                               AVIF_RESULT_INVALID_EXIF_PAYLOAD); // unsigned int(32) exif_tiff_header_offset;
                 size_t expectedExifTiffHeaderOffset;
-                AVIF_CHECKRES(avifGetExifTiffHeaderOffset(exifContents.data + 4, exifContents.size - 4, &expectedExifTiffHeaderOffset));
+                AVIF_CHECKRES(avifGetExifTiffHeaderOffset(avifROStreamCurrent(&exifBoxStream),
+                                                          avifROStreamRemainingBytes(&exifBoxStream),
+                                                          &expectedExifTiffHeaderOffset));
                 AVIF_CHECKERR(exifTiffHeaderOffset == expectedExifTiffHeaderOffset, AVIF_RESULT_INVALID_EXIF_PAYLOAD);
             }
 
