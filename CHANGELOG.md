@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * avifenc: Change the default value of the --jobs option from 1 to "all".
 * Update avifCropRectConvertCleanApertureBox() to the revised requirements in
   ISO/IEC 23000-22:2019/Amd. 2:2021 Section 7.3.6.7.
+* AVIF files with an exif_tiff_header_offset pointing at another byte than the
+  first II or MM tag in the Exif metadata payload will now fail to be decoded.
+  Set decoder->ignoreExif to true to skip the issue and decode the image.
 
 ## [1.0.1] - 2023-08-29
 
