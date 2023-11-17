@@ -23,14 +23,14 @@ TonemapCommand::TonemapCommand()
           "SDR luminance. 0 means SDR.")
       .default_value("0");
   argparse_
-      .add_argument<CicpValues, CicpConverter>(arg_input_cicp_, "--input_cicp")
+      .add_argument<CicpValues, CicpConverter>(arg_input_cicp_, "--cicp-input")
       .help(
           "Override input CICP values, expressed as P/T/M "
           "where P = color primaries, T = transfer characteristics, "
           "M = matrix coefficients.");
   argparse_
       .add_argument<CicpValues, CicpConverter>(arg_output_cicp_,
-                                               "--output_cicp")
+                                               "--cicp-output")
       .help(
           "CICP values for the output, expressed as P/T/M "
           "where P = color primaries, T = transfer characteristics, "
