@@ -18,6 +18,8 @@ class CombineCommand : public ProgramCommand {
   argparse::ArgValue<std::string> arg_base_filename_;
   argparse::ArgValue<std::string> arg_alternate_filename_;
   argparse::ArgValue<std::string> arg_output_filename_;
+  argparse::ArgValue<CicpValues> arg_base_cicp_;
+  argparse::ArgValue<CicpValues> arg_alternate_cicp_;
   argparse::ArgValue<int> arg_downscaling_;
   argparse::ArgValue<int> arg_gain_map_quality_;
   argparse::ArgValue<int> arg_gain_map_depth_;

@@ -14,8 +14,12 @@ CombineCommand::CombineCommand()
     : ProgramCommand("combine",
                      "Creates an avif image with a gain map from a base image "
                      "and an alternate image.") {
-  argparse_.add_argument(arg_base_filename_, "base_image");
-  argparse_.add_argument(arg_alternate_filename_, "alternate_image");
+  argparse_.add_argument(arg_base_filename_, "base_image")
+      .help(
+          "The base image, that will be shown by viewers that don't support "
+          "gain maps");
+  argparse_.add_argument(arg_alternate_filename_, "alternate_image")
+      .help("The alternate image, the result of fully applying the gain map");
   argparse_.add_argument(arg_output_filename_, "output_image.avif");
   argparse_.add_argument(arg_downscaling_, "--downscaling")
       .help("Downscaling factor for the gain map")
@@ -33,9 +37,21 @@ CombineCommand::CombineCommand()
       .choices({"444", "422", "420", "400"})
       .help("Output format for the gain map")
       .default_value("444");
+  argparse_
+      .add_argument<CicpValues, CicpConverter>(arg_base_cicp_, "--cicp-base")
+      .help(
+          "Set or override the cicp values for the base image, expressed as "
+          "P/T/M where P = color primaries, T = transfer characteristics, "
+          "M = matrix coefficients.");
+  argparse_
+      .add_argument<CicpValues, CicpConverter>(arg_alternate_cicp_,
+                                               "--cicp-alternate")
+      .help(
+          "Set or override the cicp values for the alternate image, expressed "
+          "as P/T/M  where P = color primaries, T = transfer characteristics, "
+          "M = matrix coefficients.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_image_read_.Init(argparse_);
-  // TODO(maryla): allow specifying cicp for inputs and output.
 }
 
 avifResult CombineCommand::Run() {
@@ -57,6 +73,13 @@ avifResult CombineCommand::Run() {
               << "\n";
     return result;
   }
+  if (arg_base_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
+    base_image->colorPrimaries = arg_base_cicp_.value().color_primaries;
+    base_image->transferCharacteristics =
+        arg_base_cicp_.value().transfer_characteristics;
+    base_image->matrixCoefficients = arg_base_cicp_.value().matrix_coefficients;
+  }
+
   result =
       ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
                 arg_image_read_.depth, arg_image_read_.ignore_profile);
@@ -64,6 +87,14 @@ avifResult CombineCommand::Run() {
     std::cout << "Failed to read alternate image: "
               << avifResultToString(result) << "\n";
     return result;
+  }
+  if (arg_alternate_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
+    alternate_image->colorPrimaries =
+        arg_alternate_cicp_.value().color_primaries;
+    alternate_image->transferCharacteristics =
+        arg_alternate_cicp_.value().transfer_characteristics;
+    alternate_image->matrixCoefficients =
+        arg_alternate_cicp_.value().matrix_coefficients;
   }
 
   const int downscaling = std::max<int>(1, arg_downscaling_);
