@@ -32,7 +32,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ext
-        key: ${{ runner.os }}-${{ runner.build-type }}-${{ hashFiles('ext/*.cmd') }}
+        key: ${{ runner.os }}-${{ runner.build-type }}-${{ hashFiles('ext/*.cmd', 'ext/svt.sh') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
       with:
