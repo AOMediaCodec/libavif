@@ -1,6 +1,9 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <iostream>
+#include <string>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -28,6 +31,14 @@ TEST(AvifDecodeTest, ColorGridAlphaNoGrid) {
   EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
   EXPECT_NE(decoder->image->alphaPlane, nullptr);
   EXPECT_GT(decoder->image->alphaRowBytes, 0u);
+}
+
+TEST(AvifDecodeTest, ParseEmptyData) {
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), nullptr, 0), AVIF_RESULT_OK);
+  // No ftyp box was seen.
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_INVALID_FTYP);
 }
 
 }  // namespace
