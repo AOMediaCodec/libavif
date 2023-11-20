@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first II or MM tag in the Exif metadata payload will now fail to be decoded.
   Set decoder->ignoreExif to true to skip the issue and decode the image.
 * Fix memory errors reported in crbug.com/1501766 and crbug.com/1501770.
+* For codecs, AVIF_CODEC_* and AVIF_LOCAL_* are now merged into AVIF_CODEC_*
+  that can only take the values: OFF, LOCAL or SYSTEM.
 
 ## [1.0.2] - 2023-11-16
 
