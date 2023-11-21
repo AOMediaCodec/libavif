@@ -54,9 +54,13 @@ avifResult SwapBaseCommand::Run() {
                 : std::max(decoder->image->depth,
                            decoder->image->gainMap.image->depth);
   }
-  ImagePtr new_base(
-      avifImageCreate(decoder->image->width, decoder->image->height, depth,
-                      (avifPixelFormat)arg_image_read_.pixel_format.value()));
+  avifPixelFormat pixel_format =
+      (avifPixelFormat)arg_image_read_.pixel_format.value();
+  if (pixel_format == AVIF_PIXEL_FORMAT_NONE) {
+    pixel_format = AVIF_PIXEL_FORMAT_YUV444;
+  }
+  ImagePtr new_base(avifImageCreate(
+      decoder->image->width, decoder->image->height, depth, pixel_format));
   // The gain map's cicp values are those of the 'tmap' item and describe the
   // image obtained by fully applying the gain map. See ISO/IEC JTC 1/SC 29/WG 3
   // m64379v1 4.1.1: A tmap derived item shall be associated with a colr item
