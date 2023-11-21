@@ -132,9 +132,13 @@ avifResult TonemapCommand::Run() {
   if (depth == 0) {
     depth = tone_mapping_to_sdr ? 8 : decoder->image->depth;
   }
-  ImagePtr tone_mapped(
-      avifImageCreate(decoder->image->width, decoder->image->height, depth,
-                      (avifPixelFormat)arg_image_read_.pixel_format.value()));
+  avifPixelFormat pixel_format =
+      (avifPixelFormat)arg_image_read_.pixel_format.value();
+  if (pixel_format == AVIF_PIXEL_FORMAT_NONE) {
+    pixel_format = AVIF_PIXEL_FORMAT_YUV444;
+  }
+  ImagePtr tone_mapped(avifImageCreate(
+      decoder->image->width, decoder->image->height, depth, pixel_format));
   if (tone_mapped == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
