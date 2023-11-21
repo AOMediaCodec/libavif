@@ -98,5 +98,7 @@ jobs:
       if: failure()
       run: >
         echo "If the tests fail, download the test results from the Artifacts list at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} or with:
-          gh run download --dir /tmp/golden-tests-output --repo ${{ github.repository }} --name golden-tests-output ${{ github.run_id }}
-        Then look at the instructions in the unzipped file or in /tmp/golden-tests-output if you used the command line."
+          gh run download --dir /tmp/golden-tests-output-${{ github.run_id }} --repo ${{ github.repository }} --name golden-tests-output ${{ github.run_id }}
+        Update all files with:
+          cp /tmp/golden-tests-output-${{ github.run_id }}/*/*.xml ~/git/libavif/tests/data/goldens
+        Or look at detailed instructions in the README.txt file in the test ouputs."
