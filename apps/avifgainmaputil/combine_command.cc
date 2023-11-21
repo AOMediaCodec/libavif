@@ -112,8 +112,8 @@ avifResult CombineCommand::Run() {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
   avifDiagnostics diag;
-  result = avifComputeGainMap(base_image.get(), alternate_image.get(),
-                              &base_image->gainMap, &diag);
+  result = avifImageComputeGainMap(base_image.get(), alternate_image.get(),
+                                   &base_image->gainMap, &diag);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to compute gain map: " << avifResultToString(result)
               << " (" << diag.error << ")\n";

@@ -1532,17 +1532,20 @@ AVIF_API avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 // gainMap->image should be initialized with avifImageCreate(), with the width,
 // height, depth and yuvFormat fields set to the desired output values for the
 // gain map. All of these fields may differ from the source images.
-AVIF_API avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
-                                          avifTransferCharacteristics baseTransferCharacteristics,
-                                          const avifRGBImage * altRgbImage,
-                                          avifTransferCharacteristics altTransferCharacteristics,
-                                          avifColorPrimaries colorPrimaries,
-                                          avifGainMap * gainMap,
-                                          avifDiagnostics * diag);
+AVIF_API avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
+                                               avifTransferCharacteristics baseTransferCharacteristics,
+                                               const avifRGBImage * altRgbImage,
+                                               avifTransferCharacteristics altTransferCharacteristics,
+                                               avifColorPrimaries colorPrimaries,
+                                               avifGainMap * gainMap,
+                                               avifDiagnostics * diag);
 // Convenience function. Same as above but takes avifImage images as input
 // instead of avifRGBImage. Gain map computation is performed in RGB space so
 // the images are converted to RGB first.
-AVIF_API avifResult avifComputeGainMap(const avifImage * baseImage, const avifImage * altImage, avifGainMap * gainMap, avifDiagnostics * diag);
+AVIF_API avifResult avifImageComputeGainMap(const avifImage * baseImage,
+                                            const avifImage * altImage,
+                                            avifGainMap * gainMap,
+                                            avifDiagnostics * diag);
 
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
