@@ -9,7 +9,7 @@ enable_testing()
 # C tests and tools
 
 add_executable(aviftest aviftest.c)
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
@@ -31,7 +31,7 @@ if(AVIF_ENABLE_COVERAGE)
 endif()
 
 add_executable(avifyuv avifyuv.c)
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
     set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(avifyuv avif ${AVIF_PLATFORM_LIBRARIES})
@@ -46,7 +46,7 @@ endif()
 
 # Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
 add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
-if(AVIF_LOCAL_LIBGAV1)
+if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
     set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(repro_avif_decode_fuzzer avif ${AVIF_PLATFORM_LIBRARIES})

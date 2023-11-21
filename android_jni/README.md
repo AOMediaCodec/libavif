@@ -48,8 +48,8 @@ $ cd ..
 ```
 
 Update [CMakeLists.txt](avifandroidjni/src/main/jni/CMakeLists.txt) as follows:
- * Set `AVIF_LOCAL_DAV1D` and `AVIF_CODEC_DAV1D` to `OFF`.
- * Set `AVIF_LOCAL_LIBGAV1` and `AVIF_CODEC_LIBGAV1` to `ON`.
+ * Set `AVIF_CODEC_DAV1D` to `OFF`
+ * Set `AVIF_CODEC_LIBGAV1` to `LOCAL`.
 
 Step 4 - Checkout and build libyuv
 
@@ -61,7 +61,7 @@ $ cd ..
 
 If you do not want to use libyuv, then update
 [CMakeLists.txt](avifandroidjni/src/main/jni/CMakeLists.txt) as follows:
- * Set `AVIF_LOCAL_LIBYUV` to `OFF`.
+ * Set `AVIF_LIBYUV` to `OFF`.
 
 Step 5 - Build the JNI Wrapper and generate the AAR package
 

@@ -40,38 +40,57 @@ option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 )
 option(AVIF_ENABLE_EXPERIMENTAL_AVIR "Enable experimental reduced header" OFF)
 
-option(AVIF_CODEC_AOM "Use the AOM codec for encoding/decoding (see AVIF_CODEC_AOM_DECODE/AVIF_CODEC_AOM_ENCODE)" OFF)
-option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding" OFF)
-option(AVIF_CODEC_LIBGAV1 "Use the libgav1 codec for decoding" OFF)
-option(AVIF_CODEC_RAV1E "Use the rav1e codec for encoding" OFF)
-option(AVIF_CODEC_SVT "Use the SVT-AV1 codec for encoding" OFF)
-option(AVIF_CODEC_AVM "Use the AVM (AV2) codec for encoding/decoding (EXPERIMENTAL)" OFF)
+function(set_local_or_system_option VAR DEFAULT TEXT)
+    # Deal with the older way of setting options.
+    if(DEFINED AVIF_LOCAL_${VAR})
+        if(AVIF_LOCAL_${CODEC})
+            set(DEFAULT "LOCAL")
+        else()
+            set(DEFAULT "SYSTEM")
+        endif()
+    elseif(DEFINED AVIF_${VAR})
+        set(DEFAULT ${AVIF_${VAR}})
+    endif()
+    set(AVIF_${VAR} ${DEFAULT} CACHE STRING ${TEXT} FORCE)
+    set_property(CACHE AVIF_${VAR} PROPERTY STRINGS OFF LOCAL SYSTEM)
+endfunction()
+function(set_codec_option CODEC NAME ENCDEC EXTRA)
+    # Deal with the older way of setting options.
+    if(DEFINED AVIF_CODEC_${CODEC})
+        set(DEFAULT ${AVIF_CODEC_${CODEC}})
+        if(AVIF_CODEC_${CODEC} STREQUAL "ON")
+            if(AVIF_LOCAL_${CODEC})
+                set(DEFAULT "LOCAL")
+            else()
+                set(DEFAULT "SYSTEM")
+            endif()
+        endif()
+    else()
+        set(DEFAULT "OFF")
+    endif()
+    set_local_or_system_option("CODEC_${CODEC}" ${DEFAULT} "Use the ${NAME} codec for ${ENCDEC}${EXTRA}")
+endfunction()
+set_codec_option(AOM "AOM" "encoding/decoding" " (see AVIF_CODEC_AOM_DECODE/AVIF_CODEC_AOM_ENCODE)")
+set_codec_option(DAV1D "dav1d" "decoding" "")
+set_codec_option(LIBGAV1 "libgav1" "decoding" "")
+set_codec_option(RAV1E "rav1e" "encoding" "")
+set_codec_option(SVT "SVT-AV1" "encoding" "")
+set_codec_option(AVM "AVM (AV2)" "encoding/decoding" " (EXPERIMENTAL)")
 
 # These options allow libavif to only link against / use libaom's encoder or decoder, instead of being forced to use both
-option(AVIF_CODEC_AOM_DECODE "if AVIF_CODEC_AOM is on, use/offer libaom's decoder" ON)
-option(AVIF_CODEC_AOM_ENCODE "if AVIF_CODEC_AOM is on, use/offer libaom's encoder" ON)
+include(CMakeDependentOption)
+cmake_dependent_option(
+    AVIF_CODEC_AOM_DECODE "if AVIF_CODEC_AOM is on, use/offer libaom's decoder" ON "NOT AVIF_CODEC_AOM STREQUAL OFF" OFF
+)
+cmake_dependent_option(
+    AVIF_CODEC_AOM_ENCODE "if AVIF_CODEC_AOM is on, use/offer libaom's encoder" ON "NOT AVIF_CODEC_AOM STREQUAL OFF" OFF
+)
 
-option(AVIF_LOCAL_AOM "Build the AOM codec by providing your own copy of the repo in ext/aom (see Local Builds in README)" OFF)
-option(AVIF_LOCAL_DAV1D "Build the dav1d codec by providing your own copy of the repo in ext/dav1d (see Local Builds in README)"
-       OFF
-)
-option(AVIF_LOCAL_LIBGAV1
-       "Build the libgav1 codec by providing your own copy of the repo in ext/libgav1 (see Local Builds in README)" OFF
-)
-option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the repo in ext/rav1e (see Local Builds in README)"
-       OFF
-)
-option(AVIF_LOCAL_SVT
-       "Build the SVT-AV1 codec by providing your own copy of the repo in ext/SVT-AV1 (see Local Builds in README)" OFF
-)
 option(AVIF_LOCAL_GTEST
        "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)" OFF
 )
 option(AVIF_LOCAL_FUZZTEST
        "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)"
-       OFF
-)
-option(AVIF_LOCAL_AVM "Build the AVM (AV2) codec by providing your own copy of the repo in ext/avm (see Local Builds in README)"
        OFF
 )
 
@@ -86,7 +105,7 @@ set(AVIF_USE_CXX OFF)
 if(AVIF_BUILD_APPS
    OR AVIF_ENABLE_FUZZTEST
    OR AVIF_ENABLE_GTEST
-   OR AVIF_LOCAL_LIBGAV1
+   OR AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL"
 )
     set(AVIF_USE_CXX ON)
 endif()
@@ -173,8 +192,8 @@ if(AVIF_LOCAL_JPEG)
     endif()
 endif()
 
-option(AVIF_LOCAL_LIBYUV "Build libyuv by providing your own copy inside the ext subdir." OFF)
-if(AVIF_LOCAL_LIBYUV)
+set_local_or_system_option("LIBYUV" "OFF" "Use libyuv.")
+if(AVIF_LIBYUV STREQUAL "LOCAL")
     set(AVIF_LIBYUV_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build")
 
     # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
@@ -184,7 +203,7 @@ if(AVIF_LOCAL_LIBYUV)
     set(LIB_FILENAME "${AVIF_LIBYUV_BUILD_DIR}/${AVIF_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
     if(NOT EXISTS "${LIB_FILENAME}")
-        message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBYUV): ${LIB_FILENAME} is missing, bailing out")
+        message(FATAL_ERROR "libavif(AVIF_LIBYUV=LOCAL): ${LIB_FILENAME} is missing, bailing out")
     endif()
     if(("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}") OR (DEFINED ANDROID_ABI))
         set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include")
@@ -195,8 +214,8 @@ if(AVIF_LOCAL_LIBYUV)
     endif()
     set(libyuv_FOUND TRUE)
     message(STATUS "libavif: local libyuv found; libyuv-based fast paths enabled.")
-else(AVIF_LOCAL_LIBYUV)
-    find_package_libavif(libyuv QUIET) # not required
+elseif(AVIF_LIBYUV STREQUAL "SYSTEM")
+    find_package_libavif(libyuv REQUIRED)
     if(libyuv_FOUND)
         # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
         # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
@@ -213,8 +232,6 @@ else(AVIF_LOCAL_LIBYUV)
                 message(STATUS "libavif: some libyuv optimizations require at least version 1813 to work.")
             endif()
         endif()
-    else()
-        message(STATUS "libavif: libyuv not found; libyuv-based fast paths disabled.")
     endif()
 endif()
 if(libyuv_FOUND)
@@ -223,11 +240,11 @@ if(libyuv_FOUND)
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
 endif(libyuv_FOUND)
 
-option(AVIF_LOCAL_LIBSHARPYUV "Build libsharpyuv by providing your own copy inside the ext subdir." OFF)
-if(AVIF_LOCAL_LIBSHARPYUV)
+set_local_or_system_option("LIBSHARPYUV" "OFF" "Use libsharpyuv.")
+if(AVIF_LIBSHARPYUV STREQUAL "LOCAL")
     set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
     if(NOT EXISTS "${LIB_FILENAME}")
-        message(FATAL_ERROR "libavif(AVIF_LOCAL_LIBSHARPYUV): ${LIB_FILENAME} is missing, bailing out")
+        message(FATAL_ERROR "libavif(AVIF_LIBSHARPYUV=LOCAL): ${LIB_FILENAME} is missing, bailing out")
     endif()
     if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
         set(LIBSHARPYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp")
@@ -237,20 +254,18 @@ if(AVIF_LOCAL_LIBSHARPYUV)
         set(LIBSHARPYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
     endif()
     set(libsharpyuv_FOUND TRUE)
-else(AVIF_LOCAL_LIBSHARPYUV)
-    find_package_libavif(libsharpyuv QUIET) # not required
+elseif(AVIF_LIBSHARPYUV STREQUAL "SYSTEM")
+    find_package_libavif(libsharpyuv REQUIRED)
 endif()
 if(libsharpyuv_FOUND)
     message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
     set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
-    if(AVIF_LOCAL_LIBSHARPYUV)
+    if(AVIF_LIBSHARPYUV STREQUAL "LOCAL")
         set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
     else()
         set(AVIF_PLATFORM_SYSTEM_INCLUDES ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
     endif()
     set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
-else(libsharpyuv_FOUND)
-    message(STATUS "libavif: libsharpyuv not found")
 endif(libsharpyuv_FOUND)
 
 option(AVIF_LOCAL_LIBXML2 "Build libxml2 by providing your own copy inside the ext subdir. \
@@ -445,7 +460,7 @@ if(AVIF_CODEC_DAV1D)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_DAV1D=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_dav1d.c)
 
-    if(AVIF_LOCAL_DAV1D)
+    if(AVIF_CODEC_DAV1D STREQUAL "LOCAL")
         set(AVIF_DAV1D_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build")
         # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
         if(DEFINED ANDROID_ABI)
@@ -491,7 +506,7 @@ if(AVIF_CODEC_LIBGAV1)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_LIBGAV1=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_libgav1.c)
 
-    if(AVIF_LOCAL_LIBGAV1)
+    if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
         set(AVIF_LIBGAV1_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/build")
         # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
         if(DEFINED ANDROID_ABI)
@@ -520,7 +535,7 @@ if(AVIF_CODEC_RAV1E)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_RAV1E=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_rav1e.c)
 
-    if(AVIF_LOCAL_RAV1E)
+    if(AVIF_CODEC_RAV1E STREQUAL "LOCAL")
         set(LIB_FILENAME
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${AVIF_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
         )
@@ -553,7 +568,7 @@ if(AVIF_CODEC_SVT)
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_SVT=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_svt.c)
 
-    if(AVIF_LOCAL_SVT)
+    if(AVIF_CODEC_SVT STREQUAL "LOCAL")
         set(LIB_FILENAME
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${AVIF_LIBRARY_PREFIX}SvtAv1Enc${CMAKE_STATIC_LIBRARY_SUFFIX}"
         )
@@ -593,7 +608,7 @@ if(AVIF_CODEC_AOM)
         )
     endif()
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_aom.c)
-    if(AVIF_LOCAL_AOM)
+    if(AVIF_CODEC_AOM STREQUAL "LOCAL")
         set(LIB_FILENAME
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
         )
@@ -626,7 +641,7 @@ if(AVIF_CODEC_AVM)
 
     set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AVM=1)
     set(AVIF_SRCS ${AVIF_SRCS} src/codec_avm.c)
-    if(AVIF_LOCAL_AVM)
+    if(AVIF_CODEC_AVM STREQUAL "LOCAL")
         # Building the avm repository generates files such as "libaom.a" because it is a fork of aom.
         set(LIB_FILENAME
             "${CMAKE_CURRENT_SOURCE_DIR}/ext/avm/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"

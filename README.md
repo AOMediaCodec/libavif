@@ -23,8 +23,9 @@ run the examples too.
 
 Building libavif requires [CMake](https://cmake.org/).
 
-No AV1 codecs are enabled by default. Enable them by enabling any of the
-following CMake options (e.g. `-DAVIF_CODEC_AOM=ON`):
+No AV1 codecs are enabled by default. Enable them by setting any of the
+following CMake options to `LOCAL` or `SYSTEM` whether you want to use a
+locally built or a system installed version (e.g. `-DAVIF_CODEC_AOM=LOCAL`):
 
 * `AVIF_CODEC_AOM` for [libaom](https://aomedia.googlesource.com/aom/) (encoder
   and decoder)
@@ -36,9 +37,9 @@ following CMake options (e.g. `-DAVIF_CODEC_AOM=ON`):
 * `AVIF_CODEC_SVT` for [SVT-AV1](https://gitlab.com/AOMediaCodec/SVT-AV1)
   (encoder)
 
-These libraries (in their C API form) must be externally available
-(discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif is
-a child CMake project, the appropriate CMake target must already exist
+When set to `SYSTEM`, these libraries (in their C API form) must be externally
+available (discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif
+is a child CMake project, the appropriate CMake target must already exist
 by the time libavif's CMake scripts are executed.
 
 ### Local / Static Builds
@@ -51,8 +52,9 @@ list of requirements.
 
 If you want to statically link any codec into your local (static) build of
 libavif, building using one of these scripts and then enabling the associated
-`AVIF_LOCAL_*` is a convenient method, but you must make sure to disable
-`BUILD_SHARED_LIBS` in CMake to instruct it to make a static libavif library.
+`AVIF_LOCAL_*` and setting `AVIF_CODEC_*` to `LOCAL` is a convenient method,
+but you must make sure to disable `BUILD_SHARED_LIBS` in CMake to instruct it
+to make a static libavif library.
 
 If you want to build/install shared libraries for AV1 codecs, you can still
 peek inside of each script to see where the current known-good SHA is for each

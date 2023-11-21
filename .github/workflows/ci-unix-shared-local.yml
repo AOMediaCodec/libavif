@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        libyuv: [ON, OFF]
+        libyuv: [OFF, LOCAL]
 
     name: build-shared-local (${{ matrix.os }}, libyuv ${{ matrix.libyuv }})
 
@@ -81,10 +81,9 @@ jobs:
 
         cmake .. -G Ninja
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
-        -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON
-        -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON
-        -DAVIF_LOCAL_LIBYUV=${{ matrix.libyuv }}
-        -DAVIF_LOCAL_LIBSHARPYUV=ON
+        -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
+        -DAVIF_LIBYUV=${{ matrix.libyuv }}
+        -DAVIF_LIBSHARPYUV=LOCAL
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
     - name: Build libavif (ninja)

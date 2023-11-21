@@ -26,8 +26,7 @@ cd ext && bash dav1d.cmd && bash libyuv.cmd && cd ..
 mkdir build
 cd build
 cmake -G Ninja -DBUILD_SHARED_LIBS=OFF \
-    -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON \
-    -DAVIF_LOCAL_LIBYUV=ON ..
+    -DAVIF_CODEC_DAV1D=LOCAL -DAVIF_LIBYUV=LOCAL ..
 ninja
 
 # build fuzzer
