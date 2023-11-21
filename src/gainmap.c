@@ -364,13 +364,13 @@ static void avifFindMinMaxWithoutOutliers(int histogram[NUM_HISTOGRAM_BUCKETS], 
     }
 }
 
-avifResult avifComputeGainMapRGB(const avifRGBImage * baseRgbImage,
-                                 avifTransferCharacteristics baseTransferCharacteristics,
-                                 const avifRGBImage * altRgbImage,
-                                 avifTransferCharacteristics altTransferCharacteristics,
-                                 avifColorPrimaries colorPrimaries,
-                                 avifGainMap * gainMap,
-                                 avifDiagnostics * diag)
+avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
+                                      avifTransferCharacteristics baseTransferCharacteristics,
+                                      const avifRGBImage * altRgbImage,
+                                      avifTransferCharacteristics altTransferCharacteristics,
+                                      avifColorPrimaries colorPrimaries,
+                                      avifGainMap * gainMap,
+                                      avifDiagnostics * diag)
 {
     avifDiagnosticsClearError(diag);
 
@@ -557,7 +557,7 @@ cleanup:
     return res;
 }
 
-avifResult avifComputeGainMap(const avifImage * baseImage, const avifImage * altImage, avifGainMap * gainMap, avifDiagnostics * diag)
+avifResult avifImageComputeGainMap(const avifImage * baseImage, const avifImage * altImage, avifGainMap * gainMap, avifDiagnostics * diag)
 {
     avifDiagnosticsClearError(diag);
 
@@ -605,13 +605,13 @@ avifResult avifComputeGainMap(const avifImage * baseImage, const avifImage * alt
         goto cleanup;
     }
 
-    res = avifComputeGainMapRGB(&baseImageRgb,
-                                baseImage->transferCharacteristics,
-                                &altImageRgb,
-                                altImage->transferCharacteristics,
-                                baseImage->colorPrimaries,
-                                gainMap,
-                                diag);
+    res = avifRGBImageComputeGainMap(&baseImageRgb,
+                                     baseImage->transferCharacteristics,
+                                     &altImageRgb,
+                                     altImage->transferCharacteristics,
+                                     baseImage->colorPrimaries,
+                                     gainMap,
+                                     diag);
 
 cleanup:
     avifRGBImageFreePixels(&baseImageRgb);

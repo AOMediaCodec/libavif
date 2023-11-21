@@ -1153,8 +1153,8 @@ TEST_P(CreateGainMapTest, Create) {
   gain_map.image = gain_map_image.get();
 
   avifDiagnostics diag;
-  avifResult result =
-      avifComputeGainMap(sdr_image.get(), hdr_image.get(), &gain_map, &diag);
+  avifResult result = avifImageComputeGainMap(sdr_image.get(), hdr_image.get(),
+                                              &gain_map, &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
 
@@ -1184,8 +1184,8 @@ TEST_P(CreateGainMapTest, Create) {
   // "/tmp/gain_map_sdr_to_hdr.png"));
 
   // Compute the gain map in the other direction (from hdr to sdr).
-  result =
-      avifComputeGainMap(hdr_image.get(), sdr_image.get(), &gain_map, &diag);
+  result = avifImageComputeGainMap(hdr_image.get(), sdr_image.get(), &gain_map,
+                                   &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
 
