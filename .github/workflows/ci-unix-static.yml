@@ -80,6 +80,10 @@ jobs:
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash -e libsharpyuv.cmd
+    - name: Build libargparse
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: bash -e libargparse.cmd
     - name: Build GoogleTest
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext

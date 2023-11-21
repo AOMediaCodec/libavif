@@ -1,5 +1,5 @@
 : # Script to get a local build of libargparse (not to be confused with other similarly named libraries)
-: # needed by some of the command line tools in the apps/ directory.
+: # needed by some of the command line tools in the apps/ directory e.g. avifgainmaputil.
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
