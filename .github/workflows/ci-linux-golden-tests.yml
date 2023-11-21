@@ -75,7 +75,7 @@ jobs:
         -DAVIF_LOCAL_LIBXML2=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GOLDEN_TESTS=ON
         -DAVIF_ENABLE_GTEST=OFF
-        -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp	}}/golden_tests
+        -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp }}/golden_tests
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
@@ -90,7 +90,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: golden-tests-output
-        path: ${{ runner.temp	}}/golden_tests/**/*
+        path: ${{ runner.temp }}/golden_tests/**/*
 
     # Print instructions to help fix the tests.
     - name: How to fix failing tests
