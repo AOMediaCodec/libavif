@@ -761,7 +761,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
                          apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
-    target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avif_apps avif_internal ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
     # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
@@ -812,9 +812,14 @@ if(AVIF_BUILD_APPS)
             set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
 
             set(AVIFGAINMAPUTIL_SRCS
-                apps/avifgainmaputil/avifgainmaputil.cc apps/avifgainmaputil/combine_command.cc apps/avifgainmaputil/extractgainmap_command.cc
-                apps/avifgainmaputil/imageio.cc apps/avifgainmaputil/printmetadata_command.cc apps/avifgainmaputil/tonemap_command.cc
-                apps/avifgainmaputil/program_command.cc apps/avifgainmaputil/swapbase_command.cc
+                apps/avifgainmaputil/avifgainmaputil.cc
+                apps/avifgainmaputil/combine_command.cc
+                apps/avifgainmaputil/extractgainmap_command.cc
+                apps/avifgainmaputil/imageio.cc
+                apps/avifgainmaputil/printmetadata_command.cc
+                apps/avifgainmaputil/tonemap_command.cc
+                apps/avifgainmaputil/program_command.cc
+                apps/avifgainmaputil/swapbase_command.cc
             )
 
             add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")

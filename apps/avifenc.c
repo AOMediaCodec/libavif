@@ -1,7 +1,7 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "avif/avif.h"
+#include "avif/internal.h"
 
 #include "avifjpeg.h"
 #include "avifpng.h"
@@ -81,13 +81,6 @@ typedef struct
     avifChromaDownsampling chromaDownsampling;
 } avifSettings;
 
-typedef struct
-{
-    char ** keys;
-    char ** values;
-    int count;
-} avifCodecSpecificOptions;
-
 typedef struct avifSettingsEntryInt
 {
     int value;
@@ -137,7 +130,7 @@ typedef struct avifInputFileSettings
     avifSettingsEntryBool autoTiling;
     avifSettingsEntryScalingMode scalingMode;
 
-    avifCodecSpecificOptions codecSpecificOptions;
+    avifCodecSpecificOptions * codecSpecificOptions;
 } avifInputFileSettings;
 
 typedef struct avifInputFile
@@ -687,76 +680,46 @@ static avifBool readEntireFile(const char * filename, avifRWData * raw)
     return AVIF_TRUE;
 }
 
-// Returns NULL if a memory allocation failed. The return value should be freed with free().
-static char * avifStrdup(const char * str)
+static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions ** options, const char * keyValue)
 {
-    size_t len = strlen(str);
-    char * dup = malloc(len + 1);
-    if (!dup) {
-        return NULL;
-    }
-    memcpy(dup, str, len + 1);
-    return dup;
-}
-
-static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, const char * keyValue)
-{
-    avifBool success = AVIF_FALSE;
-    char ** oldKeys = options->keys;
-    char ** oldValues = options->values;
-    options->keys = malloc((options->count + 1) * sizeof(*options->keys));
-    options->values = malloc((options->count + 1) * sizeof(*options->values));
-    if (!options->keys || !options->values) {
-        free(options->keys);
-        free(options->values);
-        options->keys = oldKeys;
-        options->values = oldValues;
-        return AVIF_FALSE;
-    }
-    if (options->count) {
-        memcpy(options->keys, oldKeys, options->count * sizeof(*options->keys));
-        memcpy(options->values, oldValues, options->count * sizeof(*options->values));
+    if (*options == NULL) {
+        *options = avifCodecSpecificOptionsCreate();
+        if (*options == NULL) {
+            return AVIF_FALSE;
+        }
     }
 
     const char * value = strchr(keyValue, '=');
     if (value) {
         // Keep the parts on the left and on the right of the equal sign,
         // but not the equal sign itself.
-        options->values[options->count] = avifStrdup(value + 1);
         const size_t keyLength = strlen(keyValue) - strlen(value);
-        options->keys[options->count] = malloc(keyLength + 1);
-        if (!options->values[options->count] || !options->keys[options->count]) {
-            goto cleanup;
+        char * tmpKey = malloc(keyLength + 1);
+        if (!tmpKey) {
+            return AVIF_FALSE;
         }
-        memcpy(options->keys[options->count], keyValue, keyLength);
-        options->keys[options->count][keyLength] = '\0';
+        memcpy(tmpKey, keyValue, keyLength);
+        tmpKey[keyLength] = '\0';
+        if (avifCodecSpecificOptionsSet(*options, tmpKey, value + 1) != AVIF_RESULT_OK) {
+            free(tmpKey);
+            return AVIF_FALSE;
+        }
+        free(tmpKey);
     } else {
         // Pass in a non-NULL, empty string. Codecs can use the mere existence of a key as a boolean value.
-        options->values[options->count] = avifStrdup("");
-        options->keys[options->count] = avifStrdup(keyValue);
-        if (!options->values[options->count] || !options->keys[options->count]) {
-            goto cleanup;
+        if (avifCodecSpecificOptionsSet(*options, keyValue, "") != AVIF_RESULT_OK) {
+            return AVIF_FALSE;
         }
     }
-    success = AVIF_TRUE;
-cleanup:
-    ++options->count;
-    free(oldKeys);
-    free(oldValues);
-    return success;
+    return AVIF_TRUE;
 }
 
-static void avifCodecSpecificOptionsFree(avifCodecSpecificOptions * options)
+static void avifCodecSpecificOptionsFree(avifCodecSpecificOptions ** options)
 {
-    while (options->count) {
-        --options->count;
-        free(options->keys[options->count]);
-        free(options->values[options->count]);
+    if (*options != NULL) {
+        avifCodecSpecificOptionsDestroy(*options);
+        *options = NULL;
     }
-    free(options->keys);
-    free(options->values);
-    options->keys = NULL;
-    options->values = NULL;
 }
 
 // Returns the best cell size for a given horizontal or vertical dimension.
@@ -895,14 +858,17 @@ static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avi
     if (settings->scalingMode.set) {
         encoder->scalingMode = settings->scalingMode.value;
     }
-    for (int i = 0; i < settings->codecSpecificOptions.count; ++i) {
-        if (avifEncoderSetCodecSpecificOption(encoder, settings->codecSpecificOptions.keys[i], settings->codecSpecificOptions.values[i]) !=
-            AVIF_RESULT_OK) {
-            fprintf(stderr,
-                    "ERROR: Failed to set codec specific option: %s = %s\n",
-                    settings->codecSpecificOptions.keys[i],
-                    settings->codecSpecificOptions.values[i]);
-            return AVIF_FALSE;
+    if (settings->codecSpecificOptions != NULL) {
+        for (uint32_t i = 0; i < settings->codecSpecificOptions->count; ++i) {
+            if (avifEncoderSetCodecSpecificOption(encoder,
+                                                  settings->codecSpecificOptions->entries[i].key,
+                                                  settings->codecSpecificOptions->entries[i].value) != AVIF_RESULT_OK) {
+                fprintf(stderr,
+                        "ERROR: Failed to set codec specific option: %s = %s\n",
+                        settings->codecSpecificOptions->entries[i].key,
+                        settings->codecSpecificOptions->entries[i].value);
+                return AVIF_FALSE;
+            }
         }
     }
 
