@@ -42,6 +42,12 @@ GOLDEN_DIR="${TESTDATA_DIR}/goldens"
 AVIFENC="${ENCODER_DIR}/avifenc"
 MP4BOX="${MP4BOX_DIR}/MP4Box"
 
+# Colors for pretty formatting.
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NO_COLOR='\033[0m'
+
 if [[ ! -x "$AVIFENC" ]]; then
     echo "'$AVIFENC' does not exist or is not executable"
     exit 1
@@ -92,7 +98,15 @@ redact_xml() {
 diff_with_goldens() {
     echo "==="
 
+    diff_command=""
+    diff_command_with_full_paths=""
+    num_files=0
+    num_passed=0
+    files_with_diffs=""
+    files_missing_golden=""
+
     for f in $(find . -name '*.avif'); do
+        num_files=$((num_files + 1))
         echo "Testing $f"
         xml="$(basename "$f").xml" # Remove leading ./ for prettier paths.
         # Dump the file structure as XML
@@ -106,15 +120,26 @@ diff_with_goldens() {
             diff -u "$golden" "$xml" > "$xml.diff" || golden_differs=true
             if $golden_differs; then
                 has_errors=true
+                files_with_diffs="${files_with_diffs}$(basename "$f") "
                 echo "FAILED: Differences found for file $xml, see details in $OUTPUT_DIR/$xml.diff" >&2
                 echo "Expected file: $golden" >&2
                 echo "Actual file: $OUTPUT_DIR/$xml" >&2
                 cp "$golden" "$xml.golden" # Copy golden to output directory for easier debugging.
+
+                # "diff --color" is the default value if DIFFTOOL is not set.
+                printf -v diff_command "${diff_command}\${DIFFTOOL:-diff --color} $xml.golden $xml\n"
+                # Same as diff_command but with absolute paths and an two space indent.
+                printf -v diff_command_with_full_paths "${diff_command_with_full_paths}  \${DIFFTOOL:-diff --color} $OUTPUT_DIR/$xml.golden $OUTPUT_DIR/$xml\n"
             else
+                num_passed=$((num_passed + 1))
+                # Remove files related to tests that passed to reduce visual noise in the output dir.
+                rm "$f"
+                rm "$xml"
                 rm "$xml.diff"  # Delete empty diff files.
                 echo "Passed"
             fi
         else
+            files_missing_golden="${files_missing_golden}$(basename "$f") "
             echo "FAILED:  Missing golden file $golden" >&2
             echo "Actual file: $OUTPUT_DIR/$xml" >&2
             has_errors=true
@@ -137,20 +162,24 @@ popd > /dev/null
 
 if $has_errors; then
   cat >&2 << EOF
-Test failed.
+$(echo -e "${RED}")Golden test failed. Num passed: ${num_passed}/${num_files}$(echo -e "${NO_COLOR}")
+Files that caused diffs: ${files_with_diffs}
+Files with missing golden: ${files_missing_golden}
 
 # IF RUNNING ON GITHUB
-  Check the workflow step called "How to fix failing tests" for instructions on how to debug/fix this test.
+  Check the workflow step below called "How to fix failing tests" for instructions on how to debug/fix this test.
 
 # IF RUNNING LOCALLY
-  Look at the .xml.diff files in $OUTPUT_DIR
-
-  If the diffs are expected, update the golden files with:
-  cp "$OUTPUT_DIR"/*.xml "$GOLDEN_DIR"
+  View diffs with: (set DIFFTOOL to your favorite tool if needed)
+$(echo -e "${BLUE}")$diff_command_with_full_paths$(echo -e "${NO_COLOR}")
+  Update golden files with:
+  $(echo -e "${BLUE}")cp $OUTPUT_DIR/*.xml "$GOLDEN_DIR"$(echo -e "${NO_COLOR}")
 EOF
 
     cat > "$OUTPUT_DIR/README.txt" << EOF
-To debug test failures, look at the .xml.diff files.
+To debug test failures, look at the .xml.diff files or run (from this directory):
+
+$diff_command
 
 If the diffs are expected, update the golden files by copying the .xml files, e.g.:
 cp *.xml $HOME/git/libavif/tests/data/goldens
@@ -159,6 +188,8 @@ You can also debug the test locally by setting AVIF_ENABLE_GOLDEN_TESTS=ON in cm
 EOF
 
     exit 1
+else
+  echo -e "${GREEN}Golden tests passed (${num_passed} tests)${NO_COLOR}"
 fi
 
 exit 0
