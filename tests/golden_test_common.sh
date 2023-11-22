@@ -128,6 +128,7 @@ diff_with_goldens() {
 
                 # "diff --color" is the default value if DIFFTOOL is not set.
                 printf -v diff_command "${diff_command}\${DIFFTOOL:-diff --color} $xml.golden $xml\n"
+                # Same as diff_command but with absolute paths and an two space indent.
                 printf -v diff_command_with_full_paths "${diff_command_with_full_paths}  \${DIFFTOOL:-diff --color} $OUTPUT_DIR/$xml.golden $OUTPUT_DIR/$xml\n"
             else
                 num_passed=$((num_passed + 1))
@@ -166,7 +167,7 @@ Files that caused diffs: ${files_with_diffs}
 Files with missing golden: ${files_missing_golden}
 
 # IF RUNNING ON GITHUB
-  Check below at the workflow step below called "How to fix failing tests" for instructions on how to debug/fix this test.
+  Check the workflow step below called "How to fix failing tests" for instructions on how to debug/fix this test.
 
 # IF RUNNING LOCALLY
   View diffs with: (set DIFFTOOL to your favorite tool if needed)
