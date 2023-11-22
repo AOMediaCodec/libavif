@@ -249,6 +249,12 @@ if(AVIF_BUILD_APPS)
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
 
+    if(AVIF_ENABLE_AVIFGAINMAPUTIL)
+        add_test(NAME test_cmd_avifgainmaputil COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avifgainmaputil.sh
+                                                    ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
+        )
+    endif()
+
     if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
         # test_cmd_enc_boxes_golden.sh depends on MP4Box
         # Only allow a locally built version to avoid differences with versioning.
@@ -263,12 +269,6 @@ if(AVIF_BUILD_APPS)
                  COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
                          ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
         )
-
-        if(AVIF_ENABLE_AVIFGAINMAPUTIL)
-            add_test(NAME test_cmd_avifgainmaputil COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avifgainmaputil.sh
-                                                           ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
-            )
-        endif()
 
         if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
             add_test(NAME test_cmd_gainmap COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_gainmap.sh ${CMAKE_BINARY_DIR}
