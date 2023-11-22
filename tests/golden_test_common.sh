@@ -128,7 +128,7 @@ diff_with_goldens() {
 
                 # "diff --color" is the default value if DIFFTOOL is not set.
                 printf -v diff_command "${diff_command}\${DIFFTOOL:-diff --color} $xml.golden $xml\n"
-                # Same as diff_command but with absolute paths and an two space indent.
+                # Same as diff_command but with absolute paths and a two-space indent.
                 printf -v diff_command_with_full_paths "${diff_command_with_full_paths}  \${DIFFTOOL:-diff --color} $OUTPUT_DIR/$xml.golden $OUTPUT_DIR/$xml\n"
             else
                 num_passed=$((num_passed + 1))
