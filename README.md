@@ -5,7 +5,7 @@ File Format, as described here:
 
 <https://aomediacodec.github.io/av1-avif/>
 
-It can encode and decode all AOM supported YUV formats and bit depths (with
+It can encode and decode all AV1 supported YUV formats and bit depths (with
 alpha).
 
 It is recommended that you check out/use
