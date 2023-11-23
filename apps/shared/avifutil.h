@@ -21,7 +21,7 @@ extern "C" {
 #ifdef __cplusplus
 #define INIT_ARGV()                                                                                           \
     if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
-        fprintf(stderr, "setlocale failed\n");                                                                \
+        fprintf(stderr, "C++ setlocale failed\n");                                                            \
         return 1;                                                                                             \
     }                                                                                                         \
     std::vector<char> argvAllVector(1024 * argc);                                                             \
@@ -40,7 +40,7 @@ extern "C" {
     char * argvAll = NULL;                                                                                    \
     char ** argv = NULL;                                                                                      \
     if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
-        fprintf(stderr, "setlocale failed\n");                                                                \
+        fprintf(stderr, "C setlocale failed\n");                                                              \
         return 1;                                                                                             \
     }                                                                                                         \
     argvAll = (char *)malloc(1024 * argc * sizeof(*argvAll));                                                 \
