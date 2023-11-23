@@ -3,6 +3,7 @@
 
 #include "printmetadata_command.h"
 
+#include <cassert>
 #include <iomanip>
 
 #include "avif/avif_cxx.h"
@@ -57,11 +58,12 @@ avifResult PrintMetadataCommand::Run() {
               << decoder->diag.error << ")\n";
     return result;
   }
-  if (!decoder->gainMapPresent || decoder->image->gainMap == nullptr) {
+  if (!decoder->gainMapPresent) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
+  assert(decoder->image->gainMap);
 
   const avifGainMapMetadata& metadata = decoder->image->gainMap->metadata;
   const int w = 20;

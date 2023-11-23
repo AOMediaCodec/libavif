@@ -630,7 +630,7 @@ typedef struct avifGainMapMetadata
 typedef struct avifGainMap
 {
     // Gain map pixels.
-    // Owned by the avifGainMap and gets freed when calling avifGainMapDestro().
+    // Owned by the avifGainMap and gets freed when calling avifGainMapDestroy().
     // Used fields: width, height, depth, yufFormat, yuvRange,
     // yuvChromaSamplePosition, yuvPlanes, yuvRowBytes, imageOwnsYUVPlanes,
     // matrixCoefficients, transferCharacteristics. Other fields are ignored.
