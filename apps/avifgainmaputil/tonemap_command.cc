@@ -98,7 +98,8 @@ avifResult TonemapCommand::Run() {
         arg_input_cicp_.value().matrix_coefficients;
   }
 
-  if (decoder->image->gainMap.image == nullptr) {
+  if (decoder->image->gainMap == nullptr ||
+      decoder->image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
@@ -106,7 +107,7 @@ avifResult TonemapCommand::Run() {
 
   avifGainMapMetadataDouble metadata;
   if (!avifGainMapMetadataFractionsToDouble(
-          &metadata, &decoder->image->gainMap.metadata)) {
+          &metadata, &decoder->image->gainMap->metadata)) {
     std::cerr << "Input image " << arg_input_filename_
               << " has invalid gain map metadata\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
@@ -123,7 +124,7 @@ avifResult TonemapCommand::Run() {
                 metadata.alternateHdrHeadroom <= metadata.baseHdrHeadroom) ||
                (headroom >= metadata.alternateHdrHeadroom &&
                 metadata.alternateHdrHeadroom >= metadata.baseHdrHeadroom)) {
-      clli_box = decoder->image->gainMap.image->clli;
+      clli_box = decoder->image->gainMap->image->clli;
     }
     clli_set = (clli_box.maxCLL != 0) || (clli_box.maxPALL != 0);
   }
@@ -145,7 +146,7 @@ avifResult TonemapCommand::Run() {
   avifRGBImage tone_mapped_rgb;
   avifRGBImageSetDefaults(&tone_mapped_rgb, tone_mapped.get());
   avifDiagnostics diag;
-  result = avifImageApplyGainMap(decoder->image, &decoder->image->gainMap,
+  result = avifImageApplyGainMap(decoder->image, decoder->image->gainMap,
                                  arg_headroom_, cicp.transfer_characteristics,
                                  &tone_mapped_rgb,
                                  clli_set ? nullptr : &clli_box, &diag);

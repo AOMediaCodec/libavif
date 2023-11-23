@@ -66,7 +66,7 @@ avifResult ConvertCommand::Run() {
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
   }
 
-  if (image->gainMap.image == nullptr) {
+  if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
@@ -75,7 +75,7 @@ avifResult ConvertCommand::Run() {
   if (arg_swap_base_) {
     int depth = arg_image_read_.depth;
     if (depth == 0) {
-      depth = image->gainMap.metadata.alternateHdrHeadroomN == 0 ? 8 : 10;
+      depth = image->gainMap->metadata.alternateHdrHeadroomN == 0 ? 8 : 10;
     }
     ImagePtr new_base(
         avifImageCreate(image->width, image->height, depth, image->yuvFormat));

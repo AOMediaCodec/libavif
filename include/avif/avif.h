@@ -626,9 +626,11 @@ typedef struct avifGainMapMetadata
 } avifGainMapMetadata;
 
 // Gain map image and associated metadata.
+// Must be allocated by calling avifGainMapCreate().
 typedef struct avifGainMap
 {
     // Gain map pixels.
+    // Owned by the avifGainMap and gets freed when calling avifGainMapDestroy().
     // Used fields: width, height, depth, yufFormat, yuvRange,
     // yuvChromaSamplePosition, yuvPlanes, yuvRowBytes, imageOwnsYUVPlanes,
     // matrixCoefficients, transferCharacteristics. Other fields are ignored.
@@ -638,6 +640,12 @@ typedef struct avifGainMap
     // For an image grid, the metadata shall be identical for all cells.
     avifGainMapMetadata metadata;
 } avifGainMap;
+
+// Allocates a gain map. Returns NULL if a memory allocation failed.
+// The 'image' field is NULL by default and must be allocated separately.
+AVIF_API avifGainMap * avifGainMapCreate();
+// Frees a gain map, including the 'image' field if non NULL.
+AVIF_API void avifGainMapDestroy(avifGainMap * gainMap);
 
 // Same as avifGainMapMetadata, but with fields of type double instead of uint32_t fractions.
 // Use avifGainMapMetadataDoubleToFractions() to convert this to a avifGainMapMetadata.
@@ -731,10 +739,9 @@ typedef struct avifImage
     // Version 1.0.0 ends here. Add any new members after this line.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    // Gain map image and metadata. If no gain map is present, gainMap.image is NULL.
-    // When calling avifImageDestroy on the containing image, the gain map image is also destroyed
-    // (the containing image "owns" the gain map).
-    avifGainMap gainMap;
+    // Gain map image and metadata. NULL if no gain map is present.
+    // Owned by the avifImage and gets freed when calling avifImageDestroy().
+    avifGainMap * gainMap;
 #endif
 } avifImage;
 

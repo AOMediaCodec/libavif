@@ -3,6 +3,7 @@
 
 #include "printmetadata_command.h"
 
+#include <cassert>
 #include <iomanip>
 
 #include "avif/avif_cxx.h"
@@ -62,8 +63,9 @@ avifResult PrintMetadataCommand::Run() {
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
+  assert(decoder->image->gainMap);
 
-  const avifGainMapMetadata& metadata = decoder->image->gainMap.metadata;
+  const avifGainMapMetadata& metadata = decoder->image->gainMap->metadata;
   const int w = 20;
   std::cout << " * " << std::left << std::setw(w) << "Base headroom: "
             << FormatFraction(metadata.baseHdrHeadroomN,

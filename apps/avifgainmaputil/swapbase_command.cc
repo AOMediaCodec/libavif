@@ -9,13 +9,13 @@
 namespace avif {
 
 avifResult ChangeBase(avifImage& image, avifImage* swapped) {
-  if (image.gainMap.image == nullptr) {
+  if (image.gainMap == nullptr || image.gainMap->image == nullptr) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
 
   const float headroom =
-      static_cast<double>(image.gainMap.metadata.alternateHdrHeadroomN) /
-      image.gainMap.metadata.alternateHdrHeadroomD;
+      static_cast<double>(image.gainMap->metadata.alternateHdrHeadroomN) /
+      image.gainMap->metadata.alternateHdrHeadroomD;
   const bool tone_mapping_to_sdr = (headroom == 0.0f);
 
   // The gain map's cicp values are those of the 'tmap' item and describe the
@@ -24,13 +24,14 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
   // property. This property describes the colour properties of the
   // reconstructed image if the gain map input item is fully applied according
   // to ISO/AWI 214961.
-  if (image.gainMap.image->transferCharacteristics !=
+  if (image.gainMap->image->transferCharacteristics !=
           AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED ||
-      image.gainMap.image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-    swapped->colorPrimaries = image.gainMap.image->colorPrimaries;
+      image.gainMap->image->colorPrimaries !=
+          AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+    swapped->colorPrimaries = image.gainMap->image->colorPrimaries;
     swapped->transferCharacteristics =
-        image.gainMap.image->transferCharacteristics;
-    swapped->matrixCoefficients = image.gainMap.image->matrixCoefficients;
+        image.gainMap->image->transferCharacteristics;
+    swapped->matrixCoefficients = image.gainMap->image->matrixCoefficients;
   } else {
     // If there is no cicp on the gain map, use the same values as the old base
     // image, except for the transfer characteristics.
@@ -45,13 +46,13 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
   avifRGBImage swapped_rgb;
   avifRGBImageSetDefaults(&swapped_rgb, swapped);
 
-  avifContentLightLevelInformationBox clli = image.gainMap.image->clli;
+  avifContentLightLevelInformationBox clli = image.gainMap->image->clli;
   const bool compute_clli =
       !tone_mapping_to_sdr && clli.maxCLL == 0 && clli.maxPALL == 0;
 
   avifDiagnostics diag;
   avifResult result = avifImageApplyGainMap(
-      &image, &image.gainMap, headroom, swapped->transferCharacteristics,
+      &image, image.gainMap, headroom, swapped->transferCharacteristics,
       &swapped_rgb, (compute_clli ? &clli : nullptr), &diag);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to tone map image: " << avifResultToString(result)
@@ -67,19 +68,19 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
 
   swapped->clli = clli;
   swapped->gainMap = image.gainMap;
-  // swapped has taken ownership of the gain map image, so remove ownership
+  // 'swapped' has taken ownership of the gain map, so remove ownership
   // from the old image to prevent a double free.
-  image.gainMap.image = nullptr;
+  image.gainMap = nullptr;
   // Set the gain map's cicp values and clli to the old base image's.
-  swapped->gainMap.image->clli = image.clli;
-  swapped->gainMap.image->colorPrimaries = image.colorPrimaries;
-  swapped->gainMap.image->transferCharacteristics =
+  swapped->gainMap->image->clli = image.clli;
+  swapped->gainMap->image->colorPrimaries = image.colorPrimaries;
+  swapped->gainMap->image->transferCharacteristics =
       image.transferCharacteristics;
   // Don't touch matrixCoefficients as it's needed to correctly decode the gain
   // map.
 
   // Swap base and alternate in the gain map metadata.
-  avifGainMapMetadata& metadata = swapped->gainMap.metadata;
+  avifGainMapMetadata& metadata = swapped->gainMap->metadata;
   metadata.backwardDirection = !metadata.backwardDirection;
   metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
   std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
@@ -124,7 +125,8 @@ avifResult SwapBaseCommand::Run() {
     return result;
   }
 
-  if (decoder->image->gainMap.image == nullptr) {
+  if (decoder->image->gainMap == nullptr ||
+      decoder->image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
@@ -132,10 +134,10 @@ avifResult SwapBaseCommand::Run() {
 
   int depth = arg_image_read_.depth;
   if (depth == 0) {
-    depth = decoder->image->gainMap.metadata.alternateHdrHeadroomN == 0
+    depth = decoder->image->gainMap->metadata.alternateHdrHeadroomN == 0
                 ? 8
                 : std::max(decoder->image->depth,
-                           decoder->image->gainMap.image->depth);
+                           decoder->image->gainMap->image->depth);
   }
   avifPixelFormat pixel_format =
       (avifPixelFormat)arg_image_read_.pixel_format.value();

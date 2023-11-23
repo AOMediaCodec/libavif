@@ -40,14 +40,15 @@ void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
   const uint32_t encoded_height =
       std::min(image->height, grid_rows * cell_height);
 
-  const avifImage* gain_map = image->gainMap.image;
+  const avifImage* gain_map =
+      image->gainMap != nullptr ? image->gainMap->image : nullptr;
   if (gain_map != nullptr) {
     std::vector<ImagePtr> gain_map_cells =
         ImageToGrid(gain_map, grid_cols, grid_rows);
     if (gain_map_cells.empty()) return;
     ASSERT_EQ(gain_map_cells.size(), cells.size());
     for (size_t i = 0; i < gain_map_cells.size(); ++i) {
-      cells[i]->gainMap.image = gain_map_cells[i].release();
+      cells[i]->gainMap->image = gain_map_cells[i].release();
     }
   }
 
@@ -68,11 +69,11 @@ void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
        !avifAreGridDimensionsValid(
            gain_map->yuvFormat,
            std::min(gain_map->width,
-                    grid_cols * cells.front()->gainMap.image->width),
+                    grid_cols * cells.front()->gainMap->image->width),
            std::min(gain_map->height,
-                    grid_rows * cells.front()->gainMap.image->height),
-           cells.front()->gainMap.image->width,
-           cells.front()->gainMap.image->height, nullptr))) {
+                    grid_rows * cells.front()->gainMap->image->height),
+           cells.front()->gainMap->image->width,
+           cells.front()->gainMap->image->height, nullptr))) {
     ASSERT_TRUE(encoder_result == AVIF_RESULT_INVALID_IMAGE_GRID)
         << avifResultToString(encoder_result);
     return;
@@ -98,10 +99,11 @@ void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
 // because the C array fields in the struct seem to prevent fuzztest from
 // handling it natively.
 ImagePtr AddGainMapToImage(
-    ImagePtr image, ImagePtr gainMap,
+    ImagePtr image, ImagePtr gain_map,
     const std::array<uint8_t, sizeof(avifGainMapMetadata)>& metadata) {
-  image->gainMap.image = gainMap.release();
-  std::memcpy(&image->gainMap.metadata, metadata.data(), metadata.size());
+  image->gainMap = avifGainMapCreate();
+  image->gainMap->image = gain_map.release();
+  std::memcpy(&image->gainMap->metadata, metadata.data(), metadata.size());
   return image;
 }
 

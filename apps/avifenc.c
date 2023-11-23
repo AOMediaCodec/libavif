@@ -531,10 +531,10 @@ static avifBool avifInputReadImage(avifInput * input,
             assert(AVIF_FALSE);
         }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-        if (cached->image->gainMap.image != NULL) {
-            image->gainMap.image = avifImageCreateEmpty();
-            const avifCropRect gainMapRect = { 0, 0, cached->image->gainMap.image->width, cached->image->gainMap.image->height };
-            if (avifImageSetViewRect(image->gainMap.image, cached->image->gainMap.image, &gainMapRect) != AVIF_RESULT_OK) {
+        if (cached->image->gainMap && cached->image->gainMap->image) {
+            image->gainMap->image = avifImageCreateEmpty();
+            const avifCropRect gainMapRect = { 0, 0, cached->image->gainMap->image->width, cached->image->gainMap->image->height };
+            if (avifImageSetViewRect(image->gainMap->image, cached->image->gainMap->image, &gainMapRect) != AVIF_RESULT_OK) {
                 assert(AVIF_FALSE);
             }
         }
@@ -1192,7 +1192,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     }
     char gainMapStr[100] = { 0 };
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-    if (firstImage->gainMap.image != NULL) {
+    if (firstImage->gainMap && firstImage->gainMap->image) {
         snprintf(gainMapStr, sizeof(gainMapStr), ", gain map quality [%d (%s)]", encoder->qualityGainMap, qualityString(encoder->qualityGainMap));
     }
 #endif
@@ -1305,7 +1305,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
     avifBool hasGainMap = AVIF_FALSE;
     avifBool allQualitiesConstrained = settings->qualityIsConstrained && settings->qualityAlphaIsConstrained;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-    hasGainMap = (firstImage->gainMap.image != NULL);
+    hasGainMap = (firstImage->gainMap && firstImage->gainMap->image);
     if (hasGainMap) {
         allQualitiesConstrained = allQualitiesConstrained && settings->qualityGainMapIsConstrained;
     }
@@ -2503,7 +2503,7 @@ MAIN()
     const avifImage * avif = gridCells ? gridCells[0] : image;
     avifBool gainMapPresent = AVIF_FALSE;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-    gainMapPresent = (avif->gainMap.image != NULL);
+    gainMapPresent = (avif->gainMap && avif->gainMap->image);
 #endif
     avifImageDump(avif,
                   settings.gridDims[0],

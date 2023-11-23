@@ -105,15 +105,16 @@ avifResult CombineCommand::Run() {
   std::cout << "Creating a gain map of size " << gain_map_width << " x "
             << gain_map_height << "\n";
 
-  base_image->gainMap.image =
+  base_image->gainMap = avifGainMapCreate();
+  base_image->gainMap->image =
       avifImageCreate(gain_map_width, gain_map_height, arg_gain_map_depth_,
                       gain_map_pixel_format);
-  if (base_image->gainMap.image == nullptr) {
+  if (base_image->gainMap->image == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
   avifDiagnostics diag;
   result = avifImageComputeGainMap(base_image.get(), alternate_image.get(),
-                                   &base_image->gainMap, &diag);
+                                   base_image->gainMap, &diag);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to compute gain map: " << avifResultToString(result)
               << " (" << diag.error << ")\n";

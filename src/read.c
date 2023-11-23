@@ -1558,8 +1558,8 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
     avifImage * dst = dstImage;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
-        dst = dst->gainMap.image;
-        assert(dst);
+        assert(dst->gainMap && dst->gainMap->image);
+        dst = dst->gainMap->image;
     }
 #endif
     if ((avifImageSetViewRect(&dstView, dst, &dstViewRect) != AVIF_RESULT_OK) ||
@@ -4463,16 +4463,19 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
                                               gainMapCodecType));
 
     if (decoder->enableDecodingGainMap) {
-        decoder->image->gainMap.image = avifImageCreateEmpty();
+        decoder->image->gainMap = avifGainMapCreate();
+        AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
+        decoder->image->gainMap->image = avifImageCreateEmpty();
+        AVIF_CHECKERR(decoder->image->gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
 
         // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
         for (uint32_t propertyIndex = 0; propertyIndex < gainMapItem->properties.count; ++propertyIndex) {
             avifProperty * prop = &gainMapItem->properties.prop[propertyIndex];
             if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
-                decoder->image->gainMap.image->colorPrimaries = prop->u.colr.colorPrimaries;
-                decoder->image->gainMap.image->transferCharacteristics = prop->u.colr.transferCharacteristics;
-                decoder->image->gainMap.image->matrixCoefficients = prop->u.colr.matrixCoefficients;
-                decoder->image->gainMap.image->yuvRange = prop->u.colr.range;
+                decoder->image->gainMap->image->colorPrimaries = prop->u.colr.colorPrimaries;
+                decoder->image->gainMap->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
+                decoder->image->gainMap->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
+                decoder->image->gainMap->image->yuvRange = prop->u.colr.range;
                 break;
             }
         }
@@ -4483,7 +4486,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
         const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clli");
         if (clliProp) {
-            decoder->image->gainMap.image->clli = clliProp->u.clli;
+            decoder->image->gainMap->image->clli = clliProp->u.clli;
         }
     }
 
@@ -4784,8 +4787,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // Read the gain map's metadata.
             avifROData tmapData;
             AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
-
-            AVIF_CHECKERR(avifParseToneMappedImageBox(&decoder->image->gainMap.metadata, tmapData.data, tmapData.size, data->diag),
+            if (decoder->image->gainMap == NULL) {
+                decoder->image->gainMap = avifGainMapCreate();
+                AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
+            }
+            AVIF_CHECKERR(avifParseToneMappedImageBox(&decoder->image->gainMap->metadata, tmapData.data, tmapData.size, data->diag),
                           AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -4860,13 +4866,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (mainItems[AVIF_ITEM_GAIN_MAP]) {
-            assert(decoder->image->gainMap.image);
-            decoder->image->gainMap.image->width = mainItems[AVIF_ITEM_GAIN_MAP]->width;
-            decoder->image->gainMap.image->height = mainItems[AVIF_ITEM_GAIN_MAP]->height;
+            assert(decoder->image->gainMap && decoder->image->gainMap->image);
+            decoder->image->gainMap->image->width = mainItems[AVIF_ITEM_GAIN_MAP]->width;
+            decoder->image->gainMap->image->height = mainItems[AVIF_ITEM_GAIN_MAP]->height;
             decoder->gainMapPresent = AVIF_TRUE;
             // Must be called after avifDecoderGenerateImageTiles() which among other things copies the
             // codec config property from the first tile of a grid to the grid item (when grids are used).
-            AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image->gainMap.image,
+            AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image->gainMap->image,
                                                       &mainItems[AVIF_ITEM_GAIN_MAP]->properties,
                                                       codecType[AVIF_ITEM_GAIN_MAP]));
         }
@@ -5136,8 +5142,8 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 avifImage * dstImage = decoder->image;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                 if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
-                    dstImage = dstImage->gainMap.image;
-                    assert(dstImage);
+                    assert(dstImage->gainMap && dstImage->gainMap->image);
+                    dstImage = dstImage->gainMap->image;
                 }
 #endif
                 AVIF_CHECKRES(avifDecoderDataAllocateGridImagePlanes(decoder->data, info, dstImage));
@@ -5154,9 +5160,10 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             switch (tile->input->itemCategory) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                 case AVIF_ITEM_GAIN_MAP:
-                    decoder->image->gainMap.image->width = src->width;
-                    decoder->image->gainMap.image->height = src->height;
-                    decoder->image->gainMap.image->depth = src->depth;
+                    assert(decoder->image->gainMap && decoder->image->gainMap->image);
+                    decoder->image->gainMap->image->width = src->width;
+                    decoder->image->gainMap->image->height = src->height;
+                    decoder->image->gainMap->image->depth = src->depth;
                     break;
 #endif
                 default:
@@ -5180,8 +5187,8 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 avifImageStealPlanes(decoder->image, src, AVIF_PLANES_A);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
             } else if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
-                assert(decoder->image->gainMap.image);
-                avifImageStealPlanes(decoder->image->gainMap.image, src, AVIF_PLANES_YUV);
+                assert(decoder->image->gainMap && decoder->image->gainMap->image);
+                avifImageStealPlanes(decoder->image->gainMap->image, src, AVIF_PLANES_YUV);
 #endif
             } else { // AVIF_ITEM_COLOR
                 avifImageStealPlanes(decoder->image, src, AVIF_PLANES_YUV);
@@ -5437,7 +5444,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
     for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (c == AVIF_ITEM_GAIN_MAP) {
-            const avifImage * const gainMap = decoder->image->gainMap.image;
+            const avifImage * const gainMap = decoder->image->gainMap ? decoder->image->gainMap->image : NULL;
             if (decoder->gainMapPresent && decoder->enableDecodingGainMap && gainMap != NULL && gainMap->height != 0) {
                 uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
                 if (gainMap->height != decoder->image->height) {
@@ -5445,7 +5452,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
                         (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
                     // Make sure it matches the formula described in the comment of avifDecoderDecodedRowCount() in avif.h.
                     assert((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height *
-                                            decoder->image->gainMap.image->height) <= gainMapRowCount);
+                                            decoder->image->gainMap->image->height) <= gainMapRowCount);
                     gainMapRowCount = scaledGainMapRowCount;
                 }
                 minRowCount = AVIF_MIN(minRowCount, gainMapRowCount);
