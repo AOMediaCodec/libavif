@@ -82,14 +82,15 @@ TEST(JpegTest, ReadJpegWithGainMap) {
                             /*ignore_xmp=*/true, /*allow_changing_cicp=*/true,
                             /*ignore_gain_map=*/false);
     ASSERT_NE(image, nullptr);
-    ASSERT_NE(image->gainMap.image, nullptr);
-    EXPECT_EQ(image->gainMap.image->width, 512u);
-    EXPECT_EQ(image->gainMap.image->height, 384u);
+    ASSERT_NE(image->gainMap, nullptr);
+    ASSERT_NE(image->gainMap->image, nullptr);
+    EXPECT_EQ(image->gainMap->image->width, 512u);
+    EXPECT_EQ(image->gainMap->image->height, 384u);
     // Since ignore_xmp is true, there should be no XMP, even if it had to
     // be read to parse the gain map.
     EXPECT_EQ(image->xmp.size, 0u);
 
-    CheckGainMapMetadata(image->gainMap.metadata,
+    CheckGainMapMetadata(image->gainMap->metadata,
                          /*gain_map_min=*/{0.0, 0.0, 0.0},
                          /*gain_map_max=*/{3.5, 3.6, 3.7},
                          /*gain_map_gamma=*/{1.0, 1.0, 1.0},
@@ -109,7 +110,7 @@ TEST(JpegTest, IgnoreGainMap) {
       /*ignore_xmp=*/false, /*allow_changing_cicp=*/true,
       /*ignore_gain_map=*/true);
   ASSERT_NE(image, nullptr);
-  EXPECT_EQ(image->gainMap.image, nullptr);
+  ASSERT_EQ(image->gainMap, nullptr);
   // Check there is xmp since ignore_xmp is false (just making sure that
   // ignore_gain_map=true has no impact on this).
   EXPECT_GT(image->xmp.size, 0u);

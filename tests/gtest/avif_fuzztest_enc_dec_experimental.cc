@@ -67,21 +67,24 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
   EXPECT_EQ(decoded_image->depth, image->depth);
   EXPECT_EQ(decoded_image->yuvFormat, image->yuvFormat);
 
-  EXPECT_EQ(image->gainMap.image != nullptr, decoder->gainMapPresent);
+  ASSERT_EQ(image->gainMap != nullptr, decoder->gainMapPresent);
+  ASSERT_EQ(image->gainMap->image != nullptr, decoder->gainMapPresent);
   if (decoder->gainMapPresent && decoder->enableDecodingGainMap) {
-    ASSERT_NE(decoded_image->gainMap.image, nullptr);
-    EXPECT_EQ(decoded_image->gainMap.image->width, image->gainMap.image->width);
-    EXPECT_EQ(decoded_image->gainMap.image->height,
-              image->gainMap.image->height);
-    EXPECT_EQ(decoded_image->gainMap.image->depth, image->gainMap.image->depth);
-    EXPECT_EQ(decoded_image->gainMap.image->yuvFormat,
-              image->gainMap.image->yuvFormat);
-    EXPECT_EQ(image->gainMap.image->gainMap.image, nullptr);
-    EXPECT_EQ(decoded_image->gainMap.image->alphaPlane, nullptr);
+    ASSERT_NE(decoded_image->gainMap->image, nullptr);
+    EXPECT_EQ(decoded_image->gainMap->image->width,
+              image->gainMap->image->width);
+    EXPECT_EQ(decoded_image->gainMap->image->height,
+              image->gainMap->image->height);
+    EXPECT_EQ(decoded_image->gainMap->image->depth,
+              image->gainMap->image->depth);
+    EXPECT_EQ(decoded_image->gainMap->image->yuvFormat,
+              image->gainMap->image->yuvFormat);
+    EXPECT_EQ(image->gainMap->image->gainMap->image, nullptr);
+    EXPECT_EQ(decoded_image->gainMap->image->alphaPlane, nullptr);
 
     if (decoder->enableParsingGainMapMetadata) {
-      CheckGainMapMetadataMatches(decoded_image->gainMap.metadata,
-                                  image->gainMap.metadata);
+      CheckGainMapMetadataMatches(decoded_image->gainMap->metadata,
+                                  image->gainMap->metadata);
     }
   }
 
@@ -97,10 +100,11 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
 // because the C array fields in the struct seem to prevent fuzztest from
 // handling it natively.
 ImagePtr AddGainMapToImage(
-    ImagePtr image, ImagePtr gainMap,
+    ImagePtr image, ImagePtr gain_map,
     const std::array<uint8_t, sizeof(avifGainMapMetadata)>& metadata) {
-  image->gainMap.image = gainMap.release();
-  std::memcpy(&image->gainMap.metadata, metadata.data(), metadata.size());
+  image->gainMap = avifGainMapCreate();
+  image->gainMap->image = gain_map.release();
+  std::memcpy(&image->gainMap->metadata, metadata.data(), metadata.size());
   return image;
 }
 

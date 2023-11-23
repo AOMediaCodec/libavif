@@ -65,10 +65,11 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
   }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-  if (image1.gainMap.image != nullptr && image2.gainMap.image != nullptr) {
+  if (image1.gainMap != nullptr && image1.gainMap->image != nullptr &&
+      image2.gainMap != nullptr && image2.gainMap->image != nullptr) {
     const uint32_t gain_map_row_count = (uint32_t)roundf(
-        (float)row_count / image1.height * image1.gainMap.image->height);
-    ComparePartialYuva(*image1.gainMap.image, *image2.gainMap.image,
+        (float)row_count / image1.height * image1.gainMap->image->height);
+    ComparePartialYuva(*image1.gainMap->image, *image2.gainMap->image,
                        gain_map_row_count);
   }
 #endif

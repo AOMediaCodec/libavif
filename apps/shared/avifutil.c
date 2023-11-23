@@ -132,7 +132,7 @@ static void avifImageDumpInternal(const avifImage * avif,
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     printf(" * Gain map       : ");
-    avifImage * gainMap = avif->gainMap.image;
+    avifImage * gainMap = avif->gainMap ? avif->gainMap->image : NULL;
     if (gainMap != NULL) {
         printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Image is %s\n",
                gainMap->width,
@@ -141,7 +141,7 @@ static void avifImageDumpInternal(const avifImage * avif,
                avifPixelFormatToString(gainMap->yuvFormat),
                (gainMap->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
                gainMap->matrixCoefficients,
-               (avif->gainMap.metadata.baseHdrHeadroomN == 0) ? "SDR" : "HDR");
+               (avif->gainMap->metadata.baseHdrHeadroomN == 0) ? "SDR" : "HDR");
         printf("    * Color Primaries: %u\n", gainMap->colorPrimaries);
         printf("    * Transfer Char. : %u\n", gainMap->transferCharacteristics);
         printf("    * Matrix Coeffs. : %u\n", gainMap->matrixCoefficients);

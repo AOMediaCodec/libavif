@@ -57,13 +57,13 @@ avifResult PrintMetadataCommand::Run() {
               << decoder->diag.error << ")\n";
     return result;
   }
-  if (!decoder->gainMapPresent) {
+  if (!decoder->gainMapPresent || decoder->image->gainMap == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
 
-  const avifGainMapMetadata& metadata = decoder->image->gainMap.metadata;
+  const avifGainMapMetadata& metadata = decoder->image->gainMap->metadata;
   const int w = 20;
   std::cout << " * " << std::left << std::setw(w) << "Base headroom: "
             << FormatFraction(metadata.baseHdrHeadroomN,

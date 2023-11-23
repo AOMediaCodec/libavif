@@ -1208,8 +1208,10 @@ static avifResult avifValidateGrid(uint32_t gridCols,
     const avifImage * bottomRightCell = cellImages[cellCount - 1];
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (validateGainMap) {
-        firstCell = firstCell->gainMap.image;
-        bottomRightCell = bottomRightCell->gainMap.image;
+        assert(firstCell->gainMap && firstCell->gainMap->image);
+        firstCell = firstCell->gainMap->image;
+        assert(bottomRightCell->gainMap && bottomRightCell->gainMap->image);
+        bottomRightCell = bottomRightCell->gainMap->image;
     }
 #endif
     const uint32_t tileWidth = firstCell->width;
@@ -1220,7 +1222,8 @@ static avifResult avifValidateGrid(uint32_t gridCols,
         const avifImage * cellImage = cellImages[cellIndex];
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (validateGainMap) {
-            cellImage = cellImage->gainMap.image;
+            assert(cellImage->gainMap && cellImage->gainMap->image);
+            cellImage = cellImage->gainMap->image;
         }
 #endif
         const uint32_t expectedCellWidth = ((cellIndex + 1) % gridCols) ? tileWidth : bottomRightCell->width;
@@ -1310,20 +1313,20 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_FALSE, &encoder->diag));
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    const avifBool hasGainMap = (firstCell->gainMap.image != NULL);
+    const avifBool hasGainMap = (firstCell->gainMap && firstCell->gainMap->image != NULL);
 
     // Check that either all cells have a gain map, or none of them do.
     // If a gain map is present, check that they all have the same gain map metadata.
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
-        const avifBool cellHasGainMap = (cellImage->gainMap.image != NULL);
+        const avifBool cellHasGainMap = (cellImage->gainMap && cellImage->gainMap->image);
         if (cellHasGainMap != hasGainMap) {
             avifDiagnosticsPrintf(&encoder->diag, "cells should either all have a gain map image, or none of them should, found a mix");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
         if (hasGainMap) {
-            const avifGainMapMetadata * firstMetadata = &firstCell->gainMap.metadata;
-            const avifGainMapMetadata * cellMetadata = &cellImage->gainMap.metadata;
+            const avifGainMapMetadata * firstMetadata = &firstCell->gainMap->metadata;
+            const avifGainMapMetadata * cellMetadata = &cellImage->gainMap->metadata;
             if (cellMetadata->backwardDirection != firstMetadata->backwardDirection ||
                 cellMetadata->baseHdrHeadroomN != firstMetadata->baseHdrHeadroomN ||
                 cellMetadata->baseHdrHeadroomD != firstMetadata->baseHdrHeadroomD ||
@@ -1351,7 +1354,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     if (hasGainMap) {
-        AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell->gainMap.image));
+        AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell->gainMap->image));
         AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_TRUE, &encoder->diag));
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -1485,13 +1488,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        if (firstCell->gainMap.image) {
+        if (firstCell->gainMap && firstCell->gainMap->image) {
             avifEncoderItem * toneMappedItem = avifEncoderDataCreateItem(encoder->data,
                                                                          "tmap",
                                                                          infeNameGainMap,
                                                                          /*infeNameSize=*/strlen(infeNameGainMap) + 1,
                                                                          /*cellIndex=*/0);
-            if (!avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap.metadata)) {
+            if (!avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap->metadata)) {
                 avifDiagnosticsPrintf(&encoder->diag, "failed to write gain map metadata, some values may be negative or too large");
                 return AVIF_RESULT_ENCODE_GAIN_MAP_FAILED;
             }
@@ -1508,9 +1511,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             *alternativeItemID = colorItemID;
 
             const uint32_t gainMapGridWidth =
-                avifGridWidth(gridCols, cellImages[0]->gainMap.image, cellImages[gridCols * gridRows - 1]->gainMap.image);
+                avifGridWidth(gridCols, cellImages[0]->gainMap->image, cellImages[gridCols * gridRows - 1]->gainMap->image);
             const uint32_t gainMapGridHeight =
-                avifGridHeight(gridRows, cellImages[0]->gainMap.image, cellImages[gridCols * gridRows - 1]->gainMap.image);
+                avifGridHeight(gridRows, cellImages[0]->gainMap->image, cellImages[gridCols * gridRows - 1]->gainMap->image);
 
             uint16_t gainMapItemID;
             AVIF_CHECKRES(
@@ -1603,10 +1606,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             const avifImage * firstCellImage = firstCell;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
             if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
-                cellImage = cellImage->gainMap.image;
-                assert(cellImage);
-                firstCellImage = firstCell->gainMap.image;
-                assert(firstCellImage);
+                assert(cellImage->gainMap && cellImage->gainMap->image);
+                cellImage = cellImage->gainMap->image;
+                assert(firstCell->gainMap && firstCell->gainMap->image);
+                firstCellImage = firstCell->gainMap->image;
             }
 #endif
             avifImage * paddedCellImage = NULL;
@@ -2181,8 +2184,8 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         const avifImage * itemMetadata = imageMetadata;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
-            itemMetadata = itemMetadata->gainMap.image;
-            assert(itemMetadata);
+            assert(itemMetadata->gainMap && itemMetadata->gainMap->image);
+            itemMetadata = itemMetadata->gainMap->image;
         }
 #endif
         uint32_t imageWidth = itemMetadata->width;
@@ -2237,7 +2240,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                 // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
                 // place to put this data.
 
-                AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, s, imageMetadata->gainMap.image, &item->ipma, dedup));
+                AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, s, imageMetadata->gainMap->image, &item->ipma, dedup));
 #endif
             } else {
                 AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, s, itemMetadata, &item->ipma, dedup));

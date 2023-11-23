@@ -1136,7 +1136,12 @@ static avifBool avifJPEGReadInternal(FILE * f,
     // The primary XMP block (for the main image) must contain a node with an hdrgm:Version field if and only if a gain map is present.
     if (!ignoreGainMap && avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size)) {
         // Ignore the return value: continue even if we fail to find/parse/decode the gain map.
-        avifJPEGExtractGainMapImage(f, &cinfo, &avif->gainMap, chromaDownsampling);
+        avifGainMap * gainMap = avifGainMapCreate();
+        if (avifJPEGExtractGainMapImage(f, &cinfo, gainMap, chromaDownsampling)) {
+            avif->gainMap = gainMap;
+        } else {
+            avifGainMapDestroy(gainMap);
+        }
     }
 
     if (avif->xmp.size > 0 && ignoreXMP) {
