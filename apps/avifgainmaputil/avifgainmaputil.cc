@@ -9,6 +9,7 @@
 #include "avif/avif.h"
 #include "avifutil.h"
 #include "combine_command.h"
+#include "convert_command.h"
 #include "extractgainmap_command.h"
 #include "printmetadata_command.h"
 #include "program_command.h"
@@ -59,6 +60,7 @@ MAIN() {
   std::vector<std::unique_ptr<avif::ProgramCommand>> commands;
   commands.emplace_back(std::make_unique<avif::HelpCommand>());
   commands.emplace_back(std::make_unique<avif::CombineCommand>());
+  commands.emplace_back(std::make_unique<avif::ConvertCommand>());
   commands.emplace_back(std::make_unique<avif::TonemapCommand>());
   commands.emplace_back(std::make_unique<avif::SwapBaseCommand>());
   commands.emplace_back(std::make_unique<avif::ExtractGainMapCommand>());

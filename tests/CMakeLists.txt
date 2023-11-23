@@ -251,7 +251,7 @@ if(AVIF_BUILD_APPS)
 
     if(AVIF_ENABLE_AVIFGAINMAPUTIL)
         add_test(NAME test_cmd_avifgainmaputil COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avifgainmaputil.sh
-                                                    ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
+                                                       ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
         )
     endif()
 

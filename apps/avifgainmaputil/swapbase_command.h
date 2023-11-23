@@ -9,6 +9,11 @@
 
 namespace avif {
 
+// Given an 'image' with a gain map, tone maps it to get the "alternate" image,
+// and saves it to 'output'. Also steals the gain map of 'image' to give it to
+// 'output'. To avoid unnecessary copies, the input 'image' is modified.
+avifResult ChangeBase(avifImage& image, avifImage* output);
+
 class SwapBaseCommand : public ProgramCommand {
  public:
   SwapBaseCommand();

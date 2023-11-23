@@ -280,6 +280,11 @@ avifResult avifImageApplyGainMap(const avifImage * baseImage,
 {
     avifDiagnosticsClearError(diag);
 
+    if (baseImage->icc.size > 0) {
+        avifDiagnosticsPrintf(diag, "Tone mapping for images with ICC profiles is not supported");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     avifRGBImage baseImageRgb;
     avifRGBImageSetDefaults(&baseImageRgb, baseImage);
     AVIF_CHECKRES(avifRGBImageAllocatePixels(&baseImageRgb));
