@@ -48,6 +48,7 @@ void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
     if (gain_map_cells.empty()) return;
     ASSERT_EQ(gain_map_cells.size(), cells.size());
     for (size_t i = 0; i < gain_map_cells.size(); ++i) {
+      cells[i]->gainMap = avifGainMapCreate();
       cells[i]->gainMap->image = gain_map_cells[i].release();
     }
   }
