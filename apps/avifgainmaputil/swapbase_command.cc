@@ -8,7 +8,7 @@
 
 namespace avif {
 
-avifResult ChangeBase(avifImage&& image, avifImage* swapped) {
+avifResult ChangeBase(avifImage& image, avifImage* swapped) {
   if (image.gainMap.image == nullptr) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
@@ -144,7 +144,7 @@ avifResult SwapBaseCommand::Run() {
   }
   ImagePtr new_base(avifImageCreate(
       decoder->image->width, decoder->image->height, depth, pixel_format));
-  result = ChangeBase(std::move(*decoder->image), new_base.get());
+  result = ChangeBase(*decoder->image, new_base.get());
   if (result != AVIF_RESULT_OK) {
     return result;
   }

@@ -79,7 +79,7 @@ avifResult ConvertCommand::Run() {
     }
     ImagePtr new_base(
         avifImageCreate(image->width, image->height, depth, image->yuvFormat));
-    const avifResult result = ChangeBase(std::move(*image), new_base.get());
+    const avifResult result = ChangeBase(*image, new_base.get());
     if (result != AVIF_RESULT_OK) {
       return result;
     }
