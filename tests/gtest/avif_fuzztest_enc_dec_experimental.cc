@@ -67,9 +67,16 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
   EXPECT_EQ(decoded_image->depth, image->depth);
   EXPECT_EQ(decoded_image->yuvFormat, image->yuvFormat);
 
-  ASSERT_EQ(image->gainMap != nullptr, decoder->gainMapPresent);
-  ASSERT_EQ(image->gainMap->image != nullptr, decoder->gainMapPresent);
+  EXPECT_EQ(decoder->gainMapPresent,
+            image->gainMap != nullptr && image->gainMap->image != nullptr);
+  ASSERT_EQ(decoded_image->gainMap != nullptr,
+            decoder->gainMapPresent && (decoder->enableDecodingGainMap ||
+                                        decoder->enableParsingGainMapMetadata));
+  ASSERT_EQ(decoded_image->gainMap != nullptr &&
+                decoded_image->gainMap->image != nullptr,
+            decoder->gainMapPresent && decoder->enableDecodingGainMap);
   if (decoder->gainMapPresent && decoder->enableDecodingGainMap) {
+    ASSERT_NE(decoded_image->gainMap, nullptr);
     ASSERT_NE(decoded_image->gainMap->image, nullptr);
     EXPECT_EQ(decoded_image->gainMap->image->width,
               image->gainMap->image->width);
@@ -79,7 +86,7 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
               image->gainMap->image->depth);
     EXPECT_EQ(decoded_image->gainMap->image->yuvFormat,
               image->gainMap->image->yuvFormat);
-    EXPECT_EQ(image->gainMap->image->gainMap->image, nullptr);
+    EXPECT_EQ(image->gainMap->image->gainMap, nullptr);
     EXPECT_EQ(decoded_image->gainMap->image->alphaPlane, nullptr);
 
     if (decoder->enableParsingGainMapMetadata) {
