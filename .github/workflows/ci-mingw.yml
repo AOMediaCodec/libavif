@@ -20,7 +20,6 @@ jobs:
       matrix:
         sys:
           - mingw64
-          - mingw32
           - ucrt64
           - clang64
 
@@ -31,7 +30,7 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
     - uses: msys2/setup-msys2@v2
       with:
-        msystem: ${{matrix.sys}}
+        msystem: ${{ matrix.sys }}
         update: true
         install: >-
           git
@@ -52,7 +51,7 @@ jobs:
       uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ext
-        key: ${{ runner.sys }}-mingw
+        key: ${{ matrix.sys }}-mingw-${{ hashFiles('ext/*.cmd') }}
     - name: Print cmake version
       run: cmake --version
     - name: Build GoogleTest

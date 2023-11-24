@@ -223,16 +223,20 @@ endif()
 # Bash tests
 
 if(AVIF_BUILD_APPS)
+    add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
+                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
     # When building apps, test the avifenc/avifdec.
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
     add_executable(are_images_equal gtest/are_images_equal.cc)
     target_link_libraries(are_images_equal aviftest_helpers)
     if(MINGW)
-        target_link_options(are_images_equal PRIVATE -municode)
+        if("$ENV{MSYSTEM}" MATCHES "(MINGW32|MINGW64)")
+            set_tests_properties(test_cmd PROPERTIES ENVIRONMENT "AVIF_TEST_NO_UTF8=1")
+        else()
+            target_link_options(are_images_equal PRIVATE -municode)
+        endif()
     endif()
-    add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
-                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
     add_test(NAME test_cmd_animation COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_animation.sh ${CMAKE_BINARY_DIR}
                                              ${CMAKE_CURRENT_SOURCE_DIR}/data
     )

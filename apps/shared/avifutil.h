@@ -11,13 +11,13 @@ extern "C" {
 #endif
 
 // MAIN(), INIT_ARGV(), FREE_ARGV() for UTF8-aware command line parsing.
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_UCRT)
 #define MAIN() int wmain(int argc, wchar_t * wargv[])
 #else
 #define MAIN() int main(int argc, char * argv[])
 #endif
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_UCRT)
 #ifdef __cplusplus
 #define INIT_ARGV()                                                                                           \
     if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
@@ -62,7 +62,7 @@ extern "C" {
 #else
 #define INIT_ARGV()
 #endif
-#if defined(_WIN32) && !defined(__cplusplus)
+#if defined(_WIN32) && !defined(__cplusplus) && defined(_UCRT)
 #define FREE_ARGV() \
     free(argv);     \
     free(argvAll);
