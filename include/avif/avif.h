@@ -550,11 +550,18 @@ typedef struct avifContentLightLevelInformationBox
 // to be stable, and might even be removed in the future. Use are your own risk.
 // This is based on ISO/IEC JTC 1/SC 29/WG 3 m64379
 // This product includes Gain Map technology under license by Adobe.
+//
+// Terms:
+// base image: main image stored in the file, shown by viewers that do not support
+//     gain maps
+// alternate image: image  obtained by combining the base image and the gain map
+// gain map: data structure that contains pixels and metadata used for conversion
+//     between the base image and the alternate image
 
 struct avifImage;
 
-// Gain map metadata, to apply the gain map. Fully applying the gain map to the "base"
-// image results in the "alternate" image.
+// Gain map metadata, to apply the gain map. Fully applying the gain map to the base
+// image results in the alternate image.
 // All field pairs ending with 'N' and 'D' are fractional values (numerator and denominator).
 typedef struct avifGainMapMetadata
 {
@@ -633,12 +640,28 @@ typedef struct avifGainMap
     // Owned by the avifGainMap and gets freed when calling avifGainMapDestroy().
     // Used fields: width, height, depth, yufFormat, yuvRange,
     // yuvChromaSamplePosition, yuvPlanes, yuvRowBytes, imageOwnsYUVPlanes,
-    // matrixCoefficients, transferCharacteristics. Other fields are ignored.
+    // matrixCoefficients. colorPrimaries and transferCharacteristics shall be 2.
+    // Other fields are ignored.
     struct avifImage * image;
 
     // Gain map metadata.
     // For an image grid, the metadata shall be identical for all cells.
     avifGainMapMetadata metadata;
+
+    // Colorimetry of the alternate image.
+    avifRWData altICC;
+    avifColorPrimaries altColorPrimaries;
+    avifTransferCharacteristics altTransferCharacteristics;
+    avifMatrixCoefficients altMatrixCoefficients;
+    avifRange altYUVRange;
+
+    // Hint on the approximate amount of colour resolution available after fully
+    // applying the gain map.
+    uint32_t altDepth;
+    uint32_t altPlaneCount;
+
+    // Optimal viewing conditions of the alternate image.
+    avifContentLightLevelInformationBox altCLLI;
 } avifGainMap;
 
 // Allocates a gain map. Returns NULL if a memory allocation failed.
