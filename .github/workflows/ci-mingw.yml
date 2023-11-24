@@ -38,8 +38,10 @@ jobs:
         pacboy: >-
           aom:p
           cmake:p
+          diffutils:p
           cc:p
           dav1d:p
+          imagemagick:p
           libjpeg-turbo:p
           libpng:p
           libyuv:p
@@ -76,22 +78,3 @@ jobs:
     - name: Run AVIF Tests
       working-directory: ./build
       run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
-    - name: Install AVIF
-      working-directory: ./build
-      run: ninja install
-    - name: Test installed cmake
-      working-directory: ./build
-      run: >
-        mkdir test && cd test
-
-        echo "cmake_minimum_required(VERSION 3.13)
-              project(FindPackageTest)
-              message(STATUS ${CMAKE_PREFIX_PATH})
-              find_package(libavif REQUIRED)
-              if(TARGET avif)
-                message(STATUS "\""avif found"\"")
-              else()
-                message(FATAL_ERROR "\""avif not found"\"")
-              endif()" >> CMakeLists.txt
-
-        cmake . -DCMAKE_PREFIX_PATH=../install

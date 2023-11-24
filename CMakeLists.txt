@@ -393,14 +393,11 @@ target_sources(avif_obj PRIVATE ${AVIF_SRCS})
 # /usr/local/include.
 set(CMAKE_FIND_FRAMEWORK LAST)
 
-if(UNIX OR (MINGW AND CMAKE_C_COMPILER_ID MATCHES "Clang"))
+if(UNIX OR MINGW)
     # Find out if we have threading available
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
-    target_link_libraries(avif_obj PUBLIC Threads::Threads)
-endif()
-if(UNIX)
-    target_link_libraries(avif_obj PUBLIC m)
+    target_link_libraries(avif_obj PUBLIC m Threads::Threads)
 endif()
 
 if(NOT AVIF_LIBYUV_ENABLED)
