@@ -1544,11 +1544,12 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
         return avifImageYUVToRGBImpl(image, rgb, &state, alphaMultiplyMode);
     }
 
-    AVIF_ARRAY_DECLARE(YUVToRGBThreadDataArray, YUVToRGBThreadData, threadData);
-    YUVToRGBThreadDataArray tdArray;
-    if (!avifArrayCreate(&tdArray, sizeof(YUVToRGBThreadData), jobs)) {
+    const size_t byteCount = sizeof(YUVToRGBThreadData) * jobs;
+    YUVToRGBThreadData * threadData = avifAlloc(byteCount);
+    if (!threadData) {
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
+    memset(threadData, 0, byteCount);
     int rowsPerJob = image->height / jobs;
     if (rowsPerJob % 2) {
         ++rowsPerJob;
@@ -1557,7 +1558,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     int startRow = 0;
     uint32_t i;
     for (i = 0; i < jobs; ++i, startRow += rowsPerJob) {
-        YUVToRGBThreadData * tdata = &tdArray.threadData[i];
+        YUVToRGBThreadData * tdata = &threadData[i];
         const avifCropRect rect = { .x = 0, .y = startRow, .width = image->width, .height = (i == jobs - 1) ? rowsForLastJob : rowsPerJob };
         if (avifImageSetViewRect(&tdata->image, image, &rect) != AVIF_RESULT_OK) {
             tdata->result = AVIF_RESULT_REFORMAT_FAILED;
@@ -1581,11 +1582,11 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     }
     // If above loop ran successfully, Run the first job in the current thread.
     if (i == jobs) {
-        avifImageYUVToRGBThreadWorker(&tdArray.threadData[0]);
+        avifImageYUVToRGBThreadWorker(&threadData[0]);
     }
     avifResult result = AVIF_RESULT_OK;
     for (i = 0; i < jobs; ++i) {
-        YUVToRGBThreadData * tdata = &tdArray.threadData[i];
+        YUVToRGBThreadData * tdata = &threadData[i];
         if (tdata->threadCreated && !avifJoinYUVToRGBThread(tdata)) {
             result = AVIF_RESULT_REFORMAT_FAILED;
         }
@@ -1593,7 +1594,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
             result = tdata->result;
         }
     }
-    avifArrayDestroy(&tdArray);
+    avifFree(threadData);
     return result;
 }
 
