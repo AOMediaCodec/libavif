@@ -4655,7 +4655,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                   /*isItemInInput=*/AVIF_TRUE,
                                                   &data->tileInfos[AVIF_ITEM_COLOR].grid,
                                                   &codecType[AVIF_ITEM_COLOR]));
-        colorProperties = &data->meta->items.item[mainItemIndices[AVIF_ITEM_COLOR]].properties;
         colorCodecType = codecType[AVIF_ITEM_COLOR];
 
         // Optional alpha auxiliary item
@@ -4713,6 +4712,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
             mainItems[c] = (mainItemIndices[c] == -1) ? NULL : &data->meta->items.item[mainItemIndices[c]];
         }
+        colorProperties = &mainItems[AVIF_ITEM_COLOR]->properties;
 
         // Find Exif and/or XMP metadata, if any
         AVIF_CHECKRES(avifDecoderFindMetadata(decoder, data->meta, decoder->image, mainItems[AVIF_ITEM_COLOR]->id));
