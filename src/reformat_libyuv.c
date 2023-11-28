@@ -63,11 +63,13 @@ unsigned int avifLibYUVVersion(void)
 // libyuv is a C++ library and defines custom types (struct, enum, etc) in the libyuv namespace when the libyuv header files are
 // included by C++ code. When accessed from a C library like libavif, via a function pointer, this leads to signature mismatches
 // in the CFI sanitizers since libyuv itself, compiled as C++ code, has the types within the namespace and the C code has the
-// types without the namespace. In order to avoid this CFI error, we tag some functions as an exception when being compiled with
-// CFI enabled.  For more details on clang's CFI see: https://clang.llvm.org/docs/ControlFlowIntegrity.html. For a simpler example
-// of this bug, please see: https://github.com/vigneshvg/cpp_c_potential_cfi_bug
+// types without the namespace. The same thing happens with clang's undefined behavior sanitizer as well when invoked with
+// -fsanitize=function. So we suppress both of these sanitizers in functions that call libyuv functions via a pointer.
+// For a simpler example of this bug, please see: https://github.com/vigneshvg/cpp_c_potential_cfi_bug.
+// For more details on clang's CFI see: https://clang.llvm.org/docs/ControlFlowIntegrity.html.
+// For more details on clang's UBSan see: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
 #if defined(__clang__)
-#define IGNORE_CFI_ICALL __attribute__((no_sanitize("cfi-icall")))
+#define IGNORE_CFI_ICALL __attribute__((no_sanitize("cfi-icall", "function")))
 #else
 #define IGNORE_CFI_ICALL
 #endif
