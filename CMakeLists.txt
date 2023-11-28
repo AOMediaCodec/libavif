@@ -131,6 +131,9 @@ endif()
 
 add_library(avif)
 
+# Adds <target> to avif's public link libraries for build, and adds
+# the library as an install link library for export if a consumer
+# would need to include that library alongside libavif when linking.
 function(avif_target_link_library target)
     target_link_libraries(avif PUBLIC $<BUILD_INTERFACE:${target}>)
     get_target_property(target_is_local ${target} AVIF_LOCAL)
@@ -149,6 +152,12 @@ function(avif_target_link_library target)
     endif()
 endfunction()
 
+#[[
+check_avif_option(<option> TARGET <target> PKG_NAME <PackageName>)
+
+If <option> is equal to "SYSTEM", uses <target> if it already exists, otherwise calls find_package(<PackageName>). If <option>
+is "LOCAL", includes Local<PackageName>.cmake. Sets <option>_ENABLED to ON if the option is enabled and the target is usable.
+]]
 macro(check_avif_option _VAR)
     set(_oneValueArgs TARGET PKG_NAME)
     cmake_parse_arguments(_AVIF_OPTION "" "${_oneValueArgs}" "" ${ARGN})
