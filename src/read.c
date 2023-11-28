@@ -3938,7 +3938,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not found");
             return AVIF_RESULT_MISSING_IMAGE_ITEM;
         }
-        colorProperties = &colorItem->properties;
         if (!memcmp(colorItem->type, "grid", 4)) {
             avifROData readData;
             AVIF_CHECKRES(avifDecoderItemRead(colorItem, decoder->io, &readData, 0, 0, data->diag));
@@ -3994,6 +3993,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 assert(alphaCodecType != AVIF_CODEC_TYPE_UNKNOWN);
             }
         }
+
+        colorProperties = &colorItem->properties;
 
         // Find Exif and/or XMP metadata, if any
         AVIF_CHECKRES(avifDecoderFindMetadata(decoder, data->meta, decoder->image, colorItem->id));
