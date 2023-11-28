@@ -209,7 +209,7 @@ typedef struct avifDecoderItem
     avifPixelFormat coniPixelFormat; // Set from the CondensedImageBox, if present (AVIF_PIXEL_FORMAT_NONE otherwise)
 #endif
 } avifDecoderItem;
-AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem, item);
+AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem *, item);
 
 // grid storage
 typedef struct avifImageGrid
@@ -749,7 +749,7 @@ static avifMeta * avifMetaCreate()
         return NULL;
     }
     memset(meta, 0, sizeof(avifMeta));
-    if (!avifArrayCreate(&meta->items, sizeof(avifDecoderItem), 8) || !avifArrayCreate(&meta->properties, sizeof(avifProperty), 16)) {
+    if (!avifArrayCreate(&meta->items, sizeof(avifDecoderItem *), 8) || !avifArrayCreate(&meta->properties, sizeof(avifProperty), 16)) {
         avifMetaDestroy(meta);
         return NULL;
     }
@@ -759,12 +759,13 @@ static avifMeta * avifMetaCreate()
 static void avifMetaDestroy(avifMeta * meta)
 {
     for (uint32_t i = 0; i < meta->items.count; ++i) {
-        avifDecoderItem * item = &meta->items.item[i];
+        avifDecoderItem * item = meta->items.item[i];
         avifArrayDestroy(&item->properties);
         avifArrayDestroy(&item->extents);
         if (item->ownsMergedExtents) {
             avifRWDataFree(&item->mergedExtents);
         }
+        avifFree(item);
     }
     avifArrayDestroy(&meta->items);
     avifArrayDestroy(&meta->properties);
@@ -789,21 +790,31 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
     assert(itemID != 0);
 
     for (uint32_t i = 0; i < meta->items.count; ++i) {
-        if (meta->items.item[i].id == itemID) {
-            *item = &meta->items.item[i];
+        if (meta->items.item[i]->id == itemID) {
+            *item = meta->items.item[i];
             return AVIF_RESULT_OK;
         }
     }
 
-    *item = (avifDecoderItem *)avifArrayPush(&meta->items);
-    AVIF_CHECKERR(*item != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    avifDecoderItem ** item_ptr = (avifDecoderItem **)avifArrayPush(&meta->items);
+    AVIF_CHECKERR(item_ptr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    *item_ptr = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
+    if (*item_ptr == NULL) {
+      avifArrayPop(&meta->items);
+      return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    memset(*item_ptr, 0, sizeof(avifDecoderItem));
+
+    *item = *item_ptr;
     if (!avifArrayCreate(&(*item)->properties, sizeof(avifProperty), 16)) {
         avifArrayPop(&meta->items);
+        *item = NULL;
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     if (!avifArrayCreate(&(*item)->extents, sizeof(avifExtent), 1)) {
         avifArrayDestroy(&(*item)->properties);
         avifArrayPop(&meta->items);
+        *item = NULL;
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     (*item)->id = itemID;
@@ -1108,7 +1119,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
 
     if (!memcmp(item->type, "grid", 4)) {
         for (uint32_t i = 0; i < item->meta->items.count; ++i) {
-            avifDecoderItem * tile = &item->meta->items.item[i];
+            avifDecoderItem * tile = item->meta->items.item[i];
             if (tile->dimgForID != item->id) {
                 continue;
             }
@@ -1361,7 +1372,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
 static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gridItem)
 {
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
-        avifDecoderItem * item = &gridItem->meta->items.item[i];
+        avifDecoderItem * item = gridItem->meta->items.item[i];
         const avifCodecType tileCodecType = avifGetCodecType(item->type);
         if ((item->dimgForID == gridItem->id) && (tileCodecType != AVIF_CODEC_TYPE_UNKNOWN)) {
             return tileCodecType;
@@ -1376,7 +1387,7 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
     unsigned int tilesAvailable = 0;
     avifDecoderItem * firstTileItem = NULL;
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
-        avifDecoderItem * item = &gridItem->meta->items.item[i];
+        avifDecoderItem * item = gridItem->meta->items.item[i];
         if (item->dimgForID != gridItem->id) {
             continue;
         }
@@ -1583,7 +1594,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
     }
 
     for (uint32_t itemIndex = 0; itemIndex < meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &meta->items.item[itemIndex];
+        avifDecoderItem * item = meta->items.item[itemIndex];
         if (!item->size) {
             continue;
         }
@@ -1947,7 +1958,7 @@ static avifResult avifDecoderItemReadAndParse(const avifDecoder * decoder,
                                               avifImageGrid * grid,
                                               avifCodecType * codecType)
 {
-    avifDecoderItem * item = &decoder->data->meta->items.item[itemIndex];
+    avifDecoderItem * item = decoder->data->meta->items.item[itemIndex];
     if (!memcmp(item->type, "grid", 4)) {
         if (isItemInInput) {
             avifROData readData;
@@ -1962,7 +1973,7 @@ static avifResult avifDecoderItemReadAndParse(const avifDecoder * decoder,
             // Validate that there are exactly the same number of dimg items to form the grid.
             uint32_t dimgItemCount = 0;
             for (uint32_t i = 0; i < item->meta->items.count; ++i) {
-                if (item->meta->items.item[i].dimgForID == item->id) {
+                if (item->meta->items.item[i]->dimgForID == item->id) {
                     ++dimgItemCount;
                 }
             }
@@ -4080,7 +4091,7 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     // Walk the decoded items (if any) and harvest ispe
     avifDecoderData * data = decoder->data;
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        avifDecoderItem * item = data->meta->items.item[itemIndex];
         if (!item->size) {
             continue;
         }
@@ -4244,7 +4255,7 @@ static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
 static int avifMetaFindColorItem(avifMeta * meta)
 {
     for (uint32_t itemIndex = 0; itemIndex < meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &meta->items.item[itemIndex];
+        avifDecoderItem * item = meta->items.item[itemIndex];
         if (avifDecoderItemShouldBeSkipped(item)) {
             continue;
         }
@@ -4278,9 +4289,9 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
                                         avifTileInfo * alphaInfo,
                                         avifBool * isAlphaItemInInput)
 {
-    const avifDecoderItem * colorItem = &meta->items.item[colorItemIndex];
+    const avifDecoderItem * colorItem = meta->items.item[colorItemIndex];
     for (uint32_t itemIndex = 0; itemIndex < meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &meta->items.item[itemIndex];
+        avifDecoderItem * item = meta->items.item[itemIndex];
         if (avifDecoderItemShouldBeSkipped(item)) {
             continue;
         }
@@ -4307,14 +4318,14 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     uint32_t alphaItemCount = 0;
     uint32_t maxItemID = 0;
     for (uint32_t i = 0; i < meta->items.count; ++i) {
-        avifDecoderItem * item = &meta->items.item[i];
+        avifDecoderItem * item = meta->items.item[i];
         if (item->id > maxItemID) {
             maxItemID = item->id;
         }
         if (item->dimgForID == colorItem->id) {
             avifBool seenAlphaForCurrentItem = AVIF_FALSE;
             for (uint32_t j = 0; j < meta->items.count; ++j) {
-                avifDecoderItem * auxlItem = &meta->items.item[j];
+                avifDecoderItem * auxlItem = meta->items.item[j];
                 if (avifDecoderItemIsAlphaAux(auxlItem, item->id)) {
                     if (seenAlphaForCurrentItem || auxlItem->dimgForID != 0) {
                         // One of the following invalid cases:
@@ -4348,13 +4359,13 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     }
     *alphaItemIndex = meta->items.count - 1;
     // avifMetaFindOrCreateItem() could invalidate all existing item pointers. So reset the colorItem pointer.
-    colorItem = &meta->items.item[colorItemIndex];
+    colorItem = meta->items.item[colorItemIndex];
 
     memcpy(alphaItem->type, "grid", 4); // Make it a grid and register alpha items as its tiles.
     alphaItem->width = colorItem->width;
     alphaItem->height = colorItem->height;
     for (uint32_t i = 0; i < alphaItemCount; ++i) {
-        avifDecoderItem * item = &meta->items.item[alphaItemIndices[i]];
+        avifDecoderItem * item = meta->items.item[alphaItemIndices[i]];
         item->dimgForID = alphaItem->id;
     }
     avifFree(alphaItemIndices);
@@ -4421,7 +4432,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
                                                          uint32_t * gainMapItemID)
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        avifDecoderItem * item = data->meta->items.item[itemIndex];
         if (!item->size || item->hasUnsupportedEssentialProperty || item->thumbnailForID != 0) {
             continue;
         }
@@ -4431,7 +4442,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
             uint32_t dimgItemIDs[2] = { 0, 0 };
             uint32_t numDimgItemIDs = 0;
             for (uint32_t otherItemIndex = 0; otherItemIndex < data->meta->items.count; ++otherItemIndex) {
-                avifDecoderItem * otherItem = &data->meta->items.item[otherItemIndex];
+                avifDecoderItem * otherItem = data->meta->items.item[otherItemIndex];
                 if (otherItem->dimgForID != item->id) {
                     continue;
                 }
@@ -4480,7 +4491,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     uint32_t gainMapItemID;
     avifDecoderItem * toneMappedImageItemTmp;
     AVIF_CHECKRES(
-        avifDecoderDataFindToneMappedImageItem(data, &data->meta->items.item[colorItemIndex], &toneMappedImageItemTmp, &gainMapItemID));
+        avifDecoderDataFindToneMappedImageItem(data, data->meta->items.item[colorItemIndex], &toneMappedImageItemTmp, &gainMapItemID));
     if (!toneMappedImageItemTmp) {
         return AVIF_RESULT_OK;
     }
@@ -4494,7 +4505,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     }
     int gainMapItemIndexTmp = -1;
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-        if (gainMapItem->id == data->meta->items.item[itemIndex].id) {
+        if (gainMapItem->id == data->meta->items.item[itemIndex]->id) {
             gainMapItemIndexTmp = itemIndex;
             break;
         }
@@ -4862,7 +4873,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         // either found or created. From this point onwards, we do not create any more items, so it is safe to store the pointers.
         avifDecoderItem * mainItems[AVIF_ITEM_CATEGORY_COUNT];
         for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
-            mainItems[c] = (mainItemIndices[c] == -1) ? NULL : &data->meta->items.item[mainItemIndices[c]];
+            mainItems[c] = (mainItemIndices[c] == -1) ? NULL : data->meta->items.item[mainItemIndices[c]];
         }
         colorProperties = &mainItems[AVIF_ITEM_COLOR]->properties;
 
