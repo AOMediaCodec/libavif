@@ -110,8 +110,8 @@ inline auto ArbitraryAvifImage() {
 inline auto ArbitraryAvifEncoder() {
   const auto codec_choice = fuzztest::ElementOf<avifCodecChoice>(
       {AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_CHOICE_AOM});
-  // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
-  const auto max_threads = fuzztest::InRange(0, 64);
+  // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h is 64.
+  const auto max_threads = fuzztest::ElementOf<int>({0, 1, 2, 64});
   const auto min_quantizer = fuzztest::InRange(AVIF_QUANTIZER_BEST_QUALITY,
                                                AVIF_QUANTIZER_WORST_QUALITY);
   const auto max_quantizer = fuzztest::InRange(AVIF_QUANTIZER_BEST_QUALITY,
