@@ -4606,7 +4606,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             avifDiagnosticsPrintf(&decoder->diag, "Primary item not found");
             return AVIF_RESULT_MISSING_IMAGE_ITEM;
         }
-        colorProperties = &colorItem->properties;
         if (!memcmp(colorItem->type, "grid", 4)) {
             avifROData readData;
             AVIF_CHECKRES(avifDecoderItemRead(colorItem, decoder->io, &readData, 0, 0, data->diag));
@@ -4693,6 +4692,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                           AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+
+        colorProperties = &colorItem->properties;
 
         // Find Exif and/or XMP metadata, if any
         AVIF_CHECKRES(avifDecoderFindMetadata(decoder, data->meta, decoder->image, colorItem->id));
