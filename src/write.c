@@ -256,12 +256,15 @@ static avifEncoderData * avifEncoderDataCreate()
     }
     memset(data, 0, sizeof(avifEncoderData));
     data->imageMetadata = avifImageCreateEmpty();
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    data->altImageMetadata = avifImageCreateEmpty();
-#endif
     if (!data->imageMetadata) {
         goto error;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    data->altImageMetadata = avifImageCreateEmpty();
+    if (!data->altImageMetadata) {
+        goto error;
+    }
+#endif
     if (!avifArrayCreate(&data->items, sizeof(avifEncoderItem), 8)) {
         goto error;
     }
@@ -961,7 +964,7 @@ size_t avifEncoderGetGainMapSizeBytes(avifEncoder * encoder)
     return encoder->data->gainMapSizeBytes;
 }
 
-// Sets altImageMetadata's metadata values to represent the "alternate" image after applying the gain map to the base image.
+// Sets altImageMetadata's metadata values to represent the "alternate" image as if applying the gain map to the base image.
 static avifResult avifImageCopyAltImageMetadata(avifImage * altImageMetadata, const avifImage * imageWithGainMap)
 {
     altImageMetadata->width = imageWithGainMap->width;
@@ -1400,7 +1403,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     if (hasGainMap) {
         AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell->gainMap->image));
         AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_TRUE, &encoder->diag));
-        if (firstCell->gainMap->image->colorPrimaries != 2 || firstCell->gainMap->image->transferCharacteristics != 2) {
+        if (firstCell->gainMap->image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED ||
+            firstCell->gainMap->image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
             avifDiagnosticsPrintf(&encoder->diag, "the gain map image must have colorPrimaries = 2 and transferCharacteristics = 2");
             return AVIF_RESULT_INVALID_ARGUMENT;
         }

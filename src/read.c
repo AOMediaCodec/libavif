@@ -4385,10 +4385,7 @@ static avifResult avifReadColorProperties(avifIO * io,
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
                 avifROData iccRead;
-                const avifResult readResult = io->read(io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &iccRead);
-                if (readResult != AVIF_RESULT_OK) {
-                    return readResult;
-                }
+                AVIF_CHECKRES(io->read(io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &iccRead));
                 colrICCSeen = AVIF_TRUE;
                 AVIF_CHECKRES(avifRWDataSet(icc, iccRead.data, iccRead.size));
             }
@@ -4544,7 +4541,11 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         }
 
         const avifProperty * pixiProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pixi");
-        if (pixiProp && pixiProp->u.pixi.planeCount > 0) {
+        if (pixiProp) {
+            if (pixiProp->u.pixi.planeCount == 0) {
+                avifDiagnosticsPrintf(data->diag, "Box[pixi] of tmap item contains invalid plane count [%u]", pixiProp->u.pixi.planeCount);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
             gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
             // Assume all planes have the same depth.
             gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];

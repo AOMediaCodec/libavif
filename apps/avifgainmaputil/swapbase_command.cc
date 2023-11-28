@@ -18,21 +18,25 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
       image.gainMap->metadata.alternateHdrHeadroomD;
   const bool tone_mapping_to_sdr = (headroom == 0.0f);
 
-  if (image.gainMap->altColorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED ||
-      image.gainMap->altTransferCharacteristics !=
-          AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-    swapped->colorPrimaries = image.gainMap->altColorPrimaries;
-    swapped->transferCharacteristics =
-        image.gainMap->altTransferCharacteristics;
-    swapped->matrixCoefficients = image.gainMap->altMatrixCoefficients;
-  } else {
-    // If there is no cicp on the gain map, use the same values as the old base
-    // image, except for the transfer characteristics.
+  swapped->colorPrimaries = image.gainMap->altColorPrimaries;
+  if (swapped->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+    // Default to the same primaries as the base image if unspecified.
     swapped->colorPrimaries = image.colorPrimaries;
+  }
+
+  swapped->transferCharacteristics = image.gainMap->altTransferCharacteristics;
+  if (swapped->transferCharacteristics ==
+      AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
+    // Default to PQ for HDR and sRGB for SDR if unspecified.
     const avifTransferCharacteristics transfer_characteristics =
         tone_mapping_to_sdr ? AVIF_TRANSFER_CHARACTERISTICS_SRGB
                             : AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
     swapped->transferCharacteristics = transfer_characteristics;
+  }
+
+  swapped->matrixCoefficients = image.gainMap->altMatrixCoefficients;
+  if (swapped->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+    // Default to the same matrix as the base image if unspecified.
     swapped->matrixCoefficients = image.matrixCoefficients;
   }
 

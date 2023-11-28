@@ -156,6 +156,7 @@ avifResult TonemapCommand::Run() {
   const avifPixelFormat alt_yuv_format =
       (image->gainMap->altPlaneCount == 1)
           ? AVIF_PIXEL_FORMAT_YUV400
+          // Favor the least chroma subsampled format.
           : std::min(image->yuvFormat, image->gainMap->image->yuvFormat);
   if (pixel_format == AVIF_PIXEL_FORMAT_NONE) {
     if (tone_mapping_to_base) {
