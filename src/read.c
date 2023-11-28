@@ -4543,7 +4543,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         const avifProperty * pixiProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pixi");
         if (pixiProp) {
             if (pixiProp->u.pixi.planeCount == 0) {
-                avifDiagnosticsPrintf(data->diag, "Box[pixi] of tmap item contains invalid plane count [%u]", pixiProp->u.pixi.planeCount);
+                avifDiagnosticsPrintf(data->diag, "Box[pixi] of tmap item contains unsupported plane count [%u]", pixiProp->u.pixi.planeCount);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
