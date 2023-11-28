@@ -4363,6 +4363,51 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     return AVIF_RESULT_OK;
 }
 
+static avifResult avifReadColorProperties(avifIO * io,
+                                          const avifPropertyArray * properties,
+                                          avifRWData * icc,
+                                          avifColorPrimaries * colorPrimaries,
+                                          avifTransferCharacteristics * transferCharacteristics,
+                                          avifMatrixCoefficients * matrixCoefficients,
+                                          avifRange * yuvRange,
+                                          avifBool * cicpSet)
+{
+    // Find and adopt all colr boxes "at most one for a given value of colour type" (HEIF 6.5.5.1, from Amendment 3)
+    // Accept one of each type, and bail out if more than one of a given type is provided.
+    avifBool colrICCSeen = AVIF_FALSE;
+    avifBool colrNCLXSeen = AVIF_FALSE;
+    for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
+        avifProperty * prop = &properties->prop[propertyIndex];
+
+        if (!memcmp(prop->type, "colr", 4)) {
+            if (prop->u.colr.hasICC) {
+                if (colrICCSeen) {
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                avifROData iccRead;
+                AVIF_CHECKRES(io->read(io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &iccRead));
+                colrICCSeen = AVIF_TRUE;
+                AVIF_CHECKRES(avifRWDataSet(icc, iccRead.data, iccRead.size));
+            }
+            if (prop->u.colr.hasNCLX) {
+                if (colrNCLXSeen) {
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                colrNCLXSeen = AVIF_TRUE;
+                if (cicpSet != NULL) {
+                    *cicpSet = AVIF_TRUE;
+                }
+                *colorPrimaries = prop->u.colr.colorPrimaries;
+                *transferCharacteristics = prop->u.colr.transferCharacteristics;
+                *matrixCoefficients = prop->u.colr.matrixCoefficients;
+                *yuvRange = prop->u.colr.range;
+            }
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 // Finds a 'tmap' (tone mapped image item) box associated with the given 'colorItem'.
 // If found, fills 'toneMappedImageItem' and  sets 'gainMapItemID' to the id of the gain map
@@ -4467,26 +4512,43 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
         decoder->image->gainMap->image = avifImageCreateEmpty();
         AVIF_CHECKERR(decoder->image->gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
+        avifGainMap * gainMap = decoder->image->gainMap;
 
         // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
         for (uint32_t propertyIndex = 0; propertyIndex < gainMapItem->properties.count; ++propertyIndex) {
             avifProperty * prop = &gainMapItem->properties.prop[propertyIndex];
             if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
-                decoder->image->gainMap->image->colorPrimaries = prop->u.colr.colorPrimaries;
-                decoder->image->gainMap->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
-                decoder->image->gainMap->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
-                decoder->image->gainMap->image->yuvRange = prop->u.colr.range;
+                gainMap->image->colorPrimaries = prop->u.colr.colorPrimaries;
+                gainMap->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
+                gainMap->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
+                gainMap->image->yuvRange = prop->u.colr.range;
                 break;
             }
         }
 
-        // Copy HDR properties associated with the tmap box to the gain map image.
-        // Technically, the gain map is not an HDR image, but in the API, this is the most convenient
-        // place to put this data.
-        // TODO(maryla): add other HDR boxes: mdcv, cclv, etc.
+        AVIF_CHECKRES(avifReadColorProperties(decoder->io,
+                                              &toneMappedImageItemTmp->properties,
+                                              &gainMap->altICC,
+                                              &gainMap->altColorPrimaries,
+                                              &gainMap->altTransferCharacteristics,
+                                              &gainMap->altMatrixCoefficients,
+                                              &gainMap->altYUVRange,
+                                              /*cicpSet=*/NULL));
+
         const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clli");
         if (clliProp) {
-            decoder->image->gainMap->image->clli = clliProp->u.clli;
+            gainMap->altCLLI = clliProp->u.clli;
+        }
+
+        const avifProperty * pixiProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pixi");
+        if (pixiProp) {
+            if (pixiProp->u.pixi.planeCount == 0) {
+                avifDiagnosticsPrintf(data->diag, "Box[pixi] of tmap item contains unsupported plane count [%u]", pixiProp->u.pixi.planeCount);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
+            // Assume all planes have the same depth.
+            gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
         }
     }
 
@@ -4903,39 +4965,14 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
     }
 
-    // Find and adopt all colr boxes "at most one for a given value of colour type" (HEIF 6.5.5.1, from Amendment 3)
-    // Accept one of each type, and bail out if more than one of a given type is provided.
-    avifBool colrICCSeen = AVIF_FALSE;
-    avifBool colrNCLXSeen = AVIF_FALSE;
-    for (uint32_t propertyIndex = 0; propertyIndex < colorProperties->count; ++propertyIndex) {
-        avifProperty * prop = &colorProperties->prop[propertyIndex];
-
-        if (!memcmp(prop->type, "colr", 4)) {
-            if (prop->u.colr.hasICC) {
-                if (colrICCSeen) {
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
-                avifROData icc;
-                const avifResult readResult = decoder->io->read(decoder->io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &icc);
-                if (readResult != AVIF_RESULT_OK) {
-                    return readResult;
-                }
-                colrICCSeen = AVIF_TRUE;
-                AVIF_CHECKRES(avifImageSetProfileICC(decoder->image, icc.data, icc.size));
-            }
-            if (prop->u.colr.hasNCLX) {
-                if (colrNCLXSeen) {
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
-                colrNCLXSeen = AVIF_TRUE;
-                data->cicpSet = AVIF_TRUE;
-                decoder->image->colorPrimaries = prop->u.colr.colorPrimaries;
-                decoder->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
-                decoder->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
-                decoder->image->yuvRange = prop->u.colr.range;
-            }
-        }
-    }
+    AVIF_CHECKRES(avifReadColorProperties(decoder->io,
+                                          colorProperties,
+                                          &decoder->image->icc,
+                                          &decoder->image->colorPrimaries,
+                                          &decoder->image->transferCharacteristics,
+                                          &decoder->image->matrixCoefficients,
+                                          &decoder->image->yuvRange,
+                                          &data->cicpSet));
 
     const avifProperty * clliProp = avifPropertyArrayFind(colorProperties, "clli");
     if (clliProp) {

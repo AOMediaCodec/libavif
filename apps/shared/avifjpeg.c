@@ -1138,6 +1138,11 @@ static avifBool avifJPEGReadInternal(FILE * f,
         // Ignore the return value: continue even if we fail to find/parse/decode the gain map.
         avifGainMap * gainMap = avifGainMapCreate();
         if (avifJPEGExtractGainMapImage(f, &cinfo, gainMap, chromaDownsampling)) {
+            // Since jpeg doesn't provide this metadata, assume the values are the same as the base image
+            // with a PQ transfer curve.
+            gainMap->altColorPrimaries = avif->colorPrimaries;
+            gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
+            gainMap->altMatrixCoefficients = avif->matrixCoefficients;
             avif->gainMap = gainMap;
         } else {
             avifGainMapDestroy(gainMap);

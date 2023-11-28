@@ -566,6 +566,9 @@ avifResult avifImageComputeGainMap(const avifImage * baseImage, const avifImage 
 {
     avifDiagnosticsClearError(diag);
 
+    if (baseImage == NULL || altImage == NULL || gainMap == NULL) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     if (baseImage->icc.size > 0 || altImage->icc.size > 0) {
         avifDiagnosticsPrintf(diag, "Computing gain maps for images with ICC profiles is not supported");
         return AVIF_RESULT_NOT_IMPLEMENTED;
@@ -617,6 +620,18 @@ avifResult avifImageComputeGainMap(const avifImage * baseImage, const avifImage 
                                      baseImage->colorPrimaries,
                                      gainMap,
                                      diag);
+
+    if (res != AVIF_RESULT_OK) {
+        goto cleanup;
+    }
+
+    AVIF_CHECKRES(avifRWDataSet(&gainMap->altICC, altImage->icc.data, altImage->icc.size));
+    gainMap->altColorPrimaries = altImage->colorPrimaries;
+    gainMap->altTransferCharacteristics = altImage->transferCharacteristics;
+    gainMap->altMatrixCoefficients = altImage->matrixCoefficients;
+    gainMap->altDepth = altImage->depth;
+    gainMap->altPlaneCount = (altImage->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+    gainMap->altCLLI = altImage->clli;
 
 cleanup:
     avifRGBImageFreePixels(&baseImageRgb);

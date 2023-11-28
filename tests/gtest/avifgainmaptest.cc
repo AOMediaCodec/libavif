@@ -98,11 +98,21 @@ ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
   if (base_rendition_is_hdr) {
     image->clli.maxCLL = 10;
     image->clli.maxPALL = 5;
+    image->gainMap->altDepth = 8;
+    image->gainMap->altPlaneCount = 3;
+    image->gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_BT601;
+    image->gainMap->altTransferCharacteristics =
+        AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    image->gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_SMPTE2085;
   } else {
-    // Even though this is attached to the gain map, it represents the clli
-    // information of the tone mapped image.
-    image->gainMap->image->clli.maxCLL = 10;
-    image->gainMap->image->clli.maxPALL = 5;
+    image->gainMap->altCLLI.maxCLL = 10;
+    image->gainMap->altCLLI.maxPALL = 5;
+    image->gainMap->altDepth = 10;
+    image->gainMap->altPlaneCount = 3;
+    image->gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_BT2020;
+    image->gainMap->altTransferCharacteristics =
+        AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
+    image->gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_SMPTE2085;
   }
 
   return image;
@@ -140,10 +150,15 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   ASSERT_NE(decoded->gainMap->image, nullptr);
   EXPECT_EQ(decoded->gainMap->image->matrixCoefficients,
             image->gainMap->image->matrixCoefficients);
-  EXPECT_EQ(decoded->gainMap->image->clli.maxCLL,
-            image->gainMap->image->clli.maxCLL);
-  EXPECT_EQ(decoded->gainMap->image->clli.maxPALL,
-            image->gainMap->image->clli.maxPALL);
+  EXPECT_EQ(decoded->gainMap->altCLLI.maxCLL, image->gainMap->altCLLI.maxCLL);
+  EXPECT_EQ(decoded->gainMap->altCLLI.maxPALL, image->gainMap->altCLLI.maxPALL);
+  EXPECT_EQ(decoded->gainMap->altDepth, 10u);
+  EXPECT_EQ(decoded->gainMap->altPlaneCount, 3u);
+  EXPECT_EQ(decoded->gainMap->altColorPrimaries, AVIF_COLOR_PRIMARIES_BT2020);
+  EXPECT_EQ(decoded->gainMap->altTransferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084);
+  EXPECT_EQ(decoded->gainMap->altMatrixCoefficients,
+            AVIF_MATRIX_COEFFICIENTS_SMPTE2085);
   EXPECT_EQ(decoded->gainMap->image->width, image->gainMap->image->width);
   EXPECT_EQ(decoded->gainMap->image->height, image->gainMap->image->height);
   EXPECT_EQ(decoded->gainMap->image->depth, image->gainMap->image->depth);
@@ -196,6 +211,18 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
             40.0);
   EXPECT_EQ(decoded->clli.maxCLL, image->clli.maxCLL);
   EXPECT_EQ(decoded->clli.maxPALL, image->clli.maxPALL);
+  EXPECT_EQ(decoded->gainMap->altCLLI.maxCLL, 0u);
+  EXPECT_EQ(decoded->gainMap->altCLLI.maxPALL, 0u);
+  EXPECT_EQ(decoded->gainMap->altDepth, 8u);
+  EXPECT_EQ(decoded->gainMap->altPlaneCount, 3u);
+  EXPECT_EQ(decoded->gainMap->altColorPrimaries, AVIF_COLOR_PRIMARIES_BT601);
+  EXPECT_EQ(decoded->gainMap->altTransferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_SRGB);
+  EXPECT_EQ(decoded->gainMap->altMatrixCoefficients,
+            AVIF_MATRIX_COEFFICIENTS_SMPTE2085);
+  EXPECT_EQ(decoded->gainMap->image->width, image->gainMap->image->width);
+  EXPECT_EQ(decoded->gainMap->image->height, image->gainMap->image->height);
+  EXPECT_EQ(decoded->gainMap->image->depth, image->gainMap->image->depth);
   CheckGainMapMetadataMatches(decoded->gainMap->metadata,
                               image->gainMap->metadata);
 

@@ -264,6 +264,14 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             AVIF_CHECKERR(dstImage->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
         }
         dstImage->gainMap->metadata = srcImage->gainMap->metadata;
+        AVIF_CHECKRES(avifRWDataSet(&dstImage->gainMap->altICC, srcImage->gainMap->altICC.data, srcImage->gainMap->altICC.size));
+        dstImage->gainMap->altColorPrimaries = srcImage->gainMap->altColorPrimaries;
+        dstImage->gainMap->altTransferCharacteristics = srcImage->gainMap->altTransferCharacteristics;
+        dstImage->gainMap->altMatrixCoefficients = srcImage->gainMap->altMatrixCoefficients;
+        dstImage->gainMap->altDepth = srcImage->gainMap->altDepth;
+        dstImage->gainMap->altPlaneCount = srcImage->gainMap->altPlaneCount;
+        dstImage->gainMap->altCLLI = srcImage->gainMap->altCLLI;
+
         if (srcImage->gainMap->image) {
             if (!dstImage->gainMap->image) {
                 dstImage->gainMap->image = avifImageCreateEmpty();
@@ -1149,6 +1157,10 @@ avifGainMap * avifGainMapCreate()
         return NULL;
     }
     memset(gainMap, 0, sizeof(avifGainMap));
+    gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+    gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+    gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+    gainMap->altYUVRange = AVIF_RANGE_FULL;
     return gainMap;
 }
 

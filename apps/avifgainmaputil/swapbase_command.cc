@@ -18,28 +18,25 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
       image.gainMap->metadata.alternateHdrHeadroomD;
   const bool tone_mapping_to_sdr = (headroom == 0.0f);
 
-  // The gain map's cicp values are those of the 'tmap' item and describe the
-  // image obtained by fully applying the gain map. See ISO/IEC JTC 1/SC 29/WG 3
-  // m64379v1 4.1.1: A tmap derived item shall be associated with a colr item
-  // property. This property describes the colour properties of the
-  // reconstructed image if the gain map input item is fully applied according
-  // to ISO/AWI 214961.
-  if (image.gainMap->image->transferCharacteristics !=
-          AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED ||
-      image.gainMap->image->colorPrimaries !=
-          AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-    swapped->colorPrimaries = image.gainMap->image->colorPrimaries;
-    swapped->transferCharacteristics =
-        image.gainMap->image->transferCharacteristics;
-    swapped->matrixCoefficients = image.gainMap->image->matrixCoefficients;
-  } else {
-    // If there is no cicp on the gain map, use the same values as the old base
-    // image, except for the transfer characteristics.
+  swapped->colorPrimaries = image.gainMap->altColorPrimaries;
+  if (swapped->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+    // Default to the same primaries as the base image if unspecified.
     swapped->colorPrimaries = image.colorPrimaries;
+  }
+
+  swapped->transferCharacteristics = image.gainMap->altTransferCharacteristics;
+  if (swapped->transferCharacteristics ==
+      AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
+    // Default to PQ for HDR and sRGB for SDR if unspecified.
     const avifTransferCharacteristics transfer_characteristics =
         tone_mapping_to_sdr ? AVIF_TRANSFER_CHARACTERISTICS_SRGB
                             : AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
     swapped->transferCharacteristics = transfer_characteristics;
+  }
+
+  swapped->matrixCoefficients = image.gainMap->altMatrixCoefficients;
+  if (swapped->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+    // Default to the same matrix as the base image if unspecified.
     swapped->matrixCoefficients = image.matrixCoefficients;
   }
 
@@ -71,13 +68,20 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
   // 'swapped' has taken ownership of the gain map, so remove ownership
   // from the old image to prevent a double free.
   image.gainMap = nullptr;
-  // Set the gain map's cicp values and clli to the old base image's.
-  swapped->gainMap->image->clli = image.clli;
-  swapped->gainMap->image->colorPrimaries = image.colorPrimaries;
-  swapped->gainMap->image->transferCharacteristics =
-      image.transferCharacteristics;
-  // Don't touch matrixCoefficients as it's needed to correctly decode the gain
-  // map.
+  // Fill in the information on the alternate image
+  result =
+      avifRWDataSet(&swapped->gainMap->altICC, image.icc.data, image.icc.size);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
+  swapped->gainMap->altColorPrimaries = image.colorPrimaries;
+  swapped->gainMap->altTransferCharacteristics = image.transferCharacteristics;
+  swapped->gainMap->altMatrixCoefficients = image.matrixCoefficients;
+  swapped->gainMap->altYUVRange = image.yuvRange;
+  swapped->gainMap->altDepth = image.depth;
+  swapped->gainMap->altPlaneCount =
+      (image.yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+  swapped->gainMap->altCLLI = image.clli;
 
   // Swap base and alternate in the gain map metadata.
   avifGainMapMetadata& metadata = swapped->gainMap->metadata;
