@@ -162,6 +162,9 @@ avifResult SwapBaseCommand::Run() {
   }
 
   ImagePtr new_base(avifImageCreateEmpty());
+  if (new_base == nullptr) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
   result = ChangeBase(*image, depth, pixel_format, new_base.get());
   if (result != AVIF_RESULT_OK) {
     return result;
