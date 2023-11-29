@@ -669,6 +669,10 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
 
+#if defined(AVIF_BUILDING_SHARED_LIBS) && defined(AVIF_BUILDING_STATIC_LIBS)
+#error "Your target is linking against avif and avif_internal: only one should be chosen"
+#endif
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

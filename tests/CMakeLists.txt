@@ -42,7 +42,7 @@ endforeach()
 
 if(AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
-    target_link_libraries(aviftest_helpers avif_apps avif_internal)
+    target_link_libraries(aviftest_helpers avif_apps_internal avif_internal)
 endif()
 
 # Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
