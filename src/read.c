@@ -800,8 +800,8 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
     AVIF_CHECKERR(item_ptr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     *item_ptr = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
     if (*item_ptr == NULL) {
-      avifArrayPop(&meta->items);
-      return AVIF_RESULT_OUT_OF_MEMORY;
+        avifArrayPop(&meta->items);
+        return AVIF_RESULT_OUT_OF_MEMORY;
     }
     memset(*item_ptr, 0, sizeof(avifDecoderItem));
 
