@@ -64,6 +64,7 @@ avifResult ConvertCommand::Run() {
     // If there is no ICC and no CICP, assume sRGB by default.
     image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    image->gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
   }
 
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
@@ -77,9 +78,9 @@ avifResult ConvertCommand::Run() {
     if (depth == 0) {
       depth = image->gainMap->metadata.alternateHdrHeadroomN == 0 ? 8 : 10;
     }
-    ImagePtr new_base(
-        avifImageCreate(image->width, image->height, depth, image->yuvFormat));
-    const avifResult result = ChangeBase(*image, new_base.get());
+    ImagePtr new_base(avifImageCreateEmpty());
+    const avifResult result =
+        ChangeBase(*image, depth, image->yuvFormat, new_base.get());
     if (result != AVIF_RESULT_OK) {
       return result;
     }

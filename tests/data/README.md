@@ -505,7 +505,7 @@ SDR image with a gain map to allow tone mapping to HDR.
 ![](seine_sdr_gainmap_big_srgb.avif)
 
 Source : modified version of `seine_sdr_gainmap_srgb.avif` with an upscaled gain map, generated using libavif's API.
-See `CreateTestImages` in `avifgainmaptest.cc`.
+See `CreateTestImages` in `avifgainmaptest.cc` (set kUpdateTestImages to update images).
 
 SDR image with a gain map to allow tone mapping to HDR. The gain map's width and height are doubled compared to the base image.
 This is an atypical image just for testing. Typically, the gain map would be either the same size or smaller as the base image.
@@ -517,7 +517,7 @@ This is an atypical image just for testing. Typically, the gain map would be eit
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source : created from `seine_hdr_srgb.avif` (for the base image) and `seine_sdr_gainmap_srgb.avif` (for the gain map) with libavif's API.
-See `CreateTestImages` in `avifgainmaptest.cc`.
+See `CreateTestImages` in `avifgainmaptest.cc` (set kUpdateTestImages to update images).
 
 HDR image with a gain map to allow tone mapping to SDR.
 
@@ -528,7 +528,7 @@ HDR image with a gain map to allow tone mapping to SDR.
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source : modified version of `seine_hdr_gainmap_srgb.avif` with a downscaled gain map, generated using libavif's API.
-See `CreateTestImages` in `avifgainmaptest.cc`.
+See `CreateTestImages` in `avifgainmaptest.cc` (set kUpdateTestImages to update images).
 
 SDR image with a gain map to allow tone mapping to HDR. The gain map's width and height are halved compared to the base image.
 

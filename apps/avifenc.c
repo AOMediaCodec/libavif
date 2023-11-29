@@ -2285,6 +2285,11 @@ MAIN()
         // image didn't provide any CICP. Explicitly signal SRGB CP/TC here, as 2/2/x will be
         // interpreted as SRGB anyway.
         image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+        if (image->gainMap && image->gainMap->image) {
+            image->gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
+        }
+#endif
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
     }
 
