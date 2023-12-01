@@ -21,7 +21,7 @@ namespace {
 //------------------------------------------------------------------------------
 
 void Decode(const std::string& arbitrary_bytes, DecoderPtr decoder) {
-  ASSERT_NE(GetSeedDataDir(), nullptr);  // Make sure seeds are available.
+  ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);

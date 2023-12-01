@@ -46,7 +46,7 @@ avifResult AvifIoRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
 
 void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
                 bool give_size_hint, bool use_nth_image_api) {
-  ASSERT_NE(GetSeedDataDir(), nullptr);  // Make sure seeds are available.
+  ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
 
   ImagePtr reference(avifImageCreateEmpty());
   ASSERT_NE(reference.get(), nullptr);

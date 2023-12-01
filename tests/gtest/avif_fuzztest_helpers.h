@@ -195,31 +195,32 @@ inline ::testing::Environment* SetStackLimitTo512x1024Bytes() {
 
 //------------------------------------------------------------------------------
 
-// Returns the value of the 'TEST_DATA_DIR' environment variable.
+// Returns the paths contained in the 'TEST_DATA_DIRS' environment variable.
+// Several paths can be set in the variable, separated by ';'.
 // Returns nullptr if not set.
 // Tests that use ArbitraryImageWithSeeds() should
-// ASSERT_NE(GetSeedDataDir(), nullptr) if they want to make sure that seeds are
-// actually used.
-const char* GetSeedDataDir();
+// ASSERT_FALSE(GetSeedDataDirs().empty()) if they want to make sure that seeds
+// are actually used.
+std::vector<std::string> GetSeedDataDirs();
 
 // Returns a list of test images contents (not paths) from the directory set in
-// the 'TEST_DATA_DIR' environment variable, that are smaller than
+// the 'TEST_DATA_DIRS' environment variable, that are smaller than
 // 'max_file_size' and have one of the formats in 'image_formats' (or any format
 // if 'image_formats' is empty).
-// If TEST_DATA_DIR is not set, returns an empty set.
-// Tests that use this should ASSERT_NE(GetSeedDataDir(), nullptr)
+// If TEST_DATA_DIRS is not set, returns an empty set.
+// Tests that use this should ASSERT_FALSE(GetSeedDataDirs().empty())
 // if they want to make sure that seeds are actually used.
-// Terminates the program with abort() if TEST_DATA_DIR is set but doesn't
+// Terminates the program with abort() if TEST_DATA_DIRS is set but doesn't
 // contain any matching images.
 std::vector<std::string> GetTestImagesContents(
     size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats);
 
 // Generator for an arbitrary ImagePtr that uses test image files as seeds.
-// Uses the 'TEST_DATA_DIR' environment variable to load the seeds.
-// If TEST_DATA_DIR is not set, no seeds are used.
-// Tests that use this should ASSERT_NE(GetSeedDataDir(), nullptr)
+// Uses the 'TEST_DATA_DIRS' environment variable to load the seeds.
+// If TEST_DATA_DIRS is not set, no seeds are used.
+// Tests that use this should ASSERT_FALSE(GetSeedDataDirs().empty())
 // if they want to make sure that seeds are actually used.
-// Terminates the program with abort() if TEST_DATA_DIR is set but doesn't
+// Terminates the program with abort() if TEST_DATA_DIRS is set but doesn't
 // contain any matching images.
 inline auto ArbitraryImageWithSeeds(
     const std::vector<avifAppFileFormat>& image_formats) {
