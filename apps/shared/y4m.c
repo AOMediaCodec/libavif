@@ -7,9 +7,14 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "avif/avif.h"
+#include "avifutil.h"
 
 #define Y4M_MAX_LINE_SIZE 2048 // Arbitrary limit. Y4M headers should be much smaller than this
 
@@ -130,6 +135,23 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
+}
+
+// Returns an unsigned integer value parsed from [start:end[.
+// Returns -1 in case of failure.
+int y4mReadUnsignedInt(const char * start, const char * end)
+{
+    if (start >= end) {
+        return -1;
+    }
+    int64_t value = 0;
+    while (start != end && *start >= '0' && *start <= '9') {
+        value = value * 10 + (*(start++) - '0');
+        if (value > INT_MAX) {
+            return -1;
+        }
+    }
+    return (int)value;
 }
 
 // Note: this modifies framerateString
@@ -307,10 +329,10 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
         while (p != end) {
             switch (*p) {
                 case 'W': // width
-                    frame.width = atoi((const char *)p + 1);
+                    frame.width = y4mReadUnsignedInt((const char *)p + 1, (const char *)end);
                     break;
                 case 'H': // height
-                    frame.height = atoi((const char *)p + 1);
+                    frame.height = y4mReadUnsignedInt((const char *)p + 1, (const char *)end);
                     break;
                 case 'C': // color space
                     if (!getHeaderString(p, end, tmpBuffer, 31)) {
