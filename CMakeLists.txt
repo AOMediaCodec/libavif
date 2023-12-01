@@ -60,24 +60,19 @@ function(set_codec_option CODEC NAME ENCDEC EXTRA)
         # Deal with the older way of setting options.
         if(AVIF_CODEC_${CODEC} STREQUAL "ON")
             if(AVIF_LOCAL_${CODEC})
-                message(WARNING "Setting AVIF_CODEC_${CODEC} and AVIF_LOCAL_${CODEC} to ON is deprecated. "
-                                "Only set AVIF_CODEC_${CODEC} to LOCAL"
-                )
                 set(DEFAULT "LOCAL")
             else()
-                message(WARNING "Setting AVIF_CODEC_${CODEC} to ON and AVIF_LOCAL_${CODEC} to OFF is deprecated. "
-                                "Only set AVIF_CODEC_${CODEC} to SYSTEM"
-                )
                 set(DEFAULT "SYSTEM")
             endif()
+            message(WARNING "Setting AVIF_CODEC_${CODEC} and AVIF_LOCAL_${CODEC} is deprecated. "
+                            "Set AVIF_CODEC_${CODEC} to ${DEFAULT} instead."
+            )
         endif()
     else()
         set(DEFAULT "OFF")
     endif()
     if(AVIF_CODEC_${CODEC} STREQUAL "OFF" AND AVIF_LOCAL_${CODEC} STREQUAL "OFF")
-        message(WARNING "Setting AVIF_CODEC_${CODEC} and AVIF_LOCAL_${CODEC} to OFF is deprecated. "
-                        "Only set AVIF_CODEC_${CODEC} to OFF"
-        )
+        message(WARNING "Setting AVIF_LOCAL_${CODEC} is deprecated. " "Only set AVIF_CODEC_${CODEC} to OFF instead.")
     endif()
     set(AVIF_CODEC_${CODEC} ${DEFAULT} CACHE STRING "Use the ${NAME} codec for ${ENCDEC}${EXTRA}" FORCE)
     set_property(CACHE AVIF_CODEC_${CODEC} PROPERTY STRINGS OFF LOCAL SYSTEM)
