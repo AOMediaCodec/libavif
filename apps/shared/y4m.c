@@ -8,7 +8,6 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -141,10 +140,10 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
 // Returns -1 in case of failure.
 int y4mReadUnsignedInt(const char * start, const char * end)
 {
-    if (start >= end) {
+    if (start >= end || *start < '0' || *start > '9') {
         return -1;
     }
-    int64_t value = 0;
+    int64_t value = *(start++) - '0';
     while (start != end && *start >= '0' && *start <= '9') {
         value = value * 10 + (*(start++) - '0');
         if (value > INT_MAX) {
