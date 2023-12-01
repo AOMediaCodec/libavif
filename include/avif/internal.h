@@ -126,11 +126,11 @@ void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 
-// Copies the samples from srcImage to dstImage. dstImage must be allocated.
+// Copies the planes from srcImage to dstImage. dstImage must be allocated.
 // srcImage and dstImage must have the same width, height, and depth.
 // If the AVIF_PLANES_YUV bit is set in planes, then srcImage and dstImage must have the same yuvFormat and yuvRange.
 // Ignores the gainMap field (which exists only if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+void avifImageCopyPlanes(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 typedef struct avifAlphaParams
 {

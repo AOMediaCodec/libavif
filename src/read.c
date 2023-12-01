@@ -1576,7 +1576,7 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
         assert(AVIF_FALSE);
         return AVIF_FALSE;
     }
-    avifImageCopySamples(&dstView, &srcView, (tile->input->itemCategory == AVIF_ITEM_ALPHA) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+    avifImageCopyPlanes(&dstView, &srcView, (tile->input->itemCategory == AVIF_ITEM_ALPHA) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
     return AVIF_TRUE;
 }

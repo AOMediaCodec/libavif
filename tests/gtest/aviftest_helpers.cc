@@ -380,7 +380,7 @@ avifResult MergeGrid(int grid_cols, int grid_rows,
       rect.width = image->width;
       rect.height = image->height;
       AVIF_CHECKRES(avifImageSetViewRect(view.get(), merged, &rect));
-      avifImageCopySamples(/*dstImage=*/view.get(), image, AVIF_PLANES_ALL);
+      avifImageCopyPlanes(/*dstImage=*/view.get(), image, AVIF_PLANES_ALL);
       assert(!view->imageOwnsYUVPlanes);
       rect.x += rect.width;
     }

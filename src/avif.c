@@ -189,7 +189,7 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
     dstImage->imir = srcImage->imir;
 }
 
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+void avifImageCopyPlanes(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
     assert(srcImage->depth == dstImage->depth);
     if (planes & AVIF_PLANES_YUV) {
@@ -255,7 +255,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             return allocationResult;
         }
     }
-    avifImageCopySamples(dstImage, srcImage, planes);
+    avifImageCopyPlanes(dstImage, srcImage, planes);
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (srcImage->gainMap) {
