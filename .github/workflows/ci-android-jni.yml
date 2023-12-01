@@ -19,7 +19,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Download and Setup the Android NDK
-        uses: nttld/setup-ndk@3354316c3285ea90da09d047280dd79d00d5a37a # v1.4.1
+        uses: nttld/setup-ndk@6a7e9c5494a25c4842ca1011f710300132eacd94 # v1.4.2
         id: setup-ndk
         with:
           # r25c is the same as 25.2.9519653.
@@ -46,12 +46,12 @@ jobs:
         working-directory: ext
         run: bash libyuv_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
       - name: Setup JDK
-        uses: actions/setup-java@0ab4596768b603586c0de567f2430c30f5b0d2b0 # v3.13.0
+        uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93 # v4.0.0
         with:
           distribution: "zulu"
           java-version: 17
       - name: Download and Setup the Android SDK
-        uses: android-actions/setup-android@13f81365a437096ca29f87b1e7389bf0ea1385ed # v3.0.0
+        uses: android-actions/setup-android@07976c6290703d34c16d382cb36445f98bb43b1f # v3.2.0
       - name: Install CMake in the Android SDK
         # This is the same version of cmake that is found in build.gradle. This
         # will be used to build libavif and the JNI bindings.
