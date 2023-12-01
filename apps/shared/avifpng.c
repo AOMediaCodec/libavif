@@ -377,7 +377,7 @@ avifBool avifPNGRead(const char * inputFilename,
         } else if (allowChangingCicp) {
             if (png_get_sRGB(png, info, &srgbIntent) == PNG_INFO_sRGB) {
                 // srgbIntent ignored
-                avif->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+                avif->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
                 avif->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
             } else {
                 avifBool needToGenerateICC = AVIF_FALSE;
@@ -619,7 +619,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         // then they could be written in cHRM/gAMA chunks.
         png_set_iCCP(png, info, "libavif", 0, avif->icc.data, (png_uint_32)avif->icc.size);
     } else {
-        const avifBool isSrgb = (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709) &&
+        const avifBool isSrgb = (avif->colorPrimaries == AVIF_COLOR_PRIMARIES_SRGB) &&
                                 (avif->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB);
         if (isSrgb) {
             png_set_sRGB_gAMA_and_cHRM(png, info, PNG_sRGB_INTENT_PERCEPTUAL);

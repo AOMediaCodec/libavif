@@ -2112,7 +2112,7 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
         AVIF_CHECKRES(avifRWStreamWriteBits(s, image->matrixCoefficients, 8));    // unsigned int(8) matrix_coefficients;
         AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)image->icc.size - 1)); // varint(32) icc_data_size;
     } else {
-        if (((image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709) && (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB) &&
+        if (((image->colorPrimaries == AVIF_COLOR_PRIMARIES_SRGB) && (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB) &&
              (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT601)) ||
             ((image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
              (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) &&

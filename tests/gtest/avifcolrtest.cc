@@ -59,7 +59,7 @@ TEST(TransferCharacteristicsTest, RoundTrip) {
       EXPECT_EQ(min_linear, 0.0f);
     }
 
-    if (tc == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084) {
+    if (tc == AVIF_TRANSFER_CHARACTERISTICS_PQ) {
       EXPECT_NEAR(max_linear, 10000.0f / 203.0f,
                   0.00001);  // PQ max extended SDR value.
     } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_HLG) {
@@ -91,7 +91,7 @@ TEST(TransferCharacteristicsTest, ToGammaHasCorrectShape) {
       const float linear = static_cast<float>(j) / kSteps;
 
       float extended_sdr_scaled = linear;
-      if (tc == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084) {
+      if (tc == AVIF_TRANSFER_CHARACTERISTICS_PQ) {
         // Scale to the whole range.
         extended_sdr_scaled *= 10000.0f / 203.0f;
       } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_HLG) {

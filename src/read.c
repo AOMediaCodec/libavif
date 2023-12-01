@@ -3413,7 +3413,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
         ++iccDataSize;
     } else if (colorType == AVIF_CONI_COLOR_TYPE_SRGB) {
         // sRGB
-        colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+        colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
         transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
         matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
         iccDataSize = 0;

@@ -1141,7 +1141,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
             // Since jpeg doesn't provide this metadata, assume the values are the same as the base image
             // with a PQ transfer curve.
             gainMap->altColorPrimaries = avif->colorPrimaries;
-            gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
+            gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
             gainMap->altMatrixCoefficients = avif->matrixCoefficients;
             avif->gainMap = gainMap;
         } else {

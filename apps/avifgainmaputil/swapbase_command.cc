@@ -30,7 +30,7 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
     // Default to PQ for HDR and sRGB for SDR if unspecified.
     const avifTransferCharacteristics transfer_characteristics =
         tone_mapping_to_sdr ? AVIF_TRANSFER_CHARACTERISTICS_SRGB
-                            : AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
+                            : AVIF_TRANSFER_CHARACTERISTICS_PQ;
     swapped->transferCharacteristics = transfer_characteristics;
   }
 

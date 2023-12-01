@@ -62,7 +62,7 @@ avifResult ConvertCommand::Run() {
              image->transferCharacteristics ==
                  AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
     // If there is no ICC and no CICP, assume sRGB by default.
-    image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+    image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
   }
 
