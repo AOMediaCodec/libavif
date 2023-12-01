@@ -22,8 +22,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
     // ClusterFuzz passes -rss_limit_mb=2560 to avif_decode_fuzzer. Empirically setting
     // decoder->imageSizeLimit to this value allows avif_decode_fuzzer to consume no more than
     // 2560 MB of memory.
-    static_assert(11 * 1024 * 10 * 1024 <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT, "");
-    decoder->imageSizeLimit = 11 * 1024 * 10 * 1024;
+    // Also limit the dimensions to avoid timeouts and to speed the fuzzing up.
+    constexpr uint32_t kImageSizeLimit = 8 * 1024 * 8 * 1024;
+    static_assert(kImageSizeLimit <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT, "");
+    decoder->imageSizeLimit = kImageSizeLimit;
     avifIO * io = avifIOCreateMemoryReader(Data, Size);
     // Simulate Chrome's avifIO object, which is not persistent.
     io->persistent = AVIF_FALSE;
