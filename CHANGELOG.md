@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add imageSequenceTrackPresent flag to the avifDecoder struct.
 * avifImageScale() function was made part of the public ABI.
 * Add avif_cxx.h as a C++ header with basic functionality.
+* Add enum aliases AVIF_COLOR_PRIMARIES_SRGB, AVIF_COLOR_PRIMARIES_BT2100,
+  AVIF_TRANSFER_CHARACTERISTICS_PQ, AVIF_TRANSFER_CHARACTERISTICS_BT2100_PQ,
+  AVIF_TRANSFER_CHARACTERISTICS_BT2100_HLG.
 
 ### Changed
 * Update aom.cmd: v3.7.1
