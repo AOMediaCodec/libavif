@@ -213,43 +213,60 @@ class Environment : public ::testing::Environment {
 
 //------------------------------------------------------------------------------
 
-const char* GetSeedDataDir() { return std::getenv("TEST_DATA_DIR"); }
+std::vector<std::string> GetSeedDataDirs() {
+  const char* var = std::getenv("TEST_DATA_DIRS");
+  std::vector<std::string> res;
+  if (var == nullptr || *var == 0) return res;
+  const char* var_start = var;
+  while (true) {
+    if (*var == 0 || *var == ';') {
+      res.push_back(std::string(var_start, var - var_start));
+      if (*var == 0) break;
+      var_start = var + 1;
+    }
+    ++var;
+  }
+  return res;
+}
 
 std::vector<std::string> GetTestImagesContents(
     size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats) {
   // Use an environment variable to get the test data directory because
   // fuzztest seeds are created before the main() function is called, so the
   // test has no chance to parse command line arguments.
-  const char* const test_data_dir = GetSeedDataDir();
-  if (test_data_dir == nullptr) {
+  const std ::vector<std::string> test_data_dirs = GetSeedDataDirs();
+  if (test_data_dirs.empty()) {
     // Only a warning because this can happen when running the binary with
     // --list_fuzz_tests (such as with gtest_discover_tests() in cmake).
-    std::cerr << "WARNING: TEST_DATA_DIR env variable not set, unable to read "
+    std::cerr << "WARNING: TEST_DATA_DIRS env variable not set, unable to read "
                  "seed files";
     return {};
   }
 
-  std::cout << "Reading seeds from " << test_data_dir << " (non recursively)\n";
-  auto tuple_vector = fuzztest::ReadFilesFromDirectory(test_data_dir);
   std::vector<std::string> seeds;
-  seeds.reserve(tuple_vector.size());
-  for (auto& [file_content] : tuple_vector) {
-    if (file_content.size() > max_file_size) continue;
-    if (!image_formats.empty()) {
-      const avifAppFileFormat format = avifGuessBufferFileFormat(
-          reinterpret_cast<const uint8_t*>(file_content.data()),
-          file_content.size());
-      if (std::find(image_formats.begin(), image_formats.end(), format) ==
-          image_formats.end()) {
-        continue;
+  for (const std::string& test_data_dir : test_data_dirs) {
+    std::cout << "Reading seeds from " << test_data_dir
+              << " (non recursively)\n";
+    auto tuple_vector = fuzztest::ReadFilesFromDirectory(test_data_dir);
+    seeds.reserve(tuple_vector.size());
+    for (auto& [file_content] : tuple_vector) {
+      if (file_content.size() > max_file_size) continue;
+      if (!image_formats.empty()) {
+        const avifAppFileFormat format = avifGuessBufferFileFormat(
+            reinterpret_cast<const uint8_t*>(file_content.data()),
+            file_content.size());
+        if (std::find(image_formats.begin(), image_formats.end(), format) ==
+            image_formats.end()) {
+          continue;
+        }
       }
-    }
 
-    seeds.push_back(std::move(file_content));
+      seeds.push_back(std::move(file_content));
+    }
   }
   if (seeds.empty()) {
-    std::cerr << "ERROR: no files found in " << test_data_dir
-              << " that match the given file size and format criteria\n";
+    std::cerr << "ERROR: no files found that match the given file size and "
+                 "format criteria\n";
     std::abort();
   }
   std::cout << "Returning " << seeds.size() << " seed images\n";

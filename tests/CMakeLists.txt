@@ -180,7 +180,7 @@ if(AVIF_ENABLE_FUZZTEST)
         target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers ${ARGN})
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-        set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/data/")
+        set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIRS=${CMAKE_CURRENT_SOURCE_DIR}/data/")
     endmacro()
 
     if(AVIF_LOCAL_FUZZTEST)
