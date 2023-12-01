@@ -87,7 +87,7 @@ typedef float (*avifTransferFunction)(float);
 // Returns a function to map from gamma-encoded values in the [0.0, 1.0] range to linear extended SDR values.
 // Extended SDR values are in [0.0, 1.0] for SDR transfer chracteristics (all transfer characteristics except PQ and HLG)
 // and can go beyond 1.0 for HDR transfer characteristics:
-// - For AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 (PQ), the linear range is [0.0, 10000/203]
+// - For AVIF_TRANSFER_CHARACTERISTICS_PQ, the linear range is [0.0, 10000/203]
 // - For AVIF_TRANSFER_CHARACTERISTICS_HLG, the linear range is [0.0, 1000/203]
 avifTransferFunction avifTransferCharacteristicsGetGammaToLinearFunction(avifTransferCharacteristics atc);
 // Same as above in the opposite direction. toGamma(toLinear(v)) ~= v.

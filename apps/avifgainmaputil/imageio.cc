@@ -135,7 +135,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
       // Assume sRGB by default.
       if (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED &&
           image->transferCharacteristics == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-        image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+        image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
       }
     }

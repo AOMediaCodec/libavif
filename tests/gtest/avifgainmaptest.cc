@@ -78,7 +78,7 @@ ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
   }
   image->transferCharacteristics =
       (avifTransferCharacteristics)(base_rendition_is_hdr
-                                        ? AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084
+                                        ? AVIF_TRANSFER_CHARACTERISTICS_PQ
                                         : AVIF_TRANSFER_CHARACTERISTICS_SRGB);
   testutil::FillImageGradient(image.get());
   ImagePtr gain_map =
@@ -111,7 +111,7 @@ ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
     image->gainMap->altPlaneCount = 3;
     image->gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_BT2020;
     image->gainMap->altTransferCharacteristics =
-        AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
+        AVIF_TRANSFER_CHARACTERISTICS_PQ;
     image->gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_SMPTE2085;
   }
 
@@ -156,7 +156,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   EXPECT_EQ(decoded->gainMap->altPlaneCount, 3u);
   EXPECT_EQ(decoded->gainMap->altColorPrimaries, AVIF_COLOR_PRIMARIES_BT2020);
   EXPECT_EQ(decoded->gainMap->altTransferCharacteristics,
-            AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084);
+            AVIF_TRANSFER_CHARACTERISTICS_PQ);
   EXPECT_EQ(decoded->gainMap->altMatrixCoefficients,
             AVIF_MATRIX_COEFFICIENTS_SMPTE2085);
   EXPECT_EQ(decoded->gainMap->image->width, image->gainMap->image->width);
@@ -324,8 +324,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
         testutil::CreateImage(kCellWidth, kCellHeight, /*depth=*/10,
                               AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
     ASSERT_NE(image, nullptr);
-    image->transferCharacteristics =
-        AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
+    image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
     testutil::FillImageGradient(image.get());
     ImagePtr gain_map =
         testutil::CreateImage(kCellWidth / 2, kCellHeight / 2, /*depth=*/8,
@@ -419,8 +418,7 @@ TEST(GainMapTest, InvalidGrid) {
         testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
                               AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
     ASSERT_NE(image, nullptr);
-    image->transferCharacteristics =
-        AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
+    image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
     testutil::FillImageGradient(image.get());
     ImagePtr gain_map =
         testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/8,
@@ -479,8 +477,7 @@ TEST(GainMapTest, SequenceNotSupported) {
       testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
                             AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
-  image->transferCharacteristics =
-      AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;  // PQ
+  image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
   testutil::FillImageGradient(image.get());
   ImagePtr gain_map =
       testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/8,
@@ -1096,7 +1093,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_headroom=*/3.0f,
             /*out_depth=*/10,
-            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_PQ,
             /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
             /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f,
             /*max_psnr=*/60.0f),
@@ -1107,7 +1104,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_sdr_gainmap_big_srgb.avif", /*hdr_headroom=*/3.0f,
             /*out_depth=*/10,
-            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_PQ,
             /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
             /*reference=*/"seine_hdr_srgb.avif", /*min_psnr=*/40.0f,
             /*max_psnr=*/60.0f),
@@ -1116,7 +1113,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_sdr_gainmap_srgb.avif", /*hdr_headroom=*/1.5f,
             /*out_depth=*/10,
-            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_PQ,
             /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
             /*reference=*/"", /*min_psnr=*/0.0f,
             /*max_psnr=*/0.0f),
@@ -1150,7 +1147,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_headroom=*/3.0f,
             /*out_depth=*/10,
-            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_PQ,
             /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
             /*reference=*/"seine_hdr_gainmap_srgb.avif", /*min_psnr=*/60.0f,
             /*max_psnr=*/80.0f),
@@ -1159,7 +1156,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             /*source=*/"seine_hdr_gainmap_srgb.avif", /*hdr_headroom=*/1.5f,
             /*out_depth=*/10,
-            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084,
+            /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_PQ,
             /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
             /*reference=*/"", /*min_psnr=*/0.0f, /*max_psnr=*/0.0f)));
 

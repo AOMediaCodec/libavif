@@ -2284,7 +2284,7 @@ MAIN()
         // The final image has no ICC profile, the user didn't specify any CICP, and the source
         // image didn't provide any CICP. Explicitly signal SRGB CP/TC here, as 2/2/x will be
         // interpreted as SRGB anyway.
-        image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+        image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
     }
 
