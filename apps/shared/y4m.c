@@ -140,17 +140,15 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
 // Returns -1 in case of failure.
 int y4mReadUnsignedInt(const char * start, const char * end)
 {
-    if (start >= end || *start < '0' || *start > '9') {
-        return -1;
-    }
-    int64_t value = *(start++) - '0';
-    while (start != end && *start >= '0' && *start <= '9') {
-        value = value * 10 + (*(start++) - '0');
+    const char * p = start;
+    int64_t value = 0;
+    while (p < end && *p >= '0' && *p <= '9') {
+        value = value * 10 + (*(p++) - '0');
         if (value > INT_MAX) {
             return -1;
         }
     }
-    return (int)value;
+    return (p == start) ? -1 : (int)value;
 }
 
 // Note: this modifies framerateString
