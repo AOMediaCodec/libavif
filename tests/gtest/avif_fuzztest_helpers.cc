@@ -234,7 +234,7 @@ std::vector<std::string> GetTestImagesContents(
   // Use an environment variable to get the test data directory because
   // fuzztest seeds are created before the main() function is called, so the
   // test has no chance to parse command line arguments.
-  const std ::vector<std::string> test_data_dirs = GetSeedDataDirs();
+  const std::vector<std::string> test_data_dirs = GetSeedDataDirs();
   if (test_data_dirs.empty()) {
     // Only a warning because this can happen when running the binary with
     // --list_fuzz_tests (such as with gtest_discover_tests() in cmake).
