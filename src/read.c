@@ -203,7 +203,7 @@ typedef struct avifDecoderItem
     avifBool ipmaSeen;    // if true, this item already received a property association
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (the layer_id value in lsel is set to 0xFFFF)
 } avifDecoderItem;
-AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem, item);
+AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem *, item);
 
 // grid storage
 typedef struct avifImageGrid
@@ -740,7 +740,7 @@ static avifMeta * avifMetaCreate()
 {
     avifMeta * meta = (avifMeta *)avifAlloc(sizeof(avifMeta));
     memset(meta, 0, sizeof(avifMeta));
-    if (!avifArrayCreate(&meta->items, sizeof(avifDecoderItem), 8)) {
+    if (!avifArrayCreate(&meta->items, sizeof(avifDecoderItem *), 8)) {
         goto error;
     }
     if (!avifArrayCreate(&meta->properties, sizeof(avifProperty), 16)) {
@@ -756,12 +756,13 @@ error:
 static void avifMetaDestroy(avifMeta * meta)
 {
     for (uint32_t i = 0; i < meta->items.count; ++i) {
-        avifDecoderItem * item = &meta->items.item[i];
+        avifDecoderItem * item = meta->items.item[i];
         avifArrayDestroy(&item->properties);
         avifArrayDestroy(&item->extents);
         if (item->ownsMergedExtents) {
             avifRWDataFree(&item->mergedExtents);
         }
+        avifFree(item);
     }
     avifArrayDestroy(&meta->items);
     avifArrayDestroy(&meta->properties);
@@ -778,12 +779,13 @@ static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
     }
 
     for (uint32_t i = 0; i < meta->items.count; ++i) {
-        if (meta->items.item[i].id == itemID) {
-            return &meta->items.item[i];
+        if (meta->items.item[i]->id == itemID) {
+            return meta->items.item[i];
         }
     }
 
-    avifDecoderItem * item = (avifDecoderItem *)avifArrayPushPtr(&meta->items);
+    avifDecoderItem * item = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
+    memset(item, 0, sizeof(avifDecoderItem));
     if (!avifArrayCreate(&item->properties, sizeof(avifProperty), 16)) {
         goto error;
     }
@@ -792,12 +794,14 @@ static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
     }
     item->id = itemID;
     item->meta = meta;
+    avifDecoderItem ** itemPtr = (avifDecoderItem **)avifArrayPushPtr(&meta->items);
+    *itemPtr = item;
     return item;
 
 error:
     avifArrayDestroy(&item->extents);
     avifArrayDestroy(&item->properties);
-    avifArrayPop(&meta->items);
+    avifFree(item);
     return NULL;
 }
 
@@ -1090,7 +1094,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
 
     if (!memcmp(item->type, "grid", 4)) {
         for (uint32_t i = 0; i < item->meta->items.count; ++i) {
-            avifDecoderItem * tile = &item->meta->items.item[i];
+            avifDecoderItem * tile = item->meta->items.item[i];
             if (tile->dimgForID != item->id) {
                 continue;
             }
@@ -1330,7 +1334,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
 static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gridItem)
 {
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
-        avifDecoderItem * item = &gridItem->meta->items.item[i];
+        avifDecoderItem * item = gridItem->meta->items.item[i];
         const avifCodecType tileCodecType = avifGetCodecType(item->type);
         if ((item->dimgForID == gridItem->id) && (tileCodecType != AVIF_CODEC_TYPE_UNKNOWN)) {
             return tileCodecType;
@@ -1345,7 +1349,7 @@ static avifBool avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifIma
     unsigned int tilesAvailable = 0;
     avifDecoderItem * firstTileItem = NULL;
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
-        avifDecoderItem * item = &gridItem->meta->items.item[i];
+        avifDecoderItem * item = gridItem->meta->items.item[i];
         if (item->dimgForID != gridItem->id) {
             continue;
         }
@@ -1550,7 +1554,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
     }
 
     for (uint32_t itemIndex = 0; itemIndex < meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &meta->items.item[itemIndex];
+        avifDecoderItem * item = meta->items.item[itemIndex];
         if (!item->size) {
             continue;
         }
@@ -3455,7 +3459,7 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     // Walk the decoded items (if any) and harvest ispe
     avifDecoderData * data = decoder->data;
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        avifDecoderItem * item = data->meta->items.item[itemIndex];
         if (!item->size) {
             continue;
         }
@@ -3595,7 +3599,7 @@ static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
 static avifDecoderItem * avifDecoderDataFindColorItem(avifDecoderData * data)
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        avifDecoderItem * item = data->meta->items.item[itemIndex];
         if (avifDecoderItemShouldBeSkipped(item)) {
             continue;
         }
@@ -3631,7 +3635,7 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
 {
     const avifDecoderItem * colorItem = *colorItemPtr;
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
-        avifDecoderItem * item = &data->meta->items.item[itemIndex];
+        avifDecoderItem * item = data->meta->items.item[itemIndex];
         if (avifDecoderItemShouldBeSkipped(item)) {
             continue;
         }
@@ -3659,14 +3663,14 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
     uint32_t alphaItemCount = 0;
     uint32_t maxItemID = 0;
     for (uint32_t i = 0; i < colorItem->meta->items.count; ++i) {
-        avifDecoderItem * item = &colorItem->meta->items.item[i];
+        avifDecoderItem * item = colorItem->meta->items.item[i];
         if (item->id > maxItemID) {
             maxItemID = item->id;
         }
         if (item->dimgForID == colorItem->id) {
             avifBool seenAlphaForCurrentItem = AVIF_FALSE;
             for (uint32_t j = 0; j < colorItem->meta->items.count; ++j) {
-                avifDecoderItem * auxlItem = &colorItem->meta->items.item[j];
+                avifDecoderItem * auxlItem = colorItem->meta->items.item[j];
                 if (avifDecoderItemIsAlphaAux(auxlItem, item->id)) {
                     if (seenAlphaForCurrentItem || auxlItem->dimgForID != 0) {
                         // One of the following invalid cases:
@@ -3694,7 +3698,7 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
 
     int colorItemIndex = -1;
     for (uint32_t i = 0; i < data->meta->items.count; ++i) {
-        if (colorItem->id == data->meta->items.item[i].id) {
+        if (colorItem->id == data->meta->items.item[i]->id) {
             colorItemIndex = i;
             break;
         }
@@ -3708,14 +3712,14 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     // avifMetaFindItem() could invalidate all existing item pointers. So reset the colorItem pointers.
-    *colorItemPtr = &data->meta->items.item[colorItemIndex];
+    *colorItemPtr = data->meta->items.item[colorItemIndex];
     colorItem = *colorItemPtr;
 
     memcpy((*alphaItem)->type, "grid", 4);
     (*alphaItem)->width = colorItem->width;
     (*alphaItem)->height = colorItem->height;
     for (uint32_t i = 0; i < alphaItemCount; ++i) {
-        avifDecoderItem * item = &colorItem->meta->items.item[alphaItemIndices[i]];
+        avifDecoderItem * item = colorItem->meta->items.item[alphaItemIndices[i]];
         item->dimgForID = (*alphaItem)->id;
     }
     avifFree(alphaItemIndices);
@@ -3951,7 +3955,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // Validate that there are exactly the same number of dimg items to form the grid.
             uint32_t dimgItemCount = 0;
             for (uint32_t i = 0; i < colorItem->meta->items.count; ++i) {
-                if (colorItem->meta->items.item[i].dimgForID == colorItem->id) {
+                if (colorItem->meta->items.item[i]->dimgForID == colorItem->id) {
                     ++dimgItemCount;
                 }
             }
