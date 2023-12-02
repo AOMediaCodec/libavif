@@ -794,24 +794,26 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
         }
     }
 
-    avifDecoderItem ** item_ptr = (avifDecoderItem **)avifArrayPush(&meta->items);
-    AVIF_CHECKERR(item_ptr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-    *item_ptr = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
-    if (*item_ptr == NULL) {
+    avifDecoderItem ** itemPtr = (avifDecoderItem **)avifArrayPush(&meta->items);
+    AVIF_CHECKERR(itemPtr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    *itemPtr = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
+    if (*itemPtr == NULL) {
         avifArrayPop(&meta->items);
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
-    memset(*item_ptr, 0, sizeof(avifDecoderItem));
+    memset(*itemPtr, 0, sizeof(avifDecoderItem));
 
-    *item = *item_ptr;
+    *item = *itemPtr;
     if (!avifArrayCreate(&(*item)->properties, sizeof(avifProperty), 16)) {
         avifArrayPop(&meta->items);
+        avifFree(*item);
         *item = NULL;
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     if (!avifArrayCreate(&(*item)->extents, sizeof(avifExtent), 1)) {
         avifArrayDestroy(&(*item)->properties);
         avifArrayPop(&meta->items);
+        avifFree(*item);
         *item = NULL;
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
