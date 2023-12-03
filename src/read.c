@@ -4267,7 +4267,7 @@ static avifDecoderItem * avifMetaFindColorItem(avifMeta * meta)
 
 // Returns AVIF_TRUE if item is an alpha auxiliary item of the parent color
 // item.
-static avifBool avifDecoderItemIsAlphaAux(avifDecoderItem * item, uint32_t colorItemId)
+static avifBool avifDecoderItemIsAlphaAux(const avifDecoderItem * item, uint32_t colorItemId)
 {
     if (item->auxForID != colorItemId)
         return AVIF_FALSE;
