@@ -796,25 +796,25 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
 
     avifDecoderItem ** itemPtr = (avifDecoderItem **)avifArrayPush(&meta->items);
     AVIF_CHECKERR(itemPtr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-    *itemPtr = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
-    if (*itemPtr == NULL) {
+    *item = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
+    if (*item == NULL) {
         avifArrayPop(&meta->items);
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
-    memset(*itemPtr, 0, sizeof(avifDecoderItem));
+    memset(*item, 0, sizeof(avifDecoderItem));
 
-    *item = *itemPtr;
+    *itemPtr = *item;
     if (!avifArrayCreate(&(*item)->properties, sizeof(avifProperty), 16)) {
-        avifArrayPop(&meta->items);
         avifFree(*item);
         *item = NULL;
+        avifArrayPop(&meta->items);
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     if (!avifArrayCreate(&(*item)->extents, sizeof(avifExtent), 1)) {
         avifArrayDestroy(&(*item)->properties);
-        avifArrayPop(&meta->items);
         avifFree(*item);
         *item = NULL;
+        avifArrayPop(&meta->items);
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     (*item)->id = itemID;
