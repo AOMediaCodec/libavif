@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2023-12-03
+
 ### Changed
+* Rewrite the fix for memory errors reported in crbug.com/1501770.
 * Fix memory errors reported in crbug.com/1504792 by [Fudan
   University](https://secsys.fudan.edu.cn/).
+* src/reformat.c: Allocate the threadData array directly.
 
 ## [1.0.2] - 2023-11-16
 
@@ -992,6 +996,7 @@ code.
 - `avifVersion()` function
 
 [Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...HEAD
+[1.0.3]: https://github.com/AOMediaCodec/libavif/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/AOMediaCodec/libavif/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/AOMediaCodec/libavif/compare/v0.11.1...v1.0.0
