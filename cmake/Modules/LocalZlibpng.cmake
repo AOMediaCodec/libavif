@@ -12,9 +12,11 @@ include_directories(SYSTEM $<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>)
 add_subdirectory(ext/zlib EXCLUDE_FROM_ALL)
 
 # Re-enable example and example64 targets, as these are used by tests
-set_property(TARGET example PROPERTY EXCLUDE_FROM_ALL FALSE)
-if(TARGET example64)
-    set_property(TARGET example64 PROPERTY EXCLUDE_FROM_ALL FALSE)
+if(AVIF_BUILD_TESTS)
+    set_property(TARGET example PROPERTY EXCLUDE_FROM_ALL FALSE)
+    if(TARGET example64)
+        set_property(TARGET example64 PROPERTY EXCLUDE_FROM_ALL FALSE)
+    endif()
 endif()
 
 target_include_directories(zlibstatic INTERFACE $<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>)
