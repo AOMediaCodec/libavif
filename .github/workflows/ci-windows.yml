@@ -137,6 +137,7 @@ jobs:
         build\ext\libpng\libpng16_static.lib
         build\ext\zlib\zlibstatic.lib
         build\avif.lib
+        ws2_32.lib ntdll.lib userenv.lib bcrypt.lib advapi32.lib
         /out:avifenc.exe
 
         .\avifenc.exe --help

@@ -8,6 +8,9 @@ if(POLICY CMP0092)
     cmake_policy(SET CMP0092 NEW)
 endif()
 
+# The root directory of the avif source
+set(AVIF_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
 # Specify search path for CMake modules to be loaded by include() and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
@@ -113,6 +116,7 @@ if(AVIF_BUILD_APPS
    OR AVIF_ENABLE_FUZZTEST
    OR AVIF_ENABLE_GTEST
    OR AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL"
+   OR AVIF_CODEC_LIBGAV1 STREQUAL "SYSTEM"
 )
     set(AVIF_USE_CXX ON)
 endif()
@@ -131,170 +135,111 @@ else()
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
-set(AVIF_PLATFORM_DEFINITIONS)
-set(AVIF_PLATFORM_INCLUDES)
-set(AVIF_PLATFORM_SYSTEM_INCLUDES)
-set(AVIF_PLATFORM_LIBRARIES)
+add_library(avif)
 
-# A macro that wraps find_package, preferring static libraries if this is a static build
-# Should only be used for libraries linked against avif, not for those only used
-# by avif_apps or tests
-macro(find_package_libavif)
-    set(_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES, "${CMAKE_FIND_LIBRARY_SUFFIXES}")
-    if(NOT BUILD_SHARED_LIBS)
-        if(WIN32 OR MINGW)
-            set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
-        else()
-            set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+# Adds <target> to avif's public link libraries for build, and adds
+# the library as an install link library for export if a consumer
+# would need to include that library alongside libavif when linking.
+function(avif_target_link_library target)
+    target_link_libraries(avif PUBLIC $<BUILD_INTERFACE:${target}>)
+    get_target_property(target_is_local ${target} AVIF_LOCAL)
+    if(target_is_local)
+        return()
+    endif()
+    get_target_property(install_target ${target} IMPORTED_SONAME)
+    if(NOT install_target)
+        set(install_target ${target})
+    endif()
+    # The transitive dependency is an export link library if it is a shared
+    # library, or if it is a static library in a static build
+    get_target_property(target_type ${target} TYPE)
+    if(target_type STREQUAL "SHARED_LIBRARY" OR NOT BUILD_SHARED_LIBS)
+        target_link_libraries(avif PUBLIC $<INSTALL_INTERFACE:${install_target}>)
+    endif()
+endfunction()
+
+#[[
+check_avif_option(<option> TARGET <target> PKG_NAME <PackageName>)
+
+If <option> is equal to "SYSTEM", uses <target> if it already exists, otherwise calls find_package(<PackageName>). If <option>
+is "LOCAL", includes Local<PackageName>.cmake. Sets <option>_ENABLED to ON if the option is enabled and the target is usable.
+]]
+macro(check_avif_option _VAR)
+    set(_oneValueArgs TARGET PKG_NAME)
+    cmake_parse_arguments(_AVIF_OPTION "" "${_oneValueArgs}" "" ${ARGN})
+    string(SUBSTRING ${_AVIF_OPTION_PKG_NAME} 0 1 FIRST_LETTER)
+    string(TOUPPER ${FIRST_LETTER} FIRST_LETTER)
+    string(REGEX REPLACE "^.(.*)" "Local${FIRST_LETTER}\\1" _LOCAL_INCLUDE "${_AVIF_OPTION_PKG_NAME}")
+    set(${_VAR}_ENABLED OFF)
+    if(${_VAR} STREQUAL "LOCAL" OR ${_VAR} STREQUAL "SYSTEM")
+        if(${_VAR} STREQUAL "LOCAL" AND TARGET ${_AVIF_OPTION_TARGET})
+            message(ERROR "${_AVIF_OPTION_TARGET} is already defined and ${_VAR} should be set to SYSTEM to use it")
+            return()
+        endif()
+        set(${_VAR}_ENABLED ON)
+        if(NOT TARGET ${_AVIF_OPTION_TARGET})
+            if(${_VAR} STREQUAL "LOCAL")
+                include(${_LOCAL_INCLUDE})
+            elseif(${_VAR} STREQUAL "SYSTEM")
+                find_package(${_AVIF_OPTION_PKG_NAME} REQUIRED)
+            endif()
         endif()
     endif()
-    find_package(${ARGV})
-    set(CMAKE_FIND_LIBRARY_SUFFIXES, "${_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES}")
 endmacro()
 
-# ---------------------------------------------------------------------------------------
-# This insanity is for people embedding libavif or making fully static or Windows builds.
-# Any proper unix environment should ignore these entire following blocks.
 option(AVIF_LOCAL_ZLIBPNG "Build zlib and libpng by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_ZLIBPNG)
-    # Put the value of ZLIB_INCLUDE_DIR in the cache. This works around cmake behavior that has been updated by
-    # cmake policy CMP0102 in cmake 3.17. Remove the CACHE workaround when we require cmake 3.17 or later. See
-    # https://gitlab.kitware.com/cmake/cmake/-/issues/21343.
-    set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE PATH "zlib include dir")
-    # This include_directories() call must be before add_subdirectory(ext/zlib) to work around the
-    # zlib/CMakeLists.txt bug fixed by https://github.com/madler/zlib/pull/818.
-    include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
-    add_subdirectory(ext/zlib)
-    # This include_directories() call and the previous include_directories() call provide the zlib
-    # include directories for add_subdirectory(ext/libpng). Because we set PNG_BUILD_ZLIB,
-    # libpng/CMakeLists.txt won't call find_package(ZLIB REQUIRED) and will see an empty
-    # ${ZLIB_INCLUDE_DIRS}.
-    include_directories("${CMAKE_CURRENT_BINARY_DIR}/ext/zlib")
-    set(CMAKE_DEBUG_POSTFIX "")
-
-    # This is the only way I could avoid libpng going crazy if it found awk.exe, seems benign otherwise
-    set(PREV_ANDROID ${ANDROID})
-    set(ANDROID TRUE)
-    set(PNG_BUILD_ZLIB "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib" CACHE STRING "" FORCE)
-    set(PNG_SHARED OFF CACHE BOOL "")
-    set(PNG_TESTS OFF CACHE BOOL "")
-    add_subdirectory(ext/libpng)
-    set(PNG_PNG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libpng")
-    set(PNG_LIBRARY png_static)
-    include_directories("${CMAKE_CURRENT_BINARY_DIR}/ext/libpng")
-    set(ANDROID ${PREV_ANDROID})
-
-    set(ZLIB_LIBRARY zlibstatic)
+    include(LocalZlibpng)
 endif()
 
 option(AVIF_LOCAL_JPEG "Build jpeg by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_JPEG)
-    add_subdirectory(ext/libjpeg)
-    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-        set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg")
-        set(JPEG_LIBRARY jpeg)
-    else()
-        set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg" PARENT_SCOPE)
-        set(JPEG_LIBRARY jpeg PARENT_SCOPE)
-    endif()
+    include(LocalJpeg)
 endif()
 
 set_local_or_system_option("LIBYUV" "OFF" "Use libyuv.")
-if(AVIF_LIBYUV STREQUAL "LOCAL")
-    set(AVIF_LIBYUV_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/build")
-
-    # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
-    if(DEFINED ANDROID_ABI)
-        set(AVIF_LIBYUV_BUILD_DIR "${AVIF_LIBYUV_BUILD_DIR}/${ANDROID_ABI}")
-    endif()
-    set(LIB_FILENAME "${AVIF_LIBYUV_BUILD_DIR}/${AVIF_LIBRARY_PREFIX}yuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
-
-    if(NOT EXISTS "${LIB_FILENAME}")
-        message(FATAL_ERROR "libavif(AVIF_LIBYUV=LOCAL): ${LIB_FILENAME} is missing, bailing out")
-    endif()
-    if(("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}") OR (DEFINED ANDROID_ABI))
-        set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include")
-        set(LIBYUV_LIBRARY ${LIB_FILENAME})
+check_avif_option(AVIF_LIBYUV TARGET yuv::yuv PKG_NAME libyuv)
+if(AVIF_LIBYUV_ENABLED)
+    # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
+    # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
+    # libyuv 1813 added the I*ToARGBMatrixFilter() functions, which libavif can use with the bilinear filter.
+    if(NOT LIBYUV_VERSION)
+        message(STATUS "libavif: libyuv found, but version unknown; libyuv-based fast paths disabled.")
+        unset(AVIF_LIBYUV_ENABLED)
+    elseif(LIBYUV_VERSION LESS 1755)
+        message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found, but is too old; libyuv-based fast paths disabled.")
+        unset(AVIF_LIBYUV_ENABLED)
     else()
-        set(LIBYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libyuv/include" PARENT_SCOPE)
-        set(LIBYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
-    endif()
-    set(libyuv_FOUND TRUE)
-    message(STATUS "libavif: local libyuv found; libyuv-based fast paths enabled.")
-elseif(AVIF_LIBYUV STREQUAL "SYSTEM")
-    find_package_libavif(libyuv REQUIRED)
-    if(libyuv_FOUND)
-        # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
-        # libyuv 1774 exposed ScalePlane_12 function, which libavif can use for some additional optimizations.
-        # libyuv 1813 added the I*ToARGBMatrixFilter() functions, which libavif can use with the bilinear filter.
-        if(NOT LIBYUV_VERSION)
-            message(STATUS "libavif: libyuv found, but version unknown; libyuv-based fast paths disabled.")
-            unset(libyuv_FOUND)
-        elseif(LIBYUV_VERSION LESS 1755)
-            message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found, but is too old; libyuv-based fast paths disabled.")
-            unset(libyuv_FOUND)
-        else()
-            message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found; libyuv-based fast paths enabled.")
-            if(LIBYUV_VERSION LESS 1813)
-                message(STATUS "libavif: some libyuv optimizations require at least version 1813 to work.")
-            endif()
+        message(STATUS "libavif: libyuv (${LIBYUV_VERSION}) found; libyuv-based fast paths enabled.")
+        if(LIBYUV_VERSION LESS 1813)
+            message(STATUS "libavif: some libyuv optimizations require at least version 1813 to work.")
         endif()
     endif()
 endif()
-if(libyuv_FOUND)
-    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBYUV_ENABLED=1)
-    set(AVIF_PLATFORM_SYSTEM_INCLUDES ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${LIBYUV_INCLUDE_DIR})
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBYUV_LIBRARY})
-endif(libyuv_FOUND)
+if(AVIF_LIBYUV_ENABLED)
+    target_compile_definitions(avif PRIVATE -DAVIF_LIBYUV_ENABLED=1)
+    avif_target_link_library(yuv::yuv)
+endif(AVIF_LIBYUV_ENABLED)
 
 set_local_or_system_option("LIBSHARPYUV" "OFF" "Use libsharpyuv.")
-if(AVIF_LIBSHARPYUV STREQUAL "LOCAL")
-    set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    if(NOT EXISTS "${LIB_FILENAME}")
-        message(FATAL_ERROR "libavif(AVIF_LIBSHARPYUV=LOCAL): ${LIB_FILENAME} is missing, bailing out")
-    endif()
-    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-        set(LIBSHARPYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp")
-        set(LIBSHARPYUV_LIBRARY ${LIB_FILENAME})
-    else()
-        set(LIBSHARPYUV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp" PARENT_SCOPE)
-        set(LIBSHARPYUV_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
-    endif()
-    set(libsharpyuv_FOUND TRUE)
-elseif(AVIF_LIBSHARPYUV STREQUAL "SYSTEM")
-    find_package_libavif(libsharpyuv REQUIRED)
-endif()
-if(libsharpyuv_FOUND)
+check_avif_option(AVIF_LIBSHARPYUV TARGET sharpyuv::sharpyuv PKG_NAME libsharpyuv)
+if(AVIF_LIBSHARPYUV_ENABLED)
     message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
-    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_LIBSHARPYUV_ENABLED=1)
-    if(AVIF_LIBSHARPYUV STREQUAL "LOCAL")
-        set(AVIF_PLATFORM_INCLUDES ${AVIF_PLATFORM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
-    else()
-        set(AVIF_PLATFORM_SYSTEM_INCLUDES ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${LIBSHARPYUV_INCLUDE_DIR})
-    endif()
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${LIBSHARPYUV_LIBRARY})
-endif(libsharpyuv_FOUND)
+    target_compile_definitions(avif PRIVATE -DAVIF_LIBSHARPYUV_ENABLED=1)
+    avif_target_link_library(sharpyuv::sharpyuv)
+endif(AVIF_LIBSHARPYUV_ENABLED)
 
 option(AVIF_LOCAL_LIBXML2 "Build libxml2 by providing your own copy inside the ext subdir. \
 libxml2 is used when AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is ON" OFF
 )
-if(AVIF_LOCAL_LIBXML2)
-    set(LIB_FILENAME
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libavif/lib/${AVIF_LIBRARY_PREFIX}xml2${CMAKE_STATIC_LIBRARY_SUFFIX}"
-    )
-    if(NOT EXISTS "${LIB_FILENAME}")
-        message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
+if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if(NOT TARGET LibXml2::LibXml2)
+        if(AVIF_LOCAL_LIBXML2)
+            include(LocalLibXml2)
+        else()
+            find_package(LibXml2 QUIET)
+        endif()
     endif()
-    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libavif/include/libxml2")
-        set(LIBXML2_LIBRARY ${LIB_FILENAME})
-    else()
-        set(LIBXML2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libxml2/install.libavif/include/libxml2" PARENT_SCOPE)
-        set(LIBXML2_LIBRARY ${LIB_FILENAME} PARENT_SCOPE)
-    endif()
-    set(LIBXML2_FOUND TRUE)
-else()
-    find_package(LibXml2 QUIET) # not required
 endif()
 # ---------------------------------------------------------------------------------------
 
@@ -302,24 +247,27 @@ endif()
 include(CheckCCompilerFlag)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    add_compile_options(-Wall -Wextra -Wshorten-64-to-32)
+    target_compile_options(avif PUBLIC $<BUILD_INTERFACE:-Wall -Wextra -Wshorten-64-to-32>)
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
-    add_compile_options(-Wall -Wextra)
+    target_compile_options(avif PUBLIC $<BUILD_INTERFACE:-Wall -Wextra>)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     message(STATUS "libavif: Enabling warnings for MSVC")
-    add_compile_options(
-        /W4
-        /wd4324 # Disable: structure was padded due to alignment specifier
-        /wd4996 # Disable: potentially unsafe stdlib methods
-        # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
-        # libavif uses ANSI API to print to console, which is not portable between systems using different
-        # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
-        # A C4556 warning will be generated on violation.
-        # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
-        # Warnings can be suppressed but there will still be random characters printed to the console.
-        /source-charset:utf-8
-        /execution-charset:us-ascii
+    target_compile_options(
+        avif
+        PUBLIC $<BUILD_INTERFACE:
+               /W4
+               /wd4324 # Disable: structure was padded due to alignment specifier
+               /wd4996 # Disable: potentially unsafe stdlib methods
+               # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
+               # libavif uses ANSI API to print to console, which is not portable between systems using different
+               # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
+               # A C4556 warning will be generated on violation.
+               # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
+               # Warnings can be suppressed but there will still be random characters printed to the console.
+               /source-charset:utf-8
+               /execution-charset:us-ascii
+               >
     )
 else()
     message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
@@ -328,9 +276,9 @@ endif()
 if(AVIF_ENABLE_WERROR)
     # Warnings as errors
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        add_compile_options(-Werror)
+        target_compile_options(avif PUBLIC $<BUILD_INTERFACE:-Werror>)
     elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-        add_compile_options(/WX)
+        target_compile_options(avif PUBLIC $<BUILD_INTERFACE:/WX>)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
@@ -339,18 +287,20 @@ endif()
 if(AVIF_ENABLE_WUNUSED_RESULT)
     if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
         set(CMAKE_C_STANDARD 23)
+        set_property(TARGET avif PROPERTY C_STANDARD 23)
     else()
         unset(CMAKE_C_STANDARD)
-        add_compile_options($<$<COMPILE_LANGUAGE:C>:-std=gnu2x>)
+        set_property(TARGET avif PROPERTY C_STANDARD)
+        target_compile_options(avif PUBLIC $<BUILD_INTERFACE:$<$<COMPILE_LANGUAGE:C>:-std=gnu2x>>)
     endif()
-    add_compile_options(-Wunused-result)
-    set(AVIF_PLATFORM_DEFINITIONS ${AVIF_PLATFORM_DEFINITIONS} -DAVIF_ENABLE_NODISCARD=1)
+    target_compile_options(avif PUBLIC $<BUILD_INTERFACE:-Wunused-result>)
+    target_compile_definitions(avif PUBLIC $<BUILD_INTERFACE:AVIF_ENABLE_NODISCARD=1>)
 endif()
 
 if(AVIF_ENABLE_COVERAGE)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         message(STATUS "libavif: Enabling coverage for Clang")
-        add_compile_options(-fprofile-instr-generate -fcoverage-mapping -O0)
+        target_compile_options(avif PUBLIC $<BUILD_INTERFACE:-fprofile-instr-generate -fcoverage-mapping -O0>)
         set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fprofile-instr-generate -fcoverage-mapping")
     else()
         # TODO: Add support for other compilers
@@ -399,7 +349,7 @@ if(AVIF_ENABLE_COMPLIANCE_WARDEN)
     endif()
 
     set(AVIF_USE_CXX ON)
-    add_compile_definitions(AVIF_ENABLE_COMPLIANCE_WARDEN)
+    target_compile_definitions(avif PRIVATE AVIF_ENABLE_COMPLIANCE_WARDEN)
 
     list(
         APPEND
@@ -432,6 +382,8 @@ if(AVIF_ENABLE_COMPLIANCE_WARDEN)
     )
 endif()
 
+target_sources(avif PRIVATE ${AVIF_SRCS})
+
 # Only applicable to macOS. In GitHub CI's macos-latest os image, this prevents using the libpng
 # and libjpeg headers from /Library/Frameworks/Mono.framework/Headers instead of
 # /usr/local/include.
@@ -441,255 +393,127 @@ if(UNIX)
     # Find out if we have threading available
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
-    set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} m Threads::Threads)
+    target_link_libraries(avif PUBLIC m Threads::Threads)
 endif()
 
-set(AVIF_CODEC_DEFINITIONS)
-set(AVIF_CODEC_INCLUDES)
-set(AVIF_CODEC_SYSTEM_INCLUDES)
-set(AVIF_CODEC_LIBRARIES)
-
-if(NOT libyuv_FOUND)
-    set(AVIF_SRCS
-        ${AVIF_SRCS} third_party/libyuv/source/scale.c third_party/libyuv/source/scale_common.c
-        third_party/libyuv/source/scale_any.c third_party/libyuv/source/row_common.c third_party/libyuv/source/planar_functions.c
+if(NOT AVIF_LIBYUV_ENABLED)
+    target_sources(
+        avif
+        PRIVATE third_party/libyuv/source/scale.c third_party/libyuv/source/scale_common.c third_party/libyuv/source/scale_any.c
+                third_party/libyuv/source/row_common.c third_party/libyuv/source/planar_functions.c
     )
     if(DEFINED ANDROID_ABI OR DEFINED APPLE)
         # When building third_party/libyuv/source/scale.c, some functions use
         # some of the parameters only inside an assert statement. This causes
         # unused parameter warnings when building for Android. Suppress the
         # warning in that case.
-        add_compile_options(-Wno-unused-parameter)
+        target_compile_options(avif PRIVATE -Wno-unused-parameter)
     endif()
 endif()
 
-if(AVIF_CODEC_DAV1D)
-    set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_DAV1D=1)
-    set(AVIF_SRCS ${AVIF_SRCS} src/codec_dav1d.c)
-
-    if(AVIF_CODEC_DAV1D STREQUAL "LOCAL")
-        set(AVIF_DAV1D_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build")
-        # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
-        if(DEFINED ANDROID_ABI)
-            set(AVIF_DAV1D_BUILD_DIR "${AVIF_DAV1D_BUILD_DIR}/${ANDROID_ABI}")
-        endif()
-        set(LIB_FILENAME "${AVIF_DAV1D_BUILD_DIR}/src/libdav1d${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        if(NOT EXISTS "${LIB_FILENAME}")
-            if("${CMAKE_STATIC_LIBRARY_SUFFIX}" STREQUAL ".a")
-                message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
-            else()
-                # On windows, meson will produce a libdav1d.a instead of the expected libdav1d.dll/.lib.
-                # See https://github.com/mesonbuild/meson/issues/8153.
-                set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/build/src/libdav1d.a")
-                if(NOT EXISTS "${LIB_FILENAME}")
-                    message(
-                        FATAL_ERROR "libavif: ${LIB_FILENAME} (or libdav1d${CMAKE_STATIC_LIBRARY_SUFFIX}) is missing, bailing out"
-                    )
-                endif()
-            endif()
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${AVIF_DAV1D_BUILD_DIR}" "${AVIF_DAV1D_BUILD_DIR}/include"
-                                "${AVIF_DAV1D_BUILD_DIR}/include/dav1d" "${CMAKE_CURRENT_SOURCE_DIR}/ext/dav1d/include"
-        )
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if dav1d is independently being built by the outer CMake project
-        if(NOT TARGET dav1d)
-            find_package_libavif(dav1d REQUIRED)
-            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${DAV1D_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${DAV1D_LIBRARY})
-    endif()
+check_avif_option(AVIF_CODEC_DAV1D TARGET dav1d::dav1d PKG_NAME dav1d)
+if(AVIF_CODEC_DAV1D_ENABLED)
+    target_compile_definitions(avif PRIVATE -DAVIF_CODEC_DAV1D=1)
+    target_sources(avif PRIVATE src/codec_dav1d.c)
 
     if(UNIX AND NOT APPLE)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for dlsym
+        target_link_libraries(dav1d::dav1d INTERFACE ${CMAKE_DL_LIBS}) # for dlsym
     endif()
+
+    avif_target_link_library(dav1d::dav1d)
 
     message(STATUS "libavif: Codec enabled: dav1d (decode)")
 endif()
 
-if(AVIF_CODEC_LIBGAV1)
-    set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_LIBGAV1=1)
-    set(AVIF_SRCS ${AVIF_SRCS} src/codec_libgav1.c)
-
-    if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL")
-        set(AVIF_LIBGAV1_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/build")
-        # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
-        if(DEFINED ANDROID_ABI)
-            set(AVIF_LIBGAV1_BUILD_DIR "${AVIF_LIBGAV1_BUILD_DIR}/${ANDROID_ABI}")
-        endif()
-        set(LIB_FILENAME "${AVIF_LIBGAV1_BUILD_DIR}/libgav1${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/libgav1/src")
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if libgav1 is independently being built by the outer CMake project
-        if(NOT TARGET libgav1)
-            find_package_libavif(libgav1 REQUIRED)
-            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${LIBGAV1_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIBGAV1_LIBRARY})
-    endif()
+check_avif_option(AVIF_CODEC_LIBGAV1 TARGET libgav1::libgav1 PKG_NAME libgav1)
+if(AVIF_CODEC_LIBGAV1_ENABLED)
+    target_compile_definitions(avif PRIVATE -DAVIF_CODEC_LIBGAV1=1)
+    target_sources(avif PRIVATE src/codec_libgav1.c)
+    avif_target_link_library(libgav1::libgav1)
 
     message(STATUS "libavif: Codec enabled: libgav1 (decode)")
 endif()
 
-if(AVIF_CODEC_RAV1E)
-    set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_RAV1E=1)
-    set(AVIF_SRCS ${AVIF_SRCS} src/codec_rav1e.c)
-
-    if(AVIF_CODEC_RAV1E STREQUAL "LOCAL")
-        set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${AVIF_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        )
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/build.libavif/usr/lib), bailing out")
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/build.libavif/usr/include/rav1e")
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if rav1e is independently being built by the outer CMake project
-        if(NOT TARGET rav1e)
-            find_package_libavif(rav1e REQUIRED)
-            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${RAV1E_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${RAV1E_LIBRARIES})
-    endif()
+check_avif_option(AVIF_CODEC_RAV1E TARGET rav1e::rav1e PKG_NAME rav1e)
+if(AVIF_CODEC_RAV1E_ENABLED)
+    target_compile_definitions(avif PRIVATE -DAVIF_CODEC_RAV1E=1)
+    target_sources(avif PRIVATE src/codec_rav1e.c)
 
     # Unfortunately, rav1e requires a few more libraries
     if(WIN32)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
+        target_link_libraries(rav1e::rav1e INTERFACE ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
     elseif(UNIX AND NOT APPLE)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
+        target_link_libraries(rav1e::rav1e INTERFACE ${CMAKE_DL_LIBS}) # for backtrace
     endif()
+
+    avif_target_link_library(rav1e::rav1e)
 
     message(STATUS "libavif: Codec enabled: rav1e (encode)")
 endif()
 
-if(AVIF_CODEC_SVT)
-    set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_SVT=1)
-    set(AVIF_SRCS ${AVIF_SRCS} src/codec_svt.c)
-
-    if(AVIF_CODEC_SVT STREQUAL "LOCAL")
-        set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${AVIF_LIBRARY_PREFIX}SvtAv1Enc${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        )
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: compiled svt library is missing (in ext/SVT-AV1/Bin/Release), bailing out")
-        endif()
-
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/SVT-AV1/include")
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if svt is independently being built by the outer CMake project
-        if(NOT TARGET svt)
-            find_package_libavif(svt REQUIRED)
-            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${SVT_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${SVT_LIBRARY})
-    endif()
+check_avif_option(AVIF_CODEC_SVT TARGET SvtAv1Enc PKG_NAME svt)
+if(AVIF_CODEC_SVT_ENABLED)
+    target_compile_definitions(avif PRIVATE -DAVIF_CODEC_SVT=1)
+    target_sources(avif PRIVATE src/codec_svt.c)
+    avif_target_link_library(SvtAv1Enc)
 
     message(STATUS "libavif: Codec enabled: svt (encode)")
 endif()
 
-if(AVIF_CODEC_AOM)
-    set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM=1)
+check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom)
+if(AVIF_CODEC_AOM_ENABLED)
+    target_compile_definitions(avif PRIVATE -DAVIF_CODEC_AOM=1)
     if(AVIF_CODEC_AOM_ENCODE AND AVIF_CODEC_AOM_DECODE)
         set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "encode/decode")
-        set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_AOM_DECODE=1)
+        target_compile_definitions(avif PRIVATE -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_AOM_DECODE=1)
     elseif(AVIF_CODEC_AOM_ENCODE)
         set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "encode only")
-        set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_ENCODE=1)
+        target_compile_definitions(avif PRIVATE -DAVIF_CODEC_AOM_ENCODE=1)
     elseif(AVIF_CODEC_AOM_DECODE)
         set(AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG "decode only")
-        set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AOM_DECODE=1)
+        target_compile_definitions(avif PRIVATE -DAVIF_CODEC_AOM_DECODE=1)
     else()
         message(
             FATAL_ERROR
                 "libavif: AVIF_CODEC_AOM is on, but both AVIF_CODEC_AOM_ENCODE and AVIF_CODEC_AOM_DECODE are off. Disable AVIF_CODEC_AOM to disable both parts of the codec."
         )
     endif()
-    set(AVIF_SRCS ${AVIF_SRCS} src/codec_aom.c)
-    if(AVIF_CODEC_AOM STREQUAL "LOCAL")
-        set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        )
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
-        endif()
+    target_sources(avif PRIVATE src/codec_aom.c)
 
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom")
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-    else()
-        # Check to see if aom is independently being built by the outer CMake project
-        if(NOT TARGET aom)
-            find_package_libavif(aom REQUIRED)
-            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AOM_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AOM_LIBRARIES})
-    endif()
+    avif_target_link_library(aom)
 
     message(STATUS "libavif: Codec enabled: aom (${AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG})")
 endif()
 
-if(AVIF_CODEC_AVM)
+check_avif_option(AVIF_CODEC_AVM TARGET aom PKG_NAME avm)
+if(AVIF_CODEC_AVM_ENABLED)
     message(WARNING "libavif: AV2 support with avm is experimental. Only use for testing.")
 
     # The avm repository is a fork of aom and inherited a lot of folders, files and build artifacts named the same way.
     # Having both dependencies at the same time generates conflicts in includes, binary lookups etc.
-    if(AVIF_CODEC_AOM)
+    if(AVIF_CODEC_AOM_ENABLED)
         message(FATAL_ERROR "libavif: aom conflicts with avm, bailing out")
     endif()
 
-    set(AVIF_CODEC_DEFINITIONS ${AVIF_CODEC_DEFINITIONS} -DAVIF_CODEC_AVM=1)
-    set(AVIF_SRCS ${AVIF_SRCS} src/codec_avm.c)
-    if(AVIF_CODEC_AVM STREQUAL "LOCAL")
-        # Building the avm repository generates files such as "libaom.a" because it is a fork of aom.
-        set(LIB_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/avm/build.libavif/${AVIF_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        )
-        if(NOT EXISTS "${LIB_FILENAME}")
-            message(FATAL_ERROR "libavif: ${LIB_FILENAME} (from avm) is missing, bailing out")
-        endif()
+    target_compile_definitions(avif PUBLIC -DAVIF_CODEC_AVM=1)
+    target_sources(avif PRIVATE src/codec_avm.c)
 
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/avm")
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${LIB_FILENAME})
-
-        # ext/avm/aom/aom_encoder.h includes config/aom_config.h which is generated by the local build of avm.
-        set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/ext/avm/build.libavif")
-    else()
-        # Check to see if avm is independently being built by the outer CMake project
-        if(NOT TARGET avm)
-            find_package_libavif(avm REQUIRED)
-            set(AVIF_CODEC_SYSTEM_INCLUDES ${AVIF_CODEC_SYSTEM_INCLUDES} ${AVM_INCLUDE_DIR})
-        endif()
-        set(AVIF_CODEC_LIBRARIES ${AVIF_CODEC_LIBRARIES} ${AVM_LIBRARIES})
-    endif()
+    avif_target_link_library(aom)
 
     message(STATUS "libavif: Codec enabled: avm (encode/decode)")
 endif()
 
-if(NOT AVIF_CODEC_AOM
-   AND NOT AVIF_CODEC_DAV1D
-   AND NOT AVIF_CODEC_LIBGAV1
-   AND NOT AVIF_CODEC_AVM
+if(NOT AVIF_CODEC_AOM_ENABLED
+   AND NOT AVIF_CODEC_DAV1D_ENABLED
+   AND NOT AVIF_CODEC_LIBGAV1_ENABLED
+   AND NOT AVIF_CODEC_AVM_ENABLED
 )
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-add_library(avif ${AVIF_SRCS})
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
-target_compile_definitions(avif PRIVATE ${AVIF_PLATFORM_DEFINITIONS} ${AVIF_CODEC_DEFINITIONS})
-target_link_libraries(avif PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
-target_include_directories(avif PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
-target_include_directories(avif SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
-if(NOT libyuv_FOUND)
+if(NOT AVIF_LIBYUV_ENABLED)
     target_include_directories(avif PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
 endif()
 if(AVIF_ENABLE_COMPLIANCE_WARDEN)
@@ -707,20 +531,33 @@ endif()
 # Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
 # The avif_internal target should not be used by external code.
 if(BUILD_SHARED_LIBS)
-    add_library(avif_internal STATIC ${AVIF_SRCS})
+    add_library(avif_internal STATIC "$<TARGET_PROPERTY:avif,SOURCES>")
     # Copy or duplicate most properties from the public avif library target.
     target_compile_definitions(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,COMPILE_DEFINITIONS>")
-    target_link_libraries(avif_internal PRIVATE "$<TARGET_PROPERTY:avif,LINK_LIBRARIES>")
     target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
-    target_include_directories(avif_internal PRIVATE ${AVIF_PLATFORM_INCLUDES} ${AVIF_CODEC_INCLUDES})
-    target_include_directories(avif_internal SYSTEM PRIVATE ${AVIF_PLATFORM_SYSTEM_INCLUDES} ${AVIF_CODEC_SYSTEM_INCLUDES})
-    if(NOT libyuv_FOUND)
+    get_property(AVIF_INTERNAL_LINK_LIBRARIES TARGET avif PROPERTY LINK_LIBRARIES)
+    target_link_libraries(avif_internal PRIVATE ${AVIF_INTERNAL_LINK_LIBRARIES})
+    get_property(AVIF_INTERNAL_COMPILE_OPTIONS TARGET avif PROPERTY COMPILE_OPTIONS)
+    target_compile_options(avif_internal PUBLIC ${AVIF_INTERNAL_COMPILE_OPTIONS})
+    if(AVIF_USE_CXX)
+        set_target_properties(avif_internal PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
+    if(NOT AVIF_LIBYUV_ENABLED)
         target_include_directories(avif_internal PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
     endif()
+    if(AVIF_ENABLE_COMPLIANCE_WARDEN)
+        target_include_directories(avif_internal PRIVATE ${libavif_SOURCE_DIR}/ext/ComplianceWarden/src/utils/)
+    endif()
 else()
-    add_library(avif_internal ALIAS avif)
     include(merge_static_libs)
-    merge_static_libs(avif ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
+    set_target_properties(avif PROPERTIES AVIF_LOCAL ON)
+    merge_static_libs(avif_static avif)
+    # Set the avif target's output to "avif_internal" and set the output name of
+    # the combined static archive target (avif_static)) to avif, so that libavif.a
+    # is the merged archive.
+    set_target_properties(avif_static PROPERTIES OUTPUT_NAME avif EXPORT_NAME avif)
+    set_target_properties(avif PROPERTIES OUTPUT_NAME avif_internal EXPORT_NAME avif_internal)
+    add_library(avif_internal ALIAS avif)
 endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
@@ -732,7 +569,7 @@ if(AVIF_BUILD_EXAMPLES)
         if(AVIF_USE_CXX)
             set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
         endif()
-        target_link_libraries(${EXAMPLE} avif ${AVIF_PLATFORM_LIBRARIES})
+        target_link_libraries(${EXAMPLE} avif)
     endforeach()
 endif()
 
@@ -744,9 +581,12 @@ if(NOT SKIP_INSTALL_ALL)
     include(GNUInstallDirs)
 endif()
 
-if(AVIF_CODEC_LIBRARIES MATCHES vmaf)
-    # vmaf only affects the avifenc and avifdec targets below, not the avif library nor examples targets.
-    set(AVIF_USE_CXX ON)
+if(AVIF_CODEC_AOM_ENABLED)
+    get_target_property(AOM_INTERFACE_LINK_LIBRARIES aom INTERFACE_LINK_LIBRARIES)
+    if(AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf)
+        # vmaf only affects the avifenc and avifdec targets below, not the avif library nor examples targets.
+        set(AVIF_USE_CXX ON)
+    endif()
 endif()
 
 if(AVIF_USE_CXX)
@@ -783,7 +623,10 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         avif_apps STATIC apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
                          apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
-    target_link_libraries(avif_apps avif ${AVIF_PLATFORM_LIBRARIES} ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${JPEG_LIBRARY})
+    target_link_libraries(avif_apps avif PNG::PNG ZLIB::ZLIB JPEG::JPEG)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(avif_apps m)
+    endif()
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
     # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
@@ -793,11 +636,10 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     target_include_directories(avif_apps INTERFACE apps/shared)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        if(LIBXML2_FOUND)
+        if(TARGET LibXml2::LibXml2)
             set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
             add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-            target_link_libraries(avif_apps ${LIBXML2_LIBRARY})
-            target_include_directories(avif_apps SYSTEM PRIVATE ${LIBXML2_INCLUDE_DIR})
+            target_link_libraries(avif_apps LibXml2::LibXml2)
         else()
             message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
         endif()
@@ -824,13 +666,9 @@ if(AVIF_BUILD_APPS)
             LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         )
     endif()
-
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        set(LIBARGPARSE_FILENAME
-            "${CMAKE_CURRENT_SOURCE_DIR}/ext/libargparse/build/${AVIF_LIBRARY_PREFIX}argparse${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        )
-        if(EXISTS "${LIBARGPARSE_FILENAME}")
-            set(LIBARGPARSE_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/ext/libargparse/src")
+        include(LocalLibargparse)
+        if(TARGET libargparse)
             set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
 
             set(AVIFGAINMAPUTIL_SRCS
@@ -847,11 +685,9 @@ if(AVIF_BUILD_APPS)
 
             add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
             set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
-            target_include_directories(avifgainmaputil PRIVATE "${LIBARGPARSE_INCLUDES}" apps/avifgainmaputil/)
-            target_link_libraries(avifgainmaputil "${LIBARGPARSE_FILENAME}" avif_apps)
+            target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
+            target_link_libraries(avifgainmaputil libargparse avif_apps)
             # Don't add avifgainmaputil to installed apps for now.
-        else()
-            message(WARNING "${LIBARGPARSE_FILENAME} is missing, not building avifgainmaputil, please run ext/libargparse.cmd")
         endif()
     endif()
 endif()
@@ -893,8 +729,13 @@ if(AVIF_BUILD_MAN_PAGES)
 endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
+    if(BUILD_SHARED_LIBS)
+        set(LIBAVIF_INSTALL_TARGET avif)
+    else()
+        set(LIBAVIF_INSTALL_TARGET avif_static)
+    endif()
     install(
-        TARGETS avif
+        TARGETS ${LIBAVIF_INSTALL_TARGET}
         EXPORT ${PROJECT_NAME}-config
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
