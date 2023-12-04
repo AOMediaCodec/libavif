@@ -64,18 +64,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * AVIF files with an exif_tiff_header_offset pointing at another byte than the
   first II or MM tag in the Exif metadata payload will now fail to be decoded.
   Set decoder->ignoreExif to true to skip the issue and decode the image.
-* Fix memory errors reported in crbug.com/1501766 and crbug.com/1501770.
+* Fix memory errors reported in crbug.com/1501766, crbug.com/1501770, and
+  crbug.com/1504792 by [Fudan University](https://secsys.fudan.edu.cn/).
 * For codecs, AVIF_CODEC_* and AVIF_LOCAL_* are now merged into AVIF_CODEC_*
   that can only take the values: OFF, LOCAL or SYSTEM.
 * For the libyuv, libsharpyuv, zlibpng and jpeg dependencies, AVIF_LOCAL_* is
   now replaced by flags AVIF_* that can take the values: OFF, LOCAL or SYSTEM.
+* src/reformat.c: Allocate the threadData array directly.
+
+## [1.0.3] - 2023-12-03
+
+### Changed
+* Rewrite the fix for memory errors reported in crbug.com/1501770.
+* Fix memory errors reported in crbug.com/1504792 by [Fudan
+  University](https://secsys.fudan.edu.cn/).
+* src/reformat.c: Allocate the threadData array directly.
 
 ## [1.0.2] - 2023-11-16
 
 ### Changed
 * Update avifCropRectConvertCleanApertureBox() to the revised requirements in
   ISO/IEC 23000-22:2019/Amd. 2:2021 Section 7.3.6.7.
-* Fix memory errors reported in crbug.com/1501766 and crbug.com/1501770.
+* Fix memory errors reported in crbug.com/1501766 and crbug.com/1501770 by
+  [Fudan University](https://secsys.fudan.edu.cn/).
 
 ## [1.0.1] - 2023-08-29
 
@@ -1051,6 +1062,7 @@ code.
 - `avifVersion()` function
 
 [Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...HEAD
+[1.0.3]: https://github.com/AOMediaCodec/libavif/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/AOMediaCodec/libavif/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/AOMediaCodec/libavif/compare/v0.11.1...v1.0.0
