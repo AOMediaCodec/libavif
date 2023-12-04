@@ -8,10 +8,19 @@
 
 namespace avif {
 
-avifResult ChangeBase(avifImage& image, avifImage* swapped) {
+avifResult ChangeBase(const avifImage& image, int depth,
+                      avifPixelFormat yuvFormat, avifImage* swapped) {
   if (image.gainMap == nullptr || image.gainMap->image == nullptr) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
+
+  // Copy all metadata (no planes).
+  avifResult result = avifImageCopy(swapped, &image, /*planes=*/0);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
+  swapped->depth = depth;
+  swapped->yuvFormat = yuvFormat;
 
   const float headroom =
       static_cast<double>(image.gainMap->metadata.alternateHdrHeadroomN) /
@@ -48,9 +57,9 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
       !tone_mapping_to_sdr && clli.maxCLL == 0 && clli.maxPALL == 0;
 
   avifDiagnostics diag;
-  avifResult result = avifImageApplyGainMap(
-      &image, image.gainMap, headroom, swapped->transferCharacteristics,
-      &swapped_rgb, (compute_clli ? &clli : nullptr), &diag);
+  result = avifImageApplyGainMap(&image, image.gainMap, headroom,
+                                 swapped->transferCharacteristics, &swapped_rgb,
+                                 (compute_clli ? &clli : nullptr), &diag);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to tone map image: " << avifResultToString(result)
               << " (" << diag.error << ")\n";
@@ -64,10 +73,13 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
   }
 
   swapped->clli = clli;
-  swapped->gainMap = image.gainMap;
-  // 'swapped' has taken ownership of the gain map, so remove ownership
-  // from the old image to prevent a double free.
-  image.gainMap = nullptr;
+  // Copy the gain map's planes.
+  result = avifImageCopy(swapped->gainMap->image, image.gainMap->image,
+                         AVIF_PLANES_YUV);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
+
   // Fill in the information on the alternate image
   result =
       avifRWDataSet(&swapped->gainMap->altICC, image.icc.data, image.icc.size);
@@ -93,10 +105,6 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
     std::swap(metadata.baseOffsetN, metadata.alternateOffsetN);
     std::swap(metadata.baseOffsetD, metadata.alternateOffsetD);
   }
-
-  // Steal metadata.
-  std::swap(swapped->xmp, image.xmp);
-  std::swap(swapped->exif, image.exif);
 
   return AVIF_RESULT_OK;
 }
@@ -129,8 +137,8 @@ avifResult SwapBaseCommand::Run() {
     return result;
   }
 
-  if (decoder->image->gainMap == nullptr ||
-      decoder->image->gainMap->image == nullptr) {
+  const avifImage* image = decoder->image;
+  if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
@@ -138,19 +146,26 @@ avifResult SwapBaseCommand::Run() {
 
   int depth = arg_image_read_.depth;
   if (depth == 0) {
-    depth = decoder->image->gainMap->metadata.alternateHdrHeadroomN == 0
-                ? 8
-                : std::max(decoder->image->depth,
-                           decoder->image->gainMap->image->depth);
+    depth = image->gainMap->altDepth;
   }
+  if (depth == 0) {
+    // Default to the max depth between the base image and the gain map/
+    depth = std::max(image->depth, image->gainMap->image->depth);
+  }
+
   avifPixelFormat pixel_format =
       (avifPixelFormat)arg_image_read_.pixel_format.value();
   if (pixel_format == AVIF_PIXEL_FORMAT_NONE) {
-    pixel_format = AVIF_PIXEL_FORMAT_YUV444;
+    pixel_format = (image->gainMap->altPlaneCount == 1)
+                       ? AVIF_PIXEL_FORMAT_YUV420
+                       : AVIF_PIXEL_FORMAT_YUV444;
   }
-  ImagePtr new_base(avifImageCreate(
-      decoder->image->width, decoder->image->height, depth, pixel_format));
-  result = ChangeBase(*decoder->image, new_base.get());
+
+  ImagePtr new_base(avifImageCreateEmpty());
+  if (new_base == nullptr) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
+  result = ChangeBase(*image, depth, pixel_format, new_base.get());
   if (result != AVIF_RESULT_OK) {
     return result;
   }

@@ -132,21 +132,28 @@ static void avifImageDumpInternal(const avifImage * avif,
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     printf(" * Gain map       : ");
-    avifImage * gainMap = avif->gainMap ? avif->gainMap->image : NULL;
-    if (gainMap != NULL) {
+    avifImage * gainMapImage = avif->gainMap ? avif->gainMap->image : NULL;
+    if (gainMapImage != NULL) {
         printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Image is %s\n",
-               gainMap->width,
-               gainMap->height,
-               gainMap->depth,
-               avifPixelFormatToString(gainMap->yuvFormat),
-               (gainMap->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
-               gainMap->matrixCoefficients,
+               gainMapImage->width,
+               gainMapImage->height,
+               gainMapImage->depth,
+               avifPixelFormatToString(gainMapImage->yuvFormat),
+               (gainMapImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
+               gainMapImage->matrixCoefficients,
                (avif->gainMap->metadata.baseHdrHeadroomN == 0) ? "SDR" : "HDR");
-        printf("    * Color Primaries: %u\n", gainMap->colorPrimaries);
-        printf("    * Transfer Char. : %u\n", gainMap->transferCharacteristics);
-        printf("    * Matrix Coeffs. : %u\n", gainMap->matrixCoefficients);
-        if (gainMap->clli.maxCLL > 0 || gainMap->clli.maxPALL > 0) {
-            printf("    * CLLI           : %hu, %hu\n", gainMap->clli.maxCLL, gainMap->clli.maxPALL);
+        printf(" * Alternate image:\n");
+        printf("    * Color Primaries: %u\n", avif->gainMap->altColorPrimaries);
+        printf("    * Transfer Char. : %u\n", avif->gainMap->altTransferCharacteristics);
+        printf("    * Matrix Coeffs. : %u\n", avif->gainMap->altMatrixCoefficients);
+        if (avif->gainMap->altDepth) {
+            printf("    * Bit Depth      : %u\n", avif->gainMap->altDepth);
+        }
+        if (avif->gainMap->altPlaneCount) {
+            printf("    * Planes         : %u\n", avif->gainMap->altPlaneCount);
+        }
+        if (gainMapImage->clli.maxCLL > 0 || gainMapImage->clli.maxPALL > 0) {
+            printf("    * CLLI           : %hu, %hu\n", gainMapImage->clli.maxCLL, gainMapImage->clli.maxPALL);
         }
         printf("\n");
     } else if (gainMapPresent) {

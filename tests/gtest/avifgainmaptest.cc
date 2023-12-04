@@ -932,6 +932,13 @@ TEST(GainMapTest, CreateTestImages) {
     hdr_image->gainMap = sdr_with_gainmap->gainMap;
     sdr_with_gainmap->gainMap = nullptr;
     SwapBaseAndAlternate(hdr_image->gainMap->metadata);
+    hdr_image->gainMap->altColorPrimaries = sdr_with_gainmap->colorPrimaries;
+    hdr_image->gainMap->altTransferCharacteristics =
+        sdr_with_gainmap->transferCharacteristics;
+    hdr_image->gainMap->altMatrixCoefficients =
+        sdr_with_gainmap->matrixCoefficients;
+    hdr_image->gainMap->altDepth = sdr_with_gainmap->depth;
+    hdr_image->gainMap->altPlaneCount = 3;
 
     const testutil::AvifRwData encoded =
         testutil::Encode(hdr_image.get(), /*speed=*/9, /*quality=*/90);

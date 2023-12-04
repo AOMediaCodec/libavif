@@ -1143,6 +1143,9 @@ static avifBool avifJPEGReadInternal(FILE * f,
             gainMap->altColorPrimaries = avif->colorPrimaries;
             gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
             gainMap->altMatrixCoefficients = avif->matrixCoefficients;
+            gainMap->altDepth = 8;
+            gainMap->altPlaneCount =
+                (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && gainMap->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
             avif->gainMap = gainMap;
         } else {
             avifGainMapDestroy(gainMap);
