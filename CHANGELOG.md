@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * For codecs, AVIF_CODEC_* and AVIF_LOCAL_* are now merged into AVIF_CODEC_*
   that can only take the values: OFF, LOCAL or SYSTEM.
 * For the libyuv, libsharpyuv, zlibpng and jpeg dependencies, AVIF_LOCAL_* is
-  now replaced into AVIF_* that can take the values: OFF, LOCAL or SYSTEM.
+  now replaced by flags AVIF_* that can take the values: OFF, LOCAL or SYSTEM.
 
 ## [1.0.2] - 2023-11-16
 
