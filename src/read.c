@@ -199,9 +199,12 @@ typedef struct avifDecoderItem
     uint32_t thumbnailForID;       // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
     uint32_t auxForID;             // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;            // if non-zero, this item is a content description for Item #{descForID}
-    uint32_t dimgForID;            // if non-zero, this item is a derived image for Item #{dimgForID}
-    uint32_t dimgIdx; // if dimgForId is non-zero, this is the zero-based index of this item in the list of Item #{dimgForID}'s dimg
-    uint32_t premByID; // if non-zero, this item is premultiplied by Item #{premByID}
+    uint32_t dimgForID;            // if non-zero, this item is an input of derived Item #{dimgForID}
+    // If dimgForId is non-zero, this is the zero-based index of this item in the list of Item #{dimgForID}'s dimg
+    // Note that if the same item appears multiple times in the dimg box, this is the last index for this item.
+    uint32_t dimgIdx;
+    avifBool hasDimgFrom; // whether there is a 'dimg' box with this item's id as 'fromID'
+    uint32_t premByID;    // if non-zero, this item is premultiplied by Item #{premByID}
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
     avifBool ipmaSeen;    // if true, this item already received a property association
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (the layer_id value in lsel is set to 0xFFFF)
@@ -2686,13 +2689,25 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
             uint16_t tmp;
             AVIF_CHECKERR(avifROStreamReadU16(&s, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) from_item_ID;
             fromID = tmp;
-            AVIF_CHECKRES(avifCheckItemID("iref", fromID, diag)); // ISO 14496-12 section 8.11.12.1: "index values start at 1"
         } else if (version == 1) {
             AVIF_CHECKERR(avifROStreamReadU32(&s, &fromID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) from_item_ID;
-            AVIF_CHECKRES(avifCheckItemID("iref", fromID, diag));
         } else {
             // unsupported iref version, skip it
             break;
+        }
+        // ISO 14496-12 section 8.11.12.1: "index values start at 1"
+        AVIF_CHECKRES(avifCheckItemID("iref", fromID, diag));
+
+        avifDecoderItem * item;
+        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, fromID, &item));
+        if (!memcmp(irefHeader.type, "dimg", 4)) {
+            if (item->hasDimgFrom) {
+                // ISO/IEC 23008-12 (HEIF) 6.6.1: The number of SingleItemTypeReferenceBoxes with the box type 'dimg'
+                // and with the same value of from_item_ID shall not be greater than 1.
+                avifDiagnosticsPrintf(diag, "Box[iinf] contains duplicate boxes of type 'dimg' with the same from_item_ID value %d", fromID);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            item->hasDimgFrom = AVIF_TRUE;
         }
 
         uint16_t referenceCount = 0;
@@ -2704,36 +2719,30 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 uint16_t tmp;
                 AVIF_CHECKERR(avifROStreamReadU16(&s, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) to_item_ID;
                 toID = tmp;
-                AVIF_CHECKRES(avifCheckItemID("iref", toID, diag));
             } else if (version == 1) {
                 AVIF_CHECKERR(avifROStreamReadU32(&s, &toID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) to_item_ID;
-                AVIF_CHECKRES(avifCheckItemID("iref", toID, diag));
             } else {
                 // unsupported iref version, skip it
                 break;
             }
+            AVIF_CHECKRES(avifCheckItemID("iref", toID, diag));
 
             // Read this reference as "{fromID} is a {irefType} for {toID}"
-            if (fromID && toID) {
-                avifDecoderItem * item;
-                AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, fromID, &item));
+            if (!memcmp(irefHeader.type, "thmb", 4)) {
+                item->thumbnailForID = toID;
+            } else if (!memcmp(irefHeader.type, "auxl", 4)) {
+                item->auxForID = toID;
+            } else if (!memcmp(irefHeader.type, "cdsc", 4)) {
+                item->descForID = toID;
+            } else if (!memcmp(irefHeader.type, "dimg", 4)) {
+                // derived images refer in the opposite direction
+                avifDecoderItem * dimg;
+                AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, toID, &dimg));
 
-                if (!memcmp(irefHeader.type, "thmb", 4)) {
-                    item->thumbnailForID = toID;
-                } else if (!memcmp(irefHeader.type, "auxl", 4)) {
-                    item->auxForID = toID;
-                } else if (!memcmp(irefHeader.type, "cdsc", 4)) {
-                    item->descForID = toID;
-                } else if (!memcmp(irefHeader.type, "dimg", 4)) {
-                    // derived images refer in the opposite direction
-                    avifDecoderItem * dimg;
-                    AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, toID, &dimg));
-
-                    dimg->dimgForID = fromID;
-                    dimg->dimgIdx = refIndex;
-                } else if (!memcmp(irefHeader.type, "prem", 4)) {
-                    item->premByID = toID;
-                }
+                dimg->dimgForID = fromID;
+                dimg->dimgIdx = refIndex;
+            } else if (!memcmp(irefHeader.type, "prem", 4)) {
+                item->premByID = toID;
             }
         }
     }
@@ -4445,8 +4454,9 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
                 }
                 numDimgItemIDs++;
             }
-            if (numDimgItemIDs != 2) {
-                avifDiagnosticsPrintf(data->diag, "Expected box[tmap] to have 2 items associated with 'dimg': found [%d] instead", numDimgItemIDs);
+            // Even with numDimgItemIDs == 2, one of the ids could be 0 if there are duplicate entries in the 'dimg' box.
+            if (numDimgItemIDs != 2 || dimgItemIDs[0] == 0 || dimgItemIDs[1] == 0) {
+                avifDiagnosticsPrintf(data->diag, "box[dimg] for 'tmap' item %d must have exactly 2 entries with distinct ids", item->id);
                 return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
             }
             if (dimgItemIDs[0] != colorItem->id) {
