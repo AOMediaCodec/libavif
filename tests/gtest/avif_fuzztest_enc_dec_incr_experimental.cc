@@ -90,10 +90,11 @@ void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
   const bool expect_whole_file_read = decoder->enableDecodingGainMap &&
                                       decoder->enableParsingGainMapMetadata &&
                                       !decoder->ignoreColorAndAlpha;
-  DecodeNonIncrementallyAndIncrementally(
+  const avifResult decode_result = DecodeNonIncrementallyAndIncrementally(
       encoded_data, decoder.get(), is_encoded_data_persistent,
       give_size_hint_to_decoder, /*use_nth_image_api=*/true, cell_height,
       /*enable_fine_incremental_check=*/false, expect_whole_file_read);
+  ASSERT_EQ(decode_result, AVIF_RESULT_OK) << avifResultToString(decode_result);
 }
 
 // Note that avifGainMapMetadata is passed as a byte array

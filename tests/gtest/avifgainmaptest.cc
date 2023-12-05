@@ -393,11 +393,12 @@ TEST(GainMapTest, EncodeDecodeGrid) {
 
   // Check that non-incremental and incremental decodings of a grid AVIF produce
   // the same pixels.
-  testutil::DecodeNonIncrementallyAndIncrementally(
-      encoded, decoder.get(),
-      /*is_persistent=*/true, /*give_size_hint=*/true,
-      /*use_nth_image_api=*/false, kCellHeight,
-      /*enable_fine_incremental_check=*/true);
+  ASSERT_EQ(testutil::DecodeNonIncrementallyAndIncrementally(
+                encoded, decoder.get(),
+                /*is_persistent=*/true, /*give_size_hint=*/true,
+                /*use_nth_image_api=*/false, kCellHeight,
+                /*enable_fine_incremental_check=*/true),
+            AVIF_RESULT_OK);
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_grid.avif", std::ios::binary)

@@ -26,16 +26,16 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
 // incremental granularity. enable_fine_incremental_check checks that sample
 // rows are gradually output when feeding more and more input bytes to the
 // decoder.
-void DecodeIncrementally(const avifRWData& encoded_avif, avifDecoder* decoder,
-                         bool is_persistent, bool give_size_hint,
-                         bool use_nth_image_api, const avifImage& reference,
-                         uint32_t cell_height,
-                         bool enable_fine_incremental_check = false,
-                         bool expect_whole_file_read = true);
+avifResult DecodeIncrementally(const avifRWData& encoded_avif,
+                               avifDecoder* decoder, bool is_persistent,
+                               bool give_size_hint, bool use_nth_image_api,
+                               const avifImage& reference, uint32_t cell_height,
+                               bool enable_fine_incremental_check = false,
+                               bool expect_whole_file_read = true);
 
 // Calls DecodeIncrementally() with the reference being a regular decoding of
 // encoded_avif.
-void DecodeNonIncrementallyAndIncrementally(
+avifResult DecodeNonIncrementallyAndIncrementally(
     const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
     bool give_size_hint, bool use_nth_image_api, uint32_t cell_height,
     bool enable_fine_incremental_check = false,
