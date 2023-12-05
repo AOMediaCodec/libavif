@@ -82,7 +82,7 @@ if(AVIF_ENABLE_GTEST OR AVIF_ENABLE_FUZZTEST)
     endif()
 
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
-    target_link_libraries(avifincrtest_helpers avif GTest::gtest)
+    target_link_libraries(avifincrtest_helpers avif_internal GTest::gtest)
 endif()
 
 if(AVIF_ENABLE_GTEST)

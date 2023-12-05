@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "avif/avif.h"
+#include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
@@ -297,7 +298,7 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
                                bool expect_whole_file_read) {
   // AVIF cells are at least 64 pixels tall.
   if (cell_height != reference.height) {
-    if (cell_height < 64u) return AVIF_RESULT_INVALID_ARGUMENT;
+    AVIF_CHECKERR(cell_height >= 64u, AVIF_RESULT_INVALID_ARGUMENT);
   }
 
   // Emulate a byte-by-byte stream.
@@ -331,7 +332,7 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
     data.available.size = std::min(data.available.size + step, data.full_size);
     parse_result = avifDecoderParse(decoder);
   }
-  if (parse_result != AVIF_RESULT_OK) return parse_result;
+  AVIF_CHECKRES(parse_result);
 
   // Decoding is incremental.
   uint32_t previously_decoded_row_count = 0;
@@ -346,15 +347,13 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
       return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const uint32_t decoded_row_count = avifDecoderDecodedRowCount(decoder);
-    if (decoded_row_count < previously_decoded_row_count) {
-      return AVIF_RESULT_INVALID_ARGUMENT;
-    }
+    AVIF_CHECKERR(decoded_row_count >= previously_decoded_row_count,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
         reference.height, cell_height, reference.alphaPlane != nullptr,
         data.available.size, data.full_size, enable_fine_incremental_check);
-    if (decoded_row_count < min_decoded_row_count) {
-      return AVIF_RESULT_INVALID_ARGUMENT;
-    }
+    AVIF_CHECKERR(decoded_row_count >= min_decoded_row_count,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     ComparePartialYuva(reference, *decoder->image, decoded_row_count);
 
     previously_decoded_row_count = decoded_row_count;
@@ -362,15 +361,13 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
     next_image_result = use_nth_image_api ? avifDecoderNthImage(decoder, 0)
                                           : avifDecoderNextImage(decoder);
   }
-  if (next_image_result != AVIF_RESULT_OK) return next_image_result;
+  AVIF_CHECKRES(next_image_result);
   if (expect_whole_file_read) {
-    if (data.available.size != data.full_size) {
-      return AVIF_RESULT_INVALID_ARGUMENT;
-    }
+    AVIF_CHECKERR(data.available.size == data.full_size,
+                  AVIF_RESULT_INVALID_ARGUMENT);
   }
-  if (avifDecoderDecodedRowCount(decoder) != decoder->image->height) {
-    return AVIF_RESULT_INVALID_ARGUMENT;
-  }
+  AVIF_CHECKERR(avifDecoderDecodedRowCount(decoder) == decoder->image->height,
+                AVIF_RESULT_INVALID_ARGUMENT);
 
   ComparePartialYuva(reference, *decoder->image, reference.height);
   return AVIF_RESULT_OK;
