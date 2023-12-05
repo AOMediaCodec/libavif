@@ -16,6 +16,7 @@ function(avif_collect_deps target out_deps)
             set(in_special_block FALSE) # Latch off
         elseif(NOT in_special_block)
             string(REGEX REPLACE "\\\$<BUILD_INTERFACE:([^>]*)>" "\\1" dep ${dep})
+            string(REGEX REPLACE "\\\$<LINK_ONLY:([^>]*)>" "\\1" dep ${dep})
             if(TARGET ${dep})
                 get_target_property(_aliased_dep ${dep} ALIASED_TARGET)
                 if(_aliased_dep)
