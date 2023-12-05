@@ -59,9 +59,10 @@ void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
       avifEncoderFinish(encoder.get(), &encoded_data);
   ASSERT_EQ(finish_result, AVIF_RESULT_OK) << avifResultToString(finish_result);
 
-  DecodeNonIncrementallyAndIncrementally(
+  const avifResult decode_result = DecodeNonIncrementallyAndIncrementally(
       encoded_data, decoder.get(), is_encoded_data_persistent,
       give_size_hint_to_decoder, /*use_nth_image_api=*/true, cell_height);
+  ASSERT_EQ(decode_result, AVIF_RESULT_OK) << avifResultToString(decode_result);
 }
 
 FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeGridValid)

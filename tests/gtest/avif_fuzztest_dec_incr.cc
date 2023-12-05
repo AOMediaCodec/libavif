@@ -81,9 +81,11 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
     // the underlying AV1 frame (for example a 1x1000000 AVIF for a 1x1 AV1).
     // Otherwise we could use the minimum of reference->height and 65536u below.
     const uint32_t max_cell_height = reference->height;
-    DecodeIncrementally(encoded_data, decoder.get(), is_persistent,
-                        give_size_hint, use_nth_image_api, *reference,
-                        max_cell_height);
+    const avifResult result = DecodeIncrementally(
+        encoded_data, decoder.get(), is_persistent, give_size_hint,
+        use_nth_image_api, *reference, max_cell_height);
+    // The result does not matter, as long as we do not crash.
+    (void)result;
   }
 }
 
