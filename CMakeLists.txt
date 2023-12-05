@@ -529,7 +529,7 @@ endif()
 
 # Main library.
 add_library(avif)
-set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION} C_VISIBILITY_PRESET hidden)
+set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION})
 target_link_libraries(avif PRIVATE avif_obj)
 target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 if(BUILD_SHARED_LIBS)
@@ -545,8 +545,8 @@ if(BUILD_SHARED_LIBS)
     target_link_libraries(avif_internal PRIVATE avif_obj)
     target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
     # Define the following to avoid linking against the two at the same time.
-    target_compile_definitions(avif PUBLIC $<BUILD_INTERFACE:AVIF_BUILDING_SHARED_LIBS>)
-    target_compile_definitions(avif_internal PUBLIC AVIF_BUILDING_STATIC_LIBS)
+    target_compile_definitions(avif PUBLIC $<BUILD_INTERFACE:AVIF_DLL>)
+    target_compile_definitions(avif_internal PUBLIC AVIF_USING_STATIC_LIBS)
 else()
     include(merge_static_libs)
     set_target_properties(avif PROPERTIES AVIF_LOCAL ON)
@@ -649,7 +649,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     endif()
 
     # Main avif_apps library.
-    add_library(avif_apps)
+    add_library(avif_apps STATIC)
     target_link_libraries(avif_apps PUBLIC avif PRIVATE avif_apps_obj)
     target_include_directories(avif_apps INTERFACE apps/shared)
 
