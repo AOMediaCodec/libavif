@@ -3,6 +3,7 @@
 
 #include "imageio.h"
 
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -82,8 +83,9 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
   }
   std::ofstream f(output_filename, std::ios::binary);
   f.write(reinterpret_cast<char*>(encoded.data), encoded.size);
-  if (f.bad()) {
-    std::cerr << "Failed to write image " << output_filename << "\n";
+  if (f.fail()) {
+    std::cerr << "Failed to write image " << output_filename << ": "
+              << std::strerror(errno) << "\n";
     return AVIF_RESULT_IO_ERROR;
   }
   std::cout << "Wrote AVIF: " << output_filename << "\n";
