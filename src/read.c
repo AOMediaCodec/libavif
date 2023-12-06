@@ -1788,7 +1788,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
 
             uint64_t extentOffset; // unsigned int(offset_size*8) extent_offset;
             AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentOffset, offsetSize), AVIF_RESULT_BMFF_PARSE_FAILED);
-            uint64_t extentLength; // unsigned int(offset_size*8) extent_length;
+            uint64_t extentLength; // unsigned int(length_size*8) extent_length;
             AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentLength, lengthSize), AVIF_RESULT_BMFF_PARSE_FAILED);
 
             avifExtent * extent = (avifExtent *)avifArrayPush(&item->extents);
@@ -2911,7 +2911,7 @@ static avifResult avifParseChunkOffsetBox(avifSampleTable * sampleTable, avifBoo
     for (uint32_t i = 0; i < entryCount; ++i) {
         uint64_t offset;
         if (largeOffsets) {
-            AVIF_CHECKERR(avifROStreamReadU64(&s, &offset), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) chunk_offset;
+            AVIF_CHECKERR(avifROStreamReadU64(&s, &offset), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(64) chunk_offset;
         } else {
             uint32_t offset32;
             AVIF_CHECKERR(avifROStreamReadU32(&s, &offset32), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) chunk_offset;
