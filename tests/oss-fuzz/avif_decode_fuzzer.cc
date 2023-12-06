@@ -2,93 +2,40 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/avif.h"
+#include "avif/avif_cxx.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
 {
-    static avifRGBFormat rgbFormats[] = { AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA };
-    static size_t rgbFormatsCount = sizeof(rgbFormats) / sizeof(rgbFormats[0]);
-
-    static avifChromaUpsampling upsamplings[] = { AVIF_CHROMA_UPSAMPLING_BILINEAR, AVIF_CHROMA_UPSAMPLING_NEAREST };
-    static size_t upsamplingsCount = sizeof(upsamplings) / sizeof(upsamplings[0]);
-
-    static uint32_t rgbDepths[] = { 8, 10 };
-    static size_t rgbDepthsCount = sizeof(rgbDepths) / sizeof(rgbDepths[0]);
-
-    static uint32_t yuvDepths[] = { 8, 10 };
-    static size_t yuvDepthsCount = sizeof(yuvDepths) / sizeof(yuvDepths[0]);
-
-    avifDecoder * decoder = avifDecoderCreate();
+    avif::DecoderPtr decoder(avifDecoderCreate());
+    if (decoder == nullptr)
+        return 0;
     decoder->allowProgressive = AVIF_TRUE;
-    // ClusterFuzz passes -rss_limit_mb=2560 to avif_decode_fuzzer. Empirically setting
-    // decoder->imageSizeLimit to this value allows avif_decode_fuzzer to consume no more than
-    // 2560 MB of memory.
-    // Also limit the dimensions to avoid timeouts and to speed the fuzzing up.
+
+    // ClusterFuzz passes -rss_limit_mb=2560 to avif_decode_fuzzer. Empirically
+    // setting decoder->imageSizeLimit to this value allows avif_decode_fuzzer to
+    // consume no more than 2560 MB of memory. Also limit the dimensions to avoid
+    // timeouts and to speed the fuzzing up.
     constexpr uint32_t kImageSizeLimit = 8 * 1024 * 8 * 1024;
     static_assert(kImageSizeLimit <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT, "");
     decoder->imageSizeLimit = kImageSizeLimit;
-    avifIO * io = avifIOCreateMemoryReader(Data, Size);
+
+    avifIO * const io = avifIOCreateMemoryReader(Data, Size);
+    if (io == nullptr)
+        return 0;
     // Simulate Chrome's avifIO object, which is not persistent.
     io->persistent = AVIF_FALSE;
-    avifDecoderSetIO(decoder, io);
-    avifResult result = avifDecoderParse(decoder);
-    if (result == AVIF_RESULT_OK) {
-        for (int loop = 0; loop < 2; ++loop) {
-            while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-                if (((decoder->image->width * decoder->image->height) > (25 * 1024 * 1024)) || (loop != 0) ||
-                    (decoder->imageIndex != 0)) {
-                    // Skip the YUV<->RGB conversion tests, which are time-consuming for large
-                    // images. It suffices to run these tests only for loop == 0 and only for the
-                    // first image of an image sequence.
-                    continue;
-                }
-                avifRGBImage rgb;
-                avifRGBImageSetDefaults(&rgb, decoder->image);
+    avifDecoderSetIO(decoder.get(), io);
 
-                for (size_t rgbFormatsIndex = 0; rgbFormatsIndex < rgbFormatsCount; ++rgbFormatsIndex) {
-                    for (size_t upsamplingsIndex = 0; upsamplingsIndex < upsamplingsCount; ++upsamplingsIndex) {
-                        for (size_t rgbDepthsIndex = 0; rgbDepthsIndex < rgbDepthsCount; ++rgbDepthsIndex) {
-                            // Convert to RGB
-                            rgb.format = rgbFormats[rgbFormatsIndex];
-                            rgb.depth = rgbDepths[rgbDepthsIndex];
-                            rgb.chromaUpsampling = upsamplings[upsamplingsIndex];
-                            rgb.avoidLibYUV = AVIF_TRUE;
-                            if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
-                                continue;
-                            }
-                            avifResult rgbResult = avifImageYUVToRGB(decoder->image, &rgb);
-                            // Since avifImageRGBToYUV() ignores rgb.chromaUpsampling, we only need
-                            // to test avifImageRGBToYUV() with a single upsamplingsIndex.
-                            if ((rgbResult == AVIF_RESULT_OK) && (upsamplingsIndex == 0)) {
-                                for (size_t yuvDepthsIndex = 0; yuvDepthsIndex < yuvDepthsCount; ++yuvDepthsIndex) {
-                                    // ... and back to YUV
-                                    avifImage * tempImage = avifImageCreate(decoder->image->width,
-                                                                            decoder->image->height,
-                                                                            yuvDepths[yuvDepthsIndex],
-                                                                            decoder->image->yuvFormat);
-                                    if (!tempImage) {
-                                        continue;
-                                    }
-                                    (void)avifImageRGBToYUV(tempImage, &rgb);
-                                    avifImageDestroy(tempImage);
-                                }
-                            }
-
-                            avifRGBImageFreePixels(&rgb);
-                        }
-                    }
-                }
-            }
-
-            if (loop != 1) {
-                result = avifDecoderReset(decoder);
-                if (result == AVIF_RESULT_OK) {
-                } else {
-                    break;
-                }
-            }
-        }
+    if (avifDecoderParse(decoder.get()) != AVIF_RESULT_OK)
+        return 0;
+    while (avifDecoderNextImage(decoder.get()) == AVIF_RESULT_OK) {
     }
 
-    avifDecoderDestroy(decoder);
+    // Loop once.
+    if (avifDecoderReset(decoder.get()) != AVIF_RESULT_OK)
+        return 0;
+    while (avifDecoderNextImage(decoder.get()) == AVIF_RESULT_OK) {
+    }
+
     return 0; // Non-zero return values are reserved for future use.
 }

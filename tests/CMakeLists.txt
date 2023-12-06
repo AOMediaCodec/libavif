@@ -188,6 +188,7 @@ if(AVIF_ENABLE_FUZZTEST)
     add_avif_fuzztest(avif_fuzztest_enc_dec)
     add_avif_fuzztest(avif_fuzztest_enc_dec_anim)
     add_avif_fuzztest(avif_fuzztest_read_image)
+    add_avif_fuzztest(avif_fuzztest_yuvrgb)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         add_avif_fuzztest(avif_fuzztest_enc_dec_experimental)
