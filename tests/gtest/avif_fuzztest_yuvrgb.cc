@@ -1,31 +1,27 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-
 #include "avif/avif.h"
 #include "avif_fuzztest_helpers.h"
 #include "aviftest_helpers.h"
-#include "avifutil.h"
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
 using ::fuzztest::Arbitrary;
 using ::fuzztest::ElementOf;
+using ::fuzztest::InRange;
 
 namespace avif {
 namespace testutil {
 namespace {
 
-void Convert(ImagePtr image, uint32_t rgb_depth, avifRGBFormat rgb_format,
+void Convert(ImagePtr image, int rgb_depth, int rgb_format,
              avifChromaUpsampling upsampling,
              avifChromaDownsampling downsampling, bool avoid_libyuv,
              bool ignore_alpha, bool alpha_premultiplied, bool is_float,
              int max_threads) {
-  AvifRgbImage rgb(image.get(), rgb_depth, rgb_format);
+  AvifRgbImage rgb(image.get(), rgb_depth,
+                   static_cast<avifRGBFormat>(rgb_format));
   rgb.chromaUpsampling = upsampling;
   rgb.chromaDownsampling = downsampling;
   rgb.avoidLibYUV = avoid_libyuv;
@@ -43,6 +39,7 @@ void Convert(ImagePtr image, uint32_t rgb_depth, avifRGBFormat rgb_format,
                                       : AVIF_RESULT_OK;
   const avifResult expected_rgb_to_yuv_result =
       (rgb_format == AVIF_RGB_FORMAT_RGB_565) ? AVIF_RESULT_REFORMAT_FAILED
+      : (is_float && rgb_depth != 16)         ? AVIF_RESULT_REFORMAT_FAILED
       : (is_float)                            ? AVIF_RESULT_NOT_IMPLEMENTED
                                               : AVIF_RESULT_OK;
 
@@ -53,10 +50,7 @@ void Convert(ImagePtr image, uint32_t rgb_depth, avifRGBFormat rgb_format,
 FUZZ_TEST(YuvRgbFuzzTest, Convert)
     .WithDomains(ArbitraryAvifImage(),
                  /*rgb_depth=*/ElementOf({8, 10, 12, 16}),
-                 ElementOf({AVIF_RGB_FORMAT_RGB, AVIF_RGB_FORMAT_RGBA,
-                            AVIF_RGB_FORMAT_ARGB, AVIF_RGB_FORMAT_BGR,
-                            AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ABGR,
-                            AVIF_RGB_FORMAT_RGB_565}),
+                 InRange(0, int{AVIF_RGB_FORMAT_COUNT} - 1),
                  ElementOf({AVIF_CHROMA_UPSAMPLING_AUTOMATIC,
                             AVIF_CHROMA_UPSAMPLING_FASTEST,
                             AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
@@ -71,7 +65,7 @@ FUZZ_TEST(YuvRgbFuzzTest, Convert)
                  /*ignore_alpha=*/Arbitrary<bool>(),
                  /*alpha_premultiplied=*/Arbitrary<bool>(),
                  /*is_float=*/Arbitrary<bool>(),
-                 /*max_threads=*/ElementOf({0, 1, 2, 8}));
+                 /*max_threads=*/ElementOf({-1, 0, 1, 2, 8}));
 
 //------------------------------------------------------------------------------
 

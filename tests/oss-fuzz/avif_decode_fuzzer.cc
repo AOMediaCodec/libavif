@@ -19,7 +19,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * Data, size_t Size)
     static_assert(kImageSizeLimit <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT, "");
     decoder->imageSizeLimit = kImageSizeLimit;
 
-    avifIO * io = avifIOCreateMemoryReader(Data, Size);
+    avifIO * const io = avifIOCreateMemoryReader(Data, Size);
     if (io == nullptr)
         return 0;
     // Simulate Chrome's avifIO object, which is not persistent.
