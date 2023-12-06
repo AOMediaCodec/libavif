@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   AVIF_COLOR_PRIMARIES_DCI_P3, AVIF_TRANSFER_CHARACTERISTICS_PQ.
 
 ### Changed
-* Update aom.cmd: v3.7.1
+* Update aom.cmd: v3.8.0
 * Update svt.cmd/svt.sh: v1.7.0
 * Update zlibpng.cmd: zlib 1.3 and libpng 1.6.40
 * AVIF sequences encoded by libavif will now also have the "avio" brand when
