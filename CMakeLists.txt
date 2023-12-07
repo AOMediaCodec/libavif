@@ -127,15 +127,16 @@ else()
     set(XCRUN)
 endif()
 
+# This is also needed to get shared libraries (e.g. pixbufloader-avif) to compile against a static libavif.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if(BUILD_SHARED_LIBS)
     set(AVIF_LIBRARY_PREFIX "${CMAKE_SHARED_LIBRARY_PREFIX}")
 else()
     set(AVIF_LIBRARY_PREFIX "${CMAKE_STATIC_LIBRARY_PREFIX}")
-    # This is needed to get shared libraries (e.g. pixbufloader-avif) to compile against a static libavif.
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 add_library(avif_obj OBJECT)
+add_library(avif)
 
 # Adds <target> to avif_obj's public link libraries for build, and adds
 # the library as an install link library for export if a consumer
@@ -154,7 +155,7 @@ function(avif_target_link_library target)
     # library, or if it is a static library in a static build
     get_target_property(target_type ${target} TYPE)
     if(target_type STREQUAL "SHARED_LIBRARY" OR NOT BUILD_SHARED_LIBS)
-        target_link_libraries(avif_obj PUBLIC $<INSTALL_INTERFACE:${install_target}>)
+        target_link_libraries(avif PUBLIC $<INSTALL_INTERFACE:${install_target}>)
     endif()
 endfunction()
 
@@ -513,7 +514,6 @@ if(NOT AVIF_CODEC_AOM_ENABLED
 endif()
 
 set_target_properties(avif_obj PROPERTIES C_VISIBILITY_PRESET hidden)
-set_property(TARGET avif_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(avif_obj PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>)
 if(NOT AVIF_LIBYUV_ENABLED)
     target_include_directories(avif_obj PRIVATE ${libavif_SOURCE_DIR}/third_party/libyuv/include/)
@@ -528,7 +528,6 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 # Main library.
-add_library(avif)
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION})
 target_link_libraries(avif PRIVATE avif_obj)
 target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
@@ -545,7 +544,6 @@ if(BUILD_SHARED_LIBS)
     target_link_libraries(avif_internal PRIVATE avif_obj)
     target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
     # Define the following to avoid linking against the two at the same time.
-    target_compile_definitions(avif PUBLIC $<BUILD_INTERFACE:AVIF_DLL>)
     target_compile_definitions(avif_internal PUBLIC AVIF_USING_STATIC_LIBS)
 else()
     include(merge_static_libs)
@@ -626,7 +624,6 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         avif_apps_obj OBJECT $<TARGET_OBJECTS:avif_obj> apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c
                              apps/shared/avifutil.c apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
-    set_property(TARGET avif_apps_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
     target_link_libraries(avif_apps_obj avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_link_libraries(avif_apps_obj m)
