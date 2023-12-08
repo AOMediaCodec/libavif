@@ -44,6 +44,13 @@ void Convert(ImagePtr image, int rgb_depth, int rgb_format,
                                               : AVIF_RESULT_OK;
 
   ASSERT_EQ(avifImageYUVToRGB(image.get(), &rgb), expected_yuv_to_rgb_result);
+  if (expected_yuv_to_rgb_result != AVIF_RESULT_OK) {
+    // Fill pixels with something, so that avifImageRGBToYUV() can be called.
+    AvifRgbImage rgb_ok(image.get(), rgb_depth, AVIF_RGB_FORMAT_RGBA);
+    ASSERT_EQ(avifImageYUVToRGB(image.get(), &rgb_ok), AVIF_RESULT_OK);
+    memcpy(rgb.pixels, rgb_ok.pixels, rgb.rowBytes * rgb.height);
+  }
+
   ASSERT_EQ(avifImageRGBToYUV(image.get(), &rgb), expected_rgb_to_yuv_result);
 }
 
