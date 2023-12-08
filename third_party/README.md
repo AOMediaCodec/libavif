@@ -6,7 +6,7 @@ See `LICENSE` file of respective subdirectories of this directory for license in
 
 ## libyuv
 
-This subdirectory contains source code imported from libyuv as of `a3b9c36eb96ee815c938716d7e9703604938f904`, with
+This subdirectory contains source code imported from libyuv as of `def473f501acbd652cd4593fd2a90a067e8c9f1a`, with
 modifications intended to keep them relatively small and simple.
 
 ### Importing from upstream
