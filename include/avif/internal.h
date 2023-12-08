@@ -104,10 +104,10 @@ AVIF_NODISCARD avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrim
 AVIF_NODISCARD avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrimaries,
                                                                 avifColorPrimaries dstColorPrimaries,
                                                                 double coeffs[3][3]);
-// Converts the given linear RGBA pixel from one color space to another using the provided coefficients.
+// Converts the given linear RGB pixel from one color space to another using the provided coefficients.
 // The coefficients can be obtained with avifColorPrimariesComputeRGBToRGBMatrix().
 // The output values are not clamped and may be < 0 or > 1.
-void avifLinearRGBAConvertColorSpace(float rgba[4], const double coeffs[3][3]);
+void avifLinearRGBConvertColorSpace(float rgb[4], const double coeffs[3][3]);
 
 #define AVIF_ARRAY_DECLARE(TYPENAME, ITEMSTYPE, ITEMSNAME) \
     typedef struct TYPENAME                                \

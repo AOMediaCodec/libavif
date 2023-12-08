@@ -3,7 +3,6 @@
 
 #include "avif/internal.h"
 
-#include <assert.h>
 #include <float.h>
 #include <math.h>
 #include <string.h>
@@ -511,204 +510,25 @@ void avifColorPrimariesComputeYCoeffs(avifColorPrimaries colorPrimaries, float c
 {
     float primaries[8];
     avifColorPrimariesGetValues(colorPrimaries, primaries);
-    const float rX = primaries[0];
-    const float rY = primaries[1];
-    const float gX = primaries[2];
-    const float gY = primaries[3];
-    const float bX = primaries[4];
-    const float bY = primaries[5];
-    const float wX = primaries[6];
-    const float wY = primaries[7];
-    const float rZ = 1.0f - (rX + rY); // (Eq. 34)
-    const float gZ = 1.0f - (gX + gY); // (Eq. 35)
-    const float bZ = 1.0f - (bX + bY); // (Eq. 36)
-    const float wZ = 1.0f - (wX + wY); // (Eq. 37)
-    const float kr = (rY * (wX * (gY * bZ - bY * gZ) + wY * (bX * gZ - gX * bZ) + wZ * (gX * bY - bX * gY))) /
+    float const rX = primaries[0];
+    float const rY = primaries[1];
+    float const gX = primaries[2];
+    float const gY = primaries[3];
+    float const bX = primaries[4];
+    float const bY = primaries[5];
+    float const wX = primaries[6];
+    float const wY = primaries[7];
+    float const rZ = 1.0f - (rX + rY); // (Eq. 34)
+    float const gZ = 1.0f - (gX + gY); // (Eq. 35)
+    float const bZ = 1.0f - (bX + bY); // (Eq. 36)
+    float const wZ = 1.0f - (wX + wY); // (Eq. 37)
+    float const kr = (rY * (wX * (gY * bZ - bY * gZ) + wY * (bX * gZ - gX * bZ) + wZ * (gX * bY - bX * gY))) /
                      (wY * (rX * (gY * bZ - bY * gZ) + gX * (bY * rZ - rY * bZ) + bX * (rY * gZ - gY * rZ)));
     // (Eq. 32)
-    const float kb = (bY * (wX * (rY * gZ - gY * rZ) + wY * (gX * rZ - rX * gZ) + wZ * (rX * gY - gX * rY))) /
+    float const kb = (bY * (wX * (rY * gZ - gY * rZ) + wY * (gX * rZ - rX * gZ) + wZ * (rX * gY - gX * rY))) /
                      (wY * (rX * (gY * bZ - bY * gZ) + gX * (bY * rZ - rY * bZ) + bX * (rY * gZ - gY * rZ)));
     // (Eq. 33)
     coeffs[0] = kr;
     coeffs[2] = kb;
     coeffs[1] = 1.0f - coeffs[0] - coeffs[2];
-}
-
-static const double kEpsilon = 1e-12;
-
-static avifBool xyToXYZ(const float xy[2], double XYZ[3])
-{
-    if (fabsf(xy[1]) < kEpsilon) {
-        return AVIF_FALSE;
-    }
-
-    const double factor = 1 / xy[1];
-    XYZ[0] = xy[0] * factor;
-    XYZ[1] = 1;
-    XYZ[2] = (1 - xy[0] - xy[1]) * factor;
-
-    return AVIF_TRUE;
-}
-
-// Computes I = M^-1. Returns false if M seems to be singular.
-static avifBool matInv(const double M[3][3], double I[3][3])
-{
-    double det = M[0][0] * (M[1][1] * M[2][2] - M[2][1] * M[1][2]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
-                 M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
-    if (fabs(det) < kEpsilon) {
-        return AVIF_FALSE;
-    }
-    det = 1.0 / det;
-
-    I[0][0] = (M[1][1] * M[2][2] - M[2][1] * M[1][2]) * det;
-    I[0][1] = (M[0][2] * M[2][1] - M[0][1] * M[2][2]) * det;
-    I[0][2] = (M[0][1] * M[1][2] - M[0][2] * M[1][1]) * det;
-    I[1][0] = (M[1][2] * M[2][0] - M[1][0] * M[2][2]) * det;
-    I[1][1] = (M[0][0] * M[2][2] - M[0][2] * M[2][0]) * det;
-    I[1][2] = (M[1][0] * M[0][2] - M[0][0] * M[1][2]) * det;
-    I[2][0] = (M[1][0] * M[2][1] - M[2][0] * M[1][1]) * det;
-    I[2][1] = (M[2][0] * M[0][1] - M[0][0] * M[2][1]) * det;
-    I[2][2] = (M[0][0] * M[1][1] - M[1][0] * M[0][1]) * det;
-
-    return AVIF_TRUE;
-}
-
-// Computes C = A*B
-static void matMul(const double A[3][3], const double B[3][3], double C[3][3])
-{
-    C[0][0] = A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0];
-    C[0][1] = A[0][0] * B[0][1] + A[0][1] * B[1][1] + A[0][2] * B[2][1];
-    C[0][2] = A[0][0] * B[0][2] + A[0][1] * B[1][2] + A[0][2] * B[2][2];
-    C[1][0] = A[1][0] * B[0][0] + A[1][1] * B[1][0] + A[1][2] * B[2][0];
-    C[1][1] = A[1][0] * B[0][1] + A[1][1] * B[1][1] + A[1][2] * B[2][1];
-    C[1][2] = A[1][0] * B[0][2] + A[1][1] * B[1][2] + A[1][2] * B[2][2];
-    C[2][0] = A[2][0] * B[0][0] + A[2][1] * B[1][0] + A[2][2] * B[2][0];
-    C[2][1] = A[2][0] * B[0][1] + A[2][1] * B[1][1] + A[2][2] * B[2][1];
-    C[2][2] = A[2][0] * B[0][2] + A[2][1] * B[1][2] + A[2][2] * B[2][2];
-}
-
-// Set M to have values of d on the leading diagonal, and zero elsewhere.
-static void matDiag(const double d[3], double M[3][3])
-{
-    M[0][0] = d[0];
-    M[0][1] = 0;
-    M[0][2] = 0;
-    M[1][0] = 0;
-    M[1][1] = d[1];
-    M[1][2] = 0;
-    M[2][0] = 0;
-    M[2][1] = 0;
-    M[2][2] = d[2];
-}
-
-// Computes y = M.x
-static void vecMul(const double M[3][3], const double x[3], double y[3])
-{
-    y[0] = M[0][0] * x[0] + M[0][1] * x[1] + M[0][2] * x[2];
-    y[1] = M[1][0] * x[0] + M[1][1] * x[1] + M[1][2] * x[2];
-    y[2] = M[2][0] * x[0] + M[2][1] * x[1] + M[2][2] * x[2];
-}
-
-// Bradford chromatic adaptation matrix
-// from https://www.researchgate.net/publication/253799640_A_uniform_colour_space_based_upon_CIECAM97s
-static const double bradford[3][3] = {
-    { 0.8951, 0.2664, -0.1614 },
-    { -0.7502, 1.7135, 0.0367 },
-    { 0.0389, -0.0685, 1.0296 },
-};
-
-// LMS values for D50 whitepoint
-static const double lmsD50[3] = { 0.996284, 1.02043, 0.818644 };
-
-avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrimaries, double coeffs[3][3])
-{
-    float primaries[8];
-    avifColorPrimariesGetValues(colorPrimaries, primaries);
-
-    double whitePointXYZ[3];
-    AVIF_CHECK(xyToXYZ(&primaries[6], whitePointXYZ));
-
-    double rgbPrimaries[3][3] = {
-        { primaries[0], primaries[2], primaries[4] },
-        { primaries[1], primaries[3], primaries[5] },
-        { 1.0 - primaries[0] - primaries[1], 1.0 - primaries[2] - primaries[3], 1.0 - primaries[4] - primaries[5] }
-    };
-
-    double rgbPrimariesInv[3][3];
-    AVIF_CHECK(matInv(rgbPrimaries, rgbPrimariesInv));
-
-    double rgbCoefficients[3];
-    vecMul(rgbPrimariesInv, whitePointXYZ, rgbCoefficients);
-
-    double rgbCoefficientsMat[3][3];
-    matDiag(rgbCoefficients, rgbCoefficientsMat);
-
-    double rgbXYZ[3][3];
-    matMul(rgbPrimaries, rgbCoefficientsMat, rgbXYZ);
-
-    // ICC stores primaries XYZ under PCS.
-    // Adapt using linear bradford transform
-    // from https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781119021780.app3
-    double lms[3];
-    vecMul(bradford, whitePointXYZ, lms);
-    for (int i = 0; i < 3; ++i) {
-        if (fabs(lms[i]) < kEpsilon) {
-            assert(0);
-        }
-        lms[i] = lmsD50[i] / lms[i];
-    }
-
-    double adaptation[3][3];
-    matDiag(lms, adaptation);
-
-    double tmp[3][3];
-    matMul(adaptation, bradford, tmp);
-
-    double bradfordInv[3][3];
-    if (!matInv(bradford, bradfordInv)) {
-        assert(0);
-    }
-    matMul(bradfordInv, tmp, adaptation);
-
-    matMul(adaptation, rgbXYZ, coeffs);
-
-    return AVIF_TRUE;
-}
-
-avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrimaries colorPrimaries, double coeffs[3][3])
-{
-    double rgbToXyz[3][3];
-    AVIF_CHECK(avifColorPrimariesComputeRGBToXYZD50Matrix(colorPrimaries, rgbToXyz));
-    AVIF_CHECK(matInv(rgbToXyz, coeffs));
-    return AVIF_TRUE;
-}
-
-avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrimaries,
-                                                 avifColorPrimaries dstColorPrimaries,
-                                                 double coeffs[3][3])
-{
-    // Note: no special casing for srcColorPrimaries == dstColorPrimaries to allow
-    // testing that the computation actually produces the identity matrix.
-    double srcRGBToXYZ[3][3];
-    AVIF_CHECK(avifColorPrimariesComputeRGBToXYZD50Matrix(srcColorPrimaries, srcRGBToXYZ));
-    double xyzToDstRGB[3][3];
-    AVIF_CHECK(avifColorPrimariesComputeXYZD50ToRGBMatrix(dstColorPrimaries, xyzToDstRGB));
-    // coeffs = yuvToDstRGB * srcRGBToYUV
-    // i.e. srgRGB -> YUV -> dstRGB
-    // matMulF(xyzToDstRGB, srcRGBToXYZ, coeffs);
-    matMul(xyzToDstRGB, srcRGBToXYZ, coeffs);
-    return AVIF_TRUE;
-}
-
-// Converts a linear RGBA pixel to a different color space. This function actually works for gamma encoded
-// RGB as well but linear gives better results. Also, for gamma encoded values, it would be
-// better to clamp the output to [0, 1]. Linear values don't need clamping because values
-// > 1.0 are valid for HDR transfer curves, and the gamma compression function will do the
-// clamping as necessary.
-void avifLinearRGBAConvertColorSpace(float rgba[4], const double coeffs[3][3])
-{
-    const double rgb[3] = { rgba[0], rgba[1], rgba[2] }; // tmp copy
-    rgba[0] = (float)(coeffs[0][0] * rgb[0] + coeffs[0][1] * rgb[1] + coeffs[0][2] * rgb[2]);
-    rgba[1] = (float)(coeffs[1][0] * rgb[0] + coeffs[1][1] * rgb[1] + coeffs[1][2] * rgb[2]);
-    rgba[2] = (float)(coeffs[2][0] * rgb[0] + coeffs[2][1] * rgb[1] + coeffs[2][2] * rgb[2]);
 }

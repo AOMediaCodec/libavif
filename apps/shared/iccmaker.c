@@ -217,7 +217,7 @@ static avifBool xyToXYZ(const float xy[2], double XYZ[3])
         return AVIF_FALSE;
     }
 
-    const double factor = 1 / xy[1];
+    const double factor = 1.0 / xy[1];
     XYZ[0] = xy[0] * factor;
     XYZ[1] = 1;
     XYZ[2] = (1 - xy[0] - xy[1]) * factor;
@@ -381,7 +381,7 @@ avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries
         return AVIF_FALSE;
     }
 
-    double rgbPrimaries[3][3] = {
+    const double rgbPrimaries[3][3] = {
         { primaries[0], primaries[2], primaries[4] },
         { primaries[1], primaries[3], primaries[5] },
         { 1.0 - primaries[0] - primaries[1], 1.0 - primaries[2] - primaries[3], 1.0 - primaries[4] - primaries[5] }

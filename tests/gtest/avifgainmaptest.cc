@@ -912,7 +912,7 @@ TEST(GainMapTest, CreateTestImages) {
   // Generate seine_hdr_gainmap_srgb.avif and seine_hdr_gainmap_small_srgb.avif
   {
     ImagePtr hdr_image =
-        testutil::DecodFile(std::string(data_path) + "seine_hdr_srgb.avif");
+        testutil::DecodeFile(std::string(data_path) + "seine_hdr_srgb.avif");
     ASSERT_NE(hdr_image, nullptr);
 
     const std::string sdr_path =
@@ -1038,7 +1038,7 @@ TEST_P(ToneMapTest, ToneMapImage) {
 
   ImagePtr reference_image = nullptr;
   if (!source.empty()) {
-    reference_image = testutil::DecodFile(std::string(data_path) + reference);
+    reference_image = testutil::DecodeFile(std::string(data_path) + reference);
   }
 
   // Load the source image (that should contain a gain map).
@@ -1183,10 +1183,10 @@ TEST_P(CreateGainMapTest, Create) {
   const std::string sdr_image_name = "seine_sdr_gainmap_srgb.avif";
   const std::string hdr_image_name = "seine_hdr_gainmap_srgb.avif";
   ImagePtr sdr_image =
-      testutil::DecodFile(std::string(data_path) + sdr_image_name);
+      testutil::DecodeFile(std::string(data_path) + sdr_image_name);
   ASSERT_NE(sdr_image, nullptr);
   ImagePtr hdr_image =
-      testutil::DecodFile(std::string(data_path) + hdr_image_name);
+      testutil::DecodeFile(std::string(data_path) + hdr_image_name);
   ASSERT_NE(hdr_image, nullptr);
 
   const uint32_t gain_map_width = std::max<uint32_t>(

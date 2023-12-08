@@ -133,7 +133,7 @@ ImagePtr Decode(const uint8_t* bytes, size_t num_bytes);
 
 // Decodes the file to an image with default parameters.
 // Returns nullptr in case of error.
-ImagePtr DecodFile(const std::string& path);
+ImagePtr DecodeFile(const std::string& path);
 
 // Returns true if an AV1 encoder is available.
 bool Av1EncoderAvailable();
