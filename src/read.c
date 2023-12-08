@@ -4518,7 +4518,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     }
 
     if (decoder->enableParsingGainMapMetadata) {
-        avifGainMap * gainMap = decoder->image->gainMap;
+        avifGainMap * const gainMap = decoder->image->gainMap;
 
         AVIF_CHECKRES(avifReadColorProperties(decoder->io,
                                               &toneMappedImageItemTmp->properties,
@@ -4547,7 +4547,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     }
 
     if (decoder->enableDecodingGainMap) {
-        avifGainMap * gainMap = decoder->image->gainMap;
+        avifGainMap * const gainMap = decoder->image->gainMap;
         gainMap->image = avifImageCreateEmpty();
         AVIF_CHECKERR(gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
 
