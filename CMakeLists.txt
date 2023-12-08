@@ -625,6 +625,9 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         avif_apps_obj OBJECT $<TARGET_OBJECTS:avif_obj> apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c
                              apps/shared/avifutil.c apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
+    # Instead of building avif_apps/avif_apps_internal and linking to avif/avif_internal, avif_apps_obj only does one compilation.
+    # Still, the definitions needs to be passed from avif to avif_apps. The following also passes them to avif_apps_internal but AVIF_DLL does not impact avif_apps_internal.
+    target_compile_definitions(avif_apps_obj PRIVATE $<BUILD_INTERFACE:$<TARGET_PROPERTY:avif,INTERFACE_COMPILE_DEFINITIONS>>)
     target_link_libraries(avif_apps_obj PUBLIC avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_link_libraries(avif_apps_obj PRIVATE m)

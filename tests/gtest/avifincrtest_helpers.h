@@ -13,36 +13,37 @@ namespace testutil {
 
 //------------------------------------------------------------------------------
 // Duplicated from internal.h
-// Used for debugging. Define AVIF_BREAK_ON_ERROR to catch the earliest failure during encoding or decoding.
+// Used for debugging. Define AVIF_BREAK_ON_ERROR to catch the earliest failure
+// during encoding or decoding.
 #if defined(AVIF_BREAK_ON_ERROR)
-static inline void avifBreakOnError()
-{
-    // Same mechanism as OpenCV's error() function, or replace by a breakpoint.
-    int * p = NULL;
-    *p = 0;
+static inline void avifBreakOnError() {
+  // Same mechanism as OpenCV's error() function, or replace by a breakpoint.
+  int* p = NULL;
+  *p = 0;
 }
 #else
 #define avifBreakOnError()
 #endif
 
-// Used instead of CHECK if needing to return a specific error on failure, instead of AVIF_FALSE
-#define AVIF_CHECKERR(A, ERR)   \
-    do {                        \
-        if (!(A)) {             \
-            avifBreakOnError(); \
-            return ERR;         \
-        }                       \
-    } while (0)
+// Used instead of CHECK if needing to return a specific error on failure,
+// instead of AVIF_FALSE
+#define AVIF_CHECKERR(A, ERR) \
+  do {                        \
+    if (!(A)) {               \
+      avifBreakOnError();     \
+      return ERR;             \
+    }                         \
+  } while (0)
 
 // Forward any error to the caller now or continue execution.
-#define AVIF_CHECKRES(A)                  \
-    do {                                  \
-        const avifResult result__ = (A);  \
-        if (result__ != AVIF_RESULT_OK) { \
-            avifBreakOnError();           \
-            return result__;              \
-        }                                 \
-    } while (0)
+#define AVIF_CHECKRES(A)              \
+  do {                                \
+    const avifResult result__ = (A);  \
+    if (result__ != AVIF_RESULT_OK) { \
+      avifBreakOnError();             \
+      return result__;                \
+    }                                 \
+  } while (0)
 //------------------------------------------------------------------------------
 
 // Encodes a portion of the image to be decoded incrementally.
