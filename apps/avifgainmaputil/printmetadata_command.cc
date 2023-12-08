@@ -93,6 +93,8 @@ avifResult PrintMetadataCommand::Run() {
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Backward Direction: "
             << (metadata.backwardDirection ? "True" : "False") << "\n";
+  std::cout << " * " << std::left << std::setw(w) << "Use Base Color Space: "
+            << (metadata.useBaseColorSpace ? "True" : "False") << "\n";
 
   return AVIF_RESULT_OK;
 }
