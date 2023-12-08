@@ -568,6 +568,56 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   // Check that the gain map metadata WAS populated.
   CheckGainMapMetadataMatches(decoded->gainMap->metadata,
                               image->gainMap->metadata);
+  EXPECT_EQ(decoded->gainMap->altDepth, image->gainMap->altDepth);
+  EXPECT_EQ(decoded->gainMap->altPlaneCount, image->gainMap->altPlaneCount);
+  EXPECT_EQ(decoded->gainMap->altColorPrimaries,
+            image->gainMap->altColorPrimaries);
+  EXPECT_EQ(decoded->gainMap->altTransferCharacteristics,
+            image->gainMap->altTransferCharacteristics);
+  EXPECT_EQ(decoded->gainMap->altMatrixCoefficients,
+            image->gainMap->altMatrixCoefficients);
+}
+
+TEST(GainMapTest, DecodeGainMapButIgnoreMetadata) {
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableParsingGainMapMetadata = AVIF_FALSE;
+  decoder->enableDecodingGainMap = AVIF_TRUE;
+  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                 encoded.size);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  // Verify that the gain map was detected...
+  EXPECT_TRUE(decoder->gainMapPresent);
+  ASSERT_NE(decoded->gainMap, nullptr);
+  ASSERT_NE(decoded->gainMap->image, nullptr);
+  EXPECT_GT(testutil::GetPsnr(*image->gainMap->image, *decoded->gainMap->image),
+            40.0);
+
+  // Check that the gain map metadata was not populated.
+  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
+                              avifGainMapMetadata());
+  EXPECT_EQ(decoded->gainMap->altDepth, 0);
+  EXPECT_EQ(decoded->gainMap->altPlaneCount, 0);
+  EXPECT_EQ(decoded->gainMap->altColorPrimaries,
+            AVIF_COLOR_PRIMARIES_UNSPECIFIED);
+  EXPECT_EQ(decoded->gainMap->altTransferCharacteristics,
+            AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
+  EXPECT_EQ(decoded->gainMap->altMatrixCoefficients,
+            AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED);
 }
 
 TEST(GainMapTest, IgnoreColorAndAlpha) {
