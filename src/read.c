@@ -4512,24 +4512,13 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
                                               &data->tileInfos[AVIF_ITEM_GAIN_MAP].grid,
                                               gainMapCodecType));
 
-    if (decoder->enableDecodingGainMap) {
+    if (decoder->enableDecodingGainMap || decoder->enableParsingGainMapMetadata) {
         decoder->image->gainMap = avifGainMapCreate();
         AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
-        decoder->image->gainMap->image = avifImageCreateEmpty();
-        AVIF_CHECKERR(decoder->image->gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
-        avifGainMap * gainMap = decoder->image->gainMap;
+    }
 
-        // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
-        for (uint32_t propertyIndex = 0; propertyIndex < gainMapItemTmp->properties.count; ++propertyIndex) {
-            avifProperty * prop = &gainMapItemTmp->properties.prop[propertyIndex];
-            if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
-                gainMap->image->colorPrimaries = prop->u.colr.colorPrimaries;
-                gainMap->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
-                gainMap->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
-                gainMap->image->yuvRange = prop->u.colr.range;
-                break;
-            }
-        }
+    if (decoder->enableParsingGainMapMetadata) {
+        avifGainMap * const gainMap = decoder->image->gainMap;
 
         AVIF_CHECKRES(avifReadColorProperties(decoder->io,
                                               &toneMappedImageItemTmp->properties,
@@ -4554,6 +4543,24 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
             gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
             // Assume all planes have the same depth.
             gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
+        }
+    }
+
+    if (decoder->enableDecodingGainMap) {
+        avifGainMap * const gainMap = decoder->image->gainMap;
+        gainMap->image = avifImageCreateEmpty();
+        AVIF_CHECKERR(gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
+
+        // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
+        for (uint32_t propertyIndex = 0; propertyIndex < gainMapItemTmp->properties.count; ++propertyIndex) {
+            avifProperty * prop = &gainMapItemTmp->properties.prop[propertyIndex];
+            if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
+                gainMap->image->colorPrimaries = prop->u.colr.colorPrimaries;
+                gainMap->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
+                gainMap->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
+                gainMap->image->yuvRange = prop->u.colr.range;
+                break;
+            }
         }
     }
 
