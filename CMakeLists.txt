@@ -139,7 +139,7 @@ add_library(avif_obj OBJECT)
 add_library(avif)
 
 # Adds <target> to avif_obj's public link libraries for build, and adds
-# the library as an install link library for export if a consumer
+# the 'target' library as an install link library for export if a consumer
 # would need to include that library alongside libavif when linking.
 function(avif_target_link_library target)
     target_link_libraries(avif_obj PUBLIC $<BUILD_INTERFACE:${target}>)
@@ -523,15 +523,16 @@ if(AVIF_ENABLE_COMPLIANCE_WARDEN)
 endif()
 set(AVIF_PKG_CONFIG_EXTRA_CFLAGS "")
 if(BUILD_SHARED_LIBS)
-    target_compile_definitions(avif_obj PUBLIC AVIF_DLL PRIVATE AVIF_BUILDING_SHARED_LIBS)
+    target_compile_definitions(avif_obj PRIVATE AVIF_DLL AVIF_BUILDING_SHARED_LIBS)
     set(AVIF_PKG_CONFIG_EXTRA_CFLAGS " -DAVIF_DLL")
 endif()
 
-# Main library.
+# Main avif library.
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION})
 target_link_libraries(avif PRIVATE avif_obj)
 target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 if(BUILD_SHARED_LIBS)
+    target_compile_definitions(avif INTERFACE AVIF_DLL)
     if(AVIF_USE_CXX)
         set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
@@ -543,7 +544,7 @@ if(BUILD_SHARED_LIBS)
     add_library(avif_internal STATIC)
     target_link_libraries(avif_internal PRIVATE avif_obj)
     target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
-    # Define the following to avoid linking against the two at the same time.
+    # Define the following to avoid linking against avif and avif_internal at the same time.
     target_compile_definitions(avif_internal PUBLIC AVIF_USING_STATIC_LIBS)
 else()
     include(merge_static_libs)
@@ -624,9 +625,9 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         avif_apps_obj OBJECT $<TARGET_OBJECTS:avif_obj> apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c
                              apps/shared/avifutil.c apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
-    target_link_libraries(avif_apps_obj avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
+    target_link_libraries(avif_apps_obj PUBLIC avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_libraries(avif_apps_obj m)
+        target_link_libraries(avif_apps_obj PRIVATE m)
     endif()
     # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
     # and libjpeg but also the headers of an older version of libavif. Put the avif include
@@ -639,7 +640,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         if(TARGET LibXml2::LibXml2)
             set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
             add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-            target_link_libraries(avif_apps_obj LibXml2::LibXml2)
+            target_link_libraries(avif_apps_obj PRIVATE LibXml2::LibXml2)
         else()
             message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
         endif()
