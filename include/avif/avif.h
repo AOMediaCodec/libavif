@@ -642,17 +642,20 @@ typedef struct avifGainMap
 {
     // Gain map pixels.
     // Owned by the avifGainMap and gets freed when calling avifGainMapDestroy().
-    // Used fields: width, height, depth, yufFormat, yuvRange,
+    // Used fields: width, height, depth, yuvFormat, yuvRange,
     // yuvChromaSamplePosition, yuvPlanes, yuvRowBytes, imageOwnsYUVPlanes,
-    // matrixCoefficients. colorPrimaries and transferCharacteristics shall be 2.
-    // Other fields are ignored.
+    // matrixCoefficients. The colorPrimaries and transferCharacteristics fields
+    // shall be 2. Other fields are ignored.
     struct avifImage * image;
 
-    // Gain map metadata.
-    // For an image grid, the metadata shall be identical for all cells.
+    // When encoding an image grid, all metadata below shall be identical for all
+    // cells.
+
+    // Gain map metadata used to interpret and apply the gain map pixel data.
     avifGainMapMetadata metadata;
 
-    // Colorimetry of the alternate image.
+    // Colorimetry of the alternate image (ICC profile and/or CICP information
+    // of the alternate image that the gain map was created from).
     avifRWData altICC;
     avifColorPrimaries altColorPrimaries;
     avifTransferCharacteristics altTransferCharacteristics;
@@ -660,11 +663,13 @@ typedef struct avifGainMap
     avifRange altYUVRange;
 
     // Hint on the approximate amount of colour resolution available after fully
-    // applying the gain map.
+    // applying the gain map ('pixi' box content of the alternate image that the
+    // gain map was created from).
     uint32_t altDepth;
     uint32_t altPlaneCount;
 
-    // Optimal viewing conditions of the alternate image.
+    // Optimal viewing conditions of the alternate image ('clli' box content
+    // of the alternate image that the gain map was created from).
     avifContentLightLevelInformationBox altCLLI;
 } avifGainMap;
 
