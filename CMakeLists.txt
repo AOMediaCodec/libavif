@@ -324,6 +324,7 @@ set(AVIF_SRCS
     src/alpha.c
     src/avif.c
     src/colr.c
+    src/colrconvert.c
     src/diag.c
     src/exif.c
     src/io.c

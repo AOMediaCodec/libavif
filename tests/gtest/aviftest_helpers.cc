@@ -454,7 +454,7 @@ ImagePtr Decode(const uint8_t* bytes, size_t num_bytes) {
   return decoded;
 }
 
-ImagePtr DecodFile(const std::string& path) {
+ImagePtr DecodeFile(const std::string& path) {
   ImagePtr decoded(avifImageCreateEmpty());
   DecoderPtr decoder(avifDecoderCreate());
   if (!decoded || !decoder ||

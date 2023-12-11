@@ -470,6 +470,8 @@ Source : created from a personal photo, converted to HDR using Photoshop, see
 https://helpx.adobe.com/camera-raw/using/hdr-output.html and
 https://gregbenzphotography.com/hdr-images/jpg-hdr-gain-maps-in-adobe-camera-raw/
 
+See also sources/seine.psd
+
 HDR image using the PQ transfer curve. Contains a gain map in
 [Adobe's format](https://helpx.adobe.com/camera-raw/using/gain-map.html) that is not recognized by
 libavif and ignored by the tests.
@@ -483,6 +485,14 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 Source : created from a personal photo, converted to HDR using Photoshop, then saved as JPEG+gainmap,
 see https://helpx.adobe.com/camera-raw/using/hdr-output.html and
 https://gregbenzphotography.com/hdr-images/jpg-hdr-gain-maps-in-adobe-camera-raw/
+
+### File [seine_hdr_rec2020.avif](seine_hdr_rec2020.avif)
+
+![](seine_hdr_rec2020.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source : same as seine_hdr_srgb but saved with the Rec. 2020 color space in Photoshop (Camera Raw 16.0.1.1683).
 
 ### File [seine_sdr_gainmap_srgb.avif](seine_sdr_gainmap_srgb.avif)
 
@@ -531,6 +541,25 @@ Source : modified version of `seine_hdr_gainmap_srgb.avif` with a downscaled gai
 See `CreateTestImages` in `avifgainmaptest.cc` (set kUpdateTestImages to update images).
 
 SDR image with a gain map to allow tone mapping to HDR. The gain map's width and height are halved compared to the base image.
+
+## Files colors*_hdr_*.avif and colors*_sdr_srgb.avif
+
+SDR and HDR (PQ) AVIF images in various colorspaces.
+The HDR versions all show the same colors: all colors fit in sRGB but are encoded in various colorspaces.
+
+The colors_text* files have text on them. They are not currently used in tests but can be used for manual
+testing of gain maps, as they make it easy to see which version the browser is displaying.
+
+Source : created with Photoshop 25.1.0 (Camera Raw 16.0.1.1683), see sources/colors.psd and
+https://helpx.adobe.com/camera-raw/using/hdr-output.html,
+https://gregbenzphotography.com/hdr-images/jpg-hdr-gain-maps-in-adobe-camera-raw/
+
+Basic process: create a 32bit image, export it as png for the SDR version.
+Then open the Camera Raw filter (Filter > Camera Raw Filter...), click HDR at the top right, and drag
+the histogram towards the right to create brighter pixels.
+Click the save icon on the top right. Select AVIF as output format and check "HDR output" then save.
+
+To export more images from sources/colors.psd, flatten desired layers before opening the Camera Raw dialog.
 
 ## Animated Images
 
