@@ -479,8 +479,8 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     for (int c = 0; c < 3; ++c) {
         gainMapMetadata.gainMapMin[c] = gainMapMinLog2[singleChannel ? 0 : c];
         gainMapMetadata.gainMapMax[c] = gainMapMaxLog2[singleChannel ? 0 : c];
-        gainMapMetadata.baseHdrHeadroom = avifRoundf(log2f(baseMax));
-        gainMapMetadata.alternateHdrHeadroom = avifRoundf(log2f(altMax));
+        gainMapMetadata.baseHdrHeadroom = log2f(baseMax);
+        gainMapMetadata.alternateHdrHeadroom = log2f(altMax);
         // baseOffset, alternateOffset and gainMapGamma are all left to their default values.
         // They could be tweaked based on the images to optimize quality/compression.
     }
