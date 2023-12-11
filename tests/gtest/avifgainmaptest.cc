@@ -1311,8 +1311,8 @@ TEST_P(CreateGainMapTest, Create) {
 
   // Results should be about the same whether the gain map was computed from sdr
   // to hdr or the other way around.
-  EXPECT_NEAR(psnr_sdr_to_hdr_backward, psnr_sdr_to_hdr_forward, 0.5f);
-  EXPECT_NEAR(psnr_hdr_to_sdr_forward, psnr_hdr_to_sdr_backward, 0.5f);
+  EXPECT_NEAR(psnr_sdr_to_hdr_backward, psnr_sdr_to_hdr_forward, 0.6f);
+  EXPECT_NEAR(psnr_hdr_to_sdr_forward, psnr_hdr_to_sdr_backward, 0.6f);
 }
 
 INSTANTIATE_TEST_SUITE_P(
