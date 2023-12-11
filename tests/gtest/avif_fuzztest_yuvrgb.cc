@@ -1,6 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cstring>
+
 #include "avif/avif.h"
 #include "avif_fuzztest_helpers.h"
 #include "aviftest_helpers.h"
@@ -48,7 +50,7 @@ void Convert(ImagePtr image, int rgb_depth, int rgb_format,
     // Fill pixels with something, so that avifImageRGBToYUV() can be called.
     AvifRgbImage rgb_ok(image.get(), rgb_depth, AVIF_RGB_FORMAT_RGBA);
     ASSERT_EQ(avifImageYUVToRGB(image.get(), &rgb_ok), AVIF_RESULT_OK);
-    memcpy(rgb.pixels, rgb_ok.pixels, rgb.rowBytes * rgb.height);
+    std::memcpy(rgb.pixels, rgb_ok.pixels, rgb.rowBytes * rgb.height);
   }
 
   ASSERT_EQ(avifImageRGBToYUV(image.get(), &rgb), expected_rgb_to_yuv_result);
