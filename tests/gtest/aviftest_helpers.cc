@@ -22,7 +22,7 @@ namespace avif {
 namespace testutil {
 
 //------------------------------------------------------------------------------
-// Duplicated from internal.h
+// CopyImageSamples is a copy of avifImageCopySamples
 
 namespace {
 void CopyImageSamples(avifImage* dstImage, const avifImage* srcImage,

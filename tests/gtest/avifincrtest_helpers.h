@@ -35,15 +35,6 @@ static inline void avifBreakOnError() {
     }                         \
   } while (0)
 
-// Forward any error to the caller now or continue execution.
-#define AVIF_CHECKRES(A)              \
-  do {                                \
-    const avifResult result__ = (A);  \
-    if (result__ != AVIF_RESULT_OK) { \
-      avifBreakOnError();             \
-      return result__;                \
-    }                                 \
-  } while (0)
 //------------------------------------------------------------------------------
 
 // Encodes a portion of the image to be decoded incrementally.

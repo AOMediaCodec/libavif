@@ -139,7 +139,7 @@ add_library(avif_obj OBJECT)
 add_library(avif)
 
 # Adds <target> to avif_obj's public link libraries for build, and adds
-# the 'target' library as an install link library for export if a consumer
+# the <target> library as an install link library for export if a consumer
 # would need to include that library alongside libavif when linking.
 function(avif_target_link_library target)
     target_link_libraries(avif_obj PUBLIC $<BUILD_INTERFACE:${target}>)
@@ -626,7 +626,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
                              apps/shared/avifutil.c apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
     # Instead of building avif_apps/avif_apps_internal and linking to avif/avif_internal, avif_apps_obj only does one compilation.
-    # Still, the definitions needs to be passed from avif to avif_apps. The following also passes them to avif_apps_internal but AVIF_DLL does not impact avif_apps_internal.
+    # Still, the compile definitions needs to be passed from avif to avif_apps. The following also passes them to avif_apps_internal but AVIF_DLL does not impact avif_apps_internal.
     target_compile_definitions(avif_apps_obj PRIVATE $<BUILD_INTERFACE:$<TARGET_PROPERTY:avif,INTERFACE_COMPILE_DEFINITIONS>>)
     target_link_libraries(avif_apps_obj PUBLIC avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

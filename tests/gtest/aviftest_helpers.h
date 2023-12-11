@@ -14,9 +14,6 @@
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
 
-namespace avif {
-namespace testutil {
-
 //------------------------------------------------------------------------------
 // Duplicated from internal.h
 // Used for debugging. Define AVIF_BREAK_ON_ERROR to catch the earliest failure
@@ -60,6 +57,9 @@ static inline void avifBreakOnError() {
     }                                 \
   } while (0)
 //------------------------------------------------------------------------------
+
+namespace avif {
+namespace testutil {
 
 //------------------------------------------------------------------------------
 
