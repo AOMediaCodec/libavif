@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "avif/avif.h"
-#include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 

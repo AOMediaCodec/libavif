@@ -6,7 +6,6 @@
 #include <memory>
 #include <tuple>
 
-#include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 

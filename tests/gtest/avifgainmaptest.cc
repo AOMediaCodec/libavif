@@ -11,7 +11,6 @@
 
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
-#include "avif/internal.h"
 #include "avifincrtest_helpers.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"

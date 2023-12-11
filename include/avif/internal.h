@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+#if defined(AVIF_DLL) && defined(AVIF_USING_STATIC_LIBS)
+#error "Your target is linking against avif and avif_internal: only one should be chosen"
+#endif
+
 // Yes, clamp macros are nasty. Do not use them.
 #define AVIF_CLAMP(x, low, high) (((x) < (low)) ? (low) : (((high) < (x)) ? (high) : (x)))
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))

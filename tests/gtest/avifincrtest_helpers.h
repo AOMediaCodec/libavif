@@ -11,6 +11,32 @@
 namespace avif {
 namespace testutil {
 
+//------------------------------------------------------------------------------
+// Duplicated from internal.h
+// Used for debugging. Define AVIF_BREAK_ON_ERROR to catch the earliest failure
+// during encoding or decoding.
+#if defined(AVIF_BREAK_ON_ERROR)
+static inline void avifBreakOnError() {
+  // Same mechanism as OpenCV's error() function, or replace by a breakpoint.
+  int* p = NULL;
+  *p = 0;
+}
+#else
+#define avifBreakOnError()
+#endif
+
+// Used instead of CHECK if needing to return a specific error on failure,
+// instead of AVIF_FALSE
+#define AVIF_CHECKERR(A, ERR) \
+  do {                        \
+    if (!(A)) {               \
+      avifBreakOnError();     \
+      return ERR;             \
+    }                         \
+  } while (0)
+
+//------------------------------------------------------------------------------
+
 // Encodes a portion of the image to be decoded incrementally.
 void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
                              uint32_t height, bool create_alpha_if_none,

@@ -15,12 +15,57 @@
 
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
-#include "avif/internal.h"
 #include "avifpng.h"
 #include "avifutil.h"
 
 namespace avif {
 namespace testutil {
+
+//------------------------------------------------------------------------------
+// CopyImageSamples is a copy of avifImageCopySamples
+
+namespace {
+void CopyImageSamples(avifImage* dstImage, const avifImage* srcImage,
+                      avifPlanesFlags planes) {
+  assert(srcImage->depth == dstImage->depth);
+  if (planes & AVIF_PLANES_YUV) {
+    assert(srcImage->yuvFormat == dstImage->yuvFormat);
+    // Note that there may be a mismatch between srcImage->yuvRange and
+    // dstImage->yuvRange because libavif allows for 'colr' and AV1 OBU video
+    // range values to differ.
+  }
+  const size_t bytesPerPixel = avifImageUsesU16(srcImage) ? 2 : 1;
+
+  const avifBool skipColor = !(planes & AVIF_PLANES_YUV);
+  const avifBool skipAlpha = !(planes & AVIF_PLANES_A);
+  for (int c = AVIF_CHAN_Y; c <= AVIF_CHAN_A; ++c) {
+    const avifBool alpha = c == AVIF_CHAN_A;
+    if ((skipColor && !alpha) || (skipAlpha && alpha)) {
+      continue;
+    }
+
+    const uint32_t planeWidth = avifImagePlaneWidth(srcImage, c);
+    const uint32_t planeHeight = avifImagePlaneHeight(srcImage, c);
+    const uint8_t* srcRow = avifImagePlane(srcImage, c);
+    uint8_t* dstRow = avifImagePlane(dstImage, c);
+    const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, c);
+    const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, c);
+    assert(!srcRow == !dstRow);
+    if (!srcRow) {
+      continue;
+    }
+    assert(planeWidth == avifImagePlaneWidth(dstImage, c));
+    assert(planeHeight == avifImagePlaneHeight(dstImage, c));
+
+    const size_t planeWidthBytes = planeWidth * bytesPerPixel;
+    for (uint32_t y = 0; y < planeHeight; ++y) {
+      memcpy(dstRow, srcRow, planeWidthBytes);
+      srcRow += srcRowBytes;
+      dstRow += dstRowBytes;
+    }
+  }
+}
+}  // namespace
 
 //------------------------------------------------------------------------------
 
@@ -380,7 +425,7 @@ avifResult MergeGrid(int grid_cols, int grid_rows,
       rect.width = image->width;
       rect.height = image->height;
       AVIF_CHECKRES(avifImageSetViewRect(view.get(), merged, &rect));
-      avifImageCopySamples(/*dstImage=*/view.get(), image, AVIF_PLANES_ALL);
+      CopyImageSamples(/*dstImage=*/view.get(), image, AVIF_PLANES_ALL);
       assert(!view->imageOwnsYUVPlanes);
       rect.x += rect.width;
     }
