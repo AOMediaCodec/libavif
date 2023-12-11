@@ -4,7 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
-#include <math.h>
+#include <stdint.h>
 #include <string.h>
 
 #if defined(_WIN32)
@@ -1597,6 +1597,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     int rowsPerJob = image->height / jobs;
     if (rowsPerJob % 2) {
         ++rowsPerJob;
+        jobs = (image->height + rowsPerJob - 1) / rowsPerJob; // ceil
     }
     const int rowsForLastJob = image->height - rowsPerJob * (jobs - 1);
     int startRow = 0;
@@ -1624,7 +1625,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
             }
         }
     }
-    // If above loop ran successfully, Run the first job in the current thread.
+    // If above loop ran successfully, run the first job in the current thread.
     if (i == jobs) {
         avifImageYUVToRGBThreadWorker(&threadData[0]);
     }
