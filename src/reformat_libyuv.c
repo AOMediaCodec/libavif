@@ -785,7 +785,7 @@ static void getLibYUVConstants(const avifImage * image, const struct YuvConstant
                 break;
             case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL:
                 switch (image->colorPrimaries) {
-                    case AVIF_COLOR_PRIMARIES_SRGB:
+                    case AVIF_COLOR_PRIMARIES_BT709:
                     case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
 #if LIBYUV_VERSION >= 1772
                         *matrixYUV = &kYuvF709Constants;
@@ -844,7 +844,7 @@ static void getLibYUVConstants(const avifImage * image, const struct YuvConstant
                 break;
             case AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL:
                 switch (image->colorPrimaries) {
-                    case AVIF_COLOR_PRIMARIES_SRGB:
+                    case AVIF_COLOR_PRIMARIES_BT709:
                     case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
                         *matrixYUV = &kYuvH709Constants;
                         *matrixYVU = &kYvuH709Constants;
