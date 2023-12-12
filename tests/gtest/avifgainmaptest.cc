@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include "avif/avif.h"
 #include "avif/avif_cxx.h"
+#include "avif/internal.h"
 #include "avifincrtest_helpers.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -1350,6 +1350,51 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(/*downscaling=*/2, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV400,
                         /*min_psnr=*/35.0f, /*max_psnr=*/45.0f)));
+
+TEST(FindMinMaxWithoutOutliers, AllSame) {
+  constexpr int kNumValues = 10000;
+
+  for (float v : {0.0f, 42.f, -12.f, 1.52f}) {
+    std::vector<float> values(kNumValues, v);
+
+    float min, max;
+    avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max);
+    EXPECT_EQ(min, v);
+    EXPECT_EQ(max, v);
+  }
+}
+
+TEST(FindMinMaxWithoutOutliers, Test) {
+  constexpr int kNumValues = 10000;
+
+  for (const float value_shift : {0.0f, -20.0f, 20.0f}) {
+    SCOPED_TRACE("value_shift: " + std::to_string(value_shift));
+    std::vector<float> values(kNumValues, value_shift + 2.0f);
+    int k = 0;
+    for (int i = 0; i < 5; ++i, ++k) {
+      values[k] = value_shift + 1.99f;
+    }
+    for (int i = 0; i < 5; ++i, ++k) {
+      values[k] = value_shift + 1.98f;
+    }
+    for (int i = 0; i < 1; ++i, ++k) {
+      values[k] = value_shift + 1.97f;
+    }
+    for (int i = 0; i < 2; ++i, ++k) {
+      values[k] = value_shift + 1.93f;  // Outliers.
+    }
+    for (int i = 0; i < 3; ++i, ++k) {
+      values[k] = value_shift + 10.2f;  // Outliers.
+    }
+
+    float min, max;
+    avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max);
+    const float kEpsilon = 0.001f;
+    EXPECT_NEAR(min, value_shift + 1.97f, kEpsilon);
+    const float bucketSize = 0.01f;  // Size of one bucket.
+    EXPECT_NEAR(max, value_shift + 2.0f + bucketSize, kEpsilon);
+  }
+}
 
 }  // namespace
 }  // namespace avif

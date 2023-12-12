@@ -670,6 +670,19 @@ typedef struct avifSequenceHeader
 
 AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
+// ---------------------------------------------------------------------------
+// gain maps
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+
+// Finds the approximate min/max values from the given gain map values, excluding outliers.
+// Uses a histogram, with outliers defined as having at least one empty bucket between them
+// and the rest of the distribution. Discards at most 0.1% of values.
+// Removing outliers helps with accuracy/compression.
+avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, float * rangeMin, float * rangeMax);
+
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
 

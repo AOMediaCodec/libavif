@@ -312,28 +312,25 @@ cleanup:
 // ---------------------------------------------------------------------------
 // Create a gain map.
 
-// A histogram of gain map values is used to remove outliers, which helps with
-// gain map accuracy/compression.
-#define NUM_HISTOGRAM_BUCKETS 1000 // Empirical value
-#define MAX_OUTLIERS_RATIO 0.001f  // 0.1%
-
-// Returns the index of the histogram bucket for a given value.
-static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax)
+// Returns the index of the histogram bucket for a given value, for a histogram with 'numBuckets' buckets,
+// and values ranging in [bucketMin, bucketMax] (values outside of the range are added to the first/last buckets).
+static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax, int numBuckets)
 {
     v = AVIF_CLAMP(v, bucketMin, bucketMax);
-    return AVIF_MIN((int)avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * NUM_HISTOGRAM_BUCKETS), NUM_HISTOGRAM_BUCKETS - 1);
+    return AVIF_MIN((int)avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * numBuckets), numBuckets - 1);
 }
 // Returns the lower end of the value range belonging to the given histogram bucket.
-static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax)
+static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax, int numBuckets)
 {
-    return idx * (bucketMax - bucketMin) / NUM_HISTOGRAM_BUCKETS + bucketMin;
+    return idx * (bucketMax - bucketMin) / numBuckets + bucketMin;
 }
 
-// Finds the approximate min/max values from the given gain map values, excluding outliers.
-// Uses a histogram, with outliers defined as having at least one empty bucket between them
-// and the rest of the distribution. Discards at most 0.1% of values.
-static void avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, float * rangeMin, float * rangeMax)
+avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, float * rangeMin, float * rangeMax)
 {
+    const float bucketSize = 0.01f;        // Size of one bucket. Empirical value.
+    const float maxOutliersRatio = 0.001f; // 0.1%
+    const int maxOutliersOnEachSide = (int)avifRoundf(numPixels * maxOutliersRatio / 2.0f);
+
     float min = gainMapF[0];
     float max = gainMapF[0];
     for (int i = 0; i < numPixels; ++i) {
@@ -341,47 +338,48 @@ static void avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels,
         max = AVIF_MAX(max, gainMapF[i]);
     }
 
-    const float bucketMin = min;
-    // Use a bucket range of constant size 12 so that each bucket has a fixed size.
-    // 12 is an arbitrary empirical value, equivalent to a [-6, +6] range, where
-    // +6 is roughly equivalent to bringing SDR white to max PQ white (log2(10000/203) ~= 5.62).
-    const float bucketMax = min + 12;
+    *rangeMin = min;
+    *rangeMax = max;
+    if ((max - min) <= (bucketSize * 2) || maxOutliersOnEachSide == 0) {
+        return AVIF_RESULT_OK;
+    }
 
-    int histogram[NUM_HISTOGRAM_BUCKETS] = { 0 };
+    const int maxNumBuckets = 10000;
+    const int numBuckets = AVIF_MIN((int)ceilf((max - min) / bucketSize), maxNumBuckets);
+    int * histogram = avifAlloc(sizeof(int) * numBuckets);
+    if (histogram == NULL) {
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    memset(histogram, 0, sizeof(int) * numBuckets);
     for (int i = 0; i < numPixels; ++i) {
-        ++(histogram[avifValueToBucketIdx(gainMapF[i], bucketMin, bucketMax)]);
+        ++(histogram[avifValueToBucketIdx(gainMapF[i], min, max, numBuckets)]);
     }
-
-    int totalCount = 0;
-    for (int i = 0; i < NUM_HISTOGRAM_BUCKETS; ++i) {
-        totalCount += histogram[i];
-    }
-
-    const int maxOutliersOnEachSide = (int)avifRoundf(totalCount * MAX_OUTLIERS_RATIO / 2.0f);
 
     int leftOutliers = 0;
-    *rangeMin = min;
-    for (int i = 0; i < NUM_HISTOGRAM_BUCKETS; ++i) {
+    for (int i = 0; i < numBuckets; ++i) {
         leftOutliers += histogram[i];
         if (leftOutliers > maxOutliersOnEachSide) {
             break;
         }
         if (histogram[i] == 0) {
-            *rangeMin = avifBucketIdxToValue(i + 1, bucketMin, bucketMax); // +1 to get the higher end of the bucket.
+            // +1 to get the higher end of the bucket.
+            *rangeMin = avifBucketIdxToValue(i + 1, min, max, numBuckets);
         }
     }
 
     int rightOutliers = 0;
-    *rangeMax = max;
-    for (int i = NUM_HISTOGRAM_BUCKETS - 1; i >= 0; --i) {
+    for (int i = numBuckets - 1; i >= 0; --i) {
         rightOutliers += histogram[i];
         if (rightOutliers > maxOutliersOnEachSide) {
             break;
         }
         if (histogram[i] == 0) {
-            *rangeMax = avifBucketIdxToValue(i, bucketMin, bucketMax);
+            *rangeMax = avifBucketIdxToValue(i, min, max, numBuckets);
         }
     }
+
+    avifFree(histogram);
+    return AVIF_RESULT_OK;
 }
 
 avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
@@ -482,7 +480,10 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     float gainMapMinLog2[3] = { 0.0f, 0.0f, 0.0f };
     float gainMapMaxLog2[3] = { 0.0f, 0.0f, 0.0f };
     for (int c = 0; c < numGainMapChannels; ++c) {
-        avifFindMinMaxWithoutOutliers(gainMapF[c], width * height, &gainMapMinLog2[c], &gainMapMaxLog2[c]);
+        res = avifFindMinMaxWithoutOutliers(gainMapF[c], width * height, &gainMapMinLog2[c], &gainMapMaxLog2[c]);
+        if (res != AVIF_RESULT_OK) {
+            goto cleanup;
+        }
     }
 
     // Fill in the gain map's metadata.
