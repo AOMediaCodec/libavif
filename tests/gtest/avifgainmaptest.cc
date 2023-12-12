@@ -1358,7 +1358,9 @@ TEST(FindMinMaxWithoutOutliers, AllSame) {
     std::vector<float> values(kNumValues, v);
 
     float min, max;
-    avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max);
+    ASSERT_EQ(
+        avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max),
+        AVIF_RESULT_OK);
     EXPECT_EQ(min, v);
     EXPECT_EQ(max, v);
   }
@@ -1388,7 +1390,9 @@ TEST(FindMinMaxWithoutOutliers, Test) {
     }
 
     float min, max;
-    avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max);
+    ASSERT_EQ(
+        avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max),
+        AVIF_RESULT_OK);
     const float kEpsilon = 0.001f;
     EXPECT_NEAR(min, value_shift + 1.97f, kEpsilon);
     const float bucketSize = 0.01f;  // Size of one bucket.
