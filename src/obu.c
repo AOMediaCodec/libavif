@@ -290,7 +290,8 @@ static avifBool parseSequenceHeaderColorConfig(avifBits * bits, avifSequenceHead
         header->av1C.chromaSubsamplingX = 1;
         header->av1C.chromaSubsamplingY = 1;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
-    } else if (header->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709 && header->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
+    } else if (header->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709 &&
+               header->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
                header->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
         header->range = AVIF_RANGE_FULL;
         header->av1C.chromaSubsamplingX = 0;
