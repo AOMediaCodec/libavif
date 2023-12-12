@@ -1248,6 +1248,11 @@ typedef struct avifDecoder
 
     // Version 1.0.0 ends here. Add any new members after this line.
 
+    // This is true when avifDecoderParse() detects an image sequence track in the image. If this is true, the image can be
+    // decoded either as an animated image sequence or as a still image (the primary image item) by setting avifDecoderSetSource
+    // to the appropriate source.
+    avifBool imageSequenceTrackPresent;
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     // This is true when avifDecoderParse() detects a gain map.
     avifBool gainMapPresent;
@@ -1268,11 +1273,6 @@ typedef struct avifDecoder
     // Can be useful to decode the gain map image only.
     avifBool ignoreColorAndAlpha;
 #endif
-
-    // This is true when avifDecoderParse() detects an image sequence track in the image. If this is true, the image can be
-    // decoded either as an animated image sequence or as a still image (the primary image item) by setting avifDecoderSetSource
-    // to the appropriate source.
-    avifBool imageSequenceTrackPresent;
 } avifDecoder;
 
 // Returns NULL in case of memory allocation failure.
