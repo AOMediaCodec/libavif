@@ -949,6 +949,7 @@ TEST(GainMapTest, CreateTestImages) {
         avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
     ASSERT_EQ(result, AVIF_RESULT_OK)
         << avifResultToString(result) << " " << decoder->diag.error;
+    ASSERT_NE(image->gainMap, nullptr);
     ASSERT_NE(image->gainMap->image, nullptr);
 
     avifDiagnostics diag;
@@ -1117,7 +1118,7 @@ TEST_P(ToneMapTest, ToneMapImage) {
       avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << decoder->diag.error;
-
+  ASSERT_NE(image->gainMap, nullptr);
   ASSERT_NE(image->gainMap->image, nullptr);
 
   ToneMapImageAndCompareToReference(image.get(), *image->gainMap, hdr_headroom,
@@ -1280,10 +1281,8 @@ class CreateGainMapTest
 // Creates a gain map to go from image1 to image2, and tone maps to check we get
 // the correct result. Then does the same thing going from image2 to image1.
 TEST_P(CreateGainMapTest, Create) {
-  const std::string image1_name =
-      std::get<0>(GetParam());  //"seine_sdr_gainmap_srgb.avif";
-  const std::string image2_name =
-      std::get<1>(GetParam());  //"seine_hdr_gainmap_srgb.avif";
+  const std::string image1_name = std::get<0>(GetParam());
+  const std::string image2_name = std::get<1>(GetParam());
   const int downscaling = std::get<2>(GetParam());
   const int gain_map_depth = std::get<3>(GetParam());
   const avifPixelFormat gain_map_format = std::get<4>(GetParam());
@@ -1316,16 +1315,9 @@ TEST_P(CreateGainMapTest, Create) {
 
   const float image1_headroom = (float)gain_map->metadata.baseHdrHeadroomN /
                                 gain_map->metadata.baseHdrHeadroomD;
-  float image2_headroom = (float)gain_map->metadata.alternateHdrHeadroomN /
-                          gain_map->metadata.alternateHdrHeadroomD;
-
-  // The gain map will never be applied if the two headrooms are equal,
-  // so artificially change one of them.
-  if (image1_headroom == image2_headroom) {
-    gain_map->metadata.alternateHdrHeadroomN += 1;
-    image2_headroom = (float)gain_map->metadata.alternateHdrHeadroomN /
-                      gain_map->metadata.alternateHdrHeadroomD;
-  }
+  const float image2_headroom =
+      (float)gain_map->metadata.alternateHdrHeadroomN /
+      gain_map->metadata.alternateHdrHeadroomD;
 
   // Tone map from image1 to image2 by applying the gainmap forward.
   float psnr_image1_to_image2_forward;
@@ -1353,15 +1345,8 @@ TEST_P(CreateGainMapTest, Create) {
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
 
-  float image2_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /
-                           gain_map->metadata.baseHdrHeadroomD;
-  // The gain map will never be applied if the two headrooms are equal,
-  // so artificially change one of them.
-  if (image1_headroom == image2_headroom2) {
-    gain_map->metadata.baseHdrHeadroomN += 1;
-    image2_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /
-                       gain_map->metadata.baseHdrHeadroomD;
-  }
+  const float image2_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /
+                                 gain_map->metadata.baseHdrHeadroomD;
   EXPECT_NEAR(image2_headroom2, image2_headroom, 0.001);
 
   // Tone map from image2 to image1 by applying the new gainmap forward.
