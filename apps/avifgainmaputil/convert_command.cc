@@ -64,7 +64,19 @@ avifResult ConvertCommand::Run() {
     // If there is no ICC and no CICP, assume sRGB by default.
     image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-    image->gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
+    if (image->gainMap && !image->gainMap->altICC.size) {
+      if (image->gainMap->altColorPrimaries ==
+          AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+        // Assume the alternate image has the same primaries as the base image.
+        image->gainMap->altColorPrimaries = image->colorPrimaries;
+      }
+      if (image->gainMap->altTransferCharacteristics ==
+          AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
+        // Assume the alternate image is PQ HDR.
+        image->gainMap->altTransferCharacteristics =
+            AVIF_TRANSFER_CHARACTERISTICS_PQ;
+      }
+    }
   }
 
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
