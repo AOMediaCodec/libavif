@@ -1217,6 +1217,44 @@ INSTANTIATE_TEST_SUITE_P(
             /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
             /*reference=*/"", /*min_psnr=*/0.0f, /*max_psnr=*/0.0f)));
 
+TEST(ToneMapTest, ToneMapImageSameHeadroom) {
+  const std::string path =
+      std::string(data_path) + "seine_sdr_gainmap_srgb.avif";
+  ImagePtr image(avifImageCreateEmpty());
+  ASSERT_NE(image, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableDecodingGainMap = true;
+  decoder->enableParsingGainMapMetadata = true;
+  avifResult result =
+      avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  ASSERT_NE(image->gainMap, nullptr);
+  ASSERT_NE(image->gainMap->image, nullptr);
+
+  // Force the alternate and base HDR headroom to the same value.
+  image->gainMap->metadata.baseHdrHeadroomN =
+      image->gainMap->metadata.alternateHdrHeadroomN;
+  image->gainMap->metadata.baseHdrHeadroomD =
+      image->gainMap->metadata.alternateHdrHeadroomD;
+  const float headroom = static_cast<float>(
+      static_cast<float>(image->gainMap->metadata.baseHdrHeadroomN) /
+      image->gainMap->metadata.baseHdrHeadroomD);
+
+  // Check that when the two headrooms are the same, the gain map is not applied
+  // whatever the target headroom is.
+  for (const float tonemap_to : {headroom, headroom - 0.5f, headroom + 0.5f}) {
+    ToneMapImageAndCompareToReference(
+        image.get(), *image->gainMap, /*hdr_headroom=*/tonemap_to,
+        /*out_depth=*/image->depth,
+        /*out_transfer_characteristics=*/image->transferCharacteristics,
+        AVIF_RGB_FORMAT_RGB, /*reference_image=*/image.get(),
+        /*min_psnr=*/60, /*max_psnr=*/100);
+  }
+}
+
 class CreateGainMapTest : public testing::TestWithParam<std::tuple<
                               /*downscaling=*/int, /*gain_map_depth=*/int,
                               /*gain_map_format=*/avifPixelFormat,
