@@ -632,7 +632,6 @@ typedef struct avifGainMapMetadata
     // True if tone mapping should be performed in the color space of the
     // base image. If false, the color space of the alternate image should
     // be used.
-    // TODO(maryla): implement.
     avifBool useBaseColorSpace;
 } avifGainMapMetadata;
 
@@ -1551,15 +1550,18 @@ AVIF_NODISCARD AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * i
 AVIF_API avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                           const avifGainMap * gainMap,
                                           float hdrHeadroom,
+                                          avifColorPrimaries outputColorPrimaries,
                                           avifTransferCharacteristics outputTransferCharacteristics,
                                           avifRGBImage * toneMappedImage,
                                           avifContentLightLevelInformationBox * clli,
                                           avifDiagnostics * diag);
 // Same as above but takes an avifRGBImage as input instead of avifImage.
 AVIF_API avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
-                                             avifTransferCharacteristics transferCharacteristics,
+                                             avifColorPrimaries baseColorPrimaries,
+                                             avifTransferCharacteristics baseTransferCharacteristics,
                                              const avifGainMap * gainMap,
                                              float hdrHeadroom,
+                                             avifColorPrimaries outputColorPrimaries,
                                              avifTransferCharacteristics outputTransferCharacteristics,
                                              avifRGBImage * toneMappedImage,
                                              avifContentLightLevelInformationBox * clli,
@@ -1572,10 +1574,11 @@ AVIF_API avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 // height, depth and yuvFormat fields set to the desired output values for the
 // gain map. All of these fields may differ from the source images.
 AVIF_API avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
+                                               avifColorPrimaries baseColorPrimaries,
                                                avifTransferCharacteristics baseTransferCharacteristics,
                                                const avifRGBImage * altRgbImage,
+                                               avifColorPrimaries altColorPrimaries,
                                                avifTransferCharacteristics altTransferCharacteristics,
-                                               avifColorPrimaries colorPrimaries,
                                                avifGainMap * gainMap,
                                                avifDiagnostics * diag);
 // Convenience function. Same as above but takes avifImage images as input

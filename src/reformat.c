@@ -1794,6 +1794,9 @@ void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const av
     assert(dst != NULL);
     assert(!dst->isFloat || dst->depth == 16);
     assert(dst->format != AVIF_RGB_FORMAT_RGB_565 || dst->depth == 8);
+    assert(rgbaPixel[0] >= 0.0f && rgbaPixel[0] <= 1.0f);
+    assert(rgbaPixel[1] >= 0.0f && rgbaPixel[1] <= 1.0f);
+    assert(rgbaPixel[2] >= 0.0f && rgbaPixel[2] <= 1.0f);
 
     uint8_t * const dstPixel = &dst->pixels[y * dst->rowBytes + x * info->pixelBytes];
 

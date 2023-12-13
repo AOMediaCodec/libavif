@@ -907,7 +907,9 @@ TEST(GainMapTest, ConvertMetadataToDoubleInvalid) {
       avifGainMapMetadataFractionsToDouble(&metadata_double, &metadata));
 }
 
-static void SwapBaseAndAlternate(avifGainMapMetadata& metadata) {
+static void SwapBaseAndAlternate(const avifImage& new_alternate,
+                                 avifGainMap& gain_map) {
+  avifGainMapMetadata& metadata = gain_map.metadata;
   metadata.backwardDirection = !metadata.backwardDirection;
   metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
   std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
@@ -916,6 +918,14 @@ static void SwapBaseAndAlternate(avifGainMapMetadata& metadata) {
     std::swap(metadata.baseOffsetN[c], metadata.alternateOffsetN[c]);
     std::swap(metadata.baseOffsetD[c], metadata.alternateOffsetD[c]);
   }
+  gain_map.altColorPrimaries = new_alternate.colorPrimaries;
+  gain_map.altTransferCharacteristics = new_alternate.transferCharacteristics;
+  gain_map.altMatrixCoefficients = new_alternate.matrixCoefficients;
+  gain_map.altYUVRange = new_alternate.yuvRange;
+  gain_map.altDepth = new_alternate.depth;
+  gain_map.altPlaneCount =
+      (new_alternate.yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+  gain_map.altCLLI = new_alternate.clli;
 }
 
 // Test to generate some test images used by other tests and fuzzers.
@@ -939,6 +949,7 @@ TEST(GainMapTest, CreateTestImages) {
         avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
     ASSERT_EQ(result, AVIF_RESULT_OK)
         << avifResultToString(result) << " " << decoder->diag.error;
+    ASSERT_NE(image->gainMap, nullptr);
     ASSERT_NE(image->gainMap->image, nullptr);
 
     avifDiagnostics diag;
@@ -981,7 +992,7 @@ TEST(GainMapTest, CreateTestImages) {
     // Move the gain map from the sdr image to the hdr image.
     hdr_image->gainMap = sdr_with_gainmap->gainMap;
     sdr_with_gainmap->gainMap = nullptr;
-    SwapBaseAndAlternate(hdr_image->gainMap->metadata);
+    SwapBaseAndAlternate(*sdr_with_gainmap, *hdr_image->gainMap);
     hdr_image->gainMap->altColorPrimaries = sdr_with_gainmap->colorPrimaries;
     hdr_image->gainMap->altTransferCharacteristics =
         sdr_with_gainmap->transferCharacteristics;
@@ -1041,13 +1052,18 @@ void ToneMapImageAndCompareToReference(
       avifImageCreate(tone_mapped_rgb.width, tone_mapped_rgb.height,
                       tone_mapped_rgb.depth, AVIF_PIXEL_FORMAT_YUV444));
   tone_mapped->transferCharacteristics = out_transfer_characteristics;
-  tone_mapped->colorPrimaries = base_image->colorPrimaries;
-  tone_mapped->matrixCoefficients = base_image->matrixCoefficients;
+  tone_mapped->colorPrimaries = reference_image
+                                    ? reference_image->colorPrimaries
+                                    : base_image->colorPrimaries;
+  tone_mapped->matrixCoefficients = reference_image
+                                        ? reference_image->matrixCoefficients
+                                        : base_image->matrixCoefficients;
 
   avifDiagnostics diag;
   avifResult result = avifImageApplyGainMap(
-      base_image, &gain_map, hdr_headroom, tone_mapped->transferCharacteristics,
-      &tone_mapped_rgb, &tone_mapped->clli, &diag);
+      base_image, &gain_map, hdr_headroom, tone_mapped->colorPrimaries,
+      tone_mapped->transferCharacteristics, &tone_mapped_rgb,
+      &tone_mapped->clli, &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
   ASSERT_EQ(avifImageRGBToYUV(tone_mapped.get(), &tone_mapped_rgb),
@@ -1102,7 +1118,7 @@ TEST_P(ToneMapTest, ToneMapImage) {
       avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << decoder->diag.error;
-
+  ASSERT_NE(image->gainMap, nullptr);
   ASSERT_NE(image->gainMap->image, nullptr);
 
   ToneMapImageAndCompareToReference(image.get(), *image->gainMap, hdr_headroom,
@@ -1255,40 +1271,41 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
   }
 }
 
-class CreateGainMapTest : public testing::TestWithParam<std::tuple<
-                              /*downscaling=*/int, /*gain_map_depth=*/int,
-                              /*gain_map_format=*/avifPixelFormat,
-                              /*min_psnr=*/float, /*max_psnr=*/float>> {};
+class CreateGainMapTest
+    : public testing::TestWithParam<std::tuple<
+          /*image1_name=*/std::string, /*image2_name=*/std::string,
+          /*downscaling=*/int, /*gain_map_depth=*/int,
+          /*gain_map_format=*/avifPixelFormat,
+          /*min_psnr=*/float, /*max_psnr=*/float>> {};
 
+// Creates a gain map to go from image1 to image2, and tone maps to check we get
+// the correct result. Then does the same thing going from image2 to image1.
 TEST_P(CreateGainMapTest, Create) {
-  const int downscaling = std::get<0>(GetParam());
-  const int gain_map_depth = std::get<1>(GetParam());
-  const avifPixelFormat gain_map_format = std::get<2>(GetParam());
-  const float min_psnr = std::get<3>(GetParam());
-  const float max_psnr = std::get<4>(GetParam());
+  const std::string image1_name = std::get<0>(GetParam());
+  const std::string image2_name = std::get<1>(GetParam());
+  const int downscaling = std::get<2>(GetParam());
+  const int gain_map_depth = std::get<3>(GetParam());
+  const avifPixelFormat gain_map_format = std::get<4>(GetParam());
+  const float min_psnr = std::get<5>(GetParam());
+  const float max_psnr = std::get<6>(GetParam());
 
-  const std::string sdr_image_name = "seine_sdr_gainmap_srgb.avif";
-  const std::string hdr_image_name = "seine_hdr_gainmap_srgb.avif";
-  ImagePtr sdr_image =
-      testutil::DecodeFile(std::string(data_path) + sdr_image_name);
-  ASSERT_NE(sdr_image, nullptr);
-  ImagePtr hdr_image =
-      testutil::DecodeFile(std::string(data_path) + hdr_image_name);
-  ASSERT_NE(hdr_image, nullptr);
+  ImagePtr image1 = testutil::DecodeFile(std::string(data_path) + image1_name);
+  ASSERT_NE(image1, nullptr);
+  ImagePtr image2 = testutil::DecodeFile(std::string(data_path) + image2_name);
+  ASSERT_NE(image2, nullptr);
 
   const uint32_t gain_map_width = std::max<uint32_t>(
-      (uint32_t)std::round((float)sdr_image->width / downscaling), 1u);
+      (uint32_t)std::round((float)image1->width / downscaling), 1u);
   const uint32_t gain_map_height = std::max<uint32_t>(
-      (uint32_t)std::round((float)sdr_image->height / downscaling), 1u);
+      (uint32_t)std::round((float)image1->height / downscaling), 1u);
   std::unique_ptr<avifGainMap, decltype(&avifGainMapDestroy)> gain_map(
       avifGainMapCreate(), avifGainMapDestroy);
-  ImagePtr gain_map_image(avifImageCreate(gain_map_width, gain_map_height,
-                                          gain_map_depth, gain_map_format));
-  gain_map->image =
-      gain_map_image.release();  // 'gain_map' now owns gain_map_image;
+  gain_map->image = avifImageCreate(gain_map_width, gain_map_height,
+                                    gain_map_depth, gain_map_format);
 
   avifDiagnostics diag;
-  avifResult result = avifImageComputeGainMap(sdr_image.get(), hdr_image.get(),
+  gain_map->metadata.useBaseColorSpace = true;
+  avifResult result = avifImageComputeGainMap(image1.get(), image2.get(),
                                               gain_map.get(), &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
@@ -1296,98 +1313,140 @@ TEST_P(CreateGainMapTest, Create) {
   EXPECT_EQ(gain_map->image->width, gain_map_width);
   EXPECT_EQ(gain_map->image->height, gain_map_height);
 
-  const float hdr_headroom = (float)gain_map->metadata.alternateHdrHeadroomN /
-                             gain_map->metadata.alternateHdrHeadroomD;
+  const float image1_headroom = (float)gain_map->metadata.baseHdrHeadroomN /
+                                gain_map->metadata.baseHdrHeadroomD;
+  const float image2_headroom =
+      (float)gain_map->metadata.alternateHdrHeadroomN /
+      gain_map->metadata.alternateHdrHeadroomD;
 
-  // Tone map from sdr to hdr.
-  float psnr_sdr_to_hdr_forward;
+  // Tone map from image1 to image2 by applying the gainmap forward.
+  float psnr_image1_to_image2_forward;
   ToneMapImageAndCompareToReference(
-      sdr_image.get(), *gain_map, hdr_headroom, hdr_image->depth,
-      hdr_image->transferCharacteristics, AVIF_RGB_FORMAT_RGB, hdr_image.get(),
-      min_psnr, max_psnr, &psnr_sdr_to_hdr_forward);
+      image1.get(), *gain_map, image2_headroom, image2->depth,
+      image2->transferCharacteristics, AVIF_RGB_FORMAT_RGB, image2.get(),
+      min_psnr, max_psnr, &psnr_image1_to_image2_forward);
 
-  // Tone map from hdr to sdr.
-  SwapBaseAndAlternate(gain_map->metadata);
-  float psnr_hdr_to_sdr_backward;
+  // Tone map from image2 to image1 by applying the gainmap backward.
+  SwapBaseAndAlternate(*image1, *gain_map);
+  float psnr_image2_to_image1_backward;
   ToneMapImageAndCompareToReference(
-      hdr_image.get(), *gain_map, /*hdr_headroom=*/0.0, sdr_image->depth,
-      sdr_image->transferCharacteristics, AVIF_RGB_FORMAT_RGB, sdr_image.get(),
-      min_psnr, max_psnr, &psnr_hdr_to_sdr_backward);
-
-  // Uncomment the following to save the gain map as a PNG file.
-  // ASSERT_TRUE(testutil::WriteImage(gain_map.image,
-  // "/tmp/gain_map_sdr_to_hdr.png"));
-
-  // Compute the gain map in the other direction (from hdr to sdr).
-  result = avifImageComputeGainMap(hdr_image.get(), sdr_image.get(),
-                                   gain_map.get(), &diag);
-  ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << diag.error;
-
-  const float hdr_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /
-                              gain_map->metadata.baseHdrHeadroomD;
-  EXPECT_NEAR(hdr_headroom2, hdr_headroom, 0.001);
-
-  // Tone map from hdr to sdr.
-  float psnr_hdr_to_sdr_forward;
-  ToneMapImageAndCompareToReference(
-      hdr_image.get(), *gain_map, /*hdr_headroom=*/0.0, sdr_image->depth,
-      sdr_image->transferCharacteristics, AVIF_RGB_FORMAT_RGB, sdr_image.get(),
-      min_psnr, max_psnr, &psnr_hdr_to_sdr_forward);
-
-  // Tone map from sdr to hdr.
-  SwapBaseAndAlternate(gain_map->metadata);
-  float psnr_sdr_to_hdr_backward;
-  ToneMapImageAndCompareToReference(
-      sdr_image.get(), *gain_map, hdr_headroom, hdr_image->depth,
-      hdr_image->transferCharacteristics, AVIF_RGB_FORMAT_RGB, hdr_image.get(),
-      min_psnr, max_psnr, &psnr_sdr_to_hdr_backward);
+      image2.get(), *gain_map, image1_headroom, image1->depth,
+      image1->transferCharacteristics, AVIF_RGB_FORMAT_RGB, image1.get(),
+      min_psnr, max_psnr, &psnr_image2_to_image1_backward);
 
   // Uncomment the following to save the gain map as a PNG file.
   // ASSERT_TRUE(testutil::WriteImage(gain_map->image,
-  // "/tmp/gain_map_hdr_to_sdr.png"));
+  //                                  "/tmp/gain_map_image1_to_image2.png"));
+
+  // Compute the gain map in the other direction (from image2 to image1).
+  gain_map->metadata.useBaseColorSpace = false;
+  result = avifImageComputeGainMap(image2.get(), image1.get(), gain_map.get(),
+                                   &diag);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << diag.error;
+
+  const float image2_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /
+                                 gain_map->metadata.baseHdrHeadroomD;
+  EXPECT_NEAR(image2_headroom2, image2_headroom, 0.001);
+
+  // Tone map from image2 to image1 by applying the new gainmap forward.
+  float psnr_image2_to_image1_forward;
+  ToneMapImageAndCompareToReference(
+      image2.get(), *gain_map, image1_headroom, image1->depth,
+      image1->transferCharacteristics, AVIF_RGB_FORMAT_RGB, image1.get(),
+      min_psnr, max_psnr, &psnr_image2_to_image1_forward);
+
+  // Tone map from image1 to image2 by applying the new gainmap backward.
+  SwapBaseAndAlternate(*image2, *gain_map);
+  float psnr_image1_to_image2_backward;
+  ToneMapImageAndCompareToReference(
+      image1.get(), *gain_map, image2_headroom, image2->depth,
+      image2->transferCharacteristics, AVIF_RGB_FORMAT_RGB, image2.get(),
+      min_psnr, max_psnr, &psnr_image1_to_image2_backward);
+
+  // Uncomment the following to save the gain map as a PNG file.
+  // ASSERT_TRUE(testutil::WriteImage(gain_map->image,
+  //                                  "/tmp/gain_map_image2_to_image1.png"));
 
   // Results should be about the same whether the gain map was computed from sdr
   // to hdr or the other way around.
-  EXPECT_NEAR(psnr_sdr_to_hdr_backward, psnr_sdr_to_hdr_forward, 0.6f);
-  EXPECT_NEAR(psnr_hdr_to_sdr_forward, psnr_hdr_to_sdr_backward, 0.6f);
+  EXPECT_NEAR(psnr_image1_to_image2_backward, psnr_image1_to_image2_forward,
+              min_psnr * 0.1f);
+  EXPECT_NEAR(psnr_image2_to_image1_forward, psnr_image2_to_image1_backward,
+              min_psnr * 0.1f);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     All, CreateGainMapTest,
     Values(
         // Full scale gain map, 3 channels, 10 bit gain map.
-        std::make_tuple(/*downscaling=*/1, /*gain_map_depth=*/10,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/1, /*gain_map_depth=*/10,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
                         /*min_psnr=*/55.0f, /*max_psnr=*/80.0f),
         // 8 bit gain map, expect a slightly lower PSNR.
-        std::make_tuple(/*downscaling=*/1, /*gain_map_depth=*/8,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/1, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
                         /*min_psnr=*/50.0f, /*max_psnr=*/70.0f),
         // 420 gain map, expect a lower PSNR.
-        std::make_tuple(/*downscaling=*/1, /*gain_map_depth=*/8,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/1, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV420,
                         /*min_psnr=*/40.0f, /*max_psnr=*/60.0f),
         // Downscaled gain map, expect a lower PSNR.
-        std::make_tuple(/*downscaling=*/2, /*gain_map_depth=*/8,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/2, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
                         /*min_psnr=*/35.0f, /*max_psnr=*/45.0f),
         // Even more downscaled gain map, expect a lower PSNR.
-        std::make_tuple(/*downscaling=*/3, /*gain_map_depth=*/8,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/3, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
                         /*min_psnr=*/35.0f, /*max_psnr=*/45.0f),
         // Extreme downscaling, just for fun.
-        std::make_tuple(/*downscaling=*/255, /*gain_map_depth=*/8,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/255, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
                         /*min_psnr=*/20.0f, /*max_psnr=*/35.0f),
         // Grayscale gain map.
-        std::make_tuple(/*downscaling=*/1, /*gain_map_depth=*/8,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/1, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV400,
                         /*min_psnr=*/40.0f, /*max_psnr=*/60.0f),
         // Downscaled AND grayscale.
-        std::make_tuple(/*downscaling=*/2, /*gain_map_depth=*/8,
+        std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
+                        /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
+                        /*downscaling=*/2, /*gain_map_depth=*/8,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV400,
-                        /*min_psnr=*/35.0f, /*max_psnr=*/45.0f)));
+                        /*min_psnr=*/35.0f, /*max_psnr=*/45.0f),
+
+        // Color space conversions.
+        std::make_tuple(/*image1_name=*/"colors_sdr_srgb.avif",
+                        /*image2_name=*/"colors_hdr_rec2020.avif",
+                        /*downscaling=*/1, /*gain_map_depth=*/10,
+                        /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
+                        /*min_psnr=*/55.0f, /*max_psnr=*/100.0f),
+        // The PSNR is very high because there are essentially the same image,
+        // simply expresed in different colorspaces.
+        std::make_tuple(/*image1_name=*/"colors_hdr_rec2020.avif",
+                        /*image2_name=*/"colors_hdr_p3.avif",
+                        /*downscaling=*/1, /*gain_map_depth=*/8,
+                        /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
+                        /*min_psnr=*/90.0f, /*max_psnr=*/100.0f),
+        // Color space conversions with wider color gamut.
+        std::make_tuple(/*image1_name=*/"colors_sdr_srgb.avif",
+                        /*image2_name=*/"colors_wcg_hdr_rec2020.avif",
+                        /*downscaling=*/1, /*gain_map_depth=*/10,
+                        /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
+                        /*min_psnr=*/55.0f, /*max_psnr=*/80.0f)));
 
 TEST(FindMinMaxWithoutOutliers, AllSame) {
   constexpr int kNumValues = 10000;
