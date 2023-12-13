@@ -1272,7 +1272,7 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
 
 class CreateGainMapTest
     : public testing::TestWithParam<std::tuple<
-          /*image1_name=*/std::string, /*image1_name=*/std::string,
+          /*image1_name=*/std::string, /*image2_name=*/std::string,
           /*downscaling=*/int, /*gain_map_depth=*/int,
           /*gain_map_format=*/avifPixelFormat,
           /*min_psnr=*/float, /*max_psnr=*/float>> {};
@@ -1319,6 +1319,8 @@ TEST_P(CreateGainMapTest, Create) {
   float image2_headroom = (float)gain_map->metadata.alternateHdrHeadroomN /
                           gain_map->metadata.alternateHdrHeadroomD;
 
+  // The gain map will never be applied if the two headrooms are equal,
+  // so artificially change one of them.
   if (image1_headroom == image2_headroom) {
     gain_map->metadata.alternateHdrHeadroomN += 1;
     image2_headroom = (float)gain_map->metadata.alternateHdrHeadroomN /
@@ -1353,6 +1355,8 @@ TEST_P(CreateGainMapTest, Create) {
 
   float image2_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /
                            gain_map->metadata.baseHdrHeadroomD;
+  // The gain map will never be applied if the two headrooms are equal,
+  // so artificially change one of them.
   if (image1_headroom == image2_headroom2) {
     gain_map->metadata.baseHdrHeadroomN += 1;
     image2_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /

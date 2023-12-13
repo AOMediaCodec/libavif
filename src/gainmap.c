@@ -448,7 +448,7 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, 
 
 static const float kEpsilon = 1e-10f;
 
-// Decides which of 'basePrimaries' or 'altPrimaries' should be used for doing gain map math.
+// Decides which of 'basePrimaries' or 'altPrimaries' should be used for doing gain map math when creating a gain map.
 // The other image (base or alternate) will be converted to this color space before computing
 // the ratio between the two images.
 // If a pixel color is outside of the target color space, some of the converted channel values will be negative.
@@ -593,16 +593,14 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                 }
                 avifLinearRGBConvertColorSpace(rgba, rgbConversionCoeffs);
                 for (int c = 0; c < 3; ++c) {
-                    if (rgba[c] < channelMin[c]) {
-                        channelMin[c] = AVIF_MIN(channelMin[c], rgba[c]);
-                    }
+                    channelMin[c] = AVIF_MIN(channelMin[c], rgba[c]);
                 }
             }
         }
 
         for (int c = 0; c < 3; ++c) {
             // Large offsets cause artefacts when partially applying the gain map, so set a max (empirical) offset value.
-            // If hte offset is clamped, some gain map values will get be clamped.
+            // If the offset is clamped, some gain map values will get clamped as well.
             const float maxOffset = 0.1f;
             if (channelMin[c] < -kEpsilon) {
                 // Increase the offset to avoid negative values.
