@@ -2286,20 +2286,20 @@ MAIN()
         // interpreted as SRGB anyway.
         image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-        if (image->gainMap && !image->gainMap->altICC.size) {
-            if (image->gainMap->altColorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-                // Assume the alternate image has the same primaries as the base image.
-                image->gainMap->altColorPrimaries = image->colorPrimaries;
-            }
-            if (image->gainMap->altTransferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-                // Assume the alternate image is PQ HDR.
-                image->gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
-            }
+    if (image->gainMap && !image->gainMap->altICC.size) {
+        if (image->gainMap->altColorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+            // Assume the alternate image has the same primaries as the base image.
+            image->gainMap->altColorPrimaries = image->colorPrimaries;
         }
-#endif // AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
+        if (image->gainMap->altTransferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
+            // Assume the alternate image is PQ HDR.
+            image->gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
+        }
     }
+#endif // AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
 
     if (settings.paspPresent) {
         image->transformFlags |= AVIF_TRANSFORM_PASP;
