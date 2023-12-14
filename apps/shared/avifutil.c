@@ -146,6 +146,11 @@ static void avifImageDumpInternal(const avifImage * avif,
         printf("    * Color Primaries: %u\n", avif->gainMap->altColorPrimaries);
         printf("    * Transfer Char. : %u\n", avif->gainMap->altTransferCharacteristics);
         printf("    * Matrix Coeffs. : %u\n", avif->gainMap->altMatrixCoefficients);
+        if (avif->gainMap->altICC.size != 0) {
+            printf("    * ICC Profile    : Present (%" AVIF_FMT_ZU " bytes)\n", avif->gainMap->altICC.size);
+        } else {
+            printf("    * ICC Profile    : Absent\n");
+        }
         if (avif->gainMap->altDepth) {
             printf("    * Bit Depth      : %u\n", avif->gainMap->altDepth);
         }

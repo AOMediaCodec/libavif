@@ -429,6 +429,20 @@ a hex editor to make the MPF metadata big endian, as signaled by the four bytes
 |   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
 |         |             |        | ...                                          |
 
+### File [paris_exif_xmp_icc_gainmap_bigendian.jpg](paris_exif_xmp_icc_gainmap_bigendian.jpg)
+
+![](paris_exif_xmp_icc_gainmap_bigendian.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: same as paris_exif_xmp_gainmap_bigendian.jpg but with a DCI-P3 ICC profile added
+using exiftool:
+
+```
+cp paris_exif_xmp_gainmap_bigendian.jpg paris_exif_xmp_icc_gainmap_bigendian.jpg
+exiftool -icc_profile -b path/to/some_image_with_a_p3_profile.jpg > p3.icc
+exiftool "-icc_profile<=p3.icc" paris_exif_xmp_icc_gainmap_bigendian.jpg
+```
 
 ### File [color_grid_gainmap_different_grid.avif](color_grid_gainmap_different_grid.avif)
 
