@@ -113,6 +113,7 @@ if(AVIF_ENABLE_GTEST)
     endif()
 
     add_avif_gtest_with_data(avifdecodetest)
+    add_avif_gtest_with_data(avifencodetest)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         add_avif_internal_gtest_with_data(avifgainmaptest avifincrtest_helpers)
@@ -330,6 +331,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifchangesettingtest
                 avifcllitest
                 avifcolrconverttest
+                avifencodetest
                 avifgridapitest
                 avifincrtest
                 avifiostatstest
