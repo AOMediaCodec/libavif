@@ -1135,8 +1135,12 @@ static avifBool avifJPEGReadInternal(FILE * f,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
     // The primary XMP block (for the main image) must contain a node with an hdrgm:Version field if and only if a gain map is present.
     if (!ignoreGainMap && avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size)) {
-        // Ignore the return value: continue even if we fail to find/parse/decode the gain map.
         avifGainMap * gainMap = avifGainMapCreate();
+        if (gainMap == NULL) {
+            fprintf(stderr, "Creating gain map failed: out of memory\n");
+            goto cleanup;
+        }
+        // Ignore the return value: continue even if we fail to find/parse/decode the gain map.
         if (avifJPEGExtractGainMapImage(f, &cinfo, gainMap, chromaDownsampling)) {
             // Since jpeg doesn't provide this metadata, assume the values are the same as the base image
             // with a PQ transfer curve.
@@ -1161,7 +1165,9 @@ static avifBool avifJPEGReadInternal(FILE * f,
 
     if (avif->xmp.size > 0 && ignoreXMP) {
         // Clear XMP in case we read it for something else (like gain map).
-        AVIF_CHECK(avifImageSetMetadataXMP(avif, NULL, 0) == AVIF_RESULT_OK);
+        if (avifImageSetMetadataXMP(avif, NULL, 0) != AVIF_RESULT_OK) {
+            assert(AVIF_FALSE);
+        }
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
     jpeg_finish_decompress(&cinfo);

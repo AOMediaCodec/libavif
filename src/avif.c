@@ -1170,6 +1170,7 @@ void avifGainMapDestroy(avifGainMap * gainMap)
     if (gainMap->image) {
         avifImageDestroy(gainMap->image);
     }
+    avifRWDataFree(&gainMap->altICC);
     avifFree(gainMap);
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
