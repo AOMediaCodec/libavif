@@ -1146,6 +1146,13 @@ static avifBool avifJPEGReadInternal(FILE * f,
             gainMap->altDepth = 8;
             gainMap->altPlaneCount =
                 (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && gainMap->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+            if (avif->icc.size > 0) {
+                // The base image's ICC should also apply to the alternage image.
+                if (avifRWDataSet(&gainMap->altICC, avif->icc.data, avif->icc.size) != AVIF_RESULT_OK) {
+                    fprintf(stderr, "Setting gain map ICC profile failed: out of memory\n");
+                    goto cleanup;
+                }
+            }
             avif->gainMap = gainMap;
         } else {
             avifGainMapDestroy(gainMap);

@@ -20,7 +20,9 @@
 # All .avif files created here will become test cases.
 encode_test_files() {
     # Image with a gain map.
-    for f in "paris_exif_xmp_gainmap_bigendian.jpg" "paris_exif_xmp_gainmap_littleendian.jpg"; do
+    for f in "paris_exif_xmp_gainmap_bigendian.jpg" \
+        "paris_exif_xmp_icc_gainmap_bigendian.jpg" \
+        "paris_exif_xmp_gainmap_littleendian.jpg"; do
         "${AVIFENC}" -s 9 "${TESTDATA_DIR}/$f" -o "$f.avif"
     done
 
