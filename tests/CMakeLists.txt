@@ -8,27 +8,25 @@ enable_testing()
 ################################################################################
 # C tests and tools
 
+set(COVERAGE_TARGETS)
+# Macro to register a test for coverage. The first argument is the target name.
+# Other arguments, like data path, can be added.
+macro(register_test_for_coverage TEST_NAME)
+    add_custom_target(
+        ${TEST_NAME}_coverage
+        COMMAND ${CMAKE_COMMAND} -E env "LLVM_PROFILE_FILE=${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}.profraw"
+                $<TARGET_FILE:${TEST_NAME}> ${ARGN}
+    )
+    list(APPEND COVERAGE_TARGETS ${TEST_NAME})
+endmacro()
+
 add_executable(aviftest aviftest.c)
 if(AVIF_CODEC_LIBGAV1_ENABLED)
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(aviftest avif)
 add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
-
-if(AVIF_ENABLE_COVERAGE)
-    add_custom_target(
-        avif_coverage
-        COMMAND ${CMAKE_COMMAND} -E env "LLVM_PROFILE_FILE=${CMAKE_CURRENT_BINARY_DIR}/aviftest.profraw" $<TARGET_FILE:aviftest>
-                ${CMAKE_CURRENT_SOURCE_DIR}/data
-        COMMAND ${XCRUN} llvm-profdata merge -sparse ${CMAKE_CURRENT_BINARY_DIR}/aviftest.profraw -o
-                ${CMAKE_CURRENT_BINARY_DIR}/aviftest.profdata
-        COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/coverage
-        COMMAND ${XCRUN} llvm-cov show $<TARGET_FILE:aviftest> -instr-profile=${CMAKE_CURRENT_BINARY_DIR}/aviftest.profdata
-                -project-title=libavif --format html -output-dir=${CMAKE_CURRENT_BINARY_DIR}/coverage
-        COMMAND echo Coverage report here: ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
-        DEPENDS aviftest
-    )
-endif()
+register_test_for_coverage(aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
 add_executable(avifyuv avifyuv.c)
 if(AVIF_CODEC_LIBGAV1_ENABLED)
@@ -67,21 +65,25 @@ macro(add_avif_gtest TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers GTest::gtest GTest::gtest_main ${ARGN})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    register_test_for_coverage(${TEST_NAME})
 endmacro()
 macro(add_avif_internal_gtest TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal GTest::gtest GTest::gtest_main ${ARGN})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    register_test_for_coverage(${TEST_NAME})
 endmacro()
 macro(add_avif_gtest_with_data TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers GTest::gtest ${ARGN})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    register_test_for_coverage(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
 macro(add_avif_internal_gtest_with_data TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal GTest::gtest ${ARGN})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    register_test_for_coverage(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
 
 if(AVIF_ENABLE_GTEST OR AVIF_ENABLE_FUZZTEST)
@@ -129,6 +131,7 @@ if(AVIF_ENABLE_GTEST)
     add_executable(avifincrtest gtest/avifincrtest.cc)
     target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
     add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    register_test_for_coverage(avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
     add_avif_internal_gtest(avifcolrtest)
     add_avif_internal_gtest_with_data(avifcolrconverttest)
@@ -359,4 +362,27 @@ if(AVIF_CODEC_AVM_ENABLED)
             set_tests_properties(test_cmd test_cmd_animation test_cmd_grid test_cmd_targetsize PROPERTIES DISABLED True)
         endif()
     endif()
+endif()
+
+if(AVIF_ENABLE_COVERAGE)
+    set(MERGE_COMMAND llvm-profdata merge)
+    set(SHOW_COMMAND llvm-cov show --ignore-filename-regex=.*/tests/.* --ignore-filename-regex=.*/third_party/.*)
+    foreach(TARGET ${COVERAGE_TARGETS})
+        list(APPEND MERGE_COMMAND -sparse ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.profraw)
+        list(APPEND SHOW_COMMAND -object $<TARGET_FILE:${TARGET}>)
+    endforeach()
+    list(APPEND MERGE_COMMAND -o ${CMAKE_CURRENT_BINARY_DIR}/avif_coverage.profdata)
+    list(APPEND SHOW_COMMAND -instr-profile=${CMAKE_CURRENT_BINARY_DIR}/avif_coverage.profdata -project-title=libavif --format
+         html -output-dir=${CMAKE_CURRENT_BINARY_DIR}/coverage
+    )
+    add_custom_target(
+        avif_coverage
+        COMMAND ${XCRUN} ${MERGE_COMMAND}
+        COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/coverage
+        COMMAND ${XCRUN} ${SHOW_COMMAND}
+        COMMAND echo Coverage report here: ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
+    )
+    foreach(TARGET ${COVERAGE_TARGETS})
+        add_dependencies(avif_coverage ${TARGET}_coverage)
+    endforeach()
 endif()
