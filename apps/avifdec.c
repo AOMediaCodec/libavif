@@ -31,7 +31,7 @@ static void syntax(void)
     printf("    -h,--help         : Show syntax help\n");
     printf("    -V,--version      : Show the version number\n");
     printf("    -j,--jobs J       : Number of jobs (worker threads). Use \"all\" to potentially use as many cores as possible (default: all)\n");
-    printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
+    printf("    -c,--codec C      : Codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
     printf("    --png-compress L  : Set PNG compression level (PNG only; 0-9, 0=none, 9=max). Defaults to libpng's builtin default.\n");
@@ -124,7 +124,7 @@ int main(int argc, char * argv[])
             } else {
                 const char * codecName = avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE);
                 if (codecName == NULL) {
-                    fprintf(stderr, "ERROR: AV1 Codec cannot decode: %s\n", arg);
+                    fprintf(stderr, "ERROR: Codec cannot decode: %s\n", arg);
                     return 1;
                 }
             }
@@ -304,7 +304,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    printf("Decoding with AV1 codec '%s' (%d worker thread%s), please wait...\n",
+    printf("Decoding with codec '%s' (%d worker thread%s), please wait...\n",
            avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE),
            jobs,
            (jobs == 1) ? "" : "s");
