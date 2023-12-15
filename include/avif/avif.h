@@ -396,7 +396,7 @@ typedef struct avifDiagnostics
 {
     // Upon receiving an error from any non-const libavif API call, if the toplevel structure used
     // in the API call (avifDecoder, avifEncoder) contains a diag member, this buffer may be
-    // populated with a NULL-terminated, freeform error string explaining the first error in
+    // populated with a NULL-terminated, freeform error string explaining the first encountered error in
     // more detail. It will be cleared at the beginning of every non-const API call.
     //
     // Note: If an error string contains the "[Strict]" prefix, it means that you encountered an

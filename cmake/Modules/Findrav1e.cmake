@@ -34,9 +34,8 @@ endif()
 if(NOT RAV1E_LIBRARY)
     # For Windows MSVC, cargo-c names the import library ravie.dll.lib
     if(WIN32 AND NOT MINGW)
-        set(CMAKE_FIND_LIBRARY_SUFFIXES
-          ".dll.lib" # import library from Rust toolchain for MSVC ABI
-          ".lib" # static or import library from MSVC tooling
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".dll.lib" # import library from Rust toolchain for MSVC ABI
+                                        ".lib" # static or import library from MSVC tooling
         )
     endif()
     find_library(RAV1E_LIBRARY NAMES rav1e PATHS ${_RAV1E_LIBDIR})
