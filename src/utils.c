@@ -16,7 +16,7 @@ float avifRoundf(float v)
 
 uint16_t avifHTONS(uint16_t s)
 {
-    uint16_t result;
+    uint16_t result = 0;
     uint8_t * data = (uint8_t *)&result;
     data[0] = (s >> 8) & 0xff;
     data[1] = (s >> 0) & 0xff;
@@ -37,7 +37,7 @@ uint16_t avifCTOHS(uint16_t s)
 
 uint32_t avifHTONL(uint32_t l)
 {
-    uint32_t result;
+    uint32_t result = 0;
     uint8_t * data = (uint8_t *)&result;
     data[0] = (l >> 24) & 0xff;
     data[1] = (l >> 16) & 0xff;
@@ -60,7 +60,7 @@ uint32_t avifCTOHL(uint32_t l)
 
 uint64_t avifHTON64(uint64_t l)
 {
-    uint64_t result;
+    uint64_t result = 0;
     uint8_t * data = (uint8_t *)&result;
     data[0] = (l >> 56) & 0xff;
     data[1] = (l >> 48) & 0xff;

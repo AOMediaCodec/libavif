@@ -19,12 +19,16 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        include:
+          - runs-on: ubuntu-latest
+            compiler: gcc
+            gcc: 13
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-    - name: Set GCC & G++ 11 compiler (on Linux)
+    - name: Set GCC & G++ compiler (on Linux)
       if: runner.os == 'Linux'
-      run: echo "CC=gcc-11" >> $GITHUB_ENV && echo "CXX=g++-11" >> $GITHUB_ENV
+      run: echo "CC=gcc-${{matrix.gcc}}" >> $GITHUB_ENV && echo "CXX=g++-${{matrix.gcc}}" >> $GITHUB_ENV
 
     - name: Cache external dependencies
       id: cache-ext
