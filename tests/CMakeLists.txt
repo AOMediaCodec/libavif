@@ -12,12 +12,14 @@ set(COVERAGE_TARGETS)
 # Macro to register a test for coverage. The first argument is the target name.
 # Other arguments, like data path, can be added.
 macro(register_test_for_coverage TEST_NAME)
-    add_custom_target(
-        ${TEST_NAME}_coverage
-        COMMAND ${CMAKE_COMMAND} -E env "LLVM_PROFILE_FILE=${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}.profraw"
-                $<TARGET_FILE:${TEST_NAME}> ${ARGN}
-    )
-    list(APPEND COVERAGE_TARGETS ${TEST_NAME})
+    if(AVIF_ENABLE_COVERAGE)
+        add_custom_target(
+            ${TEST_NAME}_coverage
+            COMMAND ${CMAKE_COMMAND} -E env "LLVM_PROFILE_FILE=${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}.profraw"
+                    $<TARGET_FILE:${TEST_NAME}> ${ARGN}
+        )
+        list(APPEND COVERAGE_TARGETS ${TEST_NAME})
+    endif()
 endmacro()
 
 add_executable(aviftest aviftest.c)

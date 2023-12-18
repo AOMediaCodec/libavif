@@ -307,6 +307,7 @@ if(AVIF_ENABLE_COVERAGE)
     else()
         # TODO: Add support for other compilers
         message(WARNING "libavif: Ignoring request for coverage (AVIF_ENABLE_COVERAGE); only clang is currently supported.")
+        set(AVIF_ENABLE_COVERAGE OFF)
     endif()
 endif()
 
