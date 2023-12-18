@@ -22,14 +22,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         libyuv: [OFF, LOCAL]
+        include:
+          - runs-on: ubuntu-latest
+            compiler: gcc
+            gcc: 13
 
     name: build-shared-local (${{ matrix.os }}, libyuv ${{ matrix.libyuv }})
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-    - name: Set GCC & G++ 10 compiler (on Linux)
+    - name: Set GCC & G++ compiler (on Linux)
       if: runner.os == 'Linux'
-      run: echo "CC=gcc-10" >> $GITHUB_ENV && echo "CXX=g++-10" >> $GITHUB_ENV
+      run: echo "CC=gcc-${{matrix.gcc}}" >> $GITHUB_ENV && echo "CXX=g++-${{matrix.gcc}}" >> $GITHUB_ENV
     - uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
       with:
         python-version: '3.x'
