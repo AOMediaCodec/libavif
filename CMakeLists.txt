@@ -393,7 +393,7 @@ target_sources(avif_obj PRIVATE ${AVIF_SRCS})
 # /usr/local/include.
 set(CMAKE_FIND_FRAMEWORK LAST)
 
-if(UNIX)
+if(UNIX OR MINGW)
     # Find out if we have threading available
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
@@ -677,6 +677,11 @@ if(AVIF_BUILD_APPS)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifdec avif_apps)
+    if(MINGW AND NOT "$ENV{MSYSTEM}" MATCHES "(MINGW32|MINGW64)")
+        # MINGW* are legacy environments that link against MSVCRT which does not support UTF8.
+        target_link_options(avifenc PRIVATE -municode)
+        target_link_options(avifdec PRIVATE -municode)
+    endif()
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(
