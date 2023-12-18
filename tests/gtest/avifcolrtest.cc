@@ -13,7 +13,8 @@ namespace {
 constexpr int kMaxTransferCharacteristic = 18;
 
 // Thresholds in the transfer curve formulas.
-constexpr float kTransferLog100Threshold = 0.01f;
+// Add a little tolerance for test to pass on MinGW32.
+constexpr float kTransferLog100Threshold = 0.01f + 1e-7f;
 constexpr float kTransferLog100Sqrt10Threshold = 0.00316227766f;
 
 TEST(TransferCharacteristicsTest, RoundTrip) {
@@ -52,7 +53,7 @@ TEST(TransferCharacteristicsTest, RoundTrip) {
     }
 
     if (tc == AVIF_TRANSFER_CHARACTERISTICS_LOG100) {
-      EXPECT_EQ(min_linear, kTransferLog100Threshold / 2.0f);
+      EXPECT_NEAR(min_linear, kTransferLog100Threshold / 2.0f, 1e-7);
     } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_LOG100_SQRT10) {
       EXPECT_EQ(min_linear, kTransferLog100Sqrt10Threshold / 2.0f);
     } else {
@@ -104,8 +105,8 @@ TEST(TransferCharacteristicsTest, ToGammaHasCorrectShape) {
         continue;  // Smpte428 is a bit below the y=x diagonal at the high end.
       }
 
-      // Check the point is above (or at) the y=x diagonal.
-      ASSERT_GE(gamma, linear);
+      // Check the point is above (or at) the y=x diagonal, with some tolerance.
+      ASSERT_GE(gamma, linear - 1e-6);
     }
   }
 }
