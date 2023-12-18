@@ -678,6 +678,7 @@ if(AVIF_BUILD_APPS)
     endif()
     target_link_libraries(avifdec avif_apps)
     if(MINGW AND NOT "$ENV{MSYSTEM}" MATCHES "(MINGW32|MINGW64)")
+        # MINGW* are legacy environments that link against MSVCRT which does not support UTF8.
         target_link_options(avifenc PRIVATE -municode)
         target_link_options(avifdec PRIVATE -municode)
     endif()

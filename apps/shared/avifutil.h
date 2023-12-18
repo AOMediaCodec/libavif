@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 // MAIN(), INIT_ARGV(), FREE_ARGV() for UTF8-aware command line parsing.
+// UCRT supports UTF8, contrary to MSVCRT.
 #if defined(_WIN32) && defined(_UCRT)
 #define MAIN() int wmain(int argc, wchar_t * wargv[])
 #else
@@ -21,7 +22,7 @@ extern "C" {
 #ifdef __cplusplus
 #define INIT_ARGV()                                                                                           \
     if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
-        fprintf(stderr, "C++ setlocale failed\n");                                                            \
+        fprintf(stderr, "setlocale failed\n");                                                                \
         return 1;                                                                                             \
     }                                                                                                         \
     std::vector<char> argvAllVector(1024 * argc);                                                             \
@@ -40,7 +41,7 @@ extern "C" {
     char * argvAll = NULL;                                                                                    \
     char ** argv = NULL;                                                                                      \
     if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
-        fprintf(stderr, "C setlocale failed\n");                                                              \
+        fprintf(stderr, "setlocale failed\n");                                                                \
         return 1;                                                                                             \
     }                                                                                                         \
     argvAll = (char *)malloc(1024 * argc * sizeof(*argvAll));                                                 \
@@ -62,7 +63,7 @@ extern "C" {
 #else
 #define INIT_ARGV()
 #endif
-#if defined(_WIN32) && !defined(__cplusplus) && defined(_UCRT)
+#if defined(_WIN32) && defined(_UCRT) && !defined(__cplusplus)
 #define FREE_ARGV() \
     free(argv);     \
     free(argvAll);
