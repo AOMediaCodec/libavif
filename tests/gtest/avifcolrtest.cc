@@ -53,7 +53,7 @@ TEST(TransferCharacteristicsTest, RoundTrip) {
     }
 
     if (tc == AVIF_TRANSFER_CHARACTERISTICS_LOG100) {
-      EXPECT_NEAR(min_linear, kTransferLog100Threshold / 2.0f, 1e-7);
+      EXPECT_NEAR(min_linear, kTransferLog100Threshold / 2.0f, 1e-7f);
     } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_LOG100_SQRT10) {
       EXPECT_EQ(min_linear, kTransferLog100Sqrt10Threshold / 2.0f);
     } else {
@@ -68,7 +68,7 @@ TEST(TransferCharacteristicsTest, RoundTrip) {
                   0.00001);  // HLG max extended SDR value.
     } else if (tc == AVIF_TRANSFER_CHARACTERISTICS_SMPTE428) {
       // See formula in Table 3 of ITU-T H.273.
-      EXPECT_NEAR(max_linear, 52.37f / 48.0f, 0.00001);
+      EXPECT_NEAR(max_linear, 52.37f / 48.0f, 0.00001f);
     } else {
       EXPECT_EQ(max_linear, 1.0f);
     }
@@ -101,12 +101,12 @@ TEST(TransferCharacteristicsTest, ToGammaHasCorrectShape) {
 
       const float gamma = to_gamma(extended_sdr_scaled);
 
-      if (tc == AVIF_TRANSFER_CHARACTERISTICS_SMPTE428 && linear > 0.9) {
+      if (tc == AVIF_TRANSFER_CHARACTERISTICS_SMPTE428 && linear > 0.9f) {
         continue;  // Smpte428 is a bit below the y=x diagonal at the high end.
       }
 
       // Check the point is above (or at) the y=x diagonal, with some tolerance.
-      ASSERT_GE(gamma, linear - 1e-6);
+      ASSERT_GE(gamma, linear - 1e-6f);
     }
   }
 }
