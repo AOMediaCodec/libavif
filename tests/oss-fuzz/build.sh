@@ -41,6 +41,7 @@ ln -s $SRC/fuzztest $SRC/libavif/ext/fuzztest
 # build dependencies
 cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.cmd && \
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
+export CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
 
 # build libavif
 mkdir build
@@ -50,8 +51,9 @@ cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_ENABLE_WERROR=OFF \
       -DAVIF_LOCAL_FUZZTEST=ON \
       -DAVIF_LOCAL_GTEST=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBSHARPYUV=ON \
-      -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_ZLIBPNG=ON \
-      -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF -DAVIF_ENABLE_FUZZTEST=ON ..
+      -DAVIF_LIBYUV=LOCAL \-DAVIF_LOCAL_ZLIBPNG=ON \
+      -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF -DAVIF_ENABLE_FUZZTEST=ON \
+      -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer ..
 
 ninja
 
@@ -81,13 +83,14 @@ for fuzz_main_file in $FUZZ_TEST_BINARIES_OUT_PATHS; do
     echo "#!/bin/sh
 # LLVMFuzzerTestOneInput for fuzzer detection.
 this_dir=\$(dirname \"\$0\")
+export TEST_DATA_DIRS=\$this_dir/corpus
 chmod +x \$this_dir/$fuzz_basename
 $fuzz_basename --fuzz=$fuzz_entrypoint -- \$@" > $OUT/$TARGET_FUZZER
     chmod +x $OUT/$TARGET_FUZZER
   done
 done
 
-# WIP: copy seed corpus for fuzztest tests
+# copy seed corpus for fuzztest tests
 mkdir $OUT/corpus
 unzip $SRC/avif_decode_seed_corpus.zip -d $OUT/corpus
 cp $SRC/libavif/tests/data/* $OUT/corpus
