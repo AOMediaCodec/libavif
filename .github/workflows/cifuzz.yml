@@ -1,5 +1,11 @@
 name: CI Fuzz
-on: [pull_request]
+on:
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'src/**'
+      - 'tests/gtest/**'
+      - 'tests/oss-fuzz/**'
 
 permissions:
   contents: read
