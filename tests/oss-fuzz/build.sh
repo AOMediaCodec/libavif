@@ -35,5 +35,12 @@ $CXX $CXXFLAGS -std=c++11 -I../include \
     $LIB_FUZZING_ENGINE libavif.a ../ext/dav1d/build/src/libdav1d.a \
     ../ext/libyuv/build/libyuv.a
 
-# copy seed corpus
-cp $SRC/avif_decode_seed_corpus.zip $OUT/
+# WIP: copy seed corpus for fuzztest tests
+mkdir $OUT/corpus
+unzip $SRC/avif_decode_seed_corpus.zip -d $OUT/corpus
+cp $SRC/libavif/tests/data/* $OUT/corpus
+
+# create a bigger seed corpus for avif_decode_fuzzer
+cd $OUT/corpus
+zip -j $SRC/corpus.zip $OUT/corpus/*
+cp $SRC/corpus.zip $OUT/avif_decode_fuzzer_seed_corpus.zip
