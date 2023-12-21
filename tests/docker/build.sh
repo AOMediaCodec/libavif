@@ -44,7 +44,7 @@ ninja install
 
 # libgav1
 cd
-git clone -b v0.18.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
+git clone -b v0.19.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 cd libgav1
 mkdir build
 cd build
