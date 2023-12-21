@@ -16,7 +16,7 @@ if [ $# -ne 1 ]; then
   exit 1
 fi
 # When updating the libgav1 version, make the same change to libgav1.cmd.
-git clone -b v0.18.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
+git clone -b v0.19.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 
 cd libgav1
 mkdir build
