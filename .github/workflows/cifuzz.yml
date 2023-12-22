@@ -21,12 +21,12 @@ jobs:
     steps:
     - name: Build Fuzzers
       id: build
-      uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+      uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@c836f141decccfaa27ef54cd5959faeec3f32bd7 # master
       with:
         oss-fuzz-project-name: 'libavif'
         dry-run: false
     - name: Run Fuzzers
-      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@c836f141decccfaa27ef54cd5959faeec3f32bd7 # master
       with:
         oss-fuzz-project-name: 'libavif'
         fuzz-seconds: 600

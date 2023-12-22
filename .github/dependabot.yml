@@ -13,3 +13,8 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  - package-ecosystem: docker
+    directory: /tests/docker
+    schedule:
+      interval: daily
