@@ -77,7 +77,7 @@ pushd ${TMP_DIR}
     "${AVIFDEC}" "${ENCODED_UTF8_FILE}" "${DECODED_UTF8_FILE}"
     RET=0
     "${ARE_IMAGES_EQUAL}" "${INPUT_UTF8_Y4M}" "${DECODED_UTF8_FILE}" 0 || RET=$?
-    if [ ${RET} -ne 1 ]; then
+    if [[ ${RET} -ne 1 ]]; then
       exit 1
     fi
   fi
