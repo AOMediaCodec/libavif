@@ -75,7 +75,11 @@ pushd ${TMP_DIR}
     cp ${INPUT_Y4M} ${INPUT_UTF8_Y4M}
     "${AVIFENC}" -s 8 "${INPUT_UTF8_Y4M}" -o "${ENCODED_UTF8_FILE}"
     "${AVIFDEC}" "${ENCODED_UTF8_FILE}" "${DECODED_UTF8_FILE}"
-    "${ARE_IMAGES_EQUAL}" "${INPUT_UTF8_Y4M}" "${DECODED_UTF8_FILE}" 0 && exit 1
+    RET=0
+    "${ARE_IMAGES_EQUAL}" "${INPUT_UTF8_Y4M}" "${DECODED_UTF8_FILE}" 0 || RET=$?
+    if [[ ${RET} -ne 1 ]]; then
+      exit 1
+    fi
   fi
 
   # Argument parsing test with filenames starting with a dash.
