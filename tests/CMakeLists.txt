@@ -226,18 +226,17 @@ if(AVIF_BUILD_APPS)
     # When building apps, test the avifenc/avifdec.
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
     add_executable(are_images_equal gtest/are_images_equal.cc)
+    if(WIN32 AND NOT MINGW)
+        target_sources(are_images_equal PRIVATE ${CMAKE_SOURCE_DIR}/apps/utf8.manifest)
+    endif()
     target_link_libraries(are_images_equal aviftest_helpers)
     add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
     set_tests_properties(test_cmd PROPERTIES ENVIRONMENT "AVIF_TEST_UTF8=1")
     if(MINGW)
-        if("$ENV{MSYSTEM}" MATCHES "(MINGW32|MINGW64)")
-            # Those legacy environments link against MSVCRT which does not support UTF8.
-            set_tests_properties(test_cmd PROPERTIES ENVIRONMENT "AVIF_TEST_UTF8=0")
-        else()
-            target_link_options(are_images_equal PRIVATE -municode)
-        endif()
+        # Does not support manifest files.
+        set_tests_properties(test_cmd PROPERTIES ENVIRONMENT "AVIF_TEST_UTF8=0")
     endif()
     add_test(NAME test_cmd_animation COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_animation.sh ${CMAKE_BINARY_DIR}
                                              ${CMAKE_CURRENT_SOURCE_DIR}/data
