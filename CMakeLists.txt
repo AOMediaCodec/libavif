@@ -43,6 +43,8 @@ option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 )
 option(AVIF_ENABLE_EXPERIMENTAL_AVIR "Enable experimental reduced header" OFF)
 
+set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "")
+
 function(set_local_or_system_option VAR DEFAULT TEXT)
     # Deal with the older way of setting options.
     if(DEFINED AVIF_LOCAL_${VAR})
@@ -226,6 +228,7 @@ set_local_or_system_option("LIBSHARPYUV" "OFF" "Use libsharpyuv.")
 check_avif_option(AVIF_LIBSHARPYUV TARGET sharpyuv::sharpyuv PKG_NAME libsharpyuv)
 if(AVIF_LIBSHARPYUV_ENABLED)
     message(STATUS "libavif: libsharpyuv found; sharp rgb to yuv conversion enabled.")
+    set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} libsharpyuv")
     target_compile_definitions(avif_obj PRIVATE -DAVIF_LIBSHARPYUV_ENABLED=1)
     avif_target_link_library(sharpyuv::sharpyuv)
 endif(AVIF_LIBSHARPYUV_ENABLED)
@@ -427,6 +430,7 @@ if(AVIF_CODEC_DAV1D_ENABLED)
     avif_target_link_library(dav1d::dav1d)
 
     message(STATUS "libavif: Codec enabled: dav1d (decode)")
+    set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} dav1d")
 endif()
 
 check_avif_option(AVIF_CODEC_LIBGAV1 TARGET libgav1::libgav1 PKG_NAME libgav1)
@@ -453,6 +457,7 @@ if(AVIF_CODEC_RAV1E_ENABLED)
     avif_target_link_library(rav1e::rav1e)
 
     message(STATUS "libavif: Codec enabled: rav1e (encode)")
+    set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} rav1e")
 endif()
 
 check_avif_option(AVIF_CODEC_SVT TARGET SvtAv1Enc PKG_NAME svt)
@@ -462,6 +467,7 @@ if(AVIF_CODEC_SVT_ENABLED)
     avif_target_link_library(SvtAv1Enc)
 
     message(STATUS "libavif: Codec enabled: svt (encode)")
+    set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} SvtAv1Enc")
 endif()
 
 check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom)
@@ -487,6 +493,7 @@ if(AVIF_CODEC_AOM_ENABLED)
     avif_target_link_library(aom)
 
     message(STATUS "libavif: Codec enabled: aom (${AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG})")
+    set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} aom")
 endif()
 
 check_avif_option(AVIF_CODEC_AVM TARGET aom PKG_NAME avm)
