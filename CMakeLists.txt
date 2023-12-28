@@ -43,6 +43,7 @@ option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 )
 option(AVIF_ENABLE_EXPERIMENTAL_AVIR "Enable experimental reduced header" OFF)
 
+set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "")
 set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "")
 
 function(set_local_or_system_option VAR DEFAULT TEXT)
@@ -222,6 +223,7 @@ endif()
 if(AVIF_LIBYUV_ENABLED)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_LIBYUV_ENABLED=1)
     avif_target_link_library(yuv::yuv)
+    set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE} -lyuv")
 endif(AVIF_LIBYUV_ENABLED)
 
 set_local_or_system_option("LIBSHARPYUV" "OFF" "Use libsharpyuv.")
