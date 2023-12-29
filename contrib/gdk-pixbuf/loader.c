@@ -344,8 +344,8 @@ avif_image_saver (FILE *f,
                   gchar **values,
                   GError **error)
 {
-    int width, height, min_quantizer, max_quantizer, alpha_quantizer;
-    long quality = 52; /* default; must be between 0 and 100 */
+    int width, height;
+    long quality = 68; /* default; must be between 0 and 100 */
     gboolean save_alpha;
     avifImage *avif;
     avifRGBImage rgb;
@@ -434,19 +434,7 @@ avif_image_saver (FILE *f,
         }
     }
 
-    max_quantizer = AVIF_QUANTIZER_WORST_QUALITY * (100 - (int) quality) / 100;
-    min_quantizer = 0;
-    alpha_quantizer = 0;
-
-    if (max_quantizer > 20) {
-        min_quantizer = max_quantizer - 20;
-
-        if (max_quantizer > 40) {
-            alpha_quantizer = max_quantizer - 40;
-        }
-    }
-
-    avif = avifImageCreate (width, height, 8, AVIF_PIXEL_FORMAT_YUV420);
+    avif = avifImageCreate (width, height, 8, quality >= 90 ? AVIF_PIXEL_FORMAT_YUV444 : AVIF_PIXEL_FORMAT_YUV420);
     avif->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
     avifRGBImageSetDefaults (&rgb, avif);
 
@@ -474,10 +462,14 @@ avif_image_saver (FILE *f,
     encoder = avifEncoderCreate ();
 
     encoder->maxThreads = CLAMP (maxThreads, 1, 64);
-    encoder->minQuantizer = min_quantizer;
-    encoder->maxQuantizer = max_quantizer;
-    encoder->minQuantizerAlpha = 0;
-    encoder->maxQuantizerAlpha = alpha_quantizer;
+    encoder->quality = (int) quality;
+    if (save_alpha) {
+        if (quality >= 50) {
+            encoder->qualityAlpha = 100;
+        } else {
+            encoder->qualityAlpha = 75 + (int) quality / 2;
+        }
+    }
     encoder->speed = 6;
 
     res = avifEncoderWrite (encoder, avif, &raw);
