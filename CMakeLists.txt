@@ -669,7 +669,15 @@ endif()
 if(AVIF_BUILD_APPS)
     add_executable(avifenc apps/avifenc.c)
     if(WIN32)
+        # MinGW doesn't have a manifest tool (mt.exe), so we need to wrap
+        # utf8.manifest in a resource-definition script (.rc file).
         target_sources(avifenc PRIVATE apps/utf8.rc)
+        # The MSVC linker (link.exe) fails with the following error if we
+        # don't use the /MANIFEST:NO linker option:
+        #   /MANIFEST:EMBED,ID=1" failed (exit code 1123) with the following
+        #   output:
+        #   CVTRES : fatal error CVT1100: duplicate resource.  type:MANIFEST,
+        #   name:1, language:0x0409
         if(NOT MINGW)
             target_link_options(avifenc PRIVATE /MANIFEST:NO)
         endif()
