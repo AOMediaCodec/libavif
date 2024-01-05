@@ -63,32 +63,36 @@ $CXX $CXXFLAGS -std=c++11 -I../include \
     $LIB_FUZZING_ENGINE libavif.a ../ext/dav1d/build/src/libdav1d.a \
     ../ext/libyuv/build/libyuv.a ../ext/aom/build.libavif/libaom.a
 
-# build fuzztests
-# The following is taken from https://github.com/google/oss-fuzz/blob/31ac7244748ea7390015455fb034b1f4eda039d9/infra/base-images/base-builder/compile_fuzztests.sh#L59
-# Iterate the fuzz binaries and list each fuzz entrypoint in the binary. For
-# each entrypoint create a wrapper script that calls into the binaries the
-# given entrypoint as argument.
-# The scripts will be named:
-# {binary_name}@{fuzztest_entrypoint}
-FUZZ_TEST_BINARIES_OUT_PATHS=`ls ./tests/avif_fuzztest_*`
-echo "Fuzz binaries: $FUZZ_TEST_BINARIES_OUT_PATHS"
-for fuzz_main_file in $FUZZ_TEST_BINARIES_OUT_PATHS; do
-  FUZZ_TESTS=$($fuzz_main_file --list_fuzz_tests | cut -d ' ' -f 4)
-  cp -f ${fuzz_main_file} $OUT/
-  fuzz_basename=$(basename $fuzz_main_file)
-  chmod -x $OUT/$fuzz_basename
-  for fuzz_entrypoint in $FUZZ_TESTS; do
-    TARGET_FUZZER="${fuzz_basename}@$fuzz_entrypoint"
-    # Write executer script
-    echo "#!/bin/sh
+# Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
+if [ "$FUZZING_ENGINE" == "libfuzzer" ]
+then
+  # build fuzztests
+  # The following is taken from https://github.com/google/oss-fuzz/blob/31ac7244748ea7390015455fb034b1f4eda039d9/infra/base-images/base-builder/compile_fuzztests.sh#L59
+  # Iterate the fuzz binaries and list each fuzz entrypoint in the binary. For
+  # each entrypoint create a wrapper script that calls into the binaries the
+  # given entrypoint as argument.
+  # The scripts will be named:
+  # {binary_name}@{fuzztest_entrypoint}
+  FUZZ_TEST_BINARIES_OUT_PATHS=`ls ./tests/avif_fuzztest_*`
+  echo "Fuzz binaries: $FUZZ_TEST_BINARIES_OUT_PATHS"
+  for fuzz_main_file in $FUZZ_TEST_BINARIES_OUT_PATHS; do
+    FUZZ_TESTS=$($fuzz_main_file --list_fuzz_tests | cut -d ' ' -f 4)
+    cp -f ${fuzz_main_file} $OUT/
+    fuzz_basename=$(basename $fuzz_main_file)
+    chmod -x $OUT/$fuzz_basename
+    for fuzz_entrypoint in $FUZZ_TESTS; do
+      TARGET_FUZZER="${fuzz_basename}@$fuzz_entrypoint"
+      # Write executer script
+      echo "#!/bin/sh
 # LLVMFuzzerTestOneInput for fuzzer detection.
 this_dir=\$(dirname \"\$0\")
 export TEST_DATA_DIRS=\$this_dir/corpus
 chmod +x \$this_dir/$fuzz_basename
 $fuzz_basename --fuzz=$fuzz_entrypoint -- \$@" > $OUT/$TARGET_FUZZER
-    chmod +x $OUT/$TARGET_FUZZER
+      chmod +x $OUT/$TARGET_FUZZER
+    done
   done
-done
+fi
 
 # copy seed corpus for fuzztest tests
 mkdir $OUT/corpus
