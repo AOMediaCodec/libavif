@@ -88,7 +88,7 @@ then
 this_dir=\$(dirname \"\$0\")
 export TEST_DATA_DIRS=\$this_dir/corpus
 chmod +x \$this_dir/$fuzz_basename
-$fuzz_basename --fuzz=$fuzz_entrypoint -- \$@" > $OUT/$TARGET_FUZZER
+\$this_dir/$fuzz_basename --fuzz=$fuzz_entrypoint -- \$@" > $OUT/$TARGET_FUZZER
       chmod +x $OUT/$TARGET_FUZZER
     done
   done
