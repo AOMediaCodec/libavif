@@ -19,7 +19,6 @@ jobs:
       fail-fast: false
       matrix:
         sys:
-          - mingw32
           - mingw64
           - ucrt64
           - clang64
