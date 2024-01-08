@@ -677,20 +677,35 @@ endif()
 
 if(AVIF_BUILD_APPS)
     add_executable(avifenc apps/avifenc.c)
+    if(WIN32)
+        # MinGW doesn't have a manifest tool (mt.exe), so we need to wrap
+        # utf8.manifest in a resource-definition script (.rc file).
+        target_sources(avifenc PRIVATE apps/utf8.rc)
+        # The MSVC linker (link.exe) fails with the following error if we
+        # don't use the /MANIFEST:NO linker option:
+        #   /MANIFEST:EMBED,ID=1" failed (exit code 1123) with the following
+        #   output:
+        #   CVTRES : fatal error CVT1100: duplicate resource.  type:MANIFEST,
+        #   name:1, language:0x0409
+        if(NOT MINGW)
+            target_link_options(avifenc PRIVATE /MANIFEST:NO)
+        endif()
+    endif()
     if(AVIF_USE_CXX)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifenc avif_apps)
     add_executable(avifdec apps/avifdec.c)
+    if(WIN32)
+        target_sources(avifdec PRIVATE apps/utf8.rc)
+        if(NOT MINGW)
+            target_link_options(avifdec PRIVATE /MANIFEST:NO)
+        endif()
+    endif()
     if(AVIF_USE_CXX)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifdec avif_apps)
-    if(MINGW AND NOT "$ENV{MSYSTEM}" MATCHES "(MINGW32|MINGW64)")
-        # MINGW* are legacy environments that link against MSVCRT which does not support UTF8.
-        target_link_options(avifenc PRIVATE -municode)
-        target_link_options(avifdec PRIVATE -municode)
-    endif()
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(
@@ -718,6 +733,12 @@ if(AVIF_BUILD_APPS)
             )
 
             add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
+            if(WIN32)
+                target_sources(avifgainmaputil PRIVATE apps/utf8.rc)
+                if(NOT MINGW)
+                    target_link_options(avifgainmaputil PRIVATE /MANIFEST:NO)
+                endif()
+            endif()
             set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
             target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
             target_link_libraries(avifgainmaputil libargparse avif_apps)

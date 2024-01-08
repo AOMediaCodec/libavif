@@ -16,12 +16,6 @@
 #include "swapbase_command.h"
 #include "tonemap_command.h"
 
-#if defined(_WIN32)
-#include <locale.h>
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
-
 namespace avif {
 namespace {
 
@@ -56,7 +50,7 @@ void PrintUsage(const std::vector<std::unique_ptr<ProgramCommand>>& commands) {
 }  // namespace
 }  // namespace avif
 
-MAIN() {
+int main(int argc, char** argv) {
   std::vector<std::unique_ptr<avif::ProgramCommand>> commands;
   commands.emplace_back(std::make_unique<avif::HelpCommand>());
   commands.emplace_back(std::make_unique<avif::CombineCommand>());
@@ -71,8 +65,6 @@ MAIN() {
     avif::PrintUsage(commands);
     return 1;
   }
-
-  INIT_ARGV()
 
   const std::string command_name(argv[1]);
   if (command_name == "help") {
