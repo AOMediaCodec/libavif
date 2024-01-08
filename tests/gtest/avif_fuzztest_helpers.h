@@ -27,6 +27,16 @@ ImagePtr CreateAvifImage8b(size_t width, size_t height,
 ImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
                             avifPixelFormat pixel_format, bool has_alpha,
                             const std::vector<uint16_t>& samples);
+std::vector<ImagePtr> CreateAvifAnim8b(size_t num_frames, size_t width,
+                                       size_t height,
+                                       avifPixelFormat pixel_format,
+                                       bool has_alpha,
+                                       const std::vector<uint8_t>& samples);
+std::vector<ImagePtr> CreateAvifAnim16b(size_t num_frames, size_t width,
+                                        size_t height, int depth,
+                                        avifPixelFormat pixel_format,
+                                        bool has_alpha,
+                                        const std::vector<uint16_t>& samples);
 EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
                              int min_quantizer, int max_quantizer,
                              int min_quantizer_alpha, int max_quantizer_alpha,
@@ -52,8 +62,14 @@ DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
 // Do not generate images wider or taller than this.
 inline constexpr size_t kMaxDimension = 512;  // In pixels.
 
-size_t GetNumSamples(size_t width, size_t height, avifPixelFormat pixel_format,
-                     bool has_alpha);
+// Used to reduce kMaxDimension to keep the same complexity as a still image.
+inline constexpr size_t kMaxNumFramesSquareRoot = 2;
+// Do not generate animations with more than this number of frames.
+inline constexpr size_t kMaxNumFrames =
+    kMaxNumFramesSquareRoot * kMaxNumFramesSquareRoot;
+
+size_t GetNumSamples(size_t num_frames, size_t width, size_t height,
+                     avifPixelFormat pixel_format, bool has_alpha);
 
 // To avoid using fuzztest::internal, the return type of the functions below is
 // auto.
@@ -72,8 +88,8 @@ inline auto ArbitraryAvifImage8b() {
         return fuzztest::Map(
             CreateAvifImage8b, fuzztest::Just(width), fuzztest::Just(height),
             fuzztest::Just(pixel_format), fuzztest::Just(has_alpha),
-            fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(
-                GetNumSamples(width, height, pixel_format, has_alpha)));
+            fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(GetNumSamples(
+                /*num_frames=*/1, width, height, pixel_format, has_alpha)));
       },
       fuzztest::InRange<uint16_t>(1, kMaxDimension),
       fuzztest::InRange<uint16_t>(1, kMaxDimension), ArbitraryPixelFormat(),
@@ -92,8 +108,8 @@ inline auto ArbitraryAvifImage16b() {
             fuzztest::Just(has_alpha),
             fuzztest::ContainerOf<std::vector<uint16_t>>(
                 fuzztest::InRange<uint16_t>(0, (1 << depth) - 1))
-                .WithSize(
-                    GetNumSamples(width, height, pixel_format, has_alpha)));
+                .WithSize(GetNumSamples(/*num_frames=*/1, width, height,
+                                        pixel_format, has_alpha)));
       },
       fuzztest::InRange<uint16_t>(1, kMaxDimension),
       fuzztest::InRange<uint16_t>(1, kMaxDimension),
@@ -101,9 +117,56 @@ inline auto ArbitraryAvifImage16b() {
       fuzztest::Arbitrary<bool>());
 }
 
+// avifImage generator type: Number of frames, width, height, pixel format and
+// 8-bit samples.
+inline auto ArbitraryAvifAnim8b() {
+  return fuzztest::FlatMap(
+      [](size_t num_frames, size_t width, size_t height,
+         avifPixelFormat pixel_format, bool has_alpha) {
+        return fuzztest::Map(
+            CreateAvifAnim8b, fuzztest::Just(num_frames), fuzztest::Just(width),
+            fuzztest::Just(height), fuzztest::Just(pixel_format),
+            fuzztest::Just(has_alpha),
+            fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(GetNumSamples(
+                num_frames, width, height, pixel_format, has_alpha)));
+      },
+      fuzztest::InRange<uint16_t>(1, kMaxNumFrames),
+      fuzztest::InRange<uint16_t>(1, kMaxDimension / kMaxNumFramesSquareRoot),
+      fuzztest::InRange<uint16_t>(1, kMaxDimension / kMaxNumFramesSquareRoot),
+      ArbitraryPixelFormat(), fuzztest::Arbitrary<bool>());
+}
+
+// avifImage generator type: Number of frames, width, height, depth, pixel
+// format and 16-bit samples.
+inline auto ArbitraryAvifAnim16b() {
+  return fuzztest::FlatMap(
+      [](size_t num_frames, size_t width, size_t height, int depth,
+         avifPixelFormat pixel_format, bool has_alpha) {
+        return fuzztest::Map(
+            CreateAvifAnim16b, fuzztest::Just(num_frames),
+            fuzztest::Just(width), fuzztest::Just(height),
+            fuzztest::Just(depth), fuzztest::Just(pixel_format),
+            fuzztest::Just(has_alpha),
+            fuzztest::ContainerOf<std::vector<uint16_t>>(
+                fuzztest::InRange<uint16_t>(0, (1 << depth) - 1))
+                .WithSize(GetNumSamples(num_frames, width, height, pixel_format,
+                                        has_alpha)));
+      },
+      fuzztest::InRange<uint16_t>(1, kMaxNumFrames),
+      fuzztest::InRange<uint16_t>(1, kMaxDimension / kMaxNumFramesSquareRoot),
+      fuzztest::InRange<uint16_t>(1, kMaxDimension / kMaxNumFramesSquareRoot),
+      fuzztest::ElementOf({10, 12}), ArbitraryPixelFormat(),
+      fuzztest::Arbitrary<bool>());
+}
+
 // Generator for an arbitrary ImagePtr.
 inline auto ArbitraryAvifImage() {
   return fuzztest::OneOf(ArbitraryAvifImage8b(), ArbitraryAvifImage16b());
+}
+
+// Generator for an arbitrary std::vector<ImagePtr>.
+inline auto ArbitraryAvifAnim() {
+  return fuzztest::OneOf(ArbitraryAvifAnim8b(), ArbitraryAvifAnim16b());
 }
 
 // Generator for an arbitrary EncoderPtr.
