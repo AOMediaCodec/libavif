@@ -49,9 +49,7 @@ endif()
 
 # Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
 add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
-if(AVIF_CODEC_LIBGAV1_ENABLED)
-    set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
-endif()
+set_target_properties(repro_avif_decode_fuzzer PROPERTIES LINKER_LANGUAGE "CXX")
 target_link_libraries(repro_avif_decode_fuzzer avif)
 # The test below exists for coverage and as a usage example: repro_avif_decode_fuzzer [reproducer file path]
 add_test(NAME repro_avif_decode_fuzzer COMMAND repro_avif_decode_fuzzer
