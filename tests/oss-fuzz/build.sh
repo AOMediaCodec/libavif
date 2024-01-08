@@ -41,19 +41,25 @@ ln -s $SRC/fuzztest $SRC/libavif/ext/fuzztest
 # build dependencies
 cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.cmd && \
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
-export CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
 
 # build libavif
 mkdir build
 cd build
+export CXXFLAGS="${CXXFLAGS}"
+export EXTRA_CMAKE_FLAGS=""
+if [ "$FUZZING_ENGINE" == "libfuzzer" ] && [ "$SANITIZER" != "coverage" ]
+then
+  export CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
+  export EXTRA_CMAKE_FLAGS="-DAVIF_ENABLE_FUZZTEST=ON -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer"
+fi
 cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
       -DAVIF_CODEC_AOM_DECODE=ON -DAVIF_CODEC_AOM_ENCODE=ON \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_ENABLE_WERROR=OFF \
       -DAVIF_LOCAL_FUZZTEST=ON \
       -DAVIF_LOCAL_GTEST=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBSHARPYUV=ON \
       -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_ZLIBPNG=ON \
-      -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF -DAVIF_ENABLE_FUZZTEST=ON \
-      -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer
+      -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF \
+      ${EXTRA_CMAKE_FLAGS}
 
 ninja
 
