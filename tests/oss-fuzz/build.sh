@@ -68,7 +68,7 @@ $CXX $CXXFLAGS -std=c++11 -I../include \
     ../ext/libyuv/build/libyuv.a ../ext/aom/build.libavif/libaom.a
 
 # Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
-if [ "$FUZZING_ENGINE" == "libfuzzer" ]
+if [ "$FUZZING_ENGINE" == "libfuzzer" ] && [ "$SANITIZER" != "coverage" ]
 then
   # build fuzztests
   # The following is taken from https://github.com/google/oss-fuzz/blob/31ac7244748ea7390015455fb034b1f4eda039d9/infra/base-images/base-builder/compile_fuzztests.sh#L59
