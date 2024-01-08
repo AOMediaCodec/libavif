@@ -45,8 +45,6 @@ cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.
 # build libavif
 mkdir build
 cd build
-export CXXFLAGS="${CXXFLAGS}"
-export EXTRA_CMAKE_FLAGS=""
 if [ "$FUZZING_ENGINE" == "libfuzzer" ] && [ "$SANITIZER" != "coverage" ]
 then
   export CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
