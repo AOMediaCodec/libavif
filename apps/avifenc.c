@@ -18,6 +18,11 @@
 // for setmode()
 #include <fcntl.h>
 #include <io.h>
+#include <locale.h>
+#define WIN32_LEAN_AND_MEAN
+// Avoid the DEFAULT_QUALITY macro redefinition warning caused by including wingdi.h.
+#define NOGDI
+#include <windows.h>
 #endif
 
 #define NEXTARG()                                                     \
@@ -1391,13 +1396,13 @@ static avifBool avifEncodeImages(avifSettings * settings,
     return AVIF_TRUE;
 }
 
-int main(int argc, char * argv[])
+MAIN()
 {
     if (argc < 2) {
         syntaxShort();
         return 1;
     }
-
+    INIT_ARGV()
     const char * outputFilename = NULL;
 
     avifInput input;
@@ -2588,6 +2593,6 @@ cleanup:
         avifCodecSpecificOptionsFree(&file->settings.codecSpecificOptions);
     }
     free(input.files);
-
+    FREE_ARGV()
     return returnCode;
 }

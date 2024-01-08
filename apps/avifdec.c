@@ -14,12 +14,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(_WIN32)
+#include <locale.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 #define DEFAULT_JPEG_QUALITY 90
 
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
         fprintf(stderr, "%s requires an argument.", arg);             \
-        return 1;                                                     \
+        goto cleanup;                                                 \
     }                                                                 \
     arg = argv[++argIndex]
 
@@ -53,7 +59,7 @@ static void syntax(void)
     avifPrintVersions();
 }
 
-int main(int argc, char * argv[])
+MAIN()
 {
     const char * inputFilename = NULL;
     const char * outputFilename = NULL;
@@ -71,12 +77,15 @@ int main(int argc, char * argv[])
     uint32_t frameIndex = 0;
     uint32_t imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
     uint32_t imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
+    int returnCode = 1;
+    avifDecoder * decoder = NULL;
 
     if (argc < 2) {
         syntax();
         return 1;
     }
 
+    INIT_ARGV()
     int argIndex = 1;
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
@@ -231,7 +240,7 @@ int main(int argc, char * argv[])
             return 1;
         }
 
-        avifDecoder * decoder = avifDecoderCreate();
+        decoder = avifDecoderCreate();
         if (!decoder) {
             fprintf(stderr, "Memory allocation failure\n");
             return 1;
@@ -309,8 +318,7 @@ int main(int argc, char * argv[])
            jobs,
            (jobs == 1) ? "" : "s");
 
-    int returnCode = 1;
-    avifDecoder * decoder = avifDecoderCreate();
+    decoder = avifDecoderCreate();
     if (!decoder) {
         fprintf(stderr, "Memory allocation failure\n");
         goto cleanup;
@@ -388,5 +396,6 @@ cleanup:
         }
         avifDecoderDestroy(decoder);
     }
+    FREE_ARGV()
     return returnCode;
 }

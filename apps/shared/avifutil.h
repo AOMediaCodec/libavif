@@ -10,6 +10,67 @@
 extern "C" {
 #endif
 
+// MAIN(), INIT_ARGV(), FREE_ARGV() for UTF8-aware command line parsing.
+// UCRT supports UTF8, contrary to MSVCRT.
+#if defined(_WIN32) && defined(_UCRT)
+#define MAIN() int wmain(int argc, wchar_t * wargv[])
+#else
+#define MAIN() int main(int argc, char * argv[])
+#endif
+
+#if defined(_WIN32) && defined(_UCRT)
+#ifdef __cplusplus
+#define INIT_ARGV()                                                                                           \
+    if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
+        fprintf(stderr, "setlocale failed\n");                                                                \
+        return 1;                                                                                             \
+    }                                                                                                         \
+    std::vector<char> argvAllVector(1024 * argc);                                                             \
+    std::vector<char *> argvVector(argc);                                                                     \
+    char ** argv = argvVector.data();                                                                         \
+    for (int i = 0; i < argc; ++i) {                                                                          \
+        argvVector[i] = &argvAllVector[1024 * i];                                                             \
+        int rc = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wargv[i], -1, argv[i], 1024, NULL, NULL); \
+        if (rc == 0) {                                                                                        \
+            fprintf(stderr, "WideCharToMultiByte() failed\n");                                                \
+            return 1;                                                                                         \
+        }                                                                                                     \
+    }
+#else
+#define INIT_ARGV()                                                                                           \
+    char * argvAll = NULL;                                                                                    \
+    char ** argv = NULL;                                                                                      \
+    if (setlocale(LC_ALL, ".UTF8") == NULL) {                                                                 \
+        fprintf(stderr, "setlocale failed\n");                                                                \
+        return 1;                                                                                             \
+    }                                                                                                         \
+    argvAll = (char *)malloc(1024 * argc * sizeof(*argvAll));                                                 \
+    argv = (char **)malloc(argc * sizeof(*argv));                                                             \
+    if (argv == NULL || argvAll == NULL) {                                                                    \
+        FREE_ARGV()                                                                                           \
+        return 1;                                                                                             \
+    }                                                                                                         \
+    for (int i = 0; i < argc; ++i) {                                                                          \
+        argv[i] = argvAll + 1024 * i;                                                                         \
+        int rc = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wargv[i], -1, argv[i], 1024, NULL, NULL); \
+        if (rc == 0) {                                                                                        \
+            fprintf(stderr, "WideCharToMultiByte() failed\n");                                                \
+            FREE_ARGV()                                                                                       \
+            return 1;                                                                                         \
+        }                                                                                                     \
+    }
+#endif // __cplusplus
+#else
+#define INIT_ARGV()
+#endif
+#if defined(_WIN32) && defined(_UCRT) && !defined(__cplusplus)
+#define FREE_ARGV() \
+    free(argv);     \
+    free(argvAll);
+#else
+#define FREE_ARGV()
+#endif
+
 // The %z format specifier is not available in the old Windows CRT msvcrt,
 // hence the %I format specifier must be used instead to print out `size_t`.
 // The new Windows CRT UCRT, which is used by Visual Studio 2015 or later,
