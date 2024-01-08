@@ -1,6 +1,7 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -23,7 +24,7 @@ struct FrameOptions {
 
 // Encodes an animation and decodes it.
 // For simplicity, there is only one source image, all frames are identical.
-void EncodeDecodeAnimation(ImagePtr frame,
+void EncodeDecodeAnimation(std::vector<ImagePtr> frames,
                            const std::vector<FrameOptions>& frame_options,
                            EncoderPtr encoder, DecoderPtr decoder) {
   ASSERT_NE(encoder, nullptr);
@@ -31,14 +32,15 @@ void EncodeDecodeAnimation(ImagePtr frame,
   ImagePtr decoded_image(avifImageCreateEmpty());
   ASSERT_NE(decoded_image, nullptr);
 
-  const int num_frames = static_cast<int>(frame_options.size());
+  const size_t num_frames = frames.size();
   int total_duration = 0;
 
   // Encode.
-  for (const FrameOptions& options : frame_options) {
-    total_duration += options.duration;
-    const avifResult result = avifEncoderAddImage(
-        encoder.get(), frame.get(), options.duration, options.flags);
+  for (size_t i = 0; i < num_frames; ++i) {
+    total_duration += frame_options[i].duration;
+    const avifResult result =
+        avifEncoderAddImage(encoder.get(), frames[i].get(),
+                            frame_options[i].duration, frame_options[i].flags);
     ASSERT_EQ(result, AVIF_RESULT_OK)
         << avifResultToString(result) << " " << encoder->diag.error;
   }
@@ -64,15 +66,15 @@ void EncodeDecodeAnimation(ImagePtr frame,
     ASSERT_EQ(decoder->imageCount, num_frames);
     EXPECT_EQ(decoder->durationInTimescales, total_duration);
 
-    for (int i = 0; i < num_frames; ++i) {
+    for (size_t i = 0; i < num_frames; ++i) {
       result = avifDecoderNextImage(decoder.get());
       ASSERT_EQ(result, AVIF_RESULT_OK)
-          << " frame " << i << " " << avifResultToString(result) << " "
-          << decoder->diag.error;
-      EXPECT_EQ(decoder->image->width, frame->width);
-      EXPECT_EQ(decoder->image->height, frame->height);
-      EXPECT_EQ(decoder->image->depth, frame->depth);
-      EXPECT_EQ(decoder->image->yuvFormat, frame->yuvFormat);
+          << " frame " << i << ": " << avifResultToString(result) << " ("
+          << decoder->diag.error << ")";
+      EXPECT_EQ(decoder->image->width, frames[i]->width);
+      EXPECT_EQ(decoder->image->height, frames[i]->height);
+      EXPECT_EQ(decoder->image->depth, frames[i]->depth);
+      EXPECT_EQ(decoder->image->yuvFormat, frames[i]->yuvFormat);
     }
     result = avifDecoderNextImage(decoder.get());
     ASSERT_EQ(result, AVIF_RESULT_NO_IMAGES_REMAINING)
@@ -80,11 +82,9 @@ void EncodeDecodeAnimation(ImagePtr frame,
   }
 }
 
-constexpr int kMaxFrames = 10;
-
 FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
     .WithDomains(
-        ArbitraryAvifImage(),
+        ArbitraryAvifAnim(),
         fuzztest::VectorOf(
             fuzztest::StructOf<FrameOptions>(
                 /*duration=*/fuzztest::InRange<uint64_t>(1, 10),
@@ -92,8 +92,8 @@ FUZZ_TEST(EncodeDecodeAvifFuzzTest, EncodeDecodeAnimation)
                 // AVIF_ADD_IMAGE_FLAG_NONE (0) is implicitly part of the set.
                 fuzztest::BitFlagCombinationOf<avifAddImageFlags>(
                     {AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME})))
-            .WithMinSize(1)
-            .WithMaxSize(kMaxFrames),
+            // Some FrameOptions may be wasted, but this is simpler.
+            .WithSize(kMaxNumFrames),
         ArbitraryAvifEncoder(), ArbitraryAvifDecoder());
 
 }  // namespace
