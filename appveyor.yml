@@ -1,5 +1,8 @@
 image: Visual Studio 2022
 configuration: Release
+branches:
+  only:
+    - v1.0.x
 skip_commits:
   files:
     - '.github/*'
