@@ -1,0 +1,83 @@
+# This workflow generates artifacts such as avifenc.exe and avifdec.exe for convenience.
+
+name: CI Windows Artifacts
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-static:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - name: Setup Visual Studio shell
+      if: runner.os == 'Windows'
+      uses: egor-tensin/vs-shell@9a932a62d05192eae18ca370155cf877eecc2202 # v2.1
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+      with:
+        path: ext
+        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}
+    - name: Print cmake version
+      run: cmake --version
+    - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+      with:
+        version: 2.15.05
+    - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
+    - run: pip install meson
+    - name: Build aom
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./aom.cmd
+    - name: Build dav1d
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./dav1d.cmd
+    - name: Build libyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libyuv.cmd
+    - name: Build libjpeg
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libjpeg.cmd
+    - name: Build libsharpyuv
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libsharpyuv.cmd
+    - name: Build zlib and libpng
+      if: steps.cache-ext.outputs.cache-hit != 'true'
+      working-directory: ./ext
+      run: ./zlibpng.cmd
+
+    - name: Prepare libavif (cmake)
+      run: >
+        mkdir build && cd build
+
+        cmake .. -G Ninja
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_AOM_ENCODE=ON
+        -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_DAV1D=LOCAL
+        -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_JPEG=ON
+        -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LOCAL_ZLIBPNG=ON
+        -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
+        -DAVIF_BUILD_TESTS=OFF
+    - name: Build libavif (ninja)
+      working-directory: ./build
+      run: ninja
+    - name: Upload artifacts
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
+      with:
+        name: tool-binaries
+        path: build/*.exe
+        retention-days: 90
