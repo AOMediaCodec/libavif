@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -4354,23 +4355,23 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     }
     assert(alphaItemCount == colorItemCount);
     // Find an unused ID.
-    uint32_t newItemID = 0;
-    avifBool isUsed;
-    do {
-        ++newItemID;
-        isUsed = AVIF_FALSE;
-        for (uint32_t i = 0; i < meta->items.count; ++i) {
-            if (meta->items.item[i]->id == newItemID) {
-                isUsed = AVIF_TRUE;
-                break;
-            }
-        }
-    } while (isUsed && newItemID != 0);
     avifResult result;
-    if (newItemID == 0) {
+    if (meta->items.count >= UINT32_MAX - 1) {
         // In the improbable case where all IDs are used.
         result = AVIF_RESULT_DECODE_ALPHA_FAILED;
     } else {
+        uint32_t newItemID = 0;
+        avifBool isUsed;
+        do {
+            ++newItemID;
+            isUsed = AVIF_FALSE;
+            for (uint32_t i = 0; i < meta->items.count; ++i) {
+                if (meta->items.item[i]->id == newItemID) {
+                    isUsed = AVIF_TRUE;
+                    break;
+                }
+            }
+        } while (isUsed && newItemID != 0);
         result = avifMetaFindOrCreateItem(meta, newItemID, alphaItem); // Create new empty item.
     }
     if (result != AVIF_RESULT_OK) {
