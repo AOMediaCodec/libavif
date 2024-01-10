@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -4323,12 +4324,8 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     uint32_t * alphaItemIndices = avifAlloc(colorItemCount * sizeof(uint32_t));
     AVIF_CHECKERR(alphaItemIndices, AVIF_RESULT_OUT_OF_MEMORY);
     uint32_t alphaItemCount = 0;
-    uint32_t maxItemID = 0;
     for (uint32_t i = 0; i < meta->items.count; ++i) {
-        avifDecoderItem * item = meta->items.item[i];
-        if (item->id > maxItemID) {
-            maxItemID = item->id;
-        }
+        const avifDecoderItem * const item = meta->items.item[i];
         if (item->dimgForID == colorItem->id) {
             avifBool seenAlphaForCurrentItem = AVIF_FALSE;
             for (uint32_t j = 0; j < meta->items.count; ++j) {
@@ -4357,7 +4354,26 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
         }
     }
     assert(alphaItemCount == colorItemCount);
-    const avifResult result = avifMetaFindOrCreateItem(meta, maxItemID + 1, alphaItem); // Create new empty item.
+    // Find an unused ID.
+    avifResult result;
+    if (meta->items.count >= UINT32_MAX - 1) {
+        // In the improbable case where all IDs are used.
+        result = AVIF_RESULT_DECODE_ALPHA_FAILED;
+    } else {
+        uint32_t newItemID = 0;
+        avifBool isUsed;
+        do {
+            ++newItemID;
+            isUsed = AVIF_FALSE;
+            for (uint32_t i = 0; i < meta->items.count; ++i) {
+                if (meta->items.item[i]->id == newItemID) {
+                    isUsed = AVIF_TRUE;
+                    break;
+                }
+            }
+        } while (isUsed && newItemID != 0);
+        result = avifMetaFindOrCreateItem(meta, newItemID, alphaItem); // Create new empty item.
+    }
     if (result != AVIF_RESULT_OK) {
         avifFree(alphaItemIndices);
         *isAlphaItemInInput = AVIF_FALSE;
