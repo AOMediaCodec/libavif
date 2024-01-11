@@ -97,10 +97,9 @@ cd libavif/ext
 ./libyuv.cmd
 ./libjpeg.cmd
 ./zlibpng.cmd
-mkdir ../build
-cd ../build
-cmake .. -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_ZLIBPNG=ON -DAVIF_BUILD_APPS=ON
-cmake --build . -- -j
+cd ..
+cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_ZLIBPNG=ON -DAVIF_BUILD_APPS=ON
+cmake --build build --parallel
 ```
 
 ## Prebuilt Library (Windows)
