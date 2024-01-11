@@ -230,7 +230,7 @@ static void syntaxLong(void)
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
-    printf("    -c,--codec C                      : AV1 codec to use (choose from versions list below)\n");
+    printf("    -c,--codec C                      : codec to use (choose from versions list below)\n");
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
@@ -785,7 +785,7 @@ static avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixel
 
     // The maximum AV1 frame size is 65536 pixels inclusive.
     if (*cellSize > 65536) {
-        fprintf(stderr, "ERROR: Cell size %u is bigger %s than the maximum AV1 frame size 65536.\n", *cellSize, dimensionStr);
+        fprintf(stderr, "ERROR: Cell size %u is bigger %s than the maximum frame size 65536.\n", *cellSize, dimensionStr);
         return AVIF_FALSE;
     }
 
@@ -1192,7 +1192,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     }
 #endif
 
-    printf("Encoding with AV1 codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
+    printf("Encoding with codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
            codecName ? codecName : "none",
            speedStr,
            encoder->quality,
@@ -1202,7 +1202,6 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
            gainMapStr,
            encoder->autoTiling ? "automatic tiling" : manualTilingStr,
            settings->jobs);
-
     if (settings->progressive) {
         // If the color quality is less than 10, the main() function overrides
         // --progressive and sets settings->autoProgressive to false.
@@ -1822,7 +1821,7 @@ int main(int argc, char * argv[])
             } else {
                 const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
                 if (codecName == NULL) {
-                    fprintf(stderr, "ERROR: AV1 Codec cannot encode: %s\n", arg);
+                    fprintf(stderr, "ERROR: Codec cannot encode: %s\n", arg);
                     goto cleanup;
                 }
             }
@@ -2525,8 +2524,8 @@ int main(int argc, char * argv[])
     }
 
     printf("Encoded successfully.\n");
-    printf(" * Color AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.colorSizeBytes);
-    printf(" * Alpha AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.alphaSizeBytes);
+    printf(" * Color total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.colorSizeBytes);
+    printf(" * Alpha total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.alphaSizeBytes);
     if (byteSizes.gainMapSizeBytes > 0) {
         printf(" * Gain Map AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.gainMapSizeBytes);
     }
