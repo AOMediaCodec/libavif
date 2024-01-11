@@ -383,13 +383,13 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     avifBitsRead(bits, 2);       // enable_superres, enable_cdef
     if (avifBitsRead(bits, 1)) { // enable_restoration
 #if CONFIG_LR_IMPROVEMENTS
-        avifBitsRead(bits, RESTORE_SWITCHABLE_TYPES);
+        avifBitsRead(bits, RESTORE_SWITCHABLE_TYPES); // lr_tools_disable_mask[0]
         if (avifBitsRead(bits, 1)) {
             for (int i = 1; i < RESTORE_SWITCHABLE_TYPES; ++i) {
                 if (DEF_UV_LR_TOOLS_DISABLE_MASK & (1 << i)) {
                     continue;
                 }
-                avifBitsRead(bits, 1);
+                avifBitsRead(bits, 1); // lr_tools_disable_mask[1]
             }
         }
 #endif
