@@ -100,10 +100,10 @@ avifTransferFunction avifTransferCharacteristicsGetLinearToGammaFunction(avifTra
 // Computes the RGB->YUV conversion coefficients kr, kg, kb, such that Y=kr*R+kg*G+kb*B.
 void avifColorPrimariesComputeYCoeffs(avifColorPrimaries colorPrimaries, float coeffs[3]);
 
-// Computes a conversion matrix from RGB to XYZ with a D50 white point.
-AVIF_NODISCARD avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrimaries, double coeffs[3][3]);
-// Computes a conversion matrix from XYZ with a D50 white point to RGB.
-AVIF_NODISCARD avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrimaries colorPrimaries, double coeffs[3][3]);
+// Computes a row-major conversion matrix (stored as an array) from RGB to XYZ with a D50 white point.
+AVIF_NODISCARD avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrimaries, double coeffs[9]);
+// Computes a row-major conversion matrix (stored as an array) from XYZ with a D50 white point to RGB.
+AVIF_NODISCARD avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrimaries colorPrimaries, double coeffs[9]);
 // Computes the RGB->RGB conversion matrix to convert from one set of RGB primaries to another.
 AVIF_NODISCARD avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrimaries,
                                                                 avifColorPrimaries dstColorPrimaries,

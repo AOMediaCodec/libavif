@@ -29,8 +29,19 @@ void ExpectMatrixNear(const double actual[3][3],
   EXPECT_NEAR(actual[2][2], expected[2][2], epsilon);
 }
 
+void ExpectMatrixNear(const double actual[9],
+                      const std::array<std::array<double, 3>, 3>& expected,
+                      const double epsilon) {
+  const double actualTmp[3][3] = {
+      {actual[0], actual[1], actual[2]},  // row 0
+      {actual[3], actual[4], actual[5]},  // row 1
+      {actual[6], actual[7], actual[8]}   // row 2
+  };
+  ExpectMatrixNear(actualTmp, expected, epsilon);
+}
+
 TEST(RgbToXyzD50Matrix, GoldenValues) {
-  double coeffs[3][3];
+  double coeffs[9];
   ASSERT_TRUE(avifColorPrimariesComputeRGBToXYZD50Matrix(
       AVIF_COLOR_PRIMARIES_BT709, coeffs));
   // Golden values from
@@ -44,7 +55,7 @@ TEST(RgbToXyzD50Matrix, GoldenValues) {
 }
 
 TEST(XyzD50ToRgbMatrix, GoldenValues) {
-  double coeffs[3][3];
+  double coeffs[9];
   ASSERT_TRUE(avifColorPrimariesComputeXYZD50ToRGBMatrix(
       AVIF_COLOR_PRIMARIES_BT709, coeffs));
   // Golden values from

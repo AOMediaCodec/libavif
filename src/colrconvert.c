@@ -22,8 +22,9 @@ static avifBool avifXyToXYZ(const float xy[2], double XYZ[3])
 }
 
 // Computes I = M^-1. Returns false if M seems to be singular.
-static avifBool avifMatInv(const double M[3][3], double I[3][3])
+static avifBool avifMatInv(const double Mmat[9], double Imat[9])
 {
+    const double * const M[3] = { Mmat + 0, Mmat + 3, Mmat + 6 };
     double det = M[0][0] * (M[1][1] * M[2][2] - M[2][1] * M[1][2]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
                  M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
     if (fabs(det) < epsilon) {
@@ -31,6 +32,7 @@ static avifBool avifMatInv(const double M[3][3], double I[3][3])
     }
     det = 1.0 / det;
 
+    double * const I[3] = { Imat + 0, Imat + 3, Imat + 6 };
     I[0][0] = (M[1][1] * M[2][2] - M[2][1] * M[1][2]) * det;
     I[0][1] = (M[0][2] * M[2][1] - M[0][1] * M[2][2]) * det;
     I[0][2] = (M[0][1] * M[1][2] - M[0][2] * M[1][1]) * det;
@@ -45,8 +47,11 @@ static avifBool avifMatInv(const double M[3][3], double I[3][3])
 }
 
 // Computes C = A*B
-static void avifMatMul(const double A[3][3], const double B[3][3], double C[3][3])
+static void avifMatMul(const double Amat[9], const double Bmat[9], double Cmat[9])
 {
+    const double * const A[3] = { Amat + 0, Amat + 3, Amat + 6 };
+    const double * const B[3] = { Bmat + 0, Bmat + 3, Bmat + 6 };
+    double * const C[3] = { Cmat + 0, Cmat + 3, Cmat + 6 };
     C[0][0] = A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0];
     C[0][1] = A[0][0] * B[0][1] + A[0][1] * B[1][1] + A[0][2] * B[2][1];
     C[0][2] = A[0][0] * B[0][2] + A[0][1] * B[1][2] + A[0][2] * B[2][2];
@@ -59,8 +64,9 @@ static void avifMatMul(const double A[3][3], const double B[3][3], double C[3][3
 }
 
 // Set M to have values of d on the leading diagonal, and zero elsewhere.
-static void avifMatDiag(const double d[3], double M[3][3])
+static void avifMatDiag(const double d[3], double Mmat[9])
 {
+    double * const M[3] = { Mmat + 0, Mmat + 3, Mmat + 6 };
     M[0][0] = d[0];
     M[0][1] = 0;
     M[0][2] = 0;
@@ -73,8 +79,9 @@ static void avifMatDiag(const double d[3], double M[3][3])
 }
 
 // Computes y = M.x
-static void avifVecMul(const double M[3][3], const double x[3], double y[3])
+static void avifVecMul(const double Mmat[9], const double x[3], double y[3])
 {
+    const double * const M[3] = { Mmat + 0, Mmat + 3, Mmat + 6 };
     y[0] = M[0][0] * x[0] + M[0][1] * x[1] + M[0][2] * x[2];
     y[1] = M[1][0] * x[0] + M[1][1] * x[1] + M[1][2] * x[2];
     y[2] = M[2][0] * x[0] + M[2][1] * x[1] + M[2][2] * x[2];
@@ -82,16 +89,16 @@ static void avifVecMul(const double M[3][3], const double x[3], double y[3])
 
 // Bradford chromatic adaptation matrix
 // from https://www.researchgate.net/publication/253799640_A_uniform_colour_space_based_upon_CIECAM97s
-static const double avifBradford[3][3] = {
-    { 0.8951, 0.2664, -0.1614 },
-    { -0.7502, 1.7135, 0.0367 },
-    { 0.0389, -0.0685, 1.0296 },
+static const double avifBradford[9] = {
+    0.8951,  0.2664,  -0.1614, // row 0
+    -0.7502, 1.7135,  0.0367,  // row 1
+    0.0389,  -0.0685, 1.0296   // row 2
 };
 
 // LMS values for D50 whitepoint
 static const double avifLmsD50[3] = { 0.996284, 1.02043, 0.818644 };
 
-avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrimaries, double coeffs[3][3])
+avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrimaries, double coeffs[9])
 {
     float primaries[8];
     avifColorPrimariesGetValues(colorPrimaries, primaries);
@@ -99,22 +106,28 @@ avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrim
     double whitePointXYZ[3];
     AVIF_CHECK(avifXyToXYZ(&primaries[6], whitePointXYZ));
 
-    const double rgbPrimaries[3][3] = {
-        { primaries[0], primaries[2], primaries[4] },
-        { primaries[1], primaries[3], primaries[5] },
-        { 1.0 - primaries[0] - primaries[1], 1.0 - primaries[2] - primaries[3], 1.0 - primaries[4] - primaries[5] }
+    const double rgbPrimaries[9] = {
+        primaries[0],
+        primaries[2],
+        primaries[4], // row 0
+        primaries[1],
+        primaries[3],
+        primaries[5], // row 1
+        1.0 - primaries[0] - primaries[1],
+        1.0 - primaries[2] - primaries[3],
+        1.0 - primaries[4] - primaries[5] // row 2
     };
 
-    double rgbPrimariesInv[3][3];
+    double rgbPrimariesInv[9];
     AVIF_CHECK(avifMatInv(rgbPrimaries, rgbPrimariesInv));
 
     double rgbCoefficients[3];
     avifVecMul(rgbPrimariesInv, whitePointXYZ, rgbCoefficients);
 
-    double rgbCoefficientsMat[3][3];
+    double rgbCoefficientsMat[9];
     avifMatDiag(rgbCoefficients, rgbCoefficientsMat);
 
-    double rgbXYZ[3][3];
+    double rgbXYZ[9];
     avifMatMul(rgbPrimaries, rgbCoefficientsMat, rgbXYZ);
 
     // ICC stores primaries XYZ under PCS.
@@ -129,13 +142,13 @@ avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrim
         lms[i] = avifLmsD50[i] / lms[i];
     }
 
-    double adaptation[3][3];
+    double adaptation[9];
     avifMatDiag(lms, adaptation);
 
-    double tmp[3][3];
+    double tmp[9];
     avifMatMul(adaptation, avifBradford, tmp);
 
-    double bradfordInv[3][3];
+    double bradfordInv[9];
     if (!avifMatInv(avifBradford, bradfordInv)) {
         return AVIF_FALSE;
     }
@@ -146,9 +159,9 @@ avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrim
     return AVIF_TRUE;
 }
 
-avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrimaries colorPrimaries, double coeffs[3][3])
+avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrimaries colorPrimaries, double coeffs[9])
 {
-    double rgbToXyz[3][3];
+    double rgbToXyz[9];
     AVIF_CHECK(avifColorPrimariesComputeRGBToXYZD50Matrix(colorPrimaries, rgbToXyz));
     AVIF_CHECK(avifMatInv(rgbToXyz, coeffs));
     return AVIF_TRUE;
@@ -160,13 +173,23 @@ avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrim
 {
     // Note: no special casing for srcColorPrimaries == dstColorPrimaries to allow
     // testing that the computation actually produces the identity matrix.
-    double srcRGBToXYZ[3][3];
+    double srcRGBToXYZ[9];
     AVIF_CHECK(avifColorPrimariesComputeRGBToXYZD50Matrix(srcColorPrimaries, srcRGBToXYZ));
-    double xyzToDstRGB[3][3];
+    double xyzToDstRGB[9];
     AVIF_CHECK(avifColorPrimariesComputeXYZD50ToRGBMatrix(dstColorPrimaries, xyzToDstRGB));
     // coeffs = xyzToDstRGB * srcRGBToXYZ
     // i.e. srcRGB -> XYZ -> dstRGB
-    avifMatMul(xyzToDstRGB, srcRGBToXYZ, coeffs);
+    double coeffsTmp[9];
+    avifMatMul(xyzToDstRGB, srcRGBToXYZ, coeffsTmp);
+    coeffs[0][0] = coeffsTmp[0];
+    coeffs[0][1] = coeffsTmp[1];
+    coeffs[0][2] = coeffsTmp[2];
+    coeffs[1][0] = coeffsTmp[3];
+    coeffs[1][1] = coeffsTmp[4];
+    coeffs[1][2] = coeffsTmp[5];
+    coeffs[2][0] = coeffsTmp[6];
+    coeffs[2][1] = coeffsTmp[7];
+    coeffs[2][2] = coeffsTmp[8];
     return AVIF_TRUE;
 }
 
@@ -179,7 +202,13 @@ void avifLinearRGBConvertColorSpace(float rgb[4], const double coeffs[3][3])
 {
     const double rgbDouble[3] = { rgb[0], rgb[1], rgb[2] };
     double converted[3];
-    avifVecMul(coeffs, rgbDouble, converted);
+    const double coeffsTmp[9] = {
+        coeffs[0][0], coeffs[0][1], coeffs[0][2], // row 0
+        coeffs[1][0], coeffs[1][1], coeffs[1][2], // row 1
+        coeffs[2][0], coeffs[2][1], coeffs[2][2]  // row 2
+
+    };
+    avifVecMul(coeffsTmp, rgbDouble, converted);
     rgb[0] = (float)converted[0];
     rgb[1] = (float)converted[1];
     rgb[2] = (float)converted[2];
