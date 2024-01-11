@@ -81,10 +81,9 @@ libraries (recommended):
 
 ```sh
 git clone -b v1.0.3 https://github.com/AOMediaCodec/libavif.git
-mkdir libavif/build
-cd libavif/build
-cmake .. -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
-cmake --build . -- -j
+cd libavif
+cmake -S . -B build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
+cmake --build build --parallel
 ```
 
 #### Build everything from scratch
