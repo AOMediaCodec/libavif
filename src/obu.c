@@ -381,7 +381,7 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 #if CONFIG_LR_IMPROVEMENTS
         avifBitsRead(bits, /*RESTORE_SWITCHABLE_TYPES=*/5); // lr_tools_disable_mask[0]
         if (avifBitsRead(bits, 1)) {
-            avifBitsRead(bits, /*RESTORE_SWITCHABLE_TYPES=*/5 - 1); // lr_tools_disable_mask[1]
+            avifBitsRead(bits, /*RESTORE_SWITCHABLE_TYPES=*/5 - 1 - 1); // lr_tools_disable_mask[1]
         }
 #endif
     }
