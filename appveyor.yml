@@ -1,6 +1,5 @@
 image: Visual Studio 2022
 configuration: Release
-skip_non_tags: true
 skip_commits:
   files:
     - '.github/*'
@@ -19,7 +18,9 @@ install:
  - nasm -v
  # Build all external libraries statically
  - cd ext
+ - set "CC=clang-cl" && set "CXX=clang-cl"
  - aom.cmd
+ - set "CC=" && set "CXX="
  - dav1d.cmd
  - libjpeg.cmd
  - zlibpng.cmd
