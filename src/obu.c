@@ -379,9 +379,10 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     avifBitsRead(bits, 2);       // enable_superres, enable_cdef
     if (avifBitsRead(bits, 1)) { // enable_restoration
 #if CONFIG_LR_IMPROVEMENTS
-        avifBitsRead(bits, /*RESTORE_SWITCHABLE_TYPES=*/5); // lr_tools_disable_mask[0]
+        const int lr_tools_disable_mask_length = /*RESTORE_SWITCHABLE_TYPES=*/5 - 1;
+        avifBitsRead(bits, lr_tools_disable_mask_length); // lr_tools_disable_mask[0]
         if (avifBitsRead(bits, 1)) {
-            avifBitsRead(bits, /*RESTORE_SWITCHABLE_TYPES=*/5 - 1 - 1); // lr_tools_disable_mask[1]
+            avifBitsRead(bits, lr_tools_disable_mask_length - 1); // lr_tools_disable_mask[1]
         }
 #endif
     }
