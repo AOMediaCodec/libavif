@@ -39,7 +39,7 @@
 ln -s $SRC/fuzztest $SRC/libavif/ext/fuzztest
 
 # build dependencies
-cd ext && bash aom.cmd && bash dav1d.cmd && bash googletest.cmd && bash libjpeg.cmd && \
+cd ext && bash aom.cmd && bash dav1d.cmd && bash libjpeg.cmd && \
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
@@ -54,7 +54,7 @@ cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DA
       -DAVIF_CODEC_AOM_DECODE=ON -DAVIF_CODEC_AOM_ENCODE=ON \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_ENABLE_WERROR=OFF \
       -DAVIF_LOCAL_FUZZTEST=ON \
-      -DAVIF_LOCAL_GTEST=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBSHARPYUV=ON \
+      -DAVIF_LOCAL_GTEST=OFF -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_LIBSHARPYUV=ON \
       -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_ZLIBPNG=ON \
       -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF \
       ${EXTRA_CMAKE_FLAGS}

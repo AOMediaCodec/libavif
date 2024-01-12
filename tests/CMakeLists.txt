@@ -86,7 +86,7 @@ macro(add_avif_internal_gtest_with_data TEST_NAME)
     register_test_for_coverage(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
 
-if(AVIF_ENABLE_GTEST OR AVIF_ENABLE_FUZZTEST)
+if(AVIF_ENABLE_GTEST)
     if(NOT TARGET GTest::gtest)
         if(AVIF_LOCAL_GTEST)
             include(LocalGoogletest)
@@ -174,10 +174,11 @@ endif()
 
 if(AVIF_ENABLE_FUZZTEST)
     # Adds a fuzztest from file TEST_NAME.cc located in the gtest folder. Extra arguments
-    # are considered as extra linked libraries.
+    # are considered as extra source files.
     macro(add_avif_fuzztest TEST_NAME)
-        add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc gtest/avif_fuzztest_helpers.cc)
-        target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal ${ARGN})
+        add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc gtest/avif_fuzztest_helpers.cc ${ARGN})
+        # FuzzTest bundles GoogleTest so no need to link to gtest librairies.
+        target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal)
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
         set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIRS=${CMAKE_CURRENT_SOURCE_DIR}/data/")
@@ -192,7 +193,6 @@ if(AVIF_ENABLE_FUZZTEST)
         # and running one of the targets below.
         # See https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
         add_subdirectory(${AVIF_SOURCE_DIR}/ext/fuzztest ${AVIF_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL)
-        # FuzzTest bundles GoogleTest so no need for the targets below to link to GTEST_BOTH_LIBRARIES.
     else()
         message(
             FATAL_ERROR
@@ -201,7 +201,7 @@ if(AVIF_ENABLE_FUZZTEST)
     endif()
 
     add_avif_fuzztest(avif_fuzztest_dec)
-    add_avif_fuzztest(avif_fuzztest_dec_incr avifincrtest_helpers)
+    add_avif_fuzztest(avif_fuzztest_dec_incr gtest/avifincrtest_helpers.cc)
     add_avif_fuzztest(avif_fuzztest_enc_dec)
     add_avif_fuzztest(avif_fuzztest_enc_dec_anim)
     add_avif_fuzztest(avif_fuzztest_read_image)
@@ -209,10 +209,10 @@ if(AVIF_ENABLE_FUZZTEST)
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         add_avif_fuzztest(avif_fuzztest_enc_dec_experimental)
-        add_avif_fuzztest(avif_fuzztest_enc_dec_incr_experimental avifincrtest_helpers)
+        add_avif_fuzztest(avif_fuzztest_enc_dec_incr_experimental gtest/avifincrtest_helpers.cc)
     endif()
 
-    add_avif_fuzztest(avif_fuzztest_enc_dec_incr avifincrtest_helpers)
+    add_avif_fuzztest(avif_fuzztest_enc_dec_incr gtest/avifincrtest_helpers.cc)
 else()
     message(STATUS "FuzzTest targets are disabled because AVIF_ENABLE_FUZZTEST is OFF.")
 endif()
