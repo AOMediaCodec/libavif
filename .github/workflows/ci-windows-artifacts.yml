@@ -1,7 +1,10 @@
 # This workflow generates artifacts such as avifenc.exe and avifdec.exe for convenience.
 
 name: CI Windows Artifacts
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -24,7 +27,7 @@ jobs:
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
       with:
         path: ext
-        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}-somedeps3
+        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}-releasedeps
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
@@ -45,6 +48,7 @@ jobs:
       working-directory: ./ext
       # Use clang-cl to build libyuv. The assembly code in libyuv is written in the
       # GCC inline assembly format. Visual C++ doesn't support GCC inline assembly.
+      # This is PowerShell syntax.
       run: >
         $Env:CC = 'clang-cl'
 
