@@ -169,7 +169,7 @@ avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrimaries colorPrim
 
 avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrimaries,
                                                  avifColorPrimaries dstColorPrimaries,
-                                                 double coeffs[3][3])
+                                                 double coeffs[9])
 {
     // Note: no special casing for srcColorPrimaries == dstColorPrimaries to allow
     // testing that the computation actually produces the identity matrix.
@@ -179,17 +179,7 @@ avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrim
     AVIF_CHECK(avifColorPrimariesComputeXYZD50ToRGBMatrix(dstColorPrimaries, xyzToDstRGB));
     // coeffs = xyzToDstRGB * srcRGBToXYZ
     // i.e. srcRGB -> XYZ -> dstRGB
-    double coeffsTmp[9];
-    avifMatMul(xyzToDstRGB, srcRGBToXYZ, coeffsTmp);
-    coeffs[0][0] = coeffsTmp[0];
-    coeffs[0][1] = coeffsTmp[1];
-    coeffs[0][2] = coeffsTmp[2];
-    coeffs[1][0] = coeffsTmp[3];
-    coeffs[1][1] = coeffsTmp[4];
-    coeffs[1][2] = coeffsTmp[5];
-    coeffs[2][0] = coeffsTmp[6];
-    coeffs[2][1] = coeffsTmp[7];
-    coeffs[2][2] = coeffsTmp[8];
+    avifMatMul(xyzToDstRGB, srcRGBToXYZ, coeffs);
     return AVIF_TRUE;
 }
 
@@ -198,17 +188,11 @@ avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrim
 // better to clamp the output to [0, 1]. Linear values don't need clamping because values
 // > 1.0 are valid for HDR transfer curves, and the gamma compression function will do the
 // clamping as necessary.
-void avifLinearRGBConvertColorSpace(float rgb[4], const double coeffs[3][3])
+void avifLinearRGBConvertColorSpace(float rgb[4], const double coeffs[9])
 {
     const double rgbDouble[3] = { rgb[0], rgb[1], rgb[2] };
     double converted[3];
-    const double coeffsTmp[9] = {
-        coeffs[0][0], coeffs[0][1], coeffs[0][2], // row 0
-        coeffs[1][0], coeffs[1][1], coeffs[1][2], // row 1
-        coeffs[2][0], coeffs[2][1], coeffs[2][2]  // row 2
-
-    };
-    avifVecMul(coeffsTmp, rgbDouble, converted);
+    avifVecMul(coeffs, rgbDouble, converted);
     rgb[0] = (float)converted[0];
     rgb[1] = (float)converted[1];
     rgb[2] = (float)converted[2];

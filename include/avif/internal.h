@@ -104,14 +104,14 @@ void avifColorPrimariesComputeYCoeffs(avifColorPrimaries colorPrimaries, float c
 AVIF_NODISCARD avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrimaries, double coeffs[9]);
 // Computes a row-major conversion matrix (stored as an array) from XYZ with a D50 white point to RGB.
 AVIF_NODISCARD avifBool avifColorPrimariesComputeXYZD50ToRGBMatrix(avifColorPrimaries colorPrimaries, double coeffs[9]);
-// Computes the RGB->RGB conversion matrix to convert from one set of RGB primaries to another.
+// Computes the RGB->RGB conversion matrix (stored as an array) to convert from one set of RGB primaries to another.
 AVIF_NODISCARD avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrimaries,
                                                                 avifColorPrimaries dstColorPrimaries,
-                                                                double coeffs[3][3]);
+                                                                double coeffs[9]);
 // Converts the given linear RGB pixel from one color space to another using the provided coefficients.
 // The coefficients can be obtained with avifColorPrimariesComputeRGBToRGBMatrix().
 // The output values are not clamped and may be < 0 or > 1.
-void avifLinearRGBConvertColorSpace(float rgb[4], const double coeffs[3][3]);
+void avifLinearRGBConvertColorSpace(float rgb[4], const double coeffs[9]);
 
 #define AVIF_ARRAY_DECLARE(TYPENAME, ITEMSTYPE, ITEMSNAME) \
     typedef struct TYPENAME                                \

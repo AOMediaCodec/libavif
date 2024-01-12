@@ -179,7 +179,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     // Early exit if the gain map does not need to be applied.
     if (weight == 0.0f) {
         const avifBool primariesDiffer = (baseColorPrimaries != outputColorPrimaries);
-        double conversionCoeffs[3][3];
+        double conversionCoeffs[9];
         if (primariesDiffer && !avifColorPrimariesComputeRGBToRGBMatrix(baseColorPrimaries, outputColorPrimaries, conversionCoeffs)) {
             avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
             res = AVIF_RESULT_NOT_IMPLEMENTED;
@@ -207,8 +207,8 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         goto cleanup;
     }
 
-    double inputConversionCoeffs[3][3];
-    double outputConversionCoeffs[3][3];
+    double inputConversionCoeffs[9];
+    double outputConversionCoeffs[9];
     if (needsInputColorConversion &&
         !avifColorPrimariesComputeRGBToRGBMatrix(baseColorPrimaries, gainMapMathPrimaries, inputConversionCoeffs)) {
         avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
@@ -465,8 +465,8 @@ static avifResult avifChooseColorSpaceForGainMapMath(avifColorPrimaries basePrim
     }
     // Color convert pure red, pure green and pure blue in turn and see if they result in negative values.
     float rgba[4] = { 0 };
-    double baseToAltCoeffs[3][3];
-    double altToBaseCoeffs[3][3];
+    double baseToAltCoeffs[9];
+    double altToBaseCoeffs[9];
     if (!avifColorPrimariesComputeRGBToRGBMatrix(basePrimaries, altPrimaries, baseToAltCoeffs) ||
         !avifColorPrimariesComputeRGBToRGBMatrix(altPrimaries, basePrimaries, altToBaseCoeffs)) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
@@ -555,7 +555,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     float yCoeffs[3];
     avifColorPrimariesComputeYCoeffs(gainMapMathPrimaries, yCoeffs);
 
-    double rgbConversionCoeffs[3][3];
+    double rgbConversionCoeffs[9];
     if (colorSpacesDiffer) {
         if (useBaseColorSpace) {
             if (!avifColorPrimariesComputeRGBToRGBMatrix(altColorPrimaries, baseColorPrimaries, rgbConversionCoeffs)) {
