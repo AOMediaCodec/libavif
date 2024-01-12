@@ -69,6 +69,39 @@ The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
 `AVIF_ENABLE_GTEST` CMake options. They require GoogleTest to be built locally
 with ext/googletest.cmd or installed on the system.
 
+### Command Lines
+
+The following instructions can be used to build the libavif library and the
+`avifenc` and `avifdec` tools.
+
+#### Build using installed dependencies
+
+To link against the already installed `aom`, `libjpeg` and `libpng` dependency
+libraries (recommended):
+
+```sh
+git clone -b v1.0.3 https://github.com/AOMediaCodec/libavif.git
+cd libavif
+cmake -S . -B build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
+cmake --build build --parallel
+```
+
+#### Build everything from scratch
+
+For development and debugging purposes, or to generate fully static binaries:
+
+```sh
+git clone -b v1.0.3 https://github.com/AOMediaCodec/libavif.git
+cd libavif/ext
+./aom.cmd
+./libyuv.cmd
+./libjpeg.cmd
+./zlibpng.cmd
+cd ..
+cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_ZLIBPNG=ON -DAVIF_BUILD_APPS=ON
+cmake --build build --parallel
+```
+
 ## Prebuilt Library (Windows)
 
 If you're building on Windows with Visual Studio 2022 and want to try out
