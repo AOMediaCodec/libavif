@@ -2,12 +2,11 @@
 
 name: CI Windows Artifacts
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [created]
 
 permissions:
-  contents: read
+  contents: [read, write]
 
 jobs:
   build-static:
@@ -88,8 +87,8 @@ jobs:
       working-directory: ./build
       run: ninja
     - name: Upload artifacts
-      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
+      uses: skx/github-action-publish-binaries@b9ca5643b2f1d7371a6cba7f35333f1461bbc703 # release-2.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: tool-binaries
-        path: build/*.exe
-        retention-days: 90
+        args: 'build/*.exe'
