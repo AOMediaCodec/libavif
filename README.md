@@ -95,10 +95,11 @@ git clone -b v1.0.3 https://github.com/AOMediaCodec/libavif.git
 cd libavif/ext
 ./aom.cmd
 ./libyuv.cmd
+./libsharpyuv.cmd
 ./libjpeg.cmd
 ./zlibpng.cmd
 cd ..
-cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_ZLIBPNG=ON -DAVIF_BUILD_APPS=ON
+cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_LOCAL_AOM=ON -DAVIF_LOCAL_LIBYUV=ON -DAVIF_LOCAL_LIBSHARPYUV=ON -DAVIF_LOCAL_JPEG=ON -DAVIF_LOCAL_ZLIBPNG=ON -DAVIF_BUILD_APPS=ON
 cmake --build build --parallel
 ```
 
