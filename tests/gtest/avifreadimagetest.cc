@@ -1,11 +1,11 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <array>
-#include <tuple>
+#include <string>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
+#include "avifutil.h"
 #include "gtest/gtest.h"
 #include "iccmaker.h"
 
@@ -16,6 +16,7 @@ namespace {
 const char* data_path = nullptr;
 
 //------------------------------------------------------------------------------
+// Generic tests
 
 bool AreSamplesEqualForAllReadSettings(const char* file_name1,
                                        const char* file_name2) {
@@ -56,6 +57,9 @@ TEST(PngTest, ReadAllSubsamplingsAndAllBitDepths) {
       "paris_icc_exif_xmp.png", "paris_icc_exif_xmp_at_end.png"));
 }
 
+//------------------------------------------------------------------------------
+// PNG color metadata handling tests
+
 // Verify we can read a PNG file with PNG_COLOR_TYPE_PALETTE and a tRNS chunk.
 TEST(PngTest, PaletteColorTypeWithTrnsChunk) {
   const ImagePtr image = testutil::ReadImage(data_path, "draw_points.png",
@@ -95,7 +99,7 @@ constexpr size_t kGrayProfileSize = 275;
 // Verify we can read a color PNG file tagged as gamma 2.2 through gAMA chunk,
 // and set transfer characteristics correctly.
 TEST(PngTest, ColorGamma22) {
-  const auto image = testutil::ReadImage(data_path, "ffffcc-gamma2.2.png");
+  const ImagePtr image = testutil::ReadImage(data_path, "ffffcc-gamma2.2.png");
   ASSERT_NE(image, nullptr);
 
   // gamma 2.2 should match BT470M
@@ -109,7 +113,7 @@ TEST(PngTest, ColorGamma22) {
 // Verify that color info does not get overwritten if allow_changing_cicp is
 // false.
 TEST(PngTest, ColorGamma22ForbitChangingCicp) {
-  const auto image = testutil::ReadImage(
+  const ImagePtr image = testutil::ReadImage(
       data_path, "ffffcc-gamma2.2.png",
       /*requested_format=*/AVIF_PIXEL_FORMAT_NONE,
       /*requested_depth=*/0, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
@@ -129,7 +133,7 @@ TEST(PngTest, ColorGamma22ForbitChangingCicp) {
 // Verify we can read a color PNG file tagged as gamma 1.6 through gAMA chunk,
 // and generate a color profile for it.
 TEST(PngTest, ColorGamma16) {
-  const auto image = testutil::ReadImage(data_path, "ffffcc-gamma1.6.png");
+  const ImagePtr image = testutil::ReadImage(data_path, "ffffcc-gamma1.6.png");
   ASSERT_NE(image, nullptr);
 
   // if ICC profile generated, CP and TC should be set to unspecified
@@ -146,8 +150,8 @@ TEST(PngTest, ColorGamma16) {
 // Verify we can read a gray PNG file tagged as gamma 2.2 through gAMA chunk,
 // and set transfer characteristics correctly.
 TEST(PngTest, GrayGamma22) {
-  const auto image = testutil::ReadImage(data_path, "ffffff-gamma2.2.png",
-                                         AVIF_PIXEL_FORMAT_YUV400);
+  const ImagePtr image = testutil::ReadImage(data_path, "ffffff-gamma2.2.png",
+                                             AVIF_PIXEL_FORMAT_YUV400);
   ASSERT_NE(image, nullptr);
 
   // gamma 2.2 should match BT470M
@@ -161,8 +165,8 @@ TEST(PngTest, GrayGamma22) {
 // Verify we can read a gray PNG file tagged as gamma 1.6 through gAMA chunk,
 // and generate a gray profile for it.
 TEST(PngTest, GrayGamma16) {
-  const auto image = testutil::ReadImage(data_path, "ffffff-gamma1.6.png",
-                                         AVIF_PIXEL_FORMAT_YUV400);
+  const ImagePtr image = testutil::ReadImage(data_path, "ffffff-gamma1.6.png",
+                                             AVIF_PIXEL_FORMAT_YUV400);
   ASSERT_NE(image, nullptr);
 
   // if ICC profile generated, CP and TC should be set to unspecified
@@ -179,7 +183,7 @@ TEST(PngTest, GrayGamma16) {
 // Verify we can read a color PNG file tagged as sRGB through sRGB chunk,
 // and set color primaries and transfer characteristics correctly.
 TEST(PngTest, SRGBTagged) {
-  const auto image = testutil::ReadImage(data_path, "ffffcc-srgb.png");
+  const ImagePtr image = testutil::ReadImage(data_path, "ffffcc-srgb.png");
   ASSERT_NE(image, nullptr);
 
   // should set to BT709 primaries and SRGB transfer
@@ -192,7 +196,7 @@ TEST(PngTest, SRGBTagged) {
 
 // Verify we are not generating profile if asked to ignore it.
 TEST(PngTest, IgnoreProfile) {
-  const auto image = testutil::ReadImage(
+  const ImagePtr image = testutil::ReadImage(
       data_path, "ffffcc-gamma1.6.png", AVIF_PIXEL_FORMAT_NONE, 0,
       AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, true);
   ASSERT_NE(image, nullptr);
@@ -209,7 +213,7 @@ TEST(PngTest, IgnoreProfile) {
 // and BT709 primaries through cHRM chunk,
 // and set color primaries and transfer characteristics correctly.
 TEST(PngTest, BT709Gamma22) {
-  const auto image =
+  const ImagePtr image =
       testutil::ReadImage(data_path, "ArcTriomphe-cHRM-orig.png");
   ASSERT_NE(image, nullptr);
 
@@ -228,7 +232,7 @@ TEST(PngTest, BT709Gamma22) {
 // and BT709 primaries with red and green swapped through cHRM chunk,
 // and generate a color profile for it.
 TEST(PngTest, BT709SwappedGamma22) {
-  const auto image =
+  const ImagePtr image =
       testutil::ReadImage(data_path, "ArcTriomphe-cHRM-red-green-swap.png");
   ASSERT_NE(image, nullptr);
 
@@ -243,10 +247,13 @@ TEST(PngTest, BT709SwappedGamma22) {
   // Generated profile is tested in test_cmd_icc_profile.sh
 }
 
+//------------------------------------------------------------------------------
+// ICC metadata tests
+
 constexpr size_t kChecksumOffset = 0x54;
 
 // Verify we wrote correct hash in generated ICC profile.
-TEST(PngTest, GeneratedICCHash) {
+TEST(ICCTest, GeneratedICCHash) {
   float primariesCoords[8];
   avifColorPrimariesGetValues(AVIF_COLOR_PRIMARIES_BT709, primariesCoords);
 
@@ -278,6 +285,35 @@ TEST(PngTest, GeneratedICCHash) {
   EXPECT_EQ(memcmp(icc.data + kChecksumOffset, expectedChecksumGray,
                    sizeof(expectedChecksumGray)),
             0);
+}
+
+//------------------------------------------------------------------------------
+// Memory management tests
+
+TEST(ImageSizeLimitTest, AllFormats) {
+  for (const uint32_t image_size_limit :
+       {1u, std::numeric_limits<uint32_t>::max()}) {
+    for (const char* filename :
+         {"paris_exif_xmp_icc.jpg", "paris_icc_exif_xmp.png",
+          "cosmos1650_yuv444_10bpc_p3pq.y4m"}) {
+      const std::string filepath = std::string(data_path) + filename;
+      ImagePtr image(avifImageCreateEmpty());
+      ASSERT_NE(image, nullptr);
+
+      const avifAppFileFormat format = avifReadImage(
+          filepath.c_str(), AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
+          AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, /*ignoreColorProfile=*/true,
+          /*ignoreExif=*/true, /*ignoreXMP=*/true, /*allowChangingCicp=*/true,
+          /*ignoreGainMap=*/true, image_size_limit, image.get(),
+          /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+          /*frameIter=*/nullptr);
+      if (image_size_limit == 1) {
+        EXPECT_EQ(format, AVIF_APP_FILE_FORMAT_UNKNOWN);
+      } else {
+        EXPECT_NE(format, AVIF_APP_FILE_FORMAT_UNKNOWN);
+      }
+    }
+  }
 }
 
 //------------------------------------------------------------------------------

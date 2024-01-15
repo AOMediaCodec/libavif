@@ -262,7 +262,11 @@ static avifBool y4mClampSamples(avifImage * avif)
             goto cleanup; \
     } while (0)
 
-avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTiming * sourceTiming, struct y4mFrameIterator ** iter)
+avifBool y4mRead(const char * inputFilename,
+                 uint32_t imageSizeLimit,
+                 avifImage * avif,
+                 avifAppSourceTiming * sourceTiming,
+                 struct y4mFrameIterator ** iter)
 {
     avifBool result = AVIF_FALSE;
 
@@ -398,6 +402,10 @@ avifBool y4mRead(const char * inputFilename, avifImage * avif, avifAppSourceTimi
 
     if ((frame.width < 1) || (frame.height < 1) || ((frame.depth != 8) && (frame.depth != 10) && (frame.depth != 12))) {
         fprintf(stderr, "Failed to parse y4m header (not enough information): %s\n", frame.displayFilename);
+        goto cleanup;
+    }
+    if ((uint32_t)frame.width > imageSizeLimit / (uint32_t)frame.height) {
+        fprintf(stderr, "Too big y4m dimensions (%d x %d > %u px): %s\n", frame.width, frame.height, imageSizeLimit, frame.displayFilename);
         goto cleanup;
     }
 

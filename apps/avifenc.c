@@ -582,7 +582,7 @@ static avifBool avifInputReadImage(avifInput * input,
         if (feof(stdin)) {
             return AVIF_FALSE;
         }
-        if (!y4mRead(NULL, dstImage, dstSourceTiming, &input->frameIter)) {
+        if (!y4mRead(NULL, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, dstImage, dstSourceTiming, &input->frameIter)) {
             fprintf(stderr, "ERROR: Cannot read y4m through standard input");
             return AVIF_FALSE;
         }
@@ -611,6 +611,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                                             ignoreXMP,
                                                             allowChangingCicp,
                                                             ignoreGainMap,
+                                                            AVIF_DEFAULT_IMAGE_SIZE_LIMIT,
                                                             dstImage,
                                                             dstDepth,
                                                             dstSourceTiming,

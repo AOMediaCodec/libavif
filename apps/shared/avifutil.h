@@ -62,6 +62,7 @@ typedef struct avifAppSourceTiming
 
 struct y4mFrameIterator;
 // Reads an image from a file with the requested format and depth.
+// At most imageSizeLimit pixels will be read or an error returned.
 // In case of a y4m file, sourceTiming and frameIter can be set.
 // Returns AVIF_APP_FILE_FORMAT_UNKNOWN in case of error.
 // 'ignoreGainMap' is only relevant for jpeg files that have a gain map
@@ -77,6 +78,7 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifBool ignoreXMP,
                                 avifBool allowChangingCicp,
                                 avifBool ignoreGainMap,
+                                uint32_t imageSizeLimit,
                                 avifImage * image,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
