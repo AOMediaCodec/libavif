@@ -35,12 +35,27 @@ void EncodeDecodeAnimation(ImagePtr frame,
   int total_duration = 0;
 
   // Encode.
-  for (const FrameOptions& options : frame_options) {
+  for (size_t i = 0; i < frame_options.size(); ++i) {
+    const FrameOptions& options = frame_options[i];
     total_duration += options.duration;
     const avifResult result = avifEncoderAddImage(
         encoder.get(), frame.get(), options.duration, options.flags);
-    ASSERT_EQ(result, AVIF_RESULT_OK)
-        << avifResultToString(result) << " " << encoder->diag.error;
+    // AVIF_ADD_IMAGE_FLAG_SINGLE can only be used on one image.
+    bool should_not_use_image_flag_single =
+        (frame_options[0].flags & AVIF_ADD_IMAGE_FLAG_SINGLE) && i > 0;
+    // AVIF_ADD_IMAGE_FLAG_SINGLE can only be used on the first image.
+    // It also cannot be set for layered images.
+    should_not_use_image_flag_single |=
+        (options.flags & AVIF_ADD_IMAGE_FLAG_SINGLE) &&
+        (i > 0 || encoder->extraLayerCount > 0);
+    if (should_not_use_image_flag_single) {
+      ASSERT_NE(result, AVIF_RESULT_OK)
+          << avifResultToString(result) << " " << encoder->diag.error;
+      return;
+    } else {
+      ASSERT_EQ(result, AVIF_RESULT_OK)
+          << avifResultToString(result) << " " << encoder->diag.error;
+    }
   }
   AvifRwData encoded_data;
   avifResult result = avifEncoderFinish(encoder.get(), &encoded_data);
