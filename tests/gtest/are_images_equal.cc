@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <string>
 
 #include "aviftest_helpers.h"
@@ -36,8 +37,10 @@ int main(int argc, char** argv) {
                       /*ignoreExif=*/AVIF_FALSE,
                       /*ignoreXMP=*/AVIF_FALSE, /*allowChangingCicp=*/AVIF_TRUE,
                       // TODO(maryla): also compare gain maps.
-                      /*ignoreGainMap=*/AVIF_TRUE, decoded[i].get(), &depth[i],
-                      nullptr, nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+                      /*ignoreGainMap=*/AVIF_TRUE,
+                      /*imageSizeLimit=*/std::numeric_limits<uint32_t>::max(),
+                      decoded[i].get(), &depth[i], nullptr,
+                      nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
       return 2;
     }

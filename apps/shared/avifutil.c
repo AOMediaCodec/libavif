@@ -306,6 +306,7 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifBool ignoreXMP,
                                 avifBool allowChangingCicp,
                                 avifBool ignoreGainMap,
+                                uint32_t imageSizeLimit,
                                 avifImage * image,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
@@ -313,21 +314,31 @@ avifAppFileFormat avifReadImage(const char * filename,
 {
     const avifAppFileFormat format = avifGuessFileFormat(filename);
     if (format == AVIF_APP_FILE_FORMAT_Y4M) {
-        if (!y4mRead(filename, image, sourceTiming, frameIter)) {
+        if (!y4mRead(filename, imageSizeLimit, image, sourceTiming, frameIter)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = image->depth;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
-        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap)) {
+        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap, imageSizeLimit)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = 8;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, allowChangingCicp, outDepth)) {
+        if (!avifPNGRead(filename,
+                         image,
+                         requestedFormat,
+                         requestedDepth,
+                         chromaDownsampling,
+                         ignoreColorProfile,
+                         ignoreExif,
+                         ignoreXMP,
+                         allowChangingCicp,
+                         imageSizeLimit,
+                         outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else {
