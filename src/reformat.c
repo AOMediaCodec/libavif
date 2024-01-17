@@ -46,13 +46,10 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         AVIF_CHECK(rgb->depth == 8);
     }
-    if (image->yuvFormat <= AVIF_PIXEL_FORMAT_NONE || image->yuvFormat >= AVIF_PIXEL_FORMAT_COUNT) {
-        return AVIF_FALSE;
-    }
-    AVIF_CHECK(rgb->format >= AVIF_RGB_FORMAT_RGB && rgb->format < AVIF_RGB_FORMAT_COUNT);
-    if (image->yuvRange != AVIF_RANGE_LIMITED && image->yuvRange != AVIF_RANGE_FULL) {
-        return AVIF_FALSE;
-    }
+    AVIF_CHECK(image->yuvFormat >= AVIF_PIXEL_FORMAT_YUV444 && image->yuvFormat < AVIF_PIXEL_FORMAT_COUNT);
+    // Cast to silence "comparison of unsigned expression is always true" warning.
+    AVIF_CHECK((int)rgb->format >= AVIF_RGB_FORMAT_RGB && rgb->format < AVIF_RGB_FORMAT_COUNT);
+    AVIF_CHECK(image->yuvRange == AVIF_RANGE_LIMITED || image->yuvRange == AVIF_RANGE_FULL);
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
     //

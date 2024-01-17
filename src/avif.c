@@ -138,7 +138,8 @@ avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avi
 {
     // width and height are checked when actually used, for example by avifImageAllocatePlanes().
     AVIF_CHECKERR(depth <= 16, NULL); // avifImage only supports up to 16 bits per sample. See avifImageUsesU16().
-    AVIF_CHECKERR(yuvFormat >= AVIF_PIXEL_FORMAT_NONE && yuvFormat < AVIF_PIXEL_FORMAT_COUNT, NULL);
+    // Cast to silence "comparison of unsigned expression is always true" warning.
+    AVIF_CHECKERR((int)yuvFormat >= AVIF_PIXEL_FORMAT_NONE && yuvFormat < AVIF_PIXEL_FORMAT_COUNT, NULL);
 
     avifImage * image = (avifImage *)avifAlloc(sizeof(avifImage));
     AVIF_CHECKERR(image, NULL);
