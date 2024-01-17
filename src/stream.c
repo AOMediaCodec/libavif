@@ -189,31 +189,24 @@ avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCou
     return AVIF_TRUE;
 }
 
-// Based on https://sqlite.org/src4/doc/trunk/www/varint.wiki.
+static const int VARINT_DEPTH_0 = 7; // +1 bit to stop or continue.
+static const int VARINT_DEPTH_1 = 3; // +1 bit to stop or continue.
+static const int VARINT_DEPTH_2 = 18;
+
 avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v)
 {
-    uint32_t a[5];
-    AVIF_CHECK(avifROStreamReadBits(stream, &a[0], 8));
-    if (a[0] <= 240) {
-        *v = a[0];
-    } else {
-        AVIF_CHECK(avifROStreamReadBits(stream, &a[1], 8));
-        if (a[0] <= 248) {
-            *v = 240 + 256 * (a[0] - 241) + a[1];
-        } else {
-            AVIF_CHECK(avifROStreamReadBits(stream, &a[2], 8));
-            if (a[0] == 249) {
-                *v = 2288 + 256 * a[1] + a[2];
-            } else {
-                AVIF_CHECK(avifROStreamReadBits(stream, &a[3], 8));
-                if (a[0] == 250) {
-                    *v = (a[3] << 16) | (a[2] << 8) | a[1];
-                } else {
-                    // TODO(yguyon): Use values of a[0] in range [252-255] (avoid pessimization).
-                    AVIF_CHECK(avifROStreamReadBits(stream, &a[4], 8));
-                    *v = (a[4] << 24) | (a[3] << 16) | (a[2] << 8) | a[1];
-                }
-            }
+    AVIF_CHECK(avifROStreamReadBits(stream, v, VARINT_DEPTH_0));
+    uint32_t extended, extension;
+
+    AVIF_CHECK(avifROStreamReadBits(stream, &extended, 1));
+    if (extended) {
+        AVIF_CHECK(avifROStreamReadBits(stream, &extension, VARINT_DEPTH_1));
+        *v += (extension + 1) << VARINT_DEPTH_0;
+
+        AVIF_CHECK(avifROStreamReadBits(stream, &extended, 1));
+        if (extended) {
+            AVIF_CHECK(avifROStreamReadBits(stream, &extension, VARINT_DEPTH_2));
+            *v += (extension + 1) << (VARINT_DEPTH_0 + VARINT_DEPTH_1);
         }
     }
     return AVIF_TRUE;
@@ -495,29 +488,24 @@ avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCo
     return AVIF_RESULT_OK;
 }
 
-// Based on https://sqlite.org/src4/doc/trunk/www/varint.wiki.
 avifResult avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v)
 {
-    if (v <= 240) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, v, 8));
-    } else if (v <= 2287) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v - 240) / 256 + 241, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v - 240) % 256, 8));
-    } else if (v <= 67823) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, 249, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v - 2288) / 256, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v - 2288) % 256, 8));
-    } else if (v <= 16777215) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, 250, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v >> 0) & 0xff, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v >> 8) & 0xff, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v >> 16) & 0xff, 8));
-    } else {
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, 251, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v >> 0) & 0xff, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v >> 8) & 0xff, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v >> 16) & 0xff, 8));
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, (v >> 24) & 0xff, 8));
+    AVIF_CHECKERR(v < (1u << (VARINT_DEPTH_0 + VARINT_DEPTH_1 + VARINT_DEPTH_2)) + (1u << (VARINT_DEPTH_0 + VARINT_DEPTH_1)) +
+                          (1u << VARINT_DEPTH_0),
+                  AVIF_RESULT_INVALID_ARGUMENT);
+
+    AVIF_CHECKRES(avifRWStreamWriteBits(stream, v & ((1u << VARINT_DEPTH_0) - 1), VARINT_DEPTH_0)); // value
+    v >>= VARINT_DEPTH_0;
+    AVIF_CHECKRES(avifRWStreamWriteBits(stream, v > 0, 1)); // extended
+    if (v > 0) {
+        v -= 1;
+        AVIF_CHECKRES(avifRWStreamWriteBits(stream, v & ((1u << VARINT_DEPTH_1) - 1), VARINT_DEPTH_1)); // extension
+        v >>= VARINT_DEPTH_1;
+        AVIF_CHECKRES(avifRWStreamWriteBits(stream, v > 0, 1)); // extended
+        if (v > 0) {
+            v -= 1;
+            AVIF_CHECKRES(avifRWStreamWriteBits(stream, v, VARINT_DEPTH_2)); // extension
+        }
     }
     return AVIF_RESULT_OK;
 }
