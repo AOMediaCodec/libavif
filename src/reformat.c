@@ -30,7 +30,8 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
     if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         AVIF_CHECK(rgb->depth == 8);
     }
-    AVIF_CHECK(rgb->format >= AVIF_RGB_FORMAT_RGB && rgb->format < AVIF_RGB_FORMAT_COUNT);
+    // Cast to silence "comparison of unsigned expression is always true" warning.
+    AVIF_CHECK((int)rgb->format >= AVIF_RGB_FORMAT_RGB && rgb->format < AVIF_RGB_FORMAT_COUNT);
 
     info->channelBytes = (rgb->depth > 8) ? 2 : 1;
     info->pixelBytes = avifRGBImagePixelSize(rgb);
@@ -102,16 +103,9 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
     const avifBool useYCgCo = AVIF_FALSE;
 #endif
 
-    if ((image->depth != 8) && (image->depth != 10) && (image->depth != 12) && (image->depth != 16)) {
-        return AVIF_FALSE;
-    }
-
-    if (image->yuvFormat <= AVIF_PIXEL_FORMAT_NONE || image->yuvFormat >= AVIF_PIXEL_FORMAT_COUNT) {
-        return AVIF_FALSE;
-    }
-    if (image->yuvRange != AVIF_RANGE_LIMITED && image->yuvRange != AVIF_RANGE_FULL) {
-        return AVIF_FALSE;
-    }
+    AVIF_CHECK(image->depth == 8 || image->depth == 10 || image->depth == 12 || image->depth == 16);
+    AVIF_CHECK(image->yuvFormat >= AVIF_PIXEL_FORMAT_YUV444 && image->yuvFormat < AVIF_PIXEL_FORMAT_COUNT);
+    AVIF_CHECK(image->yuvRange == AVIF_RANGE_LIMITED || image->yuvRange == AVIF_RANGE_FULL);
 
     // These matrix coefficients values are currently unsupported. Revise this list as more support is added.
     //
