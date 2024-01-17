@@ -142,18 +142,11 @@ void avifImageSetDefaults(avifImage * image)
 avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat)
 {
     // width and height are checked when actually used, for example by avifImageAllocatePlanes().
-    if (depth > 16) {
-        // avifImage only supports up to 16 bits per sample. See avifImageUsesU16().
-        return NULL;
-    }
-    if ((yuvFormat < AVIF_PIXEL_FORMAT_NONE) || (yuvFormat > AVIF_PIXEL_FORMAT_YUV400)) {
-        return NULL;
-    }
+    AVIF_CHECKERR(depth <= 16, NULL); // avifImage only supports up to 16 bits per sample. See avifImageUsesU16().
+    AVIF_CHECKERR(yuvFormat >= AVIF_PIXEL_FORMAT_NONE && yuvFormat < AVIF_PIXEL_FORMAT_COUNT, NULL);
 
     avifImage * image = (avifImage *)avifAlloc(sizeof(avifImage));
-    if (!image) {
-        return NULL;
-    }
+    AVIF_CHECKERR(image, NULL);
     avifImageSetDefaults(image);
     image->width = width;
     image->height = height;
