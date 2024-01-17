@@ -23,18 +23,14 @@ struct YUVBlock
 
 avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInfo * info)
 {
-    if ((rgb->depth != 8) && (rgb->depth != 10) && (rgb->depth != 12) && (rgb->depth != 16)) {
-        return AVIF_FALSE;
+    AVIF_CHECK(rgb->depth == 8 || rgb->depth == 10 || rgb->depth == 12 || rgb->depth == 16);
+    if (rgb->isFloat) {
+        AVIF_CHECK(rgb->depth == 16);
     }
-    if (rgb->isFloat && rgb->depth != 16) {
-        return AVIF_FALSE;
+    if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
+        AVIF_CHECK(rgb->depth == 8);
     }
-    if (rgb->format == AVIF_RGB_FORMAT_RGB_565 && rgb->depth != 8) {
-        return AVIF_FALSE;
-    }
-    if (rgb->format < AVIF_RGB_FORMAT_RGB || rgb->format >= AVIF_RGB_FORMAT_COUNT) {
-        return AVIF_FALSE;
-    }
+    AVIF_CHECK(rgb->format >= AVIF_RGB_FORMAT_RGB && rgb->format < AVIF_RGB_FORMAT_COUNT);
 
     info->channelBytes = (rgb->depth > 8) ? 2 : 1;
     info->pixelBytes = avifRGBImagePixelSize(rgb);
