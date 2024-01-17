@@ -82,7 +82,7 @@ static void avifVecMul(double M[3][3], const double x[3], double y[3])
 
 // Bradford chromatic adaptation matrix
 // from https://www.researchgate.net/publication/253799640_A_uniform_colour_space_based_upon_CIECAM97s
-static const double avifBradford[3][3] = {
+static double avifBradford[3][3] = {
     { 0.8951, 0.2664, -0.1614 },
     { -0.7502, 1.7135, 0.0367 },
     { 0.0389, -0.0685, 1.0296 },
@@ -99,7 +99,7 @@ avifBool avifColorPrimariesComputeRGBToXYZD50Matrix(avifColorPrimaries colorPrim
     double whitePointXYZ[3];
     AVIF_CHECK(avifXyToXYZ(&primaries[6], whitePointXYZ));
 
-    const double rgbPrimaries[3][3] = {
+    double rgbPrimaries[3][3] = {
         { primaries[0], primaries[2], primaries[4] },
         { primaries[1], primaries[3], primaries[5] },
         { 1.0 - primaries[0] - primaries[1], 1.0 - primaries[2] - primaries[3], 1.0 - primaries[4] - primaries[5] }
@@ -175,7 +175,7 @@ avifBool avifColorPrimariesComputeRGBToRGBMatrix(avifColorPrimaries srcColorPrim
 // better to clamp the output to [0, 1]. Linear values don't need clamping because values
 // > 1.0 are valid for HDR transfer curves, and the gamma compression function will do the
 // clamping as necessary.
-void avifLinearRGBConvertColorSpace(float rgb[4], const double coeffs[3][3])
+void avifLinearRGBConvertColorSpace(float rgb[4], double coeffs[3][3])
 {
     const double rgbDouble[3] = { rgb[0], rgb[1], rgb[2] };
     double converted[3];
