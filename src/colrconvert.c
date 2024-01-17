@@ -22,7 +22,7 @@ static avifBool avifXyToXYZ(const float xy[2], double XYZ[3])
 }
 
 // Computes I = M^-1. Returns false if M seems to be singular.
-static avifBool avifMatInv(const double M[3][3], double I[3][3])
+static avifBool avifMatInv(double M[3][3], double I[3][3])
 {
     double det = M[0][0] * (M[1][1] * M[2][2] - M[2][1] * M[1][2]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
                  M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
@@ -45,7 +45,7 @@ static avifBool avifMatInv(const double M[3][3], double I[3][3])
 }
 
 // Computes C = A*B
-static void avifMatMul(const double A[3][3], const double B[3][3], double C[3][3])
+static void avifMatMul(double A[3][3], double B[3][3], double C[3][3])
 {
     C[0][0] = A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0];
     C[0][1] = A[0][0] * B[0][1] + A[0][1] * B[1][1] + A[0][2] * B[2][1];
@@ -73,7 +73,7 @@ static void avifMatDiag(const double d[3], double M[3][3])
 }
 
 // Computes y = M.x
-static void avifVecMul(const double M[3][3], const double x[3], double y[3])
+static void avifVecMul(double M[3][3], const double x[3], double y[3])
 {
     y[0] = M[0][0] * x[0] + M[0][1] * x[1] + M[0][2] * x[2];
     y[1] = M[1][0] * x[0] + M[1][1] * x[1] + M[1][2] * x[2];
