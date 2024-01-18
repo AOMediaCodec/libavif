@@ -3417,7 +3417,10 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
 
     uint32_t isFloat;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &isFloat, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) is_float;
-    AVIF_CHECKERR(!isFloat, AVIF_RESULT_NOT_IMPLEMENTED);                                // unsigned int(2) float_precision;
+    if (isFloat) {
+        // unsigned int(2) float_precision;
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     uint32_t bitDepth;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &bitDepth, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) bit_depth_minus_one;
     ++bitDepth;
@@ -3475,8 +3478,11 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
 
     uint32_t hasExplicitCodecTypes;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCodecTypes, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_explicit_codec_types;
-    AVIF_CHECKERR(!hasExplicitCodecTypes, AVIF_RESULT_NOT_IMPLEMENTED); // unsigned int(32) infe_type;
-                                                                        // unsigned int(32) codec_config_type;
+    if (hasExplicitCodecTypes) {
+        // unsigned int(32) infe_type;
+        // unsigned int(32) codec_config_type;
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     uint32_t colorItemCodecConfigSize, colorItemDataSize;
     AVIF_CHECKERR(avifROStreamReadVarInt(&s, &colorItemCodecConfigSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint main_item_codec_config_size;
     AVIF_CHECKERR(colorItemCodecConfigSize == 4, AVIF_RESULT_NOT_IMPLEMENTED);
