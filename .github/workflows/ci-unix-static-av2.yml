@@ -97,6 +97,7 @@ jobs:
         -DAVIF_LIBSHARPYUV=LOCAL
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
+        -DAVIF_ENABLE_WERROR=ON
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja

@@ -71,7 +71,7 @@ git clone --depth 1 https://github.com/AOMediaCodec/libavif.git
 cd libavif
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DAVIF_CODEC_AOM=1 -DAVIF_CODEC_DAV1D=1 -DAVIF_CODEC_LIBGAV1=1 -DAVIF_CODEC_RAV1E=1 -DAVIF_CODEC_SVT=1 -DAVIF_BUILD_APPS=1 ..
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DAVIF_CODEC_AOM=1 -DAVIF_CODEC_DAV1D=1 -DAVIF_CODEC_LIBGAV1=1 -DAVIF_CODEC_RAV1E=1 -DAVIF_CODEC_SVT=1 -DAVIF_BUILD_APPS=1 -DAVIF_ENABLE_WERROR=ON ..
 ninja install
 
 # If we made it here, show off the goods!

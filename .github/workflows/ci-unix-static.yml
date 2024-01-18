@@ -109,6 +109,7 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
         -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_AVIR=ON
+        -DAVIF_ENABLE_WERROR=ON
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
