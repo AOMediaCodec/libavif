@@ -63,7 +63,7 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
   avifDecoderSetIO(decoder.get(), &io);
   // OSS-Fuzz limits the allocated memory to 2560 MB.
   // avifDecoderParse returns AVIF_RESULT_NOT_IMPLEMENTED if kImageSizeLimit is
-  // too big.
+  // bigger than AVIF_DEFAULT_IMAGE_SIZE_LIMIT.
   constexpr uint32_t kImageSizeLimit =
       2560u * 512 * 512 / AVIF_MAX_AV1_LAYER_COUNT / sizeof(uint16_t);
   static_assert(kImageSizeLimit <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT,
