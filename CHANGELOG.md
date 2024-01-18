@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+* AVIF_ENABLE_WERROR is set to OFF by default.
+
 ## [1.0.3] - 2023-12-03
 
 ### Changed

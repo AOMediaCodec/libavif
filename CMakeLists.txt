@@ -31,7 +31,7 @@ set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
-option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" ON)
+option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 
