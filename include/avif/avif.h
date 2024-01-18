@@ -52,7 +52,7 @@ extern "C" {
     (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
 #define AVIF_NODISCARD [[nodiscard]]
 #else
-#if defined(__clang__) && defined(__has_attribute)
+#if defined(__clang__) && defined(__has_attribute) && ((__clang_major__ << 8) | __clang_minor__) >= ((3 << 8) | 9)
 #if __has_attribute(warn_unused_result)
 #define AVIF_NODISCARD __attribute__((warn_unused_result))
 #else
