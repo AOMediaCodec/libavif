@@ -14,6 +14,11 @@
 namespace avif {
 namespace {
 
+// Taken from stream.c.
+static const int VARINT_DEPTH_0 = 7;
+static const int VARINT_DEPTH_1 = 3;
+static const int VARINT_DEPTH_2 = 18;
+
 //------------------------------------------------------------------------------
 
 TEST(StreamTest, Roundtrip) {
@@ -60,13 +65,13 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_EQ(avifRWStreamWriteU32(&rw_stream, rw_someu32), AVIF_RESULT_OK);
 
   size_t offset = avifRWStreamOffset(&rw_stream);
-  const uint32_t rw_somevarint_1byte = 127;
+  const uint32_t rw_somevarint_1byte = (1 << VARINT_DEPTH_0) - 1;
   EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_1byte),
             AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 1);
 
   offset = avifRWStreamOffset(&rw_stream);
-  const uint32_t rw_somevarint_2bytes = 1151;
+  const uint32_t rw_somevarint_2bytes = (1 << VARINT_DEPTH_0);
   EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_2bytes),
             AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 2);
@@ -89,7 +94,7 @@ TEST(StreamTest, Roundtrip) {
             AVIF_RESULT_OK);
 
   offset = avifRWStreamOffset(&rw_stream);
-  const uint32_t rw_somevarint_4bytes = 1 << 28;
+  const uint32_t rw_somevarint_4bytes = 1 << VARINT_DEPTH_2;
   EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_4bytes),
             AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 4);
@@ -201,14 +206,18 @@ TEST(StreamTest, Roundtrip) {
 //------------------------------------------------------------------------------
 // Variable length integer implementation
 
+constexpr uint32_t kMaxVarint =
+    (1 << (VARINT_DEPTH_2 + VARINT_DEPTH_1 + VARINT_DEPTH_0)) +
+    (1 << (VARINT_DEPTH_1 + VARINT_DEPTH_0)) + (1 << VARINT_DEPTH_0) - 1;
+
 TEST(StreamTest, VarIntEncDecRoundtrip) {
   std::vector<uint32_t> values(1 << 12);
   std::iota(values.begin(), values.end(), 0u);
   for (int depth = 13; depth <= 28; ++depth) {
     values.push_back(1 << depth);
   }
-  values.push_back((1 << 28) + (1 << 10) + (1 << 7) - 2);
-  values.push_back((1 << 28) + (1 << 10) + (1 << 7) - 1);  // Maximum value.
+  values.push_back(kMaxVarint - 1);
+  values.push_back(kMaxVarint);
 
   testutil::AvifRwData rw_data;
   avifRWStream rw_stream;
@@ -233,9 +242,8 @@ TEST(StreamTest, VarIntLimit) {
   testutil::AvifRwData rw_data;
   avifRWStream rw_stream;
   avifRWStreamStart(&rw_stream, &rw_data);
-  EXPECT_EQ(
-      avifRWStreamWriteVarInt(&rw_stream, (1 << 28) + (1 << 10) + (1 << 7)),
-      AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, kMaxVarint + 1),
+            AVIF_RESULT_INVALID_ARGUMENT);
 }
 
 //------------------------------------------------------------------------------
