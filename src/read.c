@@ -211,6 +211,7 @@ typedef struct avifDecoderItem
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (the layer_id value in lsel is set to 0xFFFF)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
     avifPixelFormat coniPixelFormat; // Set from the CondensedImageBox, if present (AVIF_PIXEL_FORMAT_NONE otherwise)
+    avifChromaSamplePosition coniChromaSamplePosition; // Set from the CondensedImageBox, if present (AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN otherwise)
 #endif
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem *, item);
@@ -1191,15 +1192,34 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
     }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    if ((item->coniPixelFormat != AVIF_PIXEL_FORMAT_NONE) &&
-        (item->coniPixelFormat != avifCodecConfigurationBoxGetFormat(&configProp->u.av1C))) {
-        avifDiagnosticsPrintf(diag,
-                              "Item ID %u format [%s] specified by coni box does not match %s property format [%s]",
-                              item->id,
-                              avifPixelFormatToString(item->coniPixelFormat),
-                              configPropName,
-                              avifPixelFormatToString(avifCodecConfigurationBoxGetFormat(&configProp->u.av1C)));
-        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    if (item->coniPixelFormat != AVIF_PIXEL_FORMAT_NONE) {
+        // This is a 'coni' box.
+
+        if (item->coniPixelFormat != avifCodecConfigurationBoxGetFormat(&configProp->u.av1C)) {
+            avifDiagnosticsPrintf(diag,
+                                  "Item ID %u format [%s] specified by coni box does not match %s property format [%s]",
+                                  item->id,
+                                  avifPixelFormatToString(item->coniPixelFormat),
+                                  configPropName,
+                                  avifPixelFormatToString(avifCodecConfigurationBoxGetFormat(&configProp->u.av1C)));
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+
+        if (configProp->u.av1C.chromaSamplePosition == /*CSP_UNKNOWN=*/0) {
+            // Section 6.4.2. Color config semantics of AV1 specification says:
+            //   CSP_UNKNOWN - the source video transfer function must be signaled outside the AV1 bitstream
+            // See https://aomediacodec.github.io/av1-spec/#color-config-semantics
+
+            // So item->coniChromaSamplePosition can differ and will override the AV1 value.
+        } else if ((uint8_t)item->coniChromaSamplePosition != configProp->u.av1C.chromaSamplePosition) {
+            avifDiagnosticsPrintf(diag,
+                                  "Item ID %u chroma sample position [%u] specified by coni box does not match %s property chroma sample position [%u]",
+                                  item->id,
+                                  (uint32_t)item->coniChromaSamplePosition,
+                                  configPropName,
+                                  configProp->u.av1C.chromaSamplePosition);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
@@ -3395,25 +3415,33 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     AVIF_CHECKERR(version == 0, AVIF_RESULT_NOT_IMPLEMENTED);
 
     uint32_t width, height;
-    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &width), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) width_minus_one;
+    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &width), AVIF_RESULT_BMFF_PARSE_FAILED); // varint width_minus_one;
     AVIF_CHECKERR(width != UINT32_MAX, AVIF_RESULT_BMFF_PARSE_FAILED);
     ++width;
-    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &height), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) height_minus_one;
+    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &height), AVIF_RESULT_BMFF_PARSE_FAILED); // varint height_minus_one;
     AVIF_CHECKERR(height != UINT32_MAX, AVIF_RESULT_BMFF_PARSE_FAILED);
     ++height;
 
     uint32_t isFloat;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &isFloat, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) is_float;
-    AVIF_CHECKERR(!isFloat, AVIF_RESULT_NOT_IMPLEMENTED);
+    if (isFloat) {
+        // unsigned int(2) float_precision;
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     uint32_t bitDepth;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &bitDepth, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) bit_depth_minus_one;
     ++bitDepth;
     AVIF_CHECKERR((bitDepth == 8) || (bitDepth == 10) || (bitDepth == 12), AVIF_RESULT_UNSUPPORTED_DEPTH);
-    uint32_t isMonochrome;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &isMonochrome, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) is_monochrome;
-    uint32_t isSubsampled = AVIF_FALSE;
-    if (!isMonochrome) {
-        AVIF_CHECKERR(avifROStreamReadBits(&s, &isSubsampled, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) is_subsampled;
+    uint32_t subsampling;
+    AVIF_CHECKERR(avifROStreamReadBits(&s, &subsampling, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) subsampling;
+    const avifPixelFormat yuvFormat = subsampling == 0 ? AVIF_PIXEL_FORMAT_YUV400 : (avifPixelFormat)subsampling;
+    const avifBool isMonochrome = yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
+    const avifBool isSubsampled = yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || yuvFormat == AVIF_PIXEL_FORMAT_YUV420;
+    avifChromaSamplePosition yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    if (isSubsampled) {
+        uint32_t isCentered;
+        AVIF_CHECKERR(avifROStreamReadBits(&s, &isCentered, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) is_centered;
+        yuvChromaSamplePosition = isCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
     }
     uint32_t fullRange;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &fullRange, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) full_range;
@@ -3426,15 +3454,19 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     if (colorType == AVIF_CONI_COLOR_TYPE_ICC) {
         colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
         transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-        AVIF_CHECKERR(avifROStreamReadBits(&s, &matrixCoefficients, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) matrix_coefficients;
-        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &iccDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) icc_data_size_minus_one;
+        if (isMonochrome) {
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+        } else {
+            AVIF_CHECKERR(avifROStreamReadBits(&s, &matrixCoefficients, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) matrix_coefficients;
+        }
+        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &iccDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint icc_data_size_minus_one;
         AVIF_CHECKERR(iccDataSize != UINT32_MAX, AVIF_RESULT_BMFF_PARSE_FAILED);
         ++iccDataSize;
     } else if (colorType == AVIF_CONI_COLOR_TYPE_SRGB) {
         // sRGB
         colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
         transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-        matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+        matrixCoefficients = isMonochrome ? AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED : AVIF_MATRIX_COEFFICIENTS_BT601;
         iccDataSize = 0;
     } else {
         const uint32_t numBitsPerComponent = (colorType == AVIF_CONI_COLOR_TYPE_NCLX_5BIT) ? 5 : 8;
@@ -3442,18 +3474,26 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(5/8) color_primaries;
         AVIF_CHECKERR(avifROStreamReadBits(&s, &transferCharacteristics, numBitsPerComponent),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(5/8) transfer_characteristics;
-        AVIF_CHECKERR(avifROStreamReadBits(&s, &matrixCoefficients, numBitsPerComponent),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(5/8) matrix_coefficients;
+        if (isMonochrome) {
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+        } else {
+            AVIF_CHECKERR(avifROStreamReadBits(&s, &matrixCoefficients, numBitsPerComponent),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(5/8) matrix_coefficients;
+        }
         iccDataSize = 0;
     }
 
     uint32_t hasExplicitCodecTypes;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCodecTypes, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_explicit_codec_types;
-    AVIF_CHECKERR(!hasExplicitCodecTypes, AVIF_RESULT_NOT_IMPLEMENTED);
+    if (hasExplicitCodecTypes) {
+        // unsigned int(32) infe_type;
+        // unsigned int(32) codec_config_type;
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     uint32_t colorItemCodecConfigSize, colorItemDataSize;
-    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &colorItemCodecConfigSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) main_item_codec_config_size;
+    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &colorItemCodecConfigSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint main_item_codec_config_size;
     AVIF_CHECKERR(colorItemCodecConfigSize == 4, AVIF_RESULT_NOT_IMPLEMENTED);
-    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &colorItemDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) main_item_data_size_minus_one;
+    AVIF_CHECKERR(avifROStreamReadVarInt(&s, &colorItemDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint main_item_data_size_minus_one;
     AVIF_CHECKERR(colorItemDataSize != UINT32_MAX, AVIF_RESULT_BMFF_PARSE_FAILED);
     ++colorItemDataSize;
 
@@ -3464,28 +3504,28 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     if (hasAlpha) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &alphaIsPremultiplied, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) alpha_is_premultiplied;
         uint32_t alphaItemCodecConfigSize;
-        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &alphaItemCodecConfigSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) alpha_item_codec_config_size;
+        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &alphaItemCodecConfigSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint alpha_item_codec_config_size;
         AVIF_CHECKERR(alphaItemCodecConfigSize == 4, AVIF_RESULT_NOT_IMPLEMENTED);
-        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &alphaItemDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) alpha_item_data_size;
+        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &alphaItemDataSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint alpha_item_data_size;
     }
 
     uint32_t hasExtendedMeta, hasExif, hasXMP;
     uint32_t extendedMetaSize = 0, exifSize = 0, xmpSize = 0;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExtendedMeta, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_extended_meta;
     if (hasExtendedMeta) {
-        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &extendedMetaSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) extended_meta_size_minus_one;
+        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &extendedMetaSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint extended_meta_size_minus_one;
         AVIF_CHECKERR(extendedMetaSize != UINT32_MAX, AVIF_RESULT_BMFF_PARSE_FAILED);
         ++extendedMetaSize;
     }
     AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExif, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_exif;
     if (hasExif) {
-        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &exifSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) exif_data_size_minus_one;
+        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &exifSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint exif_data_size_minus_one;
         AVIF_CHECKERR(exifSize != UINT32_MAX, AVIF_RESULT_BMFF_PARSE_FAILED);
         ++exifSize;
     }
     AVIF_CHECKERR(avifROStreamReadBits(&s, &hasXMP, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) has_xmp;
     if (hasXMP) {
-        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &xmpSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint(32) xmp_data_size_minus_one;
+        AVIF_CHECKERR(avifROStreamReadVarInt(&s, &xmpSize), AVIF_RESULT_BMFF_PARSE_FAILED); // varint xmp_data_size_minus_one;
         AVIF_CHECKERR(xmpSize != UINT32_MAX, AVIF_RESULT_BMFF_PARSE_FAILED);
         ++xmpSize;
     }
@@ -3529,9 +3569,8 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     memcpy(colorItem->type, "av01", 4);
     colorItem->width = width;
     colorItem->height = height;
-    colorItem->coniPixelFormat = isMonochrome   ? AVIF_PIXEL_FORMAT_YUV400
-                                 : isSubsampled ? AVIF_PIXEL_FORMAT_YUV420
-                                                : AVIF_PIXEL_FORMAT_YUV444;
+    colorItem->coniPixelFormat = yuvFormat;
+    colorItem->coniChromaSamplePosition = yuvChromaSamplePosition;
 
     avifDecoderItem * alphaItem = NULL;
     if (hasAlpha) {
@@ -3540,6 +3579,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
         alphaItem->width = width;
         alphaItem->height = height;
         alphaItem->coniPixelFormat = AVIF_PIXEL_FORMAT_YUV400;
+        alphaItem->coniChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     }
 
     // Property with fixed index 1.
