@@ -1464,19 +1464,26 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
     }
 
     // Lazily populate dstImage with the new frame's properties.
-    if ((dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) ||
-        (dstImage->depth != tile->image->depth) || (!alpha && (dstImage->yuvFormat != tile->image->yuvFormat))) {
+    const avifBool dimsOrDepthIsDifferent = (dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) ||
+                                            (dstImage->depth != tile->image->depth);
+    const avifBool yuvFormatIsDifferent = !alpha && (dstImage->yuvFormat != tile->image->yuvFormat);
+    if (dimsOrDepthIsDifferent || yuvFormatIsDifferent) {
         if (alpha) {
             // Alpha doesn't match size, just bail out
             avifDiagnosticsPrintf(data->diag, "Alpha plane dimensions do not match color plane dimensions");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
 
-        avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
-        dstImage->width = grid->outputWidth;
-        dstImage->height = grid->outputHeight;
-        dstImage->depth = tile->image->depth;
-        dstImage->yuvFormat = tile->image->yuvFormat;
+        if (dimsOrDepthIsDifferent) {
+            avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+            dstImage->width = grid->outputWidth;
+            dstImage->height = grid->outputHeight;
+            dstImage->depth = tile->image->depth;
+        }
+        if (yuvFormatIsDifferent) {
+            avifImageFreePlanes(dstImage, AVIF_PLANES_YUV);
+            dstImage->yuvFormat = tile->image->yuvFormat;
+        }
         // Keep dstImage->yuvRange which is already set to its correct value
         // (extracted from the 'colr' box if parsed or from a Sequence Header OBU otherwise).
 
