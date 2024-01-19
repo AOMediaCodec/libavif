@@ -2091,8 +2091,8 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
     const avifBool isSubsampled = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420;
     const avifBool fullRange = image->yuvRange == AVIF_RANGE_FULL;
 
-    avifBoxMarker coni;
-    AVIF_CHECKRES(avifRWStreamWriteBox(s, "coni", AVIF_BOX_SIZE_TBD, &coni));
+    avifBoxMarker mini;
+    AVIF_CHECKRES(avifRWStreamWriteBox(s, "mini", AVIF_BOX_SIZE_TBD, &mini));
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // unsigned int(2) version;
 
     AVIF_CHECKRES(avifRWStreamWriteVarInt(s, image->width - 1));  // varint width_minus_one;
@@ -2111,7 +2111,7 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
     }
     AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1)); // unsigned int(1) full_range;
     if (image->icc.size) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_CONI_COLOR_TYPE_ICC, 2)); // unsigned int(2) color_type;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_MINI_COLOR_TYPE_ICC, 2)); // unsigned int(2) color_type;
         AVIF_CHECKERR(image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED, AVIF_RESULT_INVALID_ARGUMENT);
         AVIF_CHECKERR(image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED, AVIF_RESULT_INVALID_ARGUMENT);
         if (isMonochrome) {
@@ -2123,13 +2123,13 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
     } else {
         if (image->colorPrimaries == AVIF_COLOR_PRIMARIES_SRGB && image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
             (image->matrixCoefficients == (isMonochrome ? AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED : AVIF_MATRIX_COEFFICIENTS_BT601))) {
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_CONI_COLOR_TYPE_SRGB, 2)); // unsigned int(2) color_type;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_MINI_COLOR_TYPE_SRGB, 2)); // unsigned int(2) color_type;
         } else {
-            const avifConiColorType colorType = ((image->colorPrimaries >> 5 == 0) && (image->transferCharacteristics >> 5 == 0) &&
+            const avifMiniColorType colorType = ((image->colorPrimaries >> 5 == 0) && (image->transferCharacteristics >> 5 == 0) &&
                                                  (image->matrixCoefficients >> 5 == 0))
-                                                    ? AVIF_CONI_COLOR_TYPE_NCLX_5BIT
-                                                    : AVIF_CONI_COLOR_TYPE_NCLX_8BIT;
-            const uint32_t numBitsPerComponent = (colorType == AVIF_CONI_COLOR_TYPE_NCLX_5BIT) ? 5 : 8;
+                                                    ? AVIF_MINI_COLOR_TYPE_NCLX_5BIT
+                                                    : AVIF_MINI_COLOR_TYPE_NCLX_8BIT;
+            const uint32_t numBitsPerComponent = (colorType == AVIF_MINI_COLOR_TYPE_NCLX_5BIT) ? 5 : 8;
             AVIF_CHECKRES(avifRWStreamWriteBits(s, colorType, 2));                               // unsigned int(2) color_type;
             AVIF_CHECKRES(avifRWStreamWriteBits(s, image->colorPrimaries, numBitsPerComponent)); // unsigned int(5/8) color_primaries;
             AVIF_CHECKRES(avifRWStreamWriteBits(s, image->transferCharacteristics, numBitsPerComponent)); // unsigned int(5/8) transfer_characteristics;
@@ -2202,7 +2202,7 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
     if (image->xmp.size) {
         AVIF_CHECKRES(avifRWStreamWrite(s, image->xmp.data, image->xmp.size)); // unsigned int(8) xmp_data[];
     }
-    avifRWStreamFinishBox(s, coni);
+    avifRWStreamFinishBox(s, mini);
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR

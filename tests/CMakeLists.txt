@@ -111,7 +111,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest(avifcodectest)
 
     if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-        add_avif_gtest(avifconitest)
+        add_avif_gtest(avifminitest)
     endif()
 
     add_avif_gtest_with_data(avifdecodetest)
@@ -352,7 +352,7 @@ if(AVIF_CODEC_AVM_ENABLED)
             )
 
             if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-                set_tests_properties(avifconitest PROPERTIES DISABLED True)
+                set_tests_properties(avifminitest PROPERTIES DISABLED True)
             endif()
             if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                 set_tests_properties(avifgainmaptest PROPERTIES DISABLED True)

@@ -84,25 +84,25 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
   }
 
   // Encode.
-  testutil::AvifRwData encoded_coni;
+  testutil::AvifRwData encoded_mini;
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->headerFormat = AVIF_HEADER_REDUCED;
-  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_coni),
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_mini),
             AVIF_RESULT_OK);
 
   // Decode.
-  const ImagePtr decoded_coni =
-      testutil::Decode(encoded_coni.data, encoded_coni.size);
-  ASSERT_NE(decoded_coni, nullptr);
+  const ImagePtr decoded_mini =
+      testutil::Decode(encoded_mini.data, encoded_mini.size);
+  ASSERT_NE(decoded_mini, nullptr);
 
   // Compare.
   testutil::AvifRwData encoded_meta =
       testutil::Encode(image.get(), encoder->speed);
   ASSERT_NE(encoded_meta.data, nullptr);
   // At least 200 bytes should be saved.
-  EXPECT_LT(encoded_coni.size, encoded_meta.size - 200);
+  EXPECT_LT(encoded_mini.size, encoded_meta.size - 200);
 
   const ImagePtr decoded_meta =
       testutil::Decode(encoded_meta.data, encoded_meta.size);
@@ -111,7 +111,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
   // Only the container changed. The pixels, features and metadata should be
   // identical.
   EXPECT_TRUE(
-      testutil::AreImagesEqual(*decoded_meta.get(), *decoded_coni.get()));
+      testutil::AreImagesEqual(*decoded_meta.get(), *decoded_mini.get()));
 }
 
 INSTANTIATE_TEST_SUITE_P(OnePixel, AvifCondensedImageBoxTest,
