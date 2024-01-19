@@ -109,11 +109,6 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest(avifclaptest)
     add_avif_gtest(avifcllitest)
     add_avif_gtest(avifcodectest)
-
-    if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-        add_avif_gtest(avifminitest)
-    endif()
-
     add_avif_gtest_with_data(avifdecodetest)
     add_avif_gtest_with_data(avifencodetest)
 
@@ -138,6 +133,11 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest_with_data(avifiostatstest)
     add_avif_gtest_with_data(aviflosslesstest)
     add_avif_gtest_with_data(avifmetadatatest)
+
+    if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+        add_avif_gtest(avifminitest)
+    endif()
+
     add_avif_gtest(avifopaquetest)
     add_avif_gtest_with_data(avifpng16bittest)
     add_avif_gtest(avifprogressivetest)
