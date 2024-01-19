@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   AVIF_COLOR_PRIMARIES_DCI_P3, AVIF_TRANSFER_CHARACTERISTICS_PQ.
 
 ### Changed
-* Update aom.cmd: v3.8.0
+* Update aom.cmd: v3.8.1
 * Update dav1d.cmd: 1.3.0
 * Update libgav1.cmd: v0.19.0
 * Update rav1e.cmd: v0.7.0
