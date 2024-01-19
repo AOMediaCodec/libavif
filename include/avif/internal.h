@@ -318,13 +318,13 @@ typedef enum avifItemCategory
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
 // AVIF color_type field meaning in CondensedImageBox
-typedef enum avifConiColorType
+typedef enum avifMiniColorType
 {
-    AVIF_CONI_COLOR_TYPE_SRGB = 0,
-    AVIF_CONI_COLOR_TYPE_NCLX_5BIT = 1,
-    AVIF_CONI_COLOR_TYPE_NCLX_8BIT = 2,
-    AVIF_CONI_COLOR_TYPE_ICC = 3
-} avifConiColorType;
+    AVIF_MINI_COLOR_TYPE_SRGB = 0,
+    AVIF_MINI_COLOR_TYPE_NCLX_5BIT = 1,
+    AVIF_MINI_COLOR_TYPE_NCLX_8BIT = 2,
+    AVIF_MINI_COLOR_TYPE_ICC = 3
+} avifMiniColorType;
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
 // ---------------------------------------------------------------------------
