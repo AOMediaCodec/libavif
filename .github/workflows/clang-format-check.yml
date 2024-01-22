@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - uses: RafikFarhad/clang-format-github-action@4a04d8e72a661766278abf214ed995bf6bdf0b8f # v3.2.0
+      - uses: RafikFarhad/clang-format-github-action@873e2c426db342189305bc04213fe55cb701fd91 # v4
         with:
           style: file
           sources: "apps/*.c,apps/**/*.h,apps/**/*.c,apps/**/*.cc,examples/*.c,include/avif/*.h,src/*.c,tests/*.c,tests/**/*.h,tests/**/*.cc"
