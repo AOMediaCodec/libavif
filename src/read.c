@@ -4402,24 +4402,18 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     }
     assert(alphaItemCount == colorItemCount);
     // Find an unused ID.
-    avifResult result;
-    if (meta->items.count >= UINT32_MAX - 1) {
-        // In the improbable case where all IDs are used.
-        result = AVIF_RESULT_DECODE_ALPHA_FAILED;
-    } else {
-        uint32_t newItemID = 0;
-        avifBool isUsed;
-        do {
+    avifResult result = AVIF_RESULT_DECODE_ALPHA_FAILED;
+    for (uint32_t i = 0, newItemID = 1; i < meta->items.count; ++i) {
+        if (meta->items.item[i]->id == newItemID) {
             ++newItemID;
-            isUsed = AVIF_FALSE;
-            for (uint32_t i = 0; i < meta->items.count; ++i) {
-                if (meta->items.item[i]->id == newItemID) {
-                    isUsed = AVIF_TRUE;
-                    break;
-                }
-            }
-        } while (isUsed && newItemID != 0);
-        result = avifMetaFindOrCreateItem(meta, newItemID, alphaItem); // Create new empty item.
+        } else {
+            // ISO/IEC 23008-12, First edition, 2017-12, Section 9.3.1:
+            //   Each ItemPropertyAssociation box shall be ordered by increasing item_ID, and there shall
+            //   be at most one association box for each item_ID, in any ItemPropertyAssociation box.
+            // A free spot id is found.
+            result = avifMetaFindOrCreateItem(meta, newItemID, alphaItem); // Create new empty item.
+            break;
+        }
     }
     if (result != AVIF_RESULT_OK) {
         avifFree(alphaItemIndices);
