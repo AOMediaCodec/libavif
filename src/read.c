@@ -1573,7 +1573,7 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
 
 // After verifying that the relevant properties of the tile match those of the first tile, copies over the pixels from the tile
 // into dstImage.
-static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
+static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
                                                const avifTileInfo * info,
                                                avifImage * dstImage,
                                                const avifTile * tile,
@@ -1589,7 +1589,7 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
             (tile->image->transferCharacteristics != firstTile->image->transferCharacteristics) ||
             (tile->image->matrixCoefficients != firstTile->image->matrixCoefficients)) {
             avifDiagnosticsPrintf(data->diag, "Grid image contains mismatched tiles");
-            return AVIF_FALSE;
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
     }
 
@@ -1612,16 +1612,16 @@ static avifBool avifDecoderDataCopyTileToImage(avifDecoderData * data,
     avifImage * dst = dstImage;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
-        AVIF_ASSERT(dst->gainMap && dst->gainMap->image, AVIF_RESULT_UNKNOWN_ERROR);
+        AVIF_CHECKERR(dst->gainMap && dst->gainMap->image, AVIF_RESULT_INTERNAL_ERROR);
         dst = dst->gainMap->image;
     }
 #endif
-    AVIF_ASSERT(avifImageSetViewRect(&dstView, dst, &dstViewRect) == AVIF_RESULT_OK &&
+    AVIF_CHECKERR(avifImageSetViewRect(&dstView, dst, &dstViewRect) == AVIF_RESULT_OK &&
                     avifImageSetViewRect(&srcView, tile->image, &srcViewRect) == AVIF_RESULT_OK,
-                AVIF_FALSE);
+                AVIF_RESULT_INTERNAL_ERROR);
     avifImageCopySamples(&dstView, &srcView, (tile->input->itemCategory == AVIF_ITEM_ALPHA) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 
 // If colorId == 0 (a sentinel value as item IDs must be nonzero), accept any found EXIF/XMP metadata. Passing in 0
@@ -5253,9 +5253,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
 #endif
                 AVIF_CHECKRES(avifDecoderDataAllocateGridImagePlanes(decoder->data, info, dstImage));
             }
-            if (!avifDecoderDataCopyTileToImage(decoder->data, info, decoder->image, tile, tileIndex)) {
-                return AVIF_RESULT_INVALID_IMAGE_GRID;
-            }
+            AVIF_CHECKRES(avifDecoderDataCopyTileToImage(decoder->data, info, decoder->image, tile, tileIndex));
         } else {
             // Non-grid path. Just steal the planes from the only "tile".
             AVIF_CHECKERR(info->tileCount == 1, AVIF_RESULT_INTERNAL_ERROR);
