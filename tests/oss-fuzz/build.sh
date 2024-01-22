@@ -38,6 +38,10 @@
 
 ln -s $SRC/fuzztest $SRC/libavif/ext/fuzztest
 
+# Add asan as a dependency by default to fix builds.
+export CXXFLAGS="${CXXFLAGS} -fsanitize=address"
+export CFLAGS="${CFLAGS} -fsanitize=address"
+
 # build dependencies
 cd ext && bash aom.cmd && bash dav1d.cmd && bash libjpeg.cmd && \
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
@@ -45,7 +49,7 @@ cd ext && bash aom.cmd && bash dav1d.cmd && bash libjpeg.cmd && \
 # build libavif
 mkdir build
 cd build
-if [ "$FUZZING_ENGINE" == "libfuzzer" ] && [ "$SANITIZER" != "coverage" ]
+if [ "$FUZZING_ENGINE" == "libfuzzer" ]
 then
   export CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
   export EXTRA_CMAKE_FLAGS="-DAVIF_ENABLE_FUZZTEST=ON -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer"
@@ -68,7 +72,7 @@ $CXX $CXXFLAGS -std=c++11 -I../include \
     ../ext/libyuv/build/libyuv.a ../ext/aom/build.libavif/libaom.a
 
 # Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
-if [ "$FUZZING_ENGINE" == "libfuzzer" ] && [ "$SANITIZER" != "coverage" ]
+if [ "$FUZZING_ENGINE" == "libfuzzer" ]
 then
   # build fuzztests
   # The following is taken from https://github.com/google/oss-fuzz/blob/31ac7244748ea7390015455fb034b1f4eda039d9/infra/base-images/base-builder/compile_fuzztests.sh#L59
