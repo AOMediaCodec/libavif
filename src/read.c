@@ -2426,11 +2426,24 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C",
+            static const char * supportedTypes[] = {
+                "ispe",
+                "auxC",
+                "colr",
+                "av1C",
 #if defined(AVIF_CODEC_AVM)
-                                                     "av2C",
+                "av2C",
 #endif
-                                                     "pasp", "clap", "irot", "imir", "pixi", "a1op", "lsel", "a1lx", "clli" };
+                "pasp",
+                "clap",
+                "irot",
+                "imir",
+                "pixi",
+                "a1op",
+                "lsel",
+                "a1lx",
+                "clli"
+            };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
             avifBool supportedType = AVIF_FALSE;
             for (size_t i = 0; i < supportedTypesCount; ++i) {
