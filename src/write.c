@@ -1022,37 +1022,23 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
 }
 
 // Same as avifImageCopy() but pads the dstImage with border pixel values to reach dstWidth and dstHeight.
-// Returns NULL if a memory allocation failed.
-static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
+static avifResult avifImageCopyAndPad(avifImage * const dstImage, const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
 {
-    AVIF_ASSERT(dstWidth >= srcImage->width, NULL);
-    AVIF_ASSERT(dstHeight >= srcImage->height, NULL);
+    AVIF_CHECKERR(dstImage, AVIF_RESULT_INTERNAL_ERROR);
+    AVIF_CHECKERR(dstImage->width || dstImage->height, AVIF_RESULT_INTERNAL_ERROR);  // dstImage is not set yet.
+    AVIF_CHECKERR(dstWidth >= srcImage->width, AVIF_RESULT_INTERNAL_ERROR);
+    AVIF_CHECKERR(dstHeight >= srcImage->height, AVIF_RESULT_INTERNAL_ERROR);
 
-    avifImage * dstImage = avifImageCreateEmpty();
-    if (!dstImage) {
-        return NULL;
-    }
-    // Copy all fields but do not allocate.
-    if (avifImageCopy(dstImage, srcImage, (avifPlanesFlag)0) != AVIF_RESULT_OK) {
-        avifImageDestroy(dstImage);
-        return NULL;
-    }
+    // Copy all fields but do not allocate the planes.
+    AVIF_CHECKRES(avifImageCopy(dstImage, srcImage, (avifPlanesFlag)0));
     dstImage->width = dstWidth;
     dstImage->height = dstHeight;
 
     if (srcImage->yuvPlanes[AVIF_CHAN_Y]) {
-        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV);
-        if (allocationResult != AVIF_RESULT_OK) {
-            avifImageDestroy(dstImage);
-            return NULL;
-        }
+        AVIF_CHECKRES(avifImageAllocatePlanes(dstImage, AVIF_PLANES_YUV));
     }
     if (srcImage->alphaPlane) {
-        const avifResult allocationResult = avifImageAllocatePlanes(dstImage, AVIF_PLANES_A);
-        if (allocationResult != AVIF_RESULT_OK) {
-            avifImageDestroy(dstImage);
-            return NULL;
-        }
+        AVIF_CHECKRES(avifImageAllocatePlanes(dstImage, AVIF_PLANES_A));
     }
     const avifBool usesU16 = avifImageUsesU16(srcImage);
     for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
@@ -1092,7 +1078,7 @@ static avifImage * avifImageCopyAndPad(const avifImage * srcImage, uint32_t dstW
             dstRow += dstRowBytes;
         }
     }
-    return dstImage;
+    return AVIF_RESULT_OK;
 }
 
 static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantizer)
@@ -1667,9 +1653,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 #endif
             avifImage * paddedCellImage = NULL;
             if ((cellImage->width != firstCellImage->width) || (cellImage->height != firstCellImage->height)) {
-                paddedCellImage = avifImageCopyAndPad(cellImage, firstCellImage->width, firstCellImage->height);
-                if (!paddedCellImage) {
-                    return AVIF_RESULT_OUT_OF_MEMORY;
+                paddedCellImage = avifImageCreateEmpty();
+                AVIF_CHECKERR(paddedCellImage, AVIF_RESULT_OUT_OF_MEMORY);
+                const avifResult result = avifImageCopyAndPad(paddedCellImage, cellImage, firstCellImage->width, firstCellImage->height);
+                if (result != AVIF_RESULT_OK) {
+                    avifImageDestroy(paddedCellImage);
+                    return result;
                 }
                 cellImage = paddedCellImage;
             }
