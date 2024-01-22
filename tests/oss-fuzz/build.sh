@@ -36,14 +36,12 @@
 #     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
 #     --sanitizer address
 
-ln -s $SRC/fuzztest $SRC/libavif/ext/fuzztest
-
 # Add asan as a dependency by default to fix builds.
 export CXXFLAGS="${CXXFLAGS} -fsanitize=address"
 export CFLAGS="${CFLAGS} -fsanitize=address"
 
 # build dependencies
-cd ext && bash aom.cmd && bash dav1d.cmd && bash libjpeg.cmd && \
+cd ext && bash aom.cmd && bash dav1d.cmd && bash fuzztest.cmd && bash libjpeg.cmd && \
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
