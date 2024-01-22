@@ -1820,7 +1820,10 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
                 avifEncodeSample * sample = &item->encodeOutput->samples.sample[0];
                 size_t total_size = sample->data.size;
                 for (uint32_t sampleIndex = 1; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
-                    total_size += item->encodeOutput->samples.sample[sampleIndex].data.size;
+                    const avifEncodeSample * const sample = &item->encodeOutput->samples.sample[sampleIndex];
+                    AVIF_CHECKERR(sample->data.data == item->encodeOutput->samples.sample[0].data.data + total_size,
+                                  AVIF_RESULT_UNKNOWN_ERROR);
+                    total_size += sample->data.size;
                 }
                 chunkOffset = avifEncoderFindExistingChunk(s, mdatStartOffset, sample->data.data, total_size);
             } else {
