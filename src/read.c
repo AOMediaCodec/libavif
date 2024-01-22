@@ -5556,7 +5556,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
                     const uint32_t scaledGainMapRowCount =
                         (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
                     // Make sure it matches the formula described in the comment of avifDecoderDecodedRowCount() in avif.h.
-                    AVIF_ASSERT((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height *
+                    AVIF_CHECKERR((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height *
                                                  decoder->image->gainMap->image->height) <= gainMapRowCount,
                                 0);
                     gainMapRowCount = scaledGainMapRowCount;
