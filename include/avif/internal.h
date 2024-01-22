@@ -59,17 +59,6 @@ static inline void avifBreakOnError()
         }                                 \
     } while (0)
 
-// Same as AVIF_CHECKERR() but also assert() in debug build configuration.
-// Can be used instead of assert() for extra security.
-#define AVIF_ASSERT(A, ERR)     \
-    do {                        \
-        if (!(A)) {             \
-            assert(AVIF_FALSE); \
-            avifBreakOnError(); \
-            return ERR;         \
-        }                       \
-    } while (0)
-
 // ---------------------------------------------------------------------------
 // URNs and Content-Types
 
