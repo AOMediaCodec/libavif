@@ -23,10 +23,11 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
 
     for (auto matrix_coefficient : {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-           AVIF_MATRIX_COEFFICIENTS_YCGCO_RE, AVIF_MATRIX_COEFFICIENTS_YCGCO_RO,
+             AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
+             AVIF_MATRIX_COEFFICIENTS_YCGCO_RO,
 #endif
-               AVIF_MATRIX_COEFFICIENTS_IDENTITY, AVIF_MATRIX_COEFFICIENTS_YCGCO
-         }) {
+             AVIF_MATRIX_COEFFICIENTS_IDENTITY,
+             AVIF_MATRIX_COEFFICIENTS_YCGCO}) {
       // Read a ground truth image but ask for certain matrix coefficients.
       ImagePtr image(avifImageCreateEmpty());
       ASSERT_NE(image, nullptr);

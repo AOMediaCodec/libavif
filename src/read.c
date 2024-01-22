@@ -1574,10 +1574,10 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
 // After verifying that the relevant properties of the tile match those of the first tile, copies over the pixels from the tile
 // into dstImage.
 static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
-                                               const avifTileInfo * info,
-                                               avifImage * dstImage,
-                                               const avifTile * tile,
-                                               unsigned int tileIndex)
+                                                 const avifTileInfo * info,
+                                                 avifImage * dstImage,
+                                                 const avifTile * tile,
+                                                 unsigned int tileIndex)
 {
     const avifImageGrid * grid = &info->grid;
     const avifTile * firstTile = &data->tiles.tile[info->firstTileIndex];
@@ -1617,8 +1617,8 @@ static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
     }
 #endif
     AVIF_CHECKERR(avifImageSetViewRect(&dstView, dst, &dstViewRect) == AVIF_RESULT_OK &&
-                    avifImageSetViewRect(&srcView, tile->image, &srcViewRect) == AVIF_RESULT_OK,
-                AVIF_RESULT_INTERNAL_ERROR);
+                      avifImageSetViewRect(&srcView, tile->image, &srcViewRect) == AVIF_RESULT_OK,
+                  AVIF_RESULT_INTERNAL_ERROR);
     avifImageCopySamples(&dstView, &srcView, (tile->input->itemCategory == AVIF_ITEM_ALPHA) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
 
     return AVIF_RESULT_OK;
@@ -2426,24 +2426,11 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = {
-                "ispe",
-                "auxC",
-                "colr",
-                "av1C",
+            static const char * supportedTypes[] = { "ispe", "auxC", "colr", "av1C",
 #if defined(AVIF_CODEC_AVM)
-                "av2C",
+                                                     "av2C",
 #endif
-                "pasp",
-                "clap",
-                "irot",
-                "imir",
-                "pixi",
-                "a1op",
-                "lsel",
-                "a1lx",
-                "clli"
-            };
+                                                     "pasp", "clap", "irot", "imir", "pixi", "a1op", "lsel", "a1lx", "clli" };
             size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
             avifBool supportedType = AVIF_FALSE;
             for (size_t i = 0; i < supportedTypesCount; ++i) {
@@ -5333,8 +5320,8 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     }
 
     AVIF_CHECKERR(decoder->data->tiles.count == (decoder->data->tileInfos[AVIF_ITEM_CATEGORY_COUNT - 1].firstTileIndex +
-                                               decoder->data->tileInfos[AVIF_ITEM_CATEGORY_COUNT - 1].tileCount),
-                AVIF_RESULT_INTERNAL_ERROR);
+                                                 decoder->data->tileInfos[AVIF_ITEM_CATEGORY_COUNT - 1].tileCount),
+                  AVIF_RESULT_INTERNAL_ERROR);
 
     const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
 
@@ -5369,7 +5356,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         avifResult firstNonOkResult = AVIF_RESULT_OK;
         for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
             AVIF_CHECKERR(prepareTileResult[c] == AVIF_RESULT_OK || prepareTileResult[c] == AVIF_RESULT_WAITING_ON_IO,
-                        AVIF_RESULT_INTERNAL_ERROR);
+                          AVIF_RESULT_INTERNAL_ERROR);
             if (firstNonOkResult == AVIF_RESULT_OK) {
                 firstNonOkResult = prepareTileResult[c];
             }
@@ -5557,8 +5544,8 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
                         (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
                     // Make sure it matches the formula described in the comment of avifDecoderDecodedRowCount() in avif.h.
                     AVIF_CHECKERR((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height *
-                                                 decoder->image->gainMap->image->height) <= gainMapRowCount,
-                                0);
+                                                   decoder->image->gainMap->image->height) <= gainMapRowCount,
+                                  0);
                     gainMapRowCount = scaledGainMapRowCount;
                 }
                 minRowCount = AVIF_MIN(minRowCount, gainMapRowCount);
