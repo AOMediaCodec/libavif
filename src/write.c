@@ -1025,7 +1025,7 @@ static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avi
 static avifResult avifImageCopyAndPad(avifImage * const dstImage, const avifImage * srcImage, uint32_t dstWidth, uint32_t dstHeight)
 {
     AVIF_CHECKERR(dstImage, AVIF_RESULT_INTERNAL_ERROR);
-    AVIF_CHECKERR(dstImage->width || dstImage->height, AVIF_RESULT_INTERNAL_ERROR); // dstImage is not set yet.
+    AVIF_CHECKERR(!dstImage->width && !dstImage->height, AVIF_RESULT_INTERNAL_ERROR); // dstImage is not set yet.
     AVIF_CHECKERR(dstWidth >= srcImage->width, AVIF_RESULT_INTERNAL_ERROR);
     AVIF_CHECKERR(dstHeight >= srcImage->height, AVIF_RESULT_INTERNAL_ERROR);
 
