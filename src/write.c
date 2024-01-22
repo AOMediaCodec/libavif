@@ -1816,17 +1816,11 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
             size_t chunkOffset = 0;
 
             // Deduplication - See if an identical chunk to this has already been written
-            if (item->encodeOutput->samples.count > 0) {
+            // Doing it when item->encodeOutput->samples.count > 0 would require contiguous memory.
+            if (item->encodeOutput->samples.count == 1) {
                 avifEncodeSample * sample = &item->encodeOutput->samples.sample[0];
-                size_t total_size = sample->data.size;
-                for (uint32_t sampleIndex = 1; sampleIndex < item->encodeOutput->samples.count; ++sampleIndex) {
-                    const avifEncodeSample * const sample = &item->encodeOutput->samples.sample[sampleIndex];
-                    AVIF_CHECKERR(sample->data.data == item->encodeOutput->samples.sample[0].data.data + total_size,
-                                  AVIF_RESULT_UNKNOWN_ERROR);
-                    total_size += sample->data.size;
-                }
-                chunkOffset = avifEncoderFindExistingChunk(s, mdatStartOffset, sample->data.data, total_size);
-            } else {
+                chunkOffset = avifEncoderFindExistingChunk(s, mdatStartOffset, sample->data.data, sample->data.size);
+            } else if (item->encodeOutput->samples.count == 0) {
                 chunkOffset = avifEncoderFindExistingChunk(s, mdatStartOffset, item->metadataPayload.data, item->metadataPayload.size);
             }
 
