@@ -826,7 +826,7 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
     }
 
     avifCreateItem(item);
-    AVIF_CHECKERR(item != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    AVIF_CHECKERR(*item != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     avifDecoderItem ** itemPtr = (avifDecoderItem **)avifArrayPush(&meta->items);
     AVIF_CHECKERR(itemPtr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
 
@@ -4412,6 +4412,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     assert(alphaItemCount == colorItemCount);
     // Create a temporary item;
     avifCreateItem(alphaItem);
+    (*alphaItem)->meta = meta;
     if (alphaItem == NULL) {
         avifFree(alphaItemIndices);
         *isAlphaItemInInput = AVIF_FALSE;
