@@ -714,11 +714,6 @@ typedef struct avifMeta
     // and are then further modified/updated as new information for an item's ID is parsed.
     avifDecoderItemArray items;
 
-    // Used when the colorItem is a grid and the alpha item is represented as a set of auxl items
-    // to each color tile. The data of this item need not be read and the pixi property cannot be
-    // validated.
-    avifDecoderItem * alphaItem;
-
     // Any ipco boxes explained above are populated into this array as a staging area, which are
     // then duplicated into the appropriate items upon encountering an item property association
     // (ipma) box.
@@ -777,7 +772,6 @@ static void avifMetaDestroy(avifMeta * meta)
         }
         avifFree(item);
     }
-    avifFree(meta->alphaItem);
     avifArrayDestroy(&meta->items);
     avifArrayDestroy(&meta->properties);
     avifRWDataFree(&meta->idat);
@@ -793,26 +787,6 @@ static avifResult avifCheckItemID(const char * boxFourcc, uint32_t itemID, avifD
     return AVIF_RESULT_OK;
 }
 
-static void avifCreateItem(avifDecoderItem ** item)
-{
-    *item = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
-    if (*item == NULL) {
-        return;
-    }
-    memset(*item, 0, sizeof(avifDecoderItem));
-
-    if (!avifArrayCreate(&(*item)->properties, sizeof(avifProperty), 16)) {
-        avifFree(*item);
-        *item = NULL;
-        return;
-    }
-    if (!avifArrayCreate(&(*item)->extents, sizeof(avifExtent), 1)) {
-        avifArrayDestroy(&(*item)->properties);
-        avifFree(*item);
-        *item = NULL;
-    }
-}
-
 static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avifDecoderItem ** item)
 {
     *item = NULL;
@@ -825,12 +799,39 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
         }
     }
 
-    avifCreateItem(item);
-    AVIF_CHECKERR(*item != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    uint32_t prevID = 0;
+    // ISO/IEC 23008-12, First edition, 2017-12, Section 9.3.1:
+    //   Each ItemPropertyAssociation box shall be ordered by increasing item_ID, and there shall
+    //   be at most one association box for each item_ID, in any ItemPropertyAssociation box.
+    for (uint32_t i = 0; i < meta->items.count; ++i) {
+        AVIF_CHECKERR(meta->items.item[i]->id > prevID, AVIF_RESULT_BMFF_PARSE_FAILED);
+        prevID = meta->items.item[i]->id;
+    }
+    AVIF_CHECKERR(itemID > prevID, AVIF_RESULT_BMFF_PARSE_FAILED);
+
     avifDecoderItem ** itemPtr = (avifDecoderItem **)avifArrayPush(&meta->items);
     AVIF_CHECKERR(itemPtr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    *item = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
+    if (*item == NULL) {
+        avifArrayPop(&meta->items);
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    memset(*item, 0, sizeof(avifDecoderItem));
 
     *itemPtr = *item;
+    if (!avifArrayCreate(&(*item)->properties, sizeof(avifProperty), 16)) {
+        avifFree(*item);
+        *item = NULL;
+        avifArrayPop(&meta->items);
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    if (!avifArrayCreate(&(*item)->extents, sizeof(avifExtent), 1)) {
+        avifArrayDestroy(&(*item)->properties);
+        avifFree(*item);
+        *item = NULL;
+        avifArrayPop(&meta->items);
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
     (*item)->id = itemID;
     (*item)->meta = meta;
     return AVIF_RESULT_OK;
@@ -4410,15 +4411,20 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
         }
     }
     assert(alphaItemCount == colorItemCount);
-    // Create a temporary item;
-    avifCreateItem(alphaItem);
-    (*alphaItem)->meta = meta;
-    if (alphaItem == NULL) {
+    // Find an unused ID.
+    avifResult result;
+    const uint32_t lastID = meta->items.count ? meta->items.item[meta->items.count - 1]->id : 0;
+    if (lastID == UINT32_MAX) {
+        // In the improbable case where the last ID is the maximum one, ids cannot be kept ordered.
+        result = AVIF_RESULT_DECODE_ALPHA_FAILED;
+    } else {
+        result = avifMetaFindOrCreateItem(meta, lastID + 1, alphaItem); // Create new empty item.
+    }
+    if (result != AVIF_RESULT_OK) {
         avifFree(alphaItemIndices);
         *isAlphaItemInInput = AVIF_FALSE;
-        return AVIF_RESULT_OUT_OF_MEMORY;
+        return result;
     }
-    meta->alphaItem = *alphaItem;
     memcpy((*alphaItem)->type, "grid", 4); // Make it a grid and register alpha items as its tiles.
     (*alphaItem)->width = colorItem->width;
     (*alphaItem)->height = colorItem->height;
