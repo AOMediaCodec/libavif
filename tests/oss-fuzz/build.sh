@@ -36,13 +36,21 @@
 #     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
 #     --sanitizer address
 
-# Add asan as a dependency by default to fix builds.
-export CXXFLAGS="${CXXFLAGS} -fsanitize=address"
-export CFLAGS="${CFLAGS} -fsanitize=address"
+# Reset compile flags to build some deps without fuzzer flags.
+export ORIG_CFLAGS="$CFLAGS"
+export ORIG_CXXFLAGS="$CXXFLAGS"
+export CFLAGS=""
+export CXXFLAGS=""
+
+# fuzz flags are problematic with meson (hence no dav1d) and no point in fuzzing fuzztest.
+cd ext && bash dav1d.cmd && bash fuzztest.cmd && cd ..
+
+export CFLAGS=$ORIG_CFLAGS
+export CXXFLAGS=$ORIG_CXXFLAGS
 
 # build dependencies
-cd ext && bash aom.cmd && bash dav1d.cmd && bash fuzztest.cmd && bash libjpeg.cmd && \
-      bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
+cd ext && bash aom.cmd && bash libjpeg.cmd && bash libsharpyuv.cmd && \
+      bash libyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
 mkdir build
