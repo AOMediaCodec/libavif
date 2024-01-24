@@ -27,7 +27,7 @@ mkdir build
 cd build
 cmake -G Ninja -DBUILD_SHARED_LIBS=OFF \
     -DAVIF_CODEC_DAV1D=ON -DAVIF_LOCAL_DAV1D=ON \
-    -DAVIF_LOCAL_LIBYUV=ON ..
+    -DAVIF_LOCAL_LIBYUV=ON -DAVIF_ENABLE_WERROR=ON ..
 ninja
 
 # build fuzzer
