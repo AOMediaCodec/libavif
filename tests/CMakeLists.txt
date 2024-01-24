@@ -199,6 +199,7 @@ if(AVIF_ENABLE_FUZZTEST)
                 "fuzztest: Installed FuzzTest is not supported, please set AVIF_LOCAL_FUZZTEST=ON or AVIF_ENABLE_FUZZTEST=OFF"
         )
     endif()
+    fuzztest_setup_fuzzing_flags()
 
     add_avif_fuzztest(avif_fuzztest_dec)
     add_avif_fuzztest(avif_fuzztest_dec_incr gtest/avifincrtest_helpers.cc)

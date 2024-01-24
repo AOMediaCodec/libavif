@@ -9,8 +9,8 @@
 
 git clone https://github.com/google/fuzztest.git
 cd fuzztest
-: # There is no tagged release as of 2024/01/22. Pick the earliest commit that contains a needed bug fix.
-git checkout 8f82f46e14cc2484ddecf6d55e46243923f9a036
+: # There is no tagged release as of 2024/01/26. Pick the earliest commit that contains a needed bug fix.
+git checkout a53a2083e7df08749ea26b5960c05a9bffa186c2
 
 : # fuzztest is built by the main CMake project through add_subdirectory as recommended at:
 : # https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md

@@ -43,14 +43,13 @@ export CFLAGS=""
 export CXXFLAGS=""
 
 # fuzz flags are problematic with meson (hence no dav1d) and no point in fuzzing fuzztest.
-cd ext && bash dav1d.cmd && bash fuzztest.cmd && cd ..
+cd ext && bash dav1d.cmd && bash libsharpyuv.cmd && bash libyuv.cmd && cd ..
 
 export CFLAGS=$ORIG_CFLAGS
 export CXXFLAGS=$ORIG_CXXFLAGS
 
 # build dependencies
-cd ext && bash aom.cmd && bash libjpeg.cmd && bash libsharpyuv.cmd && \
-      bash libyuv.cmd && bash zlibpng.cmd && cd ..
+cd ext && bash aom.cmd && bash fuzztest.cmd && bash libjpeg.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
 mkdir build
