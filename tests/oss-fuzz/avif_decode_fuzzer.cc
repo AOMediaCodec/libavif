@@ -15,7 +15,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
   // timeouts and to speed the fuzzing up.
   // avifDecoderParse returns AVIF_RESULT_NOT_IMPLEMENTED if kImageSizeLimit is
   // bigger than AVIF_DEFAULT_IMAGE_SIZE_LIMIT.
-  constexpr uint32_t kImageSizeLimit = 8 * 1024 * 8 * 1024;
+  constexpr uint32_t kImageSizeLimit = 4 * 1024 * 4 * 1024;
   static_assert(kImageSizeLimit <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT,
                 "Too big an image size limit");
   decoder->imageSizeLimit = kImageSizeLimit;
