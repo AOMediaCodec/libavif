@@ -186,7 +186,7 @@ typedef enum AVIF_NODISCARD avifResult
     AVIF_RESULT_OUT_OF_MEMORY = 26,
     AVIF_RESULT_CANNOT_CHANGE_SETTING = 27, // a setting that can't change is changed during encoding
     AVIF_RESULT_INCOMPATIBLE_IMAGE = 28,    // the image is incompatible with already encoded images
-    AVIF_RESULT_INTERNAL_ERROR = 29,        // some invariants have not been satisfied
+    AVIF_RESULT_INTERNAL_ERROR = 29,        // some invariants have not been satisfied (likely a bug in libavif)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     AVIF_RESULT_ENCODE_GAIN_MAP_FAILED = 30,
     AVIF_RESULT_DECODE_GAIN_MAP_FAILED = 31,
