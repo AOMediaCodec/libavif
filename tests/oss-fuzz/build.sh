@@ -36,21 +36,21 @@
 #     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
 #     --sanitizer address
 
-# Reset compile flags to build some deps without fuzzer flags.
+# Reset compile flags to build dav1d without fuzzer flags. The meson build system
+# is problematic with sanitizer flags.
 export ORIG_CFLAGS="$CFLAGS"
 export ORIG_CXXFLAGS="$CXXFLAGS"
 export CFLAGS=""
 export CXXFLAGS=""
 
-# Use normal flags for projects built outside of libavif (e.g. dav1d with meson is
-# problematic with sanitizer flags)
-cd ext && bash dav1d.cmd && bash libsharpyuv.cmd && bash libyuv.cmd && cd ..
+cd ext && bash dav1d.cmd && cd ..
 
 export CFLAGS=$ORIG_CFLAGS
 export CXXFLAGS=$ORIG_CXXFLAGS
 
-# build dependencies
-cd ext && bash aom.cmd && bash fuzztest.cmd && bash libjpeg.cmd && bash zlibpng.cmd && cd ..
+# Prepare remaining dependencies.
+cd ext && bash aom.cmd && bash fuzztest.cmd && bash libjpeg.cmd && bash libsharpyuv.cmd &&
+      bash libyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
 mkdir build
