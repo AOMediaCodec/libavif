@@ -42,7 +42,8 @@ export ORIG_CXXFLAGS="$CXXFLAGS"
 export CFLAGS=""
 export CXXFLAGS=""
 
-# fuzz flags are problematic with meson (hence no dav1d) and no point in fuzzing fuzztest.
+# Use normal flags for projects built outside of libavif (e.g. dav1d with meson is
+# problematic with sanitizer flags)
 cd ext && bash dav1d.cmd && bash libsharpyuv.cmd && bash libyuv.cmd && cd ..
 
 export CFLAGS=$ORIG_CFLAGS
