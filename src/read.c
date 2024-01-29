@@ -787,7 +787,7 @@ static avifResult avifCheckItemID(const char * boxFourcc, uint32_t itemID, avifD
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avifDecoderItem ** item)
+static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avifDecoderItem ** item, avifDiagnostics * diag)
 {
     *item = NULL;
     assert(itemID != 0);
@@ -796,6 +796,18 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
         if (meta->items.item[i]->id == itemID) {
             *item = meta->items.item[i];
             return AVIF_RESULT_OK;
+        }
+    }
+
+    if (meta->items.count != 0) {
+        // ISO/IEC 23008-12, First edition, 2017-12, Section 9.3.1:
+        //   Each ItemPropertyAssociation box shall be ordered by increasing item_ID, and there shall
+        //   be at most one association box for each item_ID, in any ItemPropertyAssociation box.
+        const uint32_t lastID = meta->items.item[meta->items.count - 1]->id;
+        if (itemID <= lastID) {
+            avifBreakOnError();
+            avifDiagnosticsPrintf(diag, "The added itemID [%u] does not preserve the itemID order", itemID);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
     }
 
@@ -1768,7 +1780,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
 
         avifDecoderItem * item;
-        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item));
+        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item, diag));
         if (item->extents.count > 0) {
             // This item has already been given extents via this iloc box. This is invalid.
             avifDiagnosticsPrintf(diag, "Item ID [%u] contains duplicate sets of extents", itemID);
@@ -2382,7 +2394,7 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
         prevItemID = itemID;
 
         avifDecoderItem * item;
-        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item));
+        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item, diag));
         if (item->ipmaSeen) {
             avifDiagnosticsPrintf(diag, "Duplicate Box[ipma] for item ID [%u]", itemID);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -2658,7 +2670,7 @@ static avifResult avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, s
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
     avifDecoderItem * item;
-    AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item));
+    AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item, diag));
 
     memcpy(item->type, itemType, sizeof(itemType));
     item->contentType = contentType;
@@ -2727,7 +2739,7 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
         AVIF_CHECKRES(avifCheckItemID("iref", fromID, diag));
 
         avifDecoderItem * item;
-        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, fromID, &item));
+        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, fromID, &item, diag));
         if (!memcmp(irefHeader.type, "dimg", 4)) {
             if (item->hasDimgFrom) {
                 // ISO/IEC 23008-12 (HEIF) 6.6.1: The number of SingleItemTypeReferenceBoxes with the box type 'dimg'
@@ -2765,7 +2777,7 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
             } else if (!memcmp(irefHeader.type, "dimg", 4)) {
                 // derived images refer in the opposite direction
                 avifDecoderItem * dimg;
-                AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, toID, &dimg));
+                AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, toID, &dimg, diag));
 
                 dimg->dimgForID = fromID;
                 dimg->dimgIdx = refIndex;
@@ -3565,7 +3577,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
 
     meta->primaryItemID = 1;
     avifDecoderItem * colorItem;
-    AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, meta->primaryItemID, &colorItem));
+    AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, meta->primaryItemID, &colorItem, diag));
     memcpy(colorItem->type, "av01", 4);
     colorItem->width = width;
     colorItem->height = height;
@@ -3574,7 +3586,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
 
     avifDecoderItem * alphaItem = NULL;
     if (hasAlpha) {
-        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/2, &alphaItem));
+        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/2, &alphaItem, diag));
         memcpy(alphaItem->type, "av01", 4);
         alphaItem->width = width;
         alphaItem->height = height;
@@ -3679,7 +3691,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
 
     if (hasExif) {
         avifDecoderItem * exifItem;
-        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/3, &exifItem));
+        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/3, &exifItem, diag));
         memcpy(exifItem->type, "Exif", 4);
         exifItem->descForID = colorItem->id;
         colorItem->premByID = alphaIsPremultiplied;
@@ -3694,7 +3706,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
 
     if (hasXMP) {
         avifDecoderItem * xmpItem;
-        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/4, &xmpItem));
+        AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/4, &xmpItem, diag));
         memcpy(xmpItem->type, "mime", 4);
         memcpy(xmpItem->contentType.contentType, xmpContentType, xmpContentTypeSize);
         xmpItem->descForID = colorItem->id;
@@ -4037,7 +4049,7 @@ avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t fr
                 // The data comes from an item. Let avifDecoderItemMaxExtent() do the heavy lifting.
 
                 avifDecoderItem * item;
-                AVIF_CHECKRES(avifMetaFindOrCreateItem(decoder->data->meta, sample->itemID, &item));
+                AVIF_CHECKRES(avifMetaFindOrCreateItem(decoder->data->meta, sample->itemID, &item, decoder->data->diag));
                 avifResult maxExtentResult = avifDecoderItemMaxExtent(item, sample, &sampleExtent);
                 if (maxExtentResult != AVIF_RESULT_OK) {
                     return maxExtentResult;
@@ -4076,7 +4088,7 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
             // The data comes from an item. Let avifDecoderItemRead() do the heavy lifting.
 
             avifDecoderItem * item;
-            AVIF_CHECKRES(avifMetaFindOrCreateItem(decoder->data->meta, sample->itemID, &item));
+            AVIF_CHECKRES(avifMetaFindOrCreateItem(decoder->data->meta, sample->itemID, &item, decoder->data->diag));
             avifROData itemContents;
             if (sample->offset > SIZE_MAX) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -4341,6 +4353,7 @@ static avifBool avifDecoderItemIsAlphaAux(const avifDecoderItem * item, uint32_t
 static avifResult avifMetaFindAlphaItem(avifMeta * meta,
                                         const avifDecoderItem * colorItem,
                                         const avifTileInfo * colorInfo,
+                                        avifDiagnostics * diag,
                                         avifDecoderItem ** alphaItem,
                                         avifTileInfo * alphaInfo,
                                         avifBool * isAlphaItemInInput)
@@ -4401,25 +4414,14 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
         }
     }
     assert(alphaItemCount == colorItemCount);
-    // Find an unused ID.
+    // Figure out the last used itemID.
     avifResult result;
-    if (meta->items.count >= UINT32_MAX - 1) {
-        // In the improbable case where all IDs are used.
+    const uint32_t lastID = meta->items.item[meta->items.count - 1]->id;
+    if (lastID == UINT32_MAX) {
+        // In the improbable case where the last ID is the maximum one, ids cannot be kept ordered.
         result = AVIF_RESULT_DECODE_ALPHA_FAILED;
     } else {
-        uint32_t newItemID = 0;
-        avifBool isUsed;
-        do {
-            ++newItemID;
-            isUsed = AVIF_FALSE;
-            for (uint32_t i = 0; i < meta->items.count; ++i) {
-                if (meta->items.item[i]->id == newItemID) {
-                    isUsed = AVIF_TRUE;
-                    break;
-                }
-            }
-        } while (isUsed && newItemID != 0);
-        result = avifMetaFindOrCreateItem(meta, newItemID, alphaItem); // Create new empty item.
+        result = avifMetaFindOrCreateItem(meta, lastID + 1, alphaItem, diag); // Create new empty item.
     }
     if (result != AVIF_RESULT_OK) {
         avifFree(alphaItemIndices);
@@ -4563,7 +4565,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
 
     assert(gainMapItemID != 0);
     avifDecoderItem * gainMapItemTmp;
-    AVIF_CHECKRES(avifMetaFindOrCreateItem(data->meta, gainMapItemID, &gainMapItemTmp));
+    AVIF_CHECKRES(avifMetaFindOrCreateItem(data->meta, gainMapItemID, &gainMapItemTmp, data->diag));
     if (avifDecoderItemShouldBeSkipped(gainMapItemTmp)) {
         avifDiagnosticsPrintf(data->diag, "Box[tmap] gain map item %d is not a supported image type", gainMapItemID);
         return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
@@ -4887,6 +4889,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         AVIF_CHECKRES(avifMetaFindAlphaItem(data->meta,
                                             mainItems[AVIF_ITEM_COLOR],
                                             &data->tileInfos[AVIF_ITEM_COLOR],
+                                            data->diag,
                                             &mainItems[AVIF_ITEM_ALPHA],
                                             &data->tileInfos[AVIF_ITEM_ALPHA],
                                             &isAlphaItemInInput));
