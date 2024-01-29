@@ -59,16 +59,12 @@ static inline void avifBreakOnError()
         }                                 \
     } while (0)
 
-// Same as AVIF_CHECKERR() but also assert() in debug build configuration.
-// Can be used instead of assert() for extra security in release builds.
-#define AVIF_ASSERT_OR_RETURN(A, ERR) \
-    do {                              \
-        if (!(A)) {                   \
-            assert(AVIF_FALSE);       \
-            avifBreakOnError();       \
-            return ERR;               \
-        }                             \
-    } while (0)
+// AVIF_ASSERT_OR_RETURN() can be used instead of assert() for extra security in release builds.
+#ifdef NDEBUG
+#define AVIF_ASSERT_OR_RETURN(A) AVIF_CHECKERR((A), AVIF_RESULT_INTERNAL_ERROR)
+#else
+#define AVIF_ASSERT_OR_RETURN(A) assert(A)
+#endif
 
 // ---------------------------------------------------------------------------
 // URNs and Content-Types
