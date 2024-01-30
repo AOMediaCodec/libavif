@@ -43,14 +43,14 @@ export ORIG_CXXFLAGS="$CXXFLAGS"
 export CFLAGS=""
 export CXXFLAGS=""
 
-cd ext && bash dav1d.cmd && cd ..
+cd ext && bash dav1d.cmd && bash libyuv.cmd && cd ..
 
 export CFLAGS=$ORIG_CFLAGS
 export CXXFLAGS=$ORIG_CXXFLAGS
 
 # Prepare remaining dependencies.
 cd ext && bash aom.cmd && bash fuzztest.cmd && bash libjpeg.cmd && bash libsharpyuv.cmd &&
-      bash libyuv.cmd && bash zlibpng.cmd && cd ..
+      bash zlibpng.cmd && cd ..
 
 # build libavif
 mkdir build
