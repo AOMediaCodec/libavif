@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add avif_cxx.h as a C++ header with basic functionality.
 * Add enum aliases AVIF_COLOR_PRIMARIES_SRGB, AVIF_COLOR_PRIMARIES_BT2100,
   AVIF_COLOR_PRIMARIES_DCI_P3, AVIF_TRANSFER_CHARACTERISTICS_PQ.
+* Add avifResult enum entry AVIF_RESULT_INTERNAL_ERROR.
 
 ### Changed
 * Update aom.cmd: v3.8.1
