@@ -4350,10 +4350,10 @@ static avifBool avifDecoderItemIsAlphaAux(const avifDecoderItem * item, uint32_t
 static avifResult avifMetaFindAlphaItem(avifMeta * meta,
                                         const avifDecoderItem * colorItem,
                                         const avifTileInfo * colorInfo,
-                                        avifDiagnostics * diag,
                                         avifDecoderItem ** alphaItem,
                                         avifTileInfo * alphaInfo,
-                                        avifBool * isAlphaItemInInput)
+                                        avifBool * isAlphaItemInInput,
+                                        avifDiagnostics * diag)
 {
     for (uint32_t itemIndex = 0; itemIndex < meta->items.count; ++itemIndex) {
         avifDecoderItem * item = meta->items.item[itemIndex];
@@ -4416,6 +4416,9 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     const uint32_t lastID = meta->items.item[meta->items.count - 1]->id;
     if (lastID == UINT32_MAX) {
         // In the improbable case where the last ID is the maximum one, ids cannot be kept ordered.
+        avifDiagnosticsPrintf(diag,
+                              "Cannot set an itemID for alpha that fits the increasing "
+                              "order as the maximum possible ID is in use.");
         result = AVIF_RESULT_DECODE_ALPHA_FAILED;
     } else {
         result = avifMetaFindOrCreateItem(meta, lastID + 1, alphaItem, diag); // Create new empty item.
@@ -4886,10 +4889,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         AVIF_CHECKRES(avifMetaFindAlphaItem(data->meta,
                                             mainItems[AVIF_ITEM_COLOR],
                                             &data->tileInfos[AVIF_ITEM_COLOR],
-                                            data->diag,
                                             &mainItems[AVIF_ITEM_ALPHA],
                                             &data->tileInfos[AVIF_ITEM_ALPHA],
-                                            &isAlphaItemInInput));
+                                            &isAlphaItemInInput,
+                                            data->diag));
         if (mainItems[AVIF_ITEM_ALPHA]) {
             AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
                                                       mainItems[AVIF_ITEM_ALPHA],
