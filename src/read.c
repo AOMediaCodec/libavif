@@ -770,7 +770,7 @@ static void avifMetaDestroy(avifMeta * meta)
     avifFree(meta);
 }
 
-static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
+static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID, avifDiagnostics * diag)
 {
     if (itemID == 0) {
         return NULL;
@@ -779,6 +779,17 @@ static avifDecoderItem * avifMetaFindItem(avifMeta * meta, uint32_t itemID)
     for (uint32_t i = 0; i < meta->items.count; ++i) {
         if (meta->items.item[i]->id == itemID) {
             return meta->items.item[i];
+        }
+    }
+
+    if (meta->items.count != 0) {
+        // ISO/IEC 23008-12, First edition, 2017-12, Section 9.3.1:
+        //   Each ItemPropertyAssociation box shall be ordered by increasing item_ID, and there shall
+        //   be at most one association box for each item_ID, in any ItemPropertyAssociation box.
+        const uint32_t lastID = meta->items.item[meta->items.count - 1]->id;
+        if (itemID <= lastID) {
+            avifDiagnosticsPrintf(diag, "The added itemID [%u] does not preserve the itemID order", itemID);
+            return NULL;
         }
     }
 
@@ -1683,7 +1694,7 @@ static avifBool avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw, s
             AVIF_CHECK(avifROStreamReadU32(&s, &itemID)); // unsigned int(32) item_ID;
         }
 
-        avifDecoderItem * item = avifMetaFindItem(meta, itemID);
+        avifDecoderItem * item = avifMetaFindItem(meta, itemID, diag);
         if (!item) {
             avifDiagnosticsPrintf(diag, "Box[iloc] has an invalid item ID [%u]", itemID);
             return AVIF_FALSE;
@@ -2146,7 +2157,7 @@ static avifBool avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t 
         }
         prevItemID = itemID;
 
-        avifDecoderItem * item = avifMetaFindItem(meta, itemID);
+        avifDecoderItem * item = avifMetaFindItem(meta, itemID, diag);
         if (!item) {
             avifDiagnosticsPrintf(diag, "Box[ipma] has an invalid item ID [%u]", itemID);
             return AVIF_FALSE;
@@ -2413,7 +2424,7 @@ static avifBool avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, siz
         memset(&contentType, 0, sizeof(contentType));
     }
 
-    avifDecoderItem * item = avifMetaFindItem(meta, itemID);
+    avifDecoderItem * item = avifMetaFindItem(meta, itemID, diag);
     if (!item) {
         avifDiagnosticsPrintf(diag, "%s: Box[infe] with item_type %.4s has an invalid item_ID [%u]", s.diagContext, itemType, itemID);
         return AVIF_FALSE;
@@ -2501,7 +2512,7 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
 
             // Read this reference as "{fromID} is a {irefType} for {toID}"
             if (fromID && toID) {
-                avifDecoderItem * item = avifMetaFindItem(meta, fromID);
+                avifDecoderItem * item = avifMetaFindItem(meta, fromID, diag);
                 if (!item) {
                     avifDiagnosticsPrintf(diag, "Box[iref] has an invalid item ID [%u]", fromID);
                     return AVIF_FALSE;
@@ -2515,7 +2526,7 @@ static avifBool avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw, 
                     item->descForID = toID;
                 } else if (!memcmp(irefHeader.type, "dimg", 4)) {
                     // derived images refer in the opposite direction
-                    avifDecoderItem * dimg = avifMetaFindItem(meta, toID);
+                    avifDecoderItem * dimg = avifMetaFindItem(meta, toID, diag);
                     if (!dimg) {
                         avifDiagnosticsPrintf(diag, "Box[iref] has an invalid item ID dimg ref [%u]", toID);
                         return AVIF_FALSE;
@@ -3355,7 +3366,7 @@ avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t fr
             if (sample->itemID) {
                 // The data comes from an item. Let avifDecoderItemMaxExtent() do the heavy lifting.
 
-                avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID);
+                avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID, decoder->data->diag);
                 avifResult maxExtentResult = avifDecoderItemMaxExtent(item, sample, &sampleExtent);
                 if (maxExtentResult != AVIF_RESULT_OK) {
                     return maxExtentResult;
@@ -3393,7 +3404,7 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
         if (sample->itemID) {
             // The data comes from an item. Let avifDecoderItemRead() do the heavy lifting.
 
-            avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID);
+            avifDecoderItem * item = avifMetaFindItem(decoder->data->meta, sample->itemID, decoder->data->diag);
             avifROData itemContents;
             if (sample->offset > SIZE_MAX) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -3636,7 +3647,8 @@ static avifBool avifDecoderItemIsAlphaAux(avifDecoderItem * item, uint32_t color
 static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
                                                avifDecoderItem * colorItem,
                                                avifDecoderItem ** alphaItem,
-                                               avifBool * isAlphaItemInInput)
+                                               avifBool * isAlphaItemInInput,
+                                               avifDiagnostics * diag)
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = data->meta->items.item[itemIndex];
@@ -3665,12 +3677,8 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
     uint32_t * alphaItemIndices = avifAlloc(colorItemCount * sizeof(uint32_t));
     AVIF_CHECKERR(alphaItemIndices, AVIF_RESULT_OUT_OF_MEMORY);
     uint32_t alphaItemCount = 0;
-    uint32_t maxItemID = 0;
     for (uint32_t i = 0; i < colorItem->meta->items.count; ++i) {
         avifDecoderItem * item = colorItem->meta->items.item[i];
-        if (item->id > maxItemID) {
-            maxItemID = item->id;
-        }
         if (item->dimgForID == colorItem->id) {
             avifBool seenAlphaForCurrentItem = AVIF_FALSE;
             for (uint32_t j = 0; j < colorItem->meta->items.count; ++j) {
@@ -3699,8 +3707,22 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
         }
     }
     assert(alphaItemCount == colorItemCount);
-    *alphaItem = avifMetaFindItem(colorItem->meta, maxItemID + 1);
-    if (*alphaItem == NULL) {
+    // Figure out the last used itemID.
+    avifResult result = AVIF_RESULT_OK;
+    const uint32_t lastID = colorItem->meta->items.item[colorItem->meta->items.count - 1]->id;
+    if (lastID == UINT32_MAX) {
+        // In the improbable case where the last ID is the maximum one, ids cannot be kept ordered.
+        avifDiagnosticsPrintf(diag,
+                              "Cannot set an itemID for alpha that fits the increasing "
+                              "order as the maximum possible ID is in use.");
+        result = AVIF_RESULT_DECODE_ALPHA_FAILED;
+    } else {
+        *alphaItem = avifMetaFindItem(colorItem->meta, lastID + 1, diag); // Create new empty item.
+        if (*alphaItem == NULL) {
+            result = AVIF_RESULT_OUT_OF_MEMORY;
+        }
+    }
+    if (result != AVIF_RESULT_OK) {
         avifFree(alphaItemIndices);
         *isAlphaItemInInput = AVIF_FALSE;
         return AVIF_RESULT_OUT_OF_MEMORY;
@@ -3964,7 +3986,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         avifBool isAlphaItemInInput;
         avifDecoderItem * alphaItem;
-        AVIF_CHECKRES(avifDecoderDataFindAlphaItem(data, colorItem, &alphaItem, &isAlphaItemInInput));
+        AVIF_CHECKRES(avifDecoderDataFindAlphaItem(data, colorItem, &alphaItem, &isAlphaItemInInput, &decoder->diag));
         avifCodecType alphaCodecType = AVIF_CODEC_TYPE_UNKNOWN;
         if (alphaItem) {
             if (!memcmp(alphaItem->type, "grid", 4)) {
