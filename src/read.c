@@ -3712,6 +3712,9 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
     const uint32_t lastID = colorItem->meta->items.item[colorItem->meta->items.count - 1]->id;
     if (lastID == UINT32_MAX) {
         // In the improbable case where the last ID is the maximum one, ids cannot be kept ordered.
+        avifDiagnosticsPrintf(diag,
+                              "Cannot set an itemID for alpha that fits the increasing "
+                              "order as the maximum possible ID is in use.");
         result = AVIF_RESULT_DECODE_ALPHA_FAILED;
     } else {
         *alphaItem = avifMetaFindItem(colorItem->meta, lastID + 1, diag); // Create new empty item.
