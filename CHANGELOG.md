@@ -76,6 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now replaced by flags AVIF_* that can take the values: OFF, LOCAL or SYSTEM.
 * src/reformat.c: Allocate the threadData array directly.
 * AVIF_ENABLE_WERROR is set to OFF by default.
+* Fix wrong alpha plane deallocation when decoded tile pixel format does not
+  match reconstructed output image pixel format.
+* Fix identical chunk skipping optimization when writing animation data.
+* Fix ID selection for artificial grid alpha item when decoding a grid of tiles
+  which each have an associated auxiliary alpha image item.
 
 ## [1.0.3] - 2023-12-03
 
