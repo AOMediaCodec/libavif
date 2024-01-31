@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2024-02-08
+
 ### Changed
 * AVIF_ENABLE_WERROR is set to OFF by default.
 * Fix wrong alpha plane deallocation when decoded tile pixel format does not
@@ -1006,6 +1008,7 @@ code.
 - `avifVersion()` function
 
 [Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...HEAD
+[1.0.4]: https://github.com/AOMediaCodec/libavif/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/AOMediaCodec/libavif/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/AOMediaCodec/libavif/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.0.1
