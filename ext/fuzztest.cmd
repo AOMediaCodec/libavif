@@ -9,9 +9,9 @@
 
 git clone https://github.com/google/fuzztest.git
 cd fuzztest
-: # There is no tagged release as of 2024/01/26. Pick the earliest commit that fixes the
-: # undefined reference to LLVMFuzzerRunDriver when building ubsan tests.
-git checkout a53a2083e7df08749ea26b5960c05a9bffa186c2
+: # There is no tagged release as of 2024/01/26. Pick the earliest commit that fixes
+: # a validation bug in FlatMapImpl.
+git checkout b39227cb001a46ed007fa37e40507d777652ede9
 sed -i 's/-fsanitize=address//g' ./cmake/FuzzTestFlagSetup.cmake
 sed -i 's/-DADDRESS_SANITIZER//g' ./cmake/FuzzTestFlagSetup.cmake
 
