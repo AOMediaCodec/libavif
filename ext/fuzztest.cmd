@@ -12,6 +12,8 @@ cd fuzztest
 : # There is no tagged release as of 2024/01/26. Pick the earliest commit that fixes the
 : # undefined reference to LLVMFuzzerRunDriver when building ubsan tests.
 git checkout a53a2083e7df08749ea26b5960c05a9bffa186c2
+sed -i 's/-fsanitize=address//g' ./cmake/FuzzTestFlagSetup.cmake
+sed -i 's/-DADDRESS_SANITIZER//g' ./cmake/FuzzTestFlagSetup.cmake
 
 : # fuzztest is built by the main CMake project through add_subdirectory as recommended at:
 : # https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
