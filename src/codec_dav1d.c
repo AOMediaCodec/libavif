@@ -101,6 +101,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         if (res == DAV1D_ERR(EAGAIN)) {
             if (dav1dData.data) {
                 // send more data
+                dav1d_data_unref(&dav1dData);
                 continue;
             }
             return AVIF_FALSE;
