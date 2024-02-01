@@ -77,10 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * src/reformat.c: Allocate the threadData array directly.
 * AVIF_ENABLE_WERROR is set to OFF by default.
 * Fix wrong alpha plane deallocation when decoded tile pixel format does not
-  match reconstructed output image pixel format.
-* Fix identical chunk skipping optimization when writing animation data.
+  match reconstructed output image pixel format (b/320234262).
+* Fix identical chunk skipping optimization when writing animation data
+  (b/321189607 and b/321189607).
 * Fix ID selection for artificial grid alpha item when decoding a grid of tiles
-  which each have an associated auxiliary alpha image item.
+  which each have an associated auxiliary alpha image item
+  (https://crbug.com/oss-fuzz/65657).
 
 ## [1.0.3] - 2023-12-03
 
