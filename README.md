@@ -115,7 +115,7 @@ Debug and Release are available on
 Please check the [wiki](https://github.com/AOMediaCodec/libavif/wiki) for extra
 resources on libavif, such as the Release Checklist.
 
-Core libavif is written in C99. Most of the tests are written in C++14.
+The libavif library is written in C99. Most of the tests are written in C++14.
 
 ### Formatting
 
