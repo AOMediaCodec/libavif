@@ -67,7 +67,7 @@ void ReadImageFile(const std::string& arbitrary_bytes,
   const uint32_t imageSizeLimit =
       (chroma_downsampling == AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV &&
        requested_format == AVIF_PIXEL_FORMAT_YUV420)
-          ? kImageSizeLimit / 4
+          ? kImageSizeLimit / 8
           : kImageSizeLimit;
 
   const avifAppFileFormat file_format = avifReadImage(
