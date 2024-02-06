@@ -61,8 +61,10 @@ void ReadImageFile(const std::string& arbitrary_bytes,
   avif_image->matrixCoefficients = matrix_coefficients;
 
   // OSS-Fuzz limits the allocated memory to 2560 MB. Consider 16-bit samples.
+  // Reduce the limit further to include pixel buffer copies and other memory
+  // allocations.
   constexpr uint32_t kImageSizeLimit =
-      2560u * 1024 * 1024 / AVIF_MAX_AV1_LAYER_COUNT / sizeof(uint16_t);
+      2560u * 1024 * 1024 / AVIF_MAX_AV1_LAYER_COUNT / sizeof(uint16_t) / 4;
   // SharpYUV is computationally expensive. Avoid timeouts.
   const uint32_t imageSizeLimit =
       (chroma_downsampling == AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV &&
