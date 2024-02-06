@@ -83,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Fix ID selection for artificial grid alpha item when decoding a grid of tiles
   which each have an associated auxiliary alpha image item
   (https://crbug.com/oss-fuzz/65657).
+* ext/libjpeg.cmd now pulls libjpeg-turbo instead of libjpeg and AVIF_JPEG=LOCAL
+  now expects the library dependency in ext/libjpeg-turbo/build.libavif.
 
 ## [1.0.3] - 2023-12-03
 
