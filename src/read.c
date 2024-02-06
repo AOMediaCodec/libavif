@@ -2360,9 +2360,10 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED);
     unsigned int prevItemID = 0;
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
-        // ISO/IEC 23008-12, First edition, 2017-12, Section 9.3.1:
-        //   Each ItemPropertyAssociation box shall be ordered by increasing item_ID, and there shall
-        //   be at most one association box for each item_ID, in any ItemPropertyAssociation box.
+        // ISO/IEC 14496-12, Seventh edition, 2022-01, Section 8.11.14.1:
+        //   Each ItemPropertyAssociationBox shall be ordered by increasing item_ID, and there shall
+        //   be at most one occurrence of a given item_ID, in the set of ItemPropertyAssociationBox
+        //   boxes.
         unsigned int itemID;
         if (version < 1) {
             uint16_t tmp;
@@ -2574,10 +2575,10 @@ static avifResult avifParseItemPropertiesBox(avifMeta * meta, uint64_t rawOffset
             AVIF_CHECKRES(avifParseItemPropertyAssociation(meta, avifROStreamCurrent(&s), ipmaHeader.size, diag, &versionAndFlags));
             for (uint32_t i = 0; i < versionAndFlagsSeenCount; ++i) {
                 if (versionAndFlagsSeen[i] == versionAndFlags) {
-                    // HEIF (ISO 23008-12:2017) 9.3.1 - There shall be at most one
-                    // ItemPropertyAssociation box with a given pair of values of version and
+                    // BMFF (ISO/IEC 14496-12:2022) 8.11.14.1 - There shall be at most one
+                    // ItemPropertyAssociationBox with a given pair of values of version and
                     // flags.
-                    avifDiagnosticsPrintf(diag, "Multiple Box[ipma] with a given pair of values of version and flags. See HEIF (ISO 23008-12:2017) 9.3.1");
+                    avifDiagnosticsPrintf(diag, "Multiple Box[ipma] with a given pair of values of version and flags. See BMFF (ISO/IEC 14496-12:2022) 8.11.14.1");
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
             }
