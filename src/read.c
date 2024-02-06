@@ -3665,12 +3665,8 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
     uint32_t * alphaItemIndices = avifAlloc(colorItemCount * sizeof(uint32_t));
     AVIF_CHECKERR(alphaItemIndices, AVIF_RESULT_OUT_OF_MEMORY);
     uint32_t alphaItemCount = 0;
-    uint32_t maxItemID = 0;
     for (uint32_t i = 0; i < colorItem->meta->items.count; ++i) {
-        avifDecoderItem * item = colorItem->meta->items.item[i];
-        if (item->id > maxItemID) {
-            maxItemID = item->id;
-        }
+        const avifDecoderItem * const item = colorItem->meta->items.item[i];
         if (item->dimgForID == colorItem->id) {
             avifBool seenAlphaForCurrentItem = AVIF_FALSE;
             for (uint32_t j = 0; j < colorItem->meta->items.count; ++j) {
@@ -3699,11 +3695,31 @@ static avifResult avifDecoderDataFindAlphaItem(avifDecoderData * data,
         }
     }
     assert(alphaItemCount == colorItemCount);
-    *alphaItem = avifMetaFindItem(colorItem->meta, maxItemID + 1);
-    if (*alphaItem == NULL) {
+    // Find an unused ID.
+    avifResult result;
+    if (colorItem->meta->items.count >= UINT32_MAX - 1) {
+        // In the improbable case where all IDs are used.
+        result = AVIF_RESULT_DECODE_ALPHA_FAILED;
+    } else {
+        uint32_t newItemID = 0;
+        avifBool isUsed;
+        do {
+            ++newItemID;
+            isUsed = AVIF_FALSE;
+            for (uint32_t i = 0; i < colorItem->meta->items.count; ++i) {
+                if (colorItem->meta->items.item[i]->id == newItemID) {
+                    isUsed = AVIF_TRUE;
+                    break;
+                }
+            }
+        } while (isUsed && newItemID != 0);
+        *alphaItem = avifMetaFindItem(colorItem->meta, newItemID); // Create new empty item.
+        result = (*alphaItem == NULL) ? AVIF_RESULT_OUT_OF_MEMORY : AVIF_RESULT_OK;
+    }
+    if (result != AVIF_RESULT_OK) {
         avifFree(alphaItemIndices);
         *isAlphaItemInInput = AVIF_FALSE;
-        return AVIF_RESULT_OUT_OF_MEMORY;
+        return result;
     }
     memcpy((*alphaItem)->type, "grid", 4);
     (*alphaItem)->width = colorItem->width;
