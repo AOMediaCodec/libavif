@@ -1,8 +1,8 @@
-set(LIB_FOLDER "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo/build.libavif")
+set(LIB_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo/build.libavif")
 if(WIN32)
-    set(LIB_FILENAME "${LIB_FOLDER}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg-static${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(LIB_FILENAME "${LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg-static${CMAKE_STATIC_LIBRARY_SUFFIX}")
 else()
-    set(LIB_FILENAME "${LIB_FOLDER}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(LIB_FILENAME "${LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg${CMAKE_STATIC_LIBRARY_SUFFIX}")
 endif()
 if(NOT EXISTS "${LIB_FILENAME}")
     message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
@@ -15,4 +15,4 @@ target_include_directories(JPEG::JPEG INTERFACE "${JPEG_INCLUDE_DIR}")
 
 # Also add the build directory path because it contains jconfig.h,
 # which is included by jpeglib.h.
-target_include_directories(JPEG::JPEG INTERFACE "${LIB_FOLDER}")
+target_include_directories(JPEG::JPEG INTERFACE "${LIB_DIR}")
