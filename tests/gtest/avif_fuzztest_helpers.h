@@ -153,9 +153,9 @@ inline auto ArbitraryBaseAvifDecoder() {
       /*image_dimension_limit=*/fuzztest::Just(kMaxDimension),
       /*image_count_limit=*/fuzztest::Just(10),
       /*strict_flags=*/
-      fuzztest::BitFlagCombinationOf({AVIF_STRICT_PIXI_REQUIRED,
-                                      AVIF_STRICT_CLAP_VALID,
-                                      AVIF_STRICT_ALPHA_ISPE_REQUIRED}));
+      fuzztest::BitFlagCombinationOf<avifStrictFlags>(
+          {AVIF_STRICT_PIXI_REQUIRED, AVIF_STRICT_CLAP_VALID,
+           AVIF_STRICT_ALPHA_ISPE_REQUIRED}));
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
