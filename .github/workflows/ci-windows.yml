@@ -128,12 +128,13 @@ jobs:
         -I.\apps\shared -I.\include -I.\third_party\iccjpeg
         -external:W0
         -external:I.\ext\libpng
-        -external:I.\ext\libjpeg
+        -external:I.\ext\libjpeg-turbo
+        -external:I.\ext\libjpeg-turbo\build.libavif
         -external:I.\ext\zlib
         -external:I.\build\ext\libpng
         -external:I.\build\ext\zlib
         /link
-        build\ext\libjpeg\jpeg.lib
+        ext\libjpeg-turbo\build.libavif\jpeg-static.lib
         build\ext\libpng\libpng16_static.lib
         build\ext\zlib\zlibstatic.lib
         build\avif.lib
