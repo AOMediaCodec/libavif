@@ -6,7 +6,7 @@ on:
     types: [created]
 
 permissions:
-  contents: [read, write]
+  contents: write
 
 jobs:
   build-static:
