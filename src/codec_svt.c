@@ -7,6 +7,7 @@
 
 #include "svt-av1/EbSvtAv1Enc.h"
 
+#include <stdint.h>
 #include <string.h>
 
 // The SVT_AV1_VERSION_MAJOR, SVT_AV1_VERSION_MINOR, SVT_AV1_VERSION_PATCHLEVEL, and
@@ -76,6 +77,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     EbColorFormat color_format = EB_YUV420;
+    uint8_t * uvPlanes = NULL; // 4:2:0 U and V placeholder for alpha because SVT-AV1 does not support 4:0:0.
     EbBufferHeaderType * input_buffer = NULL;
     EbErrorType res = EB_ErrorNone;
 
@@ -98,6 +100,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
                 y_shift = 1;
                 break;
             case AVIF_PIXEL_FORMAT_YUV400:
+                // Setting color_format = EB_YUV400; results in "Svt[error]: Instance 1: Only support 420 now".
             case AVIF_PIXEL_FORMAT_NONE:
             case AVIF_PIXEL_FORMAT_COUNT:
             default:
@@ -198,16 +201,38 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     }
     EbSvtIOFormat * input_picture_buffer = (EbSvtIOFormat *)input_buffer->p_buffer;
 
-    int bytesPerPixel = image->depth > 8 ? 2 : 1;
+    const uint32_t bytesPerPixel = image->depth > 8 ? 2 : 1;
+    const uint32_t uvHeight = (image->height + y_shift) >> y_shift;
     if (alpha) {
         input_picture_buffer->y_stride = image->alphaRowBytes / bytesPerPixel;
         input_picture_buffer->luma = image->alphaPlane;
         input_buffer->n_filled_len = image->alphaRowBytes * image->height;
+
+#if SVT_AV1_CHECK_VERSION(1, 8, 0)
+        // Simulate 4:2:0 UV planes. SVT-AV1 does not support 4:0:0 samples.
+        const uint32_t uvWidth = (image->width + y_shift) >> y_shift;
+        const uint32_t uvRowBytes = uvWidth * bytesPerPixel;
+        const uint32_t uvSize = uvRowBytes * uvHeight;
+        uvPlanes = avifAlloc(uvSize);
+        if (uvPlanes == NULL) {
+            goto cleanup;
+        }
+        memset(uvPlanes, 0, uvSize);
+        input_picture_buffer->cb = uvPlanes;
+        input_buffer->n_filled_len += uvSize;
+        input_picture_buffer->cr = uvPlanes;
+        input_buffer->n_filled_len += uvSize;
+        input_picture_buffer->cb_stride = uvWidth;
+        input_picture_buffer->cr_stride = uvWidth;
+#else
+        // This workaround was not needed before SVT-AV1 1.8.0.
+        // See https://github.com/AOMediaCodec/libavif/issues/1992.
+        (void)uvPlanes;
+#endif
     } else {
         input_picture_buffer->y_stride = image->yuvRowBytes[0] / bytesPerPixel;
         input_picture_buffer->luma = image->yuvPlanes[0];
         input_buffer->n_filled_len = image->yuvRowBytes[0] * image->height;
-        uint32_t uvHeight = (image->height + y_shift) >> y_shift;
         input_picture_buffer->cb = image->yuvPlanes[1];
         input_buffer->n_filled_len += image->yuvRowBytes[1] * uvHeight;
         input_picture_buffer->cr = image->yuvPlanes[2];
@@ -232,6 +257,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
     result = dequeue_frame(codec, output, AVIF_FALSE);
 cleanup:
+    if (uvPlanes) {
+        avifFree(uvPlanes);
+    }
     if (input_buffer) {
         if (input_buffer->p_buffer) {
             avifFree(input_buffer->p_buffer);
