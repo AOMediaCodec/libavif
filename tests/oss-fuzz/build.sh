@@ -107,3 +107,6 @@ fi
 mkdir $OUT/corpus
 unzip $SRC/avif_decode_seed_corpus.zip -d $OUT/corpus
 cp $SRC/libavif/tests/data/* $OUT/corpus
+
+# create a bigger seed corpus for avif_decode_fuzzer
+zip -j $OUT/avif_decode_fuzzer_seed_corpus.zip $OUT/corpus/*
