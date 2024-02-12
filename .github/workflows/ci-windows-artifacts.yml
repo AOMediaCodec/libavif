@@ -88,9 +88,19 @@ jobs:
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
+    - name: Archive artifacts
+      uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
+      with:
+        type: 'zip'
+        filename: 'windows-artifacts.zip'
+        path: 'build/*.exe'
     - name: Upload artifacts
-      uses: skx/github-action-publish-binaries@b9ca5643b2f1d7371a6cba7f35333f1461bbc703 # release-2.0
+      uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        args: 'build/*.exe'
+        # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#release.
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./windows-artifacts.zip
+        asset_name: windows-artifacts.zip
+        asset_content_type: application/zip
