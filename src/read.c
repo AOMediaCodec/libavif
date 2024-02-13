@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
@@ -1421,7 +1422,22 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
         // as errors.
         const avifCodecType tileCodecType = avifGetCodecType(item->type);
         if (tileCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
-            avifDiagnosticsPrintf(&decoder->diag, "Tile item ID %u has an unknown item type '%.4s'", item->id, (const char *)item->type);
+            char type[4];
+            for (int j = 0; j < 4; j++) {
+                if (isprint((unsigned char)item->type[j])) {
+                    type[j] = item->type[j];
+                } else {
+                    type[j] = '.';
+                }
+            }
+            avifDiagnosticsPrintf(&decoder->diag,
+                                  "Tile item ID %u has an unknown item type '%.4s' (%02x%02x%02x%02x)",
+                                  item->id,
+                                  type,
+                                  item->type[0],
+                                  item->type[1],
+                                  item->type[2],
+                                  item->type[3]);
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
 
