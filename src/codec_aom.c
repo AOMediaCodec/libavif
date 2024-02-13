@@ -748,7 +748,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->g_lag_in_frames = 0;
         }
         if (encoder->maxThreads > 1) {
-            cfg->g_threads = encoder->maxThreads;
+            // libaom fails if cfg->g_threads is greater than 64 threads. See MAX_NUM_THREADS in
+            // aom/aom_util/aom_thread.h.
+            cfg->g_threads = AVIF_MIN(encoder->maxThreads, 64);
         }
 
         codec->internal->monochromeEnabled = AVIF_FALSE;
