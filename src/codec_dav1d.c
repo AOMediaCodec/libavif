@@ -88,16 +88,17 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         return AVIF_FALSE;
     }
 
+    int res;
     for (;;) {
         if (dav1dData.data) {
-            int res = dav1d_send_data(codec->internal->dav1dContext, &dav1dData);
+            res = dav1d_send_data(codec->internal->dav1dContext, &dav1dData);
             if ((res < 0) && (res != DAV1D_ERR(EAGAIN))) {
                 dav1d_data_unref(&dav1dData);
                 return AVIF_FALSE;
             }
         }
 
-        int res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
+        res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
         if (res == DAV1D_ERR(EAGAIN)) {
             if (dav1dData.data) {
                 // send more data
@@ -124,6 +125,27 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
     if (dav1dData.data) {
         dav1d_data_unref(&dav1dData);
     }
+
+    // Drain all buffered frames in the decoder.
+    //
+    // The sample should have only one frame of the desired layer. If there are more frames after
+    // that frame, we need to discard them so that they won't be mistakenly output when the decoder
+    // is used to decode another sample.
+    Dav1dPicture bufferedFrame;
+    memset(&bufferedFrame, 0, sizeof(Dav1dPicture));
+    do {
+        res = dav1d_get_picture(codec->internal->dav1dContext, &bufferedFrame);
+        if (res < 0) {
+            if (res != DAV1D_ERR(EAGAIN)) {
+                if (gotPicture) {
+                    dav1d_picture_unref(&nextFrame);
+                }
+                return AVIF_FALSE;
+            }
+        } else {
+            dav1d_picture_unref(&bufferedFrame);
+        }
+    } while (res == 0);
 
     if (gotPicture) {
         dav1d_picture_unref(&codec->internal->dav1dPicture);
