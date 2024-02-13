@@ -127,6 +127,10 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
     }
 
     // Drain all buffered frames in the decoder.
+    //
+    // The sample should have only one frame of the desired layer. If there are more frames after
+    // that frame, we need to discard them so that they won't be mistakenly output when the decoder
+    // is used to decode another sample.
     Dav1dPicture bufferedFrame;
     memset(&bufferedFrame, 0, sizeof(Dav1dPicture));
     do {
