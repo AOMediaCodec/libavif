@@ -1431,7 +1431,7 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
                 }
             }
             avifDiagnosticsPrintf(&decoder->diag,
-                                  "Tile item ID %u has an unknown item type '%.4s' (%02x%02x %02x%02x)",
+                                  "Tile item ID %u has an unknown item type '%.4s' (%02x%02x%02x%02x)",
                                   item->id,
                                   type,
                                   item->type[0],
