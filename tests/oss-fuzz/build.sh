@@ -89,7 +89,7 @@ then
     fuzz_basename=$(basename $fuzz_main_file)
     chmod -x $OUT/$fuzz_basename
     for fuzz_entrypoint in $FUZZ_TESTS; do
-      TARGET_FUZZER="${fuzz_basename}@$fuzz_entrypoint"
+      TARGET_FUZZER="${fuzz_basename}__$fuzz_entrypoint"
       # Write executer script
       echo "#!/bin/sh
 # LLVMFuzzerTestOneInput for fuzzer detection.
