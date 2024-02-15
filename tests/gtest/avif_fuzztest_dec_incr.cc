@@ -3,6 +3,7 @@
 // Compare non-incremental and incremental decode results of an arbitrary byte
 // sequence.
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 
@@ -37,8 +38,10 @@ avifResult AvifIoRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
     return AVIF_RESULT_IO_ERROR;
   }
   out->data = data->available_bytes + offset;
-  out->size = std::min(size, data->available_size - offset);
-  data->read_size = std::max(data->read_size, offset + out->size);
+  out->size =
+      std::min(size, data->available_size - static_cast<size_t>(offset));
+  data->read_size =
+      std::max(data->read_size, static_cast<size_t>(offset) + out->size);
   return AVIF_RESULT_OK;
 }
 
