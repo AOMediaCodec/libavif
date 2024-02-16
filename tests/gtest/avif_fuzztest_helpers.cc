@@ -200,10 +200,10 @@ class Environment : public ::testing::Environment {
   Environment(const char* name, const char* value)
       : name_(name), value_(value) {}
   void SetUp() override {
-#ifdef WIN32
+#ifdef _WIN32
     _putenv_s(name_, value_);  // Defined in stdlib.h.
 #else
-    setenv(name_, value_, /*__replace=*/1);
+    setenv(name_, value_, /*overwrite=*/1);
 #endif
   }
 
