@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+The changes are relative to the previous release, unless the baseline is specified.
+
 ## [Unreleased]
 
-### Added
+### Added since 1.0.0
 * Add experimental API for reading and writing gain maps in AVIF files.
   If enabled at compile time, add `gainMap` field to `avifImage`,
   add `qualityGainMap` field to `avifEncoder`, add `gainMapPresent`,
@@ -47,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   AVIF_COLOR_PRIMARIES_DCI_P3, AVIF_TRANSFER_CHARACTERISTICS_PQ.
 * Add avifResult enum entry AVIF_RESULT_INTERNAL_ERROR.
 
-### Changed
+### Changed since 1.0.0
 * Update aom.cmd: v3.8.1
 * Update dav1d.cmd: 1.4.0
 * Update libgav1.cmd: v0.19.0
