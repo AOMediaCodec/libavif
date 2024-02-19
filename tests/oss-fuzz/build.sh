@@ -36,21 +36,36 @@
 #     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
 #     --sanitizer address
 
-# Reset compile flags to build dav1d without fuzzer flags. The meson build system
-# is problematic with sanitizer flags.
+# Reset compile flags to build libyuv without fuzzer flags.
 export ORIG_CFLAGS="$CFLAGS"
 export ORIG_CXXFLAGS="$CXXFLAGS"
 export CFLAGS=""
 export CXXFLAGS=""
 
-cd ext && bash dav1d.cmd && bash libyuv.cmd && cd ..
+cd ext && bash libyuv.cmd && cd ..
 
 export CFLAGS=$ORIG_CFLAGS
 export CXXFLAGS=$ORIG_CXXFLAGS
 
+# Build dav1d with sanitizer flags.
+# Adds extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false, and -Denable_asm=false for msan
+export DAV1D_EXTRA_FLAGS="-Db_sanitize=$SANITIZER -Db_lundef=false"
+if [ "$SANITIZER" == "memory" ]
+then
+  export DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Denable_asm=false"
+fi
+sed -i 's/meson setup \(.*\) ../meson setup \1 '"${DAV1D_EXTRA_FLAGS}"' ../g' ./ext/dav1d.cmd
+
+# Build libaom with sanitizer flags.
+# Adds extra flags: -DAOM_TARGET_CPU=generic for msan.
+if [ "$SANITIZER" == "memory" ]
+then
+  sed -i 's/cmake \(.*\) ../cmake \1 -DAOM_TARGET_CPU=generic ../g' ./ext/aom.cmd
+fi
+
 # Prepare remaining dependencies.
-cd ext && bash aom.cmd && bash fuzztest.cmd && bash libjpeg.cmd && bash libsharpyuv.cmd &&
-      bash zlibpng.cmd && cd ..
+cd ext && bash aom.cmd && bash dav1d.cmd && bash fuzztest.cmd && bash libjpeg.cmd &&
+      bash libsharpyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
 mkdir build
