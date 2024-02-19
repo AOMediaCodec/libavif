@@ -131,7 +131,7 @@ inline auto ArbitraryAvifEncoder() {
                        speed);
 }
 
-// Generator for an arbitrary EncoderPtr with base options fuzzed (i.e.
+// Generator for an arbitrary DecoderPtr with base options fuzzed (i.e.
 // without "experimental" options hidden behind compile flags).
 inline auto ArbitraryBaseAvifDecoder() {
   // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
