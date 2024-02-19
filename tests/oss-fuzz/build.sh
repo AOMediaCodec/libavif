@@ -36,20 +36,53 @@
 #     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
 #     --sanitizer address
 
-# Reset compile flags to build dav1d without fuzzer flags. The meson build system
-# is problematic with sanitizer flags.
+# Build dav1d with sanitizer flags.
+# This duplicates dav1d.cmd but includes extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false,
+# and -Denable_asm=false for msan
+cd ext
+git clone -b 1.4.0 --depth 1 https://code.videolan.org/videolan/dav1d.git
+cd dav1d
+mkdir build
+cd build
+export DAV1D_FLAGS="--default-library=static --buildtype release -Denable_tools=false -Denable_tests=false -Db_sanitize=$SANITIZER -Db_lundef=false"
+if [ "$SANITIZER" == "memory" ]
+then
+  export DAV1D_FLAGS="${DAV1D_FLAGS} -Denable_asm=false"
+fi
+meson setup ${DAV1D_FLAGS} ..
+ninja
+cd ../../..
+
+# Reset compile flags to build libyuv without fuzzer flags.
 export ORIG_CFLAGS="$CFLAGS"
 export ORIG_CXXFLAGS="$CXXFLAGS"
 export CFLAGS=""
 export CXXFLAGS=""
 
-cd ext && bash dav1d.cmd && bash libyuv.cmd && cd ..
+cd ext && bash libyuv.cmd && cd ..
 
 export CFLAGS=$ORIG_CFLAGS
 export CXXFLAGS=$ORIG_CXXFLAGS
 
+# Build libaom with sanitizer flags.
+# This duplicates aom.cmd but adds extra flags: -DAOM_TARGET_CPU=generic for msan.
+if [ "$SANITIZER" == "memory" ]
+then
+  cd ext
+  git clone -b v3.8.1 --depth 1 https://aomedia.googlesource.com/aom
+  cd aom
+  mkdir build.libavif
+  cd build.libavif
+  # Use -DAOM_TARGET_CPU=generic to disable assembly.
+  cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCONFIG_PIC=1 -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 -DAOM_TARGET_CPU=generic ..
+  ninja
+  cd ../../..
+else
+  cd ext && bash aom.cmd && cd ..
+fi
+
 # Prepare remaining dependencies.
-cd ext && bash aom.cmd && bash fuzztest.cmd && bash libjpeg.cmd && bash libsharpyuv.cmd &&
+cd ext && bash fuzztest.cmd && bash libjpeg.cmd && bash libsharpyuv.cmd &&
       bash zlibpng.cmd && cd ..
 
 # build libavif
