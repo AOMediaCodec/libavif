@@ -33,9 +33,6 @@
 // }
 static const size_t VISUALSAMPLEENTRY_SIZE = 78;
 
-static const char xmpContentType[] = AVIF_CONTENT_TYPE_XMP;
-static const size_t xmpContentTypeSize = sizeof(xmpContentType);
-
 // The only supported ipma box values for both version and flags are [0,1], so there technically
 // can't be more than 4 unique tuples right now.
 #define MAX_IPMA_VERSION_AND_FLAGS_SEEN 4
@@ -1677,7 +1674,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
 
             AVIF_CHECKRES(avifRWDataSet(&image->exif, avifROStreamCurrent(&exifBoxStream), avifROStreamRemainingBytes(&exifBoxStream)));
         } else if (!decoder->ignoreXMP && !memcmp(item->type, "mime", 4) &&
-                   !memcmp(item->contentType.contentType, xmpContentType, xmpContentTypeSize)) {
+                   !strcmp(item->contentType.contentType, AVIF_CONTENT_TYPE_XMP)) {
             avifROData xmpContents;
             avifResult readResult = avifDecoderItemRead(item, decoder->io, &xmpContents, 0, 0, &decoder->diag);
             if (readResult != AVIF_RESULT_OK) {
@@ -3709,7 +3706,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
         avifDecoderItem * xmpItem;
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/4, &xmpItem));
         memcpy(xmpItem->type, "mime", 4);
-        memcpy(xmpItem->contentType.contentType, xmpContentType, xmpContentTypeSize);
+        memcpy(xmpItem->contentType.contentType, AVIF_CONTENT_TYPE_XMP, sizeof(AVIF_CONTENT_TYPE_XMP));
         xmpItem->descForID = colorItem->id;
         colorItem->premByID = alphaIsPremultiplied;
 
