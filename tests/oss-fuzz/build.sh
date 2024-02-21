@@ -52,6 +52,13 @@ then
   sed -i 's/cmake \(.*\) ../cmake \1 -DAOM_TARGET_CPU=generic ../g' ./ext/aom.cmd
 fi
 
+# Build libjpeg-turbo with sanitizer flags. Add extra flag -DWITH_SIMD=0 for msan.
+# See https://github.com/libjpeg-turbo/libjpeg-turbo/blob/main/README.md#memory-debugger-pitfalls
+if [ "$SANITIZER" == "memory" ]
+then
+  sed -i 's/cmake -S libjpeg-turbo \(.*\)/cmake -S libjpeg-turbo \1 -DWITH_SIMD=0/g' ./ext/libjpeg.cmd
+fi
+
 # Prepare dependencies.
 cd ext && bash aom.cmd && bash dav1d.cmd && bash fuzztest.cmd && bash libjpeg.cmd &&
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
