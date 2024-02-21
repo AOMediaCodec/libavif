@@ -245,7 +245,7 @@ std::vector<std::string> GetTestImagesContents(
     // Only a warning because this can happen when running the binary with
     // --list_fuzz_tests (such as with gtest_discover_tests() in cmake).
     std::cerr << "WARNING: TEST_DATA_DIRS env variable not set, unable to read "
-                 "seed files";
+                 "seed files\n";
     return {};
   }
 
