@@ -48,6 +48,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add enum aliases AVIF_COLOR_PRIMARIES_SRGB, AVIF_COLOR_PRIMARIES_BT2100,
   AVIF_COLOR_PRIMARIES_DCI_P3, AVIF_TRANSFER_CHARACTERISTICS_PQ.
 * Add avifResult enum entry AVIF_RESULT_INTERNAL_ERROR.
+* Require libyuv by default (but it can still be disabled with
+  -DAVIF_LIBYUV=OFF).
 
 ### Changed since 1.0.0
 * Update aom.cmd: v3.8.1

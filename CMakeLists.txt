@@ -201,7 +201,7 @@ if(AVIF_JPEG STREQUAL "LOCAL")
     include(LocalJpeg)
 endif()
 
-set_local_or_system_option("LIBYUV" "OFF" "Use libyuv.")
+set_local_or_system_option("LIBYUV" "SYSTEM" "Use libyuv.")
 check_avif_option(AVIF_LIBYUV TARGET yuv::yuv PKG_NAME libyuv)
 if(AVIF_LIBYUV_ENABLED)
     # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
