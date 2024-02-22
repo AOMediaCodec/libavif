@@ -897,6 +897,12 @@ static avifBool avifJPEGReadInternal(FILE * f,
     jpeg_stdio_src(&cinfo, f);
     jpeg_read_header(&cinfo, TRUE);
 
+    jpeg_calc_output_dimensions(&cinfo);
+    if (cinfo.output_width > imageSizeLimit / cinfo.output_height) {
+        fprintf(stderr, "Too big JPEG dimensions (%u x %u > %u px): %s\n", cinfo.output_width, cinfo.output_height, imageSizeLimit, inputFilename);
+        goto cleanup;
+    }
+
     if (!ignoreColorProfile) {
         uint8_t * iccDataTmp;
         unsigned int iccDataLen;
@@ -931,10 +937,6 @@ static avifBool avifJPEGReadInternal(FILE * f,
 
         avif->width = cinfo.output_width;
         avif->height = cinfo.output_height;
-        if ((uint32_t)avif->width > imageSizeLimit / (uint32_t)avif->height) {
-            fprintf(stderr, "Too big JPEG dimensions (%d x %d > %u px): %s\n", avif->width, avif->height, imageSizeLimit, inputFilename);
-            goto cleanup;
-        }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
         const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
                                     avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
