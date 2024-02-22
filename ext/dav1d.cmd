@@ -16,8 +16,9 @@ mkdir build
 cd build
 
 : # macOS might require: -Dc_args=-fno-stack-check
-: # Build with asan: -Db_sanitize=address
-: # Build with ubsan: -Db_sanitize=undefined
+: # Build with asan: -Db_sanitize=address -Db_lundef=false
+: # Build with msan: -Db_sanitize=memory -Db_lundef=false -Denable_asm=false
+: # Build with ubsan: -Db_sanitize=undefined -Db_lundef=false
 meson setup --default-library=static --buildtype release -Denable_tools=false -Denable_tests=false ..
 ninja
 cd ../..
