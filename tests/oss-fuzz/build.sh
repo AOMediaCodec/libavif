@@ -37,10 +37,10 @@
 #     --sanitizer address
 
 # Build dav1d with sanitizer flags.
-# Adds extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false, and -Denable_asm=false for msan
+# Adds extra flags: -Db_sanitize=$SANITIZER, and -Denable_asm=false for msan
 if [ "$SANITIZER" != "coverage" ] && [ "$SANITIZER" != "introspector" ]
 then
-  export DAV1D_EXTRA_FLAGS="-Db_sanitize=$SANITIZER -Db_lundef=false"
+  export DAV1D_EXTRA_FLAGS="-Db_sanitize=$SANITIZER"
 fi
 if [ "$SANITIZER" == "memory" ]
 then
