@@ -9,9 +9,9 @@
 
 git clone https://github.com/google/fuzztest.git
 cd fuzztest
-: # There is no tagged release as of 2024/01/26. Pick the earliest commit that fixes
-: # a validation bug in FlatMapImpl.
-git checkout b39227cb001a46ed007fa37e40507d777652ede9
+: # There is no tagged release as of 2024/02/22. Pick the earliest commit that fixes
+: # an infinite recursion in ParseImpl.
+git checkout 727cefdcbf8c05b8c30a010cfb26f5b7c78ca701
 sed -i 's/-fsanitize=address//g' ./cmake/FuzzTestFlagSetup.cmake
 sed -i 's/-DADDRESS_SANITIZER//g' ./cmake/FuzzTestFlagSetup.cmake
 
