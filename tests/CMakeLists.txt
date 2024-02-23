@@ -23,7 +23,7 @@ macro(register_test_for_coverage TEST_NAME)
 endmacro()
 
 add_executable(aviftest aviftest.c)
-if(AVIF_CODEC_LIBGAV1_ENABLED)
+if(AVIF_CODEC_LIBGAV1_ENABLED OR AVIF_LIBYUV_ENABLED)
     set_target_properties(aviftest PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 target_link_libraries(aviftest avif)
@@ -31,7 +31,7 @@ add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
 register_test_for_coverage(aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
 add_executable(avifyuv avifyuv.c)
-if(AVIF_CODEC_LIBGAV1_ENABLED)
+if(AVIF_CODEC_LIBGAV1_ENABLED OR AVIF_LIBYUV_ENABLED)
     set_target_properties(avifyuv PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
 
