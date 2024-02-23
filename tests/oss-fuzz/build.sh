@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash
 # Copyright 2020 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,8 @@
 #     python3 infra/helper.py run_fuzzer libavif \
 #     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
 #     --sanitizer address
+
+set -eu
 
 # Build dav1d with sanitizer flags.
 # Adds extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false, and -Denable_asm=false for msan
