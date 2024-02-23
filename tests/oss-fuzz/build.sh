@@ -129,3 +129,5 @@ fi
 cp $SRC/avif_decode_seed_corpus.zip $OUT/avif_decode_fuzzer_seed_corpus.zip
 zip -j $OUT/avif_decode_fuzzer_seed_corpus.zip \
   $(find $SRC/libavif/tests/data -maxdepth 1 -type f)
+# copy seed corpus for fuzztest tests
+unzip $OUT/avif_decode_fuzzer_seed_corpus.zip -d $OUT/corpus
