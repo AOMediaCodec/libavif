@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash
 # Copyright 2020 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,8 @@
 #     python3 infra/helper.py run_fuzzer libavif \
 #     avif_fuzztest_enc_dec_incr@EncodeDecodeAvifFuzzTest.EncodeDecodeGridValid \
 #     --sanitizer address
+
+set -eu
 
 # Build dav1d with sanitizer flags.
 # Adds extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false, and -Denable_asm=false for msan
@@ -123,10 +125,9 @@ chmod -x \$this_dir/$fuzz_basename" > $OUT/$TARGET_FUZZER
   done
 fi
 
-# copy seed corpus for fuzztest tests
-mkdir $OUT/corpus
-unzip $SRC/avif_decode_seed_corpus.zip -d $OUT/corpus
-cp $SRC/libavif/tests/data/* $OUT/corpus
-
 # create a bigger seed corpus for avif_decode_fuzzer
-zip -j $OUT/avif_decode_fuzzer_seed_corpus.zip $OUT/corpus/*
+cp $SRC/avif_decode_seed_corpus.zip $OUT/avif_decode_fuzzer_seed_corpus.zip
+zip -j $OUT/avif_decode_fuzzer_seed_corpus.zip \
+  $(find $SRC/libavif/tests/data -maxdepth 1 -type f)
+# copy seed corpus for fuzztest tests
+unzip $OUT/avif_decode_fuzzer_seed_corpus.zip -d $OUT/corpus
