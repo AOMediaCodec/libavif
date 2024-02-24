@@ -163,22 +163,23 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
     } else {
 
         /* only use buffering if animation doesn't fit into given buffer */
-        if (context->decoder->imageCount > BUFFER && avif_iter->current_frame > context->frames->len / 2) {
+        if (context->decoder->imageCount > BUFFER) {
+            if (avif_iter->current_frame > context->frames->len / 2) {
 
-            for (unsigned i = 0; i < avif_iter->current_frame; i++) {
-                g_object_unref(g_array_index(context->frames, AvifAnimationFrame, i).pixbuf);
+                for (unsigned i = 0; i < avif_iter->current_frame; i++) {
+                    g_object_unref(g_array_index(context->frames, AvifAnimationFrame, i).pixbuf);
+                }
+                context->frames = g_array_remove_range(context->frames, 0, avif_iter->current_frame);
+                avif_iter->current_frame = 0;
+
+                if (context->decoder->imageIndex == context->decoder->imageCount - 1) {
+                    avifDecoderReset(context->decoder);
+                }
+
+                /* wake up sleeping decoder thread */
+                g_async_queue_push(context->queue, "");
             }
-            context->frames = g_array_remove_range(context->frames, 0, avif_iter->current_frame);
-            avif_iter->current_frame -= (avif_iter->current_frame);
-
-            if (context->decoder->imageIndex == context->decoder->imageCount - 1) {
-                avifDecoderReset(context->decoder);
-            }
-
-            /* wake up sleeping decoder thread */
-            g_async_queue_push(context->queue, "");
         }
-        /* only relevant for animations that fit in the buffer */
         else if (elapsed_time > context->total_animation_time) {
             elapsed_time = elapsed_time % context->total_animation_time;
             avif_iter->current_animation_time = 0;
@@ -188,6 +189,12 @@ static gboolean avif_animation_iter_advance(GdkPixbufAnimationIter * iter, const
         /* how much time has elapsed since the last frame */
         elapsed_time -= avif_iter->current_animation_time;
         uint64_t frame_duration;
+
+        /* Fix for annoying possible race condition where the decoder thread lags behind */
+        frame_duration = g_array_index(context->frames, AvifAnimationFrame, avif_iter->current_frame).duration_ms;
+        if (elapsed_time > ((context->frames->len - avif_iter->current_frame) * frame_duration)) {
+            elapsed_time = (context->frames->len - avif_iter->current_frame - 1) * frame_duration;
+        }
 
         while (1) {
             frame_duration = g_array_index(context->frames, AvifAnimationFrame, avif_iter->current_frame).duration_ms;
