@@ -38,19 +38,24 @@ else
 fi
 
 AVIFENC="${BINARY_DIR}/avifenc"
+AVIFDEC="${BINARY_DIR}/avifdec"
 
 # Input file paths.
 INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
 INPUT_JPG="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
+INPUT_ICC="${TESTDATA_DIR}/sRGB2014.icc"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_metadata_encoded.avif"
 ENCODED_FILE_NO_METADATA="avif_test_cmd_metadata_encoded_no_metadata.avif"
 ENCODED_FILE_MORE_METADATA="avif_test_cmd_metadata_encoded_more_metadata.avif"
+DECODED_FILE="avif_test_cmd_metadata_decoded.png"
+DECODED_FILE_CHANGED_ICC="avif_test_cmd_metadata_decoded_changed_icc.png"
 
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${ENCODED_FILE_MORE_METADATA}"
+    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${ENCODED_FILE_MORE_METADATA}" \
+          "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}"
   popd
 }
 trap cleanup EXIT
@@ -60,14 +65,24 @@ pushd ${TMP_DIR}
   echo "Testing metadata enc"
   for INPUT in "${INPUT_PNG}" "${INPUT_JPG}"; do
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE}"
+
     # Ignoring a metadata chunk should produce a different output file.
+
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_NO_METADATA}" --ignore-icc
     cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_NO_METADATA}" --ignore-exif
     cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_NO_METADATA}" --ignore-xmp
     cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
+
+    "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
+    "${AVIFDEC}" "${ENCODED_FILE}" --ignore-icc "${DECODED_FILE_CHANGED_ICC}"
+    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}" && exit 1
+    "${AVIFDEC}" "${ENCODED_FILE}" --icc "${INPUT_ICC}" "${DECODED_FILE_CHANGED_ICC}"
+    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}" && exit 1
+
     # As should adding metadata.
+
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE_MORE_METADATA}" --clli 1000,50
     cmp "${ENCODED_FILE}" "${ENCODED_FILE_MORE_METADATA}" && exit 1
   done

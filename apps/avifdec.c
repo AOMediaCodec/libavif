@@ -43,6 +43,7 @@ static void syntax(void)
     printf("                        avifdec will use --index to choose which layer to decode (in progressive order).\n");
     printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
+    printf("    --icc FILENAME    : Provide an ICC profile payload (implies --ignore-icc)\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --size-limit C    : Specifies the image size limit (in total pixels) that should be tolerated.\n");
     printf("                        Default: %u, set to a smaller value to further restrict.\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
@@ -64,6 +65,7 @@ int main(int argc, char * argv[])
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
+    const char * iccOverrideFilename = NULL;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
     avifBool allowProgressive = AVIF_FALSE;
@@ -178,6 +180,10 @@ int main(int argc, char * argv[])
             strictFlags = AVIF_STRICT_DISABLED;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
+        } else if (!strcmp(arg, "--icc")) {
+            NEXTARG();
+            iccOverrideFilename = arg;
+            ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-icc")) {
             ignoreICC = AVIF_TRUE;
         } else if (!strcmp(arg, "--size-limit")) {
@@ -355,11 +361,30 @@ int main(int argc, char * argv[])
         assert(result == AVIF_RESULT_OK);
     }
 
+    if (iccOverrideFilename) {
+        avifRWData iccOverride = AVIF_DATA_EMPTY;
+        if (!avifReadEntireFile(iccOverrideFilename, &iccOverride)) {
+            fprintf(stderr, "ERROR: Unable to read ICC: %s\n", iccOverrideFilename);
+            avifRWDataFree(&iccOverride);
+            goto cleanup;
+        }
+        printf("[--icc] Setting ICC profile: %s\n", iccOverrideFilename);
+        result = avifImageSetProfileICC(decoder->image, iccOverride.data, iccOverride.size);
+        avifRWDataFree(&iccOverride);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set ICC: %s\n", avifResultToString(result));
+            goto cleanup;
+        }
+    }
+
     avifAppFileFormat outputFormat = avifGuessFileFormat(outputFilename);
     if (outputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine output file extension: %s\n", outputFilename);
         goto cleanup;
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
+        if (decoder->image->icc.size || decoder->image->exif.size || decoder->image->xmp.size) {
+            printf("Warning: metadata dropped when saving to y4m.\n");
+        }
         if (!y4mWrite(outputFilename, decoder->image)) {
             goto cleanup;
         }
