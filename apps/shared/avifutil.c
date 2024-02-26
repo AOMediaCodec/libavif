@@ -348,6 +348,36 @@ avifAppFileFormat avifReadImage(const char * filename,
     return format;
 }
 
+avifBool avifReadEntireFile(const char * filename, avifRWData * raw)
+{
+    FILE * f = fopen(filename, "rb");
+    if (!f) {
+        return AVIF_FALSE;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long pos = ftell(f);
+    if (pos <= 0) {
+        fclose(f);
+        return AVIF_FALSE;
+    }
+    size_t fileSize = (size_t)pos;
+    fseek(f, 0, SEEK_SET);
+
+    if (avifRWDataRealloc(raw, fileSize) != AVIF_RESULT_OK) {
+        fclose(f);
+        return AVIF_FALSE;
+    }
+    size_t bytesRead = fread(raw->data, 1, fileSize, f);
+    fclose(f);
+
+    if (bytesRead != fileSize) {
+        avifRWDataFree(raw);
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
 void avifImageFixXMP(avifImage * image)
 {
     // Zero bytes are forbidden in UTF-8 XML: https://en.wikipedia.org/wiki/Valid_characters_in_XML

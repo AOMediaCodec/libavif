@@ -50,6 +50,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add avifResult enum entry AVIF_RESULT_INTERNAL_ERROR.
 * Require libyuv by default (but it can still be disabled with
   -DAVIF_LIBYUV=OFF).
+* Add avifdec --icc flag to override the output color profile.
 
 ### Changed since 1.0.0
 * Update aom.cmd: v3.8.1

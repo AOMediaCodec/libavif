@@ -653,36 +653,6 @@ static avifBool avifInputReadImage(avifInput * input,
     return AVIF_TRUE;
 }
 
-static avifBool readEntireFile(const char * filename, avifRWData * raw)
-{
-    FILE * f = fopen(filename, "rb");
-    if (!f) {
-        return AVIF_FALSE;
-    }
-
-    fseek(f, 0, SEEK_END);
-    long pos = ftell(f);
-    if (pos <= 0) {
-        fclose(f);
-        return AVIF_FALSE;
-    }
-    size_t fileSize = (size_t)pos;
-    fseek(f, 0, SEEK_SET);
-
-    if (avifRWDataRealloc(raw, fileSize) != AVIF_RESULT_OK) {
-        fclose(f);
-        return AVIF_FALSE;
-    }
-    size_t bytesRead = fread(raw->data, 1, fileSize, f);
-    fclose(f);
-
-    if (bytesRead != fileSize) {
-        avifRWDataFree(raw);
-        return AVIF_FALSE;
-    }
-    return AVIF_TRUE;
-}
-
 // Returns NULL if a memory allocation failed. The return value should be freed with free().
 static char * avifStrdup(const char * str)
 {
@@ -1773,21 +1743,21 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "--exif")) {
             NEXTARG();
-            if (!readEntireFile(arg, &exifOverride)) {
+            if (!avifReadEntireFile(arg, &exifOverride)) {
                 fprintf(stderr, "ERROR: Unable to read Exif metadata: %s\n", arg);
                 goto cleanup;
             }
             settings.ignoreExif = AVIF_TRUE;
         } else if (!strcmp(arg, "--xmp")) {
             NEXTARG();
-            if (!readEntireFile(arg, &xmpOverride)) {
+            if (!avifReadEntireFile(arg, &xmpOverride)) {
                 fprintf(stderr, "ERROR: Unable to read XMP metadata: %s\n", arg);
                 goto cleanup;
             }
             settings.ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--icc")) {
             NEXTARG();
-            if (!readEntireFile(arg, &iccOverride)) {
+            if (!avifReadEntireFile(arg, &iccOverride)) {
                 fprintf(stderr, "ERROR: Unable to read ICC profile: %s\n", arg);
                 goto cleanup;
             }

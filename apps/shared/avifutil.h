@@ -84,6 +84,9 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter);
 
+// Copies all the bytes from the file at filename to a newly allocated memory chunk.
+avifBool avifReadEntireFile(const char * filename, avifRWData * raw);
+
 // Removes a single trailing null character from the image->xmp, if there is exactly one.
 void avifImageFixXMP(avifImage * image);
 
