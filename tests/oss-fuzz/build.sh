@@ -40,13 +40,14 @@ set -eu
 
 # Build dav1d with sanitizer flags.
 # Adds extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false, and -Denable_asm=false for msan
+DAV1D_EXTRA_FLAGS=""
 if [ "$SANITIZER" != "coverage" ] && [ "$SANITIZER" != "introspector" ]
 then
-  export DAV1D_EXTRA_FLAGS="-Db_sanitize=$SANITIZER -Db_lundef=false"
+  DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Db_sanitize=$SANITIZER -Db_lundef=false"
 fi
 if [ "$SANITIZER" == "memory" ]
 then
-  export DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Denable_asm=false"
+  DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Denable_asm=false"
 fi
 sed -i 's/meson setup \(.*\) \.\./meson setup \1 '"${DAV1D_EXTRA_FLAGS}"' ../g' ./ext/dav1d.cmd
 
@@ -71,12 +72,11 @@ cd ext && bash aom.cmd && bash dav1d.cmd && bash fuzztest.cmd && bash libjpeg.cm
 # build libavif
 mkdir build
 cd build
+EXTRA_CMAKE_FLAGS=""
 if [ "$FUZZING_ENGINE" == "libfuzzer" ]
 then
-  export CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
-  export EXTRA_CMAKE_FLAGS="-DAVIF_ENABLE_FUZZTEST=ON -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer"
-else
-  export EXTRA_CMAKE_FLAGS=""
+  CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
+  EXTRA_CMAKE_FLAGS="${EXTRA_CMAKE_FLAGS} -DAVIF_ENABLE_FUZZTEST=ON -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer"
 fi
 cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
       -DAVIF_CODEC_AOM_DECODE=ON -DAVIF_CODEC_AOM_ENCODE=ON \
