@@ -986,20 +986,31 @@ static avifBool avifJPEGReadInternal(FILE * f,
     }
 
     if (!ignoreExif) {
-        const avifROData tagExif = { (const uint8_t *)AVIF_JPEG_EXIF_HEADER, AVIF_JPEG_EXIF_HEADER_LENGTH };
         avifBool found = AVIF_FALSE;
         for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
-            if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > tagExif.size) &&
-                !memcmp(marker->data, tagExif.data, tagExif.size)) {
+            if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > AVIF_JPEG_EXIF_HEADER_LENGTH) &&
+                !memcmp(marker->data, AVIF_JPEG_EXIF_HEADER, AVIF_JPEG_EXIF_HEADER_LENGTH)) {
                 if (found) {
                     // TODO(yguyon): Implement instead of outputting an error.
                     fprintf(stderr, "Exif extraction failed: unsupported Exif split into multiple segments or invalid multiple Exif segments\n");
                     goto cleanup;
                 }
+
+                if (marker->data_length - AVIF_JPEG_EXIF_HEADER_LENGTH > imageSizeLimit) {
+                    fprintf(stderr,
+                            "Setting Exif metadata failed: Exif size is too large (%u > %u px): %s\n",
+                            marker->data_length - AVIF_JPEG_EXIF_HEADER_LENGTH,
+                            imageSizeLimit,
+                            inputFilename);
+                    goto cleanup;
+                }
+
                 // Exif orientation, if any, is imported to avif->irot/imir and kept in avif->exif.
                 // libheif has the same behavior, see
                 // https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/heif_enc.cc#L403
-                if (avifImageSetMetadataExif(avif, marker->data + tagExif.size, marker->data_length - tagExif.size) != AVIF_RESULT_OK) {
+                if (avifImageSetMetadataExif(avif,
+                                             marker->data + AVIF_JPEG_EXIF_HEADER_LENGTH,
+                                             marker->data_length - AVIF_JPEG_EXIF_HEADER_LENGTH) != AVIF_RESULT_OK) {
                     fprintf(stderr, "Setting Exif metadata failed: %s (out of memory)\n", inputFilename);
                     goto cleanup;
                 }
@@ -1062,8 +1073,13 @@ static avifBool avifJPEGReadInternal(FILE * f,
                 //   "offset of this portion as a 32-bit unsigned integer"
                 const uint32_t extendedXMPOffset = avifJPEGReadUint32BigEndian(
                     &marker->data[AVIF_JPEG_EXTENDED_XMP_TAG_LENGTH + AVIF_JPEG_EXTENDED_XMP_GUID_LENGTH + 4]);
-                if (((uint64_t)standardXMPSize + totalExtendedXMPSize) > SIZE_MAX) {
-                    fprintf(stderr, "XMP extraction failed: total XMP size is too large\n");
+                if (((uint64_t)standardXMPSize + totalExtendedXMPSize) > imageSizeLimit) {
+                    fprintf(stderr,
+                            "XMP extraction failed: total XMP size is too large (%u + %u > %u px): %s\n",
+                            standardXMPSize,
+                            totalExtendedXMPSize,
+                            imageSizeLimit,
+                            inputFilename);
                     goto cleanup;
                 }
                 if ((extendedXMPSize == 0) || (((uint64_t)extendedXMPOffset + extendedXMPSize) > totalExtendedXMPSize)) {
