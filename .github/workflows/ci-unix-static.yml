@@ -38,12 +38,12 @@ jobs:
 
     - name: Cache external dependencies
       id: cache-ext
-      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+      uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
       with:
         path: ext
         key: ${{ runner.os }}-${{ matrix.build-type }}-${{ hashFiles('ext/*.cmd', 'ext/svt.sh') }}
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@d06b37b47cfd043ec794ffa3e40e0b6b5858a7ec # v1.14.2
+      uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b # v2.0.1
       with:
         # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
         cmake-version: '3.17.x'
