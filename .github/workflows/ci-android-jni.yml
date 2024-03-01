@@ -28,7 +28,7 @@ jobs:
       - name: Setup ninja
         uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@d06b37b47cfd043ec794ffa3e40e0b6b5858a7ec # v1.14.2
+        uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b # v2.0.1
         with:
           cmake-version: "3.19.x"
       - name: Setup python
@@ -46,7 +46,7 @@ jobs:
         working-directory: ext
         run: bash libyuv_android.sh ${{ steps.setup-ndk.outputs.ndk-path }}
       - name: Setup JDK
-        uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93 # v4.0.0
+        uses: actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8 # v4.1.0
         with:
           distribution: "zulu"
           java-version: 17
