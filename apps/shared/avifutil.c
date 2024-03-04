@@ -321,6 +321,7 @@ avifAppFileFormat avifReadImage(const char * filename,
             *outDepth = image->depth;
         }
     } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
+        // imageSizeLimit is also used to limit Exif and XMP metadata here.
         if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap, imageSizeLimit)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
