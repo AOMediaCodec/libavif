@@ -998,7 +998,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
 
                 if (marker->data_length - AVIF_JPEG_EXIF_HEADER_LENGTH > sizeLimit) {
                     fprintf(stderr,
-                            "Setting Exif metadata failed: Exif size is too large (%u > %u px): %s\n",
+                            "Setting Exif metadata failed: Exif size is too large (%u > %u bytes): %s\n",
                             marker->data_length - AVIF_JPEG_EXIF_HEADER_LENGTH,
                             sizeLimit,
                             inputFilename);
@@ -1076,7 +1076,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
                 if (((uint64_t)standardXMPSize + totalExtendedXMPSize) > SIZE_MAX ||
                     ((uint64_t)standardXMPSize + totalExtendedXMPSize) > sizeLimit) {
                     fprintf(stderr,
-                            "XMP extraction failed: total XMP size is too large (%u + %u > %u px): %s\n",
+                            "XMP extraction failed: total XMP size is too large (%u + %u > %u bytes): %s\n",
                             standardXMPSize,
                             totalExtendedXMPSize,
                             sizeLimit,
