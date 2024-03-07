@@ -23,13 +23,6 @@ else()
         message(CHECK_START "libavif(AVIF_CODEC_RAV1E=LOCAL): fetching and configuring rav1e")
     endif()
 
-    find_program(CARGO_CINSTALL cargo-cinstall HINTS "$ENV{HOME}/.cargo/bin")
-
-    if(CARGO_CINSTALL)
-        add_executable(cargo-cinstall IMPORTED GLOBAL)
-        set_property(TARGET cargo-cinstall PROPERTY IMPORTED_LOCATION ${CARGO_CINSTALL})
-    endif()
-
     FetchContent_Declare(
         Corrosion
         GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
@@ -44,6 +37,13 @@ else()
     endif()
 
     FetchContent_MakeAvailable(Corrosion)
+
+    find_program(CARGO_CINSTALL cargo-cinstall HINTS "$ENV{HOME}/.cargo/bin")
+
+    if(CARGO_CINSTALL)
+        add_executable(cargo-cinstall IMPORTED GLOBAL)
+        set_property(TARGET cargo-cinstall PROPERTY IMPORTED_LOCATION ${CARGO_CINSTALL})
+    endif()
 
     if(NOT TARGET cargo-cinstall)
         FetchContent_Declare(

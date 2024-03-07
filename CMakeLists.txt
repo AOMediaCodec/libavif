@@ -117,9 +117,6 @@ option(AVIF_LOCAL_FUZZTEST
        "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)"
        OFF
 )
-option(AVIF_LOCAL_LIBARGPARSE "Build libargparse locally as part of the CMake build process. Required to build avifgainmap util"
-       OFF
-)
 
 option(
     AVIF_ENABLE_COMPLIANCE_WARDEN
@@ -216,6 +213,8 @@ if(AVIF_JPEG STREQUAL "LOCAL")
 endif()
 
 set_local_or_system_option("LIBYUV" "SYSTEM" "Use libyuv.")
+# check_avif_option libyuv must precede libaom because the latter needs to link against the former
+# when building libaom locally
 check_avif_option(AVIF_LIBYUV TARGET yuv::yuv PKG_NAME libyuv)
 if(AVIF_LIBYUV_ENABLED)
     # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
@@ -733,36 +732,32 @@ if(AVIF_BUILD_APPS)
         )
     endif()
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        if(AVIF_LOCAL_LIBARGPARSE)
-            include(LocalLibargparse)
-            set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
+        include(LocalLibargparse)
+        set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
 
-            set(AVIFGAINMAPUTIL_SRCS
-                apps/avifgainmaputil/avifgainmaputil.cc
-                apps/avifgainmaputil/convert_command.cc
-                apps/avifgainmaputil/combine_command.cc
-                apps/avifgainmaputil/extractgainmap_command.cc
-                apps/avifgainmaputil/imageio.cc
-                apps/avifgainmaputil/printmetadata_command.cc
-                apps/avifgainmaputil/tonemap_command.cc
-                apps/avifgainmaputil/program_command.cc
-                apps/avifgainmaputil/swapbase_command.cc
-            )
+        set(AVIFGAINMAPUTIL_SRCS
+            apps/avifgainmaputil/avifgainmaputil.cc
+            apps/avifgainmaputil/convert_command.cc
+            apps/avifgainmaputil/combine_command.cc
+            apps/avifgainmaputil/extractgainmap_command.cc
+            apps/avifgainmaputil/imageio.cc
+            apps/avifgainmaputil/printmetadata_command.cc
+            apps/avifgainmaputil/tonemap_command.cc
+            apps/avifgainmaputil/program_command.cc
+            apps/avifgainmaputil/swapbase_command.cc
+        )
 
-            add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
-            if(WIN32)
-                target_sources(avifgainmaputil PRIVATE apps/utf8.rc)
-                if(NOT MINGW)
-                    target_link_options(avifgainmaputil PRIVATE /MANIFEST:NO)
-                endif()
+        add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
+        if(WIN32)
+            target_sources(avifgainmaputil PRIVATE apps/utf8.rc)
+            if(NOT MINGW)
+                target_link_options(avifgainmaputil PRIVATE /MANIFEST:NO)
             endif()
-            set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
-            target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
-            target_link_libraries(avifgainmaputil libargparse avif_apps)
-            # Don't add avifgainmaputil to installed apps for now.
-        else()
-            message(WARNING "AVIF_LOCAL_LIBARGPARSE is not enabled, not building avifgainmaputil")
         endif()
+        set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
+        target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
+        target_link_libraries(avifgainmaputil libargparse avif_apps)
+        # Don't add avifgainmaputil to installed apps for now.
     endif()
 endif()
 
