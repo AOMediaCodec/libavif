@@ -68,8 +68,7 @@ for BUILD_TYPE in Debug Release; do
       CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
       ./dav1d_sanitized.cmd
       rm -rf libyuv
-      # libyuv is not instrumented with ubsan because it generates linker errors.
-      # CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
+      CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
       ./libyuv.cmd
       rm -rf libwebp
       CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
