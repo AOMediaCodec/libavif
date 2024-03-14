@@ -4,7 +4,7 @@
 
 set -e
 
-git clone -b v1.7.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v2.0.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 
 cd SVT-AV1
 cd Build/linux
