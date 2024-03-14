@@ -65,8 +65,7 @@ for BUILD_TYPE in Debug Release; do
       rm -rf dav1d
       cp dav1d.cmd dav1d_sanitized.cmd
       sed -i 's/meson setup \(.*\) \.\./meson setup \1 '"-Db_sanitize=${SANITIZER} -Db_lundef=false"' ../g' dav1d_sanitized.cmd
-      CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
-      ./dav1d_sanitized.cmd
+      CC=clang CXX=clang++ ./dav1d_sanitized.cmd
       rm -rf libyuv
       CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
       ./libyuv.cmd
