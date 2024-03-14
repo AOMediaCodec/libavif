@@ -53,7 +53,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add avifdec --icc flag to override the output color profile.
 
 ### Changed since 1.0.0
-* Update aom.cmd: v3.8.1
+* Update aom.cmd: v3.8.2
 * Update dav1d.cmd: 1.4.0
 * Update libgav1.cmd: v0.19.0
 * Update libyuv.cmd: a6a2ec65
