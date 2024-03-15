@@ -69,6 +69,41 @@ ImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
                          reinterpret_cast<const uint8_t*>(samples.data()));
 }
 
+std::vector<ImagePtr> CreateAvifAnim8b(size_t num_frames, size_t width,
+                                       size_t height,
+                                       avifPixelFormat pixel_format,
+                                       bool has_alpha,
+                                       const std::vector<uint8_t>& samples) {
+  std::vector<ImagePtr> frames;
+  frames.reserve(num_frames);
+  const uint8_t* frame_samples = samples.data();
+  for (size_t i = 0; i < num_frames; ++i) {
+    frames.push_back(CreateAvifImage(width, height, 8, pixel_format, has_alpha,
+                                     frame_samples));
+    frame_samples +=
+        GetNumSamples(/*num_frames=*/1, width, height, pixel_format, has_alpha);
+  }
+  return frames;
+}
+
+std::vector<ImagePtr> CreateAvifAnim16b(size_t num_frames, size_t width,
+                                        size_t height, int depth,
+                                        avifPixelFormat pixel_format,
+                                        bool has_alpha,
+                                        const std::vector<uint16_t>& samples) {
+  std::vector<ImagePtr> frames;
+  frames.reserve(num_frames);
+  const uint16_t* frame_samples = samples.data();
+  for (size_t i = 0; i < num_frames; ++i) {
+    frames.push_back(
+        CreateAvifImage(width, height, depth, pixel_format, has_alpha,
+                        reinterpret_cast<const uint8_t*>(frame_samples)));
+    frame_samples +=
+        GetNumSamples(/*num_frames=*/1, width, height, pixel_format, has_alpha);
+  }
+  return frames;
+}
+
 EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
                              int min_quantizer, int max_quantizer,
                              int min_quantizer_alpha, int max_quantizer_alpha,
@@ -136,8 +171,8 @@ DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
 
 //------------------------------------------------------------------------------
 
-size_t GetNumSamples(size_t width, size_t height, avifPixelFormat pixel_format,
-                     bool has_alpha) {
+size_t GetNumSamples(size_t num_frames, size_t width, size_t height,
+                     avifPixelFormat pixel_format, bool has_alpha) {
   const size_t num_luma_samples = width * height;
 
   avifPixelFormatInfo pixel_format_info;
@@ -156,7 +191,8 @@ size_t GetNumSamples(size_t width, size_t height, avifPixelFormat pixel_format,
     num_alpha_samples = width * height;
   }
 
-  return num_luma_samples + num_chroma_samples + num_alpha_samples;
+  return num_frames *
+         (num_luma_samples + num_chroma_samples + num_alpha_samples);
 }
 
 //------------------------------------------------------------------------------
