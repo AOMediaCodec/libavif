@@ -5589,6 +5589,8 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image)
     if (result != AVIF_RESULT_OK) {
         return result;
     }
+    // If decoder->image owns its planes, their ownership could be transferred here instead of copied,
+    // unless the user reuses the decoder instance, which is unknown yet.
     return avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
 }
 
