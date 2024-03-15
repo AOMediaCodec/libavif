@@ -36,22 +36,43 @@ jobs:
       - name: Build aom
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
-        run: CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }} ./aom.cmd
+        run: ./aom.cmd
+        env:
+          CC: clang
+          CXX: clang++
+          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build dav1d
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: >
           sed -i 's/meson setup \(.*\) \.\./meson setup \1 '"-Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false"' ../g' ./dav1d.cmd
           
-          CC=clang CXX=clang++ ./dav1d.cmd
+          ./dav1d.cmd
+        env:
+          CC: clang
+          CXX: clang++
       - name: Build libyuv
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
-        run: CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }} ./libyuv.cmd
+        run: ./libyuv.cmd
+        env:
+          CC: clang
+          CXX: clang++
+          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build libsharpyuv
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
-        run: CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }} ./libsharpyuv.cmd
+        run: ./libsharpyuv.cmd
+        env:
+          CC: clang
+          CXX: clang++
+          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build GoogleTest
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
