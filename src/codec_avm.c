@@ -710,7 +710,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             int layerCount = encoder->extraLayerCount + 1;
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_NUMBER_SPATIAL_LAYERS, layerCount) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
-            };
+            }
         }
         if (aomCpuUsed != -1) {
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_CPUUSED, aomCpuUsed) != AOM_CODEC_OK) {
