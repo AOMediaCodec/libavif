@@ -1195,19 +1195,6 @@ static avifResult avifGetErrorForItemCategory(avifItemCategory itemCategory)
     return (itemCategory == AVIF_ITEM_ALPHA) ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
 }
 
-static avifResult avifValidateImageBasicProperties(const avifImage * avifImage)
-{
-    if ((avifImage->depth != 8) && (avifImage->depth != 10) && (avifImage->depth != 12)) {
-        return AVIF_RESULT_UNSUPPORTED_DEPTH;
-    }
-
-    if (avifImage->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-        return AVIF_RESULT_NO_YUV_FORMAT_SELECTED;
-    }
-
-    return AVIF_RESULT_OK;
-}
-
 static uint32_t avifGridWidth(uint32_t gridCols, const avifImage * firstCell, const avifImage * bottomRightCell)
 {
     return (gridCols - 1) * firstCell->width + bottomRightCell->width;
@@ -1326,7 +1313,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
     const avifImage * firstCell = cellImages[0];
     const avifImage * bottomRightCell = cellImages[cellCount - 1];
-    AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell));
+    AVIF_CHECKERR(firstCell->depth == 8 || firstCell->depth == 10 || firstCell->depth == 12, AVIF_RESULT_UNSUPPORTED_DEPTH);
+    AVIF_CHECKERR(firstCell->yuvFormat != AVIF_PIXEL_FORMAT_NONE, AVIF_RESULT_NO_YUV_FORMAT_SELECTED);
     if (!firstCell->width || !firstCell->height || !bottomRightCell->width || !bottomRightCell->height) {
         return AVIF_RESULT_NO_CONTENT;
     }
@@ -1388,7 +1376,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     if (hasGainMap) {
-        AVIF_CHECKRES(avifValidateImageBasicProperties(firstCell->gainMap->image));
+        AVIF_CHECKERR(firstCell->gainMap->image->depth == 8 || firstCell->gainMap->image->depth == 10 ||
+                          firstCell->gainMap->image->depth == 12,
+                      AVIF_RESULT_UNSUPPORTED_DEPTH);
+        AVIF_CHECKERR(firstCell->gainMap->image->yuvFormat != AVIF_PIXEL_FORMAT_NONE, AVIF_RESULT_NO_YUV_FORMAT_SELECTED);
         AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_TRUE, &encoder->diag));
         if (firstCell->gainMap->image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED ||
             firstCell->gainMap->image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
@@ -1543,6 +1534,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
             uint16_t toneMappedItemID = toneMappedItem->id;
 
+            AVIF_ASSERT_OR_RETURN(encoder->data->alternativeItemIDs.count == 0);
             uint16_t * alternativeItemID = (uint16_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
             AVIF_CHECKERR(alternativeItemID != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             *alternativeItemID = toneMappedItemID;
@@ -1642,7 +1634,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
             const avifImage * cellImage = cellImages[item->cellIndex];
+            avifImage * cellImagePlaceholder = NULL; // May be used as a temporary, modified cellImage. Left as NULL otherwise.
             const avifImage * firstCellImage = firstCell;
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
             if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
                 AVIF_ASSERT_OR_RETURN(cellImage->gainMap && cellImage->gainMap->image);
@@ -1651,16 +1645,18 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 firstCellImage = firstCell->gainMap->image;
             }
 #endif
-            avifImage * paddedCellImage = NULL;
+
             if ((cellImage->width != firstCellImage->width) || (cellImage->height != firstCellImage->height)) {
-                paddedCellImage = avifImageCreateEmpty();
-                AVIF_CHECKERR(paddedCellImage, AVIF_RESULT_OUT_OF_MEMORY);
-                const avifResult result = avifImageCopyAndPad(paddedCellImage, cellImage, firstCellImage->width, firstCellImage->height);
+                // Pad the right-most and/or bottom-most tiles so that all tiles share the same dimensions.
+                cellImagePlaceholder = avifImageCreateEmpty();
+                AVIF_CHECKERR(cellImagePlaceholder, AVIF_RESULT_OUT_OF_MEMORY);
+                const avifResult result =
+                    avifImageCopyAndPad(cellImagePlaceholder, cellImage, firstCellImage->width, firstCellImage->height);
                 if (result != AVIF_RESULT_OK) {
-                    avifImageDestroy(paddedCellImage);
+                    avifImageDestroy(cellImagePlaceholder);
                     return result;
                 }
-                cellImage = paddedCellImage;
+                cellImage = cellImagePlaceholder;
             }
             const int quantizer = (item->itemCategory == AVIF_ITEM_ALPHA) ? encoder->data->quantizerAlpha
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -1681,15 +1677,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                /*disableLaggedOutput=*/encoder->data->alphaPresent,
                                                                addImageFlags,
                                                                item->encodeOutput);
-            if (paddedCellImage) {
-                avifImageDestroy(paddedCellImage);
+            if (cellImagePlaceholder) {
+                avifImageDestroy(cellImagePlaceholder);
             }
             if (encodeResult == AVIF_RESULT_UNKNOWN_ERROR) {
                 encodeResult = avifGetErrorForItemCategory(item->itemCategory);
             }
-            if (encodeResult != AVIF_RESULT_OK) {
-                return encodeResult;
-            }
+            AVIF_CHECKRES(encodeResult);
             if (itemIndex == 0 && avifEncoderDataShouldForceKeyframeForAlpha(encoder->data, item, addImageFlags)) {
                 addImageFlags |= AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME;
             }
