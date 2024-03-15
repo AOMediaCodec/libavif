@@ -1671,9 +1671,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             const avifBool isAlpha = avifIsAlpha(item->itemCategory);
             const int quantizer = isAlpha ? encoder->data->quantizerAlpha
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-                            : (item->itemCategory == AVIF_ITEM_GAIN_MAP) ? encoder->data->quantizerGainMap
+                                  : (item->itemCategory == AVIF_ITEM_GAIN_MAP) ? encoder->data->quantizerGainMap
 #endif
-                                                                         : encoder->data->quantizer;
+                                                                               : encoder->data->quantizer;
             // If alpha channel is present, set disableLaggedOutput to AVIF_TRUE. If the encoder supports it, this enables
             // avifEncoderDataShouldForceKeyframeForAlpha to force a keyframe in the alpha channel whenever a keyframe has been
             // encoded in the color channel for animated images.
