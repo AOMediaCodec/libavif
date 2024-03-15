@@ -12,6 +12,10 @@ jobs:
       matrix:
         sanitizer: [ undefined ] # TODO(yguyon): Add address, memory, thread
 
+      env:
+        CC: clang
+        CXX: clang++
+
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -38,8 +42,6 @@ jobs:
         working-directory: ./ext
         run: ./aom.cmd
         env:
-          CC: clang
-          CXX: clang++
           CFLAGS: -fsanitize=${{ matrix.sanitizer }}
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
@@ -50,16 +52,11 @@ jobs:
           sed -i 's/meson setup \(.*\) \.\./meson setup \1 '"-Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false"' ../g' ./dav1d.cmd
           
           ./dav1d.cmd
-        env:
-          CC: clang
-          CXX: clang++
       - name: Build libyuv
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: ./libyuv.cmd
         env:
-          CC: clang
-          CXX: clang++
           CFLAGS: -fsanitize=${{ matrix.sanitizer }}
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
@@ -68,8 +65,6 @@ jobs:
         working-directory: ./ext
         run: ./libsharpyuv.cmd
         env:
-          CC: clang
-          CXX: clang++
           CFLAGS: -fsanitize=${{ matrix.sanitizer }}
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
@@ -81,7 +76,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }}
+          CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }}
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
