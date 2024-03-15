@@ -1669,7 +1669,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
 
             const avifBool isAlpha = avifIsAlpha(item->itemCategory);
-            int quantizer = isAlpha ? encoder->data->quantizerAlpha
+            const int quantizer = isAlpha ? encoder->data->quantizerAlpha
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                             : (item->itemCategory == AVIF_ITEM_GAIN_MAP) ? encoder->data->quantizerGainMap
 #endif
@@ -2281,7 +2281,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         }
 #endif
         const avifBool isAlpha = avifIsAlpha(item->itemCategory);
-        uint8_t depth = (uint8_t)itemMetadata->depth;
+        const uint8_t depth = (uint8_t)itemMetadata->depth;
         if (hasPixi) {
             avifItemPropertyDedupStart(dedup);
             uint8_t channelCount = (isAlpha || (itemMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
