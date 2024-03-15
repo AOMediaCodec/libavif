@@ -12,6 +12,10 @@ jobs:
       matrix:
         sanitizer: [ undefined ] # TODO(yguyon): Add address, memory, thread
 
+      env:
+        CC: clang
+        CXX: clang++
+
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -36,22 +40,34 @@ jobs:
       - name: Build aom
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
-        run: CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }} ./aom.cmd
+        run: ./aom.cmd
+        env:
+          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build dav1d
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: >
           sed -i 's/meson setup \(.*\) \.\./meson setup \1 '"-Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false"' ../g' ./dav1d.cmd
           
-          CC=clang CXX=clang++ ./dav1d.cmd
+          ./dav1d.cmd
       - name: Build libyuv
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
-        run: CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }} ./libyuv.cmd
+        run: ./libyuv.cmd
+        env:
+          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build libsharpyuv
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
-        run: CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }} ./libsharpyuv.cmd
+        run: ./libsharpyuv.cmd
+        env:
+          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build GoogleTest
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
@@ -60,12 +76,15 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          CC=clang CXX=clang++ CFLAGS=-fsanitize=${{ matrix.sanitizer }} CXXFLAGS=-fsanitize=${{ matrix.sanitizer }} LDFLAGS=-fsanitize=${{ matrix.sanitizer }}
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_LOCAL_GTEST=ON
+        env:
+          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
+          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build libavif (ninja)
         working-directory: ./build
         run: ninja
