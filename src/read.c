@@ -2222,12 +2222,19 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
 
     avifPixelInformationProperty * pixi = &prop->u.pixi;
     AVIF_CHECK(avifROStreamRead(&s, &pixi->planeCount, 1)); // unsigned int (8) num_channels;
-    if (pixi->planeCount > MAX_PIXI_PLANE_DEPTHS) {
+    if (pixi->planeCount < 1 || pixi->planeCount > MAX_PIXI_PLANE_DEPTHS) {
         avifDiagnosticsPrintf(diag, "Box[pixi] contains unsupported plane count [%u]", pixi->planeCount);
         return AVIF_FALSE;
     }
     for (uint8_t i = 0; i < pixi->planeCount; ++i) {
         AVIF_CHECK(avifROStreamRead(&s, &pixi->planeDepths[i], 1)); // unsigned int (8) bits_per_channel;
+        if (pixi->planeDepths[i] != pixi->planeDepths[0]) {
+            avifDiagnosticsPrintf(diag,
+                                  "Box[pixi] contains unsupported mismatched plane depths [%u != %u]",
+                                  pixi->planeDepths[i],
+                                  pixi->planeDepths[0]);
+            return AVIF_FALSE;
+        }
     }
     return AVIF_TRUE;
 }
@@ -4609,12 +4616,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
 
         const avifProperty * pixiProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pixi");
         if (pixiProp) {
-            if (pixiProp->u.pixi.planeCount == 0) {
-                avifDiagnosticsPrintf(data->diag, "Box[pixi] of tmap item contains unsupported plane count [%u]", pixiProp->u.pixi.planeCount);
-                return AVIF_RESULT_BMFF_PARSE_FAILED;
-            }
             gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
-            // Assume all planes have the same depth.
             gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
         }
     }
