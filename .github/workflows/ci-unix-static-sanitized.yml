@@ -6,10 +6,11 @@ permissions:
 
 jobs:
   build-static-sanitized:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         sanitizer: [ undefined ] # TODO(yguyon): Add address, memory, thread
 
     env:
@@ -49,7 +50,7 @@ jobs:
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: >
-          sed -i 's/meson setup \(.*\) \.\./meson setup \1 '"-Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false"' ../g' ./dav1d.cmd
+          sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 '"-Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false"' ../g' dav1d.cmd
           
           ./dav1d.cmd
       - name: Build libyuv
