@@ -760,10 +760,6 @@ static avifMeta * avifMetaCreate()
 
 static void avifMetaDestroy(avifMeta * meta)
 {
-    if (meta == NULL) {
-        return;
-    }
-
     for (uint32_t i = 0; i < meta->items.count; ++i) {
         avifDecoderItem * item = meta->items.item[i];
         avifArrayDestroy(&item->properties);
@@ -997,7 +993,9 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
 
 static void avifDecoderDataDestroy(avifDecoderData * data)
 {
-    avifMetaDestroy(data->meta);
+    if (data->meta) {
+        avifMetaDestroy(data->meta);
+    }
     for (uint32_t i = 0; i < data->tracks.count; ++i) {
         avifTrack * track = &data->tracks.track[i];
         if (track->sampleTable) {
