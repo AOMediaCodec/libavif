@@ -760,7 +760,10 @@ static avifMeta * avifMetaCreate()
 
 static void avifMetaDestroy(avifMeta * meta)
 {
-    if (meta == NULL) return;
+    if (meta == NULL) {
+      return;
+    }
+
     for (uint32_t i = 0; i < meta->items.count; ++i) {
         avifDecoderItem * item = meta->items.item[i];
         avifArrayDestroy(&item->properties);
