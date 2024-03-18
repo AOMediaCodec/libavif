@@ -761,7 +761,7 @@ static avifMeta * avifMetaCreate()
 static void avifMetaDestroy(avifMeta * meta)
 {
     if (meta == NULL) {
-      return;
+        return;
     }
 
     for (uint32_t i = 0; i < meta->items.count; ++i) {
