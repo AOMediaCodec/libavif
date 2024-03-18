@@ -156,6 +156,9 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // Ignores the gainMap field (which exists only if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
+// ---------------------------------------------------------------------------
+// Alpha
+
 typedef struct avifAlphaParams
 {
     uint32_t width;
@@ -320,6 +323,8 @@ typedef enum avifItemCategory
 #endif
     AVIF_ITEM_CATEGORY_COUNT
 } avifItemCategory;
+
+avifBool avifIsAlpha(avifItemCategory itemCategory);
 
 // ---------------------------------------------------------------------------
 

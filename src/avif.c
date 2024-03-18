@@ -868,6 +868,16 @@ avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
 
 // ---------------------------------------------------------------------------
 
+avifBool avifIsAlpha(avifItemCategory itemCategory)
+{
+    if (itemCategory == AVIF_ITEM_ALPHA) {
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
+}
+
+// ---------------------------------------------------------------------------
+
 avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, uint32_t imageH, uint32_t tileW, uint32_t tileH, avifDiagnostics * diag)
 {
     // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
