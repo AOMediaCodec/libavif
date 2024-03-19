@@ -5590,6 +5590,12 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image)
     if (result != AVIF_RESULT_OK) {
         return result;
     }
+    // If decoder->image->imageOwnsYUVPlanes is true and decoder->image is not used after this call,
+    // the ownership of the planes in decoder->image could be transferred here instead of copied.
+    // However most codec_*.c implementations allocate the output buffer themselves and return a
+    // view, unless some postprocessing is applied (container-level grid reconstruction for
+    // example), so the first condition rarely holds.
+    // The second condition does not hold either: it is not required by the documentation in avif.h.
     return avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
 }
 
