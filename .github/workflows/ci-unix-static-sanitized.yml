@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        sanitizer: [ undefined ] # TODO(yguyon): Add address, memory, thread
+        sanitizer: [ address, undefined ] # TODO(yguyon): Add memory, thread
 
     env:
       CC: clang
@@ -89,5 +89,6 @@ jobs:
         run: ninja
       - name: Run AVIF Tests
         working-directory: ./build
-        # ASAN_OPTIONS=allocator_may_return_null=1 may be necessary for address sanitizer.
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
+        env:
+          ASAN_OPTIONS: allocator_may_return_null=1
