@@ -5589,8 +5589,8 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image)
     if (result != AVIF_RESULT_OK) {
         return result;
     }
-    // If decoder->image->imageOwnsYUVPlanes and the decoder instance is not used after this call,
-    // the ownership of the samples in decoder->image could be transferred here instead of copied.
+    // If decoder->image->imageOwnsYUVPlanes is true and decoder->image is not used after this call,
+    // the ownership of the planes in decoder->image could be transferred here instead of copied.
     // However most codec_*.c implementations allocate the output buffer themselves and return a
     // view, unless some postprocessing is applied (container-level grid reconstruction for
     // example), so the first condition rarely holds.
