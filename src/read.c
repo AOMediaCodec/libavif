@@ -993,7 +993,9 @@ static void avifDecoderDataClearTiles(avifDecoderData * data)
 
 static void avifDecoderDataDestroy(avifDecoderData * data)
 {
-    avifMetaDestroy(data->meta);
+    if (data->meta) {
+        avifMetaDestroy(data->meta);
+    }
     for (uint32_t i = 0; i < data->tracks.count; ++i) {
         avifTrack * track = &data->tracks.track[i];
         if (track->sampleTable) {
