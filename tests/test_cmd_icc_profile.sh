@@ -55,7 +55,7 @@ CORRECTED_FILE="avif_test_cmd_icc_profile_corrected.png"
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${DECODED_FILE}" "${CORRECTED_FILE}"
+    rm -f -- "${ENCODED_FILE}" "${DECODED_FILE}" "${CORRECTED_FILE}"
   popd
 }
 trap cleanup EXIT
