@@ -49,7 +49,8 @@ DECODED_BIGGEST_FILE="avif_test_cmd_targetsize_decoded_biggest.png"
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${DECODED_SMALLEST_FILE}" "${DECODED_BIGGEST_FILE}"
+    rm -f -- "${ENCODED_FILE}" "${DECODED_SMALLEST_FILE}" \
+             "${DECODED_BIGGEST_FILE}"
   popd
 }
 trap cleanup EXIT

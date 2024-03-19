@@ -52,7 +52,7 @@ DECODED_FILE_LOSSLESS="avif_test_cmd_lossless_decoded_lossless.png"
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}"
+    rm -f -- "${ENCODED_FILE}" "${DECODED_FILE}" "${DECODED_FILE_LOSSLESS}"
   popd
 }
 trap cleanup EXIT

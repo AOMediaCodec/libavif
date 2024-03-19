@@ -54,9 +54,9 @@ DECODED_FILE_7x5="avif_test_cmd_grid_7x5_decoded.png"
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${DECODED_FILE}" \
-          "${ENCODED_FILE_2x2}" "${DECODED_FILE_2x2}" \
-          "${ENCODED_FILE_7x5}" "${DECODED_FILE_7x5}"
+    rm -f -- "${ENCODED_FILE}" "${DECODED_FILE}" \
+             "${ENCODED_FILE_2x2}" "${DECODED_FILE_2x2}" \
+             "${ENCODED_FILE_7x5}" "${DECODED_FILE_7x5}"
   popd
 }
 trap cleanup EXIT

@@ -47,7 +47,7 @@ ERROR_MSG="avif_test_cmd_animation_error_msg.txt"
 
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${DECODED_FILE}" "${ERROR_MSG}"
+    rm -f -- "${ENCODED_FILE}" "${DECODED_FILE}" "${ERROR_MSG}"
   popd
 }
 trap cleanup EXIT

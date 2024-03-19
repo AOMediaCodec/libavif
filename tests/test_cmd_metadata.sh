@@ -54,8 +54,9 @@ DECODED_FILE_CHANGED_ICC="avif_test_cmd_metadata_decoded_changed_icc.png"
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" "${ENCODED_FILE_MORE_METADATA}" \
-          "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}"
+    rm -f -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" \
+             "${ENCODED_FILE_MORE_METADATA}" \
+             "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}"
   popd
 }
 trap cleanup EXIT
