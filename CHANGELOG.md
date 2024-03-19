@@ -54,7 +54,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Changed since 1.0.0
 * Update aom.cmd: v3.8.2
-* Update dav1d.cmd: 1.4.0
+* Update dav1d.cmd: 1.4.1
 * Update libgav1.cmd: v0.19.0
 * Update libyuv.cmd: a6a2ec65
 * Update rav1e.cmd: v0.7.0
