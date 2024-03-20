@@ -41,11 +41,10 @@ jobs:
       - name: Build aom
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
-        run: ./aom.cmd
-        env:
-          CFLAGS: -fsanitize=${{ matrix.sanitizer }}
-          CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
-          LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
+        run: >
+          sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DSANITIZE=${{ matrix.sanitizer }} ../g' aom.cmd
+
+          ./aom.cmd
       - name: Build dav1d
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
