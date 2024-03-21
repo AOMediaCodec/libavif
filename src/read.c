@@ -1507,7 +1507,7 @@ static avifResult avifDecoderDataAllocateImagePlanes(avifDecoderData * data, con
     uint32_t dstWidth;
     uint32_t dstHeight;
 
-    if (info->grid.columns > 0 && info->grid.rows > 0) {
+    if (info->grid.rows > 0 && info->grid.columns > 0) {
         const avifImageGrid * grid = &info->grid;
         // Validate grid image size and tile size.
         //
@@ -1614,7 +1614,7 @@ static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
     avifImage dstView;
     avifImageSetDefaults(&dstView);
     avifCropRect dstViewRect = { 0, 0, firstTile->image->width, firstTile->image->height };
-    if (info->grid.columns > 0 && info->grid.rows > 0) {
+    if (info->grid.rows > 0 && info->grid.columns > 0) {
         unsigned int rowIndex = tileIndex / info->grid.columns;
         unsigned int colIndex = tileIndex % info->grid.columns;
         dstViewRect.x = firstTile->image->width * colIndex;
@@ -5263,7 +5263,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
         ++info->decodedTileCount;
 
         const avifBool isGrid = (info->grid.rows > 0) && (info->grid.columns > 0);
-        avifBool stealPlanes = !isGrid;
+        const avifBool stealPlanes = !isGrid;
 
         if (!stealPlanes) {
             avifImage * dstImage = decoder->image;
@@ -5278,7 +5278,6 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             }
             AVIF_CHECKRES(avifDecoderDataCopyTileToImage(decoder->data, info, dstImage, tile, tileIndex));
         } else {
-            // Non-grid path. Just steal the planes from the only "tile".
             AVIF_ASSERT_OR_RETURN(info->tileCount == 1);
             AVIF_ASSERT_OR_RETURN(tileIndex == 0);
             avifImage * src = tile->image;
