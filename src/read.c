@@ -1502,27 +1502,45 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
     return AVIF_RESULT_OK;
 }
 
-// Allocates the dstImage based on the grid image requirements. Also verifies some spec compliance rules for grids.
-static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data, const avifTileInfo * info, avifImage * dstImage)
+// Allocates the dstImage. Also verifies some spec compliance rules for grids, if relevant.
+static avifResult avifDecoderDataAllocateImagePlanes(avifDecoderData * data, const avifTileInfo * info, avifImage * dstImage)
 {
-    const avifImageGrid * grid = &info->grid;
     const avifTile * tile = &data->tiles.tile[info->firstTileIndex];
+    uint32_t dstWidth;
+    uint32_t dstHeight;
 
-    // Validate grid image size and tile size.
-    //
-    // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
-    //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
-    if (((tile->image->width * grid->columns) < grid->outputWidth) || ((tile->image->height * grid->rows) < grid->outputHeight)) {
-        avifDiagnosticsPrintf(data->diag,
-                              "Grid image tiles do not completely cover the image (HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1)");
-        return AVIF_RESULT_INVALID_IMAGE_GRID;
-    }
-    // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
-    if (((tile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
-        ((tile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
-        avifDiagnosticsPrintf(data->diag,
-                              "Grid image tiles in the rightmost column and bottommost row do not overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2");
-        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    if (info->grid.rows > 0 && info->grid.columns > 0) {
+        const avifImageGrid * grid = &info->grid;
+        // Validate grid image size and tile size.
+        //
+        // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
+        //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
+        if (((tile->image->width * grid->columns) < grid->outputWidth) || ((tile->image->height * grid->rows) < grid->outputHeight)) {
+            avifDiagnosticsPrintf(data->diag,
+                                  "Grid image tiles do not completely cover the image (HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1)");
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+        // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
+        if (((tile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
+            ((tile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
+            avifDiagnosticsPrintf(data->diag,
+                                  "Grid image tiles in the rightmost column and bottommost row do not overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2");
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+        if (!avifAreGridDimensionsValid(tile->image->yuvFormat,
+                                        grid->outputWidth,
+                                        grid->outputHeight,
+                                        tile->image->width,
+                                        tile->image->height,
+                                        data->diag)) {
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+        dstWidth = grid->outputWidth;
+        dstHeight = grid->outputHeight;
+    } else {
+        // Only one tile. Width and height are inherited from the 'ispe' property of the corresponding avifDecoderItem.
+        dstWidth = tile->width;
+        dstHeight = tile->height;
     }
 
     const avifBool alpha = avifIsAlpha(tile->input->itemCategory);
@@ -1530,13 +1548,12 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
         // An alpha tile does not contain any YUV pixels.
         AVIF_ASSERT_OR_RETURN(tile->image->yuvFormat == AVIF_PIXEL_FORMAT_NONE);
     }
-    if (!avifAreGridDimensionsValid(tile->image->yuvFormat, grid->outputWidth, grid->outputHeight, tile->image->width, tile->image->height, data->diag)) {
-        return AVIF_RESULT_INVALID_IMAGE_GRID;
-    }
+
+    const uint32_t dstDepth = tile->image->depth;
 
     // Lazily populate dstImage with the new frame's properties.
-    const avifBool dimsOrDepthIsDifferent = (dstImage->width != grid->outputWidth) || (dstImage->height != grid->outputHeight) ||
-                                            (dstImage->depth != tile->image->depth);
+    const avifBool dimsOrDepthIsDifferent = (dstImage->width != dstWidth) || (dstImage->height != dstHeight) ||
+                                            (dstImage->depth != dstDepth);
     const avifBool yuvFormatIsDifferent = !alpha && (dstImage->yuvFormat != tile->image->yuvFormat);
     if (dimsOrDepthIsDifferent || yuvFormatIsDifferent) {
         if (alpha) {
@@ -1547,9 +1564,9 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
 
         if (dimsOrDepthIsDifferent) {
             avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
-            dstImage->width = grid->outputWidth;
-            dstImage->height = grid->outputHeight;
-            dstImage->depth = tile->image->depth;
+            dstImage->width = dstWidth;
+            dstImage->height = dstHeight;
+            dstImage->depth = dstDepth;
         }
         if (yuvFormatIsDifferent) {
             avifImageFreePlanes(dstImage, AVIF_PLANES_YUV);
@@ -1573,15 +1590,14 @@ static avifResult avifDecoderDataAllocateGridImagePlanes(avifDecoderData * data,
     return AVIF_RESULT_OK;
 }
 
-// After verifying that the relevant properties of the tile match those of the first tile, copies over the pixels from the tile
-// into dstImage.
+// Copies over the pixels from the tile into dstImage.
+// Verifies that the relevant properties of the tile match those of the first tile in case of a grid.
 static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
                                                  const avifTileInfo * info,
                                                  avifImage * dstImage,
                                                  const avifTile * tile,
                                                  unsigned int tileIndex)
 {
-    const avifImageGrid * grid = &info->grid;
     const avifTile * firstTile = &data->tiles.tile[info->firstTileIndex];
     if (tile != firstTile) {
         // Check for tile consistency. All tiles in a grid image should match the first tile in the properties checked below.
@@ -1595,30 +1611,25 @@ static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
         }
     }
 
-    unsigned int rowIndex = tileIndex / info->grid.columns;
-    unsigned int colIndex = tileIndex % info->grid.columns;
     avifImage srcView;
     avifImageSetDefaults(&srcView);
     avifImage dstView;
     avifImageSetDefaults(&dstView);
-    avifCropRect dstViewRect = {
-        firstTile->image->width * colIndex, firstTile->image->height * rowIndex, firstTile->image->width, firstTile->image->height
-    };
-    if (dstViewRect.x + dstViewRect.width > grid->outputWidth) {
-        dstViewRect.width = grid->outputWidth - dstViewRect.x;
-    }
-    if (dstViewRect.y + dstViewRect.height > grid->outputHeight) {
-        dstViewRect.height = grid->outputHeight - dstViewRect.y;
+    avifCropRect dstViewRect = { 0, 0, firstTile->image->width, firstTile->image->height };
+    if (info->grid.rows > 0 && info->grid.columns > 0) {
+        unsigned int rowIndex = tileIndex / info->grid.columns;
+        unsigned int colIndex = tileIndex % info->grid.columns;
+        dstViewRect.x = firstTile->image->width * colIndex;
+        dstViewRect.y = firstTile->image->height * rowIndex;
+        if (dstViewRect.x + dstViewRect.width > info->grid.outputWidth) {
+            dstViewRect.width = info->grid.outputWidth - dstViewRect.x;
+        }
+        if (dstViewRect.y + dstViewRect.height > info->grid.outputHeight) {
+            dstViewRect.height = info->grid.outputHeight - dstViewRect.y;
+        }
     }
     const avifCropRect srcViewRect = { 0, 0, dstViewRect.width, dstViewRect.height };
-    avifImage * dst = dstImage;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
-        AVIF_ASSERT_OR_RETURN(dst->gainMap && dst->gainMap->image);
-        dst = dst->gainMap->image;
-    }
-#endif
-    AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&dstView, dst, &dstViewRect) == AVIF_RESULT_OK &&
+    AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&dstView, dstImage, &dstViewRect) == AVIF_RESULT_OK &&
                           avifImageSetViewRect(&srcView, tile->image, &srcViewRect) == AVIF_RESULT_OK);
     avifImageCopySamples(&dstView, &srcView, avifIsAlpha(tile->input->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
     return AVIF_RESULT_OK;
@@ -5254,20 +5265,22 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
 
         ++info->decodedTileCount;
 
-        if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
-            if (tileIndex == 0) {
-                avifImage * dstImage = decoder->image;
+        const avifBool isGrid = (info->grid.rows > 0) && (info->grid.columns > 0);
+        const avifBool stealPlanes = !isGrid;
+
+        if (!stealPlanes) {
+            avifImage * dstImage = decoder->image;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-                if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
-                    AVIF_ASSERT_OR_RETURN(dstImage->gainMap && dstImage->gainMap->image);
-                    dstImage = dstImage->gainMap->image;
-                }
-#endif
-                AVIF_CHECKRES(avifDecoderDataAllocateGridImagePlanes(decoder->data, info, dstImage));
+            if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                AVIF_ASSERT_OR_RETURN(dstImage->gainMap && dstImage->gainMap->image);
+                dstImage = dstImage->gainMap->image;
             }
-            AVIF_CHECKRES(avifDecoderDataCopyTileToImage(decoder->data, info, decoder->image, tile, tileIndex));
+#endif
+            if (tileIndex == 0) {
+                AVIF_CHECKRES(avifDecoderDataAllocateImagePlanes(decoder->data, info, dstImage));
+            }
+            AVIF_CHECKRES(avifDecoderDataCopyTileToImage(decoder->data, info, dstImage, tile, tileIndex));
         } else {
-            // Non-grid path. Just steal the planes from the only "tile".
             AVIF_ASSERT_OR_RETURN(info->tileCount == 1);
             AVIF_ASSERT_OR_RETURN(tileIndex == 0);
             avifImage * src = tile->image;
