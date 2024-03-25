@@ -150,6 +150,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   index_size.
 * 'infe' boxes with an item_type different from 'mime' and without a
   null-terminated item_name are now considered invalid as per ISO/IEC 14496-12.
+* Allow YCgCo_Re and YCgCo_Ro decoding by default. Encoding is still conditioned
+  to the AVIF_ENABLE_EXPERIMENTAL_YCGCO CMake flag.
 
 ## [1.0.4] - 2024-02-08
 

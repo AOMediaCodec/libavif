@@ -96,11 +96,6 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
 
 avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo * info)
 {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    const avifBool useYCgCo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ||
-                              (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#endif
-
     AVIF_CHECK(image->depth == 8 || image->depth == 10 || image->depth == 12 || image->depth == 16);
     AVIF_CHECK(image->yuvFormat >= AVIF_PIXEL_FORMAT_YUV444 && image->yuvFormat < AVIF_PIXEL_FORMAT_COUNT);
     AVIF_CHECK(image->yuvRange == AVIF_RANGE_LIMITED || image->yuvRange == AVIF_RANGE_FULL);
@@ -110,11 +105,8 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
     if ((image->matrixCoefficients == 3 /* CICP reserved */) ||
-        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-          || useYCgCo
-#endif
-          ) &&
+        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO || image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+          image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) &&
          (image->yuvRange == AVIF_RANGE_LIMITED)) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
@@ -146,7 +138,6 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
 
 static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
     const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
     if (useYCgCoRe || useYCgCoRo) {
@@ -155,7 +146,6 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
             return AVIF_FALSE;
         }
     }
-#endif
 
     AVIF_CHECK(avifGetRGBColorSpaceInfo(rgb, &state->rgb));
     AVIF_CHECK(avifGetYUVColorSpaceInfo(image, &state->yuv));
@@ -166,12 +156,10 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
         state->yuv.mode = AVIF_REFORMAT_MODE_IDENTITY;
     } else if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
         state->yuv.mode = AVIF_REFORMAT_MODE_YCGCO;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     } else if (useYCgCoRe) {
         state->yuv.mode = AVIF_REFORMAT_MODE_YCGCO_RE;
     } else if (useYCgCoRo) {
         state->yuv.mode = AVIF_REFORMAT_MODE_YCGCO_RO;
-#endif
     }
 
     if (state->yuv.mode != AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
@@ -196,12 +184,8 @@ static int avifYUVColorSpaceInfoUVToUNorm(avifYUVColorSpaceInfo * info, float v)
 
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     assert((info->mode != AVIF_REFORMAT_MODE_YCGCO && info->mode != AVIF_REFORMAT_MODE_YCGCO_RE && info->mode != AVIF_REFORMAT_MODE_YCGCO_RO) ||
            (info->range == AVIF_RANGE_FULL));
-#else
-    assert((info->mode != AVIF_REFORMAT_MODE_YCGCO) || (info->range == AVIF_RANGE_FULL));
-#endif
 
     if (info->mode == AVIF_REFORMAT_MODE_IDENTITY) {
         unorm = (int)avifRoundf(v * info->rangeY + info->biasY);
@@ -359,7 +343,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             yuvBlock[bI][bJ].y = 0.5f * rgbPixel[1] + 0.25f * (rgbPixel[0] + rgbPixel[2]);
                             yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
                             yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                         } else if (state.yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
                             // Formulas 58,59,60,61 from https://www.itu.int/rec/T-REC-H.273-202407-P
                             const int R = (int)avifRoundf(AVIF_CLAMP(rgbPixel[0] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
@@ -371,7 +354,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             yuvBlock[bI][bJ].y = (t + (Cg >> 1)) / state.yuv.rangeY;
                             yuvBlock[bI][bJ].u = Cg / state.yuv.rangeUV;
                             yuvBlock[bI][bJ].v = Co / state.yuv.rangeUV;
-#endif
                         } else {
                             float Y = (kr * rgbPixel[0]) + (kg * rgbPixel[1]) + (kb * rgbPixel[2]);
                             yuvBlock[bI][bJ].y = Y;
@@ -769,7 +751,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     G = Y + Cb;
                     B = t - Cr;
                     R = t + Cr;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                 } else if (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
                     // YCgCoRe/YCgCoRo: Formulas 62,63,64,65 from https://www.itu.int/rec/T-REC-H.273-202407-P
                     const int YY = unormY;
@@ -782,7 +763,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     G /= rgbMaxChannelF;
                     B /= rgbMaxChannelF;
                     R /= rgbMaxChannelF;
-#endif
                 } else {
                     // Normal YUV
                     R = Y + (2 * (1 - kr)) * Cr;
