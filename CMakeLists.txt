@@ -64,7 +64,7 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 
-option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
+option(AVIF_ENABLE_YCGCO_R_ENCODING "Enable YCgCo-R matrix codes for encoding" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_MINI "Enable experimental reduced header" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample transform code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI "Enable experimental PixelInformationProperty syntax from HEIF 3rd Ed. Amd2" OFF)
@@ -340,8 +340,8 @@ if(AVIF_ENABLE_COVERAGE)
     endif()
 endif()
 
-if(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+if(AVIF_ENABLE_YCGCO_R_ENCODING)
+    add_compile_definitions(AVIF_ENABLE_YCGCO_R_ENCODING)
 endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_MINI)
