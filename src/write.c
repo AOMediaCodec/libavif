@@ -1239,6 +1239,16 @@ static avifResult avifValidateGrid(uint32_t gridCols,
             cellImage = cellImage->gainMap->image;
         }
 #endif
+#if !defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+        if (cellImage->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+            cellImage->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
+            avifDiagnosticsPrintf(diag,
+                                  "YCGCO_R is not enabled for encoding. "
+                                  "Please set AVIF_ENABLE_EXPERIMENTAL_YCGCO_R in CMake. "
+                                  "cf https://github.com/AOMediaCodec/libavif/issues/2077.");
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+#endif
         const uint32_t expectedCellWidth = ((cellIndex + 1) % gridCols) ? tileWidth : bottomRightCell->width;
         const uint32_t expectedCellHeight = (cellIndex < (cellCount - gridCols)) ? tileHeight : bottomRightCell->height;
         if ((cellImage->width != expectedCellWidth) || (cellImage->height != expectedCellHeight)) {
@@ -1663,7 +1673,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 }
                 cellImage = cellImagePlaceholder;
             }
-
             const avifBool isAlpha = avifIsAlpha(item->itemCategory);
             const int quantizer = isAlpha ? encoder->data->quantizerAlpha
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)

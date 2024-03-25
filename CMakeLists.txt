@@ -37,7 +37,7 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 option(AVIF_ENABLE_WUNUSED_RESULT "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23" OFF)
 
-option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
+option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code for encoding" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
        "Enable experimental gain map code (for HDR images that look good both on HDR and SDR displays)" OFF
 )

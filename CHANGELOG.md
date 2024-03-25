@@ -91,6 +91,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   (https://crbug.com/oss-fuzz/65657).
 * ext/libjpeg.cmd now pulls libjpeg-turbo instead of libjpeg and AVIF_JPEG=LOCAL
   now expects the library dependency in ext/libjpeg-turbo/build.libavif.
+* Allow YCgCo_Re and YCgCo_Ro decoding by default. Encoding is still conditioned
+  to the AVIF_ENABLE_EXPERIMENTAL_YCGCO CMake flag.
 
 ## [1.0.4] - 2024-02-08
 
