@@ -174,7 +174,7 @@ List of incompatible ABI changes in this release:
 * Add experimental support for AV2 behind the compilation flag AVIF_CODEC_AVM.
   AVIF_CODEC_CHOICE_AVM is now part of avifCodecChoice.
 * Add experimental YCgCo-R support behind the compilation flag
-  AVIF_ENABLE_EXPERIMENTAL_YCGCO_R.
+  AVIF_ENABLE_YCGCO_R.
 * Allow lossless 4:0:0 on grayscale input.
 * Add avifenc --no-overwrite flag to avoid overwriting output file.
 * Add avifenc --clli flag to set clli.

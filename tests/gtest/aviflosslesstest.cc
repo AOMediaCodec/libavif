@@ -57,7 +57,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       avifResult result =
           avifEncoderWrite(encoder.get(), image.get(), &encoded);
 
-#if !defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+#if !defined(AVIF_ENABLE_YCGCO_R)
       if (matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
         ASSERT_NE(result, AVIF_RESULT_OK);
         continue;
