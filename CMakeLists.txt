@@ -64,7 +64,7 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 
-option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code for encoding" OFF)
+option(AVIF_ENABLE_YCGCO_R "Enable experimental YCgCo-R matrix code for encoding" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
        "Enable experimental gain map code (for HDR images that look good both on HDR and SDR displays)" OFF
 )
@@ -357,8 +357,8 @@ if(AVIF_ENABLE_COVERAGE)
     endif()
 endif()
 
-if(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+if(AVIF_ENABLE_YCGCO_R)
+    add_compile_definitions(AVIF_ENABLE_YCGCO_R)
 endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
