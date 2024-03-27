@@ -8,11 +8,22 @@ if(POLICY CMP0092)
     cmake_policy(SET CMP0092 NEW)
 endif()
 
+# Prevent warnings in CMake>=3.24 for ExternalProject_Add()
+# see https://cmake.org/cmake/help/latest/policy/CMP0135.html
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW) # valid for DOWNLOAD_EXTRACT_TIMESTAMP option in CMake 3.24 and later
+endif()
+
 # The root directory of the avif source
 set(AVIF_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Specify search path for CMake modules to be loaded by include() and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+
+include(ExternalProject)
+include(FetchContent)
+include(FindPkgConfig)
+include(AvifExternalProjectUtils)
 
 project(libavif LANGUAGES C VERSION 1.0.4)
 
@@ -202,6 +213,8 @@ if(AVIF_JPEG STREQUAL "LOCAL")
 endif()
 
 set_local_or_system_option("LIBYUV" "SYSTEM" "Use libyuv.")
+# check_avif_option libyuv must precede libaom because the latter needs to link against the former
+# when building libaom locally
 check_avif_option(AVIF_LIBYUV TARGET yuv::yuv PKG_NAME libyuv)
 if(AVIF_LIBYUV_ENABLED)
     # libyuv 1755 exposed all of the I*Matrix() functions, which libavif relies on.
@@ -450,10 +463,13 @@ if(AVIF_CODEC_RAV1E_ENABLED)
     target_sources(avif_obj PRIVATE src/codec_rav1e.c)
 
     # Unfortunately, rav1e requires a few more libraries
-    if(WIN32)
-        target_link_libraries(rav1e::rav1e INTERFACE ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
-    elseif(UNIX AND NOT APPLE)
-        target_link_libraries(rav1e::rav1e INTERFACE ${CMAKE_DL_LIBS}) # for backtrace
+    # first check that RAV1E_LIBRARIES hasn't been populated by the LocalRav1e module
+    if(NOT RAV1E_LIBRARIES)
+        if(WIN32)
+            target_link_libraries(rav1e::rav1e INTERFACE ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
+        elseif(UNIX AND NOT APPLE)
+            target_link_libraries(rav1e::rav1e INTERFACE ${CMAKE_DL_LIBS}) # for backtrace
+        endif()
     endif()
 
     avif_target_link_library(rav1e::rav1e)
@@ -717,33 +733,31 @@ if(AVIF_BUILD_APPS)
     endif()
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         include(LocalLibargparse)
-        if(TARGET libargparse)
-            set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
+        set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
 
-            set(AVIFGAINMAPUTIL_SRCS
-                apps/avifgainmaputil/avifgainmaputil.cc
-                apps/avifgainmaputil/convert_command.cc
-                apps/avifgainmaputil/combine_command.cc
-                apps/avifgainmaputil/extractgainmap_command.cc
-                apps/avifgainmaputil/imageio.cc
-                apps/avifgainmaputil/printmetadata_command.cc
-                apps/avifgainmaputil/tonemap_command.cc
-                apps/avifgainmaputil/program_command.cc
-                apps/avifgainmaputil/swapbase_command.cc
-            )
+        set(AVIFGAINMAPUTIL_SRCS
+            apps/avifgainmaputil/avifgainmaputil.cc
+            apps/avifgainmaputil/convert_command.cc
+            apps/avifgainmaputil/combine_command.cc
+            apps/avifgainmaputil/extractgainmap_command.cc
+            apps/avifgainmaputil/imageio.cc
+            apps/avifgainmaputil/printmetadata_command.cc
+            apps/avifgainmaputil/tonemap_command.cc
+            apps/avifgainmaputil/program_command.cc
+            apps/avifgainmaputil/swapbase_command.cc
+        )
 
-            add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
-            if(WIN32)
-                target_sources(avifgainmaputil PRIVATE apps/utf8.rc)
-                if(NOT MINGW)
-                    target_link_options(avifgainmaputil PRIVATE /MANIFEST:NO)
-                endif()
+        add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
+        if(WIN32)
+            target_sources(avifgainmaputil PRIVATE apps/utf8.rc)
+            if(NOT MINGW)
+                target_link_options(avifgainmaputil PRIVATE /MANIFEST:NO)
             endif()
-            set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
-            target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
-            target_link_libraries(avifgainmaputil libargparse avif_apps)
-            # Don't add avifgainmaputil to installed apps for now.
         endif()
+        set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
+        target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
+        target_link_libraries(avifgainmaputil libargparse avif_apps)
+        # Don't add avifgainmaputil to installed apps for now.
     endif()
 endif()
 
