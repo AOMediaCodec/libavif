@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -452,6 +453,21 @@ avifResult MergeGrid(int grid_cols, int grid_rows,
   }
 
   return AVIF_RESULT_OK;
+}
+
+//------------------------------------------------------------------------------
+
+testutil::AvifRwData ReadFile(const std::string& file_path) {
+  std::ifstream file(file_path, std::ios::binary | std::ios::ate);
+  testutil::AvifRwData bytes;
+  if (avifRWDataRealloc(&bytes, file.good() ? static_cast<size_t>(file.tellg())
+                                            : 0) != AVIF_RESULT_OK) {
+    return {};
+  }
+  file.seekg(0, std::ios::beg);
+  file.read(reinterpret_cast<char*>(bytes.data),
+            static_cast<std::streamsize>(bytes.size));
+  return bytes;
 }
 
 //------------------------------------------------------------------------------

@@ -3807,7 +3807,7 @@ static avifResult avifParse(avifDecoder * decoder)
         // Parse the header, and find out how many bytes it actually was
         BEGIN_STREAM(headerStream, headerContents.data, headerContents.size, &decoder->diag, "File-level box header");
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header, /*topLevel=*/AVIF_TRUE), AVIF_RESULT_BMFF_PARSE_FAILED);
         parseOffset += headerStream.offset;
         AVIF_ASSERT_OR_RETURN(decoder->io->sizeHint == 0 || parseOffset <= decoder->io->sizeHint);
 
@@ -3823,11 +3823,24 @@ static avifResult avifParse(avifDecoder * decoder)
         if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4)) {
 #endif
             boxOffset = parseOffset;
-            readResult = decoder->io->read(decoder->io, 0, parseOffset, header.size, &boxContents);
+            size_t sizeToRead;
+            if (header.size == 0) {
+                // A size of 0 means the box body goes till the end of the file.
+                if (decoder->io->sizeHint != 0 && decoder->io->sizeHint - parseOffset < SIZE_MAX) {
+                    sizeToRead = decoder->io->sizeHint - parseOffset;
+                } else {
+                    sizeToRead = SIZE_MAX; // This will get truncated. See the documentation of avifIOReadFunc.
+                }
+            } else {
+                sizeToRead = header.size;
+            }
+            readResult = decoder->io->read(decoder->io, 0, parseOffset, sizeToRead, &boxContents);
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
             }
-            if (boxContents.size != header.size) {
+            if (header.size == 0) {
+                header.size = boxContents.size;
+            } else if (boxContents.size != header.size) {
                 // A truncated box, bail out
                 return AVIF_RESULT_TRUNCATED_DATA;
             }
@@ -3935,7 +3948,12 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
     BEGIN_STREAM(s, input->data, input->size, NULL, NULL);
 
     avifBoxHeader header;
-    if (!avifROStreamReadBoxHeader(&s, &header) || memcmp(header.type, "ftyp", 4)) {
+    if (!avifROStreamReadBoxHeaderPartial(&s, &header, /*topLevel=*/AVIF_TRUE) || memcmp(header.type, "ftyp", 4)) {
+        return AVIF_FALSE;
+    }
+    if (header.size == 0) {
+        // The size of the 'ftyp' box is 0, which means it goes till the end of the file.
+        // Either there is no brand requiring anything in the file but a FileTypebox (so not AVIF), or it is invalid.
         return AVIF_FALSE;
     }
 
