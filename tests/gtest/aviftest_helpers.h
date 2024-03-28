@@ -149,6 +149,11 @@ avifResult MergeGrid(int grid_cols, int grid_rows,
                      avifImage* merged);
 
 //------------------------------------------------------------------------------
+
+// Reads the file at file_path into bytes and returns them.
+testutil::AvifRwData ReadFile(const std::string& file_path);
+
+//------------------------------------------------------------------------------
 // Shorter versions of libavif functions
 
 // Reads the image named file_name located in directory at folder_path.

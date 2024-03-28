@@ -179,11 +179,6 @@ inline auto ArbitraryAvifDecoder() { return ArbitraryBaseAvifDecoder(); }
 #endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 //------------------------------------------------------------------------------
-
-// Returns a white pixel compressed with AVIF.
-std::vector<uint8_t> GetWhiteSinglePixelAvif();
-
-//------------------------------------------------------------------------------
 // Environment setup
 
 // Sets the environment variable 'name' to the 'value' during the setup step.

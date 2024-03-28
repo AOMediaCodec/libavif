@@ -42,7 +42,7 @@ It is of color type 3 (PNG_COLOR_TYPE_PALETTE) and has a tRNS chunk.
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source: from `GetWhiteSinglePixelAvif()` in `avif_fuzztest_helpers.cc`.
+Source: single white pixel encoded with libavif at default quality.
 
 ### Files `kodim*`
 
