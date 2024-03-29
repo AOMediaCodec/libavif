@@ -91,6 +91,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   (https://crbug.com/oss-fuzz/65657).
 * ext/libjpeg.cmd now pulls libjpeg-turbo instead of libjpeg and AVIF_JPEG=LOCAL
   now expects the library dependency in ext/libjpeg-turbo/build.libavif.
+* Fix 'iloc' box parsing bugs that may have wrongly accepted, rejected or parsed
+  some files with rare values of offset_size, length_size, base_offset_size and 
+  index_size.
 
 ## [1.0.4] - 2024-02-08
 
