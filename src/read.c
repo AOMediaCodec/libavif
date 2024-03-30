@@ -1744,6 +1744,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[iloc]");
 
+    // Section 8.11.3.2 of ISO/IEC 14496-12.
     uint8_t version;
     AVIF_CHECKERR(avifROStreamReadVersionAndFlags(&s, &version, NULL), AVIF_RESULT_BMFF_PARSE_FAILED);
     if (version > 2) {
@@ -1751,16 +1752,23 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
-    uint8_t offsetSize, lengthSize, baseOffsetSize;
+    uint8_t offsetSize, lengthSize, baseOffsetSize, indexSize = 0;
+    uint32_t reserved;
     AVIF_CHECKERR(avifROStreamReadBits8(&s, &offsetSize, /*bitCount=*/4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) offset_size;
     AVIF_CHECKERR(avifROStreamReadBits8(&s, &lengthSize, /*bitCount=*/4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) length_size;
     AVIF_CHECKERR(avifROStreamReadBits8(&s, &baseOffsetSize, /*bitCount=*/4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) base_offset_size;
-    if (((version == 1) || (version == 2)) && (baseOffsetSize != 0)) {
-        avifDiagnosticsPrintf(diag, "Box[iloc] has an unsupported base_offset_size [%u]", baseOffsetSize);
+    if (version == 1 || version == 2) {
+        AVIF_CHECKERR(avifROStreamReadBits8(&s, &indexSize, /*bitCount=*/4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) index_size;
+    } else {
+        AVIF_CHECKERR(avifROStreamReadBits(&s, &reserved, /*bitCount=*/4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) reserved;
+    }
+
+    // Section 8.11.3.3 of ISO/IEC 14496-12.
+    if ((offsetSize != 0 && offsetSize != 4 && offsetSize != 8) || (lengthSize != 0 && lengthSize != 4 && lengthSize != 8) ||
+        (baseOffsetSize != 0 && baseOffsetSize != 4 && baseOffsetSize != 8) || (indexSize != 0 && indexSize != 4 && indexSize != 8)) {
+        avifDiagnosticsPrintf(diag, "Box[iloc] has an invalid size");
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-    uint32_t reserved;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &reserved, /*bitCount=*/4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) reserved;
 
     uint16_t tmp16;
     uint32_t itemCount;
@@ -1796,7 +1804,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 
-        if ((version == 1) || (version == 2)) {
+        if (version == 1 || version == 2) {
             AVIF_CHECKERR(avifROStreamReadBits(&s, &reserved, /*bitCount=*/12), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(12) reserved = 0;
             if (reserved) {
                 avifDiagnosticsPrintf(diag, "Box[iloc] has a non null reserved field [%u]", reserved);
@@ -1805,8 +1813,8 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             uint8_t constructionMethod;
             AVIF_CHECKERR(avifROStreamReadBits8(&s, &constructionMethod, /*bitCount=*/4),
                           AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) construction_method;
-            if ((constructionMethod != 0 /* file */) && (constructionMethod != 1 /* idat */)) {
-                // construction method item(2) unsupported
+            if (constructionMethod != 0 /* file offset */ && constructionMethod != 1 /* idat offset */) {
+                // construction method item(2) unsupported (item offset)
                 avifDiagnosticsPrintf(diag, "Box[iloc] has an unsupported construction method [%u]", constructionMethod);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
@@ -1830,10 +1838,8 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
         uint16_t extentCount;                                                                // unsigned int(16) extent_count;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); //
         for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
-            // If extent_index is ever supported, this spec must be implemented here:
-            // ::  if (((version == 1) || (version == 2)) && (index_size > 0)) {
-            // ::      unsigned int(index_size*8) extent_index;
-            // ::  }
+            uint64_t itemReferenceIndex; // unsigned int(index_size*8) item_reference_index; (ignored unless construction_method=2)
+            AVIF_CHECKERR(avifROStreamReadUX8(&s, &itemReferenceIndex, indexSize), AVIF_RESULT_BMFF_PARSE_FAILED);
 
             uint64_t extentOffset; // unsigned int(offset_size*8) extent_offset;
             AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentOffset, offsetSize), AVIF_RESULT_BMFF_PARSE_FAILED);
