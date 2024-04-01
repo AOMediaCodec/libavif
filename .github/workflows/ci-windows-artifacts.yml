@@ -17,13 +17,13 @@ jobs:
         os: [windows-latest]
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
     - name: Setup Visual Studio shell
       if: runner.os == 'Windows'
       uses: egor-tensin/vs-shell@9a932a62d05192eae18ca370155cf877eecc2202 # v2.1
     - name: Cache external dependencies
       id: cache-ext
-      uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: ext
         key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}-releasedeps
