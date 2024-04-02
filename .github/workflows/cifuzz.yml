@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'include/**'
+      - 'ext/**'
       - 'src/**'
       - 'tests/gtest/**'
       - 'tests/oss-fuzz/**'
