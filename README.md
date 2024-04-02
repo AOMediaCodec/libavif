@@ -19,6 +19,33 @@ Please see the examples in the "examples" directory. If you're already building
 `libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and
 run the examples too.
 
+## Installation
+
+`libavif` is a package in most major OSs.
+
+### Windows
+
+```sh
+vcpkg install libavif
+```
+
+### OSX
+
+```sh
+brew install libavif
+```
+
+### Linux
+
+Debian-based distributions:
+```sh
+sudo apt install libavif-dev
+```
+RedHat-based distributions:
+```sh
+sudo yum -y install libavif
+```
+
 ## Build Notes
 
 Building libavif requires [CMake](https://cmake.org/).
