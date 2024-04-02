@@ -28,6 +28,8 @@ run the examples too.
 ```sh
 vcpkg install libavif
 ```
+You can also download the official windows binaries on the 
+[release](https://github.com/AOMediaCodec/libavif/releases) page.
 
 ### OSX
 
