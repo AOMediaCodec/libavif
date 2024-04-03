@@ -19,6 +19,47 @@ Please see the examples in the "examples" directory. If you're already building
 `libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and
 run the examples too.
 
+## Installation
+
+`libavif` is a package in most major OSs.
+
+### Windows
+
+```sh
+vcpkg install libavif
+```
+You can also download the official windows binaries on the 
+[release](https://github.com/AOMediaCodec/libavif/releases) page.
+
+### macOS
+
+Homebrew:
+```sh
+brew install libavif
+```
+MacPorts:
+```sh
+sudo port install libavif
+```
+
+### Linux
+
+Debian-based distributions:
+```sh
+sudo apt install libavif-dev
+```
+Red Hat-based distributions:
+```sh
+sudo yum -y install libavif
+```
+
+### MinGW
+
+For the "default" MSYS2 UCRT64 environment:
+```sh
+pacman -S mingw-w64-ucrt-x86_64-libavif 
+```
+
 ## Build Notes
 
 Building libavif requires [CMake](https://cmake.org/).
