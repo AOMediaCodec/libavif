@@ -28,7 +28,7 @@ run the examples too.
 ```sh
 vcpkg install libavif
 ```
-You can also download the official windows binaries on the 
+You can also download the official windows binaries on the
 [release](https://github.com/AOMediaCodec/libavif/releases) page.
 
 ### macOS
@@ -57,7 +57,7 @@ sudo yum -y install libavif
 
 For the "default" MSYS2 UCRT64 environment:
 ```sh
-pacman -S mingw-w64-ucrt-x86_64-libavif 
+pacman -S mingw-w64-ucrt-x86_64-libavif
 ```
 
 ## Build Notes

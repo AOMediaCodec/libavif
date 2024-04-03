@@ -12,7 +12,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add experimental API for reading and writing gain maps in AVIF files.
   If enabled at compile time, add `gainMap` field to `avifImage`,
   add `qualityGainMap` field to `avifEncoder`, add `gainMapPresent`,
-  `enableDecodingGainMap`, `enableParsingGainMapMetadata` and 
+  `enableDecodingGainMap`, `enableParsingGainMapMetadata` and
   `ignoreColorAndAlpha` to `avifDecoder`.
   Utility functions for working with gain maps are also added.
   Gain maps allow readers that support them to display HDR images that look
@@ -35,7 +35,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   input files.
 * Add experimental support for layered AVIF encoding in avifenc.
   Use the --layered flag to enable layered AVIF encoding.
-  Layered AVIF has multiple layers, which works like frame of animated AVIF, 
+  Layered AVIF has multiple layers, which works like frame of animated AVIF,
   and layers can be rendered in progressive manner on supported viewers
   (e.g. Chrome 94 or newer).
   Only aom supports layered AVIF encoding at the time of writing.
@@ -92,7 +92,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * ext/libjpeg.cmd now pulls libjpeg-turbo instead of libjpeg and AVIF_JPEG=LOCAL
   now expects the library dependency in ext/libjpeg-turbo/build.libavif.
 * Fix 'iloc' box parsing bugs that may have wrongly accepted, rejected or parsed
-  some files with rare values of offset_size, length_size, base_offset_size and 
+  some files with rare values of offset_size, length_size, base_offset_size and
   index_size.
 
 ## [1.0.4] - 2024-02-08
