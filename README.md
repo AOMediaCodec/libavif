@@ -31,7 +31,7 @@ vcpkg install libavif
 You can also download the official windows binaries on the 
 [release](https://github.com/AOMediaCodec/libavif/releases) page.
 
-### OSX
+### macOS
 
 ```sh
 brew install libavif
@@ -43,7 +43,7 @@ Debian-based distributions:
 ```sh
 sudo apt install libavif-dev
 ```
-RedHat-based distributions:
+Red Hat-based distributions:
 ```sh
 sudo yum -y install libavif
 ```
