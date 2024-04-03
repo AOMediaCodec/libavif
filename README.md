@@ -33,8 +33,13 @@ You can also download the official windows binaries on the
 
 ### macOS
 
+Homebrew:
 ```sh
 brew install libavif
+```
+MacPorts:
+```sh
+sudo port install libavif
 ```
 
 ### Linux
@@ -46,6 +51,13 @@ sudo apt install libavif-dev
 Red Hat-based distributions:
 ```sh
 sudo yum -y install libavif
+```
+
+### MinGW
+
+For the "default" MSYS2 UCRT64 environment:
+```sh
+pacman -S mingw-w64-ucrt-x86_64-libavif 
 ```
 
 ## Build Notes
