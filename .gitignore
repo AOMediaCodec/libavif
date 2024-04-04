@@ -19,5 +19,6 @@
 /ext/SVT-AV1
 /ext/zlib
 .clangd/
+.vscode/
 cscope.*
 tags
