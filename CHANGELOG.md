@@ -94,6 +94,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix 'iloc' box parsing bugs that may have wrongly accepted, rejected or parsed
   some files with rare values of offset_size, length_size, base_offset_size and
   index_size.
+* 'infe' boxes with an item_type different of 'mime' and without a
+  null-terminated item_name are now considered invalid as per ISO/IEC 14496-12.
 
 ## [1.0.4] - 2024-02-08
 

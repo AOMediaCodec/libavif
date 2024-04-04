@@ -2587,6 +2587,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Write iinf
 
+    // Section 8.11.6.2 of ISO/IEC 14496-12.
     avifBoxMarker iinf;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iinf", AVIF_BOX_SIZE_TBD, 0, 0, &iinf));
     AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)encoder->data->items.count)); //  unsigned int(16) entry_count;
@@ -2600,10 +2601,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id));                             // unsigned int(16) item_ID;
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                                    // unsigned int(16) item_protection_index;
         AVIF_CHECKRES(avifRWStreamWrite(&s, item->type, 4));                           // unsigned int(32) item_type;
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, item->infeName, item->infeNameSize)); // string item_name; (writing null terminator)
-        if (item->infeContentType && item->infeContentTypeSize) { // string content_type; (writing null terminator)
-            AVIF_CHECKRES(avifRWStreamWriteChars(&s, item->infeContentType, item->infeContentTypeSize));
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, item->infeName, item->infeNameSize)); // utf8string item_name; (writing null terminator)
+        if (!memcmp(item->type, "mime", 4)) {
+            AVIF_CHECKRES(avifRWStreamWriteChars(&s, item->infeContentType, item->infeContentTypeSize)); // utf8string content_type; (writing null terminator)
+            // utf8string content_encoding; //optional
         }
+        // if (item_type == 'uri ') {
+        //  utf8string item_uri_type;
+        // }
         avifRWStreamFinishBox(&s, infe);
     }
 
