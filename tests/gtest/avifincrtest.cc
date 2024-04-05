@@ -1,7 +1,6 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <fstream>
 #include <iostream>
 #include <string>
 #include <tuple>
@@ -18,32 +17,16 @@ using testing::Values;
 namespace avif {
 namespace {
 
-//------------------------------------------------------------------------------
-
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
-
-// Reads the file with file_name into bytes and returns them.
-testutil::AvifRwData ReadFile(const char* file_name) {
-  std::ifstream file(std::string(data_path) + "/" + file_name,
-                     std::ios::binary | std::ios::ate);
-  testutil::AvifRwData bytes;
-  if (avifRWDataRealloc(&bytes, file.good() ? static_cast<size_t>(file.tellg())
-                                            : 0) != AVIF_RESULT_OK) {
-    return {};
-  }
-  file.seekg(0, std::ios::beg);
-  file.read(reinterpret_cast<char*>(bytes.data),
-            static_cast<std::streamsize>(bytes.size));
-  return bytes;
-}
 
 //------------------------------------------------------------------------------
 
 // Check that non-incremental and incremental decodings of a grid AVIF produce
 // the same pixels.
 TEST(IncrementalTest, Decode) {
-  const testutil::AvifRwData encoded_avif = ReadFile("sofa_grid1x5_420.avif");
+  const testutil::AvifRwData encoded_avif =
+      testutil::ReadFile(std::string(data_path) + "sofa_grid1x5_420.avif");
   ASSERT_NE(encoded_avif.size, 0u);
   ImagePtr reference(avifImageCreateEmpty());
   ASSERT_NE(reference, nullptr);
@@ -87,7 +70,8 @@ TEST_P(IncrementalTest, EncodeDecode) {
   // Load an image. It does not matter that it comes from an AVIF file.
   ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
-  const testutil::AvifRwData image_bytes = ReadFile("sofa_grid1x5_420.avif");
+  const testutil::AvifRwData image_bytes =
+      testutil::ReadFile(std::string(data_path) + "sofa_grid1x5_420.avif");
   ASSERT_NE(image_bytes.size, 0u);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);

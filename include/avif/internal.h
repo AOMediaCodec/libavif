@@ -596,7 +596,7 @@ AVIF_NODISCARD avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v,
 AVIF_NODISCARD avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v);
 AVIF_NODISCARD avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize);
 AVIF_NODISCARD avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header); // This fails if the size reported by the header cannot fit in the stream
-AVIF_NODISCARD avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header); // This doesn't require that the full box can fit in the stream
+AVIF_NODISCARD avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header, avifBool topLevel); // This doesn't require that the full box can fit in the stream
 AVIF_NODISCARD avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags); // version and flags ptrs are both optional
 AVIF_NODISCARD avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion); // currently discards flags
 // The following functions can write non-aligned bits.
