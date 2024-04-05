@@ -25,9 +25,14 @@ avifBool avifSampleTransformExpressionIsValid(const avifSampleTransformExpressio
         }
         if (token->value == AVIF_SAMPLE_TRANSFORM_CONSTANT || token->value == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
             ++stackSize;
+        } else if (token->value == AVIF_SAMPLE_TRANSFORM_NEGATE || token->value == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
+                   token->value == AVIF_SAMPLE_TRANSFORM_NOT || token->value == AVIF_SAMPLE_TRANSFORM_MSB) {
+            if (stackSize < 1) {
+                return AVIF_FALSE;
+            }
         } else {
             if (stackSize < 2) {
-                return AVIF_FALSE; // All operators use two input operands.
+                return AVIF_FALSE;
             }
             --stackSize; // Pop two and push one.
         }
@@ -166,7 +171,33 @@ static int32_t avifSampleTransformClamp32b(int64_t value)
     return value <= INT32_MIN ? INT32_MIN : value >= INT32_MAX ? INT32_MAX : (int32_t)value;
 }
 
-static int32_t avifSampleTransformOperation32b(int32_t leftOperand, int32_t rightOperand, uint8_t operator)
+static int32_t avifSampleTransformOperation32bOneOperand(int32_t operand, uint8_t operator)
+{
+    switch (operator) {
+        case AVIF_SAMPLE_TRANSFORM_NEGATE:
+            return avifSampleTransformClamp32b(-(int64_t)operand);
+        case AVIF_SAMPLE_TRANSFORM_ABSOLUTE:
+            return operand >= 0 ? operand : avifSampleTransformClamp32b(-(int64_t)operand);
+        case AVIF_SAMPLE_TRANSFORM_NOT:
+            return ~operand;
+        case AVIF_SAMPLE_TRANSFORM_MSB: {
+            if (operand <= 0) {
+                return 0;
+            }
+            int32_t log2 = 0;
+            operand >>= 1;
+            for (; operand != 0; ++log2) {
+                operand >>= 1;
+            }
+            return log2;
+        }
+        default:
+            assert(AVIF_FALSE);
+    }
+    return 0;
+}
+
+static int32_t avifSampleTransformOperation32bTwoOperands(int32_t leftOperand, int32_t rightOperand, uint8_t operator)
 {
     switch (operator) {
         case AVIF_SAMPLE_TRANSFORM_SUM:
@@ -183,19 +214,6 @@ static int32_t avifSampleTransformOperation32b(int32_t leftOperand, int32_t righ
             return leftOperand | rightOperand;
         case AVIF_SAMPLE_TRANSFORM_XOR:
             return leftOperand ^ rightOperand;
-        case AVIF_SAMPLE_TRANSFORM_NOR:
-            return ~(leftOperand | rightOperand);
-        case AVIF_SAMPLE_TRANSFORM_MSB: {
-            if (leftOperand <= 0) {
-                return rightOperand;
-            }
-            int32_t log2 = 0;
-            leftOperand >>= 1;
-            for (; leftOperand != 0; ++log2) {
-                leftOperand >>= 1;
-            }
-            return log2;
-        }
         case AVIF_SAMPLE_TRANSFORM_POW: {
             if (leftOperand == 0 || leftOperand == 1) {
                 return leftOperand;
@@ -273,9 +291,15 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                         const uint8_t * row = avifImagePlane(image, c) + avifImagePlaneRowBytes(image, c) * y;
                         AVIF_ASSERT_OR_RETURN(stackSize < stackCapacity);
                         stack[stackSize++] = avifImageUsesU16(image) ? ((const uint16_t *)row)[x] : row[x];
+                    } else if (token->value == AVIF_SAMPLE_TRANSFORM_NEGATE || token->value == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
+                               token->value == AVIF_SAMPLE_TRANSFORM_NOT || token->value == AVIF_SAMPLE_TRANSFORM_MSB) {
+                        AVIF_ASSERT_OR_RETURN(stackSize >= 1);
+                        stack[stackSize - 1] = avifSampleTransformOperation32bOneOperand(stack[stackSize - 1], token->value);
+                        // Pop one and push one.
                     } else {
                         AVIF_ASSERT_OR_RETURN(stackSize >= 2);
-                        stack[stackSize - 2] = avifSampleTransformOperation32b(stack[stackSize - 2], stack[stackSize - 1], token->value);
+                        stack[stackSize - 2] =
+                            avifSampleTransformOperation32bTwoOperands(stack[stackSize - 2], stack[stackSize - 1], token->value);
                         stackSize--; // Pop two and push one.
                     }
                 }

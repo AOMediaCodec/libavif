@@ -175,19 +175,21 @@ typedef enum avifSampleTransformTokenType
     AVIF_SAMPLE_TRANSFORM_CONSTANT = 0,
     AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX = 1,
 
-    // Operators. L is the left operand and R is the right operand.
-    AVIF_SAMPLE_TRANSFORM_SUM = 2,        // S = L + R
-    AVIF_SAMPLE_TRANSFORM_DIFFERENCE = 3, // S = L - R
-    AVIF_SAMPLE_TRANSFORM_PRODUCT = 4,    // S = L * R
-    AVIF_SAMPLE_TRANSFORM_DIVIDE = 5,     // S = R==0 ? L : floor(L / R)
-    AVIF_SAMPLE_TRANSFORM_AND = 6,        // S = L & R
-    AVIF_SAMPLE_TRANSFORM_OR = 7,         // S = L | R
-    AVIF_SAMPLE_TRANSFORM_XOR = 8,        // S = L ^ R
-    AVIF_SAMPLE_TRANSFORM_NOR = 9,        // S = ~(L | R)
-    AVIF_SAMPLE_TRANSFORM_MSB = 10,       // S = L<=0 ? R : floor(log2(L))
-    AVIF_SAMPLE_TRANSFORM_POW = 11,       // S = pow(L, abs(R))
-    AVIF_SAMPLE_TRANSFORM_MIN = 12,       // S = L<=R ? L : R
-    AVIF_SAMPLE_TRANSFORM_MAX = 13,       // S = L<=R ? R : L
+    // Operators. L is the left operand. R is the right operand if there are two operands.
+    AVIF_SAMPLE_TRANSFORM_NEGATE = 2,     // S = -L
+    AVIF_SAMPLE_TRANSFORM_ABSOLUTE = 3,   // S = |L|
+    AVIF_SAMPLE_TRANSFORM_SUM = 4,        // S = L + R
+    AVIF_SAMPLE_TRANSFORM_DIFFERENCE = 5, // S = L - R
+    AVIF_SAMPLE_TRANSFORM_PRODUCT = 6,    // S = L * R
+    AVIF_SAMPLE_TRANSFORM_DIVIDE = 7,     // S = R==0 ? L : floor(L / R)
+    AVIF_SAMPLE_TRANSFORM_AND = 8,        // S = L & R
+    AVIF_SAMPLE_TRANSFORM_OR = 9,         // S = L | R
+    AVIF_SAMPLE_TRANSFORM_XOR = 10,       // S = L ^ R
+    AVIF_SAMPLE_TRANSFORM_NOT = 11,       // S = ~L
+    AVIF_SAMPLE_TRANSFORM_MSB = 12,       // S = L<=0 ? 0 : floor(log2(L))
+    AVIF_SAMPLE_TRANSFORM_POW = 13,       // S = L==0 ? 0 : pow(L, R)
+    AVIF_SAMPLE_TRANSFORM_MIN = 14,       // S = L<=R ? L : R
+    AVIF_SAMPLE_TRANSFORM_MAX = 15,       // S = L<=R ? R : L
     AVIF_SAMPLE_TRANSFORM_RESERVED
 } avifSampleTransformTokenType;
 

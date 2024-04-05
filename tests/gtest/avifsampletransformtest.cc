@@ -19,6 +19,8 @@ class AvifExpression : public avifSampleTransformExpression {
       abort();
     }
   }
+  ~AvifExpression() { avifArrayDestroy(this); }
+
   void AddConstant(int32_t constant) {
     avifSampleTransformToken& token = AddToken();
     token.value = AVIF_SAMPLE_TRANSFORM_CONSTANT;
@@ -33,7 +35,24 @@ class AvifExpression : public avifSampleTransformExpression {
     avifSampleTransformToken& token = AddToken();
     token.value = op;
   }
-  ~AvifExpression() { avifArrayDestroy(this); }
+
+  int32_t Apply() const {
+    ImagePtr result(avifImageCreate(/*width=*/1, /*height=*/1, /*depth=*/8,
+                                    AVIF_PIXEL_FORMAT_YUV444));
+    if (result.get() == nullptr) abort();
+    if (avifImageAllocatePlanes(result.get(), AVIF_PLANES_YUV) !=
+        AVIF_RESULT_OK) {
+      abort();
+    }
+
+    if (avifImageApplyExpression(result.get(),
+                                 AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, this,
+                                 /*numInputImageItems=*/0, nullptr,
+                                 AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
+      abort();
+    }
+    return result->yuvPlanes[0][0];
+  }
 
  private:
   avifSampleTransformToken& AddToken() {
@@ -100,13 +119,27 @@ TEST(SampleTransformTest, NotEquivalent) {
   EXPECT_FALSE(avifSampleTransformExpressionIsEquivalentTo(&a, &b));
 }
 
+TEST(SampleTransformTest, MaxStackSize) {
+  AvifExpression e;
+  for (int i = 0; i < 128; ++i) e.AddConstant(42);
+  for (int i = 0; i < 127; ++i) e.AddOperator(AVIF_SAMPLE_TRANSFORM_SUM);
+
+  EXPECT_EQ(e.Apply(), 255);
+}
+
 //------------------------------------------------------------------------------
 
 struct Op {
-  int32_t left_operand;
+  Op(int32_t l, avifSampleTransformTokenType o, int32_t r, uint32_t e)
+      : left(l), right(r), op(o), expected_result(e), single_operand(false) {}
+  Op(avifSampleTransformTokenType o, int32_t l, uint32_t e)
+      : left(l), right(0), op(o), expected_result(e), single_operand(true) {}
+
+  int32_t left;
+  int32_t right;
   avifSampleTransformTokenType op;
-  int32_t right_operand;
   uint32_t expected_result;
+  bool single_operand;
 };
 
 class SampleTransformOperationTest : public testing::TestWithParam<Op> {};
@@ -124,51 +157,53 @@ ImagePtr OneByOne(uint32_t depth) {
 TEST_P(SampleTransformOperationTest, Apply) {
   AvifExpression expression;
   // Postfix notation.
-  expression.AddConstant(GetParam().left_operand);
-  expression.AddConstant(GetParam().right_operand);
+  expression.AddConstant(GetParam().left);
+  if (!GetParam().single_operand) expression.AddConstant(GetParam().right);
   expression.AddOperator(GetParam().op);
 
-  ImagePtr result(avifImageCreate(/*width=*/1, /*height=*/1, /*depth=*/8,
-                                  AVIF_PIXEL_FORMAT_YUV444));
-  ASSERT_NE(result.get(), nullptr);
-  ASSERT_EQ(avifImageAllocatePlanes(result.get(), AVIF_PLANES_YUV),
-            AVIF_RESULT_OK);
-
-  ASSERT_EQ(avifImageApplyExpression(
-                result.get(), AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, &expression,
-                /*numInputImageItems=*/0, nullptr, AVIF_PLANES_YUV),
-            AVIF_RESULT_OK);
-  EXPECT_EQ(result->yuvPlanes[0][0], GetParam().expected_result);
+  EXPECT_EQ(expression.Apply(), GetParam().expected_result);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     Operations, SampleTransformOperationTest,
-    testing::Values(Op{1, AVIF_SAMPLE_TRANSFORM_SUM, 1, 2},
-                    Op{255, AVIF_SAMPLE_TRANSFORM_SUM, 255, 255},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 1, 0},
-                    Op{255, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 255, 0},
-                    Op{255, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 0, 255},
-                    Op{0, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 255, 0},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, -1, 2},
-                    Op{-1, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 1, 0},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_PRODUCT, 1, 1},
-                    Op{2, AVIF_SAMPLE_TRANSFORM_PRODUCT, 3, 6},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_DIVIDE, 1, 1},
-                    Op{2, AVIF_SAMPLE_TRANSFORM_DIVIDE, 3, 0},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_AND, 1, 1},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_AND, 2, 0},
-                    Op{7, AVIF_SAMPLE_TRANSFORM_AND, 15, 7},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_OR, 1, 1},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_OR, 2, 3},
-                    Op{1, AVIF_SAMPLE_TRANSFORM_XOR, 3, 2},
-                    Op{254, AVIF_SAMPLE_TRANSFORM_NOR, 1, 0},
-                    Op{0, AVIF_SAMPLE_TRANSFORM_MSB, 123, 123},
-                    Op{61, AVIF_SAMPLE_TRANSFORM_MSB, 123, 5},
-                    Op{2, AVIF_SAMPLE_TRANSFORM_POW, 4, 16},
-                    Op{4, AVIF_SAMPLE_TRANSFORM_POW, 2, 16},
-                    Op{123, AVIF_SAMPLE_TRANSFORM_POW, 123, 255},
-                    Op{123, AVIF_SAMPLE_TRANSFORM_MIN, 124, 123},
-                    Op{123, AVIF_SAMPLE_TRANSFORM_MAX, 124, 124}));
+    testing::Values(Op(AVIF_SAMPLE_TRANSFORM_NEGATE, 1, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_NEGATE, -1, 1),
+                    Op(AVIF_SAMPLE_TRANSFORM_NEGATE, 0, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_NEGATE, -256, 255),
+                    Op(AVIF_SAMPLE_TRANSFORM_ABSOLUTE, 1, 1),
+                    Op(AVIF_SAMPLE_TRANSFORM_ABSOLUTE, -1, 1),
+                    Op(AVIF_SAMPLE_TRANSFORM_ABSOLUTE, 256, 255),
+                    Op(AVIF_SAMPLE_TRANSFORM_ABSOLUTE, -256, 255),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_SUM, 1, 2),
+                    Op(255, AVIF_SAMPLE_TRANSFORM_SUM, 255, 255),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 1, 0),
+                    Op(255, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 255, 0),
+                    Op(255, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 0, 255),
+                    Op(0, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 255, 0),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, -1, 2),
+                    Op(-1, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 1, 0),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_PRODUCT, 1, 1),
+                    Op(2, AVIF_SAMPLE_TRANSFORM_PRODUCT, 3, 6),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_DIVIDE, 1, 1),
+                    Op(2, AVIF_SAMPLE_TRANSFORM_DIVIDE, 3, 0),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_AND, 1, 1),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_AND, 2, 0),
+                    Op(7, AVIF_SAMPLE_TRANSFORM_AND, 15, 7),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_OR, 1, 1),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_OR, 2, 3),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_XOR, 3, 2),
+                    Op(AVIF_SAMPLE_TRANSFORM_NOT, 254, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_NOT, -1, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_MSB, 0, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_MSB, -1, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_MSB, 61, 5),
+                    Op(AVIF_SAMPLE_TRANSFORM_MSB,
+                       std::numeric_limits<int32_t>::max(), 30),
+                    Op(2, AVIF_SAMPLE_TRANSFORM_POW, 4, 16),
+                    Op(4, AVIF_SAMPLE_TRANSFORM_POW, 2, 16),
+                    Op(123, AVIF_SAMPLE_TRANSFORM_POW, 123, 255),
+                    Op(123, AVIF_SAMPLE_TRANSFORM_MIN, 124, 123),
+                    Op(123, AVIF_SAMPLE_TRANSFORM_MAX, 124, 124)));
 
 //------------------------------------------------------------------------------
 
