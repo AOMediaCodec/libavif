@@ -2528,11 +2528,22 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         const avifBool isGrid = (item->gridCols > 0);
+        // Whether there is ipma to write for this item.
+        avifBool hasIpmaToWrite = item->codec || isGrid;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         const avifBool isToneMappedImage = !memcmp(item->type, "tmap", 4);
+        if (isToneMappedImage) {
+            hasIpmaToWrite = AVIF_TRUE;
+        }
+#endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         const avifBool isSampleTransformImage = !memcmp(item->type, "sato", 4);
+        if (isSampleTransformImage) {
+            hasIpmaToWrite = AVIF_TRUE;
+        }
+#endif
         memset(&item->ipma, 0, sizeof(item->ipma));
-        if (!item->codec && !isGrid && !isToneMappedImage && !isSampleTransformImage) {
-            // No ipma to write for this item
+        if (!hasIpmaToWrite) {
             continue;
         }
 
