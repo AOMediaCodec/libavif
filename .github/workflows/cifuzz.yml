@@ -2,8 +2,8 @@ name: CI Fuzz
 on:
   pull_request:
     paths:
-      - 'include/**'
       - 'ext/**'
+      - 'include/**'
       - 'src/**'
       - 'tests/gtest/**'
       - 'tests/oss-fuzz/**'
