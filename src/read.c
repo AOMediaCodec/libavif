@@ -2681,11 +2681,11 @@ static avifResult avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, s
         AVIF_CHECKERR(avifROStreamReadString(&s, contentType.contentType, CONTENTTYPE_SIZE), AVIF_RESULT_BMFF_PARSE_FAILED); // utf8string content_type;
         // utf8string content_encoding; //optional
     } else {
+        // if (item_type == 'uri ') {
+        //  utf8string item_uri_type;
+        // }
         memset(&contentType, 0, sizeof(contentType));
     }
-    // if (item_type == 'uri ') {
-    //  utf8string item_uri_type;
-    // }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
     if (meta->fromMini && itemID < 5) {

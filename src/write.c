@@ -2605,10 +2605,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         if (!memcmp(item->type, "mime", 4)) {
             AVIF_CHECKRES(avifRWStreamWriteChars(&s, item->infeContentType, item->infeContentTypeSize)); // utf8string content_type; (writing null terminator)
             // utf8string content_encoding; //optional
+        } else if (!memcmp(item->type, "uri ", 4)) {
+            // utf8string item_uri_type;
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
-        // if (item_type == 'uri ') {
-        //  utf8string item_uri_type;
-        // }
         avifRWStreamFinishBox(&s, infe);
     }
 
