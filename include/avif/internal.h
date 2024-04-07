@@ -592,7 +592,8 @@ AVIF_NODISCARD avifBool avifROStreamReadU16(avifROStream * stream, uint16_t * v)
 AVIF_NODISCARD avifBool avifROStreamReadU16Endianness(avifROStream * stream, uint16_t * v, avifBool littleEndian);
 AVIF_NODISCARD avifBool avifROStreamReadU32(avifROStream * stream, uint32_t * v);
 AVIF_NODISCARD avifBool avifROStreamReadU32Endianness(avifROStream * stream, uint32_t * v, avifBool littleEndian);
-AVIF_NODISCARD avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t factor); // Reads a factor*8 sized uint, saves in v
+// Reads a factor*8 sized uint, saves in v. If factor is 0, reads nothing and saves 0 in v.
+AVIF_NODISCARD avifBool avifROStreamReadUX8(avifROStream * stream, uint64_t * v, uint64_t factor);
 AVIF_NODISCARD avifBool avifROStreamReadU64(avifROStream * stream, uint64_t * v);
 AVIF_NODISCARD avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize);
 AVIF_NODISCARD avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header); // This fails if the size reported by the header cannot fit in the stream
