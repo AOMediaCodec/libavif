@@ -1814,7 +1814,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             AVIF_CHECKERR(avifROStreamReadBits8(&s, &constructionMethod, /*bitCount=*/4),
                           AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) construction_method;
             if (constructionMethod != 0 /* file offset */ && constructionMethod != 1 /* idat offset */) {
-                // construction method item(2) unsupported (item offset)
+                // construction method 2 (item offset) unsupported
                 avifDiagnosticsPrintf(diag, "Box[iloc] has an unsupported construction method [%u]", constructionMethod);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
@@ -1831,20 +1831,27 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             }
         }
 
-        uint16_t dataReferenceIndex; // unsigned int(16) data_reference_index;
-        AVIF_CHECKERR(avifROStreamReadU16(&s, &dataReferenceIndex), AVIF_RESULT_BMFF_PARSE_FAILED); //
-        uint64_t baseOffset; // unsigned int(base_offset_size*8) base_offset;
-        AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); //
-        uint16_t extentCount;                                                                // unsigned int(16) extent_count;
-        AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); //
+        uint16_t dataReferenceIndex;
+        AVIF_CHECKERR(avifROStreamReadU16(&s, &dataReferenceIndex), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) data_reference_index;
+        uint64_t baseOffset;
+        AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(base_offset_size*8) base_offset;
+        uint16_t extentCount;
+        AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) extent_count;
         for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
-            uint64_t itemReferenceIndex; // unsigned int(index_size*8) item_reference_index; (ignored unless construction_method=2)
-            AVIF_CHECKERR(avifROStreamReadUX8(&s, &itemReferenceIndex, indexSize), AVIF_RESULT_BMFF_PARSE_FAILED);
+            if ((version == 1 || version == 2) && indexSize > 0) {
+                // Section 8.11.3.1 of ISO/IEC 14496-12:
+                //   The item_reference_index is only used for the method item_offset; it indicates the 1-based index
+                //   of the item reference with referenceType 'iloc' linked from this item. If index_size is 0, then
+                //   the value 1 is implied; the value 0 is reserved.
+                uint64_t itemReferenceIndex; // Ignored unless construction_method=2 which is unsupported, but still read it.
+                AVIF_CHECKERR(avifROStreamReadUX8(&s, &itemReferenceIndex, indexSize),
+                              AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(index_size*8) item_reference_index;
+            }
 
-            uint64_t extentOffset; // unsigned int(offset_size*8) extent_offset;
-            AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentOffset, offsetSize), AVIF_RESULT_BMFF_PARSE_FAILED);
-            uint64_t extentLength; // unsigned int(length_size*8) extent_length;
-            AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentLength, lengthSize), AVIF_RESULT_BMFF_PARSE_FAILED);
+            uint64_t extentOffset;
+            AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentOffset, offsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(offset_size*8) extent_offset;
+            uint64_t extentLength;
+            AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentLength, lengthSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(length_size*8) extent_length;
 
             avifExtent * extent = (avifExtent *)avifArrayPush(&item->extents);
             AVIF_CHECKERR(extent != NULL, AVIF_RESULT_OUT_OF_MEMORY);
