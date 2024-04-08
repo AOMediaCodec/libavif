@@ -37,12 +37,6 @@ import java.nio.ByteBuffer;
 @SuppressWarnings("CatchAndPrintStackTrace")
 public class AvifDecoder {
   static {
-    // If dav1d is built as a separate shared object, try loading that first.
-    try {
-      System.loadLibrary("dav1d");
-    } catch (UnsatisfiedLinkError exception) {
-      // This is not an error. Do nothing.
-    }
     try {
       System.loadLibrary("avif_android");
     } catch (UnsatisfiedLinkError exception) {
