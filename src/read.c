@@ -1839,7 +1839,11 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
         AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) extent_count;
         for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
             if ((version == 1 || version == 2) && indexSize > 0) {
-                uint64_t itemReferenceIndex; // Ignored unless construction_method=2 which is unsupported but still read it.
+                // Section 8.11.3.1 of ISO/IEC 14496-12:
+                //   The item_reference_index is only used for the method item_offset; it indicates the 1-based index
+                //   of the item reference with referenceType 'iloc' linked from this item. If index_size is 0, then
+                //   the value 1 is implied; the value 0 is reserved.
+                uint64_t itemReferenceIndex; // Ignored unless construction_method=2 which is unsupported, but still read it.
                 AVIF_CHECKERR(avifROStreamReadUX8(&s, &itemReferenceIndex, indexSize),
                               AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(index_size*8) item_reference_index;
             }
