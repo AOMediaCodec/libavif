@@ -2645,6 +2645,7 @@ static avifResult avifParseItemPropertiesBox(avifMeta * meta, uint64_t rawOffset
 
 static avifResult avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
+    // Section 8.11.6.2 of ISO/IEC 14496-12.
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[infe]");
 
     uint8_t version;
@@ -2677,16 +2678,19 @@ static avifResult avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, s
         AVIF_CHECKERR(avifROStreamReadU32(&s, &itemID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) item_ID;
     }
     AVIF_CHECKRES(avifCheckItemID("infe", itemID, diag));
-    uint16_t itemProtectionIndex; // unsigned int(16) item_protection_index;
-    AVIF_CHECKERR(avifROStreamReadU16(&s, &itemProtectionIndex), AVIF_RESULT_BMFF_PARSE_FAILED); //
-    uint8_t itemType[4];                                                                         // unsigned int(32) item_type;
-    AVIF_CHECKERR(avifROStreamRead(&s, itemType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);             //
-
+    uint16_t itemProtectionIndex;
+    AVIF_CHECKERR(avifROStreamReadU16(&s, &itemProtectionIndex), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) item_protection_index;
+    uint8_t itemType[4];
+    AVIF_CHECKERR(avifROStreamRead(&s, itemType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);   // unsigned int(32) item_type;
+    AVIF_CHECKERR(avifROStreamReadString(&s, NULL, 0), AVIF_RESULT_BMFF_PARSE_FAILED); // utf8string item_name; (skipped)
     avifContentType contentType;
     if (!memcmp(itemType, "mime", 4)) {
-        AVIF_CHECKERR(avifROStreamReadString(&s, NULL, 0), AVIF_RESULT_BMFF_PARSE_FAILED); // string item_name; (skipped)
-        AVIF_CHECKERR(avifROStreamReadString(&s, contentType.contentType, CONTENTTYPE_SIZE), AVIF_RESULT_BMFF_PARSE_FAILED); // string content_type;
+        AVIF_CHECKERR(avifROStreamReadString(&s, contentType.contentType, CONTENTTYPE_SIZE), AVIF_RESULT_BMFF_PARSE_FAILED); // utf8string content_type;
+        // utf8string content_encoding; //optional
     } else {
+        // if (item_type == 'uri ') {
+        //  utf8string item_uri_type;
+        // }
         memset(&contentType, 0, sizeof(contentType));
     }
 
