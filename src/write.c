@@ -1174,15 +1174,20 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
                                            uint16_t * topLevelItemID)
 {
     const uint32_t cellCount = gridCols * gridRows;
-    const char * infeName = avifIsAlpha(itemCategory) ? infeNameAlpha
+    const char * infeName;
+    if (avifIsAlpha(itemCategory)) {
+        infeName = infeNameAlpha;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-                            : (itemCategory == AVIF_ITEM_GAIN_MAP) ? infeNameGainMap
+    } else if (itemCategory == AVIF_ITEM_GAIN_MAP) {
+        infeName = infeNameGainMap;
 #endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-                            : (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY)
-                                ? infeNameSampleTransform
+    } else if (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
+        infeName = infeNameSampleTransform;
 #endif
-                                : infeNameColor;
+    } else {
+        infeName = infeNameColor;
+    }
     const size_t infeNameSize = strlen(infeName) + 1;
 
     if (cellCount > 1) {
@@ -1637,6 +1642,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     if (hasGainMap) {
         // AVIF supports 16-bit images through sample transforms used as bit depth extensions,
         // but this is not implemented for gain maps for now. Stick to at most 12 bits.
+        // TODO(yguyon): Implement 16-bit gain maps.
         AVIF_CHECKERR(firstCell->gainMap->image->depth == 8 || firstCell->gainMap->image->depth == 10 ||
                           firstCell->gainMap->image->depth == 12,
                       AVIF_RESULT_UNSUPPORTED_DEPTH);

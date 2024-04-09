@@ -557,7 +557,7 @@ typedef struct avifContentLightLevelInformationBox
 // Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
 // images containing a gain map encoded with the current version of libavif might
 // not decode with a future version of libavif. The API is not guaranteed
-// to be stable, and might even be removed in the future. Use are your own risk.
+// to be stable, and might even be removed in the future. Use at your own risk.
 // This is based on ISO/IEC JTC 1/SC 29/WG 3 m64379
 // This product includes Gain Map technology under license by Adobe.
 //
@@ -716,28 +716,27 @@ AVIF_NODISCARD AVIF_API avifBool avifGainMapMetadataFractionsToDouble(avifGainMa
 // Sample Transforms are a HIGHLY EXPERIMENTAL FEATURE. The format might still
 // change and images containing a sample transform item encoded with the current
 // version of libavif might not decode with a future version of libavif.
-// Use are your own risk.
+// Use at your own risk.
 // This is based on a proposal from the Alliance for Open Media.
 
 typedef enum avifSampleTransformRecipe
 {
     AVIF_SAMPLE_TRANSFORM_NONE,
     // Encode the 8 most significant bits of each input image sample losslessly
-    // into one base image. The remaining least 8 significant bits are encoded
-    // in a separate hidden image item. The two are combined at decoding into
-    // one image with the same bit depth as the original image.
-    // It is backward compatible in the sense that only the base image may be
-    // decoded (ignoring the hidden image item), leading to a valid image but
-    // with precision loss (16-bit samples truncated to the 8 most significant
-    // bits).
+    // into a base image. The remaining 8 least significant bits are encoded in
+    // a separate hidden image item. The two are combined at decoding into one
+    // image with the same bit depth as the original image. It is backward
+    // compatible in the sense that it is possible to decode only the base image
+    // (ignoring the hidden image item), leading to a valid image but with
+    // precision loss (16-bit samples truncated to the 8 most significant bits).
     AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B,
     // Encode the 12 most significant bits of each input image sample losslessly
-    // into one base image. The remaining least 4 significant bits are encoded
-    // in a separate hidden image item. The two are combined at decoding into
-    // one image with the same bit depth as the original image.
-    // It is backward compatible in the sense that only the base image may be
-    // decoded (ignoring the hidden image item), leading to a valid image but
-    // with precision loss (16-bit samples truncated to the 12 most significant
+    // into a base image. The remaining least 4 significant bits are encoded in
+    // a separate hidden image item. The two are combined at decoding into one
+    // image with the same bit depth as the original image. It is backward
+    // compatible in the sense that it is possible to decode only the base image
+    // (ignoring the hidden image item), leading to a valid image but with
+    // precision loss (16-bit samples truncated to the 12 most significant
     // bits).
     AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B
 } avifSampleTransformRecipe;
@@ -1497,7 +1496,7 @@ typedef struct avifEncoder
 #endif
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-    // Perform extra steps at encoding and decoding to extend AV1 features as bundled additional image items.
+    // Perform extra steps at encoding and decoding to extend AV1 features using bundled additional image items.
     avifSampleTransformRecipe sampleTransformRecipe;
 #endif
 } avifEncoder;
