@@ -731,7 +731,7 @@ typedef enum avifSampleTransformRecipe
     // precision loss (16-bit samples truncated to the 8 most significant bits).
     AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B,
     // Encode the 12 most significant bits of each input image sample losslessly
-    // into a base image. The remaining least 4 significant bits are encoded in
+    // into a base image. The remaining 4 least significant bits are encoded in
     // a separate hidden image item. The two are combined at decoding into one
     // image with the same bit depth as the original image. It is backward
     // compatible in the sense that it is possible to decode only the base image
