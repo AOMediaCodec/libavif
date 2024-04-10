@@ -23,17 +23,17 @@ class AvifExpression : public avifSampleTransformExpression {
 
   void AddConstant(int32_t constant) {
     avifSampleTransformToken& token = AddToken();
-    token.value = AVIF_SAMPLE_TRANSFORM_CONSTANT;
+    token.type = AVIF_SAMPLE_TRANSFORM_CONSTANT;
     token.constant = constant;
   }
   void AddImage(uint8_t inputImageItemIndex) {
     avifSampleTransformToken& token = AddToken();
-    token.value = AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX;
+    token.type = AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX;
     token.inputImageItemIndex = inputImageItemIndex;
   }
   void AddOperator(uint8_t op) {
     avifSampleTransformToken& token = AddToken();
-    token.value = op;
+    token.type = op;
   }
 
   int32_t Apply() const {

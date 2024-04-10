@@ -2041,13 +2041,13 @@ static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTra
         avifSampleTransformToken * token = (avifSampleTransformToken *)avifArrayPush(expression);
         AVIF_ASSERT_OR_RETURN(token != NULL);
 
-        AVIF_CHECK(avifROStreamRead(s, &token->value, /*size=*/1)); // unsigned int(8) token;
-        if (token->value == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
+        AVIF_CHECK(avifROStreamRead(s, &token->type, /*size=*/1)); // unsigned int(8) token;
+        if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
             // TODO(yguyon): Verify two's complement representation is guaranteed here.
             uint32_t constant;
             AVIF_CHECK(avifROStreamReadU32(s, &constant)); // signed int(1<<(bit_depth+3)) constant;
             token->constant = *(int32_t *)&constant;       // maybe =(int32_t)constant; is enough
-        } else if (token->value == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
+        } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
             AVIF_CHECK(avifROStreamRead(s, &token->inputImageItemIndex, 1)); // unsigned int(8) input_image_item_index;
         }
     }

@@ -15,18 +15,18 @@ avifBool avifSampleTransformExpressionIsValid(const avifSampleTransformExpressio
     uint32_t stackSize = 0;
     for (uint32_t t = 0; t < tokens->count; ++t) {
         const avifSampleTransformToken * token = &tokens->tokens[t];
-        if (token->value >= AVIF_SAMPLE_TRANSFORM_RESERVED) {
+        if (token->type >= AVIF_SAMPLE_TRANSFORM_RESERVED) {
             return AVIF_FALSE;
         }
-        if (token->value == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX &&
+        if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX &&
             (token->inputImageItemIndex == 0 || token->inputImageItemIndex > numInputImageItems)) {
             // inputImageItemIndex is 1-based.
             return AVIF_FALSE;
         }
-        if (token->value == AVIF_SAMPLE_TRANSFORM_CONSTANT || token->value == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
+        if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT || token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
             ++stackSize;
-        } else if (token->value == AVIF_SAMPLE_TRANSFORM_NEGATE || token->value == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
-                   token->value == AVIF_SAMPLE_TRANSFORM_NOT || token->value == AVIF_SAMPLE_TRANSFORM_MSB) {
+        } else if (token->type == AVIF_SAMPLE_TRANSFORM_NEGATE || token->type == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
+                   token->type == AVIF_SAMPLE_TRANSFORM_NOT || token->type == AVIF_SAMPLE_TRANSFORM_MSB) {
             if (stackSize < 1) {
                 return AVIF_FALSE;
             }
@@ -49,7 +49,7 @@ avifBool avifSampleTransformExpressionIsEquivalentTo(const avifSampleTransformEx
     for (uint32_t t = 0; t < a->count; ++t) {
         const avifSampleTransformToken * aToken = &a->tokens[t];
         const avifSampleTransformToken * bToken = &b->tokens[t];
-        if (aToken->value != bToken->value || (aToken->value == AVIF_SAMPLE_TRANSFORM_CONSTANT && aToken->constant != bToken->constant)) {
+        if (aToken->type != bToken->type || (aToken->type == AVIF_SAMPLE_TRANSFORM_CONSTANT && aToken->constant != bToken->constant)) {
             return AVIF_FALSE;
         }
         // For AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, no need to compare inputImageItemIndex
@@ -67,7 +67,7 @@ static avifBool avifPushConstant(avifSampleTransformExpression * expression, int
     if (token == NULL) {
         return AVIF_FALSE;
     }
-    token->value = AVIF_SAMPLE_TRANSFORM_CONSTANT;
+    token->type = AVIF_SAMPLE_TRANSFORM_CONSTANT;
     token->constant = constant;
     return AVIF_TRUE;
 }
@@ -77,7 +77,7 @@ static avifBool avifPushInputImageItem(avifSampleTransformExpression * expressio
     if (token == NULL) {
         return AVIF_FALSE;
     }
-    token->value = AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX;
+    token->type = AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX;
     token->inputImageItemIndex = inputImageItemIndex;
     return AVIF_TRUE;
 }
@@ -87,7 +87,7 @@ static avifBool avifPushOperator(avifSampleTransformExpression * expression, avi
     if (token == NULL) {
         return AVIF_FALSE;
     }
-    token->value = (uint8_t) operator;
+    token->type = (uint8_t) operator;
     return AVIF_TRUE;
 }
 
@@ -283,23 +283,23 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                 uint32_t stackSize = 0;
                 for (uint32_t t = 0; t < expression->count; ++t) {
                     const avifSampleTransformToken * token = &expression->tokens[t];
-                    if (token->value == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
+                    if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
                         AVIF_ASSERT_OR_RETURN(stackSize < stackCapacity);
                         stack[stackSize++] = token->constant;
-                    } else if (token->value == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
+                    } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
                         const avifImage * image = inputImageItems[token->inputImageItemIndex - 1]; // 1-based
                         const uint8_t * row = avifImagePlane(image, c) + avifImagePlaneRowBytes(image, c) * y;
                         AVIF_ASSERT_OR_RETURN(stackSize < stackCapacity);
                         stack[stackSize++] = avifImageUsesU16(image) ? ((const uint16_t *)row)[x] : row[x];
-                    } else if (token->value == AVIF_SAMPLE_TRANSFORM_NEGATE || token->value == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
-                               token->value == AVIF_SAMPLE_TRANSFORM_NOT || token->value == AVIF_SAMPLE_TRANSFORM_MSB) {
+                    } else if (token->type == AVIF_SAMPLE_TRANSFORM_NEGATE || token->type == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
+                               token->type == AVIF_SAMPLE_TRANSFORM_NOT || token->type == AVIF_SAMPLE_TRANSFORM_MSB) {
                         AVIF_ASSERT_OR_RETURN(stackSize >= 1);
-                        stack[stackSize - 1] = avifSampleTransformOperation32bOneOperand(stack[stackSize - 1], token->value);
+                        stack[stackSize - 1] = avifSampleTransformOperation32bOneOperand(stack[stackSize - 1], token->type);
                         // Pop one and push one.
                     } else {
                         AVIF_ASSERT_OR_RETURN(stackSize >= 2);
                         stack[stackSize - 2] =
-                            avifSampleTransformOperation32bTwoOperands(stack[stackSize - 2], stack[stackSize - 1], token->value);
+                            avifSampleTransformOperation32bTwoOperands(stack[stackSize - 2], stack[stackSize - 1], token->type);
                         stackSize--; // Pop two and push one.
                     }
                 }

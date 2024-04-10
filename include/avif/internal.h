@@ -195,7 +195,7 @@ typedef enum avifSampleTransformTokenType
 
 typedef struct avifSampleTransformToken
 {
-    uint8_t value;               // avifSampleTransformTokenType
+    uint8_t type;                // avifSampleTransformTokenType
     int32_t constant;            // If value is AVIF_SAMPLE_TRANSFORM_CONSTANT.
     uint8_t inputImageItemIndex; // If value is AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX. 1-based.
 } avifSampleTransformToken;
