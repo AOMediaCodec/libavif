@@ -2031,6 +2031,7 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+// bit-depth is assumed to be 2 (32-bit).
 static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTransformExpression * expression)
 {
     uint8_t tokenCount;
@@ -2043,7 +2044,7 @@ static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTra
 
         AVIF_CHECK(avifROStreamRead(s, &token->type, /*size=*/1)); // unsigned int(8) token;
         if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
-            // TODO(yguyon): Verify two's complement representation is guaranteed here.
+            // Two's complement representation is assumed here.
             uint32_t constant;
             AVIF_CHECK(avifROStreamReadU32(s, &constant)); // signed int(1<<(bit_depth+3)) constant;
             token->constant = *(int32_t *)&constant;       // maybe =(int32_t)constant; is enough
@@ -2173,11 +2174,11 @@ static avifResult avifDecoderItemReadAndParse(const avifDecoder * decoder,
         *codecType = avifGetCodecType(item->type);
         AVIF_ASSERT_OR_RETURN(*codecType != AVIF_CODEC_TYPE_UNKNOWN);
     }
-    // Note: If AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is defined, backward-incompatible files
-    //       with a primary 'sato' Sample Transform derived image item could be handled here
-    //       (compared to backward-compatible files with a 'sato' item in the same 'altr' group
-    //       as the primary regular color item which are handled in
-    //       avifDecoderDataFindSampleTransformImageItem() below).
+    // TODO(yguyon): If AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is defined, backward-incompatible
+    //               files with a primary 'sato' Sample Transform derived image item could be
+    //               handled here (compared to backward-compatible files with a 'sato' item in the
+    //               same 'altr' group as the primary regular color item which are handled in
+    //               avifDecoderDataFindSampleTransformImageItem() below).
     return AVIF_RESULT_OK;
 }
 
@@ -5166,6 +5167,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 // Input image item order is important because input image items are indexed according to this order.
                 AVIF_CHECKERR(inputImageItem->dimgIdx == data->sampleTransformNumInputImageItems, AVIF_RESULT_NOT_IMPLEMENTED);
 
+                AVIF_CHECKERR(data->sampleTransformNumInputImageItems < AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS,
+                              AVIF_RESULT_NOT_IMPLEMENTED);
                 avifItemCategory * category = &data->sampleTransformInputImageItems[data->sampleTransformNumInputImageItems];
                 avifBool foundItem = AVIF_FALSE;
                 uint32_t alphaCategory = AVIF_ITEM_CATEGORY_COUNT;
@@ -5657,6 +5660,7 @@ avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, avifImag
     }
 
     for (avifBool alpha = AVIF_FALSE; alpha <= decoder->alphaPresent ? AVIF_TRUE : AVIF_FALSE; ++alpha) {
+        AVIF_ASSERT_OR_RETURN(decoder->data->sampleTransformNumInputImageItems <= AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS);
         const avifImage * inputImages[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
         for (uint32_t i = 0; i < decoder->data->sampleTransformNumInputImageItems; ++i) {
             avifItemCategory category = decoder->data->sampleTransformInputImageItems[i];

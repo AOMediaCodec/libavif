@@ -1161,6 +1161,24 @@ static const char infeNameGainMap[] = "GMap";
 static const char infeNameSampleTransform[] = "SampleTransform";
 #endif
 
+static const char * getInfeName(avifItemCategory itemCategory)
+{
+    if (avifIsAlpha(itemCategory)) {
+        return infeNameAlpha;
+    }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (itemCategory == AVIF_ITEM_GAIN_MAP) {
+        return infeNameGainMap;
+    }
+#endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    if (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
+        return infeNameSampleTransform;
+    }
+#endif
+    return infeNameColor;
+}
+
 // Adds the items for a single cell or a grid of cells. Outputs the topLevelItemID which is
 // the only item if there is exactly one cell, or the grid item for multiple cells.
 // Note: The topLevelItemID output argument has the type uint16_t* instead of avifEncoderItem** because
@@ -1174,20 +1192,7 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
                                            uint16_t * topLevelItemID)
 {
     const uint32_t cellCount = gridCols * gridRows;
-    const char * infeName;
-    if (avifIsAlpha(itemCategory)) {
-        infeName = infeNameAlpha;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    } else if (itemCategory == AVIF_ITEM_GAIN_MAP) {
-        infeName = infeNameGainMap;
-#endif
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-    } else if (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
-        infeName = infeNameSampleTransform;
-#endif
-    } else {
-        infeName = infeNameColor;
-    }
+    const char * infeName = getInfeName(itemCategory);
     const size_t infeNameSize = strlen(infeName) + 1;
 
     if (cellCount > 1) {
