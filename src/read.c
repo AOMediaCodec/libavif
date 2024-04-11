@@ -2031,7 +2031,7 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-// bit-depth is assumed to be 2 (32-bit).
+// bit_depth is assumed to be 2 (32-bit).
 static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTransformExpression * expression)
 {
     uint8_t tokenCount;
