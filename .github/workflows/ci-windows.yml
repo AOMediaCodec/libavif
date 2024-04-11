@@ -48,7 +48,13 @@ jobs:
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: ext
-        key: ${{ runner.os }}-${{ hashFiles('ext/*.cmd') }}-alldeps
+        key: ${{ runner.os }}-${{ hashFiles('ext/aom.cmd', 'ext/libyuv.cmd') }}-alldeps
+    - name: Install cargo-c
+      run: |
+        $LINK = "https://github.com/lu-zero/cargo-c/releases/latest/download"
+        $CARGO_C_FILE = "cargo-c-windows-msvc"
+        curl -LO "$LINK/$CARGO_C_FILE.zip"
+        7z e -y "$CARGO_C_FILE.zip" -o"${env:USERPROFILE}\.cargo\bin"
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
@@ -66,22 +72,6 @@ jobs:
       env:
         CC: clang-cl
         CXX: clang-cl
-    - name: Build dav1d
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./dav1d.cmd
-    - name: Build rav1e
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./rav1e.cmd
-    - name: Build SVT-AV1
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./svt.cmd
-    - name: Build libgav1
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./libgav1.cmd
     - name: Build libyuv
       if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
@@ -91,22 +81,6 @@ jobs:
       env:
         CC: clang-cl
         CXX: clang-cl
-    - name: Build libjpeg
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./libjpeg.cmd
-    - name: Build libsharpyuv
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./libsharpyuv.cmd
-    - name: Build zlib and libpng
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./zlibpng.cmd
-    - name: Build GoogleTest
-      if: steps.cache-ext.outputs.cache-hit != 'true'
-      working-directory: ./ext
-      run: ./googletest.cmd
 
     - name: Prepare libavif (cmake)
       run: >
@@ -124,6 +98,14 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
         -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_AVIR=ON -DAVIF_ENABLE_WERROR=ON
+    - name: Cache cargo registry
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      continue-on-error: true
+      with:
+        path: ~/.cargo/registry/cache
+        key: cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-
+        restore-keys: |
+          cargo-registry-${{ runner.os }}-
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
@@ -136,16 +118,16 @@ jobs:
         /DWIN32 /D_WINDOWS /MD /O2 /Ob2
         -I.\apps\shared -I.\include -I.\third_party\iccjpeg
         -external:W0
-        -external:I.\ext\libpng
-        -external:I.\ext\libjpeg-turbo
-        -external:I.\ext\libjpeg-turbo\build.libavif
-        -external:I.\ext\zlib
-        -external:I.\build\ext\libpng
-        -external:I.\build\ext\zlib
+        -external:I.\build\_deps\libpng-src
+        -external:I.\build\libjpeg\src\libjpeg
+        -external:I.\build\libjpeg\src\libjpeg-build
+        -external:I.\build\_deps\zlib-src
+        -external:I.\build\_deps\libpng
+        -external:I.\build\_deps\zlib
         /link
-        ext\libjpeg-turbo\build.libavif\jpeg-static.lib
-        build\ext\libpng\libpng16_static.lib
-        build\ext\zlib\zlibstatic.lib
+        build\libjpeg\src\libjpeg-build\jpeg-static.lib
+        build\_deps\libpng\libpng16_static.lib
+        build\_deps\zlib\zlibstatic.lib
         build\avif.lib
         ws2_32.lib ntdll.lib userenv.lib bcrypt.lib advapi32.lib
         /out:avifenc.exe
