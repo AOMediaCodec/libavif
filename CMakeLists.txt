@@ -65,6 +65,7 @@ function(set_local_or_system_option VAR DEFAULT TEXT)
         else()
             set(DEFAULT "SYSTEM")
         endif()
+        message(WARNING "Setting AVIF_LOCAL_${VAR} is deprecated. " "Set AVIF_${VAR} to ${DEFAULT} instead.")
     elseif(DEFINED AVIF_${VAR})
         set(DEFAULT ${AVIF_${VAR}})
     endif()
@@ -110,8 +111,9 @@ cmake_dependent_option(
     AVIF_CODEC_AOM_ENCODE "if AVIF_CODEC_AOM is on, use/offer libaom's encoder" ON "NOT AVIF_CODEC_AOM STREQUAL OFF" OFF
 )
 
-option(AVIF_LOCAL_GTEST
-       "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)" OFF
+set_local_or_system_option(
+    "GTEST" OFF
+    "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)"
 )
 option(AVIF_LOCAL_FUZZTEST
        "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)"
@@ -248,17 +250,13 @@ if(AVIF_LIBSHARPYUV_ENABLED)
     avif_target_link_library(sharpyuv::sharpyuv)
 endif(AVIF_LIBSHARPYUV_ENABLED)
 
-option(AVIF_LOCAL_LIBXML2 "Build libxml2 by providing your own copy inside the ext subdir. \
-libxml2 is used when AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is ON" OFF
+set_local_or_system_option(
+    "LIBXML2" "OFF" "Build libxml2 by providing your own copy inside the ext subdir. \
+libxml2 is used when AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is ON"
 )
+
 if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    if(NOT TARGET LibXml2::LibXml2)
-        if(AVIF_LOCAL_LIBXML2)
-            include(LocalLibXml2)
-        else()
-            find_package(LibXml2 QUIET)
-        endif()
-    endif()
+    check_avif_option(AVIF_LIBXML2 TARGET LibXml2::LibXml2 PKG_NAME LibXml2)
 endif()
 # ---------------------------------------------------------------------------------------
 
@@ -879,10 +877,10 @@ if(WIN32)
         avif_exclude_safe(genfiles)
         avif_exclude_safe(minigzip)
     endif()
-    if(AVIF_LOCAL_JPEG)
+    if(AVIF_JPEG STREQUAL "LOCAL")
         avif_set_folder_safe(JPEG::JPEG "ext/libjpeg-turbo")
     endif()
-    if(AVIF_LOCAL_LIBXML2)
+    if(AVIF_LIBXML2 STREQUAL "LOCAL")
         avif_set_folder_safe(xml2 "ext/libxml2")
     endif()
 endif()
