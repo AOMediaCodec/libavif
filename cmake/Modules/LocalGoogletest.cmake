@@ -9,7 +9,7 @@ set(GTEST_MAIN_LIB_FILENAME
     ${AVIF_SOURCE_DIR}/ext/googletest/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
 if(EXISTS ${GTEST_INCLUDE_DIRS}/gtest/gtest.h AND EXISTS ${GTEST_LIB_FILENAME} AND EXISTS ${GTEST_MAIN_LIB_FILENAME})
-    message(STATUS "libavif(AVIF_LOCAL_GTEST): compiled library found in ext/googletest")
+    message(STATUS "libavif(AVIF_GTEST=LOCAL): compiled library found in ext/googletest")
 
     add_library(GTest::gtest STATIC IMPORTED)
     set_target_properties(GTest::gtest PROPERTIES IMPORTED_LOCATION "${GTEST_LIB_FILENAME}" AVIF_LOCAL ON)
@@ -23,9 +23,9 @@ if(EXISTS ${GTEST_INCLUDE_DIRS}/gtest/gtest.h AND EXISTS ${GTEST_LIB_FILENAME} A
     target_link_libraries(GTest::gtest_main INTERFACE GTest::gtest)
     set_target_properties(GTest::gtest_main PROPERTIES IMPORTED_LOCATION "${GTEST_MAIN_LIB_FILENAME}" AVIF_LOCAL ON)
 else()
-    message(STATUS "libavif(AVIF_LOCAL_GTEST): compiled library not found in ext/googletest; using FetchContent")
+    message(STATUS "libavif(AVIF_GTEST=LOCAL): compiled library not found in ext/googletest; using FetchContent")
     if(EXISTS "${AVIF_SOURCE_DIR}/ext/googletest")
-        message(STATUS "libavif(AVIF_LOCAL_GTEST): ext/googletest found; using as FetchContent SOURCE_DIR")
+        message(STATUS "libavif(AVIF_GTEST=LOCAL): ext/googletest found; using as FetchContent SOURCE_DIR")
         set(FETCHCONTENT_SOURCE_DIR_GOOGLETEST "${AVIF_SOURCE_DIR}/ext/googletest")
         message(CHECK_START "libavif(AVIF_LOCAL_GTEST): configuring googletest")
     else()

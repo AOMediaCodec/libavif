@@ -78,8 +78,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   crbug.com/1504792 by [Fudan University](https://secsys.fudan.edu.cn/).
 * For codecs, AVIF_CODEC_* and AVIF_LOCAL_* are now merged into AVIF_CODEC_*
   that can only take the values: OFF, LOCAL or SYSTEM.
-* For the libyuv, libsharpyuv, zlibpng and jpeg dependencies, AVIF_LOCAL_* is
-  now replaced by flags AVIF_* that can take the values: OFF, LOCAL or SYSTEM.
+* For the gtest, jpeg, libsharpyuv, libxml2, libyuv and zlibpng dependencies,
+  AVIF_LOCAL_* is now replaced by flags AVIF_* that can take the values:
+  OFF, LOCAL or SYSTEM.
 * src/reformat.c: Allocate the threadData array directly.
 * AVIF_ENABLE_WERROR is set to OFF by default.
 * Fix wrong alpha plane deallocation when decoded tile pixel format does not

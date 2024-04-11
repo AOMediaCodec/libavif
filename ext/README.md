@@ -3,7 +3,7 @@
 This contains references to various external repositories which are known to
 build and work properly with the current libavif. If you are building for
 Windows or any kind of fully static (embedded) release, using these scripts in
-conjunction with the `BUILD_SHARED_LIBS=0` and `AVIF_LOCAL_*` CMake flags make
+conjunction with the `BUILD_SHARED_LIBS=0` and `AVIF_*` CMake flags make
 for a convenient way to get all of the dependencies necessary. This method is
 how many of libavif's continuous builders work.
 
