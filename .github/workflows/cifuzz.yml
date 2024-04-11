@@ -2,6 +2,7 @@ name: CI Fuzz
 on:
   pull_request:
     paths:
+      - 'cmake/**'
       - 'ext/**'
       - 'include/**'
       - 'src/**'

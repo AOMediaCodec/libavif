@@ -5,11 +5,12 @@ if(EXISTS "${AVIF_SOURCE_DIR}/ext/zlib")
     message(STATUS "libavif(AVIF_ZLIBPNG=LOCAL): ext/zlib found; using as FetchContent SOURCE_DIR")
     set(FETCHCONTENT_SOURCE_DIR_ZLIB "${AVIF_SOURCE_DIR}/ext/zlib")
     message(CHECK_START "libavif(AVIF_ZLIBPNG=LOCAL): configuring zlib")
+    set(ZLIB_SOURCE_DIR "${FETCHCONTENT_SOURCE_DIR_ZLIB}")
 else()
     message(CHECK_START "libavif(AVIF_ZLIBPNG=LOCAL): fetching and configuring zlib")
+    set(ZLIB_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zlib-src")
 endif()
 
-set(ZLIB_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zlib-src")
 set(ZLIB_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/zlib")
 if(ANDROID_ABI)
     set(ZLIB_BINARY_DIR "${ZLIB_BINARY_DIR}/${ANDROID_ABI}")
@@ -49,7 +50,7 @@ target_include_directories(zlibstatic INTERFACE $<BUILD_INTERFACE:${ZLIB_INCLUDE
 # This include_directories() call and the previous include_directories() call provide the zlib
 # include directories for add_subdirectory(ext/libpng). Because we set PNG_BUILD_ZLIB,
 # libpng/CMakeLists.txt won't call find_package(ZLIB REQUIRED) and will see an empty
-# ${ZLIB_INCLUDE_DIRS}.
+# ${ZLIB_INCLUDE_DIR}.
 include_directories("${zlib_BINARY_DIR}")
 set(CMAKE_DEBUG_POSTFIX "")
 
