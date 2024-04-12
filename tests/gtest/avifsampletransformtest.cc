@@ -144,16 +144,6 @@ struct Op {
 
 class SampleTransformOperationTest : public testing::TestWithParam<Op> {};
 
-ImagePtr OneByOne(uint32_t depth) {
-  ImagePtr image(avifImageCreate(/*width=*/1, /*height=*/1, depth,
-                                 AVIF_PIXEL_FORMAT_YUV444));
-  if (image.get() != nullptr &&
-      avifImageAllocatePlanes(image.get(), AVIF_PLANES_YUV) == AVIF_RESULT_OK) {
-    return image;
-  }
-  return nullptr;
-}
-
 TEST_P(SampleTransformOperationTest, Apply) {
   AvifExpression expression;
   // Postfix notation.
