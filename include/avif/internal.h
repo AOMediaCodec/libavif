@@ -202,7 +202,7 @@ typedef struct avifSampleTransformToken
 } avifSampleTransformToken;
 
 AVIF_ARRAY_DECLARE(avifSampleTransformExpression, avifSampleTransformToken, tokens);
-avifBool avifSampleTransformExpressionIsValid(const avifSampleTransformExpression * expression, uint32_t numInputImageItems);
+avifBool avifSampleTransformExpressionIsValid(const avifSampleTransformExpression * tokens, uint32_t numInputImageItems);
 avifBool avifSampleTransformExpressionIsEquivalentTo(const avifSampleTransformExpression * a, const avifSampleTransformExpression * b);
 
 avifResult avifSampleTransformRecipeToExpression(avifSampleTransformRecipe recipe, avifSampleTransformExpression * expression);
