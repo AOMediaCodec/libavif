@@ -28,14 +28,12 @@ jobs:
       - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
       - run: pip install meson
-
       - name: Cache external dependencies
         id: cache-ext
         uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
-          path: ext
-          key: ${{ runner.os }}-${{ matrix.sanitizer }}-${{ hashFiles('ext/*.cmd') }}
-
+          path: ext, build/_deps
+          key: ${{ runner.os }}-${{ matrix.sanitizer }}-unix-static-sanitized-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
       - name: Build aom
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext

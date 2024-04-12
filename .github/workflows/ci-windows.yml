@@ -47,8 +47,8 @@ jobs:
       id: cache-ext
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
-        path: ext
-        key: ${{ runner.os }}-${{ hashFiles('ext/aom.cmd', 'ext/libyuv.cmd') }}-alldeps
+        path: ext, build/_deps
+        key: ${{ runner.os }}-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}-alldeps
     - name: Install cargo-c
       run: |
         $LINK = "https://github.com/lu-zero/cargo-c/releases/latest/download"

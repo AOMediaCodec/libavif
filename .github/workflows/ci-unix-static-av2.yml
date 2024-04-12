@@ -40,7 +40,12 @@ jobs:
         CARGO_C_FILE: cargo-c-x86_64-unknown-linux-musl.tar.gz
       run: |
         curl -L $LINK/$CARGO_C_FILE | tar xz -C ~/.cargo/bin
-
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: ext, build/_deps
+        key: ${{ runner.os }}-${{ matrix.also-enable-av1-codec }}-unix-static-av2-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b # v2.0.1
       with:
