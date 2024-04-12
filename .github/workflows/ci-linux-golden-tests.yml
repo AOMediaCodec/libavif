@@ -32,14 +32,12 @@ jobs:
     - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
       with:
         python-version: '3.x'
-
     - name: Cache external dependencies
       id: cache-ext
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
-        path: ext
-        key: ${{ runner.os }}-golden-tests-${{ hashFiles('ext/mp4box.sh') }}
-
+        path: ext, build/_deps
+        key: ${{ runner.os }}-golden-tests-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b
       with:

@@ -33,6 +33,12 @@ jobs:
       # TODO(yguyon): Install libyuv (not available with brew).
       if: runner.os == 'macOS'
       run: echo "CMAKE_AVIF_FLAGS=\"-DAVIF_LIBYUV=OFF\""  >> $GITHUB_ENV
+    - name: Cache external dependencies
+      id: cache-ext
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: ext, build/_deps
+        key: ${{ runner.os }}-unix-shared-installed-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b # v2.0.1
       with:
