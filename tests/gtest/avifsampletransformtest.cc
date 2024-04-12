@@ -1,10 +1,11 @@
 // Copyright 2024 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cstdint>
+
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
 #include "avif/internal.h"
-#include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
 namespace avif {
@@ -113,7 +114,7 @@ TEST(SampleTransformTest, NotEquivalent) {
 
   AvifExpression b;
   ASSERT_EQ(avifSampleTransformRecipeToExpression(
-                AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B, &a),
+                AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B, &b),
             AVIF_RESULT_OK);
 
   EXPECT_FALSE(avifSampleTransformExpressionIsEquivalentTo(&a, &b));
