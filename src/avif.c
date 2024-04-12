@@ -109,6 +109,10 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_DECODE_GAIN_MAP_FAILED:        return "Decoding of gain map planes failed";
         case AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE:     return "Invalid tone mapped image item";
 #endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+        case AVIF_RESULT_ENCODE_SAMPLE_TRANSFORM_FAILED: return "Encoding of sample transformed image failed";
+        case AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED: return "Decoding of sample transformed image failed";
+#endif
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
@@ -873,6 +877,12 @@ avifBool avifIsAlpha(avifItemCategory itemCategory)
     if (itemCategory == AVIF_ITEM_ALPHA) {
         return AVIF_TRUE;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    if (itemCategory >= AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA &&
+        itemCategory < AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS) {
+        return AVIF_TRUE;
+    }
+#endif
     return AVIF_FALSE;
 }
 

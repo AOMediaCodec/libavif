@@ -740,6 +740,13 @@ typedef struct avifMeta
     // constraints on its optional extendedMeta field, such as forbidden item IDs, properties etc.
     avifBool fromMini;
 #endif
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    // Parsed from Sample Transform metadata if present, otherwise empty.
+    avifSampleTransformExpression sampleTransformExpression;
+    // Bit depth extracted from the pixi property of the Sample Transform derived image item, if any.
+    uint32_t sampleTransformDepth;
+#endif
 } avifMeta;
 
 static void avifMetaDestroy(avifMeta * meta);
@@ -772,6 +779,9 @@ static void avifMetaDestroy(avifMeta * meta)
     avifArrayDestroy(&meta->items);
     avifArrayDestroy(&meta->properties);
     avifRWDataFree(&meta->idat);
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    avifArrayDestroy(&meta->sampleTransformExpression);
+#endif
     avifFree(meta);
 }
 
@@ -863,6 +873,13 @@ typedef struct avifDecoderData
                                                //   The colour information property takes precedence over any colour information
                                                //   in the image bitstream, i.e. if the property is present, colour information in
                                                //   the bitstream shall be ignored.
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    // Remember the dimg association order to the Sample Transform derived image item.
+    // Colour items only. The alpha items are implicit.
+    uint8_t sampleTransformNumInputImageItems; // At most AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS.
+    avifItemCategory sampleTransformInputImageItems[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
+#endif
 } avifDecoderData;
 
 static void avifDecoderDataDestroy(avifDecoderData * data);
@@ -2013,6 +2030,110 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+// bit_depth is assumed to be 2 (32-bit).
+static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTransformExpression * expression)
+{
+    uint8_t tokenCount;
+    AVIF_CHECK(avifROStreamRead(s, &tokenCount, /*size=*/1)); // unsigned int(8) token_count;
+    AVIF_CHECKERR(tokenCount != 0, AVIF_RESULT_BMFF_PARSE_FAILED);
+    AVIF_CHECKERR(avifArrayCreate(expression, sizeof(expression->tokens[0]), tokenCount), AVIF_RESULT_OUT_OF_MEMORY);
+
+    for (uint32_t t = 0; t < tokenCount; ++t) {
+        avifSampleTransformToken * token = (avifSampleTransformToken *)avifArrayPush(expression);
+        AVIF_CHECKERR(token != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+
+        AVIF_CHECK(avifROStreamRead(s, &token->type, /*size=*/1)); // unsigned int(8) token;
+        if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
+            // Two's complement representation is assumed here.
+            uint32_t constant;
+            AVIF_CHECK(avifROStreamReadU32(s, &constant)); // signed int(1<<(bit_depth+3)) constant;
+            token->constant = *(int32_t *)&constant;       // maybe =(int32_t)constant; is enough
+        } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
+            AVIF_CHECK(avifROStreamRead(s, &token->inputImageItemIndex, 1)); // unsigned int(8) input_image_item_index;
+        }
+    }
+    AVIF_CHECKERR(avifROStreamRemainingBytes(s) == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
+    return AVIF_RESULT_OK;
+}
+
+// Parses the raw bitstream of the 'sato' Sample Transform derived image item and extracts the expression.
+static avifResult avifParseSampleTransformImageBox(const uint8_t * raw,
+                                                   size_t rawLen,
+                                                   uint32_t numInputImageItems,
+                                                   avifSampleTransformExpression * expression,
+                                                   avifDiagnostics * diag)
+{
+    BEGIN_STREAM(s, raw, rawLen, diag, "Box[sato]");
+
+    uint8_t version, bitDepth;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &version, /*bitCount=*/6));  // unsigned int(6) version = 0;
+    AVIF_CHECK(avifROStreamReadBits8(&s, &bitDepth, /*bitCount=*/2)); // unsigned int(2) bit_depth;
+    AVIF_CHECKERR(version == 0, AVIF_RESULT_NOT_IMPLEMENTED);
+    AVIF_CHECKERR(bitDepth == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, AVIF_RESULT_NOT_IMPLEMENTED);
+
+    const avifResult result = avifParseSampleTransformTokens(&s, expression);
+    if (result != AVIF_RESULT_OK) {
+        avifArrayDestroy(expression);
+        return result;
+    }
+    if (!avifSampleTransformExpressionIsValid(expression, numInputImageItems)) {
+        avifArrayDestroy(expression);
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDecoderItem * item, avifDiagnostics * diag)
+{
+    const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
+    if (!pixiProp) {
+        avifDiagnosticsPrintf(diag, "Item ID %u of type '%.4s' is missing mandatory pixi property", item->id, (const char *)item->type);
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+    for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
+        if (pixiProp->u.pixi.planeDepths[i] != pixiProp->u.pixi.planeDepths[0]) {
+            avifDiagnosticsPrintf(diag,
+                                  "Item ID %u of type '%.4s' has different depths specified by pixi property [%u, %u], this is not supported",
+                                  item->id,
+                                  (const char *)item->type,
+                                  pixiProp->u.pixi.planeDepths[0],
+                                  pixiProp->u.pixi.planeDepths[i]);
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+    }
+
+    const avifProperty * ispeProp = avifPropertyArrayFind(&item->properties, "ispe");
+    if (!ispeProp) {
+        avifDiagnosticsPrintf(diag, "Item ID %u of type '%.4s' is missing mandatory ispe property", item->id, (const char *)item->type);
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+
+    for (uint32_t i = 0; i < item->meta->items.count; ++i) {
+        avifDecoderItem * inputImageItem = item->meta->items.item[i];
+        if (inputImageItem->dimgForID != item->id) {
+            continue;
+        }
+        // Even if inputImageItem is a grid, the ispe property from its first tile should have been copied to the grid item.
+        const avifProperty * inputImageItemIspeProp = avifPropertyArrayFind(&inputImageItem->properties, "ispe");
+        AVIF_ASSERT_OR_RETURN(inputImageItemIspeProp != NULL);
+        if (inputImageItemIspeProp->u.ispe.width != ispeProp->u.ispe.width ||
+            inputImageItemIspeProp->u.ispe.height != ispeProp->u.ispe.height) {
+            avifDiagnosticsPrintf(diag,
+                                  "The fields of the ispe property of item ID %u of type '%.4s' differs from item ID %u",
+                                  inputImageItem->id,
+                                  (const char *)inputImageItem->type,
+                                  item->id);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        // TODO(yguyon): Check that all input image items share the same codec config (except for the bit depth value).
+    }
+
+    AVIF_CHECKERR(avifPropertyArrayFind(&item->properties, "clap") == NULL, AVIF_RESULT_NOT_IMPLEMENTED);
+    return AVIF_RESULT_OK;
+}
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+
 // Extracts the codecType from the item type or from its children.
 // Also parses and outputs grid information if the item is a grid.
 // isItemInInput must be false if the item is a made-up structure
@@ -2055,6 +2176,11 @@ static avifResult avifDecoderItemReadAndParse(const avifDecoder * decoder,
         *codecType = avifGetCodecType(item->type);
         AVIF_ASSERT_OR_RETURN(*codecType != AVIF_CODEC_TYPE_UNKNOWN);
     }
+    // TODO(yguyon): If AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is defined, backward-incompatible
+    //               files with a primary 'sato' Sample Transform derived image item could be
+    //               handled here (compared to backward-compatible files with a 'sato' item in the
+    //               same 'altr' group as the primary regular color item which are handled in
+    //               avifDecoderDataFindSampleTransformImageItem() below).
     return AVIF_RESULT_OK;
 }
 
@@ -4294,6 +4420,13 @@ static avifBool avifTilesCanBeDecodedWithSameCodecInstance(avifDecoderData * dat
         if (data->tileInfos[c].tileCount > 0) {
             ++numImageBuffers;
         }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+        // The sample operations require multiple buffers for compositing so no plane is stolen
+        // when there is a 'sato' Sample Transform derived image item.
+        if (c >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && c <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY && data->tileInfos[c].tileCount > 0) {
+            continue;
+        }
+#endif
         if (data->tileInfos[c].tileCount == 1) {
             ++numStolenImageBuffers;
         }
@@ -4693,6 +4826,31 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+// Finds a 'sato' Sample Transform derived image item box.
+// If found, fills 'sampleTransformItem'. Otherwise, sets 'sampleTransformItem' to NULL.
+// Returns AVIF_RESULT_OK on success (whether or not a 'sato' box was found).
+// Assumes that there is a single 'sato' item.
+// Assumes that the 'sato' item is not the primary item and that both the primary item and 'sato'
+// are in the same 'altr' group.
+// TODO(yguyon): Check instead of assuming.
+static avifResult avifDecoderDataFindSampleTransformImageItem(avifDecoderData * data, avifDecoderItem ** sampleTransformItem)
+{
+    for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+        avifDecoderItem * item = data->meta->items.item[itemIndex];
+        if (!item->size || item->hasUnsupportedEssentialProperty || item->thumbnailForID != 0) {
+            continue;
+        }
+        if (!memcmp(item->type, "sato", 4)) {
+            *sampleTransformItem = item;
+            return AVIF_RESULT_OK;
+        }
+    }
+    *sampleTransformItem = NULL;
+    return AVIF_RESULT_OK;
+}
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+
 static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifItemCategory itemCategory)
 {
     const uint32_t previousTileCount = decoder->data->tiles.count;
@@ -4992,6 +5150,94 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+        // AVIF_ITEM_SAMPLE_TRANSFORM (not used through mainItems because not a coded item (well grids are not coded items either but it's different)).
+        avifDecoderItem * sampleTransformItem = NULL;
+        AVIF_CHECKRES(avifDecoderDataFindSampleTransformImageItem(data, &sampleTransformItem));
+        if (sampleTransformItem != NULL) {
+            AVIF_ASSERT_OR_RETURN(data->sampleTransformNumInputImageItems == 0);
+            uint32_t numExtraInputImageItems = 0;
+            for (uint32_t i = 0; i < data->meta->items.count; ++i) {
+                avifDecoderItem * inputImageItem = data->meta->items.item[i];
+                if (inputImageItem->dimgForID != sampleTransformItem->id) {
+                    continue;
+                }
+                if (avifDecoderItemShouldBeSkipped(inputImageItem)) {
+                    avifDiagnosticsPrintf(data->diag, "Box[sato] input item %d is not a supported image type", inputImageItem->id);
+                    return AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED;
+                }
+                // Input image item order is important because input image items are indexed according to this order.
+                AVIF_CHECKERR(inputImageItem->dimgIdx == data->sampleTransformNumInputImageItems, AVIF_RESULT_NOT_IMPLEMENTED);
+
+                AVIF_CHECKERR(data->sampleTransformNumInputImageItems < AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS,
+                              AVIF_RESULT_NOT_IMPLEMENTED);
+                avifItemCategory * category = &data->sampleTransformInputImageItems[data->sampleTransformNumInputImageItems];
+                avifBool foundItem = AVIF_FALSE;
+                uint32_t alphaCategory = AVIF_ITEM_CATEGORY_COUNT;
+                for (int c = AVIF_ITEM_COLOR; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
+                    if (mainItems[c] && inputImageItem->id == mainItems[c]->id) {
+                        *category = c;
+                        AVIF_CHECKERR(*category == AVIF_ITEM_COLOR, AVIF_RESULT_NOT_IMPLEMENTED);
+                        alphaCategory = AVIF_ITEM_ALPHA;
+                        foundItem = AVIF_TRUE;
+                        break;
+                    }
+                }
+                if (!foundItem) {
+                    AVIF_CHECKERR(numExtraInputImageItems < AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS,
+                                  AVIF_RESULT_NOT_IMPLEMENTED);
+                    *category = AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR + numExtraInputImageItems;
+                    alphaCategory = AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + numExtraInputImageItems;
+                    mainItems[*category] = inputImageItem;
+                    ++numExtraInputImageItems;
+
+                    AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
+                                                              inputImageItem,
+                                                              /*isItemInInput=*/AVIF_TRUE,
+                                                              &data->tileInfos[*category].grid,
+                                                              &codecType[*category]));
+
+                    // Optional alpha auxiliary item
+                    avifBool isAlphaInputImageItemInInput = AVIF_FALSE;
+                    AVIF_CHECKRES(avifMetaFindAlphaItem(data->meta,
+                                                        mainItems[*category],
+                                                        &data->tileInfos[*category],
+                                                        &mainItems[alphaCategory],
+                                                        &data->tileInfos[alphaCategory],
+                                                        &isAlphaInputImageItemInInput));
+
+                    AVIF_CHECKERR(!mainItems[alphaCategory] == !mainItems[AVIF_ITEM_ALPHA], AVIF_RESULT_NOT_IMPLEMENTED);
+                    if (mainItems[alphaCategory] != NULL) {
+                        AVIF_CHECKERR(isAlphaInputImageItemInInput == isAlphaItemInInput, AVIF_RESULT_NOT_IMPLEMENTED);
+                        AVIF_CHECKERR((mainItems[*category]->premByID == mainItems[alphaCategory]->id) ==
+                                          (mainItems[AVIF_ITEM_COLOR]->premByID == mainItems[AVIF_ITEM_ALPHA]->id),
+                                      AVIF_RESULT_NOT_IMPLEMENTED);
+                        AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
+                                                                  mainItems[alphaCategory],
+                                                                  isAlphaInputImageItemInInput,
+                                                                  &data->tileInfos[alphaCategory].grid,
+                                                                  &codecType[alphaCategory]));
+                    }
+                }
+
+                ++data->sampleTransformNumInputImageItems;
+            }
+
+            AVIF_ASSERT_OR_RETURN(data->meta->sampleTransformExpression.tokens == NULL);
+            avifROData satoData;
+            AVIF_CHECKRES(avifDecoderItemRead(sampleTransformItem, decoder->io, &satoData, 0, 0, data->diag));
+            AVIF_CHECKRES(avifParseSampleTransformImageBox(satoData.data,
+                                                           satoData.size,
+                                                           data->sampleTransformNumInputImageItems,
+                                                           &data->meta->sampleTransformExpression,
+                                                           data->diag));
+            AVIF_CHECKRES(avifDecoderSampleTransformItemValidateProperties(sampleTransformItem, data->diag));
+            const avifProperty * pixiProp = avifPropertyArrayFind(&sampleTransformItem->properties, "pixi");
+            AVIF_ASSERT_OR_RETURN(pixiProp != NULL);
+            data->meta->sampleTransformDepth = pixiProp->u.pixi.planeDepths[0];
+        }
+#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+
         // Find Exif and/or XMP metadata, if any
         AVIF_CHECKRES(avifDecoderFindMetadata(decoder, data->meta, decoder->image, mainItems[AVIF_ITEM_COLOR]->id));
 
@@ -5233,6 +5479,11 @@ static avifResult avifGetErrorForItemCategory(avifItemCategory itemCategory)
         return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
     }
 #endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    if (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
+        return AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED;
+    }
+#endif
     return avifIsAlpha(itemCategory) ? AVIF_RESULT_DECODE_ALPHA_FAILED : AVIF_RESULT_DECODE_COLOR_FAILED;
 }
 
@@ -5301,7 +5552,19 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
         ++info->decodedTileCount;
 
         const avifBool isGrid = (info->grid.rows > 0) && (info->grid.columns > 0);
-        const avifBool stealPlanes = !isGrid;
+        avifBool stealPlanes = !isGrid;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+        if (decoder->data->meta->sampleTransformExpression.count > 0) {
+            // Keep everything as a copy for now.
+            stealPlanes = AVIF_FALSE;
+        }
+        if (tile->input->itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY &&
+            tile->input->itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
+            // Keep Sample Transform input image item samples in tiles.
+            // The expression will be applied in avifDecoderNextImage() below instead, once all the tiles are available.
+            continue;
+        }
+#endif
 
         if (!stealPlanes) {
             avifImage * dstImage = decoder->image;
@@ -5372,6 +5635,63 @@ static avifBool avifDecoderDataFrameFullyDecoded(const avifDecoderData * data)
     return AVIF_TRUE;
 }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, avifImage * dstImage)
+{
+    if (dstImage->depth != decoder->data->meta->sampleTransformDepth) {
+        AVIF_ASSERT_OR_RETURN(dstImage->yuvPlanes[0] != NULL);
+        AVIF_ASSERT_OR_RETURN(dstImage->imageOwnsYUVPlanes);
+
+        // Use a temporary buffer because dstImage may point to decoder->image, which could be an input image.
+        avifImage * dstImageWithCorrectDepth =
+            avifImageCreate(dstImage->width, dstImage->height, decoder->data->meta->sampleTransformDepth, dstImage->yuvFormat);
+        AVIF_CHECKERR(dstImageWithCorrectDepth != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        avifResult result =
+            avifImageAllocatePlanes(dstImageWithCorrectDepth, dstImage->alphaPlane != NULL ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
+        if (result == AVIF_RESULT_OK) {
+            result = avifDecoderApplySampleTransform(decoder, dstImageWithCorrectDepth);
+            if (result == AVIF_RESULT_OK) {
+                // Keep the same dstImage object rather than swapping decoder->image, in case the user already accessed it.
+                avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
+                dstImage->depth = dstImageWithCorrectDepth->depth;
+                avifImageStealPlanes(dstImage, dstImageWithCorrectDepth, AVIF_PLANES_ALL);
+            }
+        }
+        avifImageDestroy(dstImageWithCorrectDepth);
+        return result;
+    }
+
+    for (avifBool alpha = AVIF_FALSE; alpha <= decoder->alphaPresent ? AVIF_TRUE : AVIF_FALSE; ++alpha) {
+        AVIF_ASSERT_OR_RETURN(decoder->data->sampleTransformNumInputImageItems <= AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS);
+        const avifImage * inputImages[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
+        for (uint32_t i = 0; i < decoder->data->sampleTransformNumInputImageItems; ++i) {
+            avifItemCategory category = decoder->data->sampleTransformInputImageItems[i];
+            if (category == AVIF_ITEM_COLOR) {
+                inputImages[i] = decoder->image;
+            } else {
+                AVIF_ASSERT_OR_RETURN(category >= AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR &&
+                                      category < AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR +
+                                                     AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS);
+                if (alpha) {
+                    category += AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS;
+                }
+                const avifTileInfo * tileInfo = &decoder->data->tileInfos[category];
+                AVIF_CHECKERR(tileInfo->tileCount == 1, AVIF_RESULT_NOT_IMPLEMENTED); // TODO(yguyon): Implement Sample Transform grids
+                inputImages[i] = decoder->data->tiles.tile[tileInfo->firstTileIndex].image;
+                AVIF_ASSERT_OR_RETURN(inputImages[i] != NULL);
+            }
+        }
+        AVIF_CHECKRES(avifImageApplyExpression(dstImage,
+                                               AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
+                                               &decoder->data->meta->sampleTransformExpression,
+                                               decoder->data->sampleTransformNumInputImageItems,
+                                               inputImages,
+                                               alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV));
+    }
+    return AVIF_RESULT_OK;
+}
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+
 avifResult avifDecoderNextImage(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
@@ -5439,6 +5759,13 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
         AVIF_ASSERT_OR_RETURN(prepareTileResult[c] == AVIF_RESULT_OK);
     }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    if (decoder->data->meta->sampleTransformExpression.count > 0) {
+        // TODO(yguyon): Add a field in avifDecoder and only perform sample transformations upon request.
+        AVIF_CHECKRES(avifDecoderApplySampleTransform(decoder, decoder->image));
+    }
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
     // Only advance decoder->imageIndex once the image is completely decoded, so that
     // avifDecoderNthImage(decoder, decoder->imageIndex + 1) is equivalent to avifDecoderNextImage(decoder)
@@ -5590,6 +5917,13 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifTi
     if (info->decodedTileCount == 0) {
         return 0;
     }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    if (decoder->data->meta->sampleTransformExpression.count > 0) {
+        // TODO(yguyon): Support incremental Sample Transforms
+        return 0;
+    }
+#endif
 
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // Grid of AVIF tiles (not to be confused with AV1 tiles).

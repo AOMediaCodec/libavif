@@ -51,6 +51,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Require libyuv by default (but it can still be disabled with
   -DAVIF_LIBYUV=OFF).
 * Add avifdec --icc flag to override the output color profile.
+* Add experimental API for reading and writing 16-bit AVIF files behind the
+  compilation flag AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM.
 
 ### Changed since 1.0.0
 * Update aom.cmd: v3.8.2
