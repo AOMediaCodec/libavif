@@ -14,11 +14,7 @@ namespace {
 
 class AvifExpression : public avifSampleTransformExpression {
  public:
-  AvifExpression() : avifSampleTransformExpression{} {
-    if (!avifArrayCreate(this, sizeof(avifSampleTransformToken), 1)) {
-      abort();
-    }
-  }
+  AvifExpression() : avifSampleTransformExpression{} {}
   ~AvifExpression() { avifArrayDestroy(this); }
 
   void AddConstant(int32_t constant) {
@@ -56,6 +52,10 @@ class AvifExpression : public avifSampleTransformExpression {
 
  private:
   avifSampleTransformToken& AddToken() {
+    if (tokens == nullptr &&
+        !avifArrayCreate(this, sizeof(avifSampleTransformToken), 1)) {
+      abort();
+    }
     avifSampleTransformToken* token =
         reinterpret_cast<avifSampleTransformToken*>(avifArrayPush(this));
     if (token == nullptr) abort();
