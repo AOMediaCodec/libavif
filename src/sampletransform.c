@@ -305,7 +305,7 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                 }
                 AVIF_ASSERT_OR_RETURN(stackSize == 1);
                 // Fit to 'pixi'-defined range. TODO(yguyon): Take avifRange into account.
-                stack[0] = stack[0] <= minValue ? minValue : stack[0] >= maxValue ? maxValue : stack[0];
+                stack[0] = AVIF_CLAMP(stack[0], minValue, maxValue);
 
                 uint8_t * row = avifImagePlane(dstImage, c) + avifImagePlaneRowBytes(dstImage, c) * y;
                 if (avifImageUsesU16(dstImage)) {

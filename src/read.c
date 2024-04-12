@@ -2036,11 +2036,12 @@ static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTra
 {
     uint8_t tokenCount;
     AVIF_CHECK(avifROStreamRead(s, &tokenCount, /*size=*/1)); // unsigned int(8) token_count;
+    AVIF_CHECKERR(tokenCount != 0, AVIF_RESULT_BMFF_PARSE_FAILED);
     AVIF_CHECKERR(avifArrayCreate(expression, sizeof(expression->tokens[0]), tokenCount), AVIF_RESULT_OUT_OF_MEMORY);
 
     for (uint32_t t = 0; t < tokenCount; ++t) {
         avifSampleTransformToken * token = (avifSampleTransformToken *)avifArrayPush(expression);
-        AVIF_ASSERT_OR_RETURN(token != NULL);
+        AVIF_CHECKERR(token != NULL, AVIF_RESULT_OUT_OF_MEMORY);
 
         AVIF_CHECK(avifROStreamRead(s, &token->type, /*size=*/1)); // unsigned int(8) token;
         if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
@@ -2093,9 +2094,10 @@ static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDec
     for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
         if (pixiProp->u.pixi.planeDepths[i] != pixiProp->u.pixi.planeDepths[0]) {
             avifDiagnosticsPrintf(diag,
-                                  "Item ID %u of type '%.4s' depth specified by pixi property [%u] is not supported",
+                                  "Item ID %u of type '%.4s' has different depths specified by pixi property [%u, %u], this is not supported",
                                   item->id,
                                   (const char *)item->type,
+                                  pixiProp->u.pixi.planeDepths[0],
                                   pixiProp->u.pixi.planeDepths[i]);
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
@@ -5149,7 +5151,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-        // AVIF_ITEM_SAMPLE_TRANSFORM (not used through mainItems because not a coded item (well grids neither but it's different)).
+        // AVIF_ITEM_SAMPLE_TRANSFORM (not used through mainItems because not a coded item (well grids are not coded items either but it's different)).
         avifDecoderItem * sampleTransformItem = NULL;
         AVIF_CHECKRES(avifDecoderDataFindSampleTransformImageItem(data, &sampleTransformItem));
         if (sampleTransformItem != NULL) {
@@ -5671,7 +5673,7 @@ avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, avifImag
                                       category < AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR +
                                                      AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS);
                 if (alpha) {
-                    category += AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA - AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR;
+                    category += AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS;
                 }
                 const avifTileInfo * tileInfo = &decoder->data->tileInfos[category];
                 AVIF_CHECKERR(tileInfo->tileCount == 1, AVIF_RESULT_NOT_IMPLEMENTED); // TODO(yguyon): Implement Sample Transform grids
