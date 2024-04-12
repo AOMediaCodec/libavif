@@ -257,7 +257,7 @@ if(AVIF_BUILD_APPS)
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
 
-    if(AVIF_ENABLE_AVIFGAINMAPUTIL)
+    if(AVIF_ENABLE_AVIFGAINMAPUTIL AND AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
         add_test(NAME test_cmd_avifgainmaputil COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avifgainmaputil.sh
                                                        ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
         )
