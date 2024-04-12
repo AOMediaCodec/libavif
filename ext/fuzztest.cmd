@@ -9,8 +9,8 @@
 
 git clone https://github.com/google/fuzztest.git
 cd fuzztest
-: # There is no tagged release as of 2024/04/09. Pick the latest commit that works.
-git checkout a990537097b6fd337436f7662fb39fc91fa01f3f
+: # There is no tagged release as of 2024/04/12. Pick the latest commit that works.
+git checkout a40caf40aaf621dd0e04f9d8b47d1153fd2682d2
 : # Fixes for https://github.com/google/fuzztest/issues/1124
 sed -i 's/-fsanitize=address//g' ./cmake/FuzzTestFlagSetup.cmake
 sed -i 's/-DADDRESS_SANITIZER//g' ./cmake/FuzzTestFlagSetup.cmake
