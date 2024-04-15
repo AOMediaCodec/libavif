@@ -51,7 +51,6 @@ endif(LIBYUV_LIBRARY)
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
     libyuv
-    FOUND_VAR LIBYUV_FOUND
     REQUIRED_VARS LIBYUV_LIBRARY LIBYUV_LIBRARIES LIBYUV_INCLUDE_DIR
     VERSION_VAR _LIBYUV_VERSION
 )
