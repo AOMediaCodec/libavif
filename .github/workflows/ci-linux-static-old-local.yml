@@ -1,5 +1,10 @@
 name: CI Unix Static For AVIF_LOCAL
-on: [push, pull_request]
+  push
+  pull_request:
+    paths:
+      - '**CMakeLists.txt**'
+      - 'cmake/**'
+      - 'ext/**'
 
 permissions:
   contents: read

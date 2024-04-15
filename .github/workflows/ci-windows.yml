@@ -11,7 +11,12 @@
 #   * Builds with local zlib and libpng (-DAVIF_ZLIBPNG=LOCAL).
 
 name: CI Windows
-on: [push, pull_request]
+  push
+  pull_request:
+    paths:
+      - '**CMakeLists.txt**'
+      - 'cmake/**'
+      - 'ext/**'
 
 permissions:
   contents: read
@@ -22,7 +27,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-static:
+  build-windows:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

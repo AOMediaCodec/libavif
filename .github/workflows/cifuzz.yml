@@ -4,8 +4,6 @@ on:
     paths:
       - 'cmake/**'
       - 'ext/**'
-      - 'include/**'
-      - 'src/**'
       - 'tests/gtest/**'
       - 'tests/oss-fuzz/**'
 
