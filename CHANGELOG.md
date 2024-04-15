@@ -26,8 +26,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   compilation flag.
   Add a --qgain-map flag to control the gain map quality in avifenc.
 * Add the headerFormat member of new type avifHeaderFormat to avifEncoder.
-* Add experimental API for reading and writing "avir"-branded AVIF files
-  behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_AVIR.
+* Add experimental API for reading and writing "mif3"-branded AVIF files
+  behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_MINI.
 * Implement avifImageScale() fallback when libyuv is not available.
 * Partial import of libyuv to third_party/libyuv (new LICENSE).
 * Add avifenc flag suffixes ":update" and ":u". Quality-relative,

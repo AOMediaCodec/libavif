@@ -13,13 +13,13 @@ namespace {
 
 //------------------------------------------------------------------------------
 
-class AvifCondensedImageBoxTest
+class AvifMinimizedImageBoxTest
     : public testing::TestWithParam<std::tuple<
           /*width=*/int, /*height=*/int, /*depth=*/int, avifPixelFormat,
           avifPlanesFlags, avifRange, /*create_icc=*/bool, /*create_exif=*/bool,
           /*create_xmp=*/bool, /*create_clli=*/bool, avifTransformFlags>> {};
 
-TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
+TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
   const int width = std::get<0>(GetParam());
   const int height = std::get<1>(GetParam());
   const int depth = std::get<2>(GetParam());
@@ -42,7 +42,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
               AVIF_RESULT_OK);
   }
   if (create_exif) {
-    size_t exif_tiff_header_offset;  // Must be 0 for 'avir' brand.
+    size_t exif_tiff_header_offset;  // Must be 0 for 'mif3' brand.
     ASSERT_EQ(avifGetExifTiffHeaderOffset(testutil::kSampleExif.data(),
                                           testutil::kSampleExif.size(),
                                           &exif_tiff_header_offset),
@@ -114,7 +114,7 @@ TEST_P(AvifCondensedImageBoxTest, SimpleOpaque) {
       testutil::AreImagesEqual(*decoded_meta.get(), *decoded_mini.get()));
 }
 
-INSTANTIATE_TEST_SUITE_P(OnePixel, AvifCondensedImageBoxTest,
+INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
                                  /*depth=*/Values(8),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
@@ -127,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(OnePixel, AvifCondensedImageBoxTest,
                                  Values(AVIF_TRANSFORM_NONE)));
 
 INSTANTIATE_TEST_SUITE_P(
-    DepthsSubsamplings, AvifCondensedImageBoxTest,
+    DepthsSubsamplings, AvifMinimizedImageBoxTest,
     Combine(/*width=*/Values(12), /*height=*/Values(34),
             /*depth=*/Values(8, 10, 12),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
@@ -138,7 +138,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_TRANSFORM_NONE)));
 
 INSTANTIATE_TEST_SUITE_P(
-    Dimensions, AvifCondensedImageBoxTest,
+    Dimensions, AvifMinimizedImageBoxTest,
     Combine(/*width=*/Values(127), /*height=*/Values(200), /*depth=*/Values(8),
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),
@@ -146,9 +146,9 @@ INSTANTIATE_TEST_SUITE_P(
             /*create_clli=*/Values(false), Values(AVIF_TRANSFORM_NONE)));
 
 // Use CLLI and transform properties that are not supported by a plain
-// CondensedImageBox to force the use of an ExtendedMetaBox.
+// MinimizedImageBox to force the use of an extended_meta field.
 INSTANTIATE_TEST_SUITE_P(
-    ExtendedMetaBox, AvifCondensedImageBoxTest,
+    ExtendedMetaField, AvifMinimizedImageBoxTest,
     Combine(/*width=*/Values(16), /*height=*/Values(24), /*depth=*/Values(8),
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),

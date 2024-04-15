@@ -206,9 +206,9 @@ typedef struct avifDecoderItem
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
     avifBool ipmaSeen;    // if true, this item already received a property association
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (the layer_id value in lsel is set to 0xFFFF)
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    avifPixelFormat miniPixelFormat; // Set from the CondensedImageBox, if present (AVIF_PIXEL_FORMAT_NONE otherwise)
-    avifChromaSamplePosition miniChromaSamplePosition; // Set from the CondensedImageBox, if present (AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN otherwise)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+    avifPixelFormat miniPixelFormat; // Set from the MinimizedImageBox, if present (AVIF_PIXEL_FORMAT_NONE otherwise)
+    avifChromaSamplePosition miniChromaSamplePosition; // Set from the MinimizedImageBox, if present (AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN otherwise)
 #endif
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem *, item);
@@ -735,8 +735,8 @@ typedef struct avifMeta
     // are ignored unless they refer to this item in some way (alpha plane, EXIF/XMP metadata).
     uint32_t primaryItemID;
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    // If true, the fields above were extracted from a CondensedImageBox. It imposes some
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+    // If true, the fields above were extracted from a MinimizedImageBox. It imposes some
     // constraints on its optional extendedMeta field, such as forbidden item IDs, properties etc.
     avifBool fromMini;
 #endif
@@ -1207,7 +1207,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
         }
     }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     if (item->miniPixelFormat != AVIF_PIXEL_FORMAT_NONE) {
         // This is a 'mini' box.
 
@@ -1237,7 +1237,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
     }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
     if (strictFlags & AVIF_STRICT_CLAP_VALID) {
         const avifProperty * clapProp = avifPropertyArrayFind(&item->properties, "clap");
@@ -1686,8 +1686,8 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
 
             // Advance past Annex A.2.1's header
             BEGIN_STREAM(exifBoxStream, exifContents.data, exifContents.size, &decoder->diag, "Exif header");
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-            // The CondensedImageBox does not signal the exifTiffHeaderOffset.
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+            // The MinimizedImageBox does not signal the exifTiffHeaderOffset.
             if (!meta->fromMini)
 #endif
             {
@@ -1804,14 +1804,14 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             AVIF_CHECKERR(avifROStreamReadU32(&s, &itemID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) item_ID;
         }
         AVIF_CHECKRES(avifCheckItemID("iloc", itemID, diag));
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         if (meta->fromMini && itemID < 5) {
-            // This is the extendedMeta field of an enclosing CondensedImageBox.
+            // This is the extendedMeta field of an enclosing MinimizedImageBox.
             // Item IDs 1 to 4 are reserved and already defined, including their locations.
             avifDiagnosticsPrintf(diag, "%s: Box[iloc] has a forbidden item ID [%u]", s.diagContext, itemID);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
         avifDecoderItem * item;
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item));
@@ -1836,14 +1836,14 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             if (constructionMethod == 1) {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
                 if (meta->fromMini) {
-                    // This is the extendedMeta field of an enclosing CondensedImageBox.
+                    // This is the extendedMeta field of an enclosing MinimizedImageBox.
                     // It may not contain an ItemDataBox.
                     avifDiagnosticsPrintf(diag, "%s: Box[iloc] has a forbidden construction method [%u]", s.diagContext, constructionMethod);
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
                 item->idatStored = AVIF_TRUE;
             }
         }
@@ -2507,13 +2507,13 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
 
 static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag, uint32_t * outVersionAndFlags)
 {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     if (meta->fromMini) {
-        // The CondensedImageBox will always create 8 item properties, so to refer to the
+        // The MinimizedImageBox will always create 8 item properties, so to refer to the
         // first property in the ItemPropertyContainerBox of its extendedMeta field, use index 9.
         AVIF_ASSERT_OR_RETURN(meta->properties.count >= 8);
     }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
     // NOTE: If this function ever adds support for versions other than [0,1] or flags other than
     //       [0,1], please increase the value of MAX_IPMA_VERSION_AND_FLAGS_SEEN accordingly.
@@ -2820,15 +2820,15 @@ static avifResult avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, s
         memset(&contentType, 0, sizeof(contentType));
     }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     if (meta->fromMini && itemID < 5) {
-        // This is the extendedMeta field of an enclosing CondensedImageBox.
+        // This is the extendedMeta field of an enclosing MinimizedImageBox.
         // itemID 1 is reserved for the primary color item, 2 for the alpha auxiliary item,
         // 3 for the Exif metadata item and 4 for the XMP metadata item.
         avifDiagnosticsPrintf(diag, "%s: Box[infe] of type %.4s has a forbidden item ID [%u]", s.diagContext, itemType, itemID);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
     avifDecoderItem * item;
     AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, itemID, &item));
 
@@ -3522,11 +3522,11 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
     return AVIF_RESULT_OK;
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
 static avifResult avifParseExtendedMeta(avifMeta * meta, uint64_t rawOffset, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "extendedMeta");
-    // The extendedMeta field has no size and box type because these are already set by the CondensedImageBox.
+    // The extendedMeta field has no size and box type because these are already set by the MinimizedImageBox.
 
     uint32_t uniqueBoxFlags = 0;
     while (avifROStreamHasBytesLeft(&s, 1)) {
@@ -3572,7 +3572,7 @@ static avifProperty * avifDecoderItemAddProperty(avifDecoderItem * item, const a
     return itemProperty;
 }
 
-static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     // Experimental box.
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[mini]");
@@ -3725,12 +3725,12 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
                   AVIF_RESULT_BMFF_PARSE_FAILED);
 
     // Store and update the offset for the following item extents and properties.
-    // The extendedMeta field is parsed after creating the items defined by the CondensedImageBox
+    // The extendedMeta field is parsed after creating the items defined by the MinimizedImageBox
     // so the stream s cannot be used for keeping track of the position.
     uint64_t offset = rawOffset + avifROStreamOffset(&s) + extendedMetaSize;
 
-    // Create the items and properties generated by the CondensedImageBox.
-    // The CondensedImageBox always creates 8 properties for specification easiness.
+    // Create the items and properties generated by the MinimizedImageBox.
+    // The MinimizedImageBox always creates 8 properties for specification easiness.
     // Use FreeSpaceBoxes as no-op placeholder properties when necessary.
     // There is no need to use placeholder items because item IDs do not have to
     // be contiguous, whereas property indices shall be 1, 2, 3, 4, 5 etc.
@@ -3880,8 +3880,8 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
         xmpItem->size = xmpSize;
     }
 
-    // Complete the generated virtual MetaBox with the ExtendedMetaBox items and properties.
-    // The ExtendedMetaBox may reuse items and properties created above so it must be parsed last.
+    // Complete the generated virtual MetaBox with the extended_meta items and properties. The
+    // extended_meta field may reuse items and properties created above so it must be parsed last.
 
     if (hasExtendedMeta) {
         AVIF_ASSERT_OR_RETURN(avifROStreamHasBytesLeft(&s, extendedMetaSize));
@@ -3889,7 +3889,7 @@ static avifResult avifParseCondensedImageBox(avifMeta * meta, uint64_t rawOffset
     }
     return AVIF_RESULT_OK;
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
 static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
@@ -3926,7 +3926,7 @@ static avifResult avifParse(avifDecoder * decoder)
     avifBool moovSeen = AVIF_FALSE;
     avifBool needsMeta = AVIF_FALSE;
     avifBool needsMoov = AVIF_FALSE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     avifBool miniSeen = AVIF_FALSE;
     avifBool needsMini = AVIF_FALSE;
 #endif
@@ -3959,7 +3959,7 @@ static avifResult avifParse(avifDecoder * decoder)
         avifROData boxContents = AVIF_DATA_EMPTY;
 
         // TODO: reorg this code to only do these memcmps once each
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4) ||
             !memcmp(header.type, "mini", 4)) {
 #else
@@ -4003,12 +4003,12 @@ static avifResult avifParse(avifDecoder * decoder)
             memcpy(data->majorBrand, ftyp.majorBrand, 4); // Remember the major brand for future AVIF_DECODER_SOURCE_AUTO decisions
             needsMeta = avifFileTypeHasBrand(&ftyp, "avif");
             needsMoov = avifFileTypeHasBrand(&ftyp, "avis");
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-            needsMini = avifFileTypeHasBrand(&ftyp, "avir");
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+            needsMini = avifFileTypeHasBrand(&ftyp, "mif3");
             if (needsMini && (needsMeta || needsMoov)) {
                 return AVIF_RESULT_INVALID_FTYP;
             }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
         } else if (!memcmp(header.type, "meta", 4)) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseMetaBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
@@ -4019,26 +4019,26 @@ static avifResult avifParse(avifDecoder * decoder)
                 avifParseMovieBox(data, boxOffset, boxContents.data, boxContents.size, decoder->imageSizeLimit, decoder->imageDimensionLimit));
             moovSeen = AVIF_TRUE;
             decoder->imageSequenceTrackPresent = AVIF_TRUE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         } else if (!memcmp(header.type, "mini", 4)) {
             AVIF_CHECKERR(!metaSeen && !moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
-            AVIF_CHECKRES(avifParseCondensedImageBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
+            AVIF_CHECKRES(avifParseMinimizedImageBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
             miniSeen = AVIF_TRUE;
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
         }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         if (ftypSeen && !needsMini && miniSeen) {
-            // The 'mini' box should be ignored if there is no 'avir' brand, but libavif allows reading them in any order.
+            // The 'mini' box should be ignored if there is no 'mif3' brand, but libavif allows reading them in any order.
             return AVIF_RESULT_NOT_IMPLEMENTED; // TODO(yguyon): Implement
         }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
         // See if there is enough information to consider Parse() a success and early-out:
         // * If the brand 'avif' is present, require a meta box
         // * If the brand 'avis' is present, require a moov box
-        // * If AVIF_ENABLE_EXPERIMENTAL_AVIR is defined and the brand 'avir' is present, require a mini box
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+        // * If AVIF_ENABLE_EXPERIMENTAL_MINI is defined and the brand 'mif3' is present, require a mini box
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         if (ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen) && (!needsMini || miniSeen)) {
 #else
         if (ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen)) {
@@ -4052,7 +4052,7 @@ static avifResult avifParse(avifDecoder * decoder)
     if ((needsMeta && !metaSeen) || (needsMoov && !moovSeen)) {
         return AVIF_RESULT_TRUNCATED_DATA;
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     if (needsMini && !miniSeen) {
         return AVIF_RESULT_TRUNCATED_DATA;
     }
@@ -4080,9 +4080,9 @@ static avifBool avifFileTypeHasBrand(avifFileType * ftyp, const char * brand)
 static avifBool avifFileTypeIsCompatible(avifFileType * ftyp)
 {
     return avifFileTypeHasBrand(ftyp, "avif") || avifFileTypeHasBrand(ftyp, "avis")
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-           || avifFileTypeHasBrand(ftyp, "avir")
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+           || avifFileTypeHasBrand(ftyp, "mif3")
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
         ;
 }
 

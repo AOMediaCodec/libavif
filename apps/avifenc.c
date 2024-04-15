@@ -207,7 +207,7 @@ static void syntaxLong(void)
     printf("    -j,--jobs J                       : Number of jobs (worker threads). Use \"all\" to potentially use as many cores as possible (default: all)\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     printf("    --avir                            : Use reduced header if possible\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
@@ -1477,10 +1477,10 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
             NEXTARG();
             outputFilename = arg;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         } else if (!strcmp(arg, "--avir")) {
             settings.headerFormat = AVIF_HEADER_REDUCED;
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
             input.requestedDepth = atoi(arg);

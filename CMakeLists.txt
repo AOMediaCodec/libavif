@@ -52,7 +52,7 @@ option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code
 option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
        "Enable experimental gain map code (for HDR images that look good both on HDR and SDR displays)" OFF
 )
-option(AVIF_ENABLE_EXPERIMENTAL_AVIR "Enable experimental reduced header" OFF)
+option(AVIF_ENABLE_EXPERIMENTAL_MINI "Enable experimental reduced header" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample transform code" OFF)
 
 set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "")
@@ -336,8 +336,8 @@ if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 endif()
 
-if(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_AVIR)
+if(AVIF_ENABLE_EXPERIMENTAL_MINI)
+    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_MINI)
 endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
