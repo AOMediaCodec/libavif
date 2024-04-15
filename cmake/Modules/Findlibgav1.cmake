@@ -33,7 +33,6 @@ endif(LIBGAV1_LIBRARY)
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
     libgav1
-    FOUND_VAR LIBGAV1_FOUND
     REQUIRED_VARS LIBGAV1_LIBRARY LIBGAV1_LIBRARIES LIBGAV1_INCLUDE_DIR
     VERSION_VAR _LIBGAV1_VERSION
 )

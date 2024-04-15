@@ -33,7 +33,6 @@ endif(SVT_LIBRARY)
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
     svt
-    FOUND_VAR SVT_FOUND
     REQUIRED_VARS SVT_LIBRARY SVT_LIBRARIES SVT_INCLUDE_DIR
     VERSION_VAR _SVT_VERSION
 )

@@ -33,7 +33,6 @@ endif(DAV1D_LIBRARY)
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
     dav1d
-    FOUND_VAR DAV1D_FOUND
     REQUIRED_VARS DAV1D_LIBRARY DAV1D_LIBRARIES DAV1D_INCLUDE_DIR
     VERSION_VAR _DAV1D_VERSION
 )
