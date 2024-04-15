@@ -2376,7 +2376,7 @@ static avifResult avifEncoderWriteFileTypeBoxAndMinimizedImageBox(avifEncoder * 
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
     AVIF_CHECKRES(avifRWStreamWriteChars(&s, "mif3", 4)); // unsigned int(32) major_brand;
     AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));           // unsigned int(32) minor_version;
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "mif3", 4)); // unsigned int(32) compatible_brands[];
+                                                          // unsigned int(32) compatible_brands[];
     avifRWStreamFinishBox(&s, ftyp);
 
     avifRWData extendedMeta = AVIF_DATA_EMPTY;
@@ -2411,71 +2411,75 @@ static avifResult avifEncoderWriteMinimizedImageBox(avifEncoder * encoder, avifR
     const avifImage * const image = encoder->data->imageMetadata;
 
     const avifBool isMonochrome = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
-    const avifBool isSubsampled = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420;
     const avifBool fullRange = image->yuvRange == AVIF_RANGE_FULL;
 
     avifBoxMarker mini;
     AVIF_CHECKRES(avifRWStreamWriteBox(s, "mini", AVIF_BOX_SIZE_TBD, &mini));
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // unsigned int(2) version;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // bit(2) version;
 
     AVIF_CHECKRES(avifRWStreamWriteVarInt(s, image->width - 1));  // varint width_minus_one;
     AVIF_CHECKRES(avifRWStreamWriteVarInt(s, image->height - 1)); // varint height_minus_one;
 
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1));                // unsigned int(1) is_float;
-                                                                  // unsigned int(2) float_precision;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->depth - 1, 4)); // unsigned int(4) bit_depth_minus_one;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1));                // bit(1) is_float;
+                                                                  // bit(2) float_precision;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->depth - 1, 4)); // bit(4) bit_depth_minus_one;
     if (isMonochrome) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // unsigned int(2) subsampling;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // bit(2) subsampling;
     } else {
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)image->yuvFormat, 2)); // unsigned int(2) subsampling;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)image->yuvFormat, 2)); // bit(2) subsampling;
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1)); // bit(1) is_horizontally_centered;
+        }
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+            const uint32_t isVerticallyCentered = image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL ? 1 : 0;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, isVerticallyCentered, 1)); // bit(1) is_vertically_centered;
+        }
     }
-    if (isSubsampled) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL ? 1 : 0, 1)); // unsigned int(1) is_centered;
-    }
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1)); // unsigned int(1) full_range;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1)); // bit(1) full_range;
     if (image->icc.size) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_MINI_COLOR_TYPE_ICC, 2)); // unsigned int(2) color_type;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_MINI_COLOR_TYPE_ICC, 2)); // bit(2) color_type;
         AVIF_CHECKERR(image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED, AVIF_RESULT_INVALID_ARGUMENT);
         AVIF_CHECKERR(image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED, AVIF_RESULT_INVALID_ARGUMENT);
         if (isMonochrome) {
             AVIF_CHECKERR(image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED, AVIF_RESULT_INVALID_ARGUMENT);
         } else {
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->matrixCoefficients, 8)); // unsigned int(8) matrix_coefficients;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->matrixCoefficients, 8)); // bit(8) matrix_coefficients;
         }
         AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)image->icc.size - 1)); // varint icc_data_size_minus_one;
     } else {
         if (image->colorPrimaries == AVIF_COLOR_PRIMARIES_SRGB && image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
             (image->matrixCoefficients == (isMonochrome ? AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED : AVIF_MATRIX_COEFFICIENTS_BT601))) {
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_MINI_COLOR_TYPE_SRGB, 2)); // unsigned int(2) color_type;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, AVIF_MINI_COLOR_TYPE_SRGB, 2)); // bit(2) color_type;
         } else {
             const avifMiniColorType colorType = ((image->colorPrimaries >> 5 == 0) && (image->transferCharacteristics >> 5 == 0) &&
                                                  (image->matrixCoefficients >> 5 == 0))
                                                     ? AVIF_MINI_COLOR_TYPE_NCLX_5BIT
                                                     : AVIF_MINI_COLOR_TYPE_NCLX_8BIT;
             const uint32_t numBitsPerComponent = (colorType == AVIF_MINI_COLOR_TYPE_NCLX_5BIT) ? 5 : 8;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, colorType, 2));                               // unsigned int(2) color_type;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->colorPrimaries, numBitsPerComponent)); // unsigned int(5/8) color_primaries;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->transferCharacteristics, numBitsPerComponent)); // unsigned int(5/8) transfer_characteristics;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, colorType, 2));                               // bit(2) color_type;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->colorPrimaries, numBitsPerComponent)); // bit(5/8) color_primaries;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, image->transferCharacteristics, numBitsPerComponent)); // bit(5/8) transfer_characteristics;
             if (isMonochrome) {
                 AVIF_CHECKERR(image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED, AVIF_RESULT_INVALID_ARGUMENT);
             } else {
-                AVIF_CHECKRES(avifRWStreamWriteBits(s, image->matrixCoefficients, numBitsPerComponent)); // unsigned int(5/8) matrix_coefficients;
+                AVIF_CHECKRES(avifRWStreamWriteBits(s, image->matrixCoefficients, numBitsPerComponent)); // bit(5/8) matrix_coefficients;
             }
         }
     }
 
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1)); // unsigned int(1) has_explicit_codec_types;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1)); // bit(1) has_explicit_codec_types;
                                                    // unsigned int(32) infe_type;
                                                    // unsigned int(32) codec_config_type;
     AVIF_CHECKRES(avifRWStreamWriteVarInt(s, 4));  // varint main_item_codec_config_size;
     AVIF_ASSERT_OR_RETURN(colorData->size >= 1);
     AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)colorData->size - 1)); // varint main_item_data_size_minus_one;
 
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, alphaItem ? 1 : 0, 1)); // unsigned int(1) has_alpha;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, alphaItem ? 1 : 0, 1)); // bit(1) has_alpha;
     if (alphaItem) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, image->alphaPremultiplied, 1)); // unsigned int(1) alpha_is_premultiplied;
-        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, 4));                          // varint alpha_item_codec_config_size;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, image->alphaPremultiplied, 1)); // bit(1) alpha_is_premultiplied;
         AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)alphaData->size));  // varint alpha_item_data_size;
+        AVIF_ASSERT_OR_RETURN(alphaData->size != 0);
+        AVIF_CHECKRES(avifRWStreamWriteVarInt(s, 4)); // varint alpha_item_codec_config_size;
     }
 
     if (image->clli.maxCLL || image->clli.maxPALL || (image->transformFlags != AVIF_TRANSFORM_NONE)) {
@@ -2484,22 +2488,22 @@ static avifResult avifEncoderWriteMinimizedImageBox(avifEncoder * encoder, avifR
         AVIF_CHECKRES(avifImageWriteExtendedMeta(image, &extendedMetaStream));
         avifRWStreamFinishWrite(&extendedMetaStream);
     }
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, extendedMeta->size ? 1 : 0, 1)); // unsigned int(1) has_extended_meta;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, extendedMeta->size ? 1 : 0, 1)); // bit(1) has_extended_meta;
     if (extendedMeta->size) {
         AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)extendedMeta->size - 1)); // varint extended_meta_size_minus_one;
     }
 
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->exif.size ? 1 : 0, 1)); // unsigned int(1) has_exif;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->exif.size ? 1 : 0, 1)); // bit(1) has_exif;
     if (image->exif.size) {
         AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)image->exif.size - 1)); // varint exif_data_size_minus_one;
     }
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->xmp.size ? 1 : 0, 1)); // unsigned int(1) has_xmp;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->xmp.size ? 1 : 0, 1)); // bit(1) has_xmp;
     if (image->xmp.size) {
         AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)image->xmp.size - 1)); // varint xmp_data_size_minus_one;
     }
 
     // Padding to align with whole bytes if necessary.
-    if (s->numUsedBitsInPartialByte) {
+    if (s->numUsedBitsInPartialByte != 0) {
         AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 8 - s->numUsedBitsInPartialByte));
     }
 
