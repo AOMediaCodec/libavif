@@ -1,11 +1,14 @@
-# This is a copy of ci-windows.yml for installed dependencies. It defers in the following ways:
+# This is a copy of ci-windows.yml for installed dependencies. It differs in the following ways:
 #
 #   * vcpkg is used to install dependencies that are packaged.
 #   * rav1e is installed from a binary upstream.
 #   * TODO: use proper installations of libgav1, libsharpyuv and SVT once released.
 
 name: CI Windows Installed
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -17,16 +20,13 @@ concurrency:
 
 jobs:
   build-windows-installed:
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     strategy:
       fail-fast: false
-      matrix:
-        os: [windows-latest]
 
     steps:
     - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
     - name: Setup Visual Studio shell
-      if: runner.os == 'Windows'
       uses: egor-tensin/vs-shell@9a932a62d05192eae18ca370155cf877eecc2202 # v2.1
     - name: Print CMake version
       run: cmake --version
@@ -49,6 +49,7 @@ jobs:
         curl -LO "$LINK/$FILE.zip"
         mkdir -p ${{ github.workspace }}\tmp
         7z x -y "$FILE.zip" -o"${{ github.workspace }}\tmp"
+        # Do not mv the folder's content to not overwrite, and rsync is not installed.
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\bin\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\bin
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\include\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\rav1e* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
