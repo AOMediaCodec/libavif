@@ -2468,8 +2468,8 @@ static avifResult avifEncoderWriteMinimizedImageBox(avifEncoder * encoder, avifR
     }
 
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 1)); // bit(1) has_explicit_codec_types;
-                                                   // unsigned int(32) infe_type;
-                                                   // unsigned int(32) codec_config_type;
+                                                   // bit(32) infe_type;
+                                                   // bit(32) codec_config_type;
     AVIF_CHECKRES(avifRWStreamWriteVarInt(s, 4));  // varint main_item_codec_config_size;
     AVIF_ASSERT_OR_RETURN(colorData->size >= 1);
     AVIF_CHECKRES(avifRWStreamWriteVarInt(s, (uint32_t)colorData->size - 1)); // varint main_item_data_size_minus_one;
