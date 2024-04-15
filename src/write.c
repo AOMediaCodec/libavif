@@ -621,7 +621,7 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
 }
 
 // Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
-// Also used by the extendedMeta field of the CondensedImageBox if AVIF_ENABLE_EXPERIMENTAL_AVIR is
+// Also used by the extended_meta field of the MinimizedImageBox if AVIF_ENABLE_EXPERIMENTAL_MINI is
 // defined.
 static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
                                                           avifRWStream * outputStream,
@@ -2248,11 +2248,11 @@ static avifResult avifWriteAltrGroup(avifRWStream * s, const avifEncoderItemIdAr
     return AVIF_RESULT_OK;
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-// Writes the extendedMeta field of the CondensedImageBox.
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+// Writes the extended_meta field of the MinimizedImageBox.
 static avifResult avifImageWriteExtendedMeta(const avifImage * imageMetadata, avifRWStream * stream)
 {
-    // The ExtendedMetaBox has no size and box type because these are already set by the CondensedImageBox.
+    // No size and box type because these are already set by the MinimizedImageBox.
 
     avifBoxMarker iprp;
     AVIF_CHECKRES(avifRWStreamWriteBox(stream, "iprp", AVIF_BOX_SIZE_TBD, &iprp));
@@ -2285,12 +2285,12 @@ static avifResult avifImageWriteExtendedMeta(const avifImage * imageMetadata, av
             // Only add properties to the primary item.
             AVIF_CHECKRES(avifRWStreamWriteU32(stream, 1)); // unsigned int(32) entry_count;
             {
-                // Primary item ID is defined as 1 by the CondensedImageBox.
+                // Primary item ID is defined as 1 by the MinimizedImageBox.
                 AVIF_CHECKRES(avifRWStreamWriteU16(stream, 1));        // unsigned int(16) item_ID;
                 AVIF_CHECKRES(avifRWStreamWriteU8(stream, ipmaCount)); // unsigned int(8) association_count;
                 for (uint8_t i = 0; i < ipmaCount; ++i) {
                     AVIF_CHECKRES(avifRWStreamWriteBits(stream, (i >= numNonEssentialProperties) ? 1 : 0, /*bitCount=*/1)); // bit(1) essential;
-                    // The CondensedImageBox will always create 8 item properties, so to refer to the
+                    // The MinimizedImageBox will always create 8 item properties, so to refer to the
                     // first property in the ItemPropertyContainerBox above, use index 9.
                     AVIF_CHECKRES(avifRWStreamWriteBits(stream, 9 + i, /*bitCount=*/7)); // unsigned int(7) property_index;
                 }
@@ -2302,10 +2302,10 @@ static avifResult avifImageWriteExtendedMeta(const avifImage * imageMetadata, av
     return AVIF_RESULT_OK;
 }
 
-// Returns true if the image can be encoded with a CondensedImageBox instead of a full regular MetaBox.
-static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * encoder)
+// Returns true if the image can be encoded with a MinimizedImageBox instead of a full regular MetaBox.
+static avifBool avifEncoderIsMinimizedImageBoxCompatible(const avifEncoder * encoder)
 {
-    // The CondensedImageBox ("avir" brand) only supports non-layered, still images.
+    // The MinimizedImageBox ("mif3" brand) only supports non-layered, still images.
     if (encoder->extraLayerCount || (encoder->data->frames.count != 1)) {
         return AVIF_FALSE;
     }
@@ -2316,7 +2316,7 @@ static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * enc
     }
 #endif
 
-    // 4:4:4, 4:2:2, 4:2:0 and 4:0:0 are supported by a CondensedImageBox.
+    // 4:4:4, 4:2:2, 4:2:0 and 4:0:0 are supported by a MinimizedImageBox.
     if (encoder->data->imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
         return AVIF_FALSE;
     }
@@ -2325,7 +2325,7 @@ static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * enc
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
 
-        // Grids are not supported by a CondensedImageBox.
+        // Grids are not supported by a MinimizedImageBox.
         if (item->gridCols || item->gridRows) {
             return AVIF_FALSE;
         }
@@ -2333,14 +2333,14 @@ static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * enc
         if (item->id == encoder->data->primaryItemID) {
             assert(!colorItem);
             colorItem = item;
-            continue; // The primary item can be stored in the CondensedImageBox.
+            continue; // The primary item can be stored in the MinimizedImageBox.
         }
         if (item->itemCategory == AVIF_ITEM_ALPHA && item->irefToID == encoder->data->primaryItemID) {
-            continue; // The alpha auxiliary item can be stored in the CondensedImageBox.
+            continue; // The alpha auxiliary item can be stored in the MinimizedImageBox.
         }
         if (!memcmp(item->type, "mime", 4) && !memcmp(item->infeName, "XMP", item->infeNameSize)) {
             assert(item->metadataPayload.size == encoder->data->imageMetadata->xmp.size);
-            continue; // XMP metadata can be stored in the CondensedImageBox.
+            continue; // XMP metadata can be stored in the MinimizedImageBox.
         }
         if (!memcmp(item->type, "Exif", 4) && !memcmp(item->infeName, "Exif", item->infeNameSize)) {
             assert(item->metadataPayload.size == encoder->data->imageMetadata->exif.size + 4);
@@ -2348,12 +2348,12 @@ static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * enc
             if (exif_tiff_header_offset != 0) {
                 return AVIF_FALSE;
             }
-            continue; // Exif metadata can be stored in the CondensedImageBox if exif_tiff_header_offset is 0.
+            continue; // Exif metadata can be stored in the MinimizedImageBox if exif_tiff_header_offset is 0.
         }
 
         // Items besides the colorItem, the alphaItem and Exif/XMP/ICC
-        // metadata are not directly supported by the CondensedImageBox.
-        // Store them in its inner extendedMeta field instead.
+        // metadata are not directly supported by the MinimizedImageBox.
+        // Store them in its inner extended_meta field instead.
         // TODO(yguyon): Implement comment above instead of falling back to regular AVIF
         //               (or drop the comment above if there is no other item type).
         return AVIF_FALSE;
@@ -2365,22 +2365,22 @@ static avifBool avifEncoderIsCondensedImageBoxCompatible(const avifEncoder * enc
     return AVIF_TRUE;
 }
 
-static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifRWStream * s, avifRWData * extendedMeta);
+static avifResult avifEncoderWriteMinimizedImageBox(avifEncoder * encoder, avifRWStream * s, avifRWData * extendedMeta);
 
-static avifResult avifEncoderWriteFileTypeBoxAndCondensedImageBox(avifEncoder * encoder, avifRWData * output)
+static avifResult avifEncoderWriteFileTypeBoxAndMinimizedImageBox(avifEncoder * encoder, avifRWData * output)
 {
     avifRWStream s;
     avifRWStreamStart(&s, output);
 
     avifBoxMarker ftyp;
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avir", 4)); // unsigned int(32) major_brand;
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "mif3", 4)); // unsigned int(32) major_brand;
     AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));           // unsigned int(32) minor_version;
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avir", 4)); // unsigned int(32) compatible_brands[];
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "mif3", 4)); // unsigned int(32) compatible_brands[];
     avifRWStreamFinishBox(&s, ftyp);
 
     avifRWData extendedMeta = AVIF_DATA_EMPTY;
-    const avifResult result = avifEncoderWriteCondensedImageBox(encoder, &s, &extendedMeta);
+    const avifResult result = avifEncoderWriteMinimizedImageBox(encoder, &s, &extendedMeta);
     avifRWDataFree(&extendedMeta);
     AVIF_CHECKRES(result);
 
@@ -2388,7 +2388,7 @@ static avifResult avifEncoderWriteFileTypeBoxAndCondensedImageBox(avifEncoder * 
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifRWStream * s, avifRWData * extendedMeta)
+static avifResult avifEncoderWriteMinimizedImageBox(avifEncoder * encoder, avifRWStream * s, avifRWData * extendedMeta)
 {
     const avifEncoderItem * colorItem = NULL;
     const avifEncoderItem * alphaItem = NULL;
@@ -2528,7 +2528,7 @@ static avifResult avifEncoderWriteCondensedImageBox(avifEncoder * encoder, avifR
     avifRWStreamFinishBox(s, mini);
     return AVIF_RESULT_OK;
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
 static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedup,
                                               avifRWStream * const s,
@@ -2775,13 +2775,13 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Begin write stream
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_AVIR)
-    // Decide whether to go for a CondensedImageBox or a full regular MetaBox.
-    if ((encoder->headerFormat == AVIF_HEADER_REDUCED) && avifEncoderIsCondensedImageBoxCompatible(encoder)) {
-        AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndCondensedImageBox(encoder, output));
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+    // Decide whether to go for a MinimizedImageBox or a full regular MetaBox.
+    if ((encoder->headerFormat == AVIF_HEADER_REDUCED) && avifEncoderIsMinimizedImageBoxCompatible(encoder)) {
+        AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndMinimizedImageBox(encoder, output));
         return AVIF_RESULT_OK;
     }
-#endif // AVIF_ENABLE_EXPERIMENTAL_AVIR
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
     const avifImage * imageMetadata = encoder->data->imageMetadata;
     // The epoch for creation_time and modification_time is midnight, Jan. 1,
