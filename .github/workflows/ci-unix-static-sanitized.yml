@@ -1,8 +1,9 @@
 name: CI Unix Static Sanitized
+on:
   push
   pull_request:
     paths:
-      - '**CMakeLists.txt**'
+      - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
 

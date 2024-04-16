@@ -11,10 +11,11 @@
 #   * Builds with local zlib and libpng (-DAVIF_ZLIBPNG=LOCAL).
 
 name: CI Windows
+on:
   push
   pull_request:
     paths:
-      - '**CMakeLists.txt**'
+      - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
 

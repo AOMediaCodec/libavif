@@ -9,7 +9,7 @@ on:
   push
   pull_request:
     paths:
-      - '**CMakeLists.txt**'
+      - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
 
