@@ -606,6 +606,15 @@ An animated AVIF image file with the following attributes:
 * Repetition Count: 0
 * Frame count: 5
 
+### File [colors-animated-8bpc-alpha-exif-xmp.avif](colors-animated-8bpc-alpha-exif-xmp.avif)
+
+![](colors-animated-8bpc-alpha-exif-xmp.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `colors-animated-8bpc.avif` but translucent and with the Exif/XMP chunks of
+`paris_exif_xmp_icc.jpg`. The repetition is infinite.
+
 # Other Test Files
 
 ### File [sRGB2014.icc](sRGB2014.icc)

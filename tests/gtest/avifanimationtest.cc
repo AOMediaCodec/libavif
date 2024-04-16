@@ -58,6 +58,22 @@ TEST(AvifDecodeTest, AnimatedImageWithSourceSetToPrimaryItem) {
   EXPECT_NE(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
 }
 
+TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadata) {
+  const char* file_name = "colors-animated-8bpc-alpha-exif-xmp.avif";
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
+                                 (std::string(data_path) + file_name).c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageCount, 5);
+  EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
+  EXPECT_EQ(decoder->image->exif.size, 1126);
+  EXPECT_EQ(decoder->image->xmp.size, 3898);
+}
+
 }  // namespace
 }  // namespace avif
 
