@@ -1,11 +1,10 @@
 name: CI Fuzz
 on:
+  push:
   pull_request:
     paths:
       - 'cmake/**'
       - 'ext/**'
-      - 'include/**'
-      - 'src/**'
       - 'tests/gtest/**'
       - 'tests/oss-fuzz/**'
 
