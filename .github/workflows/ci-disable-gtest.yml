@@ -6,7 +6,7 @@
 
 name: CI Disable GTest
 on:
-  push
+  push:
   pull_request:
     paths:
       - '**CMakeLists.txt'

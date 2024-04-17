@@ -1,6 +1,6 @@
 name: CI Unix Static For AVIF_LOCAL
 on:
-  push
+  push:
   pull_request:
     paths:
       - '**CMakeLists.txt'

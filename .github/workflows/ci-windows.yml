@@ -12,7 +12,7 @@
 
 name: CI Windows
 on:
-  push
+  push:
   pull_request:
     paths:
       - '**CMakeLists.txt'

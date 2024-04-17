@@ -1,6 +1,6 @@
 name: CI Unix Static
 on:
-  push
+  push:
   pull_request:
     paths:
       - '**CMakeLists.txt'
