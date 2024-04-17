@@ -48,13 +48,11 @@ endif()
 target_include_directories(zlibstatic INTERFACE $<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>)
 
 # This include_directories() call and the previous include_directories() call provide the zlib
-# include directories for add_subdirectory(ext/libpng). Because we set PNG_BUILD_ZLIB,
+# include directories for add_subdirectory(ext/libpng). Because we set ZLIB_ROOT,
 # libpng/CMakeLists.txt won't call find_package(ZLIB REQUIRED) and will see an empty
 # ${ZLIB_INCLUDE_DIR}.
 include_directories("${zlib_BINARY_DIR}")
 set(CMAKE_DEBUG_POSTFIX "")
-
-add_library(ZLIB::ZLIB ALIAS zlibstatic)
 
 message(CHECK_PASS "complete")
 
@@ -69,10 +67,10 @@ endif()
 # This is the only way I could avoid libpng going crazy if it found awk.exe, seems benign otherwise
 set(PREV_ANDROID ${ANDROID})
 set(ANDROID TRUE)
-set(PNG_BUILD_ZLIB "${zlib_SOURCE_DIR}" CACHE STRING "" FORCE)
+set(ZLIB_ROOT "${zlib_SOURCE_DIR}" CACHE STRING "" FORCE)
 set(PNG_SHARED OFF CACHE BOOL "")
 set(PNG_TESTS OFF CACHE BOOL "")
-set(PNG_EXECUTABLES OFF CACHE BOOL "")
+set(PNG_TOOLS OFF CACHE BOOL "")
 
 set(LIBPNG_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/libpng")
 if(ANDROID_ABI)
