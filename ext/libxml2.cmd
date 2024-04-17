@@ -5,7 +5,7 @@
 
 : # libxml2 is released under the MIT License.
 
-git clone -b v2.11.5 --depth 1 https://gitlab.gnome.org/GNOME/libxml2.git
+git clone -b v2.12.6 --depth 1 https://gitlab.gnome.org/GNOME/libxml2.git
 
 mkdir -p libxml2/build.libavif
 cmake libxml2 -B libxml2/build.libavif/ -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=libxml2/install.libavif \

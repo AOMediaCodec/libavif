@@ -1,5 +1,5 @@
-set(AVIF_LOCAL_ZLIB_GIT_TAG v1.3)
-set(AVIF_LOCAL_LIBPNG_GIT_TAG v1.6.40)
+set(AVIF_LOCAL_ZLIB_GIT_TAG v1.3.1)
+set(AVIF_LOCAL_LIBPNG_GIT_TAG v1.6.43)
 
 if(EXISTS "${AVIF_SOURCE_DIR}/ext/zlib")
     message(STATUS "libavif(AVIF_ZLIBPNG=LOCAL): ext/zlib found; using as FetchContent SOURCE_DIR")

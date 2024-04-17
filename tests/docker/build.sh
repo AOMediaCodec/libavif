@@ -53,7 +53,7 @@ ninja install
 
 # rav1e
 cd
-git clone -b v0.7.0 --depth 1 https://github.com/xiph/rav1e.git
+git clone -b v0.7.1 --depth 1 https://github.com/xiph/rav1e.git
 cd rav1e
 cargo cinstall --prefix=/usr --release
 
