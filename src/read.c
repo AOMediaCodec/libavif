@@ -4105,6 +4105,7 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
         // Either there is no brand requiring anything in the file but a FileTypebox (so not AVIF), or it is invalid.
         return AVIF_FALSE;
     }
+    AVIF_CHECK(avifROStreamHasBytesLeft(&s, header.size));
 
     avifFileType ftyp;
     memset(&ftyp, 0, sizeof(avifFileType));
