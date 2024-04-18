@@ -3231,6 +3231,7 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
     if (memcmp(header.type, "ftyp", 4)) {
         return AVIF_FALSE;
     }
+    AVIF_CHECK(avifROStreamHasBytesLeft(&s, header.size));
 
     avifFileType ftyp;
     memset(&ftyp, 0, sizeof(avifFileType));

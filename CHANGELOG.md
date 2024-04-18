@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * limit the number of encoder maxThreads to 64 when using libaom.
+* Fix missing header size check (b/335555272).
 
 ## [1.0.4] - 2024-02-08
 
