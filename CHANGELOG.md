@@ -100,7 +100,6 @@ The changes are relative to the previous release, unless the baseline is specifi
   index_size.
 * 'infe' boxes with an item_type different from 'mime' and without a
   null-terminated item_name are now considered invalid as per ISO/IEC 14496-12.
-* Fix missing header size check (b/335555272).
 
 ## [1.0.4] - 2024-02-08
 
