@@ -197,7 +197,6 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 #else
         if (codec->csOptions->count > 0) {
             avifDiagnosticsPrintf(codec->diag, "SVT-AV1 does not support setting options");
-            // None are currently supported!
             result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
             goto cleanup;
         }
