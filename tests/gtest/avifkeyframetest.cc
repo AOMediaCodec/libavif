@@ -53,7 +53,7 @@ TEST(KeyframeTest, Decode) {
 
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
-  const std::string file_name = "colors-animated-8bpc-keyframes-0-2-3.avif";
+  const std::string file_name = "colors-animated-12bpc-keyframes-0-2-3.avif";
   ASSERT_EQ(
       avifDecoderSetIOFile(decoder.get(), (data_path + file_name).c_str()),
       AVIF_RESULT_OK);
