@@ -66,6 +66,16 @@ cleanup() {
 trap cleanup EXIT
 
 pushd ${TMP_DIR}
+  # Test options.
+  echo "Testing options"
+  for pair in aom,end-usage,cbr avm,end-usage,cbr rav1e,tiles,1 svt,film-grain,0; do
+    IFS=','; set -- $pair
+    if "${AVIFENC}" --help | grep $1' \['; then
+      "${AVIFENC}" -s 10 -q 85 -c $1 -a foo=1 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}" && exit 1
+      "${AVIFENC}" -s 10 -q 85 -c $1 -a $2=$3 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+    fi
+  done
+
   # Lossy test. The decoded pixels should be different from the original image.
   echo "Testing basic lossy"
   "${AVIFENC}" -s 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"

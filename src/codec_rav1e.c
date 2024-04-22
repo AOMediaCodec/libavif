@@ -88,11 +88,6 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
     RaFrame * rav1eFrame = NULL;
 
     if (!codec->internal->rav1eContext) {
-        if (codec->csOptions->count > 0) {
-            // None are currently supported!
-            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
-        }
-
         const avifBool supports400 = rav1eSupports400();
         RaPixelRange rav1eRange;
         if (alpha) {
@@ -179,6 +174,14 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
         if (encoder->keyframeInterval > 0) {
             // "key_frame_interval" is the maximum interval between two keyframes.
             if (rav1e_config_parse_int(rav1eConfig, "key_frame_interval", encoder->keyframeInterval) == -1) {
+                goto cleanup;
+            }
+        }
+        for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+            avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+            if (rav1e_config_parse(rav1eConfig, entry->key, entry->value) < 0) {
+                avifDiagnosticsPrintf(codec->diag, "Invalid value for %s: %s.", entry->key, entry->value);
+                result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
                 goto cleanup;
             }
         }

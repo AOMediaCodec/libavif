@@ -185,6 +185,23 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             svt_config->intra_period_length = encoder->keyframeInterval - 1;
         }
 
+#if SVT_AV1_CHECK_VERSION(0, 9, 1)
+        for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+            avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+            if (svt_av1_enc_parse_parameter(svt_config, entry->key, entry->value) < 0) {
+                avifDiagnosticsPrintf(codec->diag, "Invalid value for %s: %s.", entry->key, entry->value);
+                result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+                goto cleanup;
+            }
+        }
+#else
+        if (codec->csOptions->count > 0) {
+            avifDiagnosticsPrintf(codec->diag, "SVT-AV1 does not support setting options");
+            result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+            goto cleanup;
+        }
+#endif
+
         res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
         if (res == EB_ErrorBadParameter) {
             goto cleanup;
