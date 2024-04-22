@@ -190,14 +190,16 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
             if (svt_av1_enc_parse_parameter(svt_config, entry->key, entry->value) < 0) {
                 avifDiagnosticsPrintf(codec->diag, "Invalid value for %s: %s.", entry->key, entry->value);
-                return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+                result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+                goto cleanup;
             }
         }
 #else
         if (codec->csOptions->count > 0) {
             avifDiagnosticsPrintf(codec->diag, "SVT-AV1 does not support setting options");
             // None are currently supported!
-            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+            result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+            goto cleanup;
         }
 #endif
 

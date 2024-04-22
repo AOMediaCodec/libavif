@@ -181,7 +181,8 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
             avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
             if (rav1e_config_parse(rav1eConfig, entry->key, entry->value) < 0) {
                 avifDiagnosticsPrintf(codec->diag, "Invalid value for %s: %s.", entry->key, entry->value);
-                return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+                result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+                goto cleanup;
             }
         }
 
