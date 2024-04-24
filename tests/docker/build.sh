@@ -26,7 +26,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 # aom
 cd
-git clone -b v3.8.2 --depth 1 https://aomedia.googlesource.com/aom
+git clone -b v3.9.0 --depth 1 https://aomedia.googlesource.com/aom
 cd aom
 mkdir build.avif
 cd build.avif
