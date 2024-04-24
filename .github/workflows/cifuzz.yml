@@ -3,6 +3,7 @@ on:
   push:
   pull_request:
     paths:
+      - '.github/workflows/cifuzz.yml'
       - 'cmake/**'
       - 'ext/**'
       - 'tests/gtest/**'
