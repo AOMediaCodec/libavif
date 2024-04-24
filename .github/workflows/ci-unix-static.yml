@@ -3,6 +3,7 @@ on:
   push:
   pull_request:
     paths:
+      - '.github/workflows/**'
       - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
@@ -41,6 +42,9 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: brew install imagemagick
     - name: Install cargo-c (linux)
       if: matrix.os == 'ubuntu-latest'
       env:

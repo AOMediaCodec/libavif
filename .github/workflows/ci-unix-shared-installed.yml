@@ -54,7 +54,7 @@ jobs:
         sudo apt-get install libaom-dev libdav1d-dev libyuv-dev imagemagick
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
-      run: brew install aom dav1d imagemagick
+      run: brew install aom dav1d imagemagick libpng
     - name: Print ImageMagick version
       run: convert --version
 
