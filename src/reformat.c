@@ -99,8 +99,6 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     const avifBool useYCgCo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ||
                               (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#else
-    const avifBool useYCgCo = AVIF_FALSE;
 #endif
 
     AVIF_CHECK(image->depth == 8 || image->depth == 10 || image->depth == 12 || image->depth == 16);
@@ -112,7 +110,12 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
     if ((image->matrixCoefficients == 3 /* CICP reserved */) ||
-        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO || useYCgCo) && (image->yuvRange == AVIF_RANGE_LIMITED)) ||
+        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+          || useYCgCo
+#endif
+          ) &&
+         (image->yuvRange == AVIF_RANGE_LIMITED)) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL) ||
@@ -146,16 +149,13 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
     const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#else
-    const avifBool useYCgCoRe = AVIF_FALSE;
-    const avifBool useYCgCoRo = AVIF_FALSE;
-#endif
     if (useYCgCoRe || useYCgCoRo) {
         const int bitOffset = (useYCgCoRe) ? 2 : 1;
         if (image->depth - bitOffset != rgb->depth) {
             return AVIF_FALSE;
         }
     }
+#endif
 
     AVIF_CHECK(avifGetRGBColorSpaceInfo(rgb, &state->rgb));
     AVIF_CHECK(avifGetYUVColorSpaceInfo(image, &state->yuv));
