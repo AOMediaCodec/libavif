@@ -40,6 +40,7 @@ jobs:
         path: ext, build/_deps
         key: ${{ runner.os }}-unix-shared-installed-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
     - name: Setup cmake
+      if: runner.os == 'Linux'
       uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b # v2.0.1
       with:
         cmake-version: '3.13.x'
@@ -54,7 +55,7 @@ jobs:
         sudo apt-get install libaom-dev libdav1d-dev libyuv-dev imagemagick
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
-      run: brew install aom dav1d imagemagick libpng
+      run: brew install aom dav1d imagemagick
     - name: Print ImageMagick version
       run: convert --version
 
