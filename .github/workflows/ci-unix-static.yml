@@ -3,7 +3,7 @@ on:
   push:
   pull_request:
     paths:
-      - '.github/workflows/ci-unix-static-yml'
+      - '.github/workflows/ci-unix-static.yml'
       - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-13]
         build-type: [Release, Debug]
         include:
           - runs-on: ubuntu-latest

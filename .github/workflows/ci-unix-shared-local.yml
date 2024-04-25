@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-13]
         libyuv: [OFF, LOCAL]
         include:
           - runs-on: ubuntu-latest
