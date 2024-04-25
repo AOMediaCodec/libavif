@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <string>
 
@@ -87,6 +88,28 @@ TEST(AvifDecodeTest, FtypSize0) {
   ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), avif.data, avif.size),
             AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+TEST(AvifDecodeTest, UnknownTopLevelBoxSize0) {
+  testutil::AvifRwData avif =
+      testutil::ReadFile(std::string(data_path) + "white_1x1.avif");
+  // Edit the file to insert an unknown top level box with size 0 after ftyp
+  // (invalid).
+  testutil::AvifRwData avif_edited;
+  ASSERT_EQ(avifRWDataRealloc(&avif_edited, avif.size + 8), AVIF_RESULT_OK);
+  // Copy the ftyp box.
+  std::memcpy(avif_edited.data, avif.data, 32);
+  // Set 8 bytes to 0 (box type and size all 0s).
+  std::memset(avif_edited.data + 32, 0, 8);
+  // Copy the other boxes.
+  std::memcpy(avif_edited.data + 40, avif.data + 32, avif.size - 32);
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(
+      avifDecoderSetIOMemory(decoder.get(), avif_edited.data, avif_edited.size),
+      AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_TRUNCATED_DATA);
 }
 
 //------------------------------------------------------------------------------
