@@ -940,12 +940,14 @@ static avifBool avifJPEGReadInternal(FILE * f,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
         const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
                                     avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#else
-        const avifBool useYCgCoR = AVIF_FALSE;
 #endif
         if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
             // Identity and YCgCo-R are only valid with YUV444.
-            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY || useYCgCoR)
+            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+                               || useYCgCoR
+#endif
+                               )
                                   ? AVIF_PIXEL_FORMAT_YUV444
                                   : AVIF_APP_DEFAULT_PIXEL_FORMAT;
         }

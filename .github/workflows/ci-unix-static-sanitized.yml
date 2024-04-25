@@ -3,6 +3,7 @@ on:
   push:
   pull_request:
     paths:
+      - '.github/workflows/ci-unix-static-sanitized.yml'
       - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
@@ -27,6 +28,7 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
       - name: Setup cmake
+        if: runner.os == 'Linux'
         uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b # v2.0.1
         with:
           # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
@@ -34,6 +36,9 @@ jobs:
       - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
       - run: pip install meson
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install aom dav1d imagemagick libpng
       - name: Cache external dependencies
         id: cache-ext
         uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2

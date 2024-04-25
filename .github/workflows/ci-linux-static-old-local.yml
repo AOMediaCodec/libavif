@@ -3,6 +3,7 @@ on:
   push:
   pull_request:
     paths:
+      - '.github/workflows/ci-linux-static-old-local.yml'
       - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'

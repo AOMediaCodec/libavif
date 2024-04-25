@@ -3,6 +3,7 @@ on:
   push:
   pull_request:
     paths:
+      - '.github/workflows/ci-unix-static-yml'
       - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
@@ -41,6 +42,9 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: brew install imagemagick
     - name: Install cargo-c (linux)
       if: matrix.os == 'ubuntu-latest'
       env:
@@ -64,6 +68,7 @@ jobs:
         path: ext, build/_deps
         key: ${{ runner.os }}-${{ matrix.build-type }}-unix-static-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
     - name: Setup cmake
+      if: matrix.os == 'ubuntu-latest'
       uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b # v2.0.1
       with:
         # CMake version 3.18 is required to build libxml2.

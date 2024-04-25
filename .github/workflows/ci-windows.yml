@@ -15,6 +15,7 @@ on:
   push:
   pull_request:
     paths:
+      - '.github/workflows/ci-windows.yml'
       - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
