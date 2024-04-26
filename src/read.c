@@ -2222,9 +2222,20 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, uint64_t rawO
         colr->iccOffset = rawOffset + avifROStreamOffset(&s);
         colr->iccSize = avifROStreamRemainingBytes(&s);
     } else if (!memcmp(colorType, "nclx", 4)) {
-        AVIF_CHECK(avifROStreamReadU16(&s, &colr->colorPrimaries));          // unsigned int(16) colour_primaries;
+        AVIF_CHECK(avifROStreamReadU16(&s, &colr->colorPrimaries)); // unsigned int(16) colour_primaries;
+        if (colr->colorPrimaries == 3 ||
+            (colr->colorPrimaries > AVIF_COLOR_PRIMARIES_DCI_P3 && colr->colorPrimaries < AVIF_COLOR_PRIMARIES_EBU3213) ||
+            colr->colorPrimaries > AVIF_COLOR_PRIMARIES_EBU3213) {
+            colr->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+        }
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->transferCharacteristics)); // unsigned int(16) transfer_characteristics;
-        AVIF_CHECK(avifROStreamReadU16(&s, &colr->matrixCoefficients));      // unsigned int(16) matrix_coefficients;
+        if (colr->transferCharacteristics == 3 || colr->transferCharacteristics > AVIF_TRANSFER_CHARACTERISTICS_HLG) {
+            colr->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+        }
+        AVIF_CHECK(avifROStreamReadU16(&s, &colr->matrixCoefficients)); // unsigned int(16) matrix_coefficients;
+        if (colr->matrixCoefficients == 3 || colr->matrixCoefficients >= AVIF_MATRIX_COEFFICIENTS_LAST) {
+            colr->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+        }
         uint8_t full_range_flag;
         AVIF_CHECK(avifROStreamReadBits8(&s, &full_range_flag, /*bitCount=*/1)); // unsigned int(1) full_range_flag;
         colr->range = full_range_flag ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
