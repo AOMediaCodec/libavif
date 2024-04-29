@@ -4009,7 +4009,7 @@ static avifResult avifParse(avifDecoder * decoder)
         } else if (header.size == 0) {
             // An unknown top level box with size 0 was found. If we reach here it means we haven't completed parsing successfully
             // since there are no further boxes left.
-            return AVIF_RESULT_TRUNCATED_DATA;
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
         parseOffset += header.size;
 
