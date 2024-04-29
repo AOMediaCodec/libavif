@@ -109,7 +109,7 @@ TEST(AvifDecodeTest, UnknownTopLevelBoxSize0) {
   ASSERT_EQ(
       avifDecoderSetIOMemory(decoder.get(), avif_edited.data, avif_edited.size),
       AVIF_RESULT_OK);
-  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_TRUNCATED_DATA);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED);
 }
 
 //------------------------------------------------------------------------------
