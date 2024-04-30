@@ -3259,8 +3259,12 @@ static avifResult avifParseSampleDescriptionBox(avifSampleTable * sampleTable,
             return AVIF_RESULT_OUT_OF_MEMORY;
         }
         memcpy(description->format, sampleEntryHeader.type, sizeof(description->format));
-        size_t remainingBytes = avifROStreamRemainingBytes(&s);
-        if ((avifGetCodecType(description->format) != AVIF_CODEC_TYPE_UNKNOWN) && (remainingBytes > VISUALSAMPLEENTRY_SIZE)) {
+        size_t remainingBytes = sampleEntryHeader.size;
+        if ((avifGetCodecType(description->format) != AVIF_CODEC_TYPE_UNKNOWN)) {
+            if (remainingBytes < VISUALSAMPLEENTRY_SIZE) {
+                avifDiagnosticsPrintf(diag, "Not enough bytes to parse VisualSampleEntry");
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
             AVIF_CHECKRES(avifParseItemPropertyContainerBox(&description->properties,
                                                             rawOffset + avifROStreamOffset(&s) + VISUALSAMPLEENTRY_SIZE,
                                                             avifROStreamCurrent(&s) + VISUALSAMPLEENTRY_SIZE,
