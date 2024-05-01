@@ -3259,7 +3259,7 @@ static avifResult avifParseSampleDescriptionBox(avifSampleTable * sampleTable,
             return AVIF_RESULT_OUT_OF_MEMORY;
         }
         memcpy(description->format, sampleEntryHeader.type, sizeof(description->format));
-        size_t sampleEntryBytes = sampleEntryHeader.size;
+        const size_t sampleEntryBytes = sampleEntryHeader.size;
         if (avifGetCodecType(description->format) != AVIF_CODEC_TYPE_UNKNOWN) {
             if (sampleEntryBytes < VISUALSAMPLEENTRY_SIZE) {
                 avifDiagnosticsPrintf(diag, "Not enough bytes to parse VisualSampleEntry");
