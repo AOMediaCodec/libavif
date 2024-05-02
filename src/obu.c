@@ -413,7 +413,7 @@ avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData *
         avifBitsInit(&bits, obus.data, obus.size);
 
         // obu_header()
-        const uint8_t obu_forbidden_bit = avifBitsRead(&bits, 1);
+        const uint32_t obu_forbidden_bit = avifBitsRead(&bits, 1);
         if (obu_forbidden_bit != 0) {
             return AVIF_FALSE;
         }
