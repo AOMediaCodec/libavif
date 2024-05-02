@@ -53,6 +53,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add avifdec --icc flag to override the output color profile.
 * Add experimental API for reading and writing 16-bit AVIF files behind the
   compilation flag AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM.
+* Add AVIF_CHROMA_SAMPLE_POSITION_RESERVED to avifChromaSamplePosition enum.
 
 ### Changed since 1.0.0
 * Update aom.cmd: v3.9.0
