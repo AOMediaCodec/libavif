@@ -66,7 +66,7 @@ static void avifBitsInit(avifBits * const bits, const uint8_t * const data, cons
     bits->bitsLeft = 0;
     bits->state = 0;
     bits->error = 0;
-    bits->eof = 0;
+    bits->eof = (size == 0);
 }
 
 static void avifBitsRefill(avifBits * const bits, const uint32_t n)
