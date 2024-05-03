@@ -5,10 +5,7 @@
 #   * TODO: use proper installations of libgav1, libsharpyuv and SVT once released.
 
 name: CI Windows Installed
-on:
-  push:
-    branches:
-      - main
+on: [push, pull_request]
 
 permissions:
   contents: read
