@@ -1,6 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <algorithm>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -72,6 +74,31 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadata) {
   EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   EXPECT_EQ(decoder->image->exif.size, 1126);
   EXPECT_EQ(decoder->image->xmp.size, 3898);
+}
+
+TEST(AvifDecodeTest, AnimatedImageWithoutTracksShouldFail) {
+  testutil::AvifRwData avif =
+      testutil::ReadFile(std::string(data_path) + "colors-animated-8bpc.avif");
+  // Edit the file to replace 'trak' box with a 'free' box. This way the file
+  // will not contain any 'trak' boxes.
+  const uint8_t* kTrak = reinterpret_cast<const uint8_t*>("trak");
+  uint8_t* trak_position =
+      std::search(avif.data, avif.data + avif.size, kTrak, kTrak + 4);
+  ASSERT_NE(trak_position, avif.data + avif.size);
+  trak_position[0] = static_cast<uint8_t>('f');
+  trak_position[1] = static_cast<uint8_t>('r');
+  trak_position[2] = static_cast<uint8_t>('e');
+  trak_position[3] = static_cast<uint8_t>('e');
+
+  for (auto source :
+       {AVIF_DECODER_SOURCE_PRIMARY_ITEM, AVIF_DECODER_SOURCE_TRACKS}) {
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), avif.data, avif.size),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderSetSource(decoder.get(), source), AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED);
+  }
 }
 
 }  // namespace
