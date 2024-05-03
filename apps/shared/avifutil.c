@@ -184,7 +184,7 @@ void avifContainerDump(const avifDecoder * decoder)
     gainMapPresent = decoder->gainMapPresent;
 #endif
     avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent, gainMapPresent, decoder->progressiveState);
-    if ((decoder->progressiveState == AVIF_PROGRESSIVE_STATE_UNAVAILABLE) && (decoder->imageCount > 1)) {
+    if (decoder->imageSequenceTrackPresent) {
         if (decoder->repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repeat Count   : Infinite\n");
         } else if (decoder->repetitionCount == AVIF_REPETITION_COUNT_UNKNOWN) {
