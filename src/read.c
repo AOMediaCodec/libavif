@@ -3530,6 +3530,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
 {
     BEGIN_STREAM(s, raw, rawLen, data->diag, "Box[moov]");
 
+    avifBool hasTrak = AVIF_FALSE;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -3537,9 +3538,14 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
         if (!memcmp(header.type, "trak", 4)) {
             AVIF_CHECKRES(
                 avifParseTrackBox(data, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), header.size, imageSizeLimit, imageDimensionLimit));
+            hasTrak = AVIF_TRUE;
         }
 
         AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+    }
+    if (!hasTrak) {
+        avifDiagnosticsPrintf(data->diag, "moov box does not contain any tracks");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     return AVIF_RESULT_OK;
 }
