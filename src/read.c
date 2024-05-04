@@ -1519,22 +1519,6 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
     return AVIF_RESULT_OK;
 }
 
-static void clampCicpToValidRange(avifColorPrimaries * colorPrimaries,
-                                  avifTransferCharacteristics * transferCharacteristics,
-                                  avifMatrixCoefficients * matrixCoefficients)
-{
-    if (*colorPrimaries == 3 || (*colorPrimaries > AVIF_COLOR_PRIMARIES_DCI_P3 && *colorPrimaries < AVIF_COLOR_PRIMARIES_EBU3213) ||
-        *colorPrimaries > AVIF_COLOR_PRIMARIES_EBU3213) {
-        *colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-    }
-    if (*transferCharacteristics == 3 || *transferCharacteristics > AVIF_TRANSFER_CHARACTERISTICS_HLG) {
-        *transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    }
-    if (*matrixCoefficients == 3 || *matrixCoefficients >= AVIF_MATRIX_COEFFICIENTS_LAST) {
-        *matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
-    }
-}
-
 // Allocates the dstImage. Also verifies some spec compliance rules for grids, if relevant.
 static avifResult avifDecoderDataAllocateImagePlanes(avifDecoderData * data, const avifTileInfo * info, avifImage * dstImage)
 {
@@ -1613,7 +1597,6 @@ static avifResult avifDecoderDataAllocateImagePlanes(avifDecoderData * data, con
             dstImage->colorPrimaries = tile->image->colorPrimaries;
             dstImage->transferCharacteristics = tile->image->transferCharacteristics;
             dstImage->matrixCoefficients = tile->image->matrixCoefficients;
-            clampCicpToValidRange(&dstImage->colorPrimaries, &dstImage->transferCharacteristics, &dstImage->matrixCoefficients);
         }
     }
 
@@ -2242,7 +2225,6 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, uint64_t rawO
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->colorPrimaries));          // unsigned int(16) colour_primaries;
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->transferCharacteristics)); // unsigned int(16) transfer_characteristics;
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->matrixCoefficients));      // unsigned int(16) matrix_coefficients;
-        clampCicpToValidRange(&colr->colorPrimaries, &colr->transferCharacteristics, &colr->matrixCoefficients);
         uint8_t full_range_flag;
         AVIF_CHECK(avifROStreamReadBits8(&s, &full_range_flag, /*bitCount=*/1)); // unsigned int(1) full_range_flag;
         colr->range = full_range_flag ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
@@ -4706,7 +4688,6 @@ static avifResult avifReadColorProperties(avifIO * io,
                 *colorPrimaries = prop->u.colr.colorPrimaries;
                 *transferCharacteristics = prop->u.colr.transferCharacteristics;
                 *matrixCoefficients = prop->u.colr.matrixCoefficients;
-                clampCicpToValidRange(colorPrimaries, transferCharacteristics, matrixCoefficients);
                 *yuvRange = prop->u.colr.range;
             }
         }
@@ -4847,9 +4828,6 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
                 gainMap->image->colorPrimaries = prop->u.colr.colorPrimaries;
                 gainMap->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
                 gainMap->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
-                clampCicpToValidRange(&gainMap->image->colorPrimaries,
-                                      &gainMap->image->transferCharacteristics,
-                                      &gainMap->image->matrixCoefficients);
                 gainMap->image->yuvRange = prop->u.colr.range;
                 break;
             }
@@ -5437,9 +5415,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     decoder->image->colorPrimaries = sequenceHeader.colorPrimaries;
                     decoder->image->transferCharacteristics = sequenceHeader.transferCharacteristics;
                     decoder->image->matrixCoefficients = sequenceHeader.matrixCoefficients;
-                    clampCicpToValidRange(&decoder->image->colorPrimaries,
-                                          &decoder->image->transferCharacteristics,
-                                          &decoder->image->matrixCoefficients);
                     decoder->image->yuvRange = sequenceHeader.range;
                     break;
                 }
