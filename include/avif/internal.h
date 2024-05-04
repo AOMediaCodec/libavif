@@ -647,6 +647,11 @@ typedef size_t avifBoxMarker;
 
 typedef struct avifBoxHeader
 {
+    // If set to AVIF_TRUE, it means that the box goes on until the end of the
+    // stream. So, |size| must be set to the number of bytes left in the input
+    // stream. If set to AVIF_FALSE, |size| indicates the size of the box in
+    // bytes, excluding the box header.
+    avifBool isSizeZeroBox;
     // Size of the box in bytes, excluding the box header.
     size_t size;
 

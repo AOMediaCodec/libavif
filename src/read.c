@@ -3995,8 +3995,8 @@ static avifResult avifParse(avifDecoder * decoder)
 #endif
             boxOffset = parseOffset;
             size_t sizeToRead;
-            if (header.size == 0) {
-                // A size of 0 means the box body goes till the end of the file.
+            if (header.isSizeZeroBox) {
+                // The box body goes till the end of the file.
                 if (decoder->io->sizeHint != 0 && decoder->io->sizeHint - parseOffset < SIZE_MAX) {
                     sizeToRead = decoder->io->sizeHint - parseOffset;
                 } else {
@@ -4009,17 +4009,17 @@ static avifResult avifParse(avifDecoder * decoder)
             if (readResult != AVIF_RESULT_OK) {
                 return readResult;
             }
-            if (header.size == 0) {
+            if (header.isSizeZeroBox) {
                 header.size = boxContents.size;
             } else if (boxContents.size != header.size) {
                 // A truncated box, bail out
                 return AVIF_RESULT_TRUNCATED_DATA;
             }
-        } else if (header.size > (UINT64_MAX - parseOffset)) {
-            return AVIF_RESULT_BMFF_PARSE_FAILED;
-        } else if (header.size == 0) {
+        } else if (header.isSizeZeroBox) {
             // An unknown top level box with size 0 was found. If we reach here it means we haven't completed parsing successfully
             // since there are no further boxes left.
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        } else if (header.size > (UINT64_MAX - parseOffset)) {
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
         parseOffset += header.size;
@@ -4126,9 +4126,9 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
     if (!avifROStreamReadBoxHeaderPartial(&s, &header, /*topLevel=*/AVIF_TRUE) || memcmp(header.type, "ftyp", 4)) {
         return AVIF_FALSE;
     }
-    if (header.size == 0) {
-        // The size of the 'ftyp' box is 0, which means it goes till the end of the file.
-        // Either there is no brand requiring anything in the file but a FileTypebox (so not AVIF), or it is invalid.
+    if (header.isSizeZeroBox) {
+        // The ftyp box goes on till the end of the file. Either there is no brand requiring anything in the file but a
+        // FileTypebox (so not AVIF), or it is invalid.
         return AVIF_FALSE;
     }
     AVIF_CHECK(avifROStreamHasBytesLeft(&s, header.size));

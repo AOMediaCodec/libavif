@@ -278,6 +278,7 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
         // Otherwise size could be set to avifROStreamRemainingBytes(stream) + (stream->offset - startOffset) right now.
 
         // Wait for avifIOReadFunc() to return AVIF_RESULT_OK.
+        header->isSizeZeroBox = AVIF_TRUE;
         header->size = 0;
         return AVIF_TRUE;
     }
@@ -286,6 +287,7 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
         avifDiagnosticsPrintf(stream->diag, "%s: Header size overflow check failure", stream->diagContext);
         return AVIF_FALSE;
     }
+    header->isSizeZeroBox = AVIF_FALSE;
     header->size = (size_t)(size - bytesRead);
     return AVIF_TRUE;
 }
