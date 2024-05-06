@@ -119,6 +119,7 @@ if(AVIF_ENABLE_GTEST)
     endif()
 
     add_avif_gtest(avifgridapitest)
+    add_avif_gtest_with_data(avifilocextenttest)
     add_avif_gtest(avifimagetest)
 
     add_executable(avifincrtest gtest/avifincrtest.cc)
