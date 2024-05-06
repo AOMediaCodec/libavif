@@ -26,7 +26,7 @@ jobs:
             gcc: 13
 
     steps:
-    - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+    - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
     - name: Set GCC & G++ compiler (on Linux)
       run: echo "CC=gcc-${{matrix.gcc}}" >> $GITHUB_ENV && echo "CXX=g++-${{matrix.gcc}}" >> $GITHUB_ENV
     - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -39,7 +39,7 @@ jobs:
         path: ext, build/_deps
         key: ${{ runner.os }}-golden-tests-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@959f1116cf9f1ae42fff8ec1a4aaae6d4a0e348b
+      uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be
       with:
         # CMake 3.18 or higher is required for libxml2
         cmake-version: '3.18.x'
@@ -76,7 +76,7 @@ jobs:
     # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
     - name: Archive golden tests output for debugging
       if: failure()
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
       with:
         name: golden-tests-output
         path: ${{ runner.temp }}/golden_tests/**/*
