@@ -53,6 +53,10 @@ function(merge_static_libs target in_target)
     add_library(${target} STATIC ${source_file})
 
     avif_collect_deps(${in_target} lib_deps)
+    get_target_property(include_dirs ${in_target} INTERFACE_INCLUDE_DIRECTORIES)
+    if(include_dirs)
+        target_include_directories(${target} PUBLIC ${include_dirs})
+    endif()
 
     foreach(lib ${lib_deps})
         get_target_property(child_target_type ${lib} TYPE)
@@ -63,15 +67,23 @@ function(merge_static_libs target in_target)
         if(link_dirs)
             target_link_directories(${target} PUBLIC ${link_dirs})
         endif()
+        get_target_property(include_dirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
+        if(include_dirs)
+            target_include_directories(${target} PUBLIC ${include_dirs})
+        endif()
         get_target_property(is_avif_local ${lib} AVIF_LOCAL)
         if(is_avif_local)
             list(APPEND libs $<TARGET_FILE:${lib}>)
             list(APPEND dependencies "${lib}")
+        else()
+            if(${child_target_type} STREQUAL "UNKNOWN_LIBRARY")
+                # This is a global library. It needs to be linked to.
+                target_link_libraries(${target} ${lib})
+            endif()
         endif()
     endforeach()
 
     list(REMOVE_DUPLICATES libs)
-
     add_custom_command(
         OUTPUT ${source_file} DEPENDS ${dependencies} COMMAND ${CMAKE_COMMAND} -E echo \"const int dummy = 0\;\" > ${source_file}
     )

@@ -661,7 +661,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     # Instead of building avif_apps/avif_apps_internal and linking to avif/avif_internal, avif_apps_obj only does one compilation.
     # Still, the compile definitions needs to be passed from avif to avif_apps. The following also passes them to avif_apps_internal but AVIF_DLL does not impact avif_apps_internal.
     target_compile_definitions(avif_apps_obj PRIVATE $<BUILD_INTERFACE:$<TARGET_PROPERTY:avif,INTERFACE_COMPILE_DEFINITIONS>>)
-    target_link_libraries(avif_apps_obj PUBLIC avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
+    target_link_libraries(avif_apps_obj PUBLIC avif PNG::PNG ZLIB::ZLIB JPEG::JPEG)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_link_libraries(avif_apps_obj PRIVATE m)
     endif()
@@ -683,17 +683,21 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     endif()
 
     # Main avif_apps library.
-    add_library(avif_apps STATIC)
-    target_link_libraries(avif_apps PUBLIC avif PRIVATE avif_apps_obj)
-    target_include_directories(avif_apps INTERFACE apps/shared)
+    add_library(avif_apps_static STATIC)
+    target_link_libraries(avif_apps_static PUBLIC avif PRIVATE avif_apps_obj)
+    target_include_directories(avif_apps_static INTERFACE apps/shared)
 
     # avif_apps_internal is to use when linking to avif_internal.
     if(BUILD_SHARED_LIBS)
         add_library(avif_apps_internal STATIC)
         target_link_libraries(avif_apps_internal PUBLIC avif_internal PRIVATE avif_apps_obj)
         target_include_directories(avif_apps_internal INTERFACE apps/shared)
+        add_library(avif_apps ALIAS avif_apps_static)
     else()
-        add_library(avif_apps_internal ALIAS avif_apps)
+        set_target_properties(avif_apps_static PROPERTIES AVIF_LOCAL ON)
+        merge_static_libs(avif_apps avif_apps_static)
+        set_target_properties(avif_apps_static PROPERTIES OUTPUT_NAME avif_apps_internal EXPORT_NAME avif_apps_internal)
+        add_library(avif_apps_internal ALIAS avif_apps_static)
     endif()
 endif()
 
