@@ -2879,6 +2879,10 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
 
     uint8_t version;
     AVIF_CHECKERR(avifROStreamReadVersionAndFlags(&s, &version, NULL), AVIF_RESULT_BMFF_PARSE_FAILED);
+    if (version > 1) {
+        // iref versions > 1 are not supported. Skip it.
+        return AVIF_RESULT_OK;
+    }
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader irefHeader;
@@ -2889,11 +2893,9 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
             uint16_t tmp;
             AVIF_CHECKERR(avifROStreamReadU16(&s, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) from_item_ID;
             fromID = tmp;
-        } else if (version == 1) {
-            AVIF_CHECKERR(avifROStreamReadU32(&s, &fromID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) from_item_ID;
         } else {
-            // unsupported iref version, skip it
-            break;
+            // version == 1
+            AVIF_CHECKERR(avifROStreamReadU32(&s, &fromID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) from_item_ID;
         }
         // ISO 14496-12 section 8.11.12.1: "index values start at 1"
         AVIF_CHECKRES(avifCheckItemID("iref", fromID, diag));
@@ -2919,11 +2921,9 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 uint16_t tmp;
                 AVIF_CHECKERR(avifROStreamReadU16(&s, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) to_item_ID;
                 toID = tmp;
-            } else if (version == 1) {
-                AVIF_CHECKERR(avifROStreamReadU32(&s, &toID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) to_item_ID;
             } else {
-                // unsupported iref version, skip it
-                break;
+                // version == 1
+                AVIF_CHECKERR(avifROStreamReadU32(&s, &toID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) to_item_ID;
             }
             AVIF_CHECKRES(avifCheckItemID("iref", toID, diag));
 
