@@ -3442,13 +3442,19 @@ static avifResult avifParseTrackBox(avifDecoderData * data,
     AVIF_CHECKERR(track != NULL, AVIF_RESULT_OUT_OF_MEMORY);
 
     avifBool edtsBoxSeen = AVIF_FALSE;
+    avifBool tkhdSeen = AVIF_FALSE;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         if (!memcmp(header.type, "tkhd", 4)) {
+            if (tkhdSeen) {
+                avifDiagnosticsPrintf(data->diag, "Box[trak] contains a duplicate unique box of type 'tkhd'");
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
             AVIF_CHECKERR(avifParseTrackHeaderBox(track, avifROStreamCurrent(&s), header.size, imageSizeLimit, imageDimensionLimit, data->diag),
                           AVIF_RESULT_BMFF_PARSE_FAILED);
+            tkhdSeen = AVIF_TRUE;
         } else if (!memcmp(header.type, "meta", 4)) {
             AVIF_CHECKRES(
                 avifParseMetaBox(track->meta, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), header.size, data->diag));
@@ -3458,7 +3464,7 @@ static avifResult avifParseTrackBox(avifDecoderData * data,
             AVIF_CHECKERR(avifTrackReferenceBox(track, avifROStreamCurrent(&s), header.size, data->diag), AVIF_RESULT_BMFF_PARSE_FAILED);
         } else if (!memcmp(header.type, "edts", 4)) {
             if (edtsBoxSeen) {
-                avifDiagnosticsPrintf(data->diag, "More than one [edts] Box was found.");
+                avifDiagnosticsPrintf(data->diag, "Box[trak] contains a duplicate unique box of type 'edts'");
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             AVIF_CHECKERR(avifParseEditBox(track, avifROStreamCurrent(&s), header.size, data->diag), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -3466,6 +3472,10 @@ static avifResult avifParseTrackBox(avifDecoderData * data,
         }
 
         AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+    }
+    if (!tkhdSeen) {
+        avifDiagnosticsPrintf(data->diag, "Box[trak] does not contain a mandatory [tkhd] box");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     if (!edtsBoxSeen) {
         track->repetitionCount = AVIF_REPETITION_COUNT_UNKNOWN;
