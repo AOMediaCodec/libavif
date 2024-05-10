@@ -45,8 +45,7 @@ TEST(AvifDecodeTest, ParseEmptyData) {
 TEST(AvifDecodeTest, PeekCompatibleFileTypeBad1) {
   constexpr uint8_t kData[] = {0x00, 0x00, 0x00, 0x1c, 0x66,
                                0x74, 0x79, 0x70, 0x84, 0xca};
-  constexpr size_t kSize = 10;
-  avifROData input = {kData, kSize};
+  avifROData input = {kData, sizeof(kData)};
   EXPECT_FALSE(avifPeekCompatibleFileType(&input));
 }
 
@@ -55,8 +54,7 @@ TEST(AvifDecodeTest, PeekCompatibleFileTypeBad2) {
   constexpr uint8_t kData[] = {0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79,
                                0x70, 0x61, 0x73, 0x31, 0x6d, 0x00, 0x00,
                                0x08, 0x00, 0xd7, 0x89, 0xdb, 0x7f};
-  constexpr size_t kSize = 20;
-  avifROData input = {kData, kSize};
+  avifROData input = {kData, sizeof(kData)};
   EXPECT_FALSE(avifPeekCompatibleFileType(&input));
 }
 
