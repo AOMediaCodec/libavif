@@ -87,15 +87,16 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
   if (available_byte_count >= byte_count) {
     return height;
   }
-  // All but one cell should be decoded if at most 10 bytes are missing.
+
+  // The tests below can be hard to tune for any kind of input, especially
+  // fuzzed grids, where tile ordering is unknown. Early exit in that case.
+  if (!enable_fine_incremental_check) return 0;
+
+  // There is no valid AV1 payload smaller than 10 bytes, so all but one cell
+  // should be decoded if at most 10 bytes are missing.
   if ((available_byte_count + 10) >= byte_count) {
     return height - cell_height;
   }
-
-  // The tests below can be hard to tune for any kind of input, especially
-  // fuzzed grids. Early exit in that case.
-  if (!enable_fine_incremental_check) return 0;
-
   // Subtract the header because decoding it does not output any pixel.
   // Most AVIF headers are below 500 bytes.
   if (available_byte_count <= 500) {
