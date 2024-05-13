@@ -41,6 +41,23 @@ TEST(AvifDecodeTest, ParseEmptyData) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_INVALID_FTYP);
 }
 
+// From https://crbug.com/334281983.
+TEST(AvifDecodeTest, PeekCompatibleFileTypeBad1) {
+  constexpr uint8_t kData[] = {0x00, 0x00, 0x00, 0x1c, 0x66,
+                               0x74, 0x79, 0x70, 0x84, 0xca};
+  avifROData input = {kData, sizeof(kData)};
+  EXPECT_FALSE(avifPeekCompatibleFileType(&input));
+}
+
+// From https://crbug.com/334682511.
+TEST(AvifDecodeTest, PeekCompatibleFileTypeBad2) {
+  constexpr uint8_t kData[] = {0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79,
+                               0x70, 0x61, 0x73, 0x31, 0x6d, 0x00, 0x00,
+                               0x08, 0x00, 0xd7, 0x89, 0xdb, 0x7f};
+  avifROData input = {kData, sizeof(kData)};
+  EXPECT_FALSE(avifPeekCompatibleFileType(&input));
+}
+
 }  // namespace
 }  // namespace avif
 
