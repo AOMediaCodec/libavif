@@ -25,7 +25,7 @@ jobs:
         include:
           - runs-on: ubuntu-latest
             compiler: gcc
-            gcc: 13
+            gcc: 12
 
     name: build-shared-local (${{ matrix.os }}, libyuv ${{ matrix.libyuv }})
 
