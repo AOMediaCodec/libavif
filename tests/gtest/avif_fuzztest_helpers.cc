@@ -187,11 +187,13 @@ class Environment : public ::testing::Environment {
 
 //------------------------------------------------------------------------------
 
+#ifdef TEST_DATA_DIRS
 // Helper macros to ensure TEST_DATA_DIRS is a quoted string.
-// NOTE: TEST_DATA_DIRS MUST NOT be a quoted string before stringification
+// NOTE: TEST_DATA_DIRS must NOT be a quoted string before stringification
 // otherwise it will be quoted twice, resulting in the use of an incorrect path.
 #define AVIF_TO_STRING(S) #S
 #define AVIF_STRINGIFY(S) AVIF_TO_STRING(S)
+#endif
 
 std::vector<std::string> GetSeedDataDirs() {
   const char* var = std::getenv("TEST_DATA_DIRS");
