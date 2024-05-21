@@ -22,11 +22,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         include:
-          - runs-on: ubuntu-latest
+          - runs-on: ubuntu-24.04
             compiler: gcc
-            gcc: 12
+            gcc: 13
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -40,6 +40,11 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev
     - name: Install cargo-c (linux)
       env:
         LINK: https://github.com/lu-zero/cargo-c/releases/latest/download

@@ -1,6 +1,6 @@
 # This is a copy of ci-unix-static.yml for building shared libraries. It differs from ci-unix-static.yml as follows:
 #
-#   * The os matrix consists of ubuntu-latest only.
+#   * The os matrix consists of ubuntu-24.04 only.
 #   * Does not build rav1e, SVT-AV1 nor libgav1.
 
 name: CI Unix Shared Local
@@ -20,12 +20,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13]
+        os: [ubuntu-24.04, macos-13]
         libyuv: [OFF, LOCAL]
         include:
-          - runs-on: ubuntu-latest
+          - runs-on: ubuntu-24.04
             compiler: gcc
-            gcc: 12
+            gcc: 13
 
     name: build-shared-local (${{ matrix.os }}, libyuv ${{ matrix.libyuv }})
 
