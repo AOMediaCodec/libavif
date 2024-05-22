@@ -29,6 +29,10 @@ TEST(AvifDecodeTest, AnimatedImage) {
   EXPECT_EQ(decoder->imageCount, 5);
   EXPECT_EQ(decoder->repetitionCount, 0);
   for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(avifDecoderIsKeyframe(decoder.get(), i), i == 0);
+    EXPECT_EQ(avifDecoderNearestKeyframe(decoder.get(), i), 0);
+  }
+  for (int i = 0; i < 5; ++i) {
     EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
   }
 }
