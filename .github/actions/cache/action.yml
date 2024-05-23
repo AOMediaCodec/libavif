@@ -1,0 +1,27 @@
+name: 'Cache for all OSes'
+description: 'Needs to be called before any call to ext/.cmd|sh or cmake'
+inputs:
+  codec-rav1e:
+    description: 'Can take the values: OFF, LOCAL, SYSTEM'
+    default: 'OFF'
+runs:
+  using: "composite"
+  steps:
+    - name: Cache cargo registry
+      if: ${{ inputs.codec-rav1e == 'LOCAL' }}
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      continue-on-error: true
+      with:
+        path: ~/.cargo/registry/cache
+        key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}-${{ github.job }}
+    - name: Cache external dependencies in ext
+      id: cache-ext
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: ext
+        key: ext-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/*', 'ext/*.cmd', 'ext/*.sh') }}-${{ github.job }}
+    - name: Cache external dependencies in build/_deps
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: build/_deps
+        key: deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/*', 'CMakeLists.txt', 'cmake/Modules/*') }}-${{ github.job }}

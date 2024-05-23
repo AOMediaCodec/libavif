@@ -39,12 +39,7 @@ jobs:
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install aom dav1d imagemagick libpng
-      - name: Cache external dependencies
-        id: cache-ext
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        with:
-          path: ext, build/_deps
-          key: ${{ runner.os }}-${{ matrix.sanitizer }}-unix-static-sanitized-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+      - uses: ./.github/actions/cache
       - name: Build aom
         if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
