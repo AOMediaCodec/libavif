@@ -57,9 +57,7 @@ jobs:
 
     - name: Prepare libavif (cmake)
       run: >
-        mkdir build && cd build
-
-        cmake .. -G Ninja
+        cmake -G Ninja -S ./ -B build
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
         -DAVIF_CODEC_AOM=SYSTEM
         -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
@@ -67,7 +65,7 @@ jobs:
         -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBYUV=SYSTEM
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
-        -DAVIF_BUILD_GDK_PIXBUF=ON -DCMAKE_INSTALL_PREFIX=./install
+        -DAVIF_BUILD_GDK_PIXBUF=ON
         -DAVIF_ENABLE_WERROR=ON
     - name: Build libavif (ninja)
       working-directory: ./build
