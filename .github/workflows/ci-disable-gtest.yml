@@ -42,21 +42,12 @@ jobs:
     - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
       with:
         python-version: '3.x'
-    - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
+    - name: Set up rust
+      uses: dtolnay/rust-toolchain@stable
     - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev
-    - name: Install cargo-c
-      env:
-        LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
-        CARGO_C_FILE: cargo-c-x86_64-unknown-linux-musl.tar.gz
-      run: |
-        curl -L $LINK/$CARGO_C_FILE | tar xz -C ~/.cargo/bin
     - name: Cache external dependencies
       id: cache-ext
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
