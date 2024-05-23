@@ -44,10 +44,11 @@ jobs:
     - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
       with:
         python-version: '3.x'
-    - name: Set up rust
-      uses: dtolnay/rust-toolchain@d8352f6b1d2e870bc5716e7a6d9b65c4cc244a1a
+    - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
       with:
-        toolchain: 1.80.0
+        profile: minimal
+        toolchain: stable
+        override: true
 
     - name: Cache external dependencies
       id: cache-ext
