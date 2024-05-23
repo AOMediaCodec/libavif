@@ -56,12 +56,6 @@ jobs:
       with:
         path: ext, build/_deps
         key: ${{ runner.os }}-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}-alldeps
-    - name: Install cargo-c
-      run: |
-        $LINK = "https://github.com/lu-zero/cargo-c/releases/latest/download"
-        $CARGO_C_FILE = "cargo-c-windows-msvc"
-        curl -LO "$LINK/$CARGO_C_FILE.zip"
-        7z e -y "$CARGO_C_FILE.zip" -o"${env:USERPROFILE}\.cargo\bin"
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1

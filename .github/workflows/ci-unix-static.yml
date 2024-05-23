@@ -50,22 +50,6 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: brew install imagemagick
-    - name: Install cargo-c (linux)
-      if: runner.os == 'Linux'
-      env:
-        LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
-        CARGO_C_FILE: cargo-c-x86_64-unknown-linux-musl.tar.gz
-      run: |
-        curl -L $LINK/$CARGO_C_FILE | tar xz -C ~/.cargo/bin
-    - name: Install cargo-c (mac)
-      if: matrix.os == 'macos-latest'
-      env:
-        LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
-        CARGO_C_FILE: cargo-c-macos.zip
-      run: |
-        curl -sLo $CARGO_C_FILE $LINK/$CARGO_C_FILE
-        unzip -o $CARGO_C_FILE -d ~/.cargo/bin
-        rm $CARGO_C_FILE
     - name: Cache external dependencies
       id: cache-ext
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2

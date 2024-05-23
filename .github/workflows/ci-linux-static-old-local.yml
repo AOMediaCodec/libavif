@@ -44,12 +44,6 @@ jobs:
       run: |
         sudo apt update
         sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev
-    - name: Install cargo-c (linux)
-      env:
-        LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
-        CARGO_C_FILE: cargo-c-x86_64-unknown-linux-musl.tar.gz
-      run: |
-        curl -L $LINK/$CARGO_C_FILE | tar xz -C ~/.cargo/bin
     - name: Cache external dependencies
       id: cache-ext
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
