@@ -51,7 +51,7 @@ jobs:
       if: runner.os == 'macOS'
       run: brew install imagemagick
     - name: Install cargo-c (linux)
-      if: matrix.os == 'ubuntu-24.04'
+      if: runner.os == 'Linux'
       env:
         LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
         CARGO_C_FILE: cargo-c-x86_64-unknown-linux-musl.tar.gz
@@ -73,7 +73,7 @@ jobs:
         path: ext, build/_deps
         key: ${{ runner.os }}-${{ matrix.build-type }}-unix-static-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
     - name: Setup cmake
-      if: matrix.os == 'ubuntu-24.04'
+      if: runner.os == 'Linux'
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
         # CMake version 3.18 is required to build libxml2.

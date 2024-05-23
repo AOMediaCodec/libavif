@@ -41,7 +41,6 @@ jobs:
         toolchain: stable
         override: true
     - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
       run: |
         sudo apt update
         sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev
