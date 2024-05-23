@@ -18,11 +18,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-latest]
         include:
-          - runs-on: ubuntu-latest
+          - runs-on: ubuntu-24.04
             compiler: gcc
-            gcc: 12
+            gcc: 14
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -51,8 +51,8 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         echo "deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-        sudo apt-get update
-        sudo apt-get install libaom-dev libdav1d-dev libyuv-dev imagemagick
+        sudo apt update
+        sudo apt install imagemagick libaom-dev libdav1d-dev libjpeg-turbo8-dev libpng-dev libyuv-dev
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: brew install aom dav1d imagemagick
