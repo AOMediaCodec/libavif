@@ -37,7 +37,7 @@ jobs:
       with:
         python-version: '3.x'
     - name: Set up rust
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@d8352f6b1d2e870bc5716e7a6d9b65c4cc244a1a
     - name: Install dependencies
       run: |
         sudo apt update
