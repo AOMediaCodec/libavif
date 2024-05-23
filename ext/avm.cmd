@@ -8,7 +8,7 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -b research-v7.0.0 --depth 1 https://gitlab.com/AOMediaCodec/avm.git
+git clone -b research-v7.0.1 --depth 1 https://gitlab.com/AOMediaCodec/avm.git
 
 cd avm
 
