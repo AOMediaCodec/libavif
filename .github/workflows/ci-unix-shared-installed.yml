@@ -64,14 +64,14 @@ jobs:
       # so build it locally instead.
     - name: Prepare libavif (cmake)
       run: >
-        cmake .. -G Ninja -S ./ -B build
+        cmake -G Ninja -S ./ -B build
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
         -DAVIF_CODEC_AOM=SYSTEM
         -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
         -DAVIF_CODEC_DAV1D=SYSTEM
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
-        -DAVIF_BUILD_GDK_PIXBUF=ON -DCMAKE_INSTALL_PREFIX=./install
+        -DAVIF_BUILD_GDK_PIXBUF=ON -DCMAKE_INSTALL_PREFIX=./build/install
         -DAVIF_ENABLE_WERROR=ON ${{ env.CMAKE_AVIF_FLAGS }}
     - name: Build libavif (ninja)
       working-directory: ./build
@@ -100,9 +100,7 @@ jobs:
         cmake . -DCMAKE_PREFIX_PATH=../install
     - name: Prepare libavif with [[nodiscard]] (cmake)
       run: >
-        mkdir build_nodiscard && cd build_nodiscard
-
-        cmake .. -G Ninja
+        cmake -G Ninja -S ./ -B build_nodiscard
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
         -DAVIF_CODEC_AOM=SYSTEM
         -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
@@ -111,7 +109,6 @@ jobs:
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
         -DAVIF_BUILD_GDK_PIXBUF=ON  ${{ env.CMAKE_AVIF_FLAGS }}
-        -DCMAKE_INSTALL_PREFIX=./install
     - name: Build libavif with [[nodiscard]] (ninja)
       working-directory: ./build_nodiscard
       run: ninja
