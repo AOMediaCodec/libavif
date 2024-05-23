@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-static:
+  build-windows-artifacts:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
