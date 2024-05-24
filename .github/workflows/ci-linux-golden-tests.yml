@@ -47,7 +47,7 @@ jobs:
     - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
     - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
     - name: Build mp4box
-      if: ${{ !steps.cache-ext.outputs.cache-hit }}
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: bash -e mp4box.sh
 

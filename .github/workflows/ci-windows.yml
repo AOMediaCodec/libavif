@@ -60,7 +60,7 @@ jobs:
     - name: Print ImageMagick version
       run: magick --version
     - name: Build aom
-      if: ${{ !steps.cache-ext.outputs.cache-hit }}
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: ./aom.cmd
       # Visual Studio 2022 has an issue starting at 17.8.0 which might cause
@@ -70,7 +70,7 @@ jobs:
         CC: clang-cl
         CXX: clang-cl
     - name: Build libyuv
-      if: ${{ !steps.cache-ext.outputs.cache-hit }}
+      if: steps.cache-ext.outputs.cache-hit != 'true'
       working-directory: ./ext
       run: ./libyuv.cmd
       # Use clang-cl to build libyuv. The assembly code in libyuv is written in the

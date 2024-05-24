@@ -41,21 +41,21 @@ jobs:
         run: brew install aom dav1d imagemagick libpng
       - uses: ./.github/actions/cache
       - name: Build aom
-        if: ${{ !steps.cache-ext.outputs.cache-hit }}
+        if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: >
           sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DSANITIZE=${{ matrix.sanitizer }} ../g' aom.cmd
 
           ./aom.cmd
       - name: Build dav1d
-        if: ${{ !steps.cache-ext.outputs.cache-hit }}
+        if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: >
           sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false ../g' dav1d.cmd
 
           ./dav1d.cmd
       - name: Build libyuv
-        if: ${{ !steps.cache-ext.outputs.cache-hit }}
+        if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: ./libyuv.cmd
         env:
@@ -63,7 +63,7 @@ jobs:
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build libsharpyuv
-        if: ${{ !steps.cache-ext.outputs.cache-hit }}
+        if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         run: ./libsharpyuv.cmd
         env:
@@ -71,7 +71,7 @@ jobs:
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build GoogleTest
-        if: ${{ !steps.cache-ext.outputs.cache-hit }}
+        if: steps.cache-ext.outputs.cache-hit != 'true'
         working-directory: ./ext
         # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
         run: bash -e googletest.cmd
