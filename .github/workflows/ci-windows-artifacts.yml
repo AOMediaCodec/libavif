@@ -29,7 +29,7 @@ jobs:
     - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
     - run: pip install meson
     - name: Build aom
-      if: steps.cache.ext-cache-hit != 'true'
+      if: steps.cache.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
       run: ./aom.cmd
       # Visual Studio 2022 has an issue starting at 17.8.0 which might cause
@@ -39,11 +39,11 @@ jobs:
         CC: clang-cl
         CXX: clang-cl
     - name: Build dav1d
-      if: steps.cache.ext-cache-hit != 'true'
+      if: steps.cache.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
       run: ./dav1d.cmd
     - name: Build libyuv
-      if: steps.cache.ext-cache-hit != 'true'
+      if: steps.cache.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
       run: ./libyuv.cmd
       # Use clang-cl to build libyuv. The assembly code in libyuv is written in the
@@ -52,15 +52,15 @@ jobs:
         CC: clang-cl
         CXX: clang-cl
     - name: Build libsharpyuv
-      if: steps.cache.ext-cache-hit != 'true'
+      if: steps.cache.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
       run: ./libsharpyuv.cmd
     - name: Build libjpeg
-      if: steps.cache.ext-cache-hit != 'true'
+      if: steps.cache.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
       run: ./libjpeg.cmd
     - name: Build zlib and libpng
-      if: steps.cache.ext-cache-hit != 'true'
+      if: steps.cache.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
       run: ./zlibpng.cmd
 
