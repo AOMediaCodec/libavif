@@ -10,12 +10,12 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Cache cargo registry
+    - name: Cache all of cargo
       if: ${{ inputs.use-rust }}
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       continue-on-error: true
       with:
-        path: ~/.cargo/registry/cache
+        path: ~/.cargo
         key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}-${{ github.job }}
     - name: Cache external dependencies in ext
       id: cache-ext
