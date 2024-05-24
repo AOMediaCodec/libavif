@@ -4,6 +4,9 @@ inputs:
   use-rust:
     description: 'Whether rust is used'
     default: false
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache-ext.outputs.cache-hit }}
 runs:
   using: "composite"
   steps:
