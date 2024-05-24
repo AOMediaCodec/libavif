@@ -51,7 +51,7 @@ jobs:
         override: true
     - uses: ./.github/actions/cache
       with:
-        codec-rav1e: 'LOCAL'
+        use-rust: true
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1

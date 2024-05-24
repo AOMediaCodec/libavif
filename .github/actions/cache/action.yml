@@ -1,14 +1,14 @@
 name: 'Cache for all OSes'
 description: 'Needs to be called before any call to ext/.cmd|sh or cmake'
 inputs:
-  codec-rav1e:
-    description: 'Can take the values: OFF, LOCAL, SYSTEM'
-    default: 'OFF'
+  use-rust:
+    description: 'Whether rust is used'
+    default: false
 runs:
   using: "composite"
   steps:
     - name: Cache cargo registry
-      if: ${{ inputs.codec-rav1e == 'LOCAL' }}
+      if: ${{ inputs.use-rust }}
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       continue-on-error: true
       with:

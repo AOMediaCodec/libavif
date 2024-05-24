@@ -47,7 +47,7 @@ jobs:
         sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev 
     - uses: ./.github/actions/cache
       with:
-        codec-rav1e: 'LOCAL'
+        use-rust: true
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
