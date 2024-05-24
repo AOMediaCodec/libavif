@@ -46,12 +46,7 @@ jobs:
           libyuv:p
           ninja:p
           zlib:p
-    - name: Cache external dependencies
-      id: cache-ext
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-      with:
-        path: ext, build/_deps
-        key: ${{ runner.os }}-mingw-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+    - uses: ./.github/actions/cache
     - name: Print cmake version
       run: cmake --version
 

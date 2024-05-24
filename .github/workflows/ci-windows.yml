@@ -49,13 +49,9 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
-
-    - name: Cache external dependencies
-      id: cache-ext
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+    - uses: ./.github/actions/cache
       with:
-        path: ext, build/_deps
-        key: ${{ runner.os }}-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}-alldeps
+        use-rust: true
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
@@ -99,14 +95,6 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
         -DAVIF_ENABLE_WERROR=ON
-    - name: Cache cargo registry
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-      continue-on-error: true
-      with:
-        path: ~/.cargo/registry/cache
-        key: cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-
-        restore-keys: |
-          cargo-registry-${{ runner.os }}-
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja

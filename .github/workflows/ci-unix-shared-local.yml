@@ -45,12 +45,7 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: brew install imagemagick
-    - name: Cache external dependencies
-      id: cache-ext
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-      with:
-        path: ext, build/_deps
-        key: ${{ runner.os }}-${{ matrix.libyuv }}-unix-shared-local-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+    - uses: ./.github/actions/cache
     - name: Setup cmake
       if: runner.os == 'Linux'
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2

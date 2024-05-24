@@ -21,12 +21,7 @@ jobs:
     - name: Setup Visual Studio shell
       if: runner.os == 'Windows'
       uses: egor-tensin/vs-shell@9a932a62d05192eae18ca370155cf877eecc2202 # v2.1
-    - name: Cache external dependencies
-      id: cache-ext
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-      with:
-        path: ext, build/_deps
-        key: ${{ runner.os }}-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}-releasedeps
+    - uses: ./.github/actions/cache
     - name: Print cmake version
       run: cmake --version
     - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1

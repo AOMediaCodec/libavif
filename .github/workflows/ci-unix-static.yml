@@ -50,12 +50,9 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: brew install imagemagick
-    - name: Cache external dependencies
-      id: cache-ext
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+    - uses: ./.github/actions/cache
       with:
-        path: ext, build/_deps
-        key: ${{ runner.os }}-${{ matrix.build-type }}-unix-static-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+        use-rust: true
     - name: Setup cmake
       if: runner.os == 'Linux'
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
@@ -69,6 +66,7 @@ jobs:
     - run: pip install meson
     - name: Print ImageMagick version
       run: convert --version
+
     - name: Prepare libavif (cmake)
       run: >
         cmake -G Ninja -S ./ -B build
@@ -84,15 +82,6 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
         -DAVIF_ENABLE_WERROR=ON
-    - name: Cache cargo registry
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-      continue-on-error: true
-      with:
-        path: ~/.cargo/registry/cache
-        key: cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-unix-static
-        restore-keys: |
-          cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-
-          cargo-registry-${{ runner.os }}-
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
