@@ -53,6 +53,7 @@ jobs:
     - uses: ./.github/actions/cache
       with:
         use-rust: true
+        extra-key: ${{ matrix.build-type }}
     - name: Setup cmake
       if: runner.os == 'Linux'
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2

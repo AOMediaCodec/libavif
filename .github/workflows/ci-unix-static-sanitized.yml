@@ -41,6 +41,8 @@ jobs:
         run: brew install aom dav1d imagemagick libpng
       - uses: ./.github/actions/cache
         id: cache
+        with:
+          extra-key: ${{ matrix.sanitizer }}
       - name: Build aom
         if: steps.cache.outputs.ext-cache-hit != 'true'
         working-directory: ./ext
