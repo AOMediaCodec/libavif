@@ -48,6 +48,7 @@ jobs:
     - uses: ./.github/actions/cache
       with:
         use-rust: true
+        extra-key: ${{ matrix.also-enable-av1-codecs }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:

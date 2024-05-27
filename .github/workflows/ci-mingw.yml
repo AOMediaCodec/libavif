@@ -47,6 +47,8 @@ jobs:
           ninja:p
           zlib:p
     - uses: ./.github/actions/cache
+      with:
+        extra-key: ${{ matrix.sys }}
     - name: Print cmake version
       run: cmake --version
 
