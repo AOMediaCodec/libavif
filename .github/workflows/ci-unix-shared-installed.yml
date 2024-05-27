@@ -59,7 +59,7 @@ jobs:
       # so build it locally instead.
     - name: Prepare libavif (cmake)
       run: >
-        cmake -G Ninja -S ./ -B build
+        cmake -G Ninja -S . -B build
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
         -DAVIF_CODEC_AOM=SYSTEM
         -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
@@ -95,7 +95,7 @@ jobs:
         cmake . -DCMAKE_PREFIX_PATH=../install
     - name: Prepare libavif with [[nodiscard]] (cmake)
       run: >
-        cmake -G Ninja -S ./ -B build_nodiscard
+        cmake -G Ninja -S . -B build_nodiscard
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
         -DAVIF_CODEC_AOM=SYSTEM
         -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
