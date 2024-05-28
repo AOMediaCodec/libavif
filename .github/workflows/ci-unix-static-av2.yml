@@ -18,15 +18,15 @@ concurrency:
 
 jobs:
   build-static-av2:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         also-enable-av1-codecs: [OFF, LOCAL] # On top of enabling AV2 codecs.
         include:
-          - runs-on: ubuntu-latest
+          - runs-on: ubuntu-24.04
             compiler: gcc
-            gcc: 12
+            gcc: 14
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -41,18 +41,14 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
-    - name: Install cargo-c
-      env:
-        LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
-        CARGO_C_FILE: cargo-c-x86_64-unknown-linux-musl.tar.gz
+    - name: Install dependencies
       run: |
-        curl -L $LINK/$CARGO_C_FILE | tar xz -C ~/.cargo/bin
-    - name: Cache external dependencies
-      id: cache-ext
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        sudo apt update
+        sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev 
+    - uses: ./.github/actions/cache
       with:
-        path: ext, build/_deps
-        key: ${{ runner.os }}-${{ matrix.also-enable-av1-codec }}-unix-static-av2-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+        use-rust: true
+        extra-key: ${{ matrix.also-enable-av1-codecs }}
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
@@ -66,9 +62,7 @@ jobs:
 
     - name: Prepare libavif (cmake)
       run: >
-        mkdir build && cd build
-
-        cmake .. -G Ninja
+        cmake -G Ninja -S . -B build
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
         -DAVIF_CODEC_AVM=LOCAL
         -DAVIF_CODEC_DAV1D=${{ matrix.also-enable-av1-codecs }}
@@ -79,15 +73,6 @@ jobs:
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
         -DAVIF_ENABLE_WERROR=ON
-    - name: Cache cargo registry
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-      continue-on-error: true
-      with:
-        path: ~/.cargo/registry/cache
-        key: cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-unix-static-av2
-        restore-keys: |
-          cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-
-          cargo-registry-${{ runner.os }}-
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja

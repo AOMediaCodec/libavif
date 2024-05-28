@@ -22,12 +22,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13]
+        os: [ubuntu-24.04, macos-13]
         build-type: [Release, Debug]
         include:
-          - runs-on: ubuntu-latest
+          - runs-on: ubuntu-24.04
             compiler: gcc
-            gcc: 12
+            gcc: 14
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -42,33 +42,20 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: brew install imagemagick
-    - name: Install cargo-c (linux)
-      if: matrix.os == 'ubuntu-latest'
-      env:
-        LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
-        CARGO_C_FILE: cargo-c-x86_64-unknown-linux-musl.tar.gz
-      run: |
-        curl -L $LINK/$CARGO_C_FILE | tar xz -C ~/.cargo/bin
-    - name: Install cargo-c (mac)
-      if: matrix.os == 'macos-latest'
-      env:
-        LINK: https://github.com/lu-zero/cargo-c/releases/latest/download
-        CARGO_C_FILE: cargo-c-macos.zip
-      run: |
-        curl -sLo $CARGO_C_FILE $LINK/$CARGO_C_FILE
-        unzip -o $CARGO_C_FILE -d ~/.cargo/bin
-        rm $CARGO_C_FILE
-    - name: Cache external dependencies
-      id: cache-ext
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+    - uses: ./.github/actions/cache
       with:
-        path: ext, build/_deps
-        key: ${{ runner.os }}-${{ matrix.build-type }}-unix-static-${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+        use-rust: true
+        extra-key: ${{ matrix.build-type }}
     - name: Setup cmake
-      if: matrix.os == 'ubuntu-latest'
+      if: runner.os == 'Linux'
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
         # CMake version 3.18 is required to build libxml2.
@@ -80,11 +67,10 @@ jobs:
     - run: pip install meson
     - name: Print ImageMagick version
       run: convert --version
+
     - name: Prepare libavif (cmake)
       run: >
-        mkdir build && cd build
-
-        cmake .. -G Ninja
+        cmake -G Ninja -S . -B build
         -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DBUILD_SHARED_LIBS=OFF
         -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
         -DAVIF_CODEC_RAV1E=LOCAL -DAVIF_CODEC_SVT=LOCAL
@@ -97,15 +83,6 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
         -DAVIF_ENABLE_WERROR=ON
-    - name: Cache cargo registry
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-      continue-on-error: true
-      with:
-        path: ~/.cargo/registry/cache
-        key: cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-unix-static
-        restore-keys: |
-          cargo-registry-${{ runner.os }}-${{ hashFiles('ext/rav1e/Cargo.lock') }}-
-          cargo-registry-${{ runner.os }}-
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja

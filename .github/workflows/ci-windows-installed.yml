@@ -53,7 +53,7 @@ jobs:
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
     - name: Prepare libavif (cmake)
       run: >
-        cmake ${{ steps.vcpkg.outputs.vcpkg-cmake-config }} -G Ninja -S ./ -B build
+        cmake ${{ steps.vcpkg.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
         -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_DAV1D=SYSTEM
         -DAVIF_CODEC_RAV1E=SYSTEM
