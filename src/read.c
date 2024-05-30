@@ -3227,7 +3227,15 @@ static avifResult avifParseSampleDescriptionBox(avifSampleTable * sampleTable,
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stsd]");
 
-    AVIF_CHECKERR(avifROStreamReadAndEnforceVersion(&s, 0), AVIF_RESULT_BMFF_PARSE_FAILED);
+    uint8_t version;
+    AVIF_CHECKERR(avifROStreamReadVersionAndFlags(&s, &version, NULL), AVIF_RESULT_BMFF_PARSE_FAILED);
+
+    // Section 8.5.2.3 of ISO/IEC 14496-12:
+    //   version is set to zero. A version number of 1 shall be treated as a version of 0.
+    if (version != 0 && version != 1) {
+        avifDiagnosticsPrintf(diag, "Box[stsd]: Expecting box version 0 or 1, got version %u", version);
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
