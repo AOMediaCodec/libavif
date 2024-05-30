@@ -17,8 +17,10 @@ inputs:
     description: 'Can be empty, in which case CC and CXX are not overriden'
     default: ''
   libxml2:
+    description: 'Can take the values: OFF, LOCAL, SYSTEM'
     default: 'OFF'
   libyuv:
+    description: 'Can take the values: OFF, LOCAL, SYSTEM'
     default: 'OFF'
   recent-cmake:
     description: 'Can take the values: true, false'

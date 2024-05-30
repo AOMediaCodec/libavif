@@ -42,25 +42,25 @@ jobs:
           codec-dav1d: 'LOCAL'
           codec-rav1e: 'OFF'
           extra-cache-key: ${{ matrix.sanitizer }}
-      - id: cache-hit
-        run: echo "hit=$${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit != 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit != 'true') }}" >> "$GITHUB_OUTPUT"
+      - id: cache-miss
+        run: echo "miss=$${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit != 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit != 'true') }}" >> "$GITHUB_OUTPUT"
 
       - name: Build aom
-        if: $${{ steps.cache-hit.outputs.hit }}
+        if: $${{ steps.cache-miss.outputs.miss == 'true' }}
         working-directory: ./ext
         run: >
           sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DSANITIZE=${{ matrix.sanitizer }} ../g' aom.cmd
 
           ./aom.cmd
       - name: Build dav1d
-        if: $${{ steps.cache-hit.outputs.hit }}
+        if: $${{ steps.cache-miss.outputs.miss == 'true' }}
         working-directory: ./ext
         run: >
           sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false ../g' dav1d.cmd
 
           ./dav1d.cmd
       - name: Build libyuv
-        if: $${{ steps.cache-hit.outputs.hit }}
+        if: $${{ steps.cache-miss.outputs.miss == 'true' }}
         working-directory: ./ext
         run: ./libyuv.cmd
         env:
@@ -68,7 +68,7 @@ jobs:
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build libsharpyuv
-        if: $${{ steps.cache-hit.outputs.hit }}
+        if: $${{ steps.cache-miss.outputs.miss == 'true' }}
         working-directory: ./ext
         run: ./libsharpyuv.cmd
         env:
@@ -76,7 +76,7 @@ jobs:
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build GoogleTest
-        if: $${{ steps.cache-hit.outputs.hit }}
+        if: $${{ steps.cache-miss.outputs.miss == 'true' }}
         working-directory: ./ext
         # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
         run: bash -e googletest.cmd
