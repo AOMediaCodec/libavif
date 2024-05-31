@@ -1,3 +1,5 @@
+# To upgrade libpng to > v1.6.40, you need zlib containing f1f503da85d52e56aae11557b4d79a42bcaa2b86
+# hence a version > v1.3 .
 set(AVIF_LOCAL_ZLIB_GIT_TAG v1.3)
 set(AVIF_LOCAL_LIBPNG_GIT_TAG v1.6.40)
 
@@ -55,6 +57,11 @@ include_directories("${zlib_BINARY_DIR}")
 set(CMAKE_DEBUG_POSTFIX "")
 
 add_library(ZLIB::ZLIB ALIAS zlibstatic)
+
+# TODO Uncomment for zlib > v1.3
+# install(TARGETS zlib zlibstatic EXPORT zlib)
+# install(EXPORT zlib
+#         DESTINATION ${CMAKE_INSTALL_LIBDIR}/zlib)
 
 message(CHECK_PASS "complete")
 
