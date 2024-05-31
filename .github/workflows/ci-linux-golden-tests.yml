@@ -27,28 +27,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-    - name: Set GCC & G++ compiler (on Linux)
-      run: echo "CC=gcc-${{matrix.gcc}}" >> $GITHUB_ENV && echo "CXX=g++-${{matrix.gcc}}" >> $GITHUB_ENV
-    - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+    - uses: ./.github/actions/setup-linux
+      id: setup
       with:
-        python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev
-    - uses: ./.github/actions/cache
-      id: cache
-    - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be
-      with:
-        # CMake 3.18 or higher is required for libxml2
-        cmake-version: '3.18.x'
-    - name: Print cmake version
-      run: cmake --version
-    - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
-    - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
+        codec-aom: 'LOCAL'
+        codec-dav1d: 'LOCAL'
+        gcc-version: ${{ matrix.gcc }}
+        libxml2: 'LOCAL'
+        libyuv: 'LOCAL'
+        recent-cmake: 'true'
     - name: Build mp4box
-      if: steps.cache.outputs.ext-cache-hit != 'true'
+      if: steps.setup.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
       run: bash -e mp4box.sh
 

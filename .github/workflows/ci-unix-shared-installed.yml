@@ -26,33 +26,24 @@ jobs:
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-    - name: Set GCC & G++ compiler (on Linux)
+    - uses: ./.github/actions/setup-linux
       if: runner.os == 'Linux'
-      run: echo "CC=gcc-${{matrix.gcc}}" >> $GITHUB_ENV && echo "CXX=g++-${{matrix.gcc}}" >> $GITHUB_ENV
+      with:
+        codec-aom: 'SYSTEM'
+        codec-dav1d: 'SYSTEM'
+        codec-rav1e: 'OFF'
+        gcc-version: ${{ matrix.gcc }}
+        libyuv: 'SYSTEM'
+    - uses: ./.github/actions/setup-macos
+      if: runner.os == 'macOS'
+      with:
+        codec-aom: 'SYSTEM'
+        codec-dav1d: 'SYSTEM'
+        codec-rav1e: 'OFF'
     - name: Disable libyuv on macOS
       # TODO(yguyon): Install libyuv (not available with brew).
       if: runner.os == 'macOS'
       run: echo "CMAKE_AVIF_FLAGS=\"-DAVIF_LIBYUV=OFF\""  >> $GITHUB_ENV
-    - uses: ./.github/actions/cache
-    - name: Setup cmake
-      if: runner.os == 'Linux'
-      uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
-      with:
-        cmake-version: '3.13.x'
-    - name: Print cmake version
-      run: cmake --version
-    - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
-    - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        echo "deb http://azure.archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-        sudo apt update
-        sudo apt install imagemagick libaom-dev libdav1d-dev libjpeg-turbo8-dev libpng-dev libyuv-dev
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: brew install aom dav1d imagemagick
-    - name: Print ImageMagick version
-      run: convert --version
 
       # `sudo apt-get install googletest libgtest-dev` leads to the following:
       #   "libgtest.a(gtest-all.cc.o): undefined reference to `std::__throw_bad_array_new_length()'"

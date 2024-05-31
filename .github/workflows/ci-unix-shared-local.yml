@@ -31,34 +31,20 @@ jobs:
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-    - name: Set GCC & G++ compiler (on Linux)
+    - uses: ./.github/actions/setup-linux
       if: runner.os == 'Linux'
-      run: echo "CC=gcc-${{matrix.gcc}}" >> $GITHUB_ENV && echo "CXX=g++-${{matrix.gcc}}" >> $GITHUB_ENV
-    - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
       with:
-        python-version: '3.x'
-    - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt update
-        sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev
-    - name: Install dependencies (macOS)
+        codec-aom: 'LOCAL'
+        codec-dav1d: 'LOCAL'
+        codec-rav1e: 'LOCAL'
+        gcc-version: ${{ matrix.gcc }}
+        libyuv: ${{ matrix.libyuv }}
+    - uses: ./.github/actions/setup-macos
       if: runner.os == 'macOS'
-      run: brew install imagemagick
-    - uses: ./.github/actions/cache
-    - name: Setup cmake
-      if: runner.os == 'Linux'
-      uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
-        # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
-        cmake-version: '3.17.x'
-    - name: Print cmake version
-      run: cmake --version
-    - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
-    - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
-    - run: pip install meson
-    - name: Print ImageMagick version
-      run: convert --version
+        codec-aom: 'LOCAL'
+        codec-dav1d: 'LOCAL'
+        codec-rav1e: 'LOCAL'
 
     - name: Prepare libavif (cmake)
       run: >

@@ -23,13 +23,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-    - name: Setup Visual Studio shell
-      uses: egor-tensin/vs-shell@9a932a62d05192eae18ca370155cf877eecc2202 # v2.1
-    - name: Print CMake version
-      run: cmake --version
-    - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
-    - name: Print ImageMagick version
-      run: magick --version
+    - uses: ./.github/actions/setup-windows
+      with:
+        codec-aom: 'SYSTEM'
+        codec-dav1d: 'SYSTEM'
+        codec-rav1e: 'SYSTEM'
+
     - name: vcpkg build
       uses: johnwason/vcpkg-action@v6
       id: vcpkg

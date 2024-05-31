@@ -26,39 +26,41 @@ jobs:
 
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-
-      - name: Setup cmake
+      - uses: ./.github/actions/setup-linux
         if: runner.os == 'Linux'
-        uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
+        id: setup_linux
         with:
-          # CMake version 3.17 is required to build libwebp (which libsharpyuv is part of) on macOS.
-          cmake-version: '3.17.x'
-      - uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
-      - uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
-      - run: pip install meson
-      - name: Install dependencies (macOS)
+          codec-aom: 'LOCAL'
+          codec-dav1d: 'LOCAL'
+          libyuv: 'LOCAL'
+          recent-cmake: 'true'
+      - uses: ./.github/actions/setup-macos
         if: runner.os == 'macOS'
-        run: brew install aom dav1d imagemagick libpng
-      - uses: ./.github/actions/cache
-        id: cache
+        id: setup_macos
         with:
-          extra-key: ${{ matrix.sanitizer }}
+          codec-aom: 'LOCAL'
+          codec-dav1d: 'LOCAL'
+          codec-rav1e: 'OFF'
+          extra-cache-key: ${{ matrix.sanitizer }}
+      - id: cache-hit
+        run: echo "hit=$${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit == 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit == 'true') }}" >> "$GITHUB_OUTPUT"
+
       - name: Build aom
-        if: steps.cache.outputs.ext-cache-hit != 'true'
+        if: $${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run: >
           sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DSANITIZE=${{ matrix.sanitizer }} ../g' aom.cmd
 
           ./aom.cmd
       - name: Build dav1d
-        if: steps.cache.outputs.ext-cache-hit != 'true'
+        if: $${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run: >
           sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false ../g' dav1d.cmd
 
           ./dav1d.cmd
       - name: Build libyuv
-        if: steps.cache.outputs.ext-cache-hit != 'true'
+        if: $${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run: ./libyuv.cmd
         env:
@@ -66,7 +68,7 @@ jobs:
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build libsharpyuv
-        if: steps.cache.outputs.ext-cache-hit != 'true'
+        if: $${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run: ./libsharpyuv.cmd
         env:
@@ -74,7 +76,7 @@ jobs:
           CXXFLAGS: -fsanitize=${{ matrix.sanitizer }}
           LDFLAGS: -fsanitize=${{ matrix.sanitizer }}
       - name: Build GoogleTest
-        if: steps.cache.outputs.ext-cache-hit != 'true'
+        if: $${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
         run: bash -e googletest.cmd
