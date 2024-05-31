@@ -34,6 +34,7 @@ jobs:
           codec-dav1d: 'LOCAL'
           libyuv: 'LOCAL'
           recent-cmake: 'true'
+          extra-cache-key: ${{ matrix.sanitizer }}
       - uses: ./.github/actions/setup-macos
         if: runner.os == 'macOS'
         id: setup_macos
