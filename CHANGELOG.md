@@ -58,7 +58,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Changed since 1.0.0
 * Update aom.cmd: v3.9.0
 * Update avm.cmd: research-v7.0.1
-* Update dav1d.cmd: 1.4.2
+* Update dav1d.cmd: 1.4.1
 * Update libgav1.cmd: v0.19.0
 * Update libxml2.cmd: v2.12.6
 * Update libyuv.cmd: a6a2ec65
