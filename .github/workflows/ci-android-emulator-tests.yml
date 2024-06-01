@@ -23,9 +23,9 @@ jobs:
 
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Download and Setup the Android NDK
-        uses: nttld/setup-ndk@6a7e9c5494a25c4842ca1011f710300132eacd94 # v1.4.2
+        uses: nttld/setup-ndk@afb4c9964b521afb97c864b7d40b11e6911bd410 # v1.5.0
         id: setup-ndk
         with:
           # r25c is the same as 25.2.9519653.
@@ -42,7 +42,7 @@ jobs:
           java-version: '11'
           distribution: 'zulu'
       - name: Run Instrumented Tests on the Emulator
-        uses: reactivecircus/android-emulator-runner@6b0df4b0efb23bb0ec63d881db79aefbc976e4b2 # v2.30.1
+        uses: reactivecircus/android-emulator-runner@77986be26589807b8ebab3fde7bbf5c60dabec32 # v2.31.0
         with:
           working-directory: android_jni
           api-level: 30
