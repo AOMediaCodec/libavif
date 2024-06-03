@@ -25,13 +25,20 @@ runs:
         echo "Current workflow path is: ${MIDDLE}"
         echo "path=${MIDDLE}" >> "$GITHUB_OUTPUT"
       shell: bash
+    - name: Generate cargo cache key
+      if: ${{ inputs.use-rust == 'true' }}
+      id: cargo-key
+      run: |
+        echo "key=cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ hashFiles('.github/action/**', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> "$GITHUB_OUTPUT"
+      shell: bash
     - name: Cache all of cargo
       if: ${{ inputs.use-rust == 'true' }}
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       continue-on-error: true
       with:
         path: ~/.cargo
-        key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ hashFiles('.github/action/**', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}
+        key: ${{ steps.cargo-key.outputs.key }}-${{ github.run_id }}
+        restore-keys: ${{ steps.cargo-key.outputs.key }}
     - name: Cache external dependencies in ext
       id: cache-ext
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
