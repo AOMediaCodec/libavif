@@ -3274,7 +3274,7 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
     if (track->sampleTable) {
         // A TrackBox may only have one SampleTable
         avifDiagnosticsPrintf(diag, "Duplicate Box[stbl] for a single track detected");
-        return AVIF_FALSE;
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     track->sampleTable = avifSampleTableCreate();
     AVIF_CHECKERR(track->sampleTable != NULL, AVIF_RESULT_OUT_OF_MEMORY);
