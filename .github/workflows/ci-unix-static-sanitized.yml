@@ -41,7 +41,6 @@ jobs:
         with:
           codec-aom: 'LOCAL'
           codec-dav1d: 'LOCAL'
-          codec-rav1e: 'OFF'
           extra-cache-key: ${{ matrix.sanitizer }}
       - id: cache-hit
         run: echo "hit=${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit == 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit == 'true') }}" >> "$GITHUB_OUTPUT"

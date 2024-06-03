@@ -31,7 +31,6 @@ jobs:
       with:
         codec-aom: 'SYSTEM'
         codec-dav1d: 'SYSTEM'
-        codec-rav1e: 'OFF'
         gcc-version: ${{ matrix.gcc }}
         libyuv: 'SYSTEM'
     - uses: ./.github/actions/setup-macos
@@ -39,7 +38,6 @@ jobs:
       with:
         codec-aom: 'SYSTEM'
         codec-dav1d: 'SYSTEM'
-        codec-rav1e: 'OFF'
     - name: Disable libyuv on macOS
       # TODO(yguyon): Install libyuv (not available with brew).
       if: runner.os == 'macOS'

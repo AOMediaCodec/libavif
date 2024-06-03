@@ -36,7 +36,6 @@ jobs:
       with:
         codec-aom: 'LOCAL'
         codec-dav1d: 'LOCAL'
-        codec-rav1e: 'LOCAL'
         gcc-version: ${{ matrix.gcc }}
         libyuv: ${{ matrix.libyuv }}
     - uses: ./.github/actions/setup-macos
@@ -44,7 +43,6 @@ jobs:
       with:
         codec-aom: 'LOCAL'
         codec-dav1d: 'LOCAL'
-        codec-rav1e: 'LOCAL'
 
     - name: Prepare libavif (cmake)
       run: >
