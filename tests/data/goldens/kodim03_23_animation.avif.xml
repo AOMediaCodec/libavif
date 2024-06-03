@@ -51,7 +51,7 @@
 </ItemPropertyAssociationBox>
 </ItemPropertiesBox>
 </MetaBox>
-<MovieBox Size="717" Type="moov" Specification="p12" Container="file" >
+<MovieBox Size="717" Type="moov" Specification="p12" Container="file cmvd" >
 <MovieHeaderBox Size="120" Type="mvhd" Version="1" Flags="0" Specification="p12" Container="moov" CreationTime="REDACTED" ModificationTime="REDACTED" TimeScale="25" Duration="-1" NextTrackID="1">
 </MovieHeaderBox>
 <TrackBox Size="589" Type="trak" Specification="p12" Container="moov" >
@@ -124,7 +124,6 @@
  </OBUConfig>
  <OBUSamples>
   <Sample number="1" DTS="0" CTS="0" size="REDACTED" RAP="1" >
-   <OBU size="REDACTED" type="delimiter" header_size="2" has_size_field="1" has_ext="0" temporalID="0" spatialID="0" />
    <OBU size="REDACTED" type="seq_header" header_size="2" has_size_field="1" has_ext="0" temporalID="0" spatialID="0" sequence_width="768" sequence_height="512" still_picture="0" OperatingPointIdc="0" profile="0" level="4" bit_depth="8" monochrome="0" color_description_present_flag="1" color_primaries="1" transfer_characteristics="13" matrix_coefficients="6" color_range="1" chroma_subsampling_x="1" chroma_subsampling_y="1" chroma_sample_position="0" film_grain_params_present="0" />
    <OBU size="REDACTED" type="frame" header_size="4" has_size_field="1" has_ext="0" temporalID="0" spatialID="0" uncompressed_header_bytes="12" frame_type="key" refresh_frame_flags="255" show_frame="1" width="768" height="512" nb_tiles="1" >
      <Tile number="0" start="16" size="REDACTED"/>
@@ -132,7 +131,6 @@
   </Sample>
 
   <Sample number="2" DTS="1" CTS="1" size="REDACTED" RAP="0" >
-   <OBU size="REDACTED" type="delimiter" header_size="2" has_size_field="1" has_ext="0" temporalID="0" spatialID="0" />
    <OBU size="REDACTED" type="frame" header_size="4" has_size_field="1" has_ext="0" temporalID="0" spatialID="0" uncompressed_header_bytes="18" frame_type="inter" refresh_frame_flags="2" show_frame="1" width="768" height="512" nb_tiles="1" >
      <Tile number="0" start="22" size="REDACTED"/>
    </OBU>

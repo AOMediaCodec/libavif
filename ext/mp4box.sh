@@ -7,7 +7,7 @@ set -e
 git clone https://github.com/gpac/gpac.git
 
 cd gpac
-git checkout b34e385 # GPAC 2.2.1
+git checkout 5d70253 # GPAC 2.4.0
 
 ./configure --static-bin
 make -j

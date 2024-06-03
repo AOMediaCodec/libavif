@@ -60,8 +60,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update avm.cmd: research-v7.0.1
 * Update dav1d.cmd: 1.4.2
 * Update libgav1.cmd: v0.19.0
-* Update libxml2.cmd: v2.12.6
+* Update libxml2.cmd: v2.12.7
 * Update libyuv.cmd: a6a2ec65
+* Update mp4box.sh: v2.4.0
 * Update rav1e.cmd: v0.7.1
 * Update svt.cmd/svt.sh: v2.1.0
 * Update zlibpng.cmd: zlib 1.3 and libpng 1.6.40
