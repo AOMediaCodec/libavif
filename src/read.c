@@ -4673,6 +4673,48 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     return AVIF_RESULT_OK;
 }
 
+// On success, this function returns AVIF_RESULT_OK and does the following:
+// * If a nclx property was found in |properties|:
+//   - Set |*colorPrimaries|, |*transferCharacteristics|, |*matrixCoefficients|
+//     and |*yuvRange|.
+//   - If cicpSet is not NULL, set |*cicpSet| to AVIF_TRUE.
+// This function fails if more than one nclx property is found in |properties|.
+// The output parameters may be populated even in case of failure and must be
+// ignored.
+static avifResult avifReadColorNclxProperty(const avifPropertyArray * properties,
+                                            avifColorPrimaries * colorPrimaries,
+                                            avifTransferCharacteristics * transferCharacteristics,
+                                            avifMatrixCoefficients * matrixCoefficients,
+                                            avifRange * yuvRange,
+                                            avifBool * cicpSet)
+{
+    avifBool colrNCLXSeen = AVIF_FALSE;
+    for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
+        avifProperty * prop = &properties->prop[propertyIndex];
+        if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
+            if (colrNCLXSeen) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            colrNCLXSeen = AVIF_TRUE;
+            if (cicpSet != NULL) {
+                *cicpSet = AVIF_TRUE;
+            }
+            *colorPrimaries = prop->u.colr.colorPrimaries;
+            *transferCharacteristics = prop->u.colr.transferCharacteristics;
+            *matrixCoefficients = prop->u.colr.matrixCoefficients;
+            *yuvRange = prop->u.colr.range;
+        }
+    }
+    return AVIF_RESULT_OK;
+}
+
+// On success, this function returns AVIF_RESULT_OK and does the following:
+// * If a colr property was found in |properties|:
+//   - Read the icc data into |icc| from |io|.
+//   - Sets the CICP values as documented in avifReadColorNclxProperty().
+// This function fails if more than one icc or nclx property is found in
+// |properties|. The output parameters may be populated even in case of failure
+// and must be ignored (and the |icc| object may need to be freed).
 static avifResult avifReadColorProperties(avifIO * io,
                                           const avifPropertyArray * properties,
                                           avifRWData * icc,
@@ -4685,37 +4727,19 @@ static avifResult avifReadColorProperties(avifIO * io,
     // Find and adopt all colr boxes "at most one for a given value of colour type" (HEIF 6.5.5.1, from Amendment 3)
     // Accept one of each type, and bail out if more than one of a given type is provided.
     avifBool colrICCSeen = AVIF_FALSE;
-    avifBool colrNCLXSeen = AVIF_FALSE;
     for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
         avifProperty * prop = &properties->prop[propertyIndex];
-
-        if (!memcmp(prop->type, "colr", 4)) {
-            if (prop->u.colr.hasICC) {
-                if (colrICCSeen) {
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
-                avifROData iccRead;
-                AVIF_CHECKRES(io->read(io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &iccRead));
-                colrICCSeen = AVIF_TRUE;
-                AVIF_CHECKRES(avifRWDataSet(icc, iccRead.data, iccRead.size));
+        if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasICC) {
+            if (colrICCSeen) {
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            if (prop->u.colr.hasNCLX) {
-                if (colrNCLXSeen) {
-                    return AVIF_RESULT_BMFF_PARSE_FAILED;
-                }
-                colrNCLXSeen = AVIF_TRUE;
-                if (cicpSet != NULL) {
-                    *cicpSet = AVIF_TRUE;
-                }
-                *colorPrimaries = prop->u.colr.colorPrimaries;
-                *transferCharacteristics = prop->u.colr.transferCharacteristics;
-                *matrixCoefficients = prop->u.colr.matrixCoefficients;
-                *yuvRange = prop->u.colr.range;
-            }
+            avifROData iccRead;
+            AVIF_CHECKRES(io->read(io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &iccRead));
+            colrICCSeen = AVIF_TRUE;
+            AVIF_CHECKRES(avifRWDataSet(icc, iccRead.data, iccRead.size));
         }
     }
-
-    return AVIF_RESULT_OK;
+    return avifReadColorNclxProperty(properties, colorPrimaries, transferCharacteristics, matrixCoefficients, yuvRange, cicpSet);
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -4844,16 +4868,12 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         AVIF_CHECKERR(gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
 
         // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
-        for (uint32_t propertyIndex = 0; propertyIndex < gainMapItemTmp->properties.count; ++propertyIndex) {
-            avifProperty * prop = &gainMapItemTmp->properties.prop[propertyIndex];
-            if (!memcmp(prop->type, "colr", 4) && prop->u.colr.hasNCLX) {
-                gainMap->image->colorPrimaries = prop->u.colr.colorPrimaries;
-                gainMap->image->transferCharacteristics = prop->u.colr.transferCharacteristics;
-                gainMap->image->matrixCoefficients = prop->u.colr.matrixCoefficients;
-                gainMap->image->yuvRange = prop->u.colr.range;
-                break;
-            }
-        }
+        AVIF_CHECKRES(avifReadColorNclxProperty(&gainMapItemTmp->properties,
+                                                &gainMap->image->colorPrimaries,
+                                                &gainMap->image->transferCharacteristics,
+                                                &gainMap->image->matrixCoefficients,
+                                                &gainMap->image->yuvRange,
+                                                /*cicpSet=*/NULL));
     }
 
     // Only set the output parameters after everything has been validated.
