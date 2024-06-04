@@ -305,7 +305,7 @@ typedef enum avifChromaSamplePosition
 
 typedef enum avifRange
 {
-    // AVIF_RANGE_LIMITED is only applicable to YUV planes. RGB and alpha planes are always full range.
+    // avifRange is only applicable to YUV planes. RGB and alpha planes are always full range.
     AVIF_RANGE_LIMITED = 0, /**<- Y  [16..235],  UV  [16..240]  (bit depth 8) */
                             /**<- Y  [64..940],  UV  [64..960]  (bit depth 10) */
                             /**<- Y [256..3760], UV [256..3840] (bit depth 12) */
