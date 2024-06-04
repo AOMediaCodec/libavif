@@ -1,6 +1,6 @@
 # To upgrade libpng to > v1.6.40, you need zlib containing f1f503da85d52e56aae11557b4d79a42bcaa2b86
 # hence a version > v1.3.1 .
-set(AVIF_LOCAL_ZLIB_GIT_TAG v1.3)
+set(AVIF_LOCAL_ZLIB_GIT_TAG v1.3.1)
 set(AVIF_LOCAL_LIBPNG_GIT_TAG v1.6.40)
 
 if(EXISTS "${AVIF_SOURCE_DIR}/ext/zlib")
