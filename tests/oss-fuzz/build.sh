@@ -41,7 +41,7 @@ set -eu
 # Build dav1d with sanitizer flags.
 # Adds extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false, and -Denable_asm=false for msan
 DAV1D_EXTRA_FLAGS=""
-if [[ "$SANITIZER" != "coverage" ] && [ "$SANITIZER" != "introspector" ]]; then
+if [[ "$SANITIZER" != "coverage" && "$SANITIZER" != "introspector" ]]; then
   DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Db_sanitize=$SANITIZER -Db_lundef=false"
 fi
 if [[ "$SANITIZER" == "memory" ]]; then
