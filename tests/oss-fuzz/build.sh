@@ -41,27 +41,23 @@ set -eu
 # Build dav1d with sanitizer flags.
 # Adds extra flags: -Db_sanitize=$SANITIZER -Db_lundef=false, and -Denable_asm=false for msan
 DAV1D_EXTRA_FLAGS=""
-if [ "$SANITIZER" != "coverage" ] && [ "$SANITIZER" != "introspector" ]
-then
+if [[ "$SANITIZER" != "coverage" ] && [ "$SANITIZER" != "introspector" ]]; then
   DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Db_sanitize=$SANITIZER -Db_lundef=false"
 fi
-if [ "$SANITIZER" == "memory" ]
-then
+if [[ "$SANITIZER" == "memory" ]]; then
   DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Denable_asm=false"
 fi
 sed -i "s/meson setup \(.*\) \.\./meson setup \1${DAV1D_EXTRA_FLAGS} ../g" ./ext/dav1d.cmd
 
 # Build libaom with sanitizer flags.
 # Adds extra flags: -DAOM_TARGET_CPU=generic for msan.
-if [ "$SANITIZER" == "memory" ]
-then
+if [[ "$SANITIZER" == "memory" ]]; then
   sed -i 's/cmake \(.*\) \.\./cmake \1 -DAOM_TARGET_CPU=generic ../g' ./ext/aom.cmd
 fi
 
 # Build libjpeg-turbo with sanitizer flags. Add extra flag -DWITH_SIMD=0 for msan.
 # See https://github.com/libjpeg-turbo/libjpeg-turbo/blob/main/README.md#memory-debugger-pitfalls
-if [ "$SANITIZER" == "memory" ]
-then
+if [[ "$SANITIZER" == "memory" ]]; then
   sed -i 's/cmake -S libjpeg-turbo \(.*\)/cmake -S libjpeg-turbo \1 -DWITH_SIMD=0/g' ./ext/libjpeg.cmd
 fi
 
@@ -73,8 +69,7 @@ cd ext && bash aom.cmd && bash dav1d.cmd && bash fuzztest.cmd && bash libjpeg.cm
 mkdir build
 cd build
 EXTRA_CMAKE_FLAGS=""
-if [ "$FUZZING_ENGINE" == "libfuzzer" ]
-then
+if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then
   CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
   EXTRA_CMAKE_FLAGS="${EXTRA_CMAKE_FLAGS} -DAVIF_ENABLE_FUZZTEST=ON -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer"
 fi
@@ -96,8 +91,7 @@ $CXX $CXXFLAGS -std=c++11 -I../include \
     ../ext/libyuv/build/libyuv.a ../ext/aom/build.libavif/libaom.a
 
 # Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
-if [ "$FUZZING_ENGINE" == "libfuzzer" ]
-then
+if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then
   # build fuzztests
   # The following is taken from https://github.com/google/oss-fuzz/blob/31ac7244748ea7390015455fb034b1f4eda039d9/infra/base-images/base-builder/compile_fuzztests.sh#L59
   # Iterate the fuzz binaries and list each fuzz entrypoint in the binary. For
@@ -105,7 +99,7 @@ then
   # given entrypoint as argument.
   # The scripts will be named:
   # {binary_name}@{fuzztest_entrypoint}
-  FUZZ_TEST_BINARIES_OUT_PATHS=`ls ./tests/avif_fuzztest_*`
+  FUZZ_TEST_BINARIES_OUT_PATHS=$(ls ./tests/avif_fuzztest_*)
   echo "Fuzz binaries: $FUZZ_TEST_BINARIES_OUT_PATHS"
   for fuzz_main_file in $FUZZ_TEST_BINARIES_OUT_PATHS; do
     FUZZ_TESTS=$($fuzz_main_file --list_fuzz_tests | cut -d ' ' -f 4)
