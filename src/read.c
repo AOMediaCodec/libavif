@@ -1426,6 +1426,7 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
     // Count number of dimg for this item, bail out if it doesn't match perfectly
     unsigned int tilesAvailable = 0;
     avifDecoderItem * firstTileItem = NULL;
+    avifBool progressive = AVIF_TRUE;
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
         avifDecoderItem * item = gridItem->meta->items.item[i];
         if (item->dimgForID != gridItem->id) {
@@ -1490,9 +1491,6 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
             AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             *dstProp = *srcProp;
 
-            if (itemCategory == AVIF_ITEM_COLOR && item->progressive) {
-                gridItem->progressive = AVIF_TRUE; // Propagate the progressive status to the top-level grid item.
-            }
         } else if (memcmp(item->type, firstTileItem->type, 4)) {
             // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
             //   All input images of a grid image item shall use the same coding format [...]
@@ -1504,7 +1502,14 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
                                   (const char *)firstTileItem->type);
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
+        if (!item->progressive) {
+            progressive = AVIF_FALSE;
+        }
         ++tilesAvailable;
+    }
+    if (itemCategory == AVIF_ITEM_COLOR && progressive) {
+        // If all the items that make up the grid are progressive, then propagate that status to the top-level grid item.
+        gridItem->progressive = AVIF_TRUE;
     }
 
     if (tilesAvailable != grid->rows * grid->columns) {
