@@ -4,7 +4,7 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
-git clone -b 3.0.2 --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
+git clone -b 3.0.3 --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
 
 cmake -S libjpeg-turbo -B libjpeg-turbo/build.libavif -G Ninja -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DCMAKE_BUILD_TYPE=Release -DWITH_TURBOJPEG=OFF
 cmake --build libjpeg-turbo/build.libavif --parallel
