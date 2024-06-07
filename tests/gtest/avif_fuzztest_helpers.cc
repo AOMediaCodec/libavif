@@ -223,22 +223,9 @@ class Environment : public ::testing::Environment {
 
 //------------------------------------------------------------------------------
 
-#ifdef TEST_DATA_DIRS
-// Helper macros to ensure TEST_DATA_DIRS is a quoted string.
-// NOTE: TEST_DATA_DIRS must NOT be a quoted string before stringification
-// otherwise it will be quoted twice, resulting in the use of an incorrect path.
-#define AVIF_TO_STRING(S) #S
-#define AVIF_STRINGIFY(S) AVIF_TO_STRING(S)
-#endif
-
 std::vector<std::string> GetSeedDataDirs() {
   const char* var = std::getenv("TEST_DATA_DIRS");
   std::vector<std::string> res;
-#ifdef TEST_DATA_DIRS
-  if (var == nullptr) {
-    var = AVIF_STRINGIFY(TEST_DATA_DIRS);
-  }
-#endif
   if (var == nullptr || *var == 0) return res;
   const char* var_start = var;
   while (true) {
@@ -251,9 +238,6 @@ std::vector<std::string> GetSeedDataDirs() {
   }
   return res;
 }
-
-#undef AVIF_STRINGIFY
-#undef AVIF_TO_STRING
 
 std::vector<std::string> GetTestImagesContents(
     size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats) {
