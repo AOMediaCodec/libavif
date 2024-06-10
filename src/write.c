@@ -2684,8 +2684,13 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             // Gain map specific properties
 
-            // Write just the colr nclx box
+            // Write the colr nclx box.
             AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+
+            // Also write the transformative properties. They have to match those of the primary item.
+            AVIF_CHECKRES(avifEncoderWriteExtendedColorProperties(&dedup->s, s, imageMetadata, &item->ipma, dedup));
+            // Do not expect them to be explicitly set by the user.
+            AVIF_CHECKERR(itemMetadata->transformFlags == AVIF_TRANSFORM_NONE, AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
 #endif
         }
 

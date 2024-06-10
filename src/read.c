@@ -5005,6 +5005,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     avifCodecType colorCodecType = AVIF_CODEC_TYPE_UNKNOWN;
     const avifPropertyArray * colorProperties = NULL;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    const avifPropertyArray * gainMapProperties = NULL;
+#endif
     if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
         avifTrack * colorTrack = NULL;
         avifTrack * alphaTrack = NULL;
@@ -5366,6 +5369,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image->gainMap->image,
                                                       &mainItems[AVIF_ITEM_GAIN_MAP]->properties,
                                                       codecType[AVIF_ITEM_GAIN_MAP]));
+            gainMapProperties = &mainItems[AVIF_ITEM_GAIN_MAP]->properties;
         }
 #endif
     }
@@ -5429,6 +5433,39 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->transformFlags |= AVIF_TRANSFORM_IMIR;
         decoder->image->imir = imirProp->u.imir;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (gainMapProperties != NULL) {
+        // The transformative properties of the gain map item have to match those of the primary item.
+        paspProp = avifPropertyArrayFind(gainMapProperties, "pasp");
+        AVIF_CHECKERR(!paspProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_PASP), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        if (paspProp) {
+            AVIF_CHECKERR(paspProp->u.pasp.hSpacing == decoder->image->pasp.hSpacing, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(paspProp->u.pasp.vSpacing == decoder->image->pasp.vSpacing, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        }
+        clapProp = avifPropertyArrayFind(gainMapProperties, "clap");
+        AVIF_CHECKERR(!clapProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_CLAP), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        if (clapProp) {
+            AVIF_CHECKERR(clapProp->u.clap.widthN == decoder->image->clap.widthN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(clapProp->u.clap.widthD == decoder->image->clap.widthD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(clapProp->u.clap.heightN == decoder->image->clap.heightN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(clapProp->u.clap.heightD == decoder->image->clap.heightD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(clapProp->u.clap.horizOffN == decoder->image->clap.horizOffN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(clapProp->u.clap.horizOffD == decoder->image->clap.horizOffD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(clapProp->u.clap.vertOffN == decoder->image->clap.vertOffN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+            AVIF_CHECKERR(clapProp->u.clap.vertOffD == decoder->image->clap.vertOffD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        }
+        irotProp = avifPropertyArrayFind(gainMapProperties, "irot");
+        AVIF_CHECKERR(!irotProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_IROT), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        if (irotProp) {
+            AVIF_CHECKERR(irotProp->u.irot.angle == decoder->image->irot.angle, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        }
+        imirProp = avifPropertyArrayFind(gainMapProperties, "imir");
+        AVIF_CHECKERR(!imirProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_IMIR), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        if (imirProp) {
+            AVIF_CHECKERR(imirProp->u.imir.axis == decoder->image->imir.axis, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
+        }
+    }
+#endif
 
     if (!data->cicpSet && (data->tiles.count > 0)) {
         avifTile * firstTile = &data->tiles.tile[0];

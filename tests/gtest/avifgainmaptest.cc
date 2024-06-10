@@ -119,6 +119,7 @@ ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
 
 TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
@@ -181,6 +182,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
 
 TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
+  ASSERT_NE(image, nullptr);
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
@@ -230,8 +232,50 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   //      .write(reinterpret_cast<char*>(encoded.data), encoded.size);
 }
 
+TEST(GainMapTest, EncodeDecodeOrientedNotEqual) {
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+  image->gainMap->image->transformFlags = AVIF_TRANSFORM_IMIR;
+  // The gain map should have no transformative property. Expect a failure.
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
+}
+
+TEST(GainMapTest, EncodeDecodeOriented) {
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+  image->transformFlags = AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR;
+  image->irot.angle = 1;
+  image->imir.axis = 0;
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK);
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableDecodingGainMap = AVIF_TRUE;
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+
+  // Verify that the transformative properties were kept.
+  EXPECT_EQ(decoder->image->transformFlags, image->transformFlags);
+  EXPECT_EQ(decoder->image->irot.angle, image->irot.angle);
+  EXPECT_EQ(decoder->image->imir.axis, image->imir.axis);
+  EXPECT_EQ(decoder->image->gainMap->image->transformFlags,
+            AVIF_TRANSFORM_NONE);
+}
+
 TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
+  ASSERT_NE(image, nullptr);
 
   const uint32_t kDenominator = 1000;
   image->gainMap->metadata.baseHdrHeadroomD = kDenominator;
@@ -269,6 +313,7 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
 
 TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/true);
+  ASSERT_NE(image, nullptr);
 
   for (int c = 0; c < 3; ++c) {
     image->gainMap->metadata.baseOffsetN[c] = 1;
