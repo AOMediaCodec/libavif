@@ -4350,6 +4350,17 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
     return AVIF_RESULT_OK;
 }
 
+// Returns AVIF_TRUE if the item should be skipped. Items should be skipped for one of the following reasons:
+//  * Size is 0.
+//  * Has an essential property that isn't supported by libavif.
+//  * Item is not a single image or a grid.
+//  * Item is a thumbnail.
+static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
+{
+    return !item->size || item->hasUnsupportedEssentialProperty ||
+           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) || item->thumbnailForID != 0;
+}
+
 avifResult avifDecoderParse(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
@@ -4379,16 +4390,7 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     avifDecoderData * data = decoder->data;
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = data->meta->items.item[itemIndex];
-        if (!item->size) {
-            continue;
-        }
-        if (item->hasUnsupportedEssentialProperty) {
-            // An essential property isn't supported by libavif; ignore the item.
-            continue;
-        }
-        avifBool isGrid = (memcmp(item->type, "grid", 4) == 0);
-        if ((avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN) && !isGrid) {
-            // probably exif or some other data
+        if (avifDecoderItemShouldBeSkipped(item)) {
             continue;
         }
 
@@ -4532,17 +4534,6 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
         }
     }
     return AVIF_RESULT_OK;
-}
-
-// Returns AVIF_TRUE if the item should be skipped. Items should be skipped for one of the following reasons:
-//  * Size is 0.
-//  * Has an essential property that isn't supported by libavif.
-//  * Item is not a single image or a grid.
-//  * Item is a thumbnail.
-static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
-{
-    return !item->size || item->hasUnsupportedEssentialProperty ||
-           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) || item->thumbnailForID != 0;
 }
 
 // Returns the primary color item if found, or NULL.
