@@ -16,5 +16,5 @@ git checkout ee74d1b53bd680748af14e737378de57e2a0a954
 mkdir build
 cd build
 cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release  ..
-ninja
 cd ../..
+ninja -C libargparse/build
