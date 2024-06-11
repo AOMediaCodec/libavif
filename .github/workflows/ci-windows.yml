@@ -45,6 +45,8 @@ jobs:
         codec-dav1d: 'LOCAL'
         codec-rav1e: 'LOCAL'
 
+    - name: Upgrade clang
+      run: choco upgrade llvm
     - name: Build aom
       if: steps.setup.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
