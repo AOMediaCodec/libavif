@@ -45,16 +45,6 @@ jobs:
         codec-dav1d: 'LOCAL'
         codec-rav1e: 'LOCAL'
 
-    - name: Build aom
-      if: steps.setup.outputs.ext-cache-hit != 'true'
-      working-directory: ./ext
-      run: ./aom.cmd
-      # Visual Studio 2022 has an issue starting at 17.8.0 which might cause
-      # AVX-512 instructions to be emitted in non-AVX-512 code. See
-      # https://github.com/AOMediaCodec/libavif/issues/2033#issuecomment-1960062751.
-      env:
-        CC: clang-cl
-        CXX: clang-cl
     - name: Build libgav1
       if: steps.setup.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
