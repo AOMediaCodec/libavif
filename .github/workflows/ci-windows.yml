@@ -55,6 +55,14 @@ jobs:
       env:
         CC: clang-cl
         CXX: clang-cl
+    - name: Build libgav1
+      if: steps.setup.outputs.ext-cache-hit != 'true'
+      working-directory: ./ext
+      run: ./libgav1.cmd
+      # Work around a bug in the windows-latest os image. See
+      # https://github.com/actions/runner-images/issues/10004#issuecomment-2153445161.
+      env:
+        CXXFLAGS: -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR
     - name: Build libyuv
       if: steps.setup.outputs.ext-cache-hit != 'true'
       working-directory: ./ext
