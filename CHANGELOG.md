@@ -56,7 +56,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add AVIF_CHROMA_SAMPLE_POSITION_RESERVED to avifChromaSamplePosition enum.
 
 ### Changed since 1.0.0
-* Update aom.cmd: v3.9.0
+* Update aom.cmd: v3.9.1
 * Update avm.cmd: research-v7.0.1
 * Update dav1d.cmd: 1.4.1
 * Update libgav1.cmd: v0.19.0
