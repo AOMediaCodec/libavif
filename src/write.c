@@ -620,7 +620,7 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
     return AVIF_RESULT_OK;
 }
 
-// Subset of avifEncoderWriteColorProperties() for the properties clli, pasp, clap, irot, imir.
+// Subset of avifEncoderWriteColorProperties() for the properties pasp, clap, irot, imir.
 // Also used by the extended_meta field of the MinimizedImageBox if AVIF_ENABLE_EXPERIMENTAL_MINI is
 // defined.
 static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
