@@ -19,6 +19,9 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Update package manager references
+      run: brew update
+      shell: bash
     - name: Install non-library dependencies
       run: brew install imagemagick
       shell: bash
