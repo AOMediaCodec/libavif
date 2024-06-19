@@ -21,6 +21,10 @@ runs:
   steps:
     - name: Setup Visual Studio shell
       uses: egor-tensin/vs-shell@9a932a62d05192eae18ca370155cf877eecc2202 # v2.1
+    - name: Set up meson
+      if: ${{ inputs.codec-dav1d == 'LOCAL' }}
+      run: pip install meson
+      shell: bash
 
     - uses: ./.github/actions/setup-common
       with:
