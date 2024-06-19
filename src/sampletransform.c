@@ -15,29 +15,25 @@ avifBool avifSampleTransformExpressionIsValid(const avifSampleTransformExpressio
     uint32_t stackSize = 0;
     for (uint32_t t = 0; t < tokens->count; ++t) {
         const avifSampleTransformToken * token = &tokens->tokens[t];
-        if (token->type >= AVIF_SAMPLE_TRANSFORM_RESERVED) {
-            return AVIF_FALSE;
-        }
-        if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX &&
-            (token->inputImageItemIndex == 0 || token->inputImageItemIndex > numInputImageItems)) {
+        AVIF_CHECK(token->type < AVIF_SAMPLE_TRANSFORM_RESERVED);
+        if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
             // inputImageItemIndex is 1-based.
-            return AVIF_FALSE;
+            AVIF_CHECK(token->inputImageItemIndex != 0);
+            AVIF_CHECK(token->inputImageItemIndex <= numInputImageItems);
         }
         if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT || token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
             ++stackSize;
         } else if (token->type == AVIF_SAMPLE_TRANSFORM_NEGATE || token->type == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
                    token->type == AVIF_SAMPLE_TRANSFORM_NOT || token->type == AVIF_SAMPLE_TRANSFORM_MSB) {
-            if (stackSize < 1) {
-                return AVIF_FALSE;
-            }
+            AVIF_CHECK(stackSize >= 1);
+            // Pop one and push one.
         } else {
-            if (stackSize < 2) {
-                return AVIF_FALSE;
-            }
+            AVIF_CHECK(stackSize >= 2);
             --stackSize; // Pop two and push one.
         }
     }
-    return stackSize == 1;
+    AVIF_CHECK(stackSize == 1);
+    return AVIF_TRUE;
 }
 
 avifBool avifSampleTransformExpressionIsEquivalentTo(const avifSampleTransformExpression * a, const avifSampleTransformExpression * b)
