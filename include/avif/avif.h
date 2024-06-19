@@ -799,7 +799,7 @@ typedef struct avifImage
     //
     // To encode any of these boxes, set the values in the associated box, then enable the flag in
     // transformFlags. On decode, only honor the values in boxes with the associated transform flag set.
-    // These also appy to gainMap->image, if any.
+    // These also apply to gainMap->image, if any.
     avifTransformFlags transformFlags;
     avifPixelAspectRatioBox pasp;
     avifCleanApertureBox clap;
@@ -817,6 +817,7 @@ typedef struct avifImage
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     // Gain map image and metadata. NULL if no gain map is present.
     // Owned by the avifImage and gets freed when calling avifImageDestroy().
+    // gainMap->image->transformFlags is always AVIF_TRANSFORM_NONE.
     avifGainMap * gainMap;
 #endif
 } avifImage;

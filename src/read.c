@@ -5436,6 +5436,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (gainMapProperties != NULL) {
         // The transformative properties of the gain map item have to match those of the primary item.
+        // See the explanation in avifRWStreamWriteProperties().
         paspProp = avifPropertyArrayFind(gainMapProperties, "pasp");
         AVIF_CHECKERR(!paspProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_PASP), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
         if (paspProp) {
