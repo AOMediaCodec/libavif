@@ -121,7 +121,7 @@ avifResult avifSampleTransformRecipeToExpression(avifSampleTransformRecipe recip
         // reference_count is two: one 12-bit input image and one 8-bit input image (because AV1 does not support 4-bit samples).
         //   (base_sample << 4) | (hidden_sample >> 4)
         // Note: base_sample is encoded losslessly. hidden_sample is encoded lossily or losslessly.
-        AVIF_CHECKERR(avifArrayCreate(expression, sizeof(avifSampleTransformToken), 5), AVIF_RESULT_OUT_OF_MEMORY);
+        AVIF_CHECKERR(avifArrayCreate(expression, sizeof(avifSampleTransformToken), 7), AVIF_RESULT_OUT_OF_MEMORY);
 
         {
             // The base image represents the 12 most significant bits of the reconstructed, bit-depth-extended output image.
