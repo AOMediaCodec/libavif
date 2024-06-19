@@ -63,7 +63,8 @@ runs:
       shell: bash
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
-      run: pip install meson
+      run:
+        sudo apt install meson
       shell: bash
 
     - uses: ./.github/actions/setup-common

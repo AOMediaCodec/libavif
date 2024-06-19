@@ -43,7 +43,7 @@ runs:
       shell: bash
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
-      run: pip3 install meson
+      run: brew install meson
       shell: bash
 
     - uses: ./.github/actions/setup-common
