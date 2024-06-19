@@ -1305,11 +1305,11 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
 
 // Same as avifImageApplyExpression() but for the expression (inputImageItem [op] constant).
 // Convenience function.
-static avifResult avifImageApplyOperation(avifImage * result,
-                                          const avifImage * inputImageItem,
-                                          avifSampleTransformTokenType op,
-                                          int32_t constant,
-                                          avifPlanesFlags planes)
+static avifResult avifImageApplyImgOpConst(avifImage * result,
+                                           const avifImage * inputImageItem,
+                                           avifSampleTransformTokenType op,
+                                           int32_t constant,
+                                           avifPlanesFlags planes)
 {
     // Postfix notation.
     const avifSampleTransformToken tokens[] = { { AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0, /*inputImageItemIndex=*/1 },
@@ -1318,56 +1318,45 @@ static avifResult avifImageApplyOperation(avifImage * result,
     return avifImageApplyOperations(result, AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, /*numTokens=*/3, tokens, /*numInputImageItems=*/1, &inputImageItem, planes);
 }
 
-static avifResult avifEncoderCreateBitDepthExtensionImage(const avifEncoder * encoder,
-                                                          const avifEncoderItem * item,
-                                                          avifBool itemWillBeEncodedLosslessly,
-                                                          const avifImage * image,
-                                                          avifImage ** sampleTransformedImage)
+static avifResult avifImageCreateAllocate(avifImage ** sampleTransformedImage, const avifImage * reference, uint32_t numBits, avifPlanesFlag planes)
 {
-    // The bit depth of the first image item used as input to the 'sato' Sample Transform derived image item.
-    uint32_t numMostSignificantBits;
-    // The bit depth of the current image item used as input to the 'sato' Sample Transform derived image item.
-    uint32_t sampleTransformInputImageDepth;
-    if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B) {
-        numMostSignificantBits = 8;
-        sampleTransformInputImageDepth = 8;
-    } else {
-        AVIF_ASSERT_OR_RETURN(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B);
-        numMostSignificantBits = 12;
-        if (item->itemCategory == AVIF_ITEM_COLOR || item->itemCategory == AVIF_ITEM_ALPHA) {
-            sampleTransformInputImageDepth = numMostSignificantBits;
-        } else {
-            AVIF_ASSERT_OR_RETURN(item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR ||
-                                  item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA);
-            sampleTransformInputImageDepth = 8; // Will be shifted to 4-bit samples at decoding.
-        }
-    }
-    AVIF_ASSERT_OR_RETURN(image->depth == 16); // Other bit depths could be supported but for now it is 16-bit only.
-    const uint32_t numLeastSignificantBits = image->depth - numMostSignificantBits;
-
-    *sampleTransformedImage = avifImageCreate(image->width, image->height, sampleTransformInputImageDepth, image->yuvFormat);
+    *sampleTransformedImage = avifImageCreate(reference->width, reference->height, numBits, reference->yuvFormat);
     AVIF_CHECKERR(*sampleTransformedImage != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-    const avifPlanesFlag planes = avifIsAlpha(item->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV;
-    const avifResult allocationResult = avifImageAllocatePlanes(*sampleTransformedImage, planes);
-    if (allocationResult != AVIF_RESULT_OK) {
-        avifImageDestroy(*sampleTransformedImage);
-        return allocationResult;
-    }
+    return avifImageAllocatePlanes(*sampleTransformedImage, planes);
+}
 
-    avifResult result;
-    if (item->itemCategory == AVIF_ITEM_COLOR || item->itemCategory == AVIF_ITEM_ALPHA) {
-        // 16-bit to sampleTransformInputImageDepth-bit so shift right by numLeastSignificantBits bits.
-        // Equivalent to dividing by 1<<numLeastSignificantBits, floored.
-        result = avifImageApplyOperation(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 1 << numLeastSignificantBits, planes);
-    } else {
+static avifResult avifEncoderCreateSatoImage(const avifEncoder * encoder,
+                                             const avifEncoderItem * item,
+                                             avifBool itemWillBeEncodedLosslessly,
+                                             const avifImage * image,
+                                             avifImage ** sampleTransformedImage)
+{
+    const avifPlanesFlag planes = avifIsAlpha(item->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV;
+    // The first image item used as input to the 'sato' Sample Transform derived image item.
+    avifBool isBase = item->itemCategory == AVIF_ITEM_COLOR || item->itemCategory == AVIF_ITEM_ALPHA;
+    if (!isBase) {
+        // The second image item used as input to the 'sato' Sample Transform derived image item.
         AVIF_ASSERT_OR_RETURN(item->itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY &&
                               item->itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY);
-        // Keep the numLeastSignificantBits from the 16-bit image. Use a bit mask.
-        result =
-            avifImageApplyOperation(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_AND, (1 << numLeastSignificantBits) - 1, planes);
+    }
 
-        if (result == AVIF_RESULT_OK && (*sampleTransformedImage)->depth != numLeastSignificantBits) {
-            AVIF_ASSERT_OR_RETURN((*sampleTransformedImage)->depth > numLeastSignificantBits);
+    if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B) {
+        if (isBase) {
+            AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 256, planes));
+        } else {
+            AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_AND, 255, planes));
+        }
+    } else {
+        AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B,
+                      AVIF_RESULT_NOT_IMPLEMENTED);
+        if (isBase) {
+            AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 12, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 16, planes));
+        } else {
+            AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_AND, 15, planes));
             // AVIF only supports 8, 10 or 12-bit image items. Scale the samples to fit the range.
             // Note: The samples could be encoded as is without being shifted left before encoding,
             //       but they would not be shifted right after decoding either. Right shifting after
@@ -1375,33 +1364,36 @@ static avifResult avifEncoderCreateBitDepthExtensionImage(const avifEncoder * en
             //       overflow, so it is safer to do these extra steps.
             //       It also makes more sense from a compression point-of-view to use the full range.
             // Transform in-place.
-            const uint32_t numShiftedBits = (*sampleTransformedImage)->depth - numLeastSignificantBits;
-            result = avifImageApplyOperation(*sampleTransformedImage,
-                                             *sampleTransformedImage,
-                                             AVIF_SAMPLE_TRANSFORM_PRODUCT,
-                                             1 << numShiftedBits,
-                                             planes);
-
-            if (result == AVIF_RESULT_OK && !itemWillBeEncodedLosslessly) {
+            AVIF_CHECKRES(
+                avifImageApplyImgOpConst(*sampleTransformedImage, *sampleTransformedImage, AVIF_SAMPLE_TRANSFORM_PRODUCT, 16, planes));
+            if (!itemWillBeEncodedLosslessly) {
                 // Small loss at encoding could be amplified by the truncation caused by the right
                 // shift after decoding. Offset sample values now, before encoding, to round rather
                 // than floor the samples shifted after decoding.
                 // Note: Samples were just left shifted by numShiftedBits, so adding less than
                 //       (1<<numShiftedBits) will not trigger any integer overflow.
                 // Transform in-place.
-                result = avifImageApplyOperation(*sampleTransformedImage,
-                                                 *sampleTransformedImage,
-                                                 AVIF_SAMPLE_TRANSFORM_SUM,
-                                                 1 << numShiftedBits >> 1,
-                                                 planes);
+                AVIF_CHECKRES(
+                    avifImageApplyImgOpConst(*sampleTransformedImage, *sampleTransformedImage, AVIF_SAMPLE_TRANSFORM_SUM, 7, planes));
             }
         }
     }
-    if (result != AVIF_RESULT_OK) {
-        avifImageDestroy(*sampleTransformedImage);
-        return result;
-    }
     return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderCreateBitDepthExtensionImage(const avifEncoder * encoder,
+                                                          const avifEncoderItem * item,
+                                                          avifBool itemWillBeEncodedLosslessly,
+                                                          const avifImage * image,
+                                                          avifImage ** sampleTransformedImage)
+{
+    AVIF_ASSERT_OR_RETURN(image->depth == 16); // Other bit depths could be supported but for now it is 16-bit only.
+    *sampleTransformedImage = NULL;
+    const avifResult result = avifEncoderCreateSatoImage(encoder, item, itemWillBeEncodedLosslessly, image, sampleTransformedImage);
+    if (result != AVIF_RESULT_OK && *sampleTransformedImage != NULL) {
+        avifImageDestroy(*sampleTransformedImage);
+    }
+    return result;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
@@ -1959,9 +1951,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             const int originalMinQuantizer = *encoderMinQuantizer;
             const int originalMaxQuantizer = *encoderMaxQuantizer;
 
-            if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
-                encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
-                if (item->itemCategory == AVIF_ITEM_COLOR || item->itemCategory == AVIF_ITEM_ALPHA) {
+            if (encoder->sampleTransformRecipe != AVIF_SAMPLE_TRANSFORM_NONE) {
+                if ((encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
+                     encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) &&
+                    (item->itemCategory == AVIF_ITEM_COLOR || item->itemCategory == AVIF_ITEM_ALPHA)) {
                     // Encoding the least significant bits of a sample does not make any sense if the
                     // other bits are lossily compressed. Encode the most significant bits losslessly.
                     quantizer = AVIF_QUANTIZER_LOSSLESS;
@@ -1983,8 +1976,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                     avifEncoderCreateBitDepthExtensionImage(encoder, item, itemWillBeEncodedLosslessly, cellImage, &sampleTransformedImage));
                 cellImagePlaceholder = sampleTransformedImage; // Transfer ownership.
                 cellImage = cellImagePlaceholder;
-            } else {
-                AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_NONE, AVIF_RESULT_NOT_IMPLEMENTED);
             }
 #endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
@@ -2628,7 +2619,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
             if (item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM) {
-                AVIF_ASSERT_OR_RETURN(depth == 16);
+                AVIF_ASSERT_OR_RETURN(depth == 16); // Only 16-bit depth is supported for now.
             } else if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B) {
                 depth = 8;
             } else {
@@ -2637,7 +2628,8 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                 } else {
                     AVIF_ASSERT_OR_RETURN(item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR ||
                                           item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA);
-                    depth = 8; // Will be shifted to 4-bit samples at decoding.
+                    // Will be shifted to 4-bit samples at decoding for AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B.
+                    depth = 8;
                 }
             }
         } else {
