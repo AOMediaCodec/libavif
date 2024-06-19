@@ -1349,8 +1349,7 @@ static avifResult avifEncoderCreateSatoImage(const avifEncoder * encoder,
             AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_AND, 255, planes));
         }
     } else {
-        AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B,
-                      AVIF_RESULT_NOT_IMPLEMENTED);
+        AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B, AVIF_RESULT_NOT_IMPLEMENTED);
         if (isBase) {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 12, planes));
             AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 16, planes));
