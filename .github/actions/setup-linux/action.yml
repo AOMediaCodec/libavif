@@ -61,6 +61,11 @@ runs:
       run:
         sudo apt install libyuv-dev
       shell: bash
+    - name: Set up meson
+      if: ${{ inputs.codec-dav1d == 'LOCAL' }}
+      run:
+        sudo apt install meson
+      shell: bash
 
     - uses: ./.github/actions/setup-common
       with:

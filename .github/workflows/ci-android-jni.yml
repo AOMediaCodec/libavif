@@ -25,7 +25,7 @@ jobs:
           # r25c is the same as 25.2.9519653.
           ndk-version: r25c
           add-to-path: false
-      - uses: ./.github/actions/setup-common
+      - uses: ./.github/actions/setup-linux
         with:
           codec-aom: 'LOCAL'
           codec-dav1d: 'LOCAL'

@@ -38,10 +38,6 @@ runs:
     - name: Set up nasm
       if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' }}
       uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
-    - name: Set up meson
-      if: ${{ inputs.codec-dav1d == 'LOCAL' }}
-      run: pip install meson
-      shell: bash
     - name: Set up rust
       if: ${{ inputs.codec-rav1e == 'LOCAL' }}
       uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
