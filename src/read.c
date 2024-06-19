@@ -4860,6 +4860,17 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
             gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
             gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
         }
+
+        if (avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pasp") ||
+            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clap") ||
+            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "irot") ||
+            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "imir")) {
+            // These properties have to be associated with the base and gain map image items instead
+            // of the tone-mapping derived image item. See the explanation in avifRWStreamWriteProperties().
+            avifDiagnosticsPrintf(data->diag,
+                                  "Box[tmap] 'pasp', 'clap', 'irot' and 'imir' properties must be associated with base and gain map items instead of 'tmap'");
+            return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+        }
     }
 
     if (decoder->enableDecodingGainMap) {
