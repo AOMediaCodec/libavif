@@ -85,9 +85,10 @@ TEST_P(SampleTransformTest, Avif16bit) {
        /*inputImageItemIndex=*/1},
       {AVIF_SAMPLE_TRANSFORM_CONSTANT, 1 << shift, 0},
       {AVIF_SAMPLE_TRANSFORM_DIVIDE, 0, 0}};
-  ASSERT_EQ(avifImageApplyOperations(image_no_sato.get(),
-                                     AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, 3,
-                                     tokens, 1, &inputImage, AVIF_PLANES_ALL),
+  ASSERT_EQ(avifImageApplyOperations(
+                image_no_sato.get(), AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
+                /*numTokens=*/3, tokens, /*numInputImageItems=*/1, &inputImage,
+                AVIF_PLANES_ALL),
             AVIF_RESULT_OK);
   EXPECT_TRUE(testutil::AreImagesEqual(*image_no_sato, *decoded_no_sato));
 }

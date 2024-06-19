@@ -1315,7 +1315,7 @@ static avifResult avifImageApplyOperation(avifImage * result,
     const avifSampleTransformToken tokens[] = { { AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0, /*inputImageItemIndex=*/1 },
                                                 { AVIF_SAMPLE_TRANSFORM_CONSTANT, constant, 0 },
                                                 { op, 0, 0 } };
-    return avifImageApplyOperations(result, AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, 3, tokens, 1, &inputImageItem, planes);
+    return avifImageApplyOperations(result, AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, /*numTokens=*/3, tokens, /*numInputImageItems=*/1, &inputImageItem, planes);
 }
 
 static avifResult avifEncoderCreateBitDepthExtensionImage(const avifEncoder * encoder,
