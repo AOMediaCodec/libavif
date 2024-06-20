@@ -73,7 +73,7 @@ jobs:
         -DAVIF_ENABLE_WERROR=ON
     - name: Build libavif (ninja)
       working-directory: ./build
-      run: ninja
+      run: ninja -v
     - name: Run AVIF Tests
       working-directory: ./build
       run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
