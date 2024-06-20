@@ -593,7 +593,7 @@ endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
-    set(AVIF_EXAMPLES avif_example_decode_memory avif_example_decode_file avif_example_decode_streaming avif_example_encode)
+    set(AVIF_EXAMPLES avif_example_decode_file avif_example_decode_memory avif_example_decode_streaming avif_example_encode)
 
     foreach(EXAMPLE ${AVIF_EXAMPLES})
         add_executable(${EXAMPLE} examples/${EXAMPLE}.c)
