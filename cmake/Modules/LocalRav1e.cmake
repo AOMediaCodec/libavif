@@ -98,6 +98,7 @@ else()
     set(RAV1E_FOUND ON)
 
     set(RAV1E_LIBRARIES ${Rust_CARGO_TARGET_LINK_NATIVE_LIBS})
+    message(STATUS ${Rust_CARGO_TARGET_LINK_NATIVE_LIBS})
     if(WIN32)
         # Remove msvcrt from RAV1E_LIBRARIES since it's linked by default
         list(REMOVE_ITEM RAV1E_LIBRARIES "msvcrt.lib" "-lmsvcrt")
