@@ -436,8 +436,8 @@ static uint32_t avifGetSampleCountOfChunk(const avifSampleTableSampleToChunkArra
 
 static avifResult avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput * decodeInput,
                                                           avifSampleTable * sampleTable,
-                                                          const uint32_t imageCountLimit,
-                                                          const uint64_t sizeHint,
+                                                          uint32_t imageCountLimit,
+                                                          uint64_t sizeHint,
                                                           avifDiagnostics * diag)
 {
     if (imageCountLimit) {
