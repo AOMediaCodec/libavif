@@ -28,6 +28,9 @@ runs:
       with:
         pkgs: vcpkg-tool-meson
         triplet: x64-windows-release
+        token: ${{ github.token }}
+        github-binarycache: true
+        cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
 
     - uses: ./.github/actions/setup-common
       with:
