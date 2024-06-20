@@ -99,6 +99,10 @@ else()
 
     set(RAV1E_LIBRARIES ${Rust_CARGO_TARGET_LINK_NATIVE_LIBS})
     if(WIN32)
+        # If an item starts with "/" (e.g., "/defaultlib:msvcrt"), change the
+        # leading "/" to "-" so that the target_link_libraries() call below
+        # will treat the item as a linker flag.
+        list(TRANSFORM RAV1E_LIBRARIES REPLACE "^/" "-")
         # Remove msvcrt from RAV1E_LIBRARIES since it's linked by default
         list(REMOVE_ITEM RAV1E_LIBRARIES "msvcrt.lib" "-lmsvcrt")
     endif()
