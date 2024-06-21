@@ -4865,8 +4865,11 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
             avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clap") ||
             avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "irot") ||
             avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "imir")) {
-            // These properties have to be associated with the base and gain map image items instead
-            // of the tone-mapping derived image item. See the explanation in avifRWStreamWriteProperties().
+            // libavif requires the bitstream contain the same pasp, clap, irot, imir
+            // properties for both the base and gain map image items used as input to
+            // the tone-mapped derived image item. libavif also requires the tone-mapped
+            // derived image item itself not be associated with these properties. This is
+            // enforced at encoding. Other patterns are rejected at decoding.
             avifDiagnosticsPrintf(data->diag,
                                   "Box[tmap] 'pasp', 'clap', 'irot' and 'imir' properties must be associated with base and gain map items instead of 'tmap'");
             return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
@@ -5446,8 +5449,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (gainMapProperties != NULL) {
-        // The transformative properties of the gain map item have to match those of the primary item.
-        // See the explanation in avifRWStreamWriteProperties().
+        // libavif requires the bitstream contain the same pasp, clap, irot, imir
+        // properties for both the base and gain map image items used as input to
+        // the tone-mapped derived image item. libavif also requires the tone-mapped
+        // derived image item itself not be associated with these properties. This is
+        // enforced at encoding. Other patterns are rejected at decoding.
         paspProp = avifPropertyArrayFind(gainMapProperties, "pasp");
         AVIF_CHECKERR(!paspProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_PASP), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
         if (paspProp) {
