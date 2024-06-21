@@ -1,5 +1,5 @@
 set(AVIF_LOCAL_RAV1E_GIT_TAG v0.7.1)
-set(AVIF_LOCAL_CORROSION_GIT_TAG v0.4.4)
+set(AVIF_LOCAL_CORROSION_GIT_TAG v0.4.10)
 set(AVIF_LOCAL_CARGOC_GIT_TAG v0.9.27)
 
 set(RAV1E_LIB_FILENAME
@@ -97,19 +97,10 @@ else()
     file(MAKE_DIRECTORY ${RAV1E_INCLUDE_DIR})
     set(RAV1E_FOUND ON)
 
-    set(RAV1E_LIBRARIES ${Rust_CARGO_TARGET_LINK_NATIVE_LIBS})
-    if(WIN32)
-        # If an item starts with "/" (e.g., "/defaultlib:msvcrt"), change the
-        # leading "/" to "-" so that the target_link_libraries() call below
-        # will treat the item as a linker flag.
-        list(TRANSFORM RAV1E_LIBRARIES REPLACE "^/" "-")
-        # Remove msvcrt from RAV1E_LIBRARIES since it's linked by default
-        list(REMOVE_ITEM RAV1E_LIBRARIES "msvcrt.lib" "-lmsvcrt")
-    endif()
-
     add_library(rav1e::rav1e STATIC IMPORTED)
     add_dependencies(rav1e::rav1e rav1e)
-    target_link_libraries(rav1e::rav1e INTERFACE "${RAV1E_LIBRARIES}")
+    target_link_libraries(rav1e::rav1e INTERFACE "${Rust_CARGO_TARGET_LINK_NATIVE_LIBS}")
+    target_link_options(rav1e::rav1e INTERFACE "${Rust_CARGO_TARGET_LINK_OPTIONS}")
     set_target_properties(rav1e::rav1e PROPERTIES IMPORTED_LOCATION "${RAV1E_LIB_FILENAME}" AVIF_LOCAL ON FOLDER "ext/rav1e")
     target_include_directories(rav1e::rav1e INTERFACE "${RAV1E_INCLUDE_DIR}")
 
