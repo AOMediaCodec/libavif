@@ -4895,6 +4895,43 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     *gainMapItem = gainMapItemTmp;
     return AVIF_RESULT_OK;
 }
+
+static avifResult aviDecoderCheckGainMapProperties(avifDecoder * decoder, const avifPropertyArray * gainMapProperties)
+{
+    const avifImage * image = decoder->image;
+    // libavif requires the bitstream contain the same 'pasp', 'clap', 'irot', 'imir'
+    // properties for both the base and gain map image items used as input to
+    // the tone-mapped derived image item. libavif also requires the tone-mapped
+    // derived image item itself not be associated with these properties. This is
+    // enforced at encoding. Other patterns are rejected at decoding.
+    const avifProperty * paspProp = avifPropertyArrayFind(gainMapProperties, "pasp");
+    if (!paspProp != !(image->transformFlags & AVIF_TRANSFORM_PASP) ||
+        (paspProp && (paspProp->u.pasp.hSpacing != image->pasp.hSpacing || paspProp->u.pasp.vSpacing != image->pasp.vSpacing))) {
+        avifDiagnosticsPrintf(&decoder->diag,
+                              "Pixel aspect ratio property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
+    const avifProperty * clapProp = avifPropertyArrayFind(gainMapProperties, "clap");
+    if (!clapProp != !(image->transformFlags & AVIF_TRANSFORM_CLAP) ||
+        (clapProp && (clapProp->u.clap.widthN != image->clap.widthN || clapProp->u.clap.widthD != image->clap.widthD ||
+                      clapProp->u.clap.heightN != image->clap.heightN || clapProp->u.clap.heightD != image->clap.heightD ||
+                      clapProp->u.clap.horizOffN != image->clap.horizOffN || clapProp->u.clap.horizOffD != image->clap.horizOffD ||
+                      clapProp->u.clap.vertOffN != image->clap.vertOffN || clapProp->u.clap.vertOffD != image->clap.vertOffD))) {
+        avifDiagnosticsPrintf(&decoder->diag, "Clean aperture property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
+    const avifProperty * irotProp = avifPropertyArrayFind(gainMapProperties, "irot");
+    if (!irotProp != !(image->transformFlags & AVIF_TRANSFORM_IROT) || (irotProp && irotProp->u.irot.angle != image->irot.angle)) {
+        avifDiagnosticsPrintf(&decoder->diag, "Rotation property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
+    const avifProperty * imirProp = avifPropertyArrayFind(gainMapProperties, "imir");
+    if (!imirProp != !(image->transformFlags & AVIF_TRANSFORM_IMIR) || (imirProp && imirProp->u.imir.axis != image->imir.axis)) {
+        avifDiagnosticsPrintf(&decoder->diag, "Mirroring property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
+    return AVIF_RESULT_OK;
+}
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
@@ -5449,39 +5486,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (gainMapProperties != NULL) {
-        // libavif requires the bitstream contain the same pasp, clap, irot, imir
-        // properties for both the base and gain map image items used as input to
-        // the tone-mapped derived image item. libavif also requires the tone-mapped
-        // derived image item itself not be associated with these properties. This is
-        // enforced at encoding. Other patterns are rejected at decoding.
-        paspProp = avifPropertyArrayFind(gainMapProperties, "pasp");
-        AVIF_CHECKERR(!paspProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_PASP), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        if (paspProp) {
-            AVIF_CHECKERR(paspProp->u.pasp.hSpacing == decoder->image->pasp.hSpacing, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(paspProp->u.pasp.vSpacing == decoder->image->pasp.vSpacing, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        }
-        clapProp = avifPropertyArrayFind(gainMapProperties, "clap");
-        AVIF_CHECKERR(!clapProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_CLAP), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        if (clapProp) {
-            AVIF_CHECKERR(clapProp->u.clap.widthN == decoder->image->clap.widthN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(clapProp->u.clap.widthD == decoder->image->clap.widthD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(clapProp->u.clap.heightN == decoder->image->clap.heightN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(clapProp->u.clap.heightD == decoder->image->clap.heightD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(clapProp->u.clap.horizOffN == decoder->image->clap.horizOffN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(clapProp->u.clap.horizOffD == decoder->image->clap.horizOffD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(clapProp->u.clap.vertOffN == decoder->image->clap.vertOffN, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-            AVIF_CHECKERR(clapProp->u.clap.vertOffD == decoder->image->clap.vertOffD, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        }
-        irotProp = avifPropertyArrayFind(gainMapProperties, "irot");
-        AVIF_CHECKERR(!irotProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_IROT), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        if (irotProp) {
-            AVIF_CHECKERR(irotProp->u.irot.angle == decoder->image->irot.angle, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        }
-        imirProp = avifPropertyArrayFind(gainMapProperties, "imir");
-        AVIF_CHECKERR(!imirProp == !(decoder->image->transformFlags & AVIF_TRANSFORM_IMIR), AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        if (imirProp) {
-            AVIF_CHECKERR(imirProp->u.imir.axis == decoder->image->imir.axis, AVIF_RESULT_DECODE_GAIN_MAP_FAILED);
-        }
+        AVIF_CHECKRES(aviDecoderCheckGainMapProperties(decoder, gainMapProperties));
     }
 #endif
 
