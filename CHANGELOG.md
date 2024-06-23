@@ -104,6 +104,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   index_size.
 * 'infe' boxes with an item_type different from 'mime' and without a
   null-terminated item_name are now considered invalid as per ISO/IEC 14496-12.
+* Allow YCgCo_Re and YCgCo_Ro decoding by default. Encoding is still conditioned
+  to the AVIF_ENABLE_EXPERIMENTAL_YCGCO CMake flag.
 
 ## [1.0.4] - 2024-02-08
 
@@ -185,7 +187,7 @@ List of incompatible ABI changes in this release:
 * Add experimental support for AV2 behind the compilation flag AVIF_CODEC_AVM.
   AVIF_CODEC_CHOICE_AVM is now part of avifCodecChoice.
 * Add experimental YCgCo-R support behind the compilation flag
-  AVIF_ENABLE_EXPERIMENTAL_YCGCO_R.
+  AVIF_ENABLE_YCGCO_R.
 * Allow lossless 4:0:0 on grayscale input.
 * Add avifenc --no-overwrite flag to avoid overwriting output file.
 * Add avifenc --clli flag to set clli.
