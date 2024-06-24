@@ -20,7 +20,7 @@ runs:
   using: "composite"
   steps:
     # github actions overwrites brew's python. Force it to reassert itself, by running in a separate step.
-    # Borrowed from https://github.com/mesonbuild/meson/blob/master/.github/workflows/macos.yml#L87-L92
+    # Borrowed from https://github.com/mesonbuild/meson/blob/aab2533ab4f7f4c16991620b400d71782f89be1c/.github/workflows/macos.yml#L87-L92
     - name: unbreak python in github actions
       run: |
         find /usr/local/bin -lname '*/Library/Frameworks/Python.framework/2to3*' \
