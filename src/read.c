@@ -4860,6 +4860,20 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
             gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
             gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
         }
+
+        if (avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pasp") ||
+            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clap") ||
+            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "irot") ||
+            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "imir")) {
+            // libavif requires the bitstream contain the same pasp, clap, irot, imir
+            // properties for both the base and gain map image items used as input to
+            // the tone-mapped derived image item. libavif also requires the tone-mapped
+            // derived image item itself not be associated with these properties. This is
+            // enforced at encoding. Other patterns are rejected at decoding.
+            avifDiagnosticsPrintf(data->diag,
+                                  "Box[tmap] 'pasp', 'clap', 'irot' and 'imir' properties must be associated with base and gain map items instead of 'tmap'");
+            return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+        }
     }
 
     if (decoder->enableDecodingGainMap) {
@@ -4879,6 +4893,43 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     // Only set the output parameters after everything has been validated.
     *toneMappedImageItem = toneMappedImageItemTmp;
     *gainMapItem = gainMapItemTmp;
+    return AVIF_RESULT_OK;
+}
+
+static avifResult aviDecoderCheckGainMapProperties(avifDecoder * decoder, const avifPropertyArray * gainMapProperties)
+{
+    const avifImage * image = decoder->image;
+    // libavif requires the bitstream contain the same 'pasp', 'clap', 'irot', 'imir'
+    // properties for both the base and gain map image items used as input to
+    // the tone-mapped derived image item. libavif also requires the tone-mapped
+    // derived image item itself not be associated with these properties. This is
+    // enforced at encoding. Other patterns are rejected at decoding.
+    const avifProperty * paspProp = avifPropertyArrayFind(gainMapProperties, "pasp");
+    if (!paspProp != !(image->transformFlags & AVIF_TRANSFORM_PASP) ||
+        (paspProp && (paspProp->u.pasp.hSpacing != image->pasp.hSpacing || paspProp->u.pasp.vSpacing != image->pasp.vSpacing))) {
+        avifDiagnosticsPrintf(&decoder->diag,
+                              "Pixel aspect ratio property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
+    const avifProperty * clapProp = avifPropertyArrayFind(gainMapProperties, "clap");
+    if (!clapProp != !(image->transformFlags & AVIF_TRANSFORM_CLAP) ||
+        (clapProp && (clapProp->u.clap.widthN != image->clap.widthN || clapProp->u.clap.widthD != image->clap.widthD ||
+                      clapProp->u.clap.heightN != image->clap.heightN || clapProp->u.clap.heightD != image->clap.heightD ||
+                      clapProp->u.clap.horizOffN != image->clap.horizOffN || clapProp->u.clap.horizOffD != image->clap.horizOffD ||
+                      clapProp->u.clap.vertOffN != image->clap.vertOffN || clapProp->u.clap.vertOffD != image->clap.vertOffD))) {
+        avifDiagnosticsPrintf(&decoder->diag, "Clean aperture property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
+    const avifProperty * irotProp = avifPropertyArrayFind(gainMapProperties, "irot");
+    if (!irotProp != !(image->transformFlags & AVIF_TRANSFORM_IROT) || (irotProp && irotProp->u.irot.angle != image->irot.angle)) {
+        avifDiagnosticsPrintf(&decoder->diag, "Rotation property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
+    const avifProperty * imirProp = avifPropertyArrayFind(gainMapProperties, "imir");
+    if (!imirProp != !(image->transformFlags & AVIF_TRANSFORM_IMIR) || (imirProp && imirProp->u.imir.axis != image->imir.axis)) {
+        avifDiagnosticsPrintf(&decoder->diag, "Mirroring property mismatch between input items of tone-mapping derived image item");
+        return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
+    }
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -5005,6 +5056,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     avifCodecType colorCodecType = AVIF_CODEC_TYPE_UNKNOWN;
     const avifPropertyArray * colorProperties = NULL;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    const avifPropertyArray * gainMapProperties = NULL;
+#endif
     if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
         avifTrack * colorTrack = NULL;
         avifTrack * alphaTrack = NULL;
@@ -5366,6 +5420,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image->gainMap->image,
                                                       &mainItems[AVIF_ITEM_GAIN_MAP]->properties,
                                                       codecType[AVIF_ITEM_GAIN_MAP]));
+            gainMapProperties = &mainItems[AVIF_ITEM_GAIN_MAP]->properties;
         }
 #endif
     }
@@ -5429,6 +5484,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->transformFlags |= AVIF_TRANSFORM_IMIR;
         decoder->image->imir = imirProp->u.imir;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (gainMapProperties != NULL) {
+        AVIF_CHECKRES(aviDecoderCheckGainMapProperties(decoder, gainMapProperties));
+    }
+#endif
 
     if (!data->cicpSet && (data->tiles.count > 0)) {
         avifTile * firstTile = &data->tiles.tile[0];
