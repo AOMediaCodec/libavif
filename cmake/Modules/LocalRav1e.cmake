@@ -1,8 +1,6 @@
 set(AVIF_LOCAL_RAV1E_GIT_TAG v0.7.1)
 set(AVIF_LOCAL_CORROSION_GIT_TAG v0.5.0)
-# v0.9.32 is the highest version of cargo-c we can upgrade to without a build
-# failure (on Windows). See https://github.com/AOMediaCodec/libavif/pull/2223.
-set(AVIF_LOCAL_CARGOC_GIT_TAG v0.9.32)
+set(AVIF_LOCAL_CARGOC_GIT_TAG v0.10.0)
 
 set(RAV1E_LIB_FILENAME
     "${AVIF_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${AVIF_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
