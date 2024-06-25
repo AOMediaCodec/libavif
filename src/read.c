@@ -1973,7 +1973,6 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
     uint8_t channelCount = (flags & 1) * 2 + 1;
     AVIF_ASSERT_OR_RETURN(channelCount == 1 || channelCount == 3);
     metadata->useBaseColorSpace = (flags & 2) != 0;
-    metadata->backwardDirection = (flags & 4) != 0;
     const avifBool useCommonDenominator = (flags & 8) != 0;
 
     if (useCommonDenominator) {

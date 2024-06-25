@@ -91,8 +91,6 @@ avifResult PrintMetadataCommand::Run() {
   std::cout << " * " << std::left << std::setw(w) << "Gain Map Gamma: "
             << FormatFractions(metadata.gainMapGammaN, metadata.gainMapGammaD)
             << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Backward Direction: "
-            << (metadata.backwardDirection ? "True" : "False") << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Use Base Color Space: "
             << (metadata.useBaseColorSpace ? "True" : "False") << "\n";
 

@@ -630,16 +630,13 @@ typedef struct avifGainMapMetadata
     //
     // If 'H' is the display's current log2-encoded HDR capacity (HDR to SDR ratio),
     // then the weight 'w' to apply the gain map is computed as follows:
-    // f = clamp((H - hdrCapacityMin) /
-    //           (hdrCapacityMax - hdrCapacityMin), 0, 1);
-    // w = backwardDirection ? f * -1 : f;
+    // f = clamp((H - baseHdrHeadroom) /
+    //           (alternateHdrHeadroom - baseHdrHeadroom), 0, 1);
+    // w = sign(alternateHdrHeadroom - baseHdrHeadroom) * f
     uint32_t baseHdrHeadroomN;
     uint32_t baseHdrHeadroomD;
     uint32_t alternateHdrHeadroomN;
     uint32_t alternateHdrHeadroomD;
-
-    // True if the gain map should be applied in reverse, see weight formula above.
-    avifBool backwardDirection;
 
     // True if tone mapping should be performed in the color space of the
     // base image. If false, the color space of the alternate image should
@@ -702,7 +699,6 @@ typedef struct avifGainMapMetadataDouble
     double alternateOffset[3];
     double baseHdrHeadroom;
     double alternateHdrHeadroom;
-    avifBool backwardDirection;
     avifBool useBaseColorSpace;
 } avifGainMapMetadataDouble;
 

@@ -601,7 +601,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 
     avifGainMapMetadataDouble metadataDouble;
     // Set default values from Adobe's spec.
-    metadataDouble.backwardDirection = AVIF_FALSE;
     metadataDouble.baseHdrHeadroom = 0.0;
     metadataDouble.alternateHdrHeadroom = 1.0;
     for (int i = 0; i < 3; ++i) {
@@ -637,13 +636,11 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     const char * baseRenditionIsHDR;
     if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues)) {
         if (!strcmp(baseRenditionIsHDR, "True")) {
-            metadataDouble.backwardDirection = AVIF_TRUE;
             SwapDoubles(&metadataDouble.baseHdrHeadroom, &metadataDouble.alternateHdrHeadroom);
             for (int c = 0; c < 3; ++c) {
                 SwapDoubles(&metadataDouble.baseOffset[c], &metadataDouble.alternateOffset[c]);
             }
         } else if (!strcmp(baseRenditionIsHDR, "False")) {
-            metadataDouble.backwardDirection = AVIF_FALSE;
         } else {
             return AVIF_FALSE; // Unexpected value.
         }

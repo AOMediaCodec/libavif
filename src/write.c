@@ -919,9 +919,6 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
     if (metadata->useBaseColorSpace) {
         flags |= 2;
     }
-    if (metadata->backwardDirection) {
-        flags |= 4;
-    }
     const uint32_t denom = metadata->baseHdrHeadroomD;
     avifBool useCommonDenominator = metadata->baseHdrHeadroomD == denom && metadata->alternateHdrHeadroomD == denom;
     for (int c = 0; c < channelCount; ++c) {
@@ -1609,8 +1606,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
             const avifGainMapMetadata * firstMetadata = &firstGainMap->metadata;
             const avifGainMapMetadata * cellMetadata = &cellGainMap->metadata;
-            if (cellMetadata->backwardDirection != firstMetadata->backwardDirection ||
-                cellMetadata->baseHdrHeadroomN != firstMetadata->baseHdrHeadroomN ||
+            if (cellMetadata->baseHdrHeadroomN != firstMetadata->baseHdrHeadroomN ||
                 cellMetadata->baseHdrHeadroomD != firstMetadata->baseHdrHeadroomD ||
                 cellMetadata->alternateHdrHeadroomN != firstMetadata->alternateHdrHeadroomN ||
                 cellMetadata->alternateHdrHeadroomD != firstMetadata->alternateHdrHeadroomD) {
