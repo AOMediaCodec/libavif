@@ -146,12 +146,12 @@ uint8_t avifImageIrotImirToExifOrientation(const avifImage * image)
 {
     if (!(image->transformFlags & AVIF_TRANSFORM_IROT) || image->irot.angle == 0) {
         if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
-            return 1; // The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
+            return 1;
         } else if (image->imir.axis == 0) {
-            return 4; // The 0th row is at the visual bottom of the image, and the 0th column is the visual left-hand side.
+            return 4;
         }
         // image->imir.axis == 1
-        return 2; // The 0th row is at the visual top of the image, and the 0th column is the visual right-hand side.
+        return 2;
     }
 
     if (image->irot.angle == 1) {
