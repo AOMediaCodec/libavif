@@ -3639,8 +3639,8 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
         matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601; // 6
     }
 
-    char infeType[4] = "av01";
-    char codecConfigType[4] = "av1C";
+    char infeType[] = "av01";
+    char codecConfigType[] = "av1C";
     if (hasExplicitCodecTypes) {
         AVIF_CHECKERR(avifROStreamRead(s, (uint8_t *)infeType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);        // bit(32) infe_type;
         AVIF_CHECKERR(avifROStreamRead(s, (uint8_t *)codecConfigType, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(32) codec_config_type;
