@@ -3639,8 +3639,8 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
         matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601; // 6
     }
 
-    uint8_t infeType[] = "av01";
-    uint8_t codecConfigType[] = "av1C";
+    uint8_t infeType[4];
+    uint8_t codecConfigType[4];
     if (hasExplicitCodecTypes) {
         AVIF_CHECKERR(avifROStreamRead(s, infeType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);        // bit(32) infe_type;
         AVIF_CHECKERR(avifROStreamRead(s, codecConfigType, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(32) codec_config_type;
@@ -3651,6 +3651,9 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
 #endif
         AVIF_CHECKERR(!memcmp(infeType, "av01", 4), AVIF_RESULT_BMFF_PARSE_FAILED);
         AVIF_CHECKERR(!memcmp(codecConfigType, "av1C", 4), AVIF_RESULT_BMFF_PARSE_FAILED);
+    } else {
+        memcpy(infeType, "av01", 4);
+        memcpy(codecConfigType, "av1C", 4);
     }
 
     uint32_t mainItemCodecConfigSize, mainItemDataSize;
