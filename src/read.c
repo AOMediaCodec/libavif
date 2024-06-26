@@ -3639,11 +3639,11 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
         matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601; // 6
     }
 
-    char infeType[] = "av01";
-    char codecConfigType[] = "av1C";
+    uint8_t infeType[] = "av01";
+    uint8_t codecConfigType[] = "av1C";
     if (hasExplicitCodecTypes) {
-        AVIF_CHECKERR(avifROStreamRead(s, (uint8_t *)infeType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);        // bit(32) infe_type;
-        AVIF_CHECKERR(avifROStreamRead(s, (uint8_t *)codecConfigType, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(32) codec_config_type;
+        AVIF_CHECKERR(avifROStreamRead(s, infeType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);        // bit(32) infe_type;
+        AVIF_CHECKERR(avifROStreamRead(s, codecConfigType, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(32) codec_config_type;
 #if AVIF_CODEC_AVM_ENABLED
         if (!memcmp(infeType, "av02", 4) && !memcmp(codecConfigType, "av2C", 4)) {
             return AVIF_RESULT_NOT_IMPLEMENTED;
@@ -3768,7 +3768,7 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
     if (hasAlpha) {
         AVIF_CHECKERR(alphaItemDataSize > 0, AVIF_RESULT_BMFF_PARSE_FAILED);
         AVIF_CHECKERR(alphaItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
-        AVIF_CHECKERR(avifParseCodecConfiguration(s, &alphaItemCodecConfig, codecConfigType, diag),
+        AVIF_CHECKERR(avifParseCodecConfiguration(s, &alphaItemCodecConfig, (const char *)codecConfigType, diag),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) alpha_item_codec_config[alpha_item_codec_config_size];
     }
 
@@ -3777,7 +3777,7 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
 
     avifCodecConfigurationBox mainItemCodecConfig = { 0 };
     AVIF_CHECKERR(mainItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
-    AVIF_CHECKERR(avifParseCodecConfiguration(s, &mainItemCodecConfig, codecConfigType, diag),
+    AVIF_CHECKERR(avifParseCodecConfiguration(s, &mainItemCodecConfig, (const char *)codecConfigType, diag),
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) main_item_codec_config[main_item_codec_config_size];
 
     // Make sure all metadata and coded chunks fit into the 'meta' box whose size is rawLen.
@@ -3817,7 +3817,7 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
     }
 
     // Property with fixed index 1.
-    avifProperty * colorCodecConfigProp = avifMetaCreateProperty(meta, codecConfigType);
+    avifProperty * colorCodecConfigProp = avifMetaCreateProperty(meta, (const char *)codecConfigType);
     AVIF_CHECKERR(colorCodecConfigProp, AVIF_RESULT_OUT_OF_MEMORY);
     colorCodecConfigProp->u.av1C = mainItemCodecConfig;
     AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, colorCodecConfigProp), AVIF_RESULT_OUT_OF_MEMORY);
@@ -3868,7 +3868,7 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
 
     if (hasAlpha) {
         // Property with fixed index 6.
-        avifProperty * alphaCodecConfigProp = avifMetaCreateProperty(meta, codecConfigType);
+        avifProperty * alphaCodecConfigProp = avifMetaCreateProperty(meta, (const char *)codecConfigType);
         AVIF_CHECKERR(alphaCodecConfigProp, AVIF_RESULT_OUT_OF_MEMORY);
         alphaCodecConfigProp->u.av1C = alphaItemCodecConfig;
         AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, alphaCodecConfigProp), AVIF_RESULT_OUT_OF_MEMORY);
