@@ -2921,7 +2921,9 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
     return AVIF_RESULT_OK;
 }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
 static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t rawOffset, uint32_t flags, avifDiagnostics * diag);
+#endif
 
 static avifResult avifParseMetaBox(avifMeta * meta, uint64_t rawOffset, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
