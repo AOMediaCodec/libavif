@@ -142,6 +142,48 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
     return AVIF_RESULT_OK;
 }
 
+uint8_t avifImageIrotImirToExifOrientation(const avifImage * image)
+{
+    if (!(image->transformFlags & AVIF_TRANSFORM_IROT) || image->irot.angle == 0) {
+        if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+            return 1; // The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
+        } else if (image->imir.axis == 0) {
+            return 4; // The 0th row is at the visual bottom of the image, and the 0th column is the visual left-hand side.
+        }
+        // image->imir.axis == 1
+        return 2; // The 0th row is at the visual top of the image, and the 0th column is the visual right-hand side.
+    }
+
+    if (image->irot.angle == 1) {
+        if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+            return 6;
+        } else if (image->imir.axis == 0) {
+            return 5;
+        }
+        // image->imir.axis == 1
+        return 7;
+    }
+
+    if (image->irot.angle == 2) {
+        if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+            return 3;
+        } else if (image->imir.axis == 0) {
+            return 2;
+        }
+        // image->imir.axis == 1
+        return 4;
+    }
+
+    // image->irot.angle == 3
+    if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+        return 8;
+    } else if (image->imir.axis == 0) {
+        return 7;
+    }
+    // image->imir.axis == 1
+    return 5;
+}
+
 avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
     AVIF_CHECKRES(avifRWDataSet(&image->exif, exif, exifSize));

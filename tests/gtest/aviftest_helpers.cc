@@ -16,6 +16,7 @@
 
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
+#include "avif/internal.h"
 #include "avifpng.h"
 #include "avifutil.h"
 
@@ -230,15 +231,30 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
       image1.clli.maxPALL != image2.clli.maxPALL) {
     return false;
   }
-  if (image1.transformFlags != image2.transformFlags ||
+  if ((image1.transformFlags & AVIF_TRANSFORM_PASP) !=
+          (image2.transformFlags & AVIF_TRANSFORM_PASP) ||
       ((image1.transformFlags & AVIF_TRANSFORM_PASP) &&
-       std::memcmp(&image1.pasp, &image2.pasp, sizeof(image1.pasp))) ||
+       (image1.pasp.hSpacing != image2.pasp.hSpacing ||
+        image1.pasp.vSpacing != image2.pasp.vSpacing))) {
+    return false;
+  }
+  if ((image1.transformFlags & AVIF_TRANSFORM_CLAP) !=
+          (image2.transformFlags & AVIF_TRANSFORM_CLAP) ||
       ((image1.transformFlags & AVIF_TRANSFORM_CLAP) &&
-       std::memcmp(&image1.clap, &image2.clap, sizeof(image1.clap))) ||
-      ((image1.transformFlags & AVIF_TRANSFORM_IROT) &&
-       std::memcmp(&image1.irot, &image2.irot, sizeof(image1.irot))) ||
-      ((image1.transformFlags & AVIF_TRANSFORM_IMIR) &&
-       std::memcmp(&image1.imir, &image2.imir, sizeof(image1.imir)))) {
+       (image1.clap.widthN != image2.clap.widthN ||
+        image1.clap.widthD != image2.clap.widthD ||
+        image1.clap.heightN != image2.clap.heightN ||
+        image1.clap.heightD != image2.clap.heightD ||
+        image1.clap.horizOffN != image2.clap.horizOffN ||
+        image1.clap.horizOffD != image2.clap.horizOffD ||
+        image1.clap.vertOffN != image2.clap.vertOffN ||
+        image1.clap.vertOffD != image2.clap.vertOffD))) {
+    return false;
+  }
+  // Different rotation and mirroring properties could lead to the same
+  // orientation. Convert to Exif orientation for an easy comparison.
+  if (avifImageIrotImirToExifOrientation(&image1) !=
+      avifImageIrotImirToExifOrientation(&image2)) {
     return false;
   }
 

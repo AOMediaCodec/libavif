@@ -188,29 +188,6 @@ avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCou
     return AVIF_TRUE;
 }
 
-static const int VARINT_DEPTH_0 = 7; // +1 bit to stop or continue.
-static const int VARINT_DEPTH_1 = 3; // +1 bit to stop or continue.
-static const int VARINT_DEPTH_2 = 18;
-
-avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v)
-{
-    AVIF_CHECK(avifROStreamReadBits(stream, v, VARINT_DEPTH_0));
-    uint32_t extended, extension;
-
-    AVIF_CHECK(avifROStreamReadBits(stream, &extended, 1));
-    if (extended) {
-        AVIF_CHECK(avifROStreamReadBits(stream, &extension, VARINT_DEPTH_1));
-        *v += (extension + 1) << VARINT_DEPTH_0;
-
-        AVIF_CHECK(avifROStreamReadBits(stream, &extended, 1));
-        if (extended) {
-            AVIF_CHECK(avifROStreamReadBits(stream, &extension, VARINT_DEPTH_2));
-            *v += (extension + 1) << (VARINT_DEPTH_0 + VARINT_DEPTH_1);
-        }
-    }
-    return AVIF_TRUE;
-}
-
 avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t outputSize)
 {
     assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
@@ -503,28 +480,6 @@ avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCo
         if (stream->numUsedBitsInPartialByte == 8) {
             // Start a new partial byte the next time a bit is needed.
             stream->numUsedBitsInPartialByte = 0;
-        }
-    }
-    return AVIF_RESULT_OK;
-}
-
-avifResult avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v)
-{
-    AVIF_CHECKERR(v < (1u << (VARINT_DEPTH_0 + VARINT_DEPTH_1 + VARINT_DEPTH_2)) + (1u << (VARINT_DEPTH_0 + VARINT_DEPTH_1)) +
-                          (1u << VARINT_DEPTH_0),
-                  AVIF_RESULT_INVALID_ARGUMENT);
-
-    AVIF_CHECKRES(avifRWStreamWriteBits(stream, v & ((1u << VARINT_DEPTH_0) - 1), VARINT_DEPTH_0)); // value
-    v >>= VARINT_DEPTH_0;
-    AVIF_CHECKRES(avifRWStreamWriteBits(stream, v > 0, 1)); // extended
-    if (v > 0) {
-        v -= 1;
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, v & ((1u << VARINT_DEPTH_1) - 1), VARINT_DEPTH_1)); // extension
-        v >>= VARINT_DEPTH_1;
-        AVIF_CHECKRES(avifRWStreamWriteBits(stream, v > 0, 1)); // extended
-        if (v > 0) {
-            v -= 1;
-            AVIF_CHECKRES(avifRWStreamWriteBits(stream, v, VARINT_DEPTH_2)); // extension
         }
     }
     return AVIF_RESULT_OK;

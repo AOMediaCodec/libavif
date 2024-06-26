@@ -13,13 +13,13 @@ namespace {
 
 //------------------------------------------------------------------------------
 
-class AvifMinimizedImageBoxTest
+class AvifMetaBoxV1Test
     : public testing::TestWithParam<std::tuple<
           /*width=*/int, /*height=*/int, /*depth=*/int, avifPixelFormat,
           avifPlanesFlags, avifRange, /*create_icc=*/bool, /*create_exif=*/bool,
-          /*create_xmp=*/bool, /*create_clli=*/bool, avifTransformFlags>> {};
+          /*create_xmp=*/bool, avifTransformFlags>> {};
 
-TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
+TEST_P(AvifMetaBoxV1Test, SimpleOpaque) {
   const int width = std::get<0>(GetParam());
   const int height = std::get<1>(GetParam());
   const int depth = std::get<2>(GetParam());
@@ -29,8 +29,7 @@ TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
   const bool create_icc = std::get<6>(GetParam());
   const bool create_exif = std::get<7>(GetParam());
   const bool create_xmp = std::get<8>(GetParam());
-  const bool create_clli = std::get<9>(GetParam());
-  const avifTransformFlags create_transform_flags = std::get<10>(GetParam());
+  const avifTransformFlags create_transform_flags = std::get<9>(GetParam());
 
   ImagePtr image =
       testutil::CreateImage(width, height, depth, format, planes, range);
@@ -58,24 +57,7 @@ TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
                                       testutil::kSampleXmp.size()),
               AVIF_RESULT_OK);
   }
-  if (create_clli) {
-    image->clli.maxCLL = 1;
-    image->clli.maxPALL = 2;
-  }
   image->transformFlags = create_transform_flags;
-  if (create_transform_flags & AVIF_TRANSFORM_PASP) {
-    image->pasp.hSpacing = 1;
-    image->pasp.vSpacing = 2;
-  }
-  if (create_transform_flags & AVIF_TRANSFORM_CLAP) {
-    const avifCropRect rect{image->width / 4, image->height / 4,
-                            std::min(1u, image->width / 2),
-                            std::min(1u, image->height / 2)};
-    avifDiagnostics diag;
-    ASSERT_TRUE(avifCleanApertureBoxConvertCropRect(&image->clap, &rect,
-                                                    image->width, image->height,
-                                                    image->yuvFormat, &diag));
-  }
   if (create_transform_flags & AVIF_TRANSFORM_IROT) {
     image->irot.angle = 2;
   }
@@ -84,37 +66,37 @@ TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
   }
 
   // Encode.
-  testutil::AvifRwData encoded_mini;
+  testutil::AvifRwData encoded_metav1;
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->headerFormat = AVIF_HEADER_REDUCED;
-  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_mini),
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_metav1),
             AVIF_RESULT_OK);
 
   // Decode.
-  const ImagePtr decoded_mini =
-      testutil::Decode(encoded_mini.data, encoded_mini.size);
-  ASSERT_NE(decoded_mini, nullptr);
+  const ImagePtr decoded_metav1 =
+      testutil::Decode(encoded_metav1.data, encoded_metav1.size);
+  ASSERT_NE(decoded_metav1, nullptr);
 
   // Compare.
-  testutil::AvifRwData encoded_meta =
+  testutil::AvifRwData encoded_metav0 =
       testutil::Encode(image.get(), encoder->speed);
-  ASSERT_NE(encoded_meta.data, nullptr);
+  ASSERT_NE(encoded_metav0.data, nullptr);
   // At least 200 bytes should be saved.
-  EXPECT_LT(encoded_mini.size, encoded_meta.size - 200);
+  EXPECT_LT(encoded_metav1.size, encoded_metav0.size - 200);
 
-  const ImagePtr decoded_meta =
-      testutil::Decode(encoded_meta.data, encoded_meta.size);
-  ASSERT_NE(decoded_meta, nullptr);
+  const ImagePtr decoded_metav0 =
+      testutil::Decode(encoded_metav0.data, encoded_metav0.size);
+  ASSERT_NE(decoded_metav0, nullptr);
 
   // Only the container changed. The pixels, features and metadata should be
   // identical.
   EXPECT_TRUE(
-      testutil::AreImagesEqual(*decoded_meta.get(), *decoded_mini.get()));
+      testutil::AreImagesEqual(*decoded_metav0.get(), *decoded_metav1.get()));
 }
 
-INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
+INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMetaBoxV1Test,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
                                  /*depth=*/Values(8),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
@@ -123,40 +105,35 @@ INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
                                  /*create_icc=*/Values(false, true),
                                  /*create_exif=*/Values(false, true),
                                  /*create_xmp=*/Values(false, true),
-                                 /*create_clli=*/Values(false),
                                  Values(AVIF_TRANSFORM_NONE)));
 
 INSTANTIATE_TEST_SUITE_P(
-    DepthsSubsamplings, AvifMinimizedImageBoxTest,
+    DepthsSubsamplings, AvifMetaBoxV1Test,
     Combine(/*width=*/Values(12), /*height=*/Values(34),
             /*depth=*/Values(8, 10, 12),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
                    AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400),
             Values(AVIF_PLANES_ALL), Values(AVIF_RANGE_FULL),
             /*create_icc=*/Values(false), /*create_exif=*/Values(false),
-            /*create_xmp=*/Values(false), /*create_clli=*/Values(false),
-            Values(AVIF_TRANSFORM_NONE)));
+            /*create_xmp=*/Values(false), Values(AVIF_TRANSFORM_NONE)));
 
 INSTANTIATE_TEST_SUITE_P(
-    Dimensions, AvifMinimizedImageBoxTest,
+    Dimensions, AvifMetaBoxV1Test,
     Combine(/*width=*/Values(127), /*height=*/Values(200), /*depth=*/Values(8),
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),
             /*create_exif=*/Values(true), /*create_xmp=*/Values(true),
-            /*create_clli=*/Values(false), Values(AVIF_TRANSFORM_NONE)));
+            Values(AVIF_TRANSFORM_NONE)));
 
-// Use CLLI and transform properties that are not supported by a plain
-// MinimizedImageBox to force the use of an extended_meta field.
 INSTANTIATE_TEST_SUITE_P(
-    ExtendedMetaField, AvifMinimizedImageBoxTest,
+    Orientation, AvifMetaBoxV1Test,
     Combine(/*width=*/Values(16), /*height=*/Values(24), /*depth=*/Values(8),
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),
             /*create_exif=*/Values(true), /*create_xmp=*/Values(true),
-            /*create_clli=*/Values(true),
-            Values(AVIF_TRANSFORM_NONE,
-                   AVIF_TRANSFORM_PASP | AVIF_TRANSFORM_CLAP |
-                       AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR)));
+            Values(AVIF_TRANSFORM_NONE, AVIF_TRANSFORM_IROT,
+                   AVIF_TRANSFORM_IMIR,
+                   AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR)));
 
 //------------------------------------------------------------------------------
 
