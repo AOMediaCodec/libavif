@@ -1,5 +1,5 @@
 name: CI Format Check
-on: [push]
+on: [push, pull_request]
 
 permissions:
   contents: read
