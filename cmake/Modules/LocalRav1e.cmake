@@ -51,7 +51,7 @@ else()
             cargoc
             GIT_REPOSITORY https://github.com/lu-zero/cargo-c.git
             GIT_TAG "${AVIF_LOCAL_CARGOC_GIT_TAG}"
-            GIT_SHALLOW OFF
+	    GIT_SHALLOW ON
         )
         FetchContent_MakeAvailable(cargoc)
 
