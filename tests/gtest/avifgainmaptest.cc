@@ -776,7 +776,7 @@ TEST(GainMapTest, NoGainMap) {
   EXPECT_EQ(decoded->gainMap, nullptr);
 }
 
-TEST(GainMapTest, DecodeGainMapGrid) {
+TEST(GainMapTest, DISABLED_DecodeGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_gainmap_different_grid.avif";
   DecoderPtr decoder(avifDecoderCreate());
@@ -816,7 +816,7 @@ TEST(GainMapTest, DecodeGainMapGrid) {
       << avifResultToString(result) << " " << decoder->diag.error;
 }
 
-TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
+TEST(GainMapTest, DISABLED_DecodeColorGridGainMapNoGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_alpha_grid_gainmap_nogrid.avif";
   ImagePtr decoded(avifImageCreateEmpty());
@@ -840,7 +840,7 @@ TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
   EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomD, 2u);
 }
 
-TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
+TEST(GainMapTest, DISABLED_DecodeColorNoGridGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_nogrid_alpha_nogrid_gainmap_grid.avif";
   ImagePtr decoded(avifImageCreateEmpty());

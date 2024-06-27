@@ -1968,52 +1968,36 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
         return AVIF_FALSE;
     }
 
+    uint16_t minimumVersion;
+    AVIF_CHECK(avifROStreamReadU16(&s, &minimumVersion));
+    if (minimumVersion != 0) {
+        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported minimum version [%u]", minimumVersion);
+        return AVIF_FALSE;
+    }
+    uint16_t writerVersion;
+    AVIF_CHECK(avifROStreamReadU16(&s, &writerVersion));
+
     uint8_t flags;
     AVIF_CHECK(avifROStreamRead(&s, &flags, 1)); // unsigned int(8) flags;
-    uint8_t channelCount = (flags & 1) * 2 + 1;
-    AVIF_ASSERT_OR_RETURN(channelCount == 1 || channelCount == 3);
-    metadata->useBaseColorSpace = (flags & 2) != 0;
-    const avifBool useCommonDenominator = (flags & 8) != 0;
+    const uint8_t channelCount = (flags & (1 << 7)) ? 3 : 1;
+    metadata->useBaseColorSpace = (flags & (1 << 6)) != 0;
 
-    if (useCommonDenominator) {
-        uint32_t commonDenominator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &commonDenominator));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomD));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomD));
 
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));
-        metadata->baseHdrHeadroomD = commonDenominator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN));
-        metadata->alternateHdrHeadroomD = commonDenominator;
-
-        for (int c = 0; c < channelCount; ++c) {
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c]));
-            metadata->gainMapMinD[c] = commonDenominator;
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c]));
-            metadata->gainMapMaxD[c] = commonDenominator;
-            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));
-            metadata->gainMapGammaD[c] = commonDenominator;
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c]));
-            metadata->baseOffsetD[c] = commonDenominator;
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c]));
-            metadata->alternateOffsetD[c] = commonDenominator;
-        }
-    } else {
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomD));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomD));
-
-        for (int c = 0; c < channelCount; ++c) {
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMinD[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMaxD[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaD[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseOffsetD[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c]));
-            AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateOffsetD[c]));
-        }
+    for (int c = 0; c < channelCount; ++c) {
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMinD[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMaxD[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaD[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseOffsetD[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateOffsetD[c]));
     }
 
     // Fill the remaining values by copying those from the first channel.
