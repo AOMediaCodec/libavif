@@ -11,12 +11,12 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #    "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -b v2.1.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v2.1.1 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 
 cd SVT-AV1
 cd Build/windows
 
-call build.bat release static no-dec no-apps
+call build.bat release static no-apps
 cd ../..
 mkdir include\svt-av1
 copy Source\API\*.h include\svt-av1
