@@ -85,7 +85,8 @@ TEST(SampleTransformTest, NoRecipe) {
 TEST(SampleTransformTest, RecipeToExpression) {
   for (avifSampleTransformRecipe recipe :
        {AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B,
-        AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B}) {
+        AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B,
+        AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B}) {
     AvifExpression expression;
     ASSERT_EQ(avifSampleTransformRecipeToExpression(recipe, &expression),
               AVIF_RESULT_OK);
