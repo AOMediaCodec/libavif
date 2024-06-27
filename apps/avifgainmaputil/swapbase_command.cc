@@ -98,7 +98,6 @@ avifResult ChangeBase(const avifImage& image, int depth,
 
   // Swap base and alternate in the gain map metadata.
   avifGainMapMetadata& metadata = swapped->gainMap->metadata;
-  metadata.backwardDirection = !metadata.backwardDirection;
   metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
   std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
   std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);

@@ -21,10 +21,6 @@ namespace {
 
 void CheckGainMapMetadataMatches(const avifGainMapMetadata& actual,
                                  const avifGainMapMetadata& expected) {
-  // 'expecteed' is the source struct which has arbitrary data and booleans
-  // values can contain any value, but the decoded ('actual') struct should
-  // be 0 or 1.
-  EXPECT_EQ(actual.backwardDirection, expected.backwardDirection ? 1 : 0);
   EXPECT_EQ(actual.baseHdrHeadroomN, expected.baseHdrHeadroomN);
   EXPECT_EQ(actual.baseHdrHeadroomD, expected.baseHdrHeadroomD);
   EXPECT_EQ(actual.alternateHdrHeadroomN, expected.alternateHdrHeadroomN);

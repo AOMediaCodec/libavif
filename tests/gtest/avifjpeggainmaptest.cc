@@ -67,7 +67,6 @@ void CheckGainMapMetadata(
   EXPECT_NEAR(
       static_cast<double>(m.alternateHdrHeadroomN) / m.alternateHdrHeadroomD,
       alternate_hdr_headroom, kEpsilon);
-  EXPECT_EQ(m.backwardDirection, backward_direction);
 }
 
 TEST(JpegTest, ReadJpegWithGainMap) {

@@ -25,7 +25,6 @@ const char* data_path = nullptr;
 
 void CheckGainMapMetadataMatches(const avifGainMapMetadata& lhs,
                                  const avifGainMapMetadata& rhs) {
-  EXPECT_EQ(lhs.backwardDirection, rhs.backwardDirection);
   EXPECT_EQ(lhs.baseHdrHeadroomN, rhs.baseHdrHeadroomN);
   EXPECT_EQ(lhs.baseHdrHeadroomD, rhs.baseHdrHeadroomD);
   EXPECT_EQ(lhs.alternateHdrHeadroomN, rhs.alternateHdrHeadroomN);
@@ -47,12 +46,15 @@ void CheckGainMapMetadataMatches(const avifGainMapMetadata& lhs,
 
 avifGainMapMetadata GetTestGainMapMetadata(bool base_rendition_is_hdr) {
   avifGainMapMetadata metadata = {};
-  metadata.backwardDirection = base_rendition_is_hdr;
   metadata.useBaseColorSpace = true;
   metadata.baseHdrHeadroomN = 0;
   metadata.baseHdrHeadroomD = 1;
   metadata.alternateHdrHeadroomN = 6;
   metadata.alternateHdrHeadroomD = 2;
+  if (base_rendition_is_hdr) {
+    std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
+    std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
+  }
   for (int c = 0; c < 3; ++c) {
     metadata.baseOffsetN[c] = 10 * c;
     metadata.baseOffsetD[c] = 1000;
@@ -884,7 +886,6 @@ TEST(GainMapTest, ConvertMetadata) {
   metadata_double.alternateOffset[1] = 0.0;
   metadata_double.baseHdrHeadroom = 1.0;
   metadata_double.alternateHdrHeadroom = 10.0;
-  metadata_double.backwardDirection = AVIF_TRUE;
 
   // Convert to avifGainMapMetadata.
   avifGainMapMetadata metadata = {};
@@ -909,7 +910,6 @@ TEST(GainMapTest, ConvertMetadata) {
   EXPECT_FRACTION_NEAR(metadata.alternateHdrHeadroomN,
                        metadata.alternateHdrHeadroomD,
                        metadata_double.alternateHdrHeadroom);
-  EXPECT_EQ(metadata.backwardDirection, metadata_double.backwardDirection);
 
   // Convert back to avifGainMapMetadataDouble.
   avifGainMapMetadataDouble metadata_double2 = {};
@@ -933,8 +933,6 @@ TEST(GainMapTest, ConvertMetadata) {
               kEpsilon);
   EXPECT_NEAR(metadata_double2.alternateHdrHeadroom,
               metadata_double.alternateHdrHeadroom, kEpsilon);
-  EXPECT_EQ(metadata_double2.backwardDirection,
-            metadata_double.backwardDirection);
 }
 
 TEST(GainMapTest, ConvertMetadataToFractionInvalid) {
@@ -955,7 +953,6 @@ TEST(GainMapTest, ConvertMetadataToDoubleInvalid) {
 static void SwapBaseAndAlternate(const avifImage& new_alternate,
                                  avifGainMap& gain_map) {
   avifGainMapMetadata& metadata = gain_map.metadata;
-  metadata.backwardDirection = !metadata.backwardDirection;
   metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
   std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
   std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
