@@ -575,8 +575,11 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         float channelMin[3] = { 0 };
         for (int j = 0; j < height; ++j) {
             for (int i = 0; i < width; ++i) {
-                avifGetRGBAPixel(gainMapMetadata.useBaseColorSpace ? altRgbImage : baseRgbImage, i, j,
-                                 gainMapMetadata.useBaseColorSpace ? &altRGBInfo : &baseRGBInfo, rgba);
+                avifGetRGBAPixel(gainMapMetadata.useBaseColorSpace ? altRgbImage : baseRgbImage,
+                                 i,
+                                 j,
+                                 gainMapMetadata.useBaseColorSpace ? &altRGBInfo : &baseRGBInfo,
+                                 rgba);
 
                 // Convert to linear.
                 for (int c = 0; c < 3; ++c) {
