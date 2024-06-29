@@ -732,7 +732,7 @@ avifResult avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
 avifResult avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
 avifResult avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
 // The following functions can write non-aligned bits.
-avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount);
+AVIF_NODISCARD avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount);
 avifResult avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v);
 
 // This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
