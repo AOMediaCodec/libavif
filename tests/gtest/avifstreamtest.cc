@@ -203,6 +203,15 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_FALSE(avifROStreamSkip(&ro_stream, /*byteCount=*/1));
 }
 
+TEST(StreamTest, WriteBitsLimit) {
+  testutil::AvifRwData rw_data;
+  avifRWStream rw_stream;
+  avifRWStreamStart(&rw_stream, &rw_data);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 7, 3), AVIF_RESULT_OK);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 8, 3),
+            AVIF_RESULT_INVALID_ARGUMENT);
+}
+
 //------------------------------------------------------------------------------
 // Variable length integer implementation
 
