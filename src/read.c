@@ -3906,7 +3906,7 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
         // Property with fixed index 9.
         avifProperty * irotProp = avifMetaCreateProperty(meta, "irot");
         AVIF_CHECKERR(irotProp, AVIF_RESULT_OUT_OF_MEMORY);
-        irotProp->u.irot.angle = orientation == 2 ? 2 : orientation == 4 || orientation == 7 ? 1 : 3;
+        irotProp->u.irot.angle = orientation == 2 ? 2 : (orientation == 4 || orientation == 7) ? 1 : 3;
         AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
