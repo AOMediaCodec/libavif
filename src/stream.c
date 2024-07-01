@@ -479,9 +479,7 @@ avifResult avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount)
 
 avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount)
 {
-    if (bitCount < 32 && (v >> bitCount) != 0) {
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
+    AVIF_CHECKERR(bitCount >= 32 || (v >> bitCount) == 0, AVIF_RESULT_INVALID_ARGUMENT);
     while (bitCount) {
         if (stream->numUsedBitsInPartialByte == 0) {
             AVIF_CHECKRES(makeRoom(stream, 1)); // Book a new partial byte in the stream.
