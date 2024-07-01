@@ -2282,12 +2282,14 @@ static avifBool avifEncoderIsMetaBoxV1Compatible(const avifEncoder * encoder)
         if (item->id == encoder->data->primaryItemID) {
             assert(!colorItem);
             colorItem = item;
+            // main_item_data_size_minus_one so 2^28 inclusive.
             if (item->encodeOutput->samples.count != 1 || item->encodeOutput->samples.sample[0].data.size > (1 << 28)) {
                 return AVIF_FALSE;
             }
             continue; // The primary item can be stored in the MetaBox with version 1.
         }
         if (item->itemCategory == AVIF_ITEM_ALPHA && item->irefToID == encoder->data->primaryItemID) {
+            // alpha_item_data_size so 2^28 exclusive.
             if (item->encodeOutput->samples.count != 1 || item->encodeOutput->samples.sample[0].data.size >= (1 << 28)) {
                 return AVIF_FALSE;
             }
@@ -2367,23 +2369,26 @@ static avifResult avifEncoderWriteMetaBoxV1(avifEncoder * encoder, avifRWStream 
                                        : image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 ? 2
                                                                                       : 3;
 
-    const avifColorPrimaries defaultColorPrimaries = hasIcc ? AVIF_COLOR_PRIMARIES_UNSPECIFIED : AVIF_COLOR_PRIMARIES_SRGB;
+    const avifColorPrimaries defaultColorPrimaries = hasIcc ? AVIF_COLOR_PRIMARIES_UNSPECIFIED : AVIF_COLOR_PRIMARIES_BT709;
     const avifTransferCharacteristics defaultTransferCharacteristics = hasIcc ? AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED
                                                                               : AVIF_TRANSFER_CHARACTERISTICS_SRGB;
     const avifMatrixCoefficients defaultMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
-    const avifBool hasExplicitCicp = image->colorPrimaries == defaultColorPrimaries ||
-                                     image->transferCharacteristics == defaultTransferCharacteristics ||
-                                     image->matrixCoefficients == defaultMatrixCoefficients;
+    const avifBool hasExplicitCicp = image->colorPrimaries != defaultColorPrimaries ||
+                                     image->transferCharacteristics != defaultTransferCharacteristics ||
+                                     image->matrixCoefficients != defaultMatrixCoefficients;
 
     const avifBool fullRange = image->yuvRange == AVIF_RANGE_FULL;
     const uint32_t pixelFormat = image->depth == 8    ? AVIF_METAV1_PIXEL_FORMAT_UINT8
                                  : image->depth == 10 ? AVIF_METAV1_PIXEL_FORMAT_UINT10
                                                       : AVIF_METAV1_PIXEL_FORMAT_UINT12;
 
-    // AV1 does not explicitly signal horizontal chroma siting (could be CSP_RESERVED though).
-    const avifBool isHorizontallyCentered = AVIF_FALSE;
+    // Assume centered sample position unless specified otherwise.
+    const avifBool isHorizontallyCentered =
+        (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) &&
+        image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_VERTICAL &&
+        image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
     const avifBool isVerticallyCentered = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420 &&
-                                          image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+                                          image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
 
     const uint32_t orientation = avifImageIrotImirToExifOrientation(image) - 1;
 
@@ -2437,7 +2442,7 @@ static avifResult avifEncoderWriteMetaBoxV1(avifEncoder * encoder, avifRWStream 
     }
 
     AVIF_CHECKRES(avifRWStreamWriteBits(s, codecConfigSize, codecConfigSizeSize)); // unsigned int(codec_config_size_size) main_item_codec_config_size;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)colorData->size - 1, itemDataSizeSize)); // unsigned int(item_data_size_size) main_item_data_size;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)colorData->size - 1, itemDataSizeSize)); // unsigned int(item_data_size_size) main_item_data_size_minus_one;
 
     if (hasAlpha) {
         AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)alphaData->size, itemDataSizeSize)); // unsigned int(item_data_size_size) alpha_item_data_size;
@@ -2515,6 +2520,7 @@ static avifResult avifEncoderWriteMetaBoxV1(avifEncoder * encoder, avifRWStream 
         //         tmap_full_range = 1;
         //     }
         // }
+        return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     if (image->exif.size) {

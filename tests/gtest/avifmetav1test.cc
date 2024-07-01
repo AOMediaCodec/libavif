@@ -59,10 +59,10 @@ TEST_P(AvifMetaBoxV1Test, SimpleOpaque) {
   }
   image->transformFlags = create_transform_flags;
   if (create_transform_flags & AVIF_TRANSFORM_IROT) {
-    image->irot.angle = 2;
+    image->irot.angle = 1;
   }
   if (create_transform_flags & AVIF_TRANSFORM_IMIR) {
-    image->imir.axis = 1;
+    image->imir.axis = 0;
   }
 
   // Encode.

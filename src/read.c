@@ -3582,14 +3582,6 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
     const uint32_t itemDataSizeSize = ((flags & 0x400000) != 0) ? 15 : 28;   // item_data_size_size
     const uint32_t metadataSizeSize = ((flags & 0x800000) != 0) ? 10 : 20;   // metadata_size_size
 
-    // Make sure the total MetaBox size is coherent with the flags.
-    const size_t maxHeaderSize = 128; // To be tuned.
-    AVIF_CHECKERR(s->raw->size < maxHeaderSize + 3 * (1 << codecConfigSizeSize) + 3 * (1 << itemDataSizeSize) + 3 * (1 << metadataSizeSize),
-                  AVIF_RESULT_BMFF_PARSE_FAILED);
-
-    // AV1 does not explicitly signal horizontal chroma siting (could be CSP_RESERVED though).
-    AVIF_CHECKERR(!isHorizontallyCentered, AVIF_RESULT_BMFF_PARSE_FAILED);
-
     uint8_t bitDepth;
     if (pixelFormat == AVIF_METAV1_PIXEL_FORMAT_UINT8) {
         bitDepth = 8;
@@ -3621,7 +3613,7 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
     } else if (hasIcc) {
         colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED; // 2
     } else {
-        colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB; // 1
+        colorPrimaries = AVIF_COLOR_PRIMARIES_BT709; // 1
     }
     if (hasExplicitCicp) {
         AVIF_CHECKERR(avifROStreamReadBits8(s, &transferCharacteristics, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(8) transfer_characteristics;
@@ -3660,17 +3652,17 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
     AVIF_CHECKERR(avifROStreamReadBits(s, &mainItemCodecConfigSize, codecConfigSizeSize),
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(codec_config_size_size) main_item_codec_config_size;
     AVIF_CHECKERR(avifROStreamReadBits(s, &mainItemDataSize, itemDataSizeSize),
-                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(item_data_size_size) main_item_data_size;
+                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(item_data_size_size) main_item_data_size_minus_one;
     ++mainItemDataSize;
 
     uint32_t alphaItemCodecConfigSize = 0, alphaItemDataSize = 0;
     if (hasAlpha) {
         AVIF_CHECKERR(avifROStreamReadBits(s, &alphaItemDataSize, itemDataSizeSize),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(item_data_size_size) alpha_item_data_size;
-    }
-    if (hasAlpha && alphaItemDataSize != 0) {
-        AVIF_CHECKERR(avifROStreamReadBits(s, &alphaItemCodecConfigSize, codecConfigSizeSize),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(codec_config_size_size) alpha_item_codec_config_size;
+        if (alphaItemDataSize != 0) {
+            AVIF_CHECKERR(avifROStreamReadBits(s, &alphaItemCodecConfigSize, codecConfigSizeSize),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(codec_config_size_size) alpha_item_codec_config_size;
+        }
     }
 
     if (hasHdr) {
@@ -3805,9 +3797,17 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
                                    : chromaSubsampling == 1 ? AVIF_PIXEL_FORMAT_YUV420
                                    : chromaSubsampling == 2 ? AVIF_PIXEL_FORMAT_YUV422
                                                             : AVIF_PIXEL_FORMAT_YUV444;
-    colorItem->metaV1ChromaSamplePosition = colorItem->metaV1PixelFormat != AVIF_PIXEL_FORMAT_YUV420 ? AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN
-                                            : isVerticallyCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
-                                                                   : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+    // Assume AV1's CSP_UNKNOWN to also mean centered sample position.
+    if ((colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV422 || colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV420) &&
+        isHorizontallyCentered) {
+        // There is no way to describe this with AV1's chroma_sample_position enum besides CSP_UNKNOWN or CSP_RESERVED.
+        colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    } else if (colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        colorItem->metaV1ChromaSamplePosition = isVerticallyCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
+                                                                     : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+    } else {
+        colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    }
 
     avifDecoderItem * alphaItem = NULL;
     if (hasAlpha) {
@@ -4049,12 +4049,7 @@ static avifResult avifParse(avifDecoder * decoder)
         avifROData boxContents = AVIF_DATA_EMPTY;
 
         // TODO: reorg this code to only do these memcmps once each
-#if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
-        if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4) ||
-            !memcmp(header.type, "metaV1", 4)) {
-#else
         if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4)) {
-#endif
             boxOffset = parseOffset;
             size_t sizeToRead;
             if (header.isSizeZeroBox) {
@@ -4128,15 +4123,15 @@ static avifResult avifParse(avifDecoder * decoder)
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
         if (ftypSeen && !needsMetaV1 && metaV1Seen) {
-            // The 'metaV1' box should be ignored if there is no 'mif3' brand, but libavif allows reading them in any order.
+            // The 'meta' box with version 1 box should be ignored if there is no 'mif3' brand, but libavif allows reading them in any order.
             return AVIF_RESULT_NOT_IMPLEMENTED; // TODO(yguyon): Implement
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_METAV1
 
         // See if there is enough information to consider Parse() a success and early-out:
-        // * If the brand 'avif' is present, require a meta box
+        // * If the brand 'avif' is present, require a meta box with version 0
         // * If the brand 'avis' is present, require a moov box
-        // * If AVIF_ENABLE_EXPERIMENTAL_METAV1 is defined and the brand 'mif3' is present, require a metaV1 box
+        // * If AVIF_ENABLE_EXPERIMENTAL_METAV1 is defined and the brand 'mif3' is present, require a meta box with version 1
 #if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
         if (ftypSeen && (!needsMetaV0 || metaV0Seen) && (!needsMoov || moovSeen) && (!needsMetaV1 || metaV1Seen)) {
 #else
