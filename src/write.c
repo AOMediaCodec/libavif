@@ -2382,11 +2382,19 @@ static avifResult avifEncoderWriteMetaBoxV1(avifEncoder * encoder, avifRWStream 
                                  : image->depth == 10 ? AVIF_METAV1_PIXEL_FORMAT_UINT10
                                                       : AVIF_METAV1_PIXEL_FORMAT_UINT12;
 
-    // Assume centered sample position unless specified otherwise.
-    const avifBool isHorizontallyCentered =
-        (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422 || image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) &&
-        image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_VERTICAL &&
-        image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+    // In AV1, the chroma_sample_position syntax element is not present for the YUV 4:2:2 format.
+    // Assume that AV1 uses the same 4:2:2 chroma sample location as HEVC and VVC (colocated).
+    if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV420 && image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
+        avifDiagnosticsPrintf(&encoder->diag,
+                              "YUV chroma sample position %d is only supported with 4:2:0 YUV format in AV1",
+                              image->yuvChromaSamplePosition);
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    // For the YUV 4:2:0 format, assume centered sample position unless specified otherwise.
+    // This is consistent with the behavior in read.c.
+    const avifBool isHorizontallyCentered = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420 &&
+                                            image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_VERTICAL &&
+                                            image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
     const avifBool isVerticallyCentered = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420 &&
                                           image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
 

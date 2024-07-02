@@ -3797,15 +3797,21 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
                                    : chromaSubsampling == 1 ? AVIF_PIXEL_FORMAT_YUV420
                                    : chromaSubsampling == 2 ? AVIF_PIXEL_FORMAT_YUV422
                                                             : AVIF_PIXEL_FORMAT_YUV444;
-    // Assume AV1's CSP_UNKNOWN to also mean centered sample position.
-    if ((colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV422 || colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV420) &&
-        isHorizontallyCentered) {
+    if (colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV422) {
+        // In AV1, the chroma_sample_position syntax element is not present for the YUV 4:2:2 format.
+        // Assume that AV1 uses the same 4:2:2 chroma sample location as HEVC and VVC (colocated).
+        AVIF_CHECKERR(!isHorizontallyCentered, AVIF_RESULT_BMFF_PARSE_FAILED);
+        // isVerticallyCentered: Ignored unless chroma_subsampling is 1.
+        colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    } else if (colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV420 && isHorizontallyCentered) {
         // There is no way to describe this with AV1's chroma_sample_position enum besides CSP_UNKNOWN or CSP_RESERVED.
         colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     } else if (colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV420) {
         colorItem->metaV1ChromaSamplePosition = isVerticallyCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
                                                                      : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
     } else {
+        // isHorizontallyCentered: Ignored unless chroma_subsampling is 1 or 2.
+        // isVerticallyCentered: Ignored unless chroma_subsampling is 1.
         colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     }
 
