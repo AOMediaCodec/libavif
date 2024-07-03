@@ -2368,8 +2368,8 @@ static avifResult avifEncoderWriteMetaBoxV1(avifEncoder * encoder, avifRWStream 
     const avifColorPrimaries defaultColorPrimaries = hasIcc ? AVIF_COLOR_PRIMARIES_UNSPECIFIED : AVIF_COLOR_PRIMARIES_BT709;
     const avifTransferCharacteristics defaultTransferCharacteristics = hasIcc ? AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED
                                                                               : AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-    const avifMatrixCoefficients defaultMatrixCoefficients =
-        image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED : AVIF_MATRIX_COEFFICIENTS_BT601;
+    const avifMatrixCoefficients defaultMatrixCoefficients = chromaSubsampling == 0 ? AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED
+                                                                                    : AVIF_MATRIX_COEFFICIENTS_BT601;
     const avifBool hasExplicitCicp = image->colorPrimaries != defaultColorPrimaries ||
                                      image->transferCharacteristics != defaultTransferCharacteristics ||
                                      image->matrixCoefficients != defaultMatrixCoefficients;
