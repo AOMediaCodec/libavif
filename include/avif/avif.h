@@ -1294,6 +1294,8 @@ typedef struct avifDecoder
     // to the appropriate source.
     avifBool imageSequenceTrackPresent;
 
+    // Version 1.1.0 ends here. Add any new members after this line.
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     // This is true when avifDecoderParse() detects a gain map.
     avifBool gainMapPresent;
@@ -1494,6 +1496,8 @@ typedef struct avifEncoder
 
     // Defaults to AVIF_HEADER_FULL
     avifHeaderFormat headerFormat;
+
+    // Version 1.1.0 ends here. Add any new members after this line.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting
