@@ -462,9 +462,11 @@ AVIF_NODISCARD avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
 // image->imir on success. Returns AVIF_RESULT_INVALID_EXIF_PAYLOAD on failure.
 avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image);
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
 // Returns the Exif orientation in [1-8] as defined in JEITA CP-3451C section 4.6.4.A Orientation
 // corresponding to image->irot and image->imir.
 uint8_t avifImageIrotImirToExifOrientation(const avifImage * image);
+#endif // AVIF_ENABLE_EXPERIMENTAL_METAV1
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput

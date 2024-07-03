@@ -3803,12 +3803,15 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
         AVIF_CHECKERR(!isHorizontallyCentered, AVIF_RESULT_BMFF_PARSE_FAILED);
         // isVerticallyCentered: Ignored unless chroma_subsampling is 1.
         colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-    } else if (colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV420 && isHorizontallyCentered) {
-        // There is no way to describe this with AV1's chroma_sample_position enum besides CSP_UNKNOWN or CSP_RESERVED.
-        colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     } else if (colorItem->metaV1PixelFormat == AVIF_PIXEL_FORMAT_YUV420) {
-        colorItem->metaV1ChromaSamplePosition = isVerticallyCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
-                                                                     : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+        if (isHorizontallyCentered) {
+            // There is no way to describe this with AV1's chroma_sample_position enum besides CSP_UNKNOWN.
+            // There is a proposal to assign the reserved value 3 (CSP_RESERVED) to the center chroma sample position.
+            colorItem->metaV1ChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        } else {
+            colorItem->metaV1ChromaSamplePosition = isVerticallyCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
+                                                                         : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+        }
     } else {
         // isHorizontallyCentered: Ignored unless chroma_subsampling is 1 or 2.
         // isVerticallyCentered: Ignored unless chroma_subsampling is 1.
@@ -4129,7 +4132,7 @@ static avifResult avifParse(avifDecoder * decoder)
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
         if (ftypSeen && !needsMetaV1 && metaV1Seen) {
-            // The 'meta' box with version 1 box should be ignored if there is no 'mif3' brand, but libavif allows reading them in any order.
+            // The 'meta' box with version 1 should be ignored if there is no 'mif3' brand, but libavif allows reading them in any order.
             return AVIF_RESULT_NOT_IMPLEMENTED; // TODO(yguyon): Implement
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_METAV1
