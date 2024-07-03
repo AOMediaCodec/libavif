@@ -420,16 +420,28 @@ avifBool avifIsAlpha(avifItemCategory itemCategory);
 
 // ---------------------------------------------------------------------------
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
-// AVIF color_type field meaning in MinimizedImageBox
-typedef enum avifMiniColorType
+#if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
+// HEIF pixel_format field meaning in MetaBox with version 1
+typedef enum avifMetaV1PixelFormat
 {
-    AVIF_MINI_COLOR_TYPE_SRGB = 0,
-    AVIF_MINI_COLOR_TYPE_NCLX_5BIT = 1,
-    AVIF_MINI_COLOR_TYPE_NCLX_8BIT = 2,
-    AVIF_MINI_COLOR_TYPE_ICC = 3
-} avifMiniColorType;
-#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
+    AVIF_METAV1_PIXEL_FORMAT_FLOAT16 = 0, // binary16 as defined by IEEE 754-2008
+    AVIF_METAV1_PIXEL_FORMAT_FLOAT32 = 1, // binary32 as defined by IEEE 754-2008
+    AVIF_METAV1_PIXEL_FORMAT_FLOAT64 = 2, // binary64 as defined by IEEE 754-2008
+    AVIF_METAV1_PIXEL_FORMAT_UINT4 = 3,
+    AVIF_METAV1_PIXEL_FORMAT_UINT5 = 4,
+    AVIF_METAV1_PIXEL_FORMAT_UINT6 = 5,
+    AVIF_METAV1_PIXEL_FORMAT_UINT7 = 6,
+    AVIF_METAV1_PIXEL_FORMAT_UINT8 = 7,
+    AVIF_METAV1_PIXEL_FORMAT_UINT9 = 8,
+    AVIF_METAV1_PIXEL_FORMAT_UINT10 = 9,
+    AVIF_METAV1_PIXEL_FORMAT_UINT11 = 10,
+    AVIF_METAV1_PIXEL_FORMAT_UINT12 = 11,
+    AVIF_METAV1_PIXEL_FORMAT_UINT13 = 12,
+    AVIF_METAV1_PIXEL_FORMAT_UINT14 = 13,
+    AVIF_METAV1_PIXEL_FORMAT_UINT15 = 14,
+    AVIF_METAV1_PIXEL_FORMAT_UINT16 = 15,
+} avifMetaV1PixelFormat;
+#endif // AVIF_ENABLE_EXPERIMENTAL_METAV1
 
 // ---------------------------------------------------------------------------
 // Grid AVIF images
@@ -449,6 +461,12 @@ AVIF_NODISCARD avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat,
 // Attempts to parse the image->exif payload for Exif orientation and sets image->transformFlags, image->irot and
 // image->imir on success. Returns AVIF_RESULT_INVALID_EXIF_PAYLOAD on failure.
 avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image);
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
+// Returns the Exif orientation in [1-8] as defined in JEITA CP-3451C section 4.6.4.A Orientation
+// corresponding to image->irot and image->imir.
+uint8_t avifImageIrotImirToExifOrientation(const avifImage * image);
+#endif // AVIF_ENABLE_EXPERIMENTAL_METAV1
 
 // ---------------------------------------------------------------------------
 // avifCodecDecodeInput
@@ -700,7 +718,6 @@ AVIF_NODISCARD avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream,
 // The following functions can write non-aligned bits.
 AVIF_NODISCARD avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount);
 AVIF_NODISCARD avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount);
-AVIF_NODISCARD avifBool avifROStreamReadVarInt(avifROStream * stream, uint32_t * v);
 
 typedef struct avifRWStream
 {
@@ -733,7 +750,6 @@ avifResult avifRWStreamWriteU64(avifRWStream * stream, uint64_t v);
 avifResult avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount);
 // The following functions can write non-aligned bits.
 avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount);
-avifResult avifRWStreamWriteVarInt(avifRWStream * stream, uint32_t v);
 
 // This is to make it clear that the box size is currently unknown, and will be determined later (with a call to avifRWStreamFinishBox)
 #define AVIF_BOX_SIZE_TBD 0

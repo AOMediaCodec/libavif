@@ -142,6 +142,54 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
     return AVIF_RESULT_OK;
 }
 
+#if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
+uint8_t avifImageIrotImirToExifOrientation(const avifImage * image)
+{
+    if (!(image->transformFlags & AVIF_TRANSFORM_IROT) || image->irot.angle == 0) {
+        if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+            return 1; // The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
+        }
+        if (image->imir.axis == 0) {
+            return 4; // The 0th row is at the visual bottom of the image, and the 0th column is the visual left-hand side.
+        }
+        // image->imir.axis == 1
+        return 2; // The 0th row is at the visual top of the image, and the 0th column is the visual right-hand side.
+    }
+
+    if (image->irot.angle == 1) {
+        if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+            return 8; // The 0th row is the visual left-hand side of the image, and the 0th column is the visual bottom.
+        }
+        if (image->imir.axis == 0) {
+            return 5; // The 0th row is the visual left-hand side of the image, and the 0th column is the visual top.
+        }
+        // image->imir.axis == 1
+        return 7; // The 0th row is the visual right-hand side of the image, and the 0th column is the visual bottom.
+    }
+
+    if (image->irot.angle == 2) {
+        if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+            return 3; // The 0th row is at the visual bottom of the image, and the 0th column is the visual right-hand side.
+        }
+        if (image->imir.axis == 0) {
+            return 2; // The 0th row is at the visual top of the image, and the 0th column is the visual right-hand side.
+        }
+        // image->imir.axis == 1
+        return 4; // The 0th row is at the visual bottom of the image, and the 0th column is the visual left-hand side.
+    }
+
+    // image->irot.angle == 3
+    if (!(image->transformFlags & AVIF_TRANSFORM_IMIR)) {
+        return 6; // The 0th row is the visual right-hand side of the image, and the 0th column is the visual top.
+    }
+    if (image->imir.axis == 0) {
+        return 7; // The 0th row is the visual right-hand side of the image, and the 0th column is the visual bottom.
+    }
+    // image->imir.axis == 1
+    return 5; // The 0th row is the visual left-hand side of the image, and the 0th column is the visual top.
+}
+#endif // AVIF_ENABLE_EXPERIMENTAL_METAV1
+
 avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
     AVIF_CHECKRES(avifRWDataSet(&image->exif, exif, exifSize));

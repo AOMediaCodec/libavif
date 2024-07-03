@@ -64,18 +64,6 @@ TEST(StreamTest, Roundtrip) {
   const uint32_t rw_someu32 = 0xAABBCCDD;
   EXPECT_EQ(avifRWStreamWriteU32(&rw_stream, rw_someu32), AVIF_RESULT_OK);
 
-  size_t offset = avifRWStreamOffset(&rw_stream);
-  const uint32_t rw_somevarint_1byte = (1 << VARINT_DEPTH_0) - 1;
-  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_1byte),
-            AVIF_RESULT_OK);
-  EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 1);
-
-  offset = avifRWStreamOffset(&rw_stream);
-  const uint32_t rw_somevarint_2bytes = (1 << VARINT_DEPTH_0);
-  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_2bytes),
-            AVIF_RESULT_OK);
-  EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 2);
-
   // Pad till byte alignment.
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 0,
                                   8 - rw_stream.numUsedBitsInPartialByte),
@@ -92,12 +80,6 @@ TEST(StreamTest, Roundtrip) {
   const uint32_t rw_maxbits = std::numeric_limits<uint32_t>::max();
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_maxbits, rw_maxbitcount),
             AVIF_RESULT_OK);
-
-  offset = avifRWStreamOffset(&rw_stream);
-  const uint32_t rw_somevarint_4bytes = 1 << VARINT_DEPTH_2;
-  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_somevarint_4bytes),
-            AVIF_RESULT_OK);
-  EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset + 4);
 
   const uint32_t rw_somebit = 1;
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1),
@@ -164,14 +146,6 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_TRUE(avifROStreamReadU32(&ro_stream, &ro_someu32));
   EXPECT_EQ(rw_someu32, ro_someu32);
 
-  uint32_t ro_somevarint_1byte;
-  EXPECT_TRUE(avifROStreamReadVarInt(&ro_stream, &ro_somevarint_1byte));
-  EXPECT_EQ(rw_somevarint_1byte, ro_somevarint_1byte);
-
-  uint32_t ro_somevarint_2bytes;
-  EXPECT_TRUE(avifROStreamReadVarInt(&ro_stream, &ro_somevarint_2bytes));
-  EXPECT_EQ(rw_somevarint_2bytes, ro_somevarint_2bytes);
-
   // Pad till byte alignment.
   EXPECT_TRUE(avifROStreamReadBits8(&ro_stream, &ro_someu8,
                                     8 - ro_stream.numUsedBitsInPartialByte));
@@ -186,10 +160,6 @@ TEST(StreamTest, Roundtrip) {
   uint32_t ro_maxbits;
   EXPECT_TRUE(avifROStreamReadBits(&ro_stream, &ro_maxbits, rw_maxbitcount));
   EXPECT_EQ(rw_maxbits, ro_maxbits);
-
-  uint32_t ro_somevarint_4bytes;
-  EXPECT_TRUE(avifROStreamReadVarInt(&ro_stream, &ro_somevarint_4bytes));
-  EXPECT_EQ(rw_somevarint_4bytes, ro_somevarint_4bytes);
 
   uint8_t ro_somebit;
   EXPECT_TRUE(avifROStreamReadBits8(&ro_stream, &ro_somebit, /*bitCount=*/1));
@@ -209,49 +179,6 @@ TEST(StreamTest, WriteBitsLimit) {
   avifRWStreamStart(&rw_stream, &rw_data);
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 7, 3), AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 8, 3),
-            AVIF_RESULT_INVALID_ARGUMENT);
-}
-
-//------------------------------------------------------------------------------
-// Variable length integer implementation
-
-constexpr uint32_t kMaxVarint =
-    (1 << (VARINT_DEPTH_2 + VARINT_DEPTH_1 + VARINT_DEPTH_0)) +
-    (1 << (VARINT_DEPTH_1 + VARINT_DEPTH_0)) + (1 << VARINT_DEPTH_0) - 1;
-
-TEST(StreamTest, VarIntEncDecRoundtrip) {
-  std::vector<uint32_t> values(1 << 12);
-  std::iota(values.begin(), values.end(), 0u);
-  for (int depth = 13; depth <= 28; ++depth) {
-    values.push_back(1 << depth);
-  }
-  values.push_back(kMaxVarint - 1);
-  values.push_back(kMaxVarint);
-
-  testutil::AvifRwData rw_data;
-  avifRWStream rw_stream;
-  avifRWStreamStart(&rw_stream, &rw_data);
-  for (uint32_t rw_value : values) {
-    EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, rw_value), AVIF_RESULT_OK);
-  }
-  avifRWStreamFinishWrite(&rw_stream);
-
-  avifROData ro_data = {rw_data.data, rw_data.size};
-  avifROStream ro_stream;
-  avifROStreamStart(&ro_stream, &ro_data, /*diag=*/nullptr,
-                    /*diagContext=*/nullptr);
-  uint32_t ro_value;
-  for (uint32_t rw_value : values) {
-    EXPECT_TRUE(avifROStreamReadVarInt(&ro_stream, &ro_value));
-    ASSERT_EQ(rw_value, ro_value);
-  }
-}
-
-TEST(StreamTest, VarIntLimit) {
-  testutil::AvifRwData rw_data;
-  avifRWStream rw_stream;
-  avifRWStreamStart(&rw_stream, &rw_data);
-  EXPECT_EQ(avifRWStreamWriteVarInt(&rw_stream, kMaxVarint + 1),
             AVIF_RESULT_INVALID_ARGUMENT);
 }
 
