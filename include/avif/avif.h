@@ -1287,7 +1287,7 @@ typedef struct avifDecoder
     // Internals used by the decoder
     struct avifDecoderData * data;
 
-    // Version 1.0.0 ends here. Add any new members after this line.
+    // Version 1.0.0 ends here.
 
     // This is true when avifDecoderParse() detects an image sequence track in the image. If this is true, the image can be
     // decoded either as an animated image sequence or as a still image (the primary image item) by setting avifDecoderSetSource
@@ -1492,7 +1492,7 @@ typedef struct avifEncoder
     struct avifEncoderData * data;
     struct avifCodecSpecificOptions * csOptions;
 
-    // Version 1.0.0 ends here. Add any new members after this line.
+    // Version 1.0.0 ends here.
 
     // Defaults to AVIF_HEADER_FULL
     avifHeaderFormat headerFormat;
