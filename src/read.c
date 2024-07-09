@@ -3636,7 +3636,7 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
     if (hasExplicitCodecTypes) {
         AVIF_CHECKERR(avifROStreamRead(s, infeType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);        // bit(32) infe_type;
         AVIF_CHECKERR(avifROStreamRead(s, codecConfigType, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(32) codec_config_type;
-#if AVIF_CODEC_AVM_ENABLED
+#if defined(AVIF_CODEC_AVM)
         if (!memcmp(infeType, "av02", 4) && !memcmp(codecConfigType, "av2C", 4)) {
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
