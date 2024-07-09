@@ -1480,7 +1480,8 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder, avifI
 
             // Adopt the configuration property of the first image item tile, so that it can be queried from
             // the top-level color/alpha item during avifDecoderReset().
-            const char * configPropName = memcmp(item->type, "av02", 4) ? "av1C" : "av2C";
+            const avifCodecType codecType = avifGetCodecType(item->type);
+            const char * configPropName = avifGetConfigurationPropertyName(codecType);
             const avifProperty * srcProp = avifPropertyArrayFind(&item->properties, configPropName);
             if (!srcProp) {
                 avifDiagnosticsPrintf(&decoder->diag, "Grid image's first tile is missing an %s property", configPropName);
