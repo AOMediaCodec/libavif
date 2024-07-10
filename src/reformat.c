@@ -513,7 +513,7 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
             // Just reuse the luma table since the chroma values are the same.
             *unormFloatTableUV = *unormFloatTableY;
         } else {
-            *unormFloatTableUV = (float *)avifAlloc(cpCount * sizeof(**unormFloatTableUV));
+            *unormFloatTableUV = (float *)avifAlloc(cpCount * sizeof(float));
             if (!*unormFloatTableUV) {
                 avifFree(*unormFloatTableY);
                 *unormFloatTableY = NULL;
