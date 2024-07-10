@@ -2107,7 +2107,8 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
                 // We always interleave all AV1 items for layered images.
                 AVIF_ASSERT_OR_RETURN(item->encodeOutput->samples.count == item->mdatFixups.count);
 
-                avifEncoderItemReference * ref = avifArrayPush(isAlpha ? layeredAlphaItems : layeredColorItems);
+                avifEncoderItemReference * ref =
+                    (avifEncoderItemReference *)avifArrayPush(isAlpha ? layeredAlphaItems : layeredColorItems);
                 AVIF_CHECKERR(ref != NULL, AVIF_RESULT_OUT_OF_MEMORY);
                 *ref = item;
                 continue;
