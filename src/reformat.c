@@ -502,7 +502,7 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
     const size_t cpCount = (size_t)1 << depth;
 
     assert(unormFloatTableY);
-    *unormFloatTableY = (float *)avifAlloc(cpCount * sizeof(**unormFloatTableY));
+    *unormFloatTableY = (float *)avifAlloc(cpCount * sizeof(float));
     AVIF_CHECK(*unormFloatTableY);
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
         (*unormFloatTableY)[cp] = ((float)cp - state->yuv.biasY) / state->yuv.rangeY;
