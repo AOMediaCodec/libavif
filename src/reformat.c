@@ -502,7 +502,7 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
     const size_t cpCount = (size_t)1 << depth;
 
     assert(unormFloatTableY);
-    *unormFloatTableY = avifAlloc(cpCount * sizeof(**unormFloatTableY));
+    *unormFloatTableY = (float *)avifAlloc(cpCount * sizeof(float));
     AVIF_CHECK(*unormFloatTableY);
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
         (*unormFloatTableY)[cp] = ((float)cp - state->yuv.biasY) / state->yuv.rangeY;
@@ -513,7 +513,7 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
             // Just reuse the luma table since the chroma values are the same.
             *unormFloatTableUV = *unormFloatTableY;
         } else {
-            *unormFloatTableUV = avifAlloc(cpCount * sizeof(**unormFloatTableUV));
+            *unormFloatTableUV = (float *)avifAlloc(cpCount * sizeof(float));
             if (!*unormFloatTableUV) {
                 avifFree(*unormFloatTableY);
                 *unormFloatTableY = NULL;
@@ -1579,18 +1579,18 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     }
 
     const size_t byteCount = sizeof(YUVToRGBThreadData) * jobs;
-    YUVToRGBThreadData * threadData = avifAlloc(byteCount);
+    YUVToRGBThreadData * threadData = (YUVToRGBThreadData *)avifAlloc(byteCount);
     if (!threadData) {
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     memset(threadData, 0, byteCount);
-    int rowsPerJob = image->height / jobs;
+    uint32_t rowsPerJob = image->height / jobs;
     if (rowsPerJob % 2) {
         ++rowsPerJob;
         jobs = (image->height + rowsPerJob - 1) / rowsPerJob; // ceil
     }
-    const int rowsForLastJob = image->height - rowsPerJob * (jobs - 1);
-    int startRow = 0;
+    const uint32_t rowsForLastJob = image->height - rowsPerJob * (jobs - 1);
+    uint32_t startRow = 0;
     uint32_t i;
     for (i = 0; i < jobs; ++i, startRow += rowsPerJob) {
         YUVToRGBThreadData * tdata = &threadData[i];

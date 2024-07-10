@@ -369,7 +369,7 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
         image->imageOwnsYUVPlanes = AVIF_TRUE;
         if (!image->yuvPlanes[AVIF_CHAN_Y]) {
             image->yuvRowBytes[AVIF_CHAN_Y] = (uint32_t)fullRowBytes;
-            image->yuvPlanes[AVIF_CHAN_Y] = avifAlloc(fullSize);
+            image->yuvPlanes[AVIF_CHAN_Y] = (uint8_t *)avifAlloc(fullSize);
             if (!image->yuvPlanes[AVIF_CHAN_Y]) {
                 return AVIF_RESULT_OUT_OF_MEMORY;
             }
@@ -387,7 +387,7 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
             for (int uvPlane = AVIF_CHAN_U; uvPlane <= AVIF_CHAN_V; ++uvPlane) {
                 if (!image->yuvPlanes[uvPlane]) {
                     image->yuvRowBytes[uvPlane] = (uint32_t)uvRowBytes;
-                    image->yuvPlanes[uvPlane] = avifAlloc(uvSize);
+                    image->yuvPlanes[uvPlane] = (uint8_t *)avifAlloc(uvSize);
                     if (!image->yuvPlanes[uvPlane]) {
                         return AVIF_RESULT_OUT_OF_MEMORY;
                     }
@@ -399,7 +399,7 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
         image->imageOwnsAlphaPlane = AVIF_TRUE;
         if (!image->alphaPlane) {
             image->alphaRowBytes = (uint32_t)fullRowBytes;
-            image->alphaPlane = avifAlloc(fullSize);
+            image->alphaPlane = (uint8_t *)avifAlloc(fullSize);
             if (!image->alphaPlane) {
                 return AVIF_RESULT_OUT_OF_MEMORY;
             }
@@ -627,7 +627,7 @@ avifResult avifRGBImageAllocatePixels(avifRGBImage * rgb)
 {
     avifRGBImageFreePixels(rgb);
     const uint32_t rowBytes = rgb->width * avifRGBImagePixelSize(rgb);
-    rgb->pixels = avifAlloc((size_t)rowBytes * rgb->height);
+    rgb->pixels = (uint8_t *)avifAlloc((size_t)rowBytes * rgb->height);
     AVIF_CHECKERR(rgb->pixels, AVIF_RESULT_OUT_OF_MEMORY);
     rgb->rowBytes = rowBytes;
     return AVIF_RESULT_OK;
@@ -938,7 +938,7 @@ avifBool avifAreGridDimensionsValid(avifPixelFormat yuvFormat, uint32_t imageW, 
 static char * avifStrdup(const char * str)
 {
     size_t len = strlen(str);
-    char * dup = avifAlloc(len + 1);
+    char * dup = (char *)avifAlloc(len + 1);
     if (!dup) {
         return NULL;
     }
@@ -948,7 +948,7 @@ static char * avifStrdup(const char * str)
 
 avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void)
 {
-    avifCodecSpecificOptions * ava = avifAlloc(sizeof(avifCodecSpecificOptions));
+    avifCodecSpecificOptions * ava = (avifCodecSpecificOptions *)avifAlloc(sizeof(avifCodecSpecificOptions));
     if (!ava || !avifArrayCreate(ava, sizeof(avifCodecSpecificOption), 4)) {
         goto error;
     }

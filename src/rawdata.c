@@ -8,7 +8,7 @@
 avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize)
 {
     if (raw->size != newSize) {
-        uint8_t * newData = avifAlloc(newSize);
+        uint8_t * newData = (uint8_t *)avifAlloc(newSize);
         AVIF_CHECKERR(newData, AVIF_RESULT_OUT_OF_MEMORY);
         if (raw->size && newSize) {
             memcpy(newData, raw->data, AVIF_MIN(raw->size, newSize));

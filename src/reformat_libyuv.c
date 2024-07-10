@@ -168,7 +168,7 @@ static int avifReorderARGBThenConvertToYUV(int (*ReorderARGB)(const uint8_t *, i
         // allocating more than soft_allocation_limit, unless min_num_rows rows need more than that.
         num_allocated_rows = AVIF_MAX(1, soft_allocation_limit / (src_stride_argb * min_num_rows)) * min_num_rows;
     }
-    src_argb = avifAlloc(num_allocated_rows * src_stride_argb);
+    src_argb = (uint8_t *)avifAlloc(num_allocated_rows * src_stride_argb);
     if (!src_argb) {
         return -1;
     }
