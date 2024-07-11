@@ -19,7 +19,7 @@ set -e
 
 # build env
 apt update
-DEBIAN_FRONTEND="noninteractive" apt install -y build-essential libjpeg-dev libpng-dev libssl-dev ninja-build cmake pkg-config git perl vim meson cargo cargo-c nasm
+DEBIAN_FRONTEND="noninteractive" apt install -y build-essential cargo cargo-c cmake git libjpeg-dev libpng-dev libssl-dev libyuv-dev meson nasm ninja-build perl pkg-config vim
 
 # Rust env
 export PATH="$HOME/.cargo/bin:$PATH"
