@@ -25,7 +25,7 @@ include(FetchContent)
 include(FindPkgConfig)
 include(AvifExternalProjectUtils)
 
-project(libavif LANGUAGES C VERSION 1.0.4)
+project(libavif LANGUAGES C VERSION 1.1.0)
 
 # Set C99 as the default
 set(CMAKE_C_STANDARD 99)
@@ -38,8 +38,8 @@ set(CMAKE_C_STANDARD 99)
 #   If the source code was changed, but there were no interface changes:
 #     Increment PATCH.
 set(LIBRARY_VERSION_MAJOR 16)
-set(LIBRARY_VERSION_MINOR 0)
-set(LIBRARY_VERSION_PATCH 4)
+set(LIBRARY_VERSION_MINOR 1)
+set(LIBRARY_VERSION_PATCH 0)
 set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH}")
 set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 

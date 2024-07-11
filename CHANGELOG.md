@@ -8,6 +8,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+## [1.1.0] - 2024-07-11
+
 ### Added since 1.0.0
 * Add experimental API for reading and writing gain maps in AVIF files.
   If enabled at compile time, add `gainMap` field to `avifImage`,
@@ -1106,7 +1108,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.1.0
 [1.0.4]: https://github.com/AOMediaCodec/libavif/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/AOMediaCodec/libavif/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/AOMediaCodec/libavif/compare/v1.0.1...v1.0.2
