@@ -1968,26 +1968,31 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
         return AVIF_FALSE;
     }
 
-    uint16_t minimumVersion;
-    AVIF_CHECK(avifROStreamReadU16(&s, &minimumVersion));
-    if (minimumVersion != 0) {
-        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported minimum version [%u]", minimumVersion);
+    uint16_t minimum_version;
+    AVIF_CHECK(avifROStreamReadU16(&s, &minimum_version)); // unsigned int(16) minimum_version;
+    if (minimum_version != 0) {
+        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported minimum version [%u]", minimum_version);
         return AVIF_FALSE;
     }
-    uint16_t writerVersion;
-    AVIF_CHECK(avifROStreamReadU16(&s, &writerVersion));
+    uint16_t writer_version;
+    AVIF_CHECK(avifROStreamReadU16(&s, &writer_version)); // unsigned int(16) writer_version;
 
-    uint8_t flags;
-    AVIF_CHECK(avifROStreamRead(&s, &flags, 1)); // unsigned int(8) flags;
-    const uint8_t channelCount = (flags & (1 << 7)) ? 3 : 1;
-    metadata->useBaseColorSpace = (flags & (1 << 6)) != 0;
+    uint32_t is_multichannel;
+    AVIF_CHECK(avifROStreamReadBits(&s, &is_multichannel, 1)); // unsigned int(1) is_multichannel;
+    const uint8_t channel_count = is_multichannel ? 3 : 1;
+
+    uint32_t use_base_colour_space;
+    AVIF_CHECK(avifROStreamReadBits(&s, &use_base_colour_space, 1)); // unsigned int(1) use_base_colour_space;
+
+    uint32_t reserved;
+    AVIF_CHECK(avifROStreamReadBits(&s, &reserved, 6)); // unsigned int(6) reserved;
 
     AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));
     AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomD));
     AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN));
     AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomD));
 
-    for (int c = 0; c < channelCount; ++c) {
+    for (int c = 0; c < channel_count; ++c) {
         AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c]));
         AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMinD[c]));
         AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c]));
@@ -2001,7 +2006,7 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
     }
 
     // Fill the remaining values by copying those from the first channel.
-    for (int c = channelCount; c < 3; ++c) {
+    for (int c = channel_count; c < 3; ++c) {
         metadata->gainMapMinN[c] = metadata->gainMapMinN[0];
         metadata->gainMapMinD[c] = metadata->gainMapMinD[0];
         metadata->gainMapMaxN[c] = metadata->gainMapMaxN[0];

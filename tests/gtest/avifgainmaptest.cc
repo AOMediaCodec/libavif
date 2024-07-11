@@ -776,6 +776,8 @@ TEST(GainMapTest, NoGainMap) {
   EXPECT_EQ(decoded->gainMap, nullptr);
 }
 
+// TODO(https://github.com/AOMediaCodec/libavif/issues/2261): Regenerate test
+// files.
 TEST(GainMapTest, DISABLED_DecodeGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_gainmap_different_grid.avif";
@@ -816,6 +818,8 @@ TEST(GainMapTest, DISABLED_DecodeGainMapGrid) {
       << avifResultToString(result) << " " << decoder->diag.error;
 }
 
+// TODO(https://github.com/AOMediaCodec/libavif/issues/2261): Regenerate test
+// files.
 TEST(GainMapTest, DISABLED_DecodeColorGridGainMapNoGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_alpha_grid_gainmap_nogrid.avif";
@@ -840,6 +844,8 @@ TEST(GainMapTest, DISABLED_DecodeColorGridGainMapNoGrid) {
   EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomD, 2u);
 }
 
+// TODO(https://github.com/AOMediaCodec/libavif/issues/2261): Regenerate test
+// files.
 TEST(GainMapTest, DISABLED_DecodeColorNoGridGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_nogrid_alpha_nogrid_gainmap_grid.avif";
