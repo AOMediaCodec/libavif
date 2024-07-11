@@ -5,6 +5,7 @@ on:
       - 'android_jni/**'
   pull_request:
     paths:
+      - '.github/workflows/ci-android-emulator-tests.yml'
       - 'android_jni/**'
 
 permissions:
@@ -17,7 +18,7 @@ concurrency:
 
 jobs:
   build-and-run-android-jni-tests:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
 
