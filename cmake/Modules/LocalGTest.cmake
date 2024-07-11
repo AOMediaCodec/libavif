@@ -11,17 +11,17 @@ set(GTEST_MAIN_LIB_FILENAME
 if(EXISTS ${GTEST_INCLUDE_DIRS}/gtest/gtest.h AND EXISTS ${GTEST_LIB_FILENAME} AND EXISTS ${GTEST_MAIN_LIB_FILENAME})
     message(STATUS "libavif(AVIF_GTEST=LOCAL): compiled library found in ext/googletest")
 
-    add_library(GTest::gtest STATIC IMPORTED)
-    set_target_properties(GTest::gtest PROPERTIES IMPORTED_LOCATION "${GTEST_LIB_FILENAME}" AVIF_LOCAL ON)
+    add_library(GTest::GTest STATIC IMPORTED)
+    set_target_properties(GTest::GTest PROPERTIES IMPORTED_LOCATION "${GTEST_LIB_FILENAME}" AVIF_LOCAL ON)
 
     if(TARGET Threads::Threads)
-        target_link_libraries(GTest::gtest INTERFACE Threads::Threads)
+        target_link_libraries(GTest::GTest INTERFACE Threads::Threads)
     endif()
-    target_include_directories(GTest::gtest INTERFACE "${GTEST_INCLUDE_DIRS}")
+    target_include_directories(GTest::GTest INTERFACE "${GTEST_INCLUDE_DIRS}")
 
-    add_library(GTest::gtest_main STATIC IMPORTED)
-    target_link_libraries(GTest::gtest_main INTERFACE GTest::gtest)
-    set_target_properties(GTest::gtest_main PROPERTIES IMPORTED_LOCATION "${GTEST_MAIN_LIB_FILENAME}" AVIF_LOCAL ON)
+    add_library(GTest::Main STATIC IMPORTED)
+    target_link_libraries(GTest::Main INTERFACE GTest::GTest)
+    set_target_properties(GTest::Main PROPERTIES IMPORTED_LOCATION "${GTEST_MAIN_LIB_FILENAME}" AVIF_LOCAL ON)
 else()
     message(STATUS "libavif(AVIF_GTEST=LOCAL): compiled library not found in ext/googletest; using FetchContent")
     if(EXISTS "${AVIF_SOURCE_DIR}/ext/googletest")
@@ -45,8 +45,8 @@ else()
 
     set_target_properties(gtest gtest_main PROPERTIES AVIF_LOCAL ON)
 
-    add_library(GTest::gtest ALIAS gtest)
-    add_library(GTest::gtest_main ALIAS gtest_main)
+    add_library(GTest::GTest ALIAS gtest)
+    add_library(GTest::Main ALIAS gtest_main)
 
     message(CHECK_PASS "complete")
 endif()

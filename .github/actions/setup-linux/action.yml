@@ -16,6 +16,9 @@ inputs:
   gcc-version:
     description: 'Can be empty, in which case CC and CXX are not overriden'
     default: ''
+  gtest:
+    description: 'Can take the values: OFF, LOCAL, SYSTEM'
+    default: 'OFF'
   libxml2:
     description: 'Can take the values: OFF, LOCAL, SYSTEM'
     default: 'OFF'
@@ -65,6 +68,11 @@ runs:
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
       run:
         sudo apt install meson
+      shell: bash
+    - name: Set up gtest
+      if: ${{ inputs.gtest == 'SYSTEM' }}
+      run:
+        sudo apt install libgtest-dev
       shell: bash
 
     - uses: ./.github/actions/setup-common
