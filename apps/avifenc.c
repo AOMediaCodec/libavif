@@ -2130,7 +2130,7 @@ int main(int argc, char * argv[])
                 if (fileSettings->minQuantizerAlpha.set) {
                     assert(fileSettings->maxQuantizerAlpha.set);
                     if (!fileSettings->qualityAlpha.set) {
-                        const int quantizerAlpha = (fileSettings->minQuantizerAlpha.set + fileSettings->maxQuantizerAlpha.set) / 2;
+                        const int quantizerAlpha = (fileSettings->minQuantizerAlpha.value + fileSettings->maxQuantizerAlpha.value) / 2;
                         const int qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
                         fileSettings->qualityAlpha = intSettingsEntryOf(qualityAlpha);
                     }
