@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Changed since 1.1.0
+* In avif.h, change "AVIF_API AVIF_NODISCARD" back to "AVIF_NODISCARD AVIF_API"
+  to fix clang-cl compilation errors on Windows.
+
 ## [1.1.0] - 2024-07-11
 
 ### Added since 1.0.0
