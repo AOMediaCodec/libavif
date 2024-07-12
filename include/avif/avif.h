@@ -13,7 +13,7 @@ extern "C" {
 
 // Define the internal macro AVIF_USE_NODISCARD if AVIF_NODISCARD will be defined as [[nodiscard]].
 // In this case, also use the standard [[...]] attribute syntax for GCC's visibility("default")
-// attribute to avoid compilation errors.
+// attribute and MSVC's dllexport/dllimport attributes to avoid compilation errors.
 #if defined(AVIF_ENABLE_NODISCARD) || (defined(__cplusplus) && __cplusplus >= 201703L) || \
     (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
 #define AVIF_USE_NODISCARD 1
@@ -36,8 +36,13 @@ extern "C" {
 // For static build, AVIF_API is always defined as nothing.
 
 #if defined(_WIN32)
+#if defined(AVIF_USE_NODISCARD) && (defined(__GNUC__) || defined(__clang__))
+#define AVIF_HELPER_EXPORT [[gnu::dllexport]]
+#define AVIF_HELPER_IMPORT [[gnu::dllimport]]
+#else
 #define AVIF_HELPER_EXPORT __declspec(dllexport)
 #define AVIF_HELPER_IMPORT __declspec(dllimport)
+#endif
 #elif defined(__GNUC__) && __GNUC__ >= 4
 #if defined(AVIF_USE_NODISCARD)
 #define AVIF_HELPER_EXPORT [[gnu::visibility("default")]]
