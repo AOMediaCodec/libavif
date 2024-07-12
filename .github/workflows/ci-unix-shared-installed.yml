@@ -32,20 +32,19 @@ jobs:
         codec-aom: 'SYSTEM'
         codec-dav1d: 'SYSTEM'
         gcc-version: ${{ matrix.gcc }}
+        gtest: 'SYSTEM'
         libyuv: 'SYSTEM'
     - uses: ./.github/actions/setup-macos
       if: runner.os == 'macOS'
       with:
         codec-aom: 'SYSTEM'
         codec-dav1d: 'SYSTEM'
+        gtest: 'SYSTEM'
     - name: Disable libyuv on macOS
       # TODO(yguyon): Install libyuv (not available with brew).
       if: runner.os == 'macOS'
       run: echo "CMAKE_AVIF_FLAGS=\"-DAVIF_LIBYUV=OFF\""  >> $GITHUB_ENV
 
-      # `sudo apt-get install googletest libgtest-dev` leads to the following:
-      #   "libgtest.a(gtest-all.cc.o): undefined reference to `std::__throw_bad_array_new_length()'"
-      # so build it locally instead.
     - name: Prepare libavif (cmake)
       run: >
         cmake -G Ninja -S . -B build
@@ -54,7 +53,7 @@ jobs:
         -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
         -DAVIF_CODEC_DAV1D=SYSTEM
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
-        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
+        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=SYSTEM
         -DAVIF_BUILD_GDK_PIXBUF=ON -DCMAKE_INSTALL_PREFIX=./build/install
         -DAVIF_ENABLE_WERROR=ON ${{ env.CMAKE_AVIF_FLAGS }}
     - name: Build libavif (ninja)

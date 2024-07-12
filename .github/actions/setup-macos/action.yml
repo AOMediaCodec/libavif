@@ -10,6 +10,9 @@ inputs:
   codec-rav1e:
     description: 'Can take the values: OFF, LOCAL, SYSTEM'
     default: 'OFF'
+  gtest:
+    description: 'Can take the values: OFF, LOCAL, SYSTEM'
+    default: 'OFF'
   extra-cache-key:
     description: 'Extra cache key to use in the cache name. Useful when several caches are used in one workflow.'
     default: ''
@@ -45,6 +48,10 @@ runs:
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
       run: brew install meson
+      shell: bash
+    - name: Set up gtest
+      if: ${{ inputs.gtest == 'SYSTEM' }}
+      run: brew install googletest
       shell: bash
 
     - uses: ./.github/actions/setup-common
