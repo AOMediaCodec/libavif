@@ -1983,26 +1983,27 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata, cons
 
     uint32_t useBaseColorSpace;
     AVIF_CHECK(avifROStreamReadBits(&s, &useBaseColorSpace, 1)); // unsigned int(1) use_base_colour_space;
+    metadata->useBaseColorSpace = useBaseColorSpace ? AVIF_TRUE : AVIF_FALSE;
 
     uint32_t reserved;
     AVIF_CHECK(avifROStreamReadBits(&s, &reserved, 6)); // unsigned int(6) reserved;
 
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomD));
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN));
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomD));
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));      // unsigned int(32) base_hdr_headroom_numerator;
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomD));      // unsigned int(32) base_hdr_headroom_denominator;
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN)); // unsigned int(32) alternate_hdr_headroom_numerator;
+    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomD)); // unsigned int(32) alternate_hdr_headroom_denominator;
 
     for (int c = 0; c < channelCount; ++c) {
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMinD[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMaxD[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaD[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseOffsetD[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c]));
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateOffsetD[c]));
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c])); // int(32) gain_map_min_numerator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMinD[c]));             // unsigned int(32) gain_map_min_denominator;
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c])); // int(32) gain_map_max_numerator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMaxD[c]));             // unsigned int(32) gain_map_max_denominator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));           // unsigned int(32) gamma_numerator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaD[c]));           // unsigned int(32) gamma_denominator;
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c])); // int(32) base_offset_numerator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseOffsetD[c]));             // unsigned int(32) base_offset_denominator;
+        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c])); // int(32) alternate_offset_numerator;
+        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateOffsetD[c])); // unsigned int(32) alternate_offset_denominator;
     }
 
     // Fill the remaining values by copying those from the first channel.
