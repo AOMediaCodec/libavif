@@ -12,6 +12,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * In avif.h, change "AVIF_API AVIF_NODISCARD" back to "AVIF_NODISCARD AVIF_API"
   to fix clang-cl compilation errors on Windows.
 * Fix -DAVIF_GTEST=SYSTEM, https://github.com/AOMediaCodec/libavif/issues/2258.
+* When building aom as a local dependency, runtime CPU detection
+  (`CONFIG_RUNTIME_CPU_DETECT`) is now always `ON`; in 1.1.0 it had been
+  disabled for non-native builds.
 
 ## [1.1.0] - 2024-07-11
 
