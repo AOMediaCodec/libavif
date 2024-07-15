@@ -1099,7 +1099,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
             // Set the U plane to 0.5.
             if (image->depth > 8) {
-                const uint16_t half = 1 << (image->depth - 1);
+                const uint16_t half = (uint16_t)(1 << (image->depth - 1));
                 for (uint32_t j = 0; j < monoUVHeight; ++j) {
                     uint16_t * dstRow = (uint16_t *)&aomImage.planes[1][(size_t)j * aomImage.stride[1]];
                     for (uint32_t i = 0; i < monoUVWidth; ++i) {

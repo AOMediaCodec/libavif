@@ -278,7 +278,7 @@ typedef struct avifSampleTable
 
 static void avifSampleTableDestroy(avifSampleTable * sampleTable);
 
-static avifSampleTable * avifSampleTableCreate()
+static avifSampleTable * avifSampleTableCreate(void)
 {
     avifSampleTable * sampleTable = (avifSampleTable *)avifAlloc(sizeof(avifSampleTable));
     if (sampleTable == NULL) {
@@ -750,7 +750,7 @@ typedef struct avifMeta
 
 static void avifMetaDestroy(avifMeta * meta);
 
-static avifMeta * avifMetaCreate()
+static avifMeta * avifMetaCreate(void)
 {
     avifMeta * meta = (avifMeta *)avifAlloc(sizeof(avifMeta));
     if (meta == NULL) {
@@ -883,7 +883,7 @@ typedef struct avifDecoderData
 
 static void avifDecoderDataDestroy(avifDecoderData * data);
 
-static avifDecoderData * avifDecoderDataCreate()
+static avifDecoderData * avifDecoderDataCreate(void)
 {
     avifDecoderData * data = (avifDecoderData *)avifAlloc(sizeof(avifDecoderData));
     if (data == NULL) {
@@ -5351,7 +5351,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 if (!foundItem) {
                     AVIF_CHECKERR(numExtraInputImageItems < AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS,
                                   AVIF_RESULT_NOT_IMPLEMENTED);
-                    *category = AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR + numExtraInputImageItems;
+                    *category = (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR + numExtraInputImageItems);
                     alphaCategory = AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + numExtraInputImageItems;
                     mainItems[*category] = inputImageItem;
                     ++numExtraInputImageItems;
@@ -5441,7 +5441,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (avifIsAlpha((avifItemCategory)c) && !isAlphaItemInInput) {
                 // In this case, the made up grid item will not have an associated pixi property. So validate everything else
                 // but the pixi property.
-                strictFlags &= ~AVIF_STRICT_PIXI_REQUIRED;
+                strictFlags &= (avifStrictFlags)(~AVIF_STRICT_PIXI_REQUIRED);
             }
             AVIF_CHECKRES(
                 avifDecoderItemValidateProperties(mainItems[c], avifGetConfigurationPropertyName(codecType[c]), &decoder->diag, strictFlags));
@@ -5807,7 +5807,7 @@ static avifBool avifDecoderDataFrameFullyDecoded(const avifDecoderData * data)
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, avifImage * dstImage)
+static avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, avifImage * dstImage)
 {
     if (dstImage->depth != decoder->data->meta->sampleTransformDepth) {
         AVIF_ASSERT_OR_RETURN(dstImage->yuvPlanes[0] != NULL);
