@@ -14,6 +14,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix -DAVIF_GTEST=SYSTEM, https://github.com/AOMediaCodec/libavif/issues/2258.
 * Fix infe_type and codec_config_type wrongly read as byte-aligned fields in the
   experimental feature AVIF_ENABLE_EXPERIMENTAL_METAV1.
+* When building aom as a local dependency, runtime CPU detection
+  (`CONFIG_RUNTIME_CPU_DETECT`) is now always `ON`; in 1.1.0 it had been
+  disabled for non-native builds.
 
 ## [1.1.0] - 2024-07-11
 
