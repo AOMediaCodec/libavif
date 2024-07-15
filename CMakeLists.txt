@@ -156,8 +156,8 @@ add_library(avif_obj OBJECT)
 add_library(avif)
 
 # Adds <target> to avif_obj's public link libraries for build, and adds
-# the <target> library as an install link library for export if a consumer
-# would need to include that library alongside libavif when linking.
+# the <target> library as an install link library for export in case a consumer
+# needs to include that library alongside libavif when statically linking.
 function(avif_target_link_library target)
     target_link_libraries(avif_obj PUBLIC $<BUILD_INTERFACE:${target}>)
     get_target_property(target_is_local ${target} AVIF_LOCAL)
@@ -168,9 +168,7 @@ function(avif_target_link_library target)
     if(NOT install_target)
         set(install_target ${target})
     endif()
-    # The transitive dependency is an export link library if it is a shared
-    # library, or if it is a static library in a static build
-    get_target_property(target_type ${target} TYPE)
+    # The transitive dependency is an export link library if it is a static library in a static build.
     if(NOT BUILD_SHARED_LIBS)
         target_link_libraries(avif PUBLIC $<INSTALL_INTERFACE:${install_target}>)
     endif()
