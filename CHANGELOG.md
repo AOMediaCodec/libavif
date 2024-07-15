@@ -9,8 +9,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 ## [Unreleased]
 
 ### Changed since 1.1.0
-* In avif.h, change "AVIF_API AVIF_NODISCARD" back to "AVIF_NODISCARD AVIF_API"
-  to fix clang-cl compilation errors on Windows.
+* In avif.h, fix clang-cl compilation errors of "AVIF_API AVIF_NODISCARD" on
+  Windows.
 * Fix -DAVIF_GTEST=SYSTEM, https://github.com/AOMediaCodec/libavif/issues/2258.
 * Fix infe_type and codec_config_type wrongly read as byte-aligned fields in the
   experimental feature AVIF_ENABLE_EXPERIMENTAL_METAV1.
