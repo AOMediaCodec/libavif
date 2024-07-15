@@ -80,6 +80,8 @@ extern "C" {
 #endif
 #endif
 
+#undef AVIF_USE_NODISCARD
+
 // ---------------------------------------------------------------------------
 // Constants
 
