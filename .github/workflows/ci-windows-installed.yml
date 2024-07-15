@@ -33,12 +33,14 @@ jobs:
         extra-cache-key: ${{ matrix.compiler }}
     - name: Leave compiler as default
       if: matrix.compiler == 'default'
-      run: echo "AVIF_CMAKE_FLAGS=" >> $env:GITHUB_ENV
+      run: |
+        echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
+        echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
     - name: Set clang-cl as compiler
       if: matrix.compiler == 'clang-cl'
-      run: echo "AVIF_CMAKE_FLAGS=-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
-    - name: Display compiler
-      run: echo $AVIF_CMAKE_FLAGS
+      run: |
+        echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=clang-cl" >> $env:GITHUB_ENV
+        echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
 
     - name: vcpkg build
       uses: johnwason/vcpkg-action@v6
@@ -61,6 +63,7 @@ jobs:
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\include\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\rav1e* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
+    - uses: ilammy/msvc-dev-cmd@v1
     - name: Prepare libavif (cmake)
       run: >
         cmake ${{ steps.vcpkg.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
@@ -75,7 +78,7 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_AVIR=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
-        -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_FLAGS
+        -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
