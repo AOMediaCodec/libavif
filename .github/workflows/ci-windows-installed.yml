@@ -33,10 +33,12 @@ jobs:
         extra-cache-key: ${{ matrix.compiler }}
     - name: Leave compiler as default
       if: matrix.compiler == 'default'
-      run: echo "CMAKE_AVIF_FLAGS=\"\"" >> $GITHUB_ENV
+      run: echo "AVIF_CMAKE_FLAGS=" >> $env:GITHUB_ENV
     - name: Set clang-cl as compiler
       if: matrix.compiler == 'clang-cl'
-      run: echo "CMAKE_AVIF_FLAGS=-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl" >> "$GITHUB_ENV"
+      run: echo "AVIF_CMAKE_FLAGS=-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
+    - name: Display compiler
+      run: echo $AVIF_CMAKE_FLAGS
 
     - name: vcpkg build
       uses: johnwason/vcpkg-action@v6
@@ -73,7 +75,7 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_AVIR=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
-        -DAVIF_ENABLE_WERROR=ON $CMAKE_AVIF_FLAGS
+        -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_FLAGS
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
