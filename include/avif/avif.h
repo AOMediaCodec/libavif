@@ -11,6 +11,14 @@
 extern "C" {
 #endif
 
+// Define the internal macro AVIF_USE_NODISCARD if AVIF_NODISCARD will be defined as [[nodiscard]].
+// In this case, also use the standard [[...]] attribute syntax for GCC's visibility("default")
+// attribute and MSVC's dllexport/dllimport attributes to avoid compilation errors.
+#if defined(AVIF_ENABLE_NODISCARD) || (defined(__cplusplus) && __cplusplus >= 201703L) || \
+    (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
+#define AVIF_USE_NODISCARD 1
+#endif
+
 // ---------------------------------------------------------------------------
 // Export macros
 
@@ -28,10 +36,19 @@ extern "C" {
 // For static build, AVIF_API is always defined as nothing.
 
 #if defined(_WIN32)
+#if defined(AVIF_USE_NODISCARD) && (defined(__GNUC__) || defined(__clang__))
+#define AVIF_HELPER_EXPORT [[gnu::dllexport]]
+#define AVIF_HELPER_IMPORT [[gnu::dllimport]]
+#else
 #define AVIF_HELPER_EXPORT __declspec(dllexport)
 #define AVIF_HELPER_IMPORT __declspec(dllimport)
+#endif
 #elif defined(__GNUC__) && __GNUC__ >= 4
+#if defined(AVIF_USE_NODISCARD)
+#define AVIF_HELPER_EXPORT [[gnu::visibility("default")]]
+#else
 #define AVIF_HELPER_EXPORT __attribute__((visibility("default")))
+#endif
 #define AVIF_HELPER_IMPORT
 #else
 #define AVIF_HELPER_EXPORT
@@ -48,8 +65,7 @@ extern "C" {
 #define AVIF_API
 #endif // defined(AVIF_DLL)
 
-#if defined(AVIF_ENABLE_NODISCARD) || (defined(__cplusplus) && __cplusplus >= 201703L) || \
-    (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
+#if defined(AVIF_USE_NODISCARD)
 #define AVIF_NODISCARD [[nodiscard]]
 #else
 // Starting with 3.9, clang allows defining the warn_unused_result attribute for enums.
@@ -63,6 +79,8 @@ extern "C" {
 #define AVIF_NODISCARD
 #endif
 #endif
+
+#undef AVIF_USE_NODISCARD
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -510,13 +528,13 @@ typedef struct avifCropRect
 
 // These will return AVIF_FALSE if the resultant values violate any standards, and if so, the output
 // values are not guaranteed to be complete or correct and should not be used.
-AVIF_NODISCARD AVIF_API avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
+AVIF_API AVIF_NODISCARD avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
                                                                      const avifCleanApertureBox * clap,
                                                                      uint32_t imageW,
                                                                      uint32_t imageH,
                                                                      avifPixelFormat yuvFormat,
                                                                      avifDiagnostics * diag);
-AVIF_NODISCARD AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
+AVIF_API AVIF_NODISCARD avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
                                                                      const avifCropRect * cropRect,
                                                                      uint32_t imageW,
                                                                      uint32_t imageH,
@@ -705,10 +723,10 @@ typedef struct avifGainMapMetadataDouble
 // Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values
 // to the closest uint32_t fractions.
 // Returns AVIF_FALSE if some field values are < 0 or > UINT32_MAX.
-AVIF_NODISCARD AVIF_API avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
+AVIF_API AVIF_NODISCARD avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
 // Converts a avifGainMapMetadata to avifGainMapMetadataDouble by converting fractions to double values.
 // Returns AVIF_FALSE if some denominators are zero.
-AVIF_NODISCARD AVIF_API avifBool avifGainMapMetadataFractionsToDouble(avifGainMapMetadataDouble * dst, const avifGainMapMetadata * src);
+AVIF_API AVIF_NODISCARD avifBool avifGainMapMetadataFractionsToDouble(avifGainMapMetadataDouble * dst, const avifGainMapMetadata * src);
 
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
@@ -819,8 +837,8 @@ typedef struct avifImage
 } avifImage;
 
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
-AVIF_NODISCARD AVIF_API avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
-AVIF_NODISCARD AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
+AVIF_API AVIF_NODISCARD avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
+AVIF_API AVIF_NODISCARD avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
 // Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present
 // and if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined.
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
@@ -1366,7 +1384,7 @@ AVIF_API avifResult avifDecoderReset(avifDecoder * decoder);
 // frameIndex - 0-based, matching avifDecoder->imageIndex, bound by avifDecoder->imageCount
 // "nearest" keyframe means the keyframe prior to this frame index (returns frameIndex if it is a keyframe)
 // These functions may be used after a successful call (AVIF_RESULT_OK) to avifDecoderParse().
-AVIF_NODISCARD AVIF_API avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
+AVIF_API AVIF_NODISCARD avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
 AVIF_API uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex);
 
 // Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
@@ -1510,7 +1528,7 @@ typedef struct avifEncoder
 } avifEncoder;
 
 // avifEncoderCreate() returns NULL if a memory allocation failed.
-AVIF_NODISCARD AVIF_API avifEncoder * avifEncoderCreate(void);
+AVIF_API AVIF_NODISCARD avifEncoder * avifEncoderCreate(void);
 AVIF_API avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output);
 AVIF_API void avifEncoderDestroy(avifEncoder * encoder);
 
@@ -1575,8 +1593,8 @@ AVIF_API size_t avifEncoderGetGainMapSizeBytes(avifEncoder * encoder);
 #endif
 
 // Helpers
-AVIF_NODISCARD AVIF_API avifBool avifImageUsesU16(const avifImage * image);
-AVIF_NODISCARD AVIF_API avifBool avifImageIsOpaque(const avifImage * image);
+AVIF_API AVIF_NODISCARD avifBool avifImageUsesU16(const avifImage * image);
+AVIF_API AVIF_NODISCARD avifBool avifImageIsOpaque(const avifImage * image);
 // channel can be an avifChannelIndex.
 AVIF_API uint8_t * avifImagePlane(const avifImage * image, int channel);
 AVIF_API uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel);
@@ -1585,7 +1603,7 @@ AVIF_API uint32_t avifImagePlaneHeight(const avifImage * image, int channel);
 
 // Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
-AVIF_NODISCARD AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * input);
+AVIF_API AVIF_NODISCARD avifBool avifPeekCompatibleFileType(const avifROData * input);
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 // ---------------------------------------------------------------------------
