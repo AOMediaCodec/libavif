@@ -3634,8 +3634,14 @@ static avifResult avifParseMetaBoxV1(avifROStream * s, avifMeta * meta, uint64_t
     uint8_t infeType[4];
     uint8_t codecConfigType[4];
     if (hasExplicitCodecTypes) {
-        AVIF_CHECKERR(avifROStreamRead(s, infeType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);        // bit(32) infe_type;
-        AVIF_CHECKERR(avifROStreamRead(s, codecConfigType, 4), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(32) codec_config_type;
+        // bit(32) infe_type;
+        for (int i = 0; i < 4; ++i) {
+            AVIF_CHECKERR(avifROStreamReadBits8(s, &infeType[i], 8), AVIF_RESULT_BMFF_PARSE_FAILED);
+        }
+        // bit(32) codec_config_type;
+        for (int i = 0; i < 4; ++i) {
+            AVIF_CHECKERR(avifROStreamReadBits8(s, &codecConfigType[i], 8), AVIF_RESULT_BMFF_PARSE_FAILED);
+        }
 #if defined(AVIF_CODEC_AVM)
         if (!memcmp(infeType, "av02", 4) && !memcmp(codecConfigType, "av2C", 4)) {
             return AVIF_RESULT_NOT_IMPLEMENTED;
