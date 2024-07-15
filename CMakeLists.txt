@@ -171,7 +171,7 @@ function(avif_target_link_library target)
     # The transitive dependency is an export link library if it is a shared
     # library, or if it is a static library in a static build
     get_target_property(target_type ${target} TYPE)
-    if(target_type STREQUAL "SHARED_LIBRARY" OR NOT BUILD_SHARED_LIBS)
+    if(NOT BUILD_SHARED_LIBS)
         target_link_libraries(avif PUBLIC $<INSTALL_INTERFACE:${install_target}>)
     endif()
 endfunction()
