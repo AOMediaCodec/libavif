@@ -66,7 +66,7 @@ jobs:
         if: ${{ matrix.sanitizer == 'memory' }}
         run: |
           echo "CI_CFLAGS=-fsanitize=memory -L${{ github.workspace }}/llvm-project/msan_out/lib -I${{ github.workspace }}/llvm-project/msan_out/include"  >> $GITHUB_ENV
-          echo "CI_CXXFLAGS=-fsanitize=memory -stdlib=libc++ -L${{ github.workspace }}/llvm-project/msan_out/lib -I${{ github.workspace }}/llvm-project/msan_out/include -I${{ github.workspace }}/llvm-project/msan_out/include/c++/v1"  >> $GITHUB_EN
+          echo "CI_CXXFLAGS=-fsanitize=memory -stdlib=libc++ -L${{ github.workspace }}/llvm-project/msan_out/lib -I${{ github.workspace }}/llvm-project/msan_out/include -I${{ github.workspace }}/llvm-project/msan_out/include/c++/v1"  >> $GITHUB_ENV
           echo "CI_LDLAGS=-fsanitize=memory -L${{ github.workspace }}/llvm-project/msan_out/lib -lc++abi"  >> $GITHUB_ENV
           echo "CI_LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ github.workspace }}/llvm-project/msan_out/lib" >> $GITHUB_ENV
       - name: Set FLAGS for other sanitizers
