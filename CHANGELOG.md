@@ -17,6 +17,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * When building aom as a local dependency, runtime CPU detection
   (`CONFIG_RUNTIME_CPU_DETECT`) is now always `ON`; in 1.1.0 it had been
   disabled for non-native builds.
+* Fix CMake config shared library leaks
+  https://github.com/AOMediaCodec/libavif/issues/2264.
 
 ## [1.1.0] - 2024-07-11
 
