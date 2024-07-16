@@ -328,8 +328,6 @@ static avifBool parseSequenceHeaderColorConfig(avifBits * bits, avifSequenceHead
                     header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
                 }
                 break;
-            default:
-                return AVIF_FALSE;
         }
 
         if (subsampling_x && subsampling_y) {
