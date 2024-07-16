@@ -311,6 +311,24 @@ if(AVIF_ENABLE_WERROR)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
+    if(CMAKE_C_COMPILER MATCHES "clang-cl")
+        # Remove some warnings because clang-cl gives too many not so useful ones.
+        target_compile_options(
+            avif_obj
+            PUBLIC $<BUILD_INTERFACE:-Wno-bad-function-cast
+                   -Wno-cast-align
+                   -Wno-covered-switch-default
+                   -Wno-declaration-after-statement
+                   -Wno-deprecated-declarations
+                   -Wno-double-promotion
+                   -Wno-float-equal
+                   -Wno-implicit-int-float-conversion
+                   -Wno-sign-conversion
+                   -Wno-switch-default
+                   -Wno-switch-enum
+                   -Wno-unsafe-buffer-usage>
+        )
+    endif()
 endif()
 
 if(AVIF_ENABLE_NODISCARD)
@@ -619,6 +637,10 @@ if(AVIF_BUILD_EXAMPLES)
             set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
         endif()
         target_link_libraries(${EXAMPLE} avif)
+        if(CMAKE_C_COMPILER MATCHES "clang-cl")
+            # Remove some warnings because clang-cl gives too many not so useful ones.
+            target_compile_options(${EXAMPLE} PUBLIC $<BUILD_INTERFACE:-Wno-deprecated-declarations>)
+        endif()
     endforeach()
 endif()
 
@@ -689,6 +711,10 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     # headers from /usr/local/include.
     target_include_directories(avif_apps_obj PRIVATE third_party/iccjpeg)
     target_include_directories(avif_apps_obj SYSTEM PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
+    if(CMAKE_C_COMPILER MATCHES "clang-cl")
+        # Remove some warnings because clang-cl gives too many not so useful ones.
+        target_compile_options(avif_apps_obj PUBLIC $<BUILD_INTERFACE:-Wno-missing-noreturn>)
+    endif()
 
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if(TARGET LibXml2::LibXml2)
@@ -735,6 +761,11 @@ if(AVIF_BUILD_APPS)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifenc avif_apps)
+    if(CMAKE_C_COMPILER MATCHES "clang-cl")
+        # Remove some warnings because clang-cl gives too many not so useful ones.
+        target_compile_options(avifenc PUBLIC $<BUILD_INTERFACE:-Wno-deprecated-declarations>)
+    endif()
+
     add_executable(avifdec apps/avifdec.c)
     if(WIN32)
         target_sources(avifdec PRIVATE apps/utf8.rc)
