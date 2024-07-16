@@ -457,7 +457,7 @@ avifBool avifPNGRead(const char * inputFilename,
         goto cleanup;
     }
     if (avif->width > imageSizeLimit / avif->height) {
-        fprintf(stderr, "Too big PNG dimensions (%d x %d > %u px): %s\n", avif->width, avif->height, imageSizeLimit, inputFilename);
+        fprintf(stderr, "Too big PNG dimensions (%u x %u > %u px): %s\n", avif->width, avif->height, imageSizeLimit, inputFilename);
         goto cleanup;
     }
 
