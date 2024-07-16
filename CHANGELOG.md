@@ -19,6 +19,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   disabled for non-native builds.
 * Fix CMake config shared library leaks
   https://github.com/AOMediaCodec/libavif/issues/2264.
+* Fix clang-cl compilation.
 
 ## [1.1.0] - 2024-07-11
 
