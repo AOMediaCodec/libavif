@@ -20,6 +20,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       fail-fast: false
+      matrix:
+        compiler: [msvc, clang-cl]
 
     steps:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -28,6 +30,17 @@ jobs:
         codec-aom: 'SYSTEM'
         codec-dav1d: 'SYSTEM'
         codec-rav1e: 'SYSTEM'
+        extra-cache-key: ${{ matrix.compiler }}
+    - name: Leave compiler as default
+      if: matrix.compiler == 'msvc'
+      run: |
+        echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
+        echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
+    - name: Set clang-cl as compiler
+      if: matrix.compiler == 'clang-cl'
+      run: |
+        echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=clang-cl" >> $env:GITHUB_ENV
+        echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
 
     - name: vcpkg build
       uses: johnwason/vcpkg-action@v6
@@ -64,7 +77,7 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_AVIR=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
-        -DAVIF_ENABLE_WERROR=ON
+        -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
