@@ -268,7 +268,6 @@ if(MSVC)
         PUBLIC $<BUILD_INTERFACE:
                /W4 # For clang-cl, /W4 enables -Wall and -Wextra
                /wd4324 # Disable: structure was padded due to alignment specifier
-               /wd4996 # Disable: potentially unsafe stdlib methods
                >
     )
     # clang-cl documentation says:
@@ -342,7 +341,7 @@ endif()
 if(MSVC)
     # Disable deprecation warnings about POSIX function names such as setmode (replaced by the ISO C and C++ conformant name _setmode).
     add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS)
-    # Disable deprecation warnings about less secure CRT functions such as fopen (replaced by fopen_s).
+    # Disable deprecation warnings about unsafe CRT library functions such as fopen (replaced by fopen_s).
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 endif()
 
