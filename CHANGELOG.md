@@ -8,6 +8,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Changed since 1.1.1
+* avifenc: Allow large images to be encoded.
+
 ## [1.1.1] - 2024-07-30
 
 ### Changed since 1.1.0
