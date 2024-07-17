@@ -14,6 +14,8 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW) # valid for DOWNLOAD_EXTRACT_TIMESTAMP option in CMake 3.24 and later
 endif()
 
+project(libavif LANGUAGES C VERSION 1.1.0)
+
 # The root directory of the avif source
 set(AVIF_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -24,8 +26,6 @@ include(ExternalProject)
 include(FetchContent)
 include(FindPkgConfig)
 include(AvifExternalProjectUtils)
-
-project(libavif LANGUAGES C VERSION 1.1.0)
 
 # Set C99 as the default
 set(CMAKE_C_STANDARD 99)
