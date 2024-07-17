@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [default, clang-cl]
+        compiler: [msvc, clang-cl]
 
     steps:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -32,7 +32,7 @@ jobs:
         codec-rav1e: 'SYSTEM'
         extra-cache-key: ${{ matrix.compiler }}
     - name: Leave compiler as default
-      if: matrix.compiler == 'default'
+      if: matrix.compiler == 'msvc'
       run: |
         echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
         echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
