@@ -484,8 +484,10 @@ avifBool avifPNGRead(const char * inputFilename,
         fprintf(stderr, "avifPNGRead internal error: memory allocation failure");
         goto cleanup;
     }
+    uint8_t * rgbRow = rgb.pixels;
     for (uint32_t y = 0; y < rgb.height; ++y) {
-        rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
+        rowPointers[y] = rgbRow;
+        rgbRow += rgb.rowBytes;
     }
     png_read_image(png, rowPointers);
     if (avifImageRGBToYUV(avif, &rgb) != AVIF_RESULT_OK) {
@@ -712,16 +714,18 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         fprintf(stderr, "Error writing PNG: memory allocation failure");
         goto cleanup;
     }
+    uint8_t * row;
+    uint32_t rowBytes;
     if (monochrome8bit) {
-        uint8_t * yPlane = avif->yuvPlanes[AVIF_CHAN_Y];
-        uint32_t yRowBytes = avif->yuvRowBytes[AVIF_CHAN_Y];
-        for (uint32_t y = 0; y < avif->height; ++y) {
-            rowPointers[y] = &yPlane[y * yRowBytes];
-        }
+        row = avif->yuvPlanes[AVIF_CHAN_Y];
+        rowBytes = avif->yuvRowBytes[AVIF_CHAN_Y];
     } else {
-        for (uint32_t y = 0; y < avif->height; ++y) {
-            rowPointers[y] = &rgb.pixels[y * rgb.rowBytes];
-        }
+        row = rgb.pixels;
+        rowBytes = rgb.rowBytes;
+    }
+    for (uint32_t y = 0; y < avif->height; ++y) {
+        rowPointers[y] = row;
+        row += rowBytes;
     }
     if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
         // TODO(yguyon): Rotate the samples.
