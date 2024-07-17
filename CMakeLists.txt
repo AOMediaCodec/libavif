@@ -133,14 +133,10 @@ option(
     OFF
 )
 
+# Whether the libavif library uses c++ indirectly (e.g. through linking to libgav1).
 set(AVIF_USE_CXX OFF)
 
-if(AVIF_BUILD_APPS
-   OR AVIF_ENABLE_FUZZTEST
-   OR AVIF_ENABLE_GTEST
-   OR AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL"
-   OR AVIF_CODEC_LIBGAV1 STREQUAL "SYSTEM"
-)
+if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL" OR AVIF_CODEC_LIBGAV1 STREQUAL "SYSTEM")
     set(AVIF_USE_CXX ON)
 endif()
 
@@ -244,6 +240,7 @@ if(AVIF_LIBYUV_ENABLED)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_LIBYUV_ENABLED=1)
     avif_target_link_library(yuv::yuv)
     set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE} -lyuv")
+    set(AVIF_USE_CXX ON)
 endif(AVIF_LIBYUV_ENABLED)
 
 set_local_or_system_option("LIBSHARPYUV" "OFF" "Use libsharpyuv.")
@@ -639,13 +636,14 @@ endif()
 
 if(AVIF_CODEC_AOM_ENABLED)
     get_target_property(AOM_INTERFACE_LINK_LIBRARIES aom INTERFACE_LINK_LIBRARIES)
-    if(AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf)
-        # vmaf only affects the avifenc and avifdec targets below, not the avif library nor examples targets.
-        set(AVIF_USE_CXX ON)
-    endif()
 endif()
 
-if(AVIF_USE_CXX)
+if(AVIF_USE_CXX
+   OR AVIF_BUILD_APPS
+   OR AVIF_ENABLE_FUZZTEST
+   OR AVIF_ENABLE_GTEST
+   OR (AVIF_CODEC_AOM_ENABLED AND (AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf))
+)
     enable_language(CXX)
     if(AVIF_ENABLE_NODISCARD)
         set(CMAKE_CXX_STANDARD 17)
