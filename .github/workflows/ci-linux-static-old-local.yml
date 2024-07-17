@@ -1,6 +1,8 @@
 name: CI Unix Static For AVIF_LOCAL
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - '.github/workflows/ci-linux-static-old-local.yml'
