@@ -78,6 +78,7 @@ jobs:
         -DAVIF_ENABLE_EXPERIMENTAL_METAV1=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
         -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
+        -DAVIF_ENABLE_NODISCARD=ON
     - name: Build libavif (ninja)
       working-directory: ./build
       run: ninja
