@@ -645,7 +645,11 @@ endif()
 
 if(AVIF_USE_CXX)
     enable_language(CXX)
-    set(CMAKE_CXX_STANDARD 14)
+    if(AVIF_ENABLE_NODISCARD)
+        set(CMAKE_CXX_STANDARD 17)
+    else()
+        set(CMAKE_CXX_STANDARD 14)
+    endif()
 endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
