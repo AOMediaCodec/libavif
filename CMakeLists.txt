@@ -14,6 +14,12 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW) # valid for DOWNLOAD_EXTRACT_TIMESTAMP option in CMake 3.24 and later
 endif()
 
+# New in CMake version 3.30. FetchContent_Populate(<name>) is deprecated, call
+# FetchContent_MakeAvailable(<name>) instead.
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
+
 # The root directory of the avif source
 set(AVIF_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
