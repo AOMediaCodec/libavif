@@ -269,12 +269,9 @@ endif()
 include(CheckCCompilerFlag)
 if(MSVC)
     message(STATUS "libavif: Enabling warnings for MSVC")
-    target_compile_options(
-        avif_obj
-        PUBLIC $<BUILD_INTERFACE:
-               /W4 # For clang-cl, /W4 enables -Wall and -Wextra
-               /wd4324 # Disable: structure was padded due to alignment specifier
-               >
+    add_compile_options(
+        /W4 # For clang-cl, /W4 enables -Wall and -Wextra
+        /wd4324 # Disable: structure was padded due to alignment specifier
     )
     # clang-cl documentation says:
     #   /execution-charset:<value>
@@ -283,26 +280,22 @@ if(MSVC)
     #   /source-charset:<value> Source encoding, supports only UTF-8
     # So we don't need to pass /source-charset:utf-8 to clang-cl, and we cannot pass /execution-charset:us-ascii to clang-cl.
     if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-        target_compile_options(
-            avif_obj
-            PUBLIC $<BUILD_INTERFACE:
-                   # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
-                   # libavif uses ANSI API to print to console, which is not portable between systems using different
-                   # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
-                   # A C4556 warning will be generated on violation.
-                   # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
-                   # Warnings can be suppressed but there will still be random characters printed to the console.
-                   /source-charset:utf-8
-                   /execution-charset:us-ascii
-                   >
+        add_compile_options(
+            # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
+            # libavif uses ANSI API to print to console, which is not portable between systems using different
+            # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
+            # A C4556 warning will be generated on violation.
+            # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
+            # Warnings can be suppressed but there will still be random characters printed to the console.
+            /source-charset:utf-8 /execution-charset:us-ascii
         )
     endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:-Wall -Wextra -Wshorten-64-to-32>)
+    add_compile_options(-Wall -Wextra -Wshorten-64-to-32)
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
-    target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:-Wall -Wextra>)
+    add_compile_options(-Wall -Wextra)
 else()
     message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
 endif()
@@ -310,9 +303,9 @@ endif()
 if(AVIF_ENABLE_WERROR)
     # Warnings as errors
     if(MSVC)
-        target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:/WX>)
+        add_compile_options(/WX)
     elseif(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:-Werror>)
+        add_compile_options(-Werror)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
