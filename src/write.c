@@ -892,6 +892,11 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
     const uint8_t version = 0;
     AVIF_CHECKRES(avifRWStreamWriteU8(&s, version));
 
+    const uint16_t minimumVersion = 0;
+    AVIF_CHECKRES(avifRWStreamWriteU16(&s, minimumVersion));
+    const uint16_t writerVersion = 0;
+    AVIF_CHECKRES(avifRWStreamWriteU16(&s, writerVersion));
+
     uint8_t flags = 0u;
     // Always write three channels for now for simplicity.
     // TODO(maryla): the draft says that this specifies the count of channels of the
@@ -912,54 +917,29 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
         metadata->alternateOffsetD[0] == metadata->alternateOffsetD[2];
     const uint8_t channelCount = allChannelsIdentical ? 1u : 3u;
     if (channelCount == 3) {
-        flags |= 1;
+        flags |= (1 << 7);
     }
     if (metadata->useBaseColorSpace) {
-        flags |= 2;
-    }
-    const uint32_t denom = metadata->baseHdrHeadroomD;
-    avifBool useCommonDenominator = metadata->baseHdrHeadroomD == denom && metadata->alternateHdrHeadroomD == denom;
-    for (int c = 0; c < channelCount; ++c) {
-        useCommonDenominator = useCommonDenominator && metadata->gainMapMinD[c] == denom && metadata->gainMapMaxD[c] == denom &&
-                               metadata->gainMapGammaD[c] == denom && metadata->baseOffsetD[c] == denom &&
-                               metadata->alternateOffsetD[c] == denom;
-    }
-    if (useCommonDenominator) {
-        flags |= 8;
+        flags |= (1 << 6);
     }
     AVIF_CHECKRES(avifRWStreamWriteU8(&s, flags));
 
-    if (useCommonDenominator) {
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, denom));
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseHdrHeadroomN));
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseHdrHeadroomD));
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateHdrHeadroomN));
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateHdrHeadroomD));
 
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseHdrHeadroomN));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateHdrHeadroomN));
-
-        for (int c = 0; c < channelCount; ++c) {
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMinN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMaxN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapGammaN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->baseOffsetN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->alternateOffsetN[c]));
-        }
-    } else {
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseHdrHeadroomN));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseHdrHeadroomD));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateHdrHeadroomN));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateHdrHeadroomD));
-
-        for (int c = 0; c < channelCount; ++c) {
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMinN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapMinD[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMaxN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapMaxD[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapGammaN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapGammaD[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->baseOffsetN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseOffsetD[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->alternateOffsetN[c]));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateOffsetD[c]));
-        }
+    for (int c = 0; c < channelCount; ++c) {
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMinN[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapMinD[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMaxN[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapMaxD[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapGammaN[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapGammaD[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->baseOffsetN[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseOffsetD[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->alternateOffsetN[c]));
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateOffsetD[c]));
     }
 
     avifRWStreamFinishWrite(&s);
