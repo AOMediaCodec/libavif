@@ -14,11 +14,6 @@
 namespace avif {
 namespace {
 
-// Taken from stream.c.
-static const int VARINT_DEPTH_0 = 7;
-static const int VARINT_DEPTH_1 = 3;
-static const int VARINT_DEPTH_2 = 18;
-
 //------------------------------------------------------------------------------
 
 TEST(StreamTest, Roundtrip) {
