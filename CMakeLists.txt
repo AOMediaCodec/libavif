@@ -271,8 +271,7 @@ if(MSVC)
     message(STATUS "libavif: Enabling warnings for MSVC")
     target_compile_options(
         avif_obj
-        PUBLIC $<BUILD_INTERFACE:
-               /W4 # For clang-cl, /W4 enables -Wall and -Wextra
+        PUBLIC $<BUILD_INTERFACE: /W4 # For clang-cl, /W4 enables -Wall and -Wextra
                /wd4324 # Disable: structure was padded due to alignment specifier
                >
     )
