@@ -36,43 +36,43 @@ runs:
   steps:
     - name: Install non-library dependencies
       run: |
-        sudo apt update
-        sudo apt install imagemagick libjpeg-turbo8-dev libpng-dev
+        sudo apt update -y
+        sudo apt install -y imagemagick libjpeg-turbo8-dev libpng-dev
       shell: bash
     - name: Install libaom library
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
       run:
-        sudo apt install libaom-dev
+        sudo apt install -y libaom-dev
       shell: bash
     - name: Install libdav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
       run:
-        sudo apt install libdav1d-dev
+        sudo apt install -y libdav1d-dev
       shell: bash
     - name: Install rav1e library
       if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
       run:
-        sudo apt install librav1e-dev
+        sudo apt install -y librav1e-dev
       shell: bash
     - name: Install libxml2 library
       if: ${{ inputs.libxml2 == 'SYSTEM' }}
       run:
-        sudo apt install libxml2
+        sudo apt install -y libxml2
       shell: bash
     - name: Install libyuv library
       if: ${{ inputs.libyuv == 'SYSTEM' }}
       run:
-        sudo apt install libyuv-dev
+        sudo apt install -y libyuv-dev
       shell: bash
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
       run:
-        sudo apt install meson
+        sudo apt install -y meson
       shell: bash
     - name: Set up gtest
       if: ${{ inputs.gtest == 'SYSTEM' }}
       run:
-        sudo apt install libgtest-dev
+        sudo apt install -y libgtest-dev
       shell: bash
 
     - uses: ./.github/actions/setup-common
