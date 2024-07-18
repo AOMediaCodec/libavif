@@ -20,8 +20,7 @@ void CheckGainMapMetadata(
     const avifGainMapMetadata& m, std::array<double, 3> gain_map_min,
     std::array<double, 3> gain_map_max, std::array<double, 3> gain_map_gamma,
     std::array<double, 3> base_offset, std::array<double, 3> alternate_offset,
-    double base_hdr_headroom, double alternate_hdr_headroom,
-    bool backward_direction) {
+    double base_hdr_headroom, double alternate_hdr_headroom) {
   const double kEpsilon = 1e-8;
 
   EXPECT_NEAR(static_cast<double>(m.gainMapMinN[0]) / m.gainMapMinD[0],
@@ -96,8 +95,7 @@ TEST(JpegTest, ReadJpegWithGainMap) {
                          /*base_offset=*/{0.0, 0.0, 0.0},
                          /*alternate_offset=*/{0.0, 0.0, 0.0},
                          /*base_hdr_headroom=*/0.0,
-                         /*alternate_hdr_headroom=*/3.5,
-                         /*backward_direction=*/false);
+                         /*alternate_hdr_headroom=*/3.5);
   }
 }
 
@@ -169,8 +167,7 @@ TEST(JpegTest, ParseXMP) {
                        /*base_offset=*/{0.046983, 0.046983, 0.046983},
                        /*alternate_offset=*/{0.046983, 0.046983, 0.046983},
                        /*base_hdr_headroom=*/3.9,
-                       /*alternate_hdr_headroom=*/0.0,
-                       /*backward_direction=*/true);
+                       /*alternate_hdr_headroom=*/0.0);
 }
 
 TEST(JpegTest, ParseXMPAllDefaultValues) {
@@ -196,8 +193,7 @@ TEST(JpegTest, ParseXMPAllDefaultValues) {
       /*base_offset=*/{1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0},
       /*alternate_offset=*/{1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0},
       /*base_hdr_headroom=*/0.0,
-      /*alternate_hdr_headroom=*/1.0,
-      /*backward_direction=*/false);
+      /*alternate_hdr_headroom=*/1.0);
 }
 
 TEST(JpegTest, ExtendedXmp) {
@@ -239,8 +235,7 @@ TEST(JpegTest, ExtendedXmp) {
       /*base_offset=*/{1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0},
       /*alternate_offset=*/{1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0},
       /*base_hdr_headroom=*/0.0,
-      /*alternate_hdr_headroom=*/3.9,
-      /*backward_direction=*/false);
+      /*alternate_hdr_headroom=*/3.9);
 }
 
 TEST(JpegTest, InvalidNumberOfValues) {
