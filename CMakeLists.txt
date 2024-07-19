@@ -35,6 +35,7 @@ include(AvifExternalProjectUtils)
 
 # Set C99 as the default
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
