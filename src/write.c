@@ -1326,6 +1326,8 @@ static avifResult avifImageCreateAllocate(avifImage ** sampleTransformedImage, c
     return avifImageAllocatePlanes(*sampleTransformedImage, planes);
 }
 
+// Finds the encoded base image and decodes it.
+// Callers of this function must free *codec and *decodedBaseImage if not null, in case of success or not.
 static avifResult avifEncoderDecodeSatoBaseImage(const avifEncoder * encoder,
                                                  const avifImage * original,
                                                  uint32_t numBits,
