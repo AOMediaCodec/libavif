@@ -1328,7 +1328,7 @@ static avifResult avifImageCreateAllocate(avifImage ** sampleTransformedImage, c
 
 // Finds the encoded base image and decodes it.
 // Callers of this function must free *codec and *decodedBaseImage if not null, in case of success or not.
-static avifResult avifEncoderDecodeSatoBaseImage(const avifEncoder * encoder,
+static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
                                                  const avifImage * original,
                                                  uint32_t numBits,
                                                  avifPlanesFlag planes,
@@ -1363,6 +1363,7 @@ static avifResult avifEncoderDecodeSatoBaseImage(const avifEncoder * encoder,
     decoder.imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
 
     AVIF_CHECKRES(avifCodecCreate(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_DECODE, codec));
+    (*codec)->diag = &encoder->diag;
     AVIF_CHECKRES(avifImageCreateAllocate(decodedBaseImage, original, numBits, planes));
     avifBool isLimitedRangeAlpha = AVIF_FALSE; // Ignored.
     AVIF_CHECKERR((*codec)->getNextImage(*codec, &decoder, &sample, planes == AVIF_PLANES_A, &isLimitedRangeAlpha, *decodedBaseImage),
@@ -1370,7 +1371,7 @@ static avifResult avifEncoderDecodeSatoBaseImage(const avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderCreateSatoImage(const avifEncoder * encoder,
+static avifResult avifEncoderCreateSatoImage(avifEncoder * encoder,
                                              const avifEncoderItem * item,
                                              avifBool itemWillBeEncodedLosslessly,
                                              const avifImage * image,
@@ -1461,7 +1462,7 @@ static avifResult avifEncoderCreateSatoImage(const avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderCreateBitDepthExtensionImage(const avifEncoder * encoder,
+static avifResult avifEncoderCreateBitDepthExtensionImage(avifEncoder * encoder,
                                                           const avifEncoderItem * item,
                                                           avifBool itemWillBeEncodedLosslessly,
                                                           const avifImage * image,
