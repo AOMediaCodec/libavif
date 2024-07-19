@@ -97,8 +97,8 @@ avifResult CombineCommand::Run() {
         arg_alternate_cicp_.value().matrix_coefficients;
   }
 
-  const int downscaling = std::max<int>(1, arg_downscaling_);
-  const int rounding = downscaling / 2;
+  const uint32_t downscaling = std::max<int>(1, arg_downscaling_);
+  const uint32_t rounding = downscaling / 2;
   const uint32_t gain_map_width =
       std::max((base_image->width + rounding) / downscaling, 1u);
   const uint32_t gain_map_height =
