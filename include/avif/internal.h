@@ -570,7 +570,7 @@ typedef enum avifEncoderChange
 
     AVIF_ENCODER_CHANGE_CODEC_SPECIFIC = (1 << 30)
 } avifEncoderChange;
-typedef uint32_t avifEncoderChanges;
+typedef int avifEncoderChanges;
 
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
                                               struct avifDecoder * decoder,

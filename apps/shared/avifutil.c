@@ -412,7 +412,7 @@ void avifDumpDiagnostics(const avifDiagnostics * diag)
 
 // Windows
 
-#include <Windows.h>
+#include <windows.h>
 
 int avifQueryCPUCount(void)
 {

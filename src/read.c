@@ -5441,7 +5441,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (avifIsAlpha((avifItemCategory)c) && !isAlphaItemInInput) {
                 // In this case, the made up grid item will not have an associated pixi property. So validate everything else
                 // but the pixi property.
-                strictFlags &= (avifStrictFlags)(~AVIF_STRICT_PIXI_REQUIRED);
+                strictFlags &= ~(avifStrictFlags)(AVIF_STRICT_PIXI_REQUIRED);
             }
             AVIF_CHECKRES(
                 avifDecoderItemValidateProperties(mainItems[c], avifGetConfigurationPropertyName(codecType[c]), &decoder->diag, strictFlags));
