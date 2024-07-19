@@ -23,7 +23,7 @@ avifResult ChangeBase(const avifImage& image, int depth,
   swapped->yuvFormat = yuvFormat;
 
   const float headroom =
-      static_cast<double>(image.gainMap->metadata.alternateHdrHeadroomN) /
+      static_cast<float>(image.gainMap->metadata.alternateHdrHeadroomN) /
       image.gainMap->metadata.alternateHdrHeadroomD;
   const bool tone_mapping_to_sdr = (headroom == 0.0f);
 
