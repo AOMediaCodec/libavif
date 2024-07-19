@@ -324,7 +324,8 @@ if(AVIF_ENABLE_WERROR)
 endif()
 
 if(AVIF_ENABLE_NODISCARD)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0 AND NOT MSVC)
+        # This does not work for MSVC and clang-cl.
         set(CMAKE_C_STANDARD 23)
         set_property(TARGET avif_obj PROPERTY C_STANDARD 23)
     else()
