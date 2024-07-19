@@ -98,13 +98,11 @@ avifResult CombineCommand::Run() {
   }
 
   const int downscaling = std::max<int>(1, arg_downscaling_);
-  const uint32_t gain_map_width = std::max(
-      static_cast<uint32_t>(std::round((float)base_image->width / downscaling)),
-      1u);
+  const int rounding = downscaling / 2;
+  const uint32_t gain_map_width =
+      std::max((base_image->width + rounding) / downscaling, 1u);
   const uint32_t gain_map_height =
-      std::max(static_cast<uint32_t>(
-                   std::round((float)base_image->height / downscaling)),
-               1u);
+      std::max((base_image->height + rounding) / downscaling, 1u);
   std::cout << "Creating a gain map of size " << gain_map_width << " x "
             << gain_map_height << "\n";
 
