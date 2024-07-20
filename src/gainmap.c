@@ -7,8 +7,6 @@
 #include <math.h>
 #include <string.h>
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-
 avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src)
 {
     AVIF_CHECK(dst != NULL && src != NULL);
@@ -841,5 +839,3 @@ cleanup:
     avifRGBImageFreePixels(&altImageRgb);
     return res;
 }
-
-#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
