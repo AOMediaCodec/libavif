@@ -33,9 +33,14 @@ include(FetchContent)
 include(FindPkgConfig)
 include(AvifExternalProjectUtils)
 
-# Set C99 as the default
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23. Best effort." OFF)
+
+if(AVIF_ENABLE_NODISCARD AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
+    set(CMAKE_C_STANDARD 23)
+else()
+    # Set C99 as the default
+    set(CMAKE_C_STANDARD 99)
+endif()
 
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
@@ -53,7 +58,6 @@ set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
-option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23" OFF)
 
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -321,23 +325,6 @@ if(AVIF_ENABLE_WERROR)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
-endif()
-
-if(AVIF_ENABLE_NODISCARD)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0 AND NOT MSVC)
-        # This does not work for MSVC and clang-cl.
-        set(CMAKE_C_STANDARD 23)
-        set_property(TARGET avif_obj PROPERTY C_STANDARD 23)
-    else()
-        unset(CMAKE_C_STANDARD)
-        set_property(TARGET avif_obj PROPERTY C_STANDARD)
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-            target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:$<$<COMPILE_LANGUAGE:C>:-std=gnu2x>>)
-        elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-            target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:$<$<COMPILE_LANGUAGE:C>:/std:clatest>>)
-        endif()
-    endif()
-    target_compile_definitions(avif_obj PUBLIC $<BUILD_INTERFACE:AVIF_ENABLE_NODISCARD=1>)
 endif()
 
 if(AVIF_ENABLE_COVERAGE)
