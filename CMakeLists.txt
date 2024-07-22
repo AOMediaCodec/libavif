@@ -684,8 +684,8 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     endif()
 
     add_library(
-        avif_apps_obj OBJECT $<TARGET_OBJECTS:avif_obj> apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c
-                             apps/shared/avifutil.c apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
+        avif_apps_obj OBJECT apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
+                             apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
     )
     # Instead of building avif_apps/avif_apps_internal and linking to avif/avif_internal, avif_apps_obj only does one compilation.
     # Still, the compile definitions needs to be passed from avif to avif_apps. The following also passes them to avif_apps_internal but AVIF_DLL does not impact avif_apps_internal.
@@ -719,7 +719,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     # avif_apps_internal is to use when linking to avif_internal.
     if(BUILD_SHARED_LIBS)
         add_library(avif_apps_internal STATIC)
-        target_link_libraries(avif_apps_internal PUBLIC avif_internal PRIVATE avif_apps_obj)
+        target_link_libraries(avif_apps_internal PRIVATE avif_apps_obj PUBLIC avif_internal)
         target_include_directories(avif_apps_internal INTERFACE apps/shared)
     else()
         add_library(avif_apps_internal ALIAS avif_apps)
