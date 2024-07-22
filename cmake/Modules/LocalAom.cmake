@@ -34,12 +34,16 @@ if(EXISTS "${LIB_FILENAME}")
     endif()
 
     pkg_check_modules(_AOM QUIET aom)
-    target_link_directories(aom INTERFACE ${_AOM_STATIC_LIBRARY_DIRS})
 
     set(_AOM_PC_LIBRARIES ${_AOM_STATIC_LIBRARIES})
     # remove "aom" so we only have library dependencies
     list(REMOVE_ITEM _AOM_PC_LIBRARIES "aom")
-    target_link_libraries(aom INTERFACE ${_AOM_PC_LIBRARIES})
+
+    # Add absolute paths to libraries
+    foreach(_lib ${_AOM_PC_LIBRARIES})
+      find_library(_aom_dep_lib_${_lib} ${_lib} HINTS ${_AOM_STATIC_LIBRARY_DIRS})
+      target_link_libraries(aom INTERFACE ${_aom_dep_lib_${_lib}})
+    endforeach()
 else()
     message(STATUS "${AOM_MESSAGE_PREFIX}: compiled library not found at ${LIB_FILENAME}, using FetchContent")
     if(EXISTS "${AOM_EXT_SOURCE_DIR}")
