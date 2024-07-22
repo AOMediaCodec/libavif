@@ -40,7 +40,7 @@ jobs:
     - name: Prepare libavif (cmake)
       run: >
         cmake -G Ninja -S . -B build
-        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
         -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
         -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
         -DAVIF_LIBYUV=LOCAL -DAVIF_ZLIBPNG=LOCAL
