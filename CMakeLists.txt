@@ -122,14 +122,28 @@ set_local_or_system_option(
     "GTEST" OFF
     "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)"
 )
+option(AVIF_BUILD_APPS "Build avif apps." OFF)
+option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 option(AVIF_LOCAL_FUZZTEST
        "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)"
        OFF
 )
-
 option(
     AVIF_ENABLE_COMPLIANCE_WARDEN
     "Check all avifEncoderFinish() output for AVIF specification compliance. Depends on gpac/ComplianceWarden which can be added with ext/compliance_warden.sh"
+    OFF
+)
+option(
+    AVIF_ENABLE_GOLDEN_TESTS
+    "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON, and depends on MP4box which can be built with ext/mp4box.sh"
+    OFF
+)
+option(AVIF_ENABLE_GTEST
+       "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
+)
+option(
+    AVIF_ENABLE_FUZZTEST
+    "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS is ON."
     OFF
 )
 
@@ -646,22 +660,6 @@ endif()
 if(NOT SKIP_INSTALL_ALL)
     include(GNUInstallDirs)
 endif()
-
-option(AVIF_BUILD_APPS "Build avif apps." OFF)
-option(AVIF_BUILD_TESTS "Build avif tests." OFF)
-option(
-    AVIF_ENABLE_GOLDEN_TESTS
-    "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON, and depends on MP4box which can be built with ext/mp4box.sh"
-    OFF
-)
-option(AVIF_ENABLE_GTEST
-       "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
-)
-option(
-    AVIF_ENABLE_FUZZTEST
-    "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS and AVIF_ENABLE_GTEST are ON."
-    OFF
-)
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST)))
     if(AVIF_ZLIBPNG STREQUAL "OFF")
