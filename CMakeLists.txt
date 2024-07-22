@@ -134,7 +134,7 @@ option(
 )
 
 # Whether the libavif library uses c++ indirectly (e.g. through linking to libgav1).
-set(AVIF_USE_CXX OFF)
+set(AVIF_LIB_USE_CXX OFF)
 
 if(APPLE)
     set(XCRUN xcrun)
@@ -236,7 +236,7 @@ if(AVIF_LIBYUV_ENABLED)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_LIBYUV_ENABLED=1)
     avif_target_link_library(yuv::yuv)
     set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE} -lyuv")
-    set(AVIF_USE_CXX ON)
+    set(AVIF_LIB_USE_CXX ON)
 endif(AVIF_LIBYUV_ENABLED)
 
 set_local_or_system_option("LIBSHARPYUV" "OFF" "Use libsharpyuv.")
@@ -394,7 +394,7 @@ if(AVIF_ENABLE_COMPLIANCE_WARDEN)
         message(FATAL_ERROR "AVIF_ENABLE_COMPLIANCE_WARDEN: ext/ComplianceWarden is missing, bailing out")
     endif()
 
-    set(AVIF_USE_CXX ON)
+    set(AVIF_LIB_USE_CXX ON)
     target_compile_definitions(avif_obj PRIVATE AVIF_ENABLE_COMPLIANCE_WARDEN)
 
     list(
@@ -474,7 +474,7 @@ endif()
 
 check_avif_option(AVIF_CODEC_LIBGAV1 TARGET libgav1::libgav1 PKG_NAME libgav1)
 if(AVIF_CODEC_LIBGAV1_ENABLED)
-    set(AVIF_USE_CXX ON)
+    set(AVIF_LIB_USE_CXX ON)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_CODEC_LIBGAV1=1)
     target_sources(avif_obj PRIVATE src/codec_libgav1.c)
     avif_target_link_library(libgav1::libgav1)
@@ -537,6 +537,12 @@ if(AVIF_CODEC_AOM_ENABLED)
 
     message(STATUS "libavif: Codec enabled: aom (${AVIF_CODEC_AOM_ENCODE_DECODE_CONFIG})")
     set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} aom")
+
+    get_target_property(AOM_INTERFACE_LINK_LIBRARIES aom INTERFACE_LINK_LIBRARIES)
+    if(AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf)
+        # vmaf only affects the avifenc and avifdec targets below, not the avif library nor examples targets.
+        set(AVIF_LIB_USE_CXX ON)
+    endif()
 endif()
 
 check_avif_option(AVIF_CODEC_AVM TARGET aom PKG_NAME avm)
@@ -565,7 +571,7 @@ if(NOT AVIF_CODEC_AOM_ENABLED
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-if(AVIF_USE_CXX
+if(AVIF_LIB_USE_CXX
    OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
    OR AVIF_ENABLE_FUZZTEST
    OR AVIF_ENABLE_GTEST
@@ -599,7 +605,7 @@ target_link_libraries(avif PRIVATE avif_obj)
 target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif INTERFACE AVIF_DLL)
-    if(AVIF_USE_CXX)
+    if(AVIF_LIB_USE_CXX)
         set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
 endif()
@@ -630,7 +636,7 @@ if(AVIF_BUILD_EXAMPLES)
 
     foreach(EXAMPLE ${AVIF_EXAMPLES})
         add_executable(${EXAMPLE} examples/${EXAMPLE}.c)
-        if(AVIF_USE_CXX)
+        if(AVIF_LIB_USE_CXX)
             set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
         endif()
         target_link_libraries(${EXAMPLE} avif)
@@ -643,10 +649,6 @@ endif()
 
 if(NOT SKIP_INSTALL_ALL)
     include(GNUInstallDirs)
-endif()
-
-if(AVIF_CODEC_AOM_ENABLED)
-    get_target_property(AOM_INTERFACE_LINK_LIBRARIES aom INTERFACE_LINK_LIBRARIES)
 endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
@@ -737,7 +739,7 @@ if(AVIF_BUILD_APPS)
             target_link_options(avifenc PRIVATE /MANIFEST:NO)
         endif()
     endif()
-    if(AVIF_USE_CXX)
+    if(AVIF_LIB_USE_CXX)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifenc avif_apps)
@@ -748,7 +750,7 @@ if(AVIF_BUILD_APPS)
             target_link_options(avifdec PRIVATE /MANIFEST:NO)
         endif()
     endif()
-    if(AVIF_USE_CXX)
+    if(AVIF_LIB_USE_CXX)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
     target_link_libraries(avifdec avif_apps)
