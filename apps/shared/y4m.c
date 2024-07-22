@@ -138,7 +138,7 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
 
 // Returns an unsigned integer value parsed from [start:end[.
 // Returns -1 in case of failure.
-int y4mReadUnsignedInt(const char * start, const char * end)
+static int y4mReadUnsignedInt(const char * start, const char * end)
 {
     const char * p = start;
     int64_t value = 0;

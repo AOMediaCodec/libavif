@@ -701,7 +701,7 @@ typedef struct avifGainMap
 
 // Allocates a gain map. Returns NULL if a memory allocation failed.
 // The 'image' field is NULL by default and must be allocated separately.
-AVIF_API avifGainMap * avifGainMapCreate();
+AVIF_API avifGainMap * avifGainMapCreate(void);
 // Frees a gain map, including the 'image' field if non NULL.
 AVIF_API void avifGainMapDestroy(avifGainMap * gainMap);
 

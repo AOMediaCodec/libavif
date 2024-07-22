@@ -248,7 +248,7 @@ typedef struct avifEncoderData
 static void avifEncoderDataDestroy(avifEncoderData * data);
 
 // Returns NULL if a memory allocation failed.
-static avifEncoderData * avifEncoderDataCreate()
+static avifEncoderData * avifEncoderDataCreate(void)
 {
     avifEncoderData * data = (avifEncoderData *)avifAlloc(sizeof(avifEncoderData));
     if (!data) {
@@ -982,7 +982,7 @@ static avifResult avifEncoderWriteSampleTransformTokens(avifRWStream * s, const 
 
         if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
             // TODO(yguyon): Verify two's complement representation is guaranteed here.
-            const uint32_t constant = *(uint32_t *)&token->constant;
+            const uint32_t constant = *(const uint32_t *)&token->constant;
             AVIF_CHECKRES(avifRWStreamWriteU32(s, constant)); // signed int(1<<(bit_depth+3)) constant;
         } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
             AVIF_CHECKRES(avifRWStreamWriteU8(s, token->inputImageItemIndex)); // unsigned int(8) input_image_item_index;
@@ -1289,7 +1289,7 @@ static avifResult avifImageApplyImgOpConst(avifImage * result,
     // Postfix notation.
     const avifSampleTransformToken tokens[] = { { AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0, /*inputImageItemIndex=*/1 },
                                                 { AVIF_SAMPLE_TRANSFORM_CONSTANT, constant, 0 },
-                                                { op, 0, 0 } };
+                                                { (uint8_t)op, 0, 0 } };
     return avifImageApplyOperations(result, AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, /*numTokens=*/3, tokens, /*numInputImageItems=*/1, &inputImageItem, planes);
 }
 

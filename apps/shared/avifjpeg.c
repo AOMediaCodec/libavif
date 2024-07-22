@@ -297,13 +297,13 @@ static uint32_t avifJPEGReadUint32LittleEndian(const uint8_t * src)
 // Reads a 2-byte unsigned integer in big-endian format from the raw bitstream src.
 static uint16_t avifJPEGReadUint16BigEndian(const uint8_t * src)
 {
-    return ((uint32_t)src[0] << 8) | ((uint32_t)src[1] << 0);
+    return (uint16_t)((src[0] << 8) | (src[1] << 0));
 }
 
 // Reads a 2-byte unsigned integer in little-endian format from the raw bitstream src.
 static uint16_t avifJPEGReadUint16LittleEndian(const uint8_t * src)
 {
-    return ((uint32_t)src[0] << 0) | ((uint32_t)src[1] << 8);
+    return (uint16_t)((src[0] << 0) | (src[1] << 8));
 }
 
 // Reads 'numBytes' at 'offset', stores them in 'bytes' and increases 'offset'.

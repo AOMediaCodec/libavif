@@ -1165,7 +1165,7 @@ void avifCodecVersions(char outBuffer[256])
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-avifGainMap * avifGainMapCreate()
+avifGainMap * avifGainMapCreate(void)
 {
     avifGainMap * gainMap = (avifGainMap *)avifAlloc(sizeof(avifGainMap));
     if (!gainMap) {

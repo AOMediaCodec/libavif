@@ -1747,10 +1747,10 @@ void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const av
 
     const uint8_t * const srcPixel = &src->pixels[y * src->rowBytes + x * info->pixelBytes];
     if (info->channelBytes > 1) {
-        uint16_t r = *((uint16_t *)(&srcPixel[info->offsetBytesR]));
-        uint16_t g = *((uint16_t *)(&srcPixel[info->offsetBytesG]));
-        uint16_t b = *((uint16_t *)(&srcPixel[info->offsetBytesB]));
-        uint16_t a = avifRGBFormatHasAlpha(src->format) ? *((uint16_t *)(&srcPixel[info->offsetBytesA])) : (uint16_t)info->maxChannel;
+        uint16_t r = *((const uint16_t *)(&srcPixel[info->offsetBytesR]));
+        uint16_t g = *((const uint16_t *)(&srcPixel[info->offsetBytesG]));
+        uint16_t b = *((const uint16_t *)(&srcPixel[info->offsetBytesB]));
+        uint16_t a = avifRGBFormatHasAlpha(src->format) ? *((const uint16_t *)(&srcPixel[info->offsetBytesA])) : (uint16_t)info->maxChannel;
         if (src->isFloat) {
             rgbaPixel[0] = avifF16ToFloat(r);
             rgbaPixel[1] = avifF16ToFloat(g);
