@@ -1163,29 +1163,3 @@ void avifCodecVersions(char outBuffer[256])
         append(&writePos, &remainingLen, availableCodecs[i].version());
     }
 }
-
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-avifGainMap * avifGainMapCreate(void)
-{
-    avifGainMap * gainMap = (avifGainMap *)avifAlloc(sizeof(avifGainMap));
-    if (!gainMap) {
-        return NULL;
-    }
-    memset(gainMap, 0, sizeof(avifGainMap));
-    gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-    gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
-    gainMap->altYUVRange = AVIF_RANGE_FULL;
-    gainMap->metadata.useBaseColorSpace = AVIF_TRUE;
-    return gainMap;
-}
-
-void avifGainMapDestroy(avifGainMap * gainMap)
-{
-    if (gainMap->image) {
-        avifImageDestroy(gainMap->image);
-    }
-    avifRWDataFree(&gainMap->altICC);
-    avifFree(gainMap);
-}
-#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
