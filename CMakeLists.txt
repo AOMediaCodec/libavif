@@ -706,7 +706,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     # avif_apps_internal is to use when linking to avif_internal.
     if(BUILD_SHARED_LIBS)
         add_library(avif_apps_internal STATIC)
-        target_link_libraries(avif_apps_internal PRIVATE avif_apps_obj PUBLIC avif_internal)
+        target_link_libraries(avif_apps_internal PUBLIC avif_internal PRIVATE avif_apps_obj)
         target_include_directories(avif_apps_internal INTERFACE apps/shared)
     else()
         add_library(avif_apps_internal ALIAS avif_apps)
