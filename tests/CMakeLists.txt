@@ -94,8 +94,8 @@ endif()
 
 if(AVIF_ENABLE_GTEST)
     if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-        add_avif_gtest_with_data(avif16bittest)
-        add_avif_gtest(avifsampletransformtest)
+        add_avif_internal_gtest_with_data(avif16bittest)
+        add_avif_internal_gtest(avifsampletransformtest)
     endif()
 
     add_avif_gtest(avifallocationtest)
