@@ -136,10 +136,6 @@ option(
 # Whether the libavif library uses c++ indirectly (e.g. through linking to libgav1).
 set(AVIF_USE_CXX OFF)
 
-if(AVIF_CODEC_LIBGAV1 STREQUAL "LOCAL" OR AVIF_CODEC_LIBGAV1 STREQUAL "SYSTEM")
-    set(AVIF_USE_CXX ON)
-endif()
-
 if(APPLE)
     set(XCRUN xcrun)
 else()
@@ -478,6 +474,7 @@ endif()
 
 check_avif_option(AVIF_CODEC_LIBGAV1 TARGET libgav1::libgav1 PKG_NAME libgav1)
 if(AVIF_CODEC_LIBGAV1_ENABLED)
+    set(AVIF_USE_CXX ON)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_CODEC_LIBGAV1=1)
     target_sources(avif_obj PRIVATE src/codec_libgav1.c)
     avif_target_link_library(libgav1::libgav1)
@@ -568,6 +565,20 @@ if(NOT AVIF_CODEC_AOM_ENABLED
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
+if(AVIF_USE_CXX
+   OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+   OR AVIF_ENABLE_FUZZTEST
+   OR AVIF_ENABLE_GTEST
+   OR (AVIF_CODEC_AOM_ENABLED AND (AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf))
+)
+    enable_language(CXX)
+    if(AVIF_ENABLE_NODISCARD)
+        set(CMAKE_CXX_STANDARD 17)
+    else()
+        set(CMAKE_CXX_STANDARD 14)
+    endif()
+endif()
+
 set_target_properties(avif_obj PROPERTIES C_VISIBILITY_PRESET hidden)
 target_include_directories(avif_obj PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include>)
 if(NOT AVIF_LIBYUV_ENABLED)
@@ -636,20 +647,6 @@ endif()
 
 if(AVIF_CODEC_AOM_ENABLED)
     get_target_property(AOM_INTERFACE_LINK_LIBRARIES aom INTERFACE_LINK_LIBRARIES)
-endif()
-
-if(AVIF_USE_CXX
-   OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-   OR AVIF_ENABLE_FUZZTEST
-   OR AVIF_ENABLE_GTEST
-   OR (AVIF_CODEC_AOM_ENABLED AND (AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf))
-)
-    enable_language(CXX)
-    if(AVIF_ENABLE_NODISCARD)
-        set(CMAKE_CXX_STANDARD 17)
-    else()
-        set(CMAKE_CXX_STANDARD 14)
-    endif()
 endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
