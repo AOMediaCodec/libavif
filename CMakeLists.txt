@@ -616,6 +616,14 @@ if(BUILD_SHARED_LIBS)
     if(AVIF_LIB_USE_CXX)
         set_target_properties(avif PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
+    if(WIN32 AND AVIF_BUILD_TESTS)
+        add_custom_command(
+            TARGET avif
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/avif.dll ${CMAKE_CURRENT_BINARY_DIR}/tests
+            COMMENT "Copying avif.dll to the tests binary directory"
+        )
+    endif()
 endif()
 
 # Give access to functions defined in internal.h when BUILD_SHARED_LIBS is ON, to tests for example.
