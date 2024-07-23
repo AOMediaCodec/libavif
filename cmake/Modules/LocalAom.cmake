@@ -27,7 +27,7 @@ if(EXISTS "${LIB_FILENAME}")
     # Add link dependency flags from the aom.pc file in ext/aom or ext/avm
     # by prepending the build directory to PKG_CONFIG_PATH and then calling
     # pkg_check_modules
-    if(MSVC)
+    if(WIN32)
         set(ENV{PKG_CONFIG_PATH} "${AOM_EXT_SOURCE_DIR}/build.libavif;$ENV{PKG_CONFIG_PATH}")
     else()
         set(ENV{PKG_CONFIG_PATH} "${AOM_EXT_SOURCE_DIR}/build.libavif:$ENV{PKG_CONFIG_PATH}")
@@ -41,8 +41,8 @@ if(EXISTS "${LIB_FILENAME}")
 
     # Add absolute paths to libraries
     foreach(_lib ${_AOM_PC_LIBRARIES})
-      find_library(_aom_dep_lib_${_lib} ${_lib} HINTS ${_AOM_STATIC_LIBRARY_DIRS})
-      target_link_libraries(aom INTERFACE ${_aom_dep_lib_${_lib}})
+        find_library(_aom_dep_lib_${_lib} ${_lib} HINTS ${_AOM_STATIC_LIBRARY_DIRS})
+        target_link_libraries(aom INTERFACE ${_aom_dep_lib_${_lib}})
     endforeach()
 else()
     message(STATUS "${AOM_MESSAGE_PREFIX}: compiled library not found at ${LIB_FILENAME}, using FetchContent")
