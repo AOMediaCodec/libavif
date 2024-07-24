@@ -2914,7 +2914,7 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 //   The items linked to are then represented by an array of to_item_IDs;
                 //   within a given array, a given value shall occur at most once.
                 AVIF_CHECKERR(dimg->dimgForID != fromID, AVIF_RESULT_INVALID_IMAGE_GRID);
-                // A given value may occur more than once within different arrays but this is not supported by libavif.
+                // A given value may occur within multiple arrays but this is not supported by libavif.
                 AVIF_CHECKERR(dimg->dimgForID == 0, AVIF_RESULT_NOT_IMPLEMENTED);
                 dimg->dimgForID = fromID;
                 dimg->dimgIdx = refIndex;
