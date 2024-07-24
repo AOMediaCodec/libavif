@@ -35,7 +35,7 @@ if(EXISTS "${LIB_FILENAME}")
 
     pkg_check_modules(_AOM QUIET aom)
 
-    set(_AOM_PC_LIBRARIES ${_AOM_STATIC_LIBRARIES})
+    set(_AOM_PC_LIBRARIES "${_AOM_STATIC_LIBRARIES}")
     # remove "aom" so we only have library dependencies
     list(REMOVE_ITEM _AOM_PC_LIBRARIES "aom")
 
