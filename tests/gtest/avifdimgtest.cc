@@ -22,44 +22,33 @@ TEST(IncrementalTest, Dimg) {
   testutil::AvifRwData avif =
       testutil::ReadFile(std::string(data_path) + "sofa_grid1x5_420.avif");
   ASSERT_NE(avif.size, 0u);
-  ImagePtr reference(avifImageCreateEmpty());
-  ASSERT_NE(reference, nullptr);
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(), avif.data,
-                                  avif.size),
-            AVIF_RESULT_OK);
+  ASSERT_EQ(
+      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      AVIF_RESULT_OK);
 
-  // Change the order of the 'dimg' associations.
-  const uint8_t* kMeta = reinterpret_cast<const uint8_t*>("dimg");
-  uint8_t* dimg_position =
-      std::search(avif.data, avif.data + avif.size, kMeta, kMeta + 4);
-  ASSERT_NE(dimg_position, avif.data + avif.size);
-  uint8_t* to_item_id = dimg_position + /*"dimg"*/ 4 + /*from_item_ID*/ 2 +
-                        /*reference_count*/ 2;
-  for (uint8_t i = 0; i < 5; ++i) {
-    const size_t offset =
-        i * sizeof(uint16_t) + /*most significant byte of uint16_t*/ 1;
-    EXPECT_EQ(to_item_id[offset], /*first tile item ID*/ 2 + i);
-    to_item_id[offset] = /*first tile item ID*/ 2 + 4 - i;
-  }
-
-  // Verify that libavif detects the 'dimg' modification.
-  ImagePtr reference_dimg_swapped(avifImageCreateEmpty());
-  ASSERT_NE(reference_dimg_swapped, nullptr);
-  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(), avif.data,
-                                  avif.size),
+  testutil::AvifRwData avif_reversed_dimg_order = testutil::ReadFile(
+      std::string(data_path) + "sofa_grid1x5_420_reversed_dimg_order.avif");
+  ImagePtr decoded_reversed_dimg_order(avifImageCreateEmpty());
+  ASSERT_NE(decoded_reversed_dimg_order, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(),
+                                  avif_reversed_dimg_order.data,
+                                  avif_reversed_dimg_order.size),
             AVIF_RESULT_OK);
-  EXPECT_FALSE(testutil::AreImagesEqual(*reference, *reference_dimg_swapped));
+  EXPECT_FALSE(
+      testutil::AreImagesEqual(*decoded, *decoded_reversed_dimg_order));
 
   // Verify that it works incrementally.
   // enable_fine_incremental_check is false because the tiles are out-of-order.
-  ASSERT_EQ(
-      testutil::DecodeIncrementally(
-          avif, decoder.get(), /*is_persistent=*/true, /*give_size_hint=*/true,
-          /*use_nth_image_api=*/false, *reference_dimg_swapped,
-          /*cell_height=*/154, /*enable_fine_incremental_check=*/false),
-      AVIF_RESULT_OK);
+  ASSERT_EQ(testutil::DecodeIncrementally(
+                avif_reversed_dimg_order, decoder.get(), /*is_persistent=*/true,
+                /*give_size_hint=*/true,
+                /*use_nth_image_api=*/false, *decoded_reversed_dimg_order,
+                /*cell_height=*/154, /*enable_fine_incremental_check=*/false),
+            AVIF_RESULT_OK);
 }
 
 //------------------------------------------------------------------------------
