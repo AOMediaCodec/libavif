@@ -1422,24 +1422,25 @@ static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gri
 
 // Fills the dimgIdxToItemIdx array with a mapping from each 0-based tile index in the 'dimg' reference
 // to its corresponding 0-based index in the avifMeta::items array.
-static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, avifImageGrid * grid, avifDecoderItem * gridItem)
+static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, const avifImageGrid * grid, const avifDecoderItem * gridItem)
 {
-    const uint32_t numTiles = grid->rows * grid->columns;
+    const uint32_t numExpectedTiles = grid->rows * grid->columns;
     const uint32_t itemIndexNotSet = UINT32_MAX;
-    for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
+    for (uint32_t dimgIdx = 0; dimgIdx < numExpectedTiles; ++dimgIdx) {
         dimgIdxToItemIdx[dimgIdx] = itemIndexNotSet;
     }
+    uint32_t numTiles = 0;
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
         if (gridItem->meta->items.item[i]->dimgForID == gridItem->id) {
-            avifDecoderItem * tileItem = gridItem->meta->items.item[i];
-            AVIF_CHECKERR(tileItem->dimgIdx < numTiles, AVIF_RESULT_BMFF_PARSE_FAILED);
-            AVIF_CHECKERR(dimgIdxToItemIdx[tileItem->dimgIdx] == itemIndexNotSet, AVIF_RESULT_BMFF_PARSE_FAILED);
-            dimgIdxToItemIdx[tileItem->dimgIdx] = i;
+            const uint32_t tileItemDimgIdx = gridItem->meta->items.item[i]->dimgIdx;
+            AVIF_CHECKERR(tileItemDimgIdx < numExpectedTiles, AVIF_RESULT_BMFF_PARSE_FAILED);
+            AVIF_CHECKERR(dimgIdxToItemIdx[tileItemDimgIdx] == itemIndexNotSet, AVIF_RESULT_BMFF_PARSE_FAILED);
+            dimgIdxToItemIdx[tileItemDimgIdx] = i;
+            ++numTiles;
         }
     }
-    for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
-        AVIF_CHECKERR(dimgIdxToItemIdx[dimgIdx] != itemIndexNotSet, AVIF_RESULT_BMFF_PARSE_FAILED);
-    }
+    // The number of tiles has been verified in avifDecoderItemReadAndParse().
+    AVIF_ASSERT_OR_RETURN(numTiles == numExpectedTiles);
     return AVIF_RESULT_OK;
 }
 
