@@ -177,7 +177,7 @@ CMakeLists.txt files from the top-level folder:
 cmake-format -i \
   CMakeLists.txt \
   tests/CMakeLists.txt \
-  cmake/Modules/Find*.cmake \
+  cmake/Modules/*.cmake \
   contrib/CMakeLists.txt \
   contrib/gdk-pixbuf/CMakeLists.txt \
   android_jni/avifandroidjni/src/main/jni/CMakeLists.txt
