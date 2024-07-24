@@ -4678,6 +4678,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
         dimgIdxToAlphaItemIdx[dimgIdx] = itemIndexNotSet;
     }
+    uint32_t alphaItemCount = 0;
     for (uint32_t i = 0; i < meta->items.count; ++i) {
         const avifDecoderItem * const item = meta->items.item[i];
         if (item->dimgForID == colorItem->id) {
@@ -4685,19 +4686,18 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             for (uint32_t j = 0; j < meta->items.count; ++j) {
                 avifDecoderItem * auxlItem = meta->items.item[j];
                 if (avifDecoderItemIsAlphaAux(auxlItem, item->id)) {
-                    if (seenAlphaForCurrentItem || auxlItem->dimgForID != 0) {
+                    if (seenAlphaForCurrentItem || auxlItem->dimgForID != 0 || item->dimgIdx >= tileCount ||
+                        dimgIdxToAlphaItemIdx[item->dimgIdx] != itemIndexNotSet) {
                         // One of the following invalid cases:
                         // * Multiple items are claiming to be the alpha auxiliary of the current item.
                         // * Alpha auxiliary is dimg for another item.
+                        // * There are too many items in the dimg array (also checked later in avifFillDimgIdxToItemIdxArray()).
+                        // * There is a repetition in the dimg array (also checked later in avifFillDimgIdxToItemIdxArray()).
                         avifFree(dimgIdxToAlphaItemIdx);
                         return AVIF_RESULT_INVALID_IMAGE_GRID;
                     }
-                    if (item->dimgIdx >= tileCount || dimgIdxToAlphaItemIdx[item->dimgIdx] != itemIndexNotSet) {
-                        avifFree(dimgIdxToAlphaItemIdx);
-                        *isAlphaItemInInput = AVIF_FALSE;
-                        return AVIF_RESULT_BMFF_PARSE_FAILED;
-                    }
                     dimgIdxToAlphaItemIdx[item->dimgIdx] = j;
+                    ++alphaItemCount;
                     seenAlphaForCurrentItem = AVIF_TRUE;
                 }
             }
@@ -4710,6 +4710,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             }
         }
     }
+    AVIF_ASSERT_OR_RETURN(alphaItemCount == tileCount);
     // Find an unused ID.
     avifResult result;
     if (meta->items.count >= UINT32_MAX - 1) {
@@ -4738,11 +4739,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     (*alphaItem)->width = colorItem->width;
     (*alphaItem)->height = colorItem->height;
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
-        if (dimgIdxToAlphaItemIdx[dimgIdx] == itemIndexNotSet) {
-            avifFree(dimgIdxToAlphaItemIdx);
-            *isAlphaItemInInput = AVIF_FALSE;
-            return AVIF_RESULT_BMFF_PARSE_FAILED;
-        }
+        AVIF_ASSERT_OR_RETURN(dimgIdxToAlphaItemIdx[dimgIdx] != itemIndexNotSet);
         avifDecoderItem * alphaTileItem = meta->items.item[dimgIdxToAlphaItemIdx[dimgIdx]];
         alphaTileItem->dimgForID = (*alphaItem)->id;
         alphaTileItem->dimgIdx = dimgIdx;
