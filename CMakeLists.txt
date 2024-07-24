@@ -455,7 +455,7 @@ if(UNIX OR MINGW)
     # Find out if we have threading available
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
-    target_link_libraries(avif_obj PUBLIC m Threads::Threads)
+    target_link_libraries(avif_obj PRIVATE m Threads::Threads)
 endif()
 
 if(NOT AVIF_LIBYUV_ENABLED)
@@ -676,45 +676,43 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         find_package(JPEG REQUIRED)
     endif()
 
-    add_library(
-        avif_apps_obj OBJECT apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
-                             apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
-    )
-    # Instead of building avif_apps/avif_apps_internal and linking to avif/avif_internal, avif_apps_obj only does one compilation.
-    # Still, the compile definitions needs to be passed from avif to avif_apps. The following also passes them to avif_apps_internal but AVIF_DLL does not impact avif_apps_internal.
-    target_compile_definitions(avif_apps_obj PRIVATE $<BUILD_INTERFACE:$<TARGET_PROPERTY:avif,INTERFACE_COMPILE_DEFINITIONS>>)
-    target_link_libraries(avif_apps_obj PUBLIC avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
-    target_link_libraries(avif_apps_obj PRIVATE avif_enable_warnings)
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_libraries(avif_apps_obj PRIVATE m)
-    endif()
-    # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
-    # and libjpeg but also the headers of an older version of libavif. Put the avif include
-    # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
-    # headers from /usr/local/include.
-    target_include_directories(avif_apps_obj PRIVATE third_party/iccjpeg)
-    target_include_directories(avif_apps_obj SYSTEM PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
-
     if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if(TARGET LibXml2::LibXml2)
             set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
             add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-            target_link_libraries(avif_apps_obj PRIVATE LibXml2::LibXml2)
         else()
             message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
         endif()
     endif()
 
+    set(AVIF_APPS_SRCS apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
+                       apps/shared/iccmaker.c apps/shared/y4m.c third_party/iccjpeg/iccjpeg.c
+    )
+
+    macro(add_avif_apps_library suffix)
+        add_library(avif_apps${suffix} STATIC ${AVIF_APPS_SRCS})
+        target_link_libraries(avif_apps${suffix} PUBLIC avif${suffix} PRIVATE PNG::PNG ZLIB::ZLIB JPEG::JPEG avif_enable_warnings)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            target_link_libraries(avif_apps${suffix} PRIVATE m)
+        endif()
+        if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+            target_link_libraries(avif_apps${suffix} PRIVATE LibXml2::LibXml2)
+        endif()
+        target_include_directories(avif_apps${suffix} INTERFACE apps/shared)
+        # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
+        # and libjpeg but also the headers of an older version of libavif. Put the avif include
+        # directory before ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR} to prevent picking up old libavif
+        # headers from /usr/local/include.
+        target_include_directories(avif_apps${suffix} PRIVATE third_party/iccjpeg)
+        target_include_directories(avif_apps${suffix} SYSTEM PRIVATE ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
+    endmacro()
+
     # Main avif_apps library.
-    add_library(avif_apps STATIC)
-    target_link_libraries(avif_apps PUBLIC avif PRIVATE avif_apps_obj)
-    target_include_directories(avif_apps INTERFACE apps/shared)
+    add_avif_apps_library("")
 
     # avif_apps_internal is to use when linking to avif_internal.
     if(BUILD_SHARED_LIBS)
-        add_library(avif_apps_internal STATIC)
-        target_link_libraries(avif_apps_internal PUBLIC avif_internal PRIVATE avif_apps_obj)
-        target_include_directories(avif_apps_internal INTERFACE apps/shared)
+        add_avif_apps_library(_internal)
     else()
         add_library(avif_apps_internal ALIAS avif_apps)
     endif()
@@ -739,7 +737,7 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LIB_USE_CXX)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif_apps avif_enable_warnings)
+    target_link_libraries(avifenc avif_apps avif avif_enable_warnings)
     add_executable(avifdec apps/avifdec.c)
     if(WIN32)
         target_sources(avifdec PRIVATE apps/utf8.rc)
@@ -750,7 +748,7 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LIB_USE_CXX)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif_apps avif_enable_warnings)
+    target_link_libraries(avifdec avif_apps avif avif_enable_warnings)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(
@@ -785,7 +783,7 @@ if(AVIF_BUILD_APPS)
         endif()
         set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
         target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
-        target_link_libraries(avifgainmaputil libargparse avif_apps avif_enable_warnings)
+        target_link_libraries(avifgainmaputil libargparse avif_apps avif avif_enable_warnings)
         # Don't add avifgainmaputil to installed apps for now.
     endif()
 endif()
