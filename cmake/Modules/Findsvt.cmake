@@ -31,11 +31,7 @@ if(SVT_LIBRARY)
 endif(SVT_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(
-    svt
-    REQUIRED_VARS SVT_LIBRARY SVT_LIBRARIES SVT_INCLUDE_DIR
-    VERSION_VAR _SVT_VERSION
-)
+find_package_handle_standard_args(svt REQUIRED_VARS SVT_LIBRARY SVT_LIBRARIES SVT_INCLUDE_DIR VERSION_VAR _SVT_VERSION)
 
 # show the SVT_INCLUDE_DIR, SVT_LIBRARY and SVT_LIBRARIES variables only
 # in the advanced view

@@ -44,11 +44,7 @@ endif()
 set(RAV1E_LIBRARIES ${RAV1E_LIBRARIES} ${RAV1E_LIBRARY} ${_RAV1E_LDFLAGS})
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(
-    rav1e
-    REQUIRED_VARS RAV1E_LIBRARY RAV1E_LIBRARIES RAV1E_INCLUDE_DIR
-    VERSION_VAR _RAV1E_VERSION
-)
+find_package_handle_standard_args(rav1e REQUIRED_VARS RAV1E_LIBRARY RAV1E_LIBRARIES RAV1E_INCLUDE_DIR VERSION_VAR _RAV1E_VERSION)
 
 # show the RAV1E_INCLUDE_DIR, RAV1E_LIBRARY and RAV1E_LIBRARIES variables only
 # in the advanced view

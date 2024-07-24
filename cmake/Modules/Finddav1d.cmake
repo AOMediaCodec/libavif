@@ -31,11 +31,7 @@ if(DAV1D_LIBRARY)
 endif(DAV1D_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(
-    dav1d
-    REQUIRED_VARS DAV1D_LIBRARY DAV1D_LIBRARIES DAV1D_INCLUDE_DIR
-    VERSION_VAR _DAV1D_VERSION
-)
+find_package_handle_standard_args(dav1d REQUIRED_VARS DAV1D_LIBRARY DAV1D_LIBRARIES DAV1D_INCLUDE_DIR VERSION_VAR _DAV1D_VERSION)
 
 # show the DAV1D_INCLUDE_DIR, DAV1D_LIBRARY and DAV1D_LIBRARIES variables only
 # in the advanced view
