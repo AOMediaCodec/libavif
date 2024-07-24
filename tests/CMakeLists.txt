@@ -126,7 +126,12 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest(avifgridapitest)
     add_avif_gtest_with_data(avifilocextenttest)
     add_avif_gtest(avifimagetest)
-    add_avif_gtest_with_data(avifincrtest avifincrtest_helpers)
+
+    add_executable(avifincrtest gtest/avifincrtest.cc)
+    target_link_libraries(avifincrtest aviftest_helpers avifincrtest_helpers)
+    add_test(NAME avifincrtest COMMAND avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    register_test_for_coverage(avifincrtest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+
     add_avif_gtest_with_data(avifiostatstest)
     add_avif_gtest_with_data(avifkeyframetest)
     add_avif_gtest_with_data(aviflosslesstest)
