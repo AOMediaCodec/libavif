@@ -5041,7 +5041,7 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileI
     const uint32_t previousTileCount = decoder->data->tiles.count;
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // The number of tiles was verified in avifDecoderItemReadAndParse().
-        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc((size_t)info->grid.rows * info->grid.columns * sizeof(uint32_t));
+        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(info->grid.rows * info->grid.columns * sizeof(uint32_t));
         AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, &info->grid, item);
         if (result == AVIF_RESULT_OK) {
