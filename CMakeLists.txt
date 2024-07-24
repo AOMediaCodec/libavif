@@ -133,7 +133,7 @@ option(
     OFF
 )
 
-# Whether the libavif library uses c++ indirectly (e.g. through linking to libgav1).
+# Whether the libavif library uses c++ indirectly (e.g. through linking to libyuv).
 set(AVIF_LIB_USE_CXX OFF)
 
 if(APPLE)
@@ -540,7 +540,6 @@ if(AVIF_CODEC_AOM_ENABLED)
 
     get_target_property(AOM_INTERFACE_LINK_LIBRARIES aom INTERFACE_LINK_LIBRARIES)
     if(AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf)
-        # vmaf only affects the avifenc and avifdec targets below, not the avif library nor examples targets.
         set(AVIF_LIB_USE_CXX ON)
     endif()
 endif()
@@ -573,9 +572,7 @@ endif()
 
 if(AVIF_LIB_USE_CXX
    OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-   OR AVIF_ENABLE_FUZZTEST
-   OR AVIF_ENABLE_GTEST
-   OR (AVIF_CODEC_AOM_ENABLED AND (AOM_INTERFACE_LINK_LIBRARIES MATCHES vmaf))
+   OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST))
 )
     enable_language(CXX)
     if(AVIF_ENABLE_NODISCARD)
