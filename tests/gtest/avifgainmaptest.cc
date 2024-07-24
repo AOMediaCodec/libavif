@@ -776,9 +776,7 @@ TEST(GainMapTest, NoGainMap) {
   EXPECT_EQ(decoded->gainMap, nullptr);
 }
 
-// TODO(https://github.com/AOMediaCodec/libavif/issues/2261): Regenerate test
-// files.
-TEST(GainMapTest, DISABLED_DecodeGainMapGrid) {
+TEST(GainMapTest, DecodeGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_gainmap_different_grid.avif";
   DecoderPtr decoder(avifDecoderCreate());
@@ -809,8 +807,8 @@ TEST(GainMapTest, DISABLED_DecodeGainMapGrid) {
   EXPECT_EQ(decoded->gainMap->image->width, 64u * 2u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u * 2u);
   EXPECT_EQ(decoded->gainMap->image->depth, 8u);
-  EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomN, 6u);
+  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomD, 2u);
 
   // Decode the image.
   result = avifDecoderNextImage(decoder.get());
@@ -818,9 +816,7 @@ TEST(GainMapTest, DISABLED_DecodeGainMapGrid) {
       << avifResultToString(result) << " " << decoder->diag.error;
 }
 
-// TODO(https://github.com/AOMediaCodec/libavif/issues/2261): Regenerate test
-// files.
-TEST(GainMapTest, DISABLED_DecodeColorGridGainMapNoGrid) {
+TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
   const std::string path =
       std::string(data_path) + "color_grid_alpha_grid_gainmap_nogrid.avif";
   ImagePtr decoded(avifImageCreateEmpty());
@@ -840,13 +836,11 @@ TEST(GainMapTest, DISABLED_DecodeColorGridGainMapNoGrid) {
   // Gain map: single image of size 64x80.
   EXPECT_EQ(decoded->gainMap->image->width, 64u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u);
-  EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomN, 6u);
+  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomD, 2u);
 }
 
-// TODO(https://github.com/AOMediaCodec/libavif/issues/2261): Regenerate test
-// files.
-TEST(GainMapTest, DISABLED_DecodeColorNoGridGainMapGrid) {
+TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
   const std::string path =
       std::string(data_path) + "color_nogrid_alpha_nogrid_gainmap_grid.avif";
   ImagePtr decoded(avifImageCreateEmpty());
@@ -866,8 +860,8 @@ TEST(GainMapTest, DISABLED_DecodeColorNoGridGainMapGrid) {
   // Gain map: 2x2 grid of 64x80 tiles.
   EXPECT_EQ(decoded->gainMap->image->width, 64u * 2u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u * 2u);
-  EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->metadata.alternateHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomN, 6u);
+  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomD, 2u);
 }
 
 #define EXPECT_FRACTION_NEAR(numerator, denominator, expected)     \
