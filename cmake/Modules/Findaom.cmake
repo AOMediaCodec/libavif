@@ -29,11 +29,7 @@ find_library(AOM_LIBRARY NAMES aom PATHS ${_AOM_LIBDIR})
 set(AOM_LIBRARIES ${AOM_LIBRARIES} ${AOM_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(
-    aom
-    REQUIRED_VARS AOM_LIBRARY AOM_LIBRARIES AOM_INCLUDE_DIR
-    VERSION_VAR _AOM_VERSION
-)
+find_package_handle_standard_args(aom REQUIRED_VARS AOM_LIBRARY AOM_LIBRARIES AOM_INCLUDE_DIR VERSION_VAR _AOM_VERSION)
 
 # show the AOM_INCLUDE_DIR, AOM_LIBRARY and AOM_LIBRARIES variables only
 # in the advanced view

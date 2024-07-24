@@ -570,9 +570,8 @@ if(NOT AVIF_CODEC_AOM_ENABLED
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-if(AVIF_LIB_USE_CXX
-   OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-   OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST))
+if(AVIF_LIB_USE_CXX OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP) OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST
+                                                                                                         OR AVIF_ENABLE_GTEST))
 )
     enable_language(CXX)
     if(AVIF_ENABLE_NODISCARD)
