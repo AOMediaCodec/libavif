@@ -47,7 +47,7 @@ if(AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
     target_link_libraries(aviftest_helpers_internal avif_apps_internal avif_internal)
 endif()
 
-if(AVIF_ENABLE_FUZZTEST)
+if(AVIF_LIB_USE_CXX)
     # TODO(vrabaud): merge with oss-fuzz.
     # Fuzz target without any fuzzing engine dependency. For easy reproduction of oss-fuzz issues.
     add_executable(repro_avif_decode_fuzzer oss-fuzz/avif_decode_fuzzer.cc oss-fuzz/repro_fuzz.cc)
