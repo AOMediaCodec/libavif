@@ -21,6 +21,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix CMake config shared library leaks
   https://github.com/AOMediaCodec/libavif/issues/2264.
 * Fix clang-cl compilation.
+* Fix aom link flags so that transitive library link flags are included when
+  aom is a static library
+  https://github.com/AOMediaCodec/libavif/issues/2274.
 
 ## [1.1.0] - 2024-07-11
 
