@@ -83,12 +83,6 @@ cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DA
 
 ninja
 
-# build decode fuzzer
-$CXX $CXXFLAGS -std=c++11 -I../include \
-    ../tests/oss-fuzz/avif_decode_fuzzer.cc -o $OUT/avif_decode_fuzzer \
-    $LIB_FUZZING_ENGINE libavif.a ../ext/dav1d/build/src/libdav1d.a \
-    ../ext/libyuv/build/libyuv.a ../ext/aom/build.libavif/libaom.a
-
 # Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
 if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then
   # build fuzztests
