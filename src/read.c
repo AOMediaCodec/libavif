@@ -1422,9 +1422,8 @@ static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gri
 
 // Fills the dimgIdxToItemIdx array with a mapping from each 0-based tile index in the 'dimg' reference
 // to its corresponding 0-based index in the avifMeta::items array.
-static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, const avifImageGrid * grid, const avifDecoderItem * gridItem)
+static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, uint32_t numExpectedTiles, const avifDecoderItem * gridItem)
 {
-    const uint32_t numExpectedTiles = grid->rows * grid->columns;
     const uint32_t itemIndexNotSet = UINT32_MAX;
     for (uint32_t dimgIdx = 0; dimgIdx < numExpectedTiles; ++dimgIdx) {
         dimgIdxToItemIdx[dimgIdx] = itemIndexNotSet;
@@ -1433,8 +1432,8 @@ static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, con
     for (uint32_t i = 0; i < gridItem->meta->items.count; ++i) {
         if (gridItem->meta->items.item[i]->dimgForID == gridItem->id) {
             const uint32_t tileItemDimgIdx = gridItem->meta->items.item[i]->dimgIdx;
-            AVIF_CHECKERR(tileItemDimgIdx < numExpectedTiles, AVIF_RESULT_BMFF_PARSE_FAILED);
-            AVIF_CHECKERR(dimgIdxToItemIdx[tileItemDimgIdx] == itemIndexNotSet, AVIF_RESULT_BMFF_PARSE_FAILED);
+            AVIF_CHECKERR(tileItemDimgIdx < numExpectedTiles, AVIF_RESULT_INVALID_IMAGE_GRID);
+            AVIF_CHECKERR(dimgIdxToItemIdx[tileItemDimgIdx] == itemIndexNotSet, AVIF_RESULT_INVALID_IMAGE_GRID);
             dimgIdxToItemIdx[tileItemDimgIdx] = i;
             ++numTiles;
         }
@@ -1446,14 +1445,14 @@ static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, con
 
 // Creates the tiles and associate them to the items in the order of the 'dimg' association.
 static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder,
-                                                    avifImageGrid * grid,
                                                     avifDecoderItem * gridItem,
                                                     avifItemCategory itemCategory,
-                                                    const uint32_t * dimgIdxToItemIdx)
+                                                    const uint32_t * dimgIdxToItemIdx,
+                                                    uint32_t numTiles)
 {
     avifDecoderItem * firstTileItem = NULL;
     avifBool progressive = AVIF_TRUE;
-    for (uint32_t dimgIdx = 0; dimgIdx < grid->rows * grid->columns; ++dimgIdx) {
+    for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
         const uint32_t itemIdx = dimgIdxToItemIdx[dimgIdx];
         AVIF_ASSERT_OR_RETURN(itemIdx < gridItem->meta->items.count);
         avifDecoderItem * item = gridItem->meta->items.item[itemIdx];
@@ -5041,11 +5040,12 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileI
     const uint32_t previousTileCount = decoder->data->tiles.count;
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // The number of tiles was verified in avifDecoderItemReadAndParse().
-        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(info->grid.rows * info->grid.columns * sizeof(uint32_t));
+        const uint32_t numTiles = info->grid.rows * info->grid.columns;
+        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(numTiles * sizeof(uint32_t));
         AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-        avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, &info->grid, item);
+        avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, numTiles, item);
         if (result == AVIF_RESULT_OK) {
-            result = avifDecoderGenerateImageGridTiles(decoder, &info->grid, item, itemCategory, dimgIdxToItemIdx);
+            result = avifDecoderGenerateImageGridTiles(decoder, item, itemCategory, dimgIdxToItemIdx, numTiles);
         }
         avifFree(dimgIdxToItemIdx);
         AVIF_CHECKRES(result);
