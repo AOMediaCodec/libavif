@@ -38,19 +38,21 @@ mark_as_advanced(AOM_INCLUDE_DIR AOM_LIBRARY AOM_LIBRARIES)
 if(AOM_LIBRARY)
     if("${AOM_LIBRARY}" MATCHES "\\${CMAKE_STATIC_LIBRARY_SUFFIX}$")
         add_library(aom STATIC IMPORTED GLOBAL)
-
-        set(_AOM_PC_LIBRARIES "${_AOM_STATIC_LIBRARIES}")
-        # remove "aom" so we only have library dependencies
-        list(REMOVE_ITEM _AOM_PC_LIBRARIES "aom")
-
-        # Add absolute paths to libraries
-        foreach(_lib ${_AOM_PC_LIBRARIES})
-            find_library(_aom_dep_lib_${_lib} ${_lib} HINTS ${_AOM_STATIC_LIBRARY_DIRS})
-            target_link_libraries(aom INTERFACE ${_aom_dep_lib_${_lib}})
-        endforeach()
+        set(_AOM_PC_PREFIX "_AOM_STATIC")
     else()
         add_library(aom SHARED IMPORTED GLOBAL)
+        set(_AOM_PC_PREFIX "_AOM")
     endif()
     set_target_properties(aom PROPERTIES IMPORTED_LOCATION "${AOM_LIBRARY}")
     target_include_directories(aom INTERFACE ${AOM_INCLUDE_DIR})
+
+    set(_AOM_PC_LIBRARIES "${${_AOM_PC_PREFIX}_LIBRARIES}")
+    # remove "aom" so we only have library dependencies
+    list(REMOVE_ITEM _AOM_PC_LIBRARIES "aom")
+
+    # Add absolute paths to libraries
+    foreach(_lib ${_AOM_PC_LIBRARIES})
+        find_library(_aom_dep_lib_${_lib} ${_lib} HINTS ${${_AOM_PC_PREFIX}_LIBRARY_DIRS})
+        target_link_libraries(aom INTERFACE ${_aom_dep_lib_${_lib}})
+    endforeach()
 endif()
