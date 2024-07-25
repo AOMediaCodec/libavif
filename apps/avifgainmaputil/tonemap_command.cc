@@ -129,9 +129,9 @@ avifResult TonemapCommand::Run() {
   }
   if (cicp.transfer_characteristics ==
       AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-    cicp.transfer_characteristics = tone_mapping_to_hdr
-                                        ? AVIF_TRANSFER_CHARACTERISTICS_PQ
-                                        : AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    cicp.transfer_characteristics = static_cast<avifTransferCharacteristics>(
+        tone_mapping_to_hdr ? AVIF_TRANSFER_CHARACTERISTICS_PQ
+                            : AVIF_TRANSFER_CHARACTERISTICS_SRGB);
   }
 
   // Determine output depth.
