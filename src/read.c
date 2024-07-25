@@ -4709,7 +4709,12 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             }
         }
     }
-    AVIF_ASSERT_OR_RETURN(alphaItemCount == tileCount);
+    if (alphaItemCount != tileCount) {
+        avifFree(dimgIdxToAlphaItemIdx);
+        *alphaItem = NULL;
+        *isAlphaItemInInput = AVIF_FALSE;
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
     // Find an unused ID.
     avifResult result;
     if (meta->items.count >= UINT32_MAX - 1) {
