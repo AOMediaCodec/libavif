@@ -27,6 +27,7 @@ jobs:
       with:
         oss-fuzz-project-name: 'libavif'
         dry-run: false
+        keep-unaffected-fuzz-targets: true
     - name: Run Fuzzers
       uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
       with:
