@@ -788,6 +788,18 @@ endif()
 if(AVIF_BUILD_TESTS)
     enable_testing() # Allow ctest to be called from top-level directory.
     add_subdirectory(tests)
+    # An executable on Windows searches for DLLs it is linked with in the same
+    # directory where it resides and in the directories listed in the Path
+    # environment variable. For convenience, copy avif.dll to the tests binary
+    # directory to allow are_images_equal.exe and the test programs find it.
+    if(WIN32 AND BUILD_SHARED_LIBS)
+        add_custom_command(
+            TARGET avif
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:avif>" ${CMAKE_CURRENT_BINARY_DIR}/tests
+            COMMENT "Copying avif.dll to the tests binary directory"
+        )
+    endif()
 endif()
 
 option(AVIF_BUILD_MAN_PAGES "Build avif man pages." OFF)
