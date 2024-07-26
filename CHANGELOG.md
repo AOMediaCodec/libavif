@@ -24,6 +24,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix aom link flags so that transitive library link flags are included when
   aom is a static library
   https://github.com/AOMediaCodec/libavif/issues/2274.
+* Fix out-of-order 'dimg' grid associations
+  https://github.com/AOMediaCodec/libavif/issues/2311.
 
 ## [1.1.0] - 2024-07-11
 

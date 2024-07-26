@@ -363,6 +363,15 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 Source: Personal photo converted with `avifenc --grid 1x5 --yuv 420` at
 commit [632d131](https://github.com/AOMediaCodec/libavif/commit/632d13188f9b7faa40f20d870e792174b8b5b8e6).
 
+### File [sofa_grid1x5_420_reversed_dimg_order.avif](sofa_grid1x5_420_reversed_dimg_order.avif)
+
+![](sofa_grid1x5_420_reversed_dimg_order.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `sofa_grid1x5_420.avif` manually edited so that the `dimg` order is
+6,5,4,3,2 instead of 2,3,4,5,6.
+
 ### File [color_grid_alpha_nogrid.avif](color_grid_alpha_nogrid.avif)
 
 ![](color_grid_alpha_nogrid.avif)
