@@ -4711,8 +4711,6 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     }
     if (alphaItemCount != tileCount) {
         avifFree(dimgIdxToAlphaItemIdx);
-        *alphaItem = NULL;
-        *isAlphaItemInInput = AVIF_FALSE;
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
     // Find an unused ID.
@@ -4745,8 +4743,6 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
         if (dimgIdxToAlphaItemIdx[dimgIdx] >= meta->items.count) {
             avifFree(dimgIdxToAlphaItemIdx);
-            *alphaItem = NULL;
-            *isAlphaItemInInput = AVIF_FALSE;
             AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
         }
         avifDecoderItem * alphaTileItem = meta->items.item[dimgIdxToAlphaItemIdx[dimgIdx]];
