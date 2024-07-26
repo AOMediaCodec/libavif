@@ -4743,6 +4743,12 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     (*alphaItem)->width = colorItem->width;
     (*alphaItem)->height = colorItem->height;
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
+        if (dimgIdxToAlphaItemIdx[dimgIdx] >= meta->items.count) {
+            avifFree(dimgIdxToAlphaItemIdx);
+            *alphaItem = NULL;
+            *isAlphaItemInInput = AVIF_FALSE;
+            AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
+        }
         avifDecoderItem * alphaTileItem = meta->items.item[dimgIdxToAlphaItemIdx[dimgIdx]];
         alphaTileItem->dimgForID = (*alphaItem)->id;
         alphaTileItem->dimgIdx = dimgIdx;
