@@ -30,7 +30,7 @@ class AvifExpression : public avifSampleTransformExpression {
   }
   void AddOperator(avifSampleTransformTokenType op) {
     avifSampleTransformToken& token = AddToken();
-    token.type = op;
+    token.type = static_cast<uint8_t>(op);
   }
 
   int32_t Apply() const {
