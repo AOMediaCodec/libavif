@@ -275,7 +275,7 @@ include(CheckCCompilerFlag)
 # avif_enable_warnings is a CMake interface library. It has no source files.
 # Its only purpose is to serve as a carrier of warning-related compiler options
 # and macro definitions. We set them by calling target_compile_options() and
-# and target_compile_definitions() on avif_enable_warnings. We enable compiler
+# target_compile_definitions() on avif_enable_warnings. We enable compiler
 # warnings in a target by linking the target with avif_enable_warnings using
 # target_link_libraries().
 add_library(avif_enable_warnings INTERFACE)
