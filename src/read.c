@@ -4671,8 +4671,6 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
                         // * Multiple items are claiming to be the alpha auxiliary of the current item.
                         // * Alpha auxiliary is dimg for another item.
                         avifFree(alphaItemIndices);
-                        *alphaItem = NULL;
-                        *isAlphaItemInInput = AVIF_FALSE;
                         return AVIF_RESULT_INVALID_IMAGE_GRID;
                     }
                     alphaItemIndices[alphaItemCount++] = j;
@@ -4711,7 +4709,6 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     }
     if (result != AVIF_RESULT_OK) {
         avifFree(alphaItemIndices);
-        *isAlphaItemInInput = AVIF_FALSE;
         return result;
     }
     memcpy((*alphaItem)->type, "grid", 4); // Make it a grid and register alpha items as its tiles.
