@@ -26,6 +26,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   https://github.com/AOMediaCodec/libavif/issues/2274.
 * Fix out-of-order 'dimg' grid associations
   https://github.com/AOMediaCodec/libavif/issues/2311.
+* Report files with an item used in multiple 'dimg' boxes with
+  AVIF_RESULT_NOT_IMPLEMENTED instead of AVIF_RESULT_INVALID_IMAGE_GRID.
 
 ## [1.1.0] - 2024-07-11
 

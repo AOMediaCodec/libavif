@@ -198,9 +198,7 @@ typedef struct avifDecoderItem
     uint32_t auxForID;             // if non-zero, this item is an auxC plane for Item #{auxForID}
     uint32_t descForID;            // if non-zero, this item is a content description for Item #{descForID}
     uint32_t dimgForID;            // if non-zero, this item is an input of derived Item #{dimgForID}
-    // If dimgForId is non-zero, this is the zero-based index of this item in the list of Item #{dimgForID}'s dimg
-    // Note that if the same item appears multiple times in the dimg box, this is the last index for this item.
-    uint32_t dimgIdx;
+    uint32_t dimgIdx; // If dimgForId is non-zero, this is the zero-based index of this item in the list of Item #{dimgForID}'s dimg.
     avifBool hasDimgFrom; // whether there is a 'dimg' box with this item's id as 'fromID'
     uint32_t premByID;    // if non-zero, this item is premultiplied by Item #{premByID}
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
@@ -2154,9 +2152,7 @@ static avifResult avifDecoderItemReadAndParse(const avifDecoder * decoder,
                     ++dimgItemCount;
                 }
             }
-            if (dimgItemCount != grid->rows * grid->columns) {
-                return AVIF_RESULT_INVALID_IMAGE_GRID;
-            }
+            AVIF_CHECKERR(dimgItemCount == grid->rows * grid->columns, AVIF_RESULT_INVALID_IMAGE_GRID);
         } else {
             // item was generated for convenience and is not part of the bitstream.
             // grid information should already be set.
@@ -2914,6 +2910,12 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 avifDecoderItem * dimg;
                 AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, toID, &dimg));
 
+                // Section 8.11.12.1 of ISO/IEC 14496-12:
+                //   The items linked to are then represented by an array of to_item_IDs;
+                //   within a given array, a given value shall occur at most once.
+                AVIF_CHECKERR(dimg->dimgForID != fromID, AVIF_RESULT_INVALID_IMAGE_GRID);
+                // A given value may occur within multiple arrays but this is not supported by libavif.
+                AVIF_CHECKERR(dimg->dimgForID == 0, AVIF_RESULT_NOT_IMPLEMENTED);
                 dimg->dimgForID = fromID;
                 dimg->dimgIdx = refIndex;
             } else if (!memcmp(irefHeader.type, "prem", 4)) {

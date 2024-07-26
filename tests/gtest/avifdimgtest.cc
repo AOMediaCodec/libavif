@@ -18,7 +18,36 @@ const char* data_path = nullptr;
 
 //------------------------------------------------------------------------------
 
-TEST(IncrementalTest, Dimg) {
+TEST(DimgTest, IrefRepetition) {
+  testutil::AvifRwData avif = testutil::ReadFile(
+      std::string(data_path) + "sofa_grid1x5_420_dimg_repeat.avif");
+  ASSERT_NE(avif.size, 0u);
+  ImagePtr reference(avifImageCreateEmpty());
+  ASSERT_NE(reference, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(), avif.data,
+                                  avif.size),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+}
+
+TEST(DimgTest, ItemShared) {
+  testutil::AvifRwData avif =
+      testutil::ReadFile(std::string(data_path) +
+                         "color_grid_alpha_grid_tile_shared_in_dimg.avif");
+  ASSERT_NE(avif.size, 0u);
+  ImagePtr reference(avifImageCreateEmpty());
+  ASSERT_NE(reference, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(), avif.data,
+                                  avif.size),
+            AVIF_RESULT_NOT_IMPLEMENTED);
+}
+
+//------------------------------------------------------------------------------
+
+TEST(DimgTest, ItemOutOfOrder) {
   testutil::AvifRwData avif =
       testutil::ReadFile(std::string(data_path) + "sofa_grid1x5_420.avif");
   ASSERT_NE(avif.size, 0u);
