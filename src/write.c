@@ -1005,7 +1005,7 @@ static avifResult avifEncoderWriteSampleTransformPayload(avifEncoder * encoder, 
     const avifResult result = avifEncoderWriteSampleTransformTokens(&s, &expression);
     avifArrayDestroy(&expression);
     if (result != AVIF_RESULT_OK) {
-        avifDiagnosticsPrintf(&encoder->diag, "Failed to write sample transform metadata for recipe %d", encoder->sampleTransformRecipe);
+        avifDiagnosticsPrintf(&encoder->diag, "Failed to write sample transform metadata for recipe %d", (int)encoder->sampleTransformRecipe);
         return result;
     }
 
@@ -1467,7 +1467,7 @@ static avifResult avifValidateGrid(uint32_t gridCols,
         const uint32_t expectedCellHeight = (cellIndex < (cellCount - gridCols)) ? tileHeight : bottomRightCell->height;
         if ((cellImage->width != expectedCellWidth) || (cellImage->height != expectedCellHeight)) {
             avifDiagnosticsPrintf(diag,
-                                  "%s cell %d has invalid dimensions: expected %dx%d found %dx%d",
+                                  "%s cell %u has invalid dimensions: expected %ux%u found %ux%u",
                                   validateGainMap ? "gain map" : "image",
                                   cellIndex,
                                   expectedCellWidth,
@@ -1498,7 +1498,7 @@ static avifResult avifValidateGrid(uint32_t gridCols,
 
     if ((bottomRightCell->width > tileWidth) || (bottomRightCell->height > tileHeight)) {
         avifDiagnosticsPrintf(diag,
-                              "the last %s cell can be smaller but not larger than the other cells which are %dx%d, found %dx%d",
+                              "the last %s cell can be smaller but not larger than the other cells which are %ux%u, found %ux%u",
                               validateGainMap ? "gain map" : "image",
                               tileWidth,
                               tileHeight,

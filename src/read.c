@@ -2877,7 +2877,7 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
             if (item->hasDimgFrom) {
                 // ISO/IEC 23008-12 (HEIF) 6.6.1: The number of SingleItemTypeReferenceBoxes with the box type 'dimg'
                 // and with the same value of from_item_ID shall not be greater than 1.
-                avifDiagnosticsPrintf(diag, "Box[iinf] contains duplicate boxes of type 'dimg' with the same from_item_ID value %d", fromID);
+                avifDiagnosticsPrintf(diag, "Box[iinf] contains duplicate boxes of type 'dimg' with the same from_item_ID value %u", fromID);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             item->hasDimgFrom = AVIF_TRUE;
@@ -3385,7 +3385,7 @@ static avifBool avifParseEditListBox(avifTrack * track, const uint8_t * raw, siz
     uint32_t entryCount;
     AVIF_CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
     if (entryCount != 1) {
-        avifDiagnosticsPrintf(diag, "Box[elst] contains an entry_count != 1 [%d]", entryCount);
+        avifDiagnosticsPrintf(diag, "Box[elst] contains an entry_count != 1 [%u]", entryCount);
         return AVIF_FALSE;
     }
 
@@ -5367,7 +5367,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     continue;
                 }
                 if (avifDecoderItemShouldBeSkipped(inputImageItem)) {
-                    avifDiagnosticsPrintf(data->diag, "Box[sato] input item %d is not a supported image type", inputImageItem->id);
+                    avifDiagnosticsPrintf(data->diag, "Box[sato] input item %u is not a supported image type", inputImageItem->id);
                     return AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED;
                 }
                 // Input image item order is important because input image items are indexed according to this order.
