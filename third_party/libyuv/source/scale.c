@@ -21,7 +21,6 @@ static __inline int Abs(int v) {
   return v >= 0 ? v : -v;
 }
 
-#define SUBSAMPLE(v, a, s) (v < 0) ? (-((-v + a) >> s)) : ((v + a) >> s)
 #define CENTERSTART(dx, s) (dx < 0) ? -((-dx >> 1) + s) : ((dx >> 1) + s)
 
 #define MIN1(x) ((x) < 1 ? 1 : (x))
