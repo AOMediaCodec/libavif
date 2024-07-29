@@ -310,9 +310,9 @@ static void avifSampleTableDestroy(avifSampleTable * sampleTable)
     avifFree(sampleTable);
 }
 
-static uint32_t avifSampleTableGetImageDelta(const avifSampleTable * sampleTable, int imageIndex)
+static uint32_t avifSampleTableGetImageDelta(const avifSampleTable * sampleTable, uint32_t imageIndex)
 {
-    int maxSampleIndex = 0;
+    uint32_t maxSampleIndex = 0;
     for (uint32_t i = 0; i < sampleTable->timeToSamples.count; ++i) {
         const avifSampleTableTimeToSample * timeToSample = &sampleTable->timeToSamples.timeToSample[i];
         maxSampleIndex += timeToSample->sampleCount;
@@ -6015,7 +6015,7 @@ avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frame
 
     outTiming->timescale = decoder->timescale;
     outTiming->ptsInTimescales = 0;
-    for (int imageIndex = 0; imageIndex < (int)frameIndex; ++imageIndex) {
+    for (uint32_t imageIndex = 0; imageIndex < frameIndex; ++imageIndex) {
         outTiming->ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
     }
     outTiming->durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, frameIndex);
