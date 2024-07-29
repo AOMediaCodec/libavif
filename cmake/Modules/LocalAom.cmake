@@ -38,6 +38,11 @@ if(EXISTS "${LIB_FILENAME}")
     set(_AOM_PC_LIBRARIES "${_AOM_STATIC_LIBRARIES}")
     # remove "aom" so we only have library dependencies
     list(REMOVE_ITEM _AOM_PC_LIBRARIES "aom")
+    # Work around crbug.com/aomedia/356153293: aom.pc has -lm in the
+    # Libs.private field on all platforms, whether libm or m.lib exists or not.
+    if(WIN32 OR APPLE)
+        list(REMOVE_ITEM _AOM_PC_LIBRARIES "m")
+    endif()
 
     # Add absolute paths to libraries
     foreach(_lib ${_AOM_PC_LIBRARIES})
