@@ -615,15 +615,6 @@ if(BUILD_SHARED_LIBS)
     target_include_directories(avif_internal PUBLIC ${libavif_SOURCE_DIR}/include)
     # Define the following to avoid linking against avif and avif_internal at the same time.
     target_compile_definitions(avif_internal PUBLIC AVIF_USING_STATIC_LIBS)
-    if(MSVC)
-        add_custom_command(
-            TARGET avif_internal
-            POST_BUILD
-            COMMAND lib.exe /list avif_internal.lib
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT "List the object files in avif_internal.lib..."
-        )
-    endif()
 else()
     include(merge_static_libs)
     set_target_properties(avif PROPERTIES AVIF_LOCAL ON)

@@ -63,8 +63,6 @@ jobs:
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\include\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\rav1e* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
-    - name: Print vcpkg-cmake-config
-      run: type D:\a\libavif\libavif/vcpkg/scripts/buildsystems/vcpkg.cmake
     - name: Prepare libavif (cmake)
       run: >
         cmake ${{ steps.vcpkg.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
@@ -76,14 +74,13 @@ jobs:
         -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
         -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
-        -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
         -DAVIF_ENABLE_EXPERIMENTAL_METAV1=ON
         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
         -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
         -DAVIF_ENABLE_NODISCARD=ON
     - name: Build libavif (ninja)
       working-directory: ./build
-      run: ninja -v
+      run: ninja
     - name: Run AVIF Tests
       working-directory: ./build
       run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
