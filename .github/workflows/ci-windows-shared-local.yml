@@ -1,0 +1,65 @@
+# Do a shared library build with local dependencies.
+
+name: CI Windows Shared Local
+on:
+  push:
+  pull_request:
+    paths:
+      - '.github/workflows/ci-windows-shared-local.yml'
+      - '**CMakeLists.txt'
+      - 'cmake/**'
+      - 'ext/**'
+
+permissions:
+  contents: read
+
+# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-windows-shared-local:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [msvc, clang-cl]
+
+    steps:
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+    - uses: ./.github/actions/setup-windows
+      with:
+        codec-aom: 'LOCAL'
+        codec-dav1d: 'LOCAL'
+        extra-cache-key: ${{ matrix.compiler }}
+    - name: Leave compiler as default
+      if: matrix.compiler == 'msvc'
+      run: |
+        echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
+        echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
+    - name: Set clang-cl as compiler
+      if: matrix.compiler == 'clang-cl'
+      run: |
+        echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=clang-cl" >> $env:GITHUB_ENV
+        echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
+
+    - name: Prepare libavif (cmake)
+      run: >
+        cmake -G Ninja -S . -B build
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+        -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
+        -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
+        -DAVIF_LIBYUV=LOCAL -DAVIF_ZLIBPNG=LOCAL
+        -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
+        -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
+        -DAVIF_ENABLE_EXPERIMENTAL_METAV1=ON
+        -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
+        -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
+    - name: Build libavif (ninja)
+      working-directory: ./build
+      run: ninja
+    - name: Run AVIF Tests
+      working-directory: ./build
+      run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
