@@ -272,14 +272,23 @@ endif()
 
 # Enable all warnings
 include(CheckCCompilerFlag)
+# avif_enable_warnings is a CMake interface library. It has no source files.
+# Its only purpose is to serve as a carrier of warning-related compiler options
+# and macro definitions. We set them by calling target_compile_options() and
+# target_compile_definitions() on avif_enable_warnings. We enable compiler
+# warnings in a target by linking the target with avif_enable_warnings using
+# target_link_libraries().
+add_library(avif_enable_warnings INTERFACE)
 if(MSVC)
     message(STATUS "libavif: Enabling warnings for MSVC")
     target_compile_options(
-        avif_obj
-        PUBLIC $<BUILD_INTERFACE: /W4 # For clang-cl, /W4 enables -Wall and -Wextra
-               /wd4324 # Disable: structure was padded due to alignment specifier
-               >
+        avif_enable_warnings INTERFACE /W4 # For clang-cl, /W4 enables -Wall and -Wextra
+                                       /wd4324 # Disable: structure was padded due to alignment specifier
     )
+    # Disable deprecation warnings about POSIX function names such as setmode (replaced by the ISO C and C++ conformant name _setmode).
+    # Disable deprecation warnings about unsafe CRT library functions such as fopen (replaced by fopen_s).
+    target_compile_definitions(avif_enable_warnings INTERFACE _CRT_NONSTDC_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
+
     # clang-cl documentation says:
     #   /execution-charset:<value>
     #                           Runtime encoding, supports only UTF-8
@@ -303,10 +312,10 @@ if(MSVC)
     endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:-Wall -Wextra -Wshorten-64-to-32>)
+    target_compile_options(avif_enable_warnings INTERFACE -Wall -Wextra -Wshorten-64-to-32)
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
-    target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:-Wall -Wextra>)
+    target_compile_options(avif_enable_warnings INTERFACE -Wall -Wextra)
 else()
     message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
 endif()
@@ -314,13 +323,15 @@ endif()
 if(AVIF_ENABLE_WERROR)
     # Warnings as errors
     if(MSVC)
-        target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:/WX>)
+        target_compile_options(avif_enable_warnings INTERFACE /WX)
     elseif(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:-Werror>)
+        target_compile_options(avif_enable_warnings INTERFACE -Werror)
     else()
         message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
     endif()
 endif()
+
+target_link_libraries(avif_obj PRIVATE avif_enable_warnings)
 
 if(AVIF_ENABLE_NODISCARD)
     if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
@@ -349,13 +360,6 @@ if(AVIF_ENABLE_COVERAGE)
         message(WARNING "libavif: Ignoring request for coverage (AVIF_ENABLE_COVERAGE); only clang is currently supported.")
         set(AVIF_ENABLE_COVERAGE OFF)
     endif()
-endif()
-
-if(MSVC)
-    # Disable deprecation warnings about POSIX function names such as setmode (replaced by the ISO C and C++ conformant name _setmode).
-    add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS)
-    # Disable deprecation warnings about unsafe CRT library functions such as fopen (replaced by fopen_s).
-    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
@@ -647,7 +651,7 @@ if(AVIF_BUILD_EXAMPLES)
         if(AVIF_LIB_USE_CXX)
             set_target_properties(${EXAMPLE} PROPERTIES LINKER_LANGUAGE "CXX")
         endif()
-        target_link_libraries(${EXAMPLE} avif)
+        target_link_libraries(${EXAMPLE} avif avif_enable_warnings)
     endforeach()
 endif()
 
@@ -680,6 +684,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
     # Still, the compile definitions needs to be passed from avif to avif_apps. The following also passes them to avif_apps_internal but AVIF_DLL does not impact avif_apps_internal.
     target_compile_definitions(avif_apps_obj PRIVATE $<BUILD_INTERFACE:$<TARGET_PROPERTY:avif,INTERFACE_COMPILE_DEFINITIONS>>)
     target_link_libraries(avif_apps_obj PUBLIC avif_obj PNG::PNG ZLIB::ZLIB JPEG::JPEG)
+    target_link_libraries(avif_apps_obj PRIVATE avif_enable_warnings)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_link_libraries(avif_apps_obj PRIVATE m)
     endif()
@@ -734,7 +739,7 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LIB_USE_CXX)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif_apps)
+    target_link_libraries(avifenc avif_apps avif_enable_warnings)
     add_executable(avifdec apps/avifdec.c)
     if(WIN32)
         target_sources(avifdec PRIVATE apps/utf8.rc)
@@ -745,7 +750,7 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LIB_USE_CXX)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif_apps)
+    target_link_libraries(avifdec avif_apps avif_enable_warnings)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(
@@ -780,7 +785,7 @@ if(AVIF_BUILD_APPS)
         endif()
         set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
         target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
-        target_link_libraries(avifgainmaputil libargparse avif_apps)
+        target_link_libraries(avifgainmaputil libargparse avif_apps avif_enable_warnings)
         # Don't add avifgainmaputil to installed apps for now.
     endif()
 endif()
