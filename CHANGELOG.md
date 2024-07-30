@@ -8,6 +8,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+## [1.1.1] - 2024-07-30
+
 ### Changed since 1.1.0
 * In avif.h, change "AVIF_API AVIF_NODISCARD" back to "AVIF_NODISCARD AVIF_API"
   to fix clang-cl and MSVC compilation errors in the shared library build on
@@ -21,6 +23,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix CMake config shared library leaks
   https://github.com/AOMediaCodec/libavif/issues/2264.
 * Fix clang-cl compilation.
+* Update gain map metadata to current ISO 21496-1 draft.
+* cmake: Only search for ASM_NASM language on x86_64 platforms.
+* Fix "No known features for CXX compiler" CMake error.
 * Fix aom link flags so that transitive library link flags are included when
   aom is a static library
   https://github.com/AOMediaCodec/libavif/issues/2274.
@@ -1129,7 +1134,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/AOMediaCodec/libavif/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.1.0
 [1.0.4]: https://github.com/AOMediaCodec/libavif/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/AOMediaCodec/libavif/compare/v1.0.2...v1.0.3
