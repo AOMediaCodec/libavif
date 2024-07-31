@@ -1,6 +1,8 @@
 name: CI Unix Static Sanitized
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - '.github/workflows/ci-unix-static-sanitized.yml'

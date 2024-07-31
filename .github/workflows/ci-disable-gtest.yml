@@ -7,6 +7,8 @@
 name: CI Disable GTest
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - '.github/workflows/ci-disable-gtest.yml'
