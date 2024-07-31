@@ -2,7 +2,11 @@
 # with an additional build configuration (using installed deps and dav1d).
 
 name: CI Unix Shared Installed
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+    paths:
+      - '.github/workflows/ci-unix-shared-installed.yml'
 
 permissions:
   contents: read
