@@ -33,8 +33,16 @@ include(FetchContent)
 include(FindPkgConfig)
 include(AvifExternalProjectUtils)
 
+option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to request C23." OFF)
+
 # Set C99 as the default
-set(CMAKE_C_STANDARD 99)
+if(AVIF_ENABLE_NODISCARD AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
+    # [[nodiscard]] requires C23. The supported value 23 for CMAKE_C_STANDARD
+    # was added in CMake version 3.21.
+    set(CMAKE_C_STANDARD 23)
+else()
+    set(CMAKE_C_STANDARD 99)
+endif()
 
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
@@ -52,7 +60,6 @@ set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
-option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23" OFF)
 
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
@@ -334,22 +341,6 @@ endif()
 
 target_link_libraries(avif_obj PRIVATE avif_enable_warnings)
 
-if(AVIF_ENABLE_NODISCARD)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
-        set(CMAKE_C_STANDARD 23)
-        set_property(TARGET avif_obj PROPERTY C_STANDARD 23)
-    else()
-        unset(CMAKE_C_STANDARD)
-        set_property(TARGET avif_obj PROPERTY C_STANDARD)
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-            target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:$<$<COMPILE_LANGUAGE:C>:-std=gnu2x>>)
-        elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-            target_compile_options(avif_obj PUBLIC $<BUILD_INTERFACE:$<$<COMPILE_LANGUAGE:C>:/std:clatest>>)
-        endif()
-    endif()
-    target_compile_definitions(avif_obj PUBLIC $<BUILD_INTERFACE:AVIF_ENABLE_NODISCARD=1>)
-endif()
-
 if(AVIF_ENABLE_COVERAGE)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         message(STATUS "libavif: Enabling coverage for Clang")
@@ -592,6 +583,7 @@ if(AVIF_LIB_USE_CXX OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP) O
 )
     enable_language(CXX)
     if(AVIF_ENABLE_NODISCARD)
+        # [[nodiscard]] requires C++17.
         set(CMAKE_CXX_STANDARD 17)
     else()
         set(CMAKE_CXX_STANDARD 14)

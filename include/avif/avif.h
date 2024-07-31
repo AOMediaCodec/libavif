@@ -48,8 +48,7 @@ extern "C" {
 #define AVIF_API
 #endif // defined(AVIF_DLL)
 
-#if defined(AVIF_ENABLE_NODISCARD) || (defined(__cplusplus) && __cplusplus >= 201703L) || \
-    (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
+#if (defined(__cplusplus) && __cplusplus >= 201703L) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
 #define AVIF_NODISCARD [[nodiscard]]
 #else
 // Starting with 3.9, clang allows defining the warn_unused_result attribute for enums.
