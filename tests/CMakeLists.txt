@@ -188,7 +188,7 @@ if(AVIF_ENABLE_FUZZTEST)
         add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc gtest/avif_fuzztest_helpers.cc ${ARGN})
         # FuzzTest bundles GoogleTest so no need to link to gtest librairies.
         # NOTE: FuzzTest and Abseil headers have compiler warnings (mostly
-        # -Wsign-compare and some -Wunused-parameter and -Wshorten-64-to-32,
+        # -Wsign-compare and some -Wunused-parameter and -Wshorten-64-to-32),
         # so we don't enable compiler warnings on the fuzztest targets.
         target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal)
         link_fuzztest(${TEST_NAME})
