@@ -33,13 +33,16 @@ include(FetchContent)
 include(FindPkgConfig)
 include(AvifExternalProjectUtils)
 
-option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to request C23." OFF)
+option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23." OFF)
 
 # Set C99 as the default
-if(AVIF_ENABLE_NODISCARD AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21.0)
-    # [[nodiscard]] requires C23. The supported value 23 for CMAKE_C_STANDARD
-    # was added in CMake version 3.21.
+if(AVIF_ENABLE_NODISCARD)
+    # [[nodiscard]] requires C23.
+    if(CMAKE_VERSION VERSION_LESS 3.21.0)
+        message(FATAL_ERROR "CMake must be at least 3.21 to force C23, bailing out")
+    endif()
     set(CMAKE_C_STANDARD 23)
+    set(CMAKE_C_STANDARD_REQUIRED ON)
 else()
     set(CMAKE_C_STANDARD 99)
 endif()
@@ -585,6 +588,7 @@ if(AVIF_LIB_USE_CXX OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP) O
     if(AVIF_ENABLE_NODISCARD)
         # [[nodiscard]] requires C++17.
         set(CMAKE_CXX_STANDARD 17)
+        set(CMAKE_CXX_STANDARD_REQUIRED ON)
     else()
         set(CMAKE_CXX_STANDARD 14)
     endif()
