@@ -34,6 +34,8 @@ jobs:
         gcc-version: ${{ matrix.gcc }}
         gtest: 'SYSTEM'
         libyuv: 'SYSTEM'
+        # Need cmake 3.21 to force C23 for [[nodiscard]].
+        recent-cmake: 'true'
     - uses: ./.github/actions/setup-macos
       if: runner.os == 'macOS'
       with:
