@@ -357,13 +357,7 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const uint32_t fullRowBytes = channelSize * image->width;
-#if UINT32_MAX > PTRDIFF_MAX
-    // Make sure it is safe to cast image->yuvRowBytes[i] or image->alphaRowBytes to ptrdiff_t.
-    if (fullRowBytes > PTRDIFF_MAX) {
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
-#endif
-    if (image->height > SIZE_MAX / fullRowBytes) {
+    if (image->height > PTRDIFF_MAX / fullRowBytes) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const size_t fullSize = (size_t)fullRowBytes * image->height;
@@ -637,13 +631,7 @@ avifResult avifRGBImageAllocatePixels(avifRGBImage * rgb)
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const uint32_t rowBytes = rgb->width * pixelSize;
-#if UINT32_MAX > PTRDIFF_MAX
-    // Make sure it is safe to cast rgb->rowBytes to ptrdiff_t.
-    if (rowBytes > PTRDIFF_MAX) {
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
-#endif
-    if (rgb->height > SIZE_MAX / rowBytes) {
+    if (rgb->height > PTRDIFF_MAX / rowBytes) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     rgb->pixels = (uint8_t *)avifAlloc((size_t)rowBytes * rgb->height);
