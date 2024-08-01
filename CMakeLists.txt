@@ -140,9 +140,10 @@ option(AVIF_ENABLE_GTEST
 option(AVIF_ENABLE_FUZZTEST "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS is ON."
        OFF
 )
-option(AVIF_LOCAL_FUZZTEST
-       "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README)"
-       OFF
+option(
+    AVIF_LOCAL_FUZZTEST
+    "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README). CMake must be at least 3.25."
+    OFF
 )
 
 # Whether the libavif library uses c++ indirectly (e.g. through linking to libyuv).

@@ -198,10 +198,12 @@ if(AVIF_ENABLE_FUZZTEST)
         #   FUZZTEST_REPLAY=/path/to/repro_file.test
         # and running one of the targets below.
         # See https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
-        # Note: The SYSTEM argument for add_subdirectory() is new in CMake
-        # version 3.25. There are compiler warnings in FuzzTest headers. Add
-        # the ext/fuzztest subdirectory with the SYSTEM directory property so
-        # that warnings in its headers are suppressed.
+        # Note: There are compiler warnings in the FuzzTest headers. Add the
+        # ext/fuzztest subdirectory with the SYSTEM directory property set to
+        # true so that warnings in its headers are suppressed.
+        if(CMAKE_VERSION VERSION_LESS 3.25.0)
+            message(FATAL_ERROR "CMake must be at least 3.25 to pass the SYSTEM argument to add_subdirectory(), bailing out")
+        endif()
         add_subdirectory(${AVIF_SOURCE_DIR}/ext/fuzztest ${AVIF_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(
