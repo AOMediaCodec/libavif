@@ -20,16 +20,18 @@ runs:
       uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
       with:
         python-version: '3.x'
-    - name: Set up CMake < 3.18
+    - name: Set up CMake < 3.21
       if: ${{ runner.os == 'Linux' && inputs.recent-cmake == 'false' }}
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
+        # Use the minimum required version of cmake.
         cmake-version: '3.13.x'
-    - name: Set up CMake >= 3.18
+    - name: Set up CMake >= 3.21
       if: ${{ runner.os == 'Linux' && inputs.recent-cmake == 'true' }}
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
-        cmake-version: '3.18.x'
+        # Need cmake 3.21 to set CMAKE_C_STANDARD to 23 for [[nodiscard]].
+        cmake-version: '3.21.x'
     - name: Print CMake version
       run: cmake --version
       shell: bash
