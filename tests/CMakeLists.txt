@@ -184,10 +184,7 @@ if(AVIF_ENABLE_FUZZTEST)
     macro(add_avif_fuzztest TEST_NAME)
         add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc gtest/avif_fuzztest_helpers.cc ${ARGN})
         # FuzzTest bundles GoogleTest so no need to link to gtest librairies.
-        # NOTE: FuzzTest and Abseil headers have compiler warnings (mostly
-        # -Wsign-compare and some -Wunused-parameter and -Wshorten-64-to-32),
-        # so we don't enable compiler warnings on the fuzztest targets.
-        target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal)
+        target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal avif_enable_warnings)
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
         set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIRS=${CMAKE_CURRENT_SOURCE_DIR}/data/")
@@ -201,7 +198,13 @@ if(AVIF_ENABLE_FUZZTEST)
         #   FUZZTEST_REPLAY=/path/to/repro_file.test
         # and running one of the targets below.
         # See https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
-        add_subdirectory(${AVIF_SOURCE_DIR}/ext/fuzztest ${AVIF_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL)
+        # Note: There are compiler warnings in the FuzzTest headers. Add the
+        # ext/fuzztest subdirectory with the SYSTEM directory property set to
+        # true so that warnings in its headers are suppressed.
+        if(CMAKE_VERSION VERSION_LESS 3.25.0)
+            message(FATAL_ERROR "CMake must be at least 3.25 to pass the SYSTEM argument to add_subdirectory(), bailing out")
+        endif()
+        add_subdirectory(${AVIF_SOURCE_DIR}/ext/fuzztest ${AVIF_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(
             FATAL_ERROR
