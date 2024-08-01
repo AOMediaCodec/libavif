@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/cifuzz.yml'
+      - '**CMakeLists.txt'
       - 'cmake/**'
       - 'ext/**'
       - 'tests/gtest/**'
