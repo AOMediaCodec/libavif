@@ -56,7 +56,9 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
 
   DecoderInput data = {reinterpret_cast<const uint8_t*>(arbitrary_bytes.data()),
                        arbitrary_bytes.size(), 0};
-  avifIO io = {.read = AvifIoRead,
+  avifIO io = {.destroy = nullptr,
+               .read = AvifIoRead,
+               .write = nullptr,
                .sizeHint = arbitrary_bytes.size(),
                .persistent = AVIF_TRUE,
                .data = &data};
