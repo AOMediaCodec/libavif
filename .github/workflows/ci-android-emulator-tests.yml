@@ -52,7 +52,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Run Instrumented Tests on the Emulator
-        uses: reactivecircus/android-emulator-runner@77986be26589807b8ebab3fde7bbf5c60dabec32 # v2.31.0
+        uses: reactivecircus/android-emulator-runner@f0d1ed2dcad93c7479e8b2f2226c83af54494915 # v2.32.0
         with:
           working-directory: android_jni
           api-level: 31
