@@ -39,7 +39,7 @@ else()
         GIT_SHALLOW ON
     )
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 
     avif_fetchcontent_populate_cmake(googletest)
 
