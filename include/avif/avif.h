@@ -48,8 +48,14 @@ extern "C" {
 #define AVIF_API
 #endif // defined(AVIF_DLL)
 
-#if defined(AVIF_ENABLE_NODISCARD) || (defined(__cplusplus) && __cplusplus >= 201703L) || \
-    (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
+// [[nodiscard]] requires C++17 and C23.
+//
+// If the -std=c2x or -std=gnu2x option is specified, __STDC_VERSION__ is
+//   * 202000L in GCC 13.2.0, Clang 16.0.6, and Apple Clang 15.0.0; or
+//   * 202311L in Clang 19.0.0git.
+// If the /std:clatest option is specified, __STDC_VERSION__ is
+//   * 202312L in Microsoft Visual Studio 17.10.5.
+#if (defined(__cplusplus) && __cplusplus >= 201703L) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202000L)
 #define AVIF_NODISCARD [[nodiscard]]
 #else
 // Starting with 3.9, clang allows defining the warn_unused_result attribute for enums.
