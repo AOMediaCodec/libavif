@@ -1326,8 +1326,8 @@ static avifResult avifImageCreateAllocate(avifImage ** sampleTransformedImage, c
     return avifImageAllocatePlanes(*sampleTransformedImage, planes);
 }
 
-// Finds the encoded base image and decodes it.
-// Callers of this function must free *codec and *decodedBaseImage if not null, in case of success or not.
+// Finds the encoded base image and decodes it. Callers of this function must free
+// *codec and *decodedBaseImage if not null, whether the function succeeds or not.
 static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
                                                  const avifImage * original,
                                                  uint32_t numBits,
@@ -1356,7 +1356,7 @@ static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
     }
     AVIF_ASSERT_OR_RETURN(sample.data.size != 0); // There should be at least one base item.
 
-    // Used as an argument to avifCodecGetNextImageFunc only for a few fields.
+    // avifCodecGetNextImageFunc() uses only a few fields of its decoder argument.
     avifDecoder decoder;
     memset(&decoder, 0, sizeof(decoder));
     decoder.maxThreads = encoder->maxThreads;
@@ -1441,6 +1441,7 @@ static avifResult avifEncoderCreateSatoImage(avifEncoder * encoder,
                                                             { AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 0, 0 },
                                                             { AVIF_SAMPLE_TRANSFORM_CONSTANT, /*constant=*/128, 0 },
                                                             { AVIF_SAMPLE_TRANSFORM_SUM, 0, 0 } };
+                // image is "original" (index 1) and decodedBaseImage is "main" (index 2) in the formula above.
                 const avifImage * inputImageItems[] = { image, decodedBaseImage };
                 result = avifImageApplyOperations(*sampleTransformedImage,
                                                   AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,

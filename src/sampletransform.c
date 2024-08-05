@@ -140,7 +140,7 @@ avifResult avifSampleTransformRecipeToExpression(avifSampleTransformRecipe recip
     if (recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B) {
         // reference_count is two: one 12-bit input image and one 8-bit input image.
         //   (base_sample << 4) + hidden_sample
-        // Note: Both base_sample and hidden_sample are encoded lossily or losslessly. hidden_sample overlap
+        // Note: Both base_sample and hidden_sample are encoded lossily or losslessly. hidden_sample overlaps
         //       with base_sample by 4 bits to alleviate the loss caused by the quantization of base_sample.
         AVIF_CHECKERR(avifArrayCreate(expression, sizeof(avifSampleTransformToken), 7), AVIF_RESULT_OUT_OF_MEMORY);
 
