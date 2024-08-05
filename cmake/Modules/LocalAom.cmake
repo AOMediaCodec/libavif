@@ -143,9 +143,11 @@ else()
         endif()
         avif_set_aom_compile_options(aom ${_aom_config})
 
+        # Restore the variables.
         foreach(_config_setting CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS)
             foreach(_config_type DEBUG RELEASE MINSIZEREL RELWITHDEBINFO)
-                set(${_config_setting}_${_config_type} ${${_config_setting}_${_config_type}_ORIG} CACHE STRING "" FORCE)
+                unset(${_config_setting}_${_config_type} CACHE)
+                set(${_config_setting}_${_config_type} ${${_config_setting}_${_config_type}_ORIG})
                 unset(${_config_setting}_${_config_type}_ORIG)
             endforeach()
         endforeach()
