@@ -746,7 +746,16 @@ typedef enum avifSampleTransformRecipe
     // (ignoring the hidden image item), leading to a valid image but with
     // precision loss (16-bit samples truncated to the 12 most significant
     // bits).
-    AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B
+    AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B,
+    // Encode the 12 most significant bits of each input image sample lossily or
+    // losslessly into a base image. The difference between the original and
+    // decoded values of these samples is encoded as a separate 8-bit hidden
+    // image item. The two are combined at decoding into one image with the same
+    // bit depth as the original image. It is backward compatible in the sense
+    // that it is possible to decode only the base image (ignoring the hidden
+    // image item), leading to a valid image but with loss due to precision
+    // truncation and/or compression.
+    AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B
 } avifSampleTransformRecipe;
 #endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 

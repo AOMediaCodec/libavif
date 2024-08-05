@@ -1210,7 +1210,8 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
                                                           uint16_t colorItemID)
 {
     AVIF_ASSERT_OR_RETURN(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
-                          encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B);
+                          encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B ||
+                          encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B);
 
     // There are multiple possible ISOBMFF box hierarchies for translucent images,
     // using 'sato' (Sample Transform) derived image items:
@@ -1300,7 +1301,52 @@ static avifResult avifImageCreateAllocate(avifImage ** sampleTransformedImage, c
     return avifImageAllocatePlanes(*sampleTransformedImage, planes);
 }
 
-static avifResult avifEncoderCreateSatoImage(const avifEncoder * encoder,
+// Finds the encoded base image and decodes it. Callers of this function must free
+// *codec and *decodedBaseImage if not null, whether the function succeeds or not.
+static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
+                                                 const avifImage * original,
+                                                 uint32_t numBits,
+                                                 avifPlanesFlag planes,
+                                                 avifCodec ** codec,
+                                                 avifImage ** decodedBaseImage)
+{
+    avifDecodeSample sample;
+    memset(&sample, 0, sizeof(sample));
+    sample.spatialID = AVIF_SPATIAL_ID_UNSET;
+
+    // Find the encoded bytes of the base image item.
+    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+        avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+        if ((item->itemCategory != AVIF_ITEM_COLOR || planes != AVIF_PLANES_YUV) &&
+            (item->itemCategory != AVIF_ITEM_ALPHA || planes != AVIF_PLANES_A)) {
+            continue;
+        }
+
+        AVIF_ASSERT_OR_RETURN(item->encodeOutput != NULL); // TODO: Support grids?
+        AVIF_ASSERT_OR_RETURN(item->encodeOutput->samples.count == 1);
+        AVIF_ASSERT_OR_RETURN(item->encodeOutput->samples.sample[0].data.size != 0);
+        AVIF_ASSERT_OR_RETURN(sample.data.size == 0); // There should be only one base item.
+        sample.data.data = item->encodeOutput->samples.sample[0].data.data;
+        sample.data.size = item->encodeOutput->samples.sample[0].data.size;
+    }
+    AVIF_ASSERT_OR_RETURN(sample.data.size != 0); // There should be at least one base item.
+
+    // avifCodecGetNextImageFunc() uses only a few fields of its decoder argument.
+    avifDecoder decoder;
+    memset(&decoder, 0, sizeof(decoder));
+    decoder.maxThreads = encoder->maxThreads;
+    decoder.imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
+
+    AVIF_CHECKRES(avifCodecCreate(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_DECODE, codec));
+    (*codec)->diag = &encoder->diag;
+    AVIF_CHECKRES(avifImageCreateAllocate(decodedBaseImage, original, numBits, planes));
+    avifBool isLimitedRangeAlpha = AVIF_FALSE; // Ignored.
+    AVIF_CHECKERR((*codec)->getNextImage(*codec, &decoder, &sample, planes == AVIF_PLANES_A, &isLimitedRangeAlpha, *decodedBaseImage),
+                  AVIF_RESULT_ENCODE_SAMPLE_TRANSFORM_FAILED);
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderCreateSatoImage(avifEncoder * encoder,
                                              const avifEncoderItem * item,
                                              avifBool itemWillBeEncodedLosslessly,
                                              const avifImage * image,
@@ -1323,8 +1369,7 @@ static avifResult avifEncoderCreateSatoImage(const avifEncoder * encoder,
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
             AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_AND, 255, planes));
         }
-    } else {
-        AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B, AVIF_RESULT_NOT_IMPLEMENTED);
+    } else if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
         if (isBase) {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 12, planes));
             AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 16, planes));
@@ -1351,11 +1396,49 @@ static avifResult avifEncoderCreateSatoImage(const avifEncoder * encoder,
                     avifImageApplyImgOpConst(*sampleTransformedImage, *sampleTransformedImage, AVIF_SAMPLE_TRANSFORM_SUM, 7, planes));
             }
         }
+    } else {
+        AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B,
+                      AVIF_RESULT_NOT_IMPLEMENTED);
+        if (isBase) {
+            AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 12, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 16, planes));
+        } else {
+            AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
+            avifCodec * codec = NULL;
+            avifImage * decodedBaseImage = NULL;
+            avifResult result = avifEncoderDecodeSatoBaseImage(encoder, image, 12, planes, &codec, &decodedBaseImage);
+            if (result == AVIF_RESULT_OK) {
+                // decoded = main*16+hidden-128 so hidden = clamp_8b(original-main*16+128). Postfix notation.
+                const avifSampleTransformToken tokens[] = { { AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0, /*inputImageItemIndex=*/1 },
+                                                            { AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0, /*inputImageItemIndex=*/2 },
+                                                            { AVIF_SAMPLE_TRANSFORM_CONSTANT, /*constant=*/16, 0 },
+                                                            { AVIF_SAMPLE_TRANSFORM_PRODUCT, 0, 0 },
+                                                            { AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 0, 0 },
+                                                            { AVIF_SAMPLE_TRANSFORM_CONSTANT, /*constant=*/128, 0 },
+                                                            { AVIF_SAMPLE_TRANSFORM_SUM, 0, 0 } };
+                // image is "original" (index 1) and decodedBaseImage is "main" (index 2) in the formula above.
+                const avifImage * inputImageItems[] = { image, decodedBaseImage };
+                result = avifImageApplyOperations(*sampleTransformedImage,
+                                                  AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
+                                                  /*numTokens=*/7,
+                                                  tokens,
+                                                  /*numInputImageItems=*/2,
+                                                  inputImageItems,
+                                                  planes);
+            }
+            if (decodedBaseImage) {
+                avifImageDestroy(decodedBaseImage);
+            }
+            if (codec) {
+                avifCodecDestroy(codec);
+            }
+            AVIF_CHECKRES(result);
+        }
     }
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderCreateBitDepthExtensionImage(const avifEncoder * encoder,
+static avifResult avifEncoderCreateBitDepthExtensionImage(avifEncoder * encoder,
                                                           const avifEncoderItem * item,
                                                           avifBool itemWillBeEncodedLosslessly,
                                                           const avifImage * image,
@@ -1807,7 +1890,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
-            encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
+            encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B ||
+            encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B) {
             // For now, only 16-bit depth is supported.
             AVIF_ASSERT_OR_RETURN(firstCell->depth == 16);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
@@ -2655,7 +2739,8 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         uint8_t depth = (uint8_t)itemMetadata->depth;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
-            encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
+            encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B ||
+            encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B) {
             if (item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM) {
                 AVIF_ASSERT_OR_RETURN(depth == 16); // Only 16-bit depth is supported for now.
             } else if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B) {

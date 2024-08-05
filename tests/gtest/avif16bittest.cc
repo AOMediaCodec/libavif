@@ -76,21 +76,25 @@ TEST_P(SampleTransformTest, Avif16bit) {
       image->alphaPlane ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, image->yuvRange);
   ASSERT_NE(image_no_sato, nullptr);
 
-  const uint32_t shift =
-      recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ? 8 : 4;
-  const avifImage* inputImage = image.get();
-  // Postfix notation.
-  const avifSampleTransformToken tokens[] = {
-      {AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0,
-       /*inputImageItemIndex=*/1},
-      {AVIF_SAMPLE_TRANSFORM_CONSTANT, 1 << shift, 0},
-      {AVIF_SAMPLE_TRANSFORM_DIVIDE, 0, 0}};
-  ASSERT_EQ(avifImageApplyOperations(
-                image_no_sato.get(), AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
-                /*numTokens=*/3, tokens, /*numInputImageItems=*/1, &inputImage,
-                AVIF_PLANES_ALL),
-            AVIF_RESULT_OK);
-  EXPECT_TRUE(testutil::AreImagesEqual(*image_no_sato, *decoded_no_sato));
+  if (recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
+      recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
+    // These recipes always encode the primary item losslessly. Check that.
+    const uint32_t shift =
+        recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ? 8 : 4;
+    const avifImage* inputImage = image.get();
+    // Postfix notation.
+    const avifSampleTransformToken tokens[] = {
+        {AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0,
+         /*inputImageItemIndex=*/1},
+        {AVIF_SAMPLE_TRANSFORM_CONSTANT, 1 << shift, 0},
+        {AVIF_SAMPLE_TRANSFORM_DIVIDE, 0, 0}};
+    ASSERT_EQ(avifImageApplyOperations(
+                  image_no_sato.get(), AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
+                  /*numTokens=*/3, tokens, /*numInputImageItems=*/1,
+                  &inputImage, AVIF_PLANES_ALL),
+              AVIF_RESULT_OK);
+    EXPECT_TRUE(testutil::AreImagesEqual(*image_no_sato, *decoded_no_sato));
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -114,6 +118,16 @@ INSTANTIATE_TEST_SUITE_P(
         /*create_alpha=*/testing::Values(false),
         /*quality=*/
         testing::Values(AVIF_QUALITY_LOSSLESS)));
+
+INSTANTIATE_TEST_SUITE_P(
+    ResidualBitDepthExtension, SampleTransformTest,
+    testing::Combine(
+        testing::Values(
+            AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
+        testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        /*create_alpha=*/testing::Values(false),
+        /*quality=*/
+        testing::Values(AVIF_QUALITY_DEFAULT)));
 
 INSTANTIATE_TEST_SUITE_P(
     Alpha, SampleTransformTest,
