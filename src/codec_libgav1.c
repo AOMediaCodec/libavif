@@ -24,14 +24,13 @@ static void gav1CodecDestroyInternal(avifCodec * codec)
 }
 
 static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
-                                      struct avifDecoder * decoder,
                                       const avifDecodeSample * sample,
                                       avifBool alpha,
                                       avifBool * isLimitedRangeAlpha,
                                       avifImage * image)
 {
     if (codec->internal->gav1Decoder == NULL) {
-        codec->internal->gav1Settings.threads = decoder->maxThreads;
+        codec->internal->gav1Settings.threads = codec->maxThreads;
         codec->internal->gav1Settings.operating_point = codec->operatingPoint;
         codec->internal->gav1Settings.output_all_layers = codec->allLayers;
 
