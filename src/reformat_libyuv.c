@@ -1132,9 +1132,9 @@ avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb)
 {
     const float scale = 1.0f / ((1 << rgb->depth) - 1);
     const int result = HalfFloatPlane((const uint16_t *)rgb->pixels,
-                                      rgb->rowBytes,
+                                      rgb->rowBytes / 2,
                                       (uint16_t *)rgb->pixels,
-                                      rgb->rowBytes,
+                                      rgb->rowBytes / 2,
                                       scale,
                                       rgb->width * avifRGBFormatChannelCount(rgb->format),
                                       rgb->height);
