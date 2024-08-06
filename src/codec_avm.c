@@ -53,7 +53,6 @@ static avifResult avifCheckCodecVersionAVM()
 }
 
 static avifBool avmCodecGetNextImage(struct avifCodec * codec,
-                                     struct avifDecoder * decoder,
                                      const avifDecodeSample * sample,
                                      avifBool alpha,
                                      avifBool * isLimitedRangeAlpha,
@@ -64,7 +63,7 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
 
         aom_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
-        cfg.threads = decoder->maxThreads;
+        cfg.threads = codec->maxThreads;
 
         aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
         if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, &cfg, 0)) {

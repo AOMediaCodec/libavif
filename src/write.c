@@ -1331,17 +1331,13 @@ static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
     }
     AVIF_ASSERT_OR_RETURN(sample.data.size != 0); // There should be at least one base item.
 
-    // avifCodecGetNextImageFunc() uses only a few fields of its decoder argument.
-    avifDecoder decoder;
-    memset(&decoder, 0, sizeof(decoder));
-    decoder.maxThreads = encoder->maxThreads;
-    decoder.imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
-
     AVIF_CHECKRES(avifCodecCreate(AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_FLAG_CAN_DECODE, codec));
     (*codec)->diag = &encoder->diag;
+    (*codec)->maxThreads = encoder->maxThreads;
+    (*codec)->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
     AVIF_CHECKRES(avifImageCreateAllocate(decodedBaseImage, original, numBits, planes));
     avifBool isLimitedRangeAlpha = AVIF_FALSE; // Ignored.
-    AVIF_CHECKERR((*codec)->getNextImage(*codec, &decoder, &sample, planes == AVIF_PLANES_A, &isLimitedRangeAlpha, *decodedBaseImage),
+    AVIF_CHECKERR((*codec)->getNextImage(*codec, &sample, planes == AVIF_PLANES_A, &isLimitedRangeAlpha, *decodedBaseImage),
                   AVIF_RESULT_ENCODE_SAMPLE_TRANSFORM_FAILED);
     return AVIF_RESULT_OK;
 }

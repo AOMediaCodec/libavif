@@ -573,7 +573,6 @@ typedef enum avifEncoderChange
 typedef int avifEncoderChanges;
 
 typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
-                                              struct avifDecoder * decoder,
                                               const avifDecodeSample * sample,
                                               avifBool alpha,
                                               avifBool * isLimitedRangeAlpha,
@@ -618,9 +617,12 @@ typedef struct avifCodec
     struct avifCodecInternal * internal;  // up to each codec to use how it wants
                                           //
     avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
-                                          //
-    uint8_t operatingPoint;               // Operating point, defaults to 0.
-    avifBool allLayers;                   // if true, the underlying codec must decode all layers, not just the best layer
+
+    // Decoder options (for getNextImage):
+    int maxThreads;          // See avifDecoder::maxThreads.
+    uint32_t imageSizeLimit; // See avifDecoder::imageSizeLimit.
+    uint8_t operatingPoint;  // Operating point, defaults to 0.
+    avifBool allLayers;      // if true, the underlying codec must decode all layers, not just the best layer
 
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;
