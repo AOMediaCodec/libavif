@@ -4,11 +4,17 @@
 #include "avif/internal.h"
 
 #if defined(AVIF_LIBSHARPYUV_ENABLED)
+#include <limits.h>
 #include <sharpyuv/sharpyuv.h>
 #include <sharpyuv/sharpyuv_csp.h>
 
 avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * rgb, const avifReformatState * state)
 {
+    // The width, height, and stride parameters of SharpYuvConvertWithOptions()
+    // and SharpYuvConvert() are all of the int type.
+    if (rgb->width > INT_MAX || rgb->height > INT_MAX || rgb->rowBytes > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     const SharpYuvColorSpace colorSpace = {
         state->yuv.kr, state->yuv.kb, image->depth, (state->yuv.range == AVIF_RANGE_LIMITED) ? kSharpYuvRangeLimited : kSharpYuvRangeFull
     };

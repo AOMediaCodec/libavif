@@ -254,6 +254,11 @@ static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBIm
 
 avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 {
+    // The width, height, and stride parameters of libyuv functions are all of the int type.
+    if (image->width > INT_MAX || image->height > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX || rgb->rowBytes > INT_MAX) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     if ((image->depth == 8) && (rgb->depth == 8)) {
         return avifImageRGBToYUVLibYUV8bpc(image, rgb);
     }
@@ -912,6 +917,10 @@ static avifResult avifImageDownshiftTo8bpc(const avifImage * image, avifImage * 
 IGNORE_CFI_ICALL avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifBool reformatAlpha, avifBool * alphaReformattedWithLibYUV)
 {
     *alphaReformattedWithLibYUV = AVIF_FALSE;
+    // The width, height, and stride parameters of libyuv functions are all of the int type.
+    if (image->width > INT_MAX || image->height > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX || rgb->rowBytes > INT_MAX) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     if (rgb->depth != 8 || (image->depth != 8 && image->depth != 10 && image->depth != 12)) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
@@ -1089,6 +1098,10 @@ avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb)
 {
     // See if the current settings can be accomplished with libyuv, and use it (if possible).
 
+    // The width, height, and stride parameters of libyuv functions are all of the int type.
+    if (rgb->width > INT_MAX || rgb->height > INT_MAX || rgb->rowBytes > INT_MAX) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     if (rgb->depth != 8) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
@@ -1111,6 +1124,10 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
 {
     // See if the current settings can be accomplished with libyuv, and use it (if possible).
 
+    // The width, height, and stride parameters of libyuv functions are all of the int type.
+    if (rgb->width > INT_MAX || rgb->height > INT_MAX || rgb->rowBytes > INT_MAX) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     if (rgb->depth != 8) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
@@ -1130,6 +1147,10 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
 
 avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb)
 {
+    // The width, height, and stride parameters of libyuv functions are all of the int type.
+    if (rgb->width > INT_MAX || rgb->height > INT_MAX || rgb->rowBytes > INT_MAX) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     const float scale = 1.0f / ((1 << rgb->depth) - 1);
     // Note: HalfFloatPlane requires the stride to be in bytes.
     const int result = HalfFloatPlane((const uint16_t *)rgb->pixels,
