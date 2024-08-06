@@ -5440,7 +5440,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_ASSERT_OR_RETURN(pixiProp != NULL);
             data->meta->sampleTransformDepth = pixiProp->u.pixi.planeDepths[0];
         }
-#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
         // Find Exif and/or XMP metadata, if any
         AVIF_CHECKRES(avifDecoderFindMetadata(decoder, data->meta, decoder->image, mainItems[AVIF_ITEM_COLOR]->id));
