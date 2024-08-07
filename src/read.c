@@ -3888,7 +3888,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     AVIF_CHECKERR(pixiProp, AVIF_RESULT_OUT_OF_MEMORY);
     pixiProp->u.pixi.planeCount = chromaSubsampling == 0 ? 1 : 3;
     for (uint8_t plane = 0; plane < pixiProp->u.pixi.planeCount; ++plane) {
-        pixiProp->u.pixi.planeDepths[plane] = bitDepth;
+        pixiProp->u.pixi.planeDepths[plane] = (uint8_t)bitDepth;
     }
     AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, pixiProp), AVIF_RESULT_OUT_OF_MEMORY);
 
@@ -3943,7 +3943,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
         AVIF_CHECKERR(alphaPixiProp, AVIF_RESULT_OUT_OF_MEMORY);
         memcpy(alphaPixiProp->type, "pixi", 4);
         alphaPixiProp->u.pixi.planeCount = 1;
-        alphaPixiProp->u.pixi.planeDepths[0] = bitDepth;
+        alphaPixiProp->u.pixi.planeDepths[0] = (uint8_t)bitDepth;
         AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, alphaPixiProp), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         // Placeholders 6, 7 and 8.
