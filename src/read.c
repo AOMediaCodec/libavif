@@ -3743,7 +3743,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     }
 
     // Chunk sizes
-    uint32_t fewMetadataBytesFlag, fewCodecConfigBytesFlag, fewItemDataBytesFlag;
+    uint32_t fewMetadataBytesFlag = 0, fewCodecConfigBytesFlag = 0, fewItemDataBytesFlag = 0;
     if (hasIcc || hasExif || hasXmp || (hasHdr && hasGainmap)) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &fewMetadataBytesFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) few_metadata_bytes_flag;
     }
