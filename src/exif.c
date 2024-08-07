@@ -142,7 +142,7 @@ avifResult avifImageExtractExifOrientationToIrotImir(avifImage * image)
     return AVIF_RESULT_OK;
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_METAV1)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
 uint8_t avifImageIrotImirToExifOrientation(const avifImage * image)
 {
     if (!(image->transformFlags & AVIF_TRANSFORM_IROT) || image->irot.angle == 0) {
@@ -188,7 +188,7 @@ uint8_t avifImageIrotImirToExifOrientation(const avifImage * image)
     // image->imir.axis == 1
     return 5; // The 0th row is the visual left-hand side of the image, and the 0th column is the visual top.
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_METAV1
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
 avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize)
 {
