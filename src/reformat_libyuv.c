@@ -1131,7 +1131,7 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
 avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb)
 {
     const float scale = 1.0f / ((1 << rgb->depth) - 1);
-    // Note: Unlike CopyPlane_16, HalfFloatPlane wants the stride in bytes.
+    // Note: HalfFloatPlane requires the stride to be in bytes.
     const int result = HalfFloatPlane((const uint16_t *)rgb->pixels,
                                       rgb->rowBytes,
                                       (uint16_t *)rgb->pixels,
