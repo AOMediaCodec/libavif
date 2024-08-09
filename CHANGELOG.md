@@ -15,6 +15,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Renamed AVIF_ENABLE_EXPERIMENTAL_METAV1 to AVIF_ENABLE_EXPERIMENTAL_MINI and
   updated the experimental reduced header feature to the latest specification
   draft.
+* Add AVIF_HEADER_DEFAULT which writes an empty HandlerBox name field instead of
+  "libavif". Select AVIF_HEADER_DEFAULT by default in avifEncoderCreate().
 
 ## [1.1.1] - 2024-07-30
 

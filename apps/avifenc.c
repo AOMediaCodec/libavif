@@ -1398,7 +1398,7 @@ int main(int argc, char * argv[])
     settings.layered = AVIF_FALSE;
     settings.layers = 0;
     settings.speed = 6;
-    settings.headerFormat = AVIF_HEADER_FULL;
+    settings.headerFormat = AVIF_HEADER_DEFAULT;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;

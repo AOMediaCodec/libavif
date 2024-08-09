@@ -11,8 +11,8 @@
 <BrandEntry AlternateBrand="miaf"/>
 <BrandEntry AlternateBrand="MA1B"/>
 </FileTypeBox>
-<MetaBox Size="242" Type="meta" Version="0" Flags="0" Specification="p12" Container="file moov trak moof traf udta" >
-<HandlerBox Size="40" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="libavif" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">
+<MetaBox Size="235" Type="meta" Version="0" Flags="0" Specification="p12" Container="file moov trak moof traf udta" >
+<HandlerBox Size="33" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">
 </HandlerBox>
 <PrimaryItemBox Size="14" Type="pitm" Version="0" Flags="0" Specification="p12" Container="meta" item_ID="1">
 </PrimaryItemBox>
@@ -51,10 +51,10 @@
 </ItemPropertyAssociationBox>
 </ItemPropertiesBox>
 </MetaBox>
-<MovieBox Size="717" Type="moov" Specification="p12" Container="file cmvd" >
+<MovieBox Size="710" Type="moov" Specification="p12" Container="file cmvd" >
 <MovieHeaderBox Size="120" Type="mvhd" Version="1" Flags="0" Specification="p12" Container="moov" CreationTime="REDACTED" ModificationTime="REDACTED" TimeScale="25" Duration="-1" NextTrackID="1">
 </MovieHeaderBox>
-<TrackBox Size="589" Type="trak" Specification="p12" Container="moov" >
+<TrackBox Size="582" Type="trak" Specification="p12" Container="moov" >
 <TrackHeaderBox Size="104" Type="tkhd" Version="1" Flags="1" Specification="p12" Container="trak" CreationTime="REDACTED" ModificationTime="REDACTED" TrackID="1" Duration="-1" Width="768.00" Height="512.00">
 <Matrix m11="0x00010000" m12="0x00000000" m13="0x00000000" m21="0x00000000" m22="0x00010000" m23="0x00000000" m31="0x00000000" m32="0x00000000" m33="0x40000000"/>
 </TrackHeaderBox>
@@ -63,10 +63,10 @@
 <EditListEntry Duration="2" MediaTime="0" MediaRate="1"/>
 </EditListBox>
 </EditBox>
-<MediaBox Size="433" Type="mdia" Specification="p12" Container="trak" >
+<MediaBox Size="426" Type="mdia" Specification="p12" Container="trak" >
 <MediaHeaderBox Size="44" Type="mdhd" Version="1" Flags="0" Specification="p12" Container="mdia" CreationTime="REDACTED" ModificationTime="REDACTED" TimeScale="25" Duration="2" LanguageCode="und">
 </MediaHeaderBox>
-<HandlerBox Size="40" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="libavif" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">
+<HandlerBox Size="33" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">
 </HandlerBox>
 <MediaInformationBox Size="341" Type="minf" Specification="p12" Container="mdia" >
 <VideoMediaHeaderBox Size="20" Type="vmhd" Version="0" Flags="1" Specification="p12" Container="minf" >
@@ -105,7 +105,7 @@
 <SampleSizeEntry Size="REDACTED"/>
 </SampleSizeBox>
 <ChunkOffsetBox Size="20" Type="stco" Version="0" Flags="0" Specification="p12" Container="stbl" EntryCount="1">
-<ChunkEntry offset="1011"/>
+<ChunkEntry offset="997"/>
 </ChunkOffsetBox>
 <SyncSampleBox Size="20" Type="stss" Version="0" Flags="0" Specification="p12" Container="stbl" EntryCount="1">
 <SyncSampleEntry sampleNumber="1"/>
