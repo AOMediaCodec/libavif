@@ -501,6 +501,7 @@ exiftool "-icc_profile<=p3.icc" paris_exif_xmp_icc_gainmap_bigendian.jpg
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+by running `build/tests/avifgainmaptest --gtest_filter=GainMapTest, CreateGainMapImages tests/data/` 
 
 Contains a 4x3 color grid, a 4x3 alpha grid, and a 2x2 gain map grid.
 
@@ -511,6 +512,7 @@ Contains a 4x3 color grid, a 4x3 alpha grid, and a 2x2 gain map grid.
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+by running `build/tests/avifgainmaptest --gtest_filter=GainMapTest, CreateGainMapImages tests/data/` 
 
 Contains a single color image, single alpha image, and a 2x2 gain map grid.
 
@@ -521,8 +523,58 @@ Contains a single color image, single alpha image, and a 2x2 gain map grid.
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+by running `build/tests/avifgainmaptest --gtest_filter=GainMapTest, CreateGainMapImages tests/data/` 
 
 Contains a 4x3 color grid, a 4x3 alpha grid, and a single gain map image.
+
+### File [unsupported_gainmap_version.avif](unsupported_gainmap_version.avif)
+
+![](unsupported_gainmap_version.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+by running `build/tests/avifgainmaptest --gtest_filter=GainMapTest, CreateGainMapImages tests/data/` 
+
+Contains a gain map with the `version` field set to 99 in the tmap box.
+`minimum_version` and `writer_version` are 0.
+
+### File [unsupported_gainmap_minimum_version.avif](unsupported_gainmap_minimum_version.avif)
+
+![](unsupported_gainmap_minimum_version.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+by running `build/tests/avifgainmaptest --gtest_filter=GainMapTest, CreateGainMapImages tests/data/` 
+
+Contains a gain map with the `minimum_version` field set to 99 in the tmap box.
+`version` and `writer_version` are 0.
+
+### File [unsupported_gainmap_version.avif](unsupported_gainmap_version.avif)
+
+![](unsupported_gainmap_version.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+by running `build/tests/avifgainmaptest --gtest_filter=GainMapTest, CreateGainMapImages tests/data/` 
+
+Contains a gain map with the `writer_version` field set to 99 in the tmap box,
+and some extra unexpected bytes at the end of the gain map metadata.
+`version` and `minimum_version` are 0.
+
+### File [supported_gainmap_writer_version_with_extra_bytes.avif](supported_gainmap_writer_version_with_extra_bytes.avif)
+
+![](supported_gainmap_writer_version_with_extra_bytes.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/weirdgainmaps
+by running `build/tests/avifgainmaptest --gtest_filter=GainMapTest, CreateGainMapImages tests/data/` 
+
+Contains a gain map with some extra unexpected bytes at the end of the gain map metadata.
+Contains `version`, `minimum_version` and `writer_version` are 0.
 
 ### File [seine_hdr_srgb.avif](seine_hdr_srgb.avif)
 
