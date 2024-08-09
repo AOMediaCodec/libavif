@@ -1953,61 +1953,35 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid,
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
-static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata,
-                                            const uint8_t * raw,
-                                            size_t rawLen,
-                                            avifBool * isUnsupportedVersion,
-                                            avifDiagnostics * diag)
+static avifBool avifParseGainMapMetadta(avifGainMapMetadata * metadata, avifROStream * s)
 {
-    *isUnsupportedVersion = AVIF_FALSE;
-
-    BEGIN_STREAM(s, raw, rawLen, diag, "Box[tmap]");
-
-    uint8_t version;
-    AVIF_CHECK(avifROStreamRead(&s, &version, 1)); // unsigned int(8) version = 0;
-    if (version != 0) {
-        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported version [%u]", version);
-        *isUnsupportedVersion = AVIF_TRUE;
-        return AVIF_FALSE;
-    }
-
-    uint16_t minimumVersion;
-    AVIF_CHECK(avifROStreamReadU16(&s, &minimumVersion)); // unsigned int(16) minimum_version;
-    const uint16_t supportedMetadataVersion = 0;
-    if (minimumVersion > supportedMetadataVersion) {
-        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported minimum version [%u]", minimumVersion);
-        *isUnsupportedVersion = AVIF_TRUE;
-        return AVIF_FALSE;
-    }
-    uint16_t writerVersion;
-    AVIF_CHECK(avifROStreamReadU16(&s, &writerVersion)); // unsigned int(16) writer_version;
     uint32_t isMultichannel;
-    AVIF_CHECK(avifROStreamReadBits(&s, &isMultichannel, 1)); // unsigned int(1) is_multichannel;
+    AVIF_CHECK(avifROStreamReadBits(s, &isMultichannel, 1)); // unsigned int(1) is_multichannel;
     const uint8_t channelCount = isMultichannel ? 3 : 1;
 
     uint32_t useBaseColorSpace;
-    AVIF_CHECK(avifROStreamReadBits(&s, &useBaseColorSpace, 1)); // unsigned int(1) use_base_colour_space;
+    AVIF_CHECK(avifROStreamReadBits(s, &useBaseColorSpace, 1)); // unsigned int(1) use_base_colour_space;
     metadata->useBaseColorSpace = useBaseColorSpace ? AVIF_TRUE : AVIF_FALSE;
 
     uint32_t reserved;
-    AVIF_CHECK(avifROStreamReadBits(&s, &reserved, 6)); // unsigned int(6) reserved;
+    AVIF_CHECK(avifROStreamReadBits(s, &reserved, 6)); // unsigned int(6) reserved;
 
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomN));      // unsigned int(32) base_hdr_headroom_numerator;
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseHdrHeadroomD));      // unsigned int(32) base_hdr_headroom_denominator;
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomN)); // unsigned int(32) alternate_hdr_headroom_numerator;
-    AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateHdrHeadroomD)); // unsigned int(32) alternate_hdr_headroom_denominator;
+    AVIF_CHECK(avifROStreamReadU32(s, &metadata->baseHdrHeadroomN));      // unsigned int(32) base_hdr_headroom_numerator;
+    AVIF_CHECK(avifROStreamReadU32(s, &metadata->baseHdrHeadroomD));      // unsigned int(32) base_hdr_headroom_denominator;
+    AVIF_CHECK(avifROStreamReadU32(s, &metadata->alternateHdrHeadroomN)); // unsigned int(32) alternate_hdr_headroom_numerator;
+    AVIF_CHECK(avifROStreamReadU32(s, &metadata->alternateHdrHeadroomD)); // unsigned int(32) alternate_hdr_headroom_denominator;
 
     for (int c = 0; c < channelCount; ++c) {
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMinN[c])); // int(32) gain_map_min_numerator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMinD[c]));             // unsigned int(32) gain_map_min_denominator;
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->gainMapMaxN[c])); // int(32) gain_map_max_numerator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapMaxD[c]));             // unsigned int(32) gain_map_max_denominator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaN[c]));           // unsigned int(32) gamma_numerator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->gainMapGammaD[c]));           // unsigned int(32) gamma_denominator;
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->baseOffsetN[c])); // int(32) base_offset_numerator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->baseOffsetD[c]));             // unsigned int(32) base_offset_denominator;
-        AVIF_CHECK(avifROStreamReadU32(&s, (uint32_t *)&metadata->alternateOffsetN[c])); // int(32) alternate_offset_numerator;
-        AVIF_CHECK(avifROStreamReadU32(&s, &metadata->alternateOffsetD[c])); // unsigned int(32) alternate_offset_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&metadata->gainMapMinN[c])); // int(32) gain_map_min_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &metadata->gainMapMinD[c]));             // unsigned int(32) gain_map_min_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&metadata->gainMapMaxN[c])); // int(32) gain_map_max_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &metadata->gainMapMaxD[c]));             // unsigned int(32) gain_map_max_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, &metadata->gainMapGammaN[c]));           // unsigned int(32) gamma_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &metadata->gainMapGammaD[c]));           // unsigned int(32) gamma_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&metadata->baseOffsetN[c])); // int(32) base_offset_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &metadata->baseOffsetD[c]));             // unsigned int(32) base_offset_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&metadata->alternateOffsetN[c])); // int(32) alternate_offset_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &metadata->alternateOffsetD[c])); // unsigned int(32) alternate_offset_denominator;
     }
 
     // Fill the remaining values by copying those from the first channel.
@@ -2023,11 +1997,38 @@ static avifBool avifParseToneMappedImageBox(avifGainMapMetadata * metadata,
         metadata->alternateOffsetN[c] = metadata->alternateOffsetN[0];
         metadata->alternateOffsetD[c] = metadata->alternateOffsetD[0];
     }
+    return AVIF_TRUE;
+}
+
+// If the gain map's version or minimum_version tag is not supported, returns AVIF_RESULT_NOT_IMPLEMENTED.
+static avifResult avifParseToneMappedImageBox(avifGainMapMetadata * metadata, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+{
+    BEGIN_STREAM(s, raw, rawLen, diag, "Box[tmap]");
+
+    uint8_t version;
+    AVIF_CHECKERR(avifROStreamRead(&s, &version, 1), AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE); // unsigned int(8) version = 0;
+    if (version != 0) {
+        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported version [%u]", version);
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    uint16_t minimumVersion;
+    AVIF_CHECKERR(avifROStreamReadU16(&s, &minimumVersion), AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE); // unsigned int(16) minimum_version;
+    const uint16_t supportedMetadataVersion = 0;
+    if (minimumVersion > supportedMetadataVersion) {
+        avifDiagnosticsPrintf(diag, "Box[tmap] has unsupported minimum version [%u]", minimumVersion);
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    uint16_t writerVersion;
+    AVIF_CHECKERR(avifROStreamReadU16(&s, &writerVersion), AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE); // unsigned int(16) writer_version;
+    AVIF_CHECKERR(writerVersion >= minimumVersion, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
+
+    AVIF_CHECKERR(avifParseGainMapMetadta(metadata, &s), AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
 
     if (writerVersion <= supportedMetadataVersion) {
-        AVIF_CHECK(avifROStreamRemainingBytes(&s) == 0);
+        AVIF_CHECKERR(avifROStreamRemainingBytes(&s) == 0, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
     }
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
@@ -5395,10 +5396,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 decoder->image->gainMap = avifGainMapCreate();
                 AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
             }
-            avifBool isUnsupportedVersion;
-            const avifBool tmapParsingRes =
-                avifParseToneMappedImageBox(&decoder->image->gainMap->metadata, tmapData.data, tmapData.size, &isUnsupportedVersion, data->diag);
-            if (isUnsupportedVersion) {
+            const avifResult tmapParsingRes =
+                avifParseToneMappedImageBox(&decoder->image->gainMap->metadata, tmapData.data, tmapData.size, data->diag);
+            if (tmapParsingRes == AVIF_RESULT_NOT_IMPLEMENTED) {
                 // Forget about the gain map.
                 toneMappedImageItem = NULL;
                 mainItems[AVIF_ITEM_GAIN_MAP] = NULL;
@@ -5406,7 +5406,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 decoder->image->gainMap = NULL;
                 decoder->gainMapPresent = AVIF_FALSE;
             } else {
-                AVIF_CHECKERR(tmapParsingRes, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
+                AVIF_CHECKRES(tmapParsingRes);
             }
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
