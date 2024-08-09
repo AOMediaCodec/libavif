@@ -1442,6 +1442,40 @@ typedef struct avifScalingMode
     avifFraction vertical;
 } avifScalingMode;
 
+struct avifEncoder;
+
+typedef enum avifAddImageFlag
+{
+    AVIF_ADD_IMAGE_FLAG_NONE = 0,
+
+    // Force this frame to be a keyframe (sync frame).
+    AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME = (1 << 0),
+
+    // Use this flag when encoding a single frame, single layer image.
+    // Signals "still_picture" to AV1 encoders, which tweaks various compression rules.
+    // This is enabled automatically when using the avifEncoderWrite() single-image encode path.
+    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
+} avifAddImageFlag;
+typedef uint32_t avifAddImageFlags;
+
+// Returns AVIF_RESULT_OK if it overrides the AV1 codec encoding pipeline.
+// Returns AVIF_RESULT_NO_CONTENT if the AV1 codec encoding pipeline should be run.
+// Returns an error otherwise.
+// TODO: output sample should be avifEncodeSampleArray
+typedef avifResult (*avifEncoderCustomEncodeImageFunc)(struct avifEncoder * encoder,
+                                                       const avifImage * image,
+                                                       avifBool alpha,
+                                                       int tileRowsLog2,
+                                                       int tileColsLog2,
+                                                       int quantizer,
+                                                       avifBool disableLaggedOutput,
+                                                       avifAddImageFlags addImageFlags);
+// Only called if avifEncoderCustomEncodeImageFunc did NOT return AVIF_RESULT_NO_CONTENT.
+// Returns AVIF_RESULT_OK every time it outputs a sample.
+// Returns AVIF_RESULT_NO_IMAGES_REMAINING once all samples were output.
+// Returns an error otherwise.
+typedef avifResult (*avifEncoderCustomEncodeFinishFunc)(struct avifEncoder * encoder, avifROData * sample);
+
 // Notes:
 // * The avifEncoder struct may be extended in a future release. Code outside the libavif library
 //   must allocate avifEncoder by calling the avifEncoderCreate() function.
@@ -1514,6 +1548,10 @@ typedef struct avifEncoder
 
     // Version 1.1.0 ends here. Add any new members after this line.
 
+    void * customEncodeData;
+    avifEncoderCustomEncodeImageFunc customEncodeImageFunc;
+    avifEncoderCustomEncodeFinishFunc customEncodeFinishFunc;
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting
 #endif
@@ -1528,20 +1566,6 @@ typedef struct avifEncoder
 AVIF_NODISCARD AVIF_API avifEncoder * avifEncoderCreate(void);
 AVIF_API avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output);
 AVIF_API void avifEncoderDestroy(avifEncoder * encoder);
-
-typedef enum avifAddImageFlag
-{
-    AVIF_ADD_IMAGE_FLAG_NONE = 0,
-
-    // Force this frame to be a keyframe (sync frame).
-    AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME = (1 << 0),
-
-    // Use this flag when encoding a single frame, single layer image.
-    // Signals "still_picture" to AV1 encoders, which tweaks various compression rules.
-    // This is enabled automatically when using the avifEncoderWrite() single-image encode path.
-    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
-} avifAddImageFlag;
-typedef uint32_t avifAddImageFlags;
 
 // Multi-function alternative to avifEncoderWrite() for advanced features.
 //
