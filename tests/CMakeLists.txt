@@ -354,6 +354,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifchangesettingtest
                 avifcllitest
                 avifcolrconverttest
+                avifcustomtest
                 avifdimgtest
                 avifencodetest
                 avifgridapitest
