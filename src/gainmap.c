@@ -55,7 +55,7 @@ avifBool avifGainMapMetadataFractionsToDouble(avifGainMapMetadataDouble * dst, c
 
 static void avifGainMapMetadataSetDefaults(avifGainMapMetadataDouble * metadata)
 {
-    memset(metadata, 0, sizeof(avifGainMapMetadata));
+    memset(metadata, 0, sizeof(*metadata));
     for (int i = 0; i < 3; ++i) {
         metadata->baseOffset[i] = 0.015625;      // 1/64
         metadata->alternateOffset[i] = 0.015625; // 1/64
