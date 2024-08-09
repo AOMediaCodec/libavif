@@ -484,7 +484,7 @@ avifEncoder * avifEncoderCreate(void)
         avifEncoderDestroy(encoder);
         return NULL;
     }
-    encoder->headerFormat = AVIF_HEADER_FULL;
+    encoder->headerFormat = AVIF_HEADER_DEFAULT;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_NONE;
 #endif
@@ -771,6 +771,22 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
     return AVIF_RESULT_OK;
 }
 
+static avifResult avifEncoderWriteHandlerBox(avifEncoder * encoder, avifRWStream * s, const char handler_type[4])
+{
+    // ISO/IEC 14496-12, Section 8.4.3.3:
+    //   name gives a human-readable name for the track type (for debugging and inspection purposes).
+    const char * handlerName = encoder->headerFormat == AVIF_HEADER_FULL ? "libavif" : "";
+
+    avifBoxMarker hdlr;
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
+    AVIF_CHECKRES(avifRWStreamWriteU32(s, 0));                                      // unsigned int(32) pre_defined = 0;
+    AVIF_CHECKRES(avifRWStreamWriteChars(s, handler_type, 4));                      // unsigned int(32) handler_type;
+    AVIF_CHECKRES(avifRWStreamWriteZeros(s, 12));                                   // const unsigned int(32)[3] reserved = 0;
+    AVIF_CHECKRES(avifRWStreamWriteChars(s, handlerName, strlen(handlerName) + 1)); // string name; (writing null terminator)
+    avifRWStreamFinishBox(s, hdlr);
+    return AVIF_RESULT_OK;
+}
+
 // Write unassociated metadata items (EXIF, XMP) to a small meta box inside of a trak box.
 // These items are implicitly associated with the track they are contained within.
 static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStream * s)
@@ -791,13 +807,7 @@ static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStre
     avifBoxMarker meta;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "meta", AVIF_BOX_SIZE_TBD, 0, 0, &meta));
 
-    avifBoxMarker hdlr;
-    AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
-    AVIF_CHECKRES(avifRWStreamWriteU32(s, 0));              // unsigned int(32) pre_defined = 0;
-    AVIF_CHECKRES(avifRWStreamWriteChars(s, "pict", 4));    // unsigned int(32) handler_type;
-    AVIF_CHECKRES(avifRWStreamWriteZeros(s, 12));           // const unsigned int(32)[3] reserved = 0;
-    AVIF_CHECKRES(avifRWStreamWriteChars(s, "libavif", 8)); // string name; (writing null terminator)
-    avifRWStreamFinishBox(s, hdlr);
+    AVIF_CHECKRES(avifEncoderWriteHandlerBox(encoder, s, "pict"));
 
     avifBoxMarker iloc;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0, &iloc));
@@ -3095,13 +3105,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Write hdlr
 
-    avifBoxMarker hdlr;
-    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
-    AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));              // unsigned int(32) pre_defined = 0;
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "pict", 4));    // unsigned int(32) handler_type;
-    AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 12));           // const unsigned int(32)[3] reserved = 0;
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "libavif", 8)); // string name; (writing null terminator)
-    avifRWStreamFinishBox(&s, hdlr);
+    AVIF_CHECKRES(avifEncoderWriteHandlerBox(encoder, &s, "pict"));
 
     // -----------------------------------------------------------------------
     // Write pitm
@@ -3447,13 +3451,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));     // unsigned int(16) pre_defined = 0;
             avifRWStreamFinishBox(&s, mdhd);
 
-            avifBoxMarker hdlrTrak;
-            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlrTrak));
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0)); // unsigned int(32) pre_defined = 0;
-            AVIF_CHECKRES(avifRWStreamWriteChars(&s, (item->itemCategory == AVIF_ITEM_ALPHA) ? "auxv" : "pict", 4)); // unsigned int(32) handler_type;
-            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 12));           // const unsigned int(32)[3] reserved = 0;
-            AVIF_CHECKRES(avifRWStreamWriteChars(&s, "libavif", 8)); // string name; (writing null terminator)
-            avifRWStreamFinishBox(&s, hdlrTrak);
+            AVIF_CHECKRES(avifEncoderWriteHandlerBox(encoder, &s, (item->itemCategory == AVIF_ITEM_ALPHA) ? "auxv" : "pict"));
 
             avifBoxMarker minf;
             AVIF_CHECKRES(avifRWStreamWriteBox(&s, "minf", AVIF_BOX_SIZE_TBD, &minf));

@@ -130,6 +130,7 @@ if(AVIF_ENABLE_GTEST)
     endif()
 
     add_avif_gtest(avifgridapitest)
+    add_avif_gtest(avifheadertest)
     add_avif_gtest_with_data(avifilocextenttest)
     add_avif_gtest(avifimagetest)
     add_avif_gtest_with_data(avifincrtest avifincrtest_helpers)
@@ -356,6 +357,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifdimgtest
                 avifencodetest
                 avifgridapitest
+                avifheadertest
                 avifincrtest
                 avifiostatstest
                 avifmetadatatest
