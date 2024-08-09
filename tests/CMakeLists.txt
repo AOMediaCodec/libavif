@@ -109,6 +109,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest(avifcodectest)
     add_avif_internal_gtest_with_data(avifcolrconverttest)
     add_avif_internal_gtest(avifcolrtest)
+    add_avif_gtest(avifcustomtest)
     add_avif_gtest_with_data(avifdecodetest)
     add_avif_gtest_with_data(avifdimgtest avifincrtest_helpers)
     add_avif_gtest_with_data(avifencodetest)
@@ -354,6 +355,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifchangesettingtest
                 avifcllitest
                 avifcolrconverttest
+                avifcustomtest
                 avifdimgtest
                 avifencodetest
                 avifgridapitest

@@ -1414,14 +1414,30 @@ AVIF_API avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, ui
 // ---------------------------------------------------------------------------
 // avifEncoder
 
+struct avifEncoder;
 struct avifEncoderData;
 struct avifCodecSpecificOptions;
+struct avifEncoderCustomEncodeImageArgs;
 
 typedef struct avifScalingMode
 {
     avifFraction horizontal;
     avifFraction vertical;
 } avifScalingMode;
+
+// If enabled in avifEncoder, called for each coded image item (color, alpha, and gain map), grid cell,
+// and sequence (color, alpha).
+// Returns AVIF_RESULT_OK if it overrides the AV1 codec encoding pipeline for that element.
+// Returns AVIF_RESULT_NO_CONTENT if the AV1 codec encoding pipeline should be run for that element.
+// Returns an error otherwise.
+typedef avifResult (*avifEncoderCustomEncodeImageFunc)(struct avifEncoder * encoder,
+                                                       const avifImage * image,
+                                                       const struct avifEncoderCustomEncodeImageArgs * args);
+// Only called if avifEncoderCustomEncodeImageFunc returned AVIF_RESULT_OK.
+// Returns AVIF_RESULT_OK every time it outputs an AV1 sample.
+// Returns AVIF_RESULT_NO_IMAGES_REMAINING once all samples were output.
+// Returns an error otherwise.
+typedef avifResult (*avifEncoderCustomEncodeFinishFunc)(struct avifEncoder * encoder, avifROData * sample);
 
 // Notes:
 // * The avifEncoder struct may be extended in a future release. Code outside the libavif library
@@ -1495,6 +1511,13 @@ typedef struct avifEncoder
 
     // Version 1.1.0 ends here. Add any new members after this line.
 
+    // Override the AV1 codec if both not null. Warning: Experimental feature.
+    // May be used to provide the payload of an AV1 coded image item or sequence.
+    avifEncoderCustomEncodeImageFunc customEncodeImageFunc;
+    avifEncoderCustomEncodeFinishFunc customEncodeFinishFunc;
+    // Ignored by libavif. May be used by customEncodeImageFunc and customEncodeFinishFunc to point to user data.
+    void * customEncodeData;
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting
 #endif
@@ -1523,6 +1546,22 @@ typedef enum avifAddImageFlag
     AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
 } avifAddImageFlag;
 typedef uint32_t avifAddImageFlags;
+
+// Arguments passed to avifEncoderCustomEncodeImageFunc by the avifEncoder instance.
+typedef struct avifEncoderCustomEncodeImageArgs
+{
+    // Encoding settings requested by the avifEncoder instance for the current AV1 coded image item or sequence.
+    avifAddImageFlags addImageFlags;
+    int quantizer;    // AV1 quality setting in range [AVIF_QUANTIZER_BEST_QUALITY:AVIF_QUANTIZER_WORST_QUALITY].
+    int tileRowsLog2; // Logarithm in base 2 of the number of AV1 tile rows.
+    int tileColsLog2; // Logarithm in base 2 of the number of AV1 tile columns.
+
+    // Description of the current AV1 coded image item or sequence.
+    avifBool isAlpha; // True if the current AV1 image item or sequence holds the translucency layer.
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    avifBool isGainmap; // True if the current AV1 image item or sequence holds the HDR gainmap layer.
+#endif
+} avifEncoderCustomEncodeImageArgs;
 
 // Multi-function alternative to avifEncoderWrite() for advanced features.
 //
