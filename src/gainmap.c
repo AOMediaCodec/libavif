@@ -53,9 +53,9 @@ avifBool avifGainMapMetadataFractionsToDouble(avifGainMapMetadataDouble * dst, c
     return AVIF_TRUE;
 }
 
-static void avifGainMapMetadataSetDefaults(avifGainMapMetadataDouble * metadata)
+static void avifGainMapMetadataDoubleSetDefaults(avifGainMapMetadataDouble * metadata)
 {
-    memset(metadata, 0, sizeof(avifGainMapMetadata));
+    memset(metadata, 0, sizeof(*metadata));
     for (int i = 0; i < 3; ++i) {
         metadata->baseOffset[i] = 0.015625;      // 1/64
         metadata->alternateOffset[i] = 0.015625; // 1/64
@@ -541,7 +541,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     }
 
     avifGainMapMetadataDouble gainMapMetadata;
-    avifGainMapMetadataSetDefaults(&gainMapMetadata);
+    avifGainMapMetadataDoubleSetDefaults(&gainMapMetadata);
     gainMapMetadata.useBaseColorSpace = (gainMapMathPrimaries == baseColorPrimaries);
 
     float (*baseGammaToLinear)(float) = avifTransferCharacteristicsGetGammaToLinearFunction(baseTransferCharacteristics);
