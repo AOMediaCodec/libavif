@@ -12,6 +12,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * avifenc: Allow large images to be encoded.
 * Fix empty CMAKE_CXX_FLAGS_RELEASE if -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=OFF
   is specified. https://github.com/AOMediaCodec/libavif/issues/2365.
+* Renamed AVIF_ENABLE_EXPERIMENTAL_METAV1 to AVIF_ENABLE_EXPERIMENTAL_MINI and
+  updated the experimental reduced header feature to the latest specification
+  draft.
 
 ## [1.1.1] - 2024-07-30
 

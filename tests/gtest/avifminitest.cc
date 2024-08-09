@@ -13,13 +13,13 @@ namespace {
 
 //------------------------------------------------------------------------------
 
-class AvifMetaBoxV1Test
+class AvifMinimizedImageBoxTest
     : public testing::TestWithParam<std::tuple<
           /*width=*/int, /*height=*/int, /*depth=*/int, avifPixelFormat,
           avifPlanesFlags, avifRange, /*create_icc=*/bool, /*create_exif=*/bool,
           /*create_xmp=*/bool, avifTransformFlags>> {};
 
-TEST_P(AvifMetaBoxV1Test, SimpleOpaque) {
+TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
   const int width = std::get<0>(GetParam());
   const int height = std::get<1>(GetParam());
   const int depth = std::get<2>(GetParam());
@@ -66,37 +66,37 @@ TEST_P(AvifMetaBoxV1Test, SimpleOpaque) {
   }
 
   // Encode.
-  testutil::AvifRwData encoded_metav1;
+  testutil::AvifRwData encoded_mini;
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->headerFormat = AVIF_HEADER_REDUCED;
-  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_metav1),
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_mini),
             AVIF_RESULT_OK);
 
   // Decode.
-  const ImagePtr decoded_metav1 =
-      testutil::Decode(encoded_metav1.data, encoded_metav1.size);
-  ASSERT_NE(decoded_metav1, nullptr);
+  const ImagePtr decoded_mini =
+      testutil::Decode(encoded_mini.data, encoded_mini.size);
+  ASSERT_NE(decoded_mini, nullptr);
 
   // Compare.
-  testutil::AvifRwData encoded_metav0 =
+  testutil::AvifRwData encoded_meta =
       testutil::Encode(image.get(), encoder->speed);
-  ASSERT_NE(encoded_metav0.data, nullptr);
+  ASSERT_NE(encoded_meta.data, nullptr);
   // At least 200 bytes should be saved.
-  EXPECT_LT(encoded_metav1.size, encoded_metav0.size - 200);
+  EXPECT_LT(encoded_mini.size, encoded_meta.size - 200);
 
-  const ImagePtr decoded_metav0 =
-      testutil::Decode(encoded_metav0.data, encoded_metav0.size);
-  ASSERT_NE(decoded_metav0, nullptr);
+  const ImagePtr decoded_meta =
+      testutil::Decode(encoded_meta.data, encoded_meta.size);
+  ASSERT_NE(decoded_meta, nullptr);
 
   // Only the container changed. The pixels, features and metadata should be
   // identical.
   EXPECT_TRUE(
-      testutil::AreImagesEqual(*decoded_metav0.get(), *decoded_metav1.get()));
+      testutil::AreImagesEqual(*decoded_meta.get(), *decoded_mini.get()));
 }
 
-INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMetaBoxV1Test,
+INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
                                  /*depth=*/Values(8),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
@@ -108,7 +108,7 @@ INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMetaBoxV1Test,
                                  Values(AVIF_TRANSFORM_NONE)));
 
 INSTANTIATE_TEST_SUITE_P(
-    DepthsSubsamplings, AvifMetaBoxV1Test,
+    DepthsSubsamplings, AvifMinimizedImageBoxTest,
     Combine(/*width=*/Values(12), /*height=*/Values(34),
             /*depth=*/Values(8, 10, 12),
             Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
@@ -118,7 +118,7 @@ INSTANTIATE_TEST_SUITE_P(
             /*create_xmp=*/Values(false), Values(AVIF_TRANSFORM_NONE)));
 
 INSTANTIATE_TEST_SUITE_P(
-    Dimensions, AvifMetaBoxV1Test,
+    Dimensions, AvifMinimizedImageBoxTest,
     Combine(/*width=*/Values(127), /*height=*/Values(200), /*depth=*/Values(8),
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),
@@ -126,7 +126,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_TRANSFORM_NONE)));
 
 INSTANTIATE_TEST_SUITE_P(
-    Orientation, AvifMetaBoxV1Test,
+    Orientation, AvifMinimizedImageBoxTest,
     Combine(/*width=*/Values(16), /*height=*/Values(24), /*depth=*/Values(8),
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),
