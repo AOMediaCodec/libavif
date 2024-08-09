@@ -1953,7 +1953,7 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid,
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
-static avifBool avifParseGainMapMetadta(avifGainMapMetadata * metadata, avifROStream * s)
+static avifBool avifParseGainMapMetadata(avifGainMapMetadata * metadata, avifROStream * s)
 {
     uint32_t isMultichannel;
     AVIF_CHECK(avifROStreamReadBits(s, &isMultichannel, 1)); // unsigned int(1) is_multichannel;
@@ -2023,7 +2023,7 @@ static avifResult avifParseToneMappedImageBox(avifGainMapMetadata * metadata, co
     AVIF_CHECKERR(avifROStreamReadU16(&s, &writerVersion), AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE); // unsigned int(16) writer_version;
     AVIF_CHECKERR(writerVersion >= minimumVersion, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
 
-    AVIF_CHECKERR(avifParseGainMapMetadta(metadata, &s), AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
+    AVIF_CHECKERR(avifParseGainMapMetadata(metadata, &s), AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
 
     if (writerVersion <= supportedMetadataVersion) {
         AVIF_CHECKERR(avifROStreamRemainingBytes(&s) == 0, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
