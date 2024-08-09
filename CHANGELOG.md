@@ -15,7 +15,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Renamed AVIF_ENABLE_EXPERIMENTAL_METAV1 to AVIF_ENABLE_EXPERIMENTAL_MINI and
   updated the experimental reduced header feature to the latest specification
   draft.
-* Ignore gain maps with unsupported metadata.
+* Ignore gain maps with unsupported metadata. Handle gain maps with
+  writer_version > 0 correctly.
 
 ## [1.1.1] - 2024-07-30
 
