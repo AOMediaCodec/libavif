@@ -3571,33 +3571,39 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
 
     meta->fromMiniBox = AVIF_TRUE;
 
-    uint32_t version;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &version, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) version;
+    uint8_t data[3];
+    AVIF_CHECKERR(avifROStreamRead(&s, data, 3), AVIF_RESULT_BMFF_PARSE_FAILED);
+
+    const uint32_t version = (data[0] & 0xc0) >> 6; // bit(2) version;
     AVIF_CHECKERR(version == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
 
     // flags
-    uint32_t hasExplicitCodecTypes, floatFlag, fullRange, hasAlpha, hasExplicitCicp, hasHdr, hasIcc, hasExif, hasXmp;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCodecTypes, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) explicit_codec_types_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &floatFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED);             // bit(1) float_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &fullRange, 1), AVIF_RESULT_BMFF_PARSE_FAILED);             // bit(1) full_range_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasAlpha, 1), AVIF_RESULT_BMFF_PARSE_FAILED);              // bit(1) alpha_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCicp, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) explicit_cicp_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasHdr, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) hdr_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasIcc, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) icc_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExif, 1), AVIF_RESULT_BMFF_PARSE_FAILED);         // bit(1) exif_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasXmp, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) xmp_flag;
+    const avifBool hasExplicitCodecTypes = (data[0] & 0x20) != 0; // bit(1) explicit_codec_types_flag;
+    const avifBool floatFlag = (data[0] & 0x10) != 0;             // bit(1) float_flag;
+    const avifBool fullRange = (data[0] & 0x8) != 0;              // bit(1) full_range_flag;
+    const avifBool hasAlpha = (data[0] & 0x4) != 0;               // bit(1) alpha_flag;
+    const avifBool hasExplicitCicp = (data[0] & 0x2) != 0;        // bit(1) explicit_cicp_flag;
+    const avifBool hasHdr = (data[0] & 0x1) != 0;                 // bit(1) hdr_flag;
+    const avifBool hasIcc = (data[1] & 0x80) != 0;                // bit(1) icc_flag;
+    const avifBool hasExif = (data[1] & 0x40) != 0;               // bit(1) exif_flag;
+    const avifBool hasXmp = (data[1] & 0x20) != 0;                // bit(1) xmp_flag;
 
-    uint32_t chromaSubsampling, orientation;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &chromaSubsampling, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) chroma_subsampling;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &orientation, 3), AVIF_RESULT_BMFF_PARSE_FAILED);       // bit(3) orientation_minus1;
+    const uint32_t chromaSubsampling = (data[1] & 0x18) >> 3; // bit(2) chroma_subsampling;
+    uint32_t orientation = data[1] & 0x7;                     // bit(3) orientation_minus1;
     ++orientation;
 
     // Spatial extents
-    uint32_t smallDimensionsFlag, width, height;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &smallDimensionsFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) small_dimensions_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &width, smallDimensionsFlag ? 7 : 15),
-                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(small_dimensions_flag ? 7 : 15) width_minus1;
+    const avifBool smallDimensionsFlag = (data[2] & 0x80) != 0; // bit(1) small_dimensions_flag;
+    // unsigned int(small_dimensions_flag ? 7 : 15) width_minus1;
+    uint32_t width = data[2];
+    if (smallDimensionsFlag) {
+        width &= 0x7f;
+    } else {
+        AVIF_CHECKERR(avifROStreamRead(&s, data, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
+        width = (width << 8) + data[0];
+    }
     ++width;
+    uint32_t height;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &height, smallDimensionsFlag ? 7 : 15),
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(small_dimensions_flag ? 7 : 15) height_minus1;
     ++height;
