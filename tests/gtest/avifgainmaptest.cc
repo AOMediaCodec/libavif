@@ -867,7 +867,7 @@ TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
 TEST(GainMapTest, DecodeUnsupportedVersion) {
   // The two test files should produce the same results:
   // One has an unsupported 'version' field, the other an unsupported
-  // 'minimum_version' field, but the behavior of these two fiels is the same.
+  // 'minimum_version' field, but the behavior of these two fields is the same.
   for (const std::string image : {"unsupported_gainmap_version.avif",
                                   "unsupported_gainmap_minimum_version.avif"}) {
     SCOPED_TRACE(image);
