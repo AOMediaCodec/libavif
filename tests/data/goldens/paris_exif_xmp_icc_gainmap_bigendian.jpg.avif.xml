@@ -2,11 +2,12 @@
 <ISOBaseMediaFileTrace>
 <!--MP4Box dump trace-->
 <IsoMediaFile xmlns="urn:mpeg:isobmff:schema:file:2016" Name="paris_exif_xmp_icc_gainmap_bigendian.jpg.avif">
-<FileTypeBox Size="32" Type="ftyp" Specification="p12" Container="file otyp" MajorBrand="avif" MinorVersion="0">
+<FileTypeBox Size="36" Type="ftyp" Specification="p12" Container="file otyp" MajorBrand="avif" MinorVersion="0">
 <BrandEntry AlternateBrand="avif"/>
 <BrandEntry AlternateBrand="mif1"/>
 <BrandEntry AlternateBrand="miaf"/>
 <BrandEntry AlternateBrand="MA1B"/>
+<BrandEntry AlternateBrand="tmap"/>
 </FileTypeBox>
 <MetaBox Size="1121" Type="meta" Version="0" Flags="0" Specification="p12" Container="file moov trak moof traf udta" >
 <HandlerBox Size="40" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="libavif" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">

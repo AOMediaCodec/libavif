@@ -3073,6 +3073,18 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteChars(&s, "MA1A", 4));          // ... compatible_brands[]
         }
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+        if (!memcmp(encoder->data->items.item[itemIndex].type, "tmap", 4)) {
+            // ISO/IEC 23008-12:2024/AMD 1:2024(E)
+            // This brand enables file players to identify and decode HEIF files containing tone-map derived image
+            // items. When present, this brand shall be among the brands included in the compatible_brands
+            // array of the FileTypeBox.
+            AVIF_CHECKRES(avifRWStreamWriteChars(&s, "tmap", 4)); // ... compatible_brands[]
+            break;
+        }
+    }
+#endif
     avifRWStreamFinishBox(&s, ftyp);
 
     // -----------------------------------------------------------------------
