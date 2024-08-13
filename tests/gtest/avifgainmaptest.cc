@@ -937,6 +937,23 @@ TEST(GainMapTest, ExtraBytesAfterGainMapMetadataSupporterWriterVersion) {
             AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
 }
 
+TEST(GainMapTest, DecodeInvalidFtyp) {
+  const std::string path =
+      std::string(data_path) + "seine_sdr_gainmap_notmapbrand.avif";
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->enableDecodingGainMap = true;
+  decoder->enableParsingGainMapMetadata = true;
+
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+            AVIF_RESULT_OK);
+  // The gain map is ignored because the 'tmap' brand is not present.
+  EXPECT_EQ(decoder->gainMapPresent, false);
+  ASSERT_EQ(decoded->gainMap, nullptr);
+}
+
 #define EXPECT_FRACTION_NEAR(numerator, denominator, expected)     \
   EXPECT_NEAR(std::abs((double)numerator / denominator), expected, \
               expected * 0.001);

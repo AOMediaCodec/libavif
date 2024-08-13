@@ -71,6 +71,9 @@ static const char * avifGetConfigurationPropertyName(avifCodecType codecType)
 // ---------------------------------------------------------------------------
 // Box data structures
 
+typedef uint8_t avifBrand[4];
+AVIF_ARRAY_DECLARE(avifBrandArray, avifBrand, brand);
+
 // ftyp
 typedef struct avifFileType
 {
@@ -862,6 +865,7 @@ typedef struct avifDecoderData
     avifCodec * codec;
     avifCodec * codecAlpha;
     uint8_t majorBrand[4];                     // From the file's ftyp, used by AVIF_DECODER_SOURCE_AUTO
+    avifBrandArray compatibleBrands;           // From the file's ftyp
     avifDiagnostics * diag;                    // Shallow copy; owned by avifDecoder
     const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
     avifBool cicpSet;                          // True if avifDecoder's image has had its CICP set correctly yet.
@@ -1022,6 +1026,7 @@ static void avifDecoderDataDestroy(avifDecoderData * data)
     avifArrayDestroy(&data->tracks);
     avifDecoderDataClearTiles(data);
     avifArrayDestroy(&data->tiles);
+    avifArrayDestroy(&data->compatibleBrands);
     avifFree(data);
 }
 
@@ -4086,12 +4091,17 @@ static avifResult avifParse(avifDecoder * decoder)
     avifDecoderData * data = decoder->data;
     avifBool ftypSeen = AVIF_FALSE;
     avifBool metaSeen = AVIF_FALSE;
+    avifBool metaIsSizeZero = AVIF_FALSE;
     avifBool moovSeen = AVIF_FALSE;
     avifBool needsMeta = AVIF_FALSE;
     avifBool needsMoov = AVIF_FALSE;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     avifBool miniSeen = AVIF_FALSE;
     avifBool needsMini = AVIF_FALSE;
+#endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    avifBool needsTmap = AVIF_FALSE;
+    avifBool tmapSeen = AVIF_FALSE;
 #endif
     avifFileType ftyp = {};
 
@@ -4130,6 +4140,7 @@ static avifResult avifParse(avifDecoder * decoder)
         } else if (!memcmp(header.type, "meta", 4)) {
             isMeta = AVIF_TRUE;
             isNonSkippableVariableLengthBox = AVIF_TRUE;
+            metaIsSizeZero = header.isSizeZeroBox;
         } else if (!memcmp(header.type, "moov", 4)) {
             isMoov = AVIF_TRUE;
             isNonSkippableVariableLengthBox = AVIF_TRUE;
@@ -4186,6 +4197,12 @@ static avifResult avifParse(avifDecoder * decoder)
             AVIF_CHECKERR(avifFileTypeIsCompatible(&ftyp), AVIF_RESULT_INVALID_FTYP);
             ftypSeen = AVIF_TRUE;
             memcpy(data->majorBrand, ftyp.majorBrand, 4); // Remember the major brand for future AVIF_DECODER_SOURCE_AUTO decisions
+            if (ftyp.compatibleBrandsCount > 0) {
+                AVIF_CHECKERR(avifArrayCreate(&data->compatibleBrands, sizeof(avifBrand), ftyp.compatibleBrandsCount),
+                              AVIF_RESULT_OUT_OF_MEMORY);
+                memcpy(data->compatibleBrands.brand, ftyp.compatibleBrands, sizeof(avifBrand) * ftyp.compatibleBrandsCount);
+                data->compatibleBrands.count = ftyp.compatibleBrandsCount;
+            }
             needsMeta = avifFileTypeHasBrand(&ftyp, "avif");
             needsMoov = avifFileTypeHasBrand(&ftyp, "avis");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
@@ -4203,6 +4220,12 @@ static avifResult avifParse(avifDecoder * decoder)
                               AVIF_RESULT_BMFF_PARSE_FAILED);
             }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+            needsTmap = avifFileTypeHasBrand(&ftyp, "tmap");
+            if (needsTmap) {
+                needsMeta = AVIF_TRUE;
+            }
+#endif
         } else if (isMeta) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
@@ -4210,6 +4233,16 @@ static avifResult avifParse(avifDecoder * decoder)
 #endif
             AVIF_CHECKRES(avifParseMetaBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
             metaSeen = AVIF_TRUE;
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+            for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
+                if (!memcmp(data->meta->items.item[itemIndex]->type, "tmap", 4)) {
+                    tmapSeen = AVIF_TRUE;
+                    break;
+                }
+            }
+#endif
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         } else if (isMini) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -4239,11 +4272,14 @@ static avifResult avifParse(avifDecoder * decoder)
         // * If the brand 'avif' is present, require a meta box
         // * If the brand 'avis' is present, require a moov box
         // * If AVIF_ENABLE_EXPERIMENTAL_MINI is defined and the brand 'mif3' is present, require a mini box
+        avifBool sawEverythingNeeded = ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
-        if (ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen) && (!needsMini || miniSeen)) {
-#else
-        if (ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen)) {
+        sawEverythingNeeded = sawEverythingNeeded && (!needsMini || miniSeen);
 #endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+        sawEverythingNeeded = sawEverythingNeeded && (!needsTmap || tmapSeen);
+#endif
+        if (sawEverythingNeeded) {
             return AVIF_RESULT_OK;
         }
     }
@@ -4253,6 +4289,13 @@ static avifResult avifParse(avifDecoder * decoder)
     if ((needsMeta && !metaSeen) || (needsMoov && !moovSeen)) {
         return AVIF_RESULT_TRUNCATED_DATA;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (needsTmap && !tmapSeen) {
+        return metaIsSizeZero ? AVIF_RESULT_TRUNCATED_DATA : AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+#else
+    (void)metaIsSizeZero;
+#endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     if (needsMini && !miniSeen) {
         return AVIF_RESULT_TRUNCATED_DATA;
@@ -4310,6 +4353,18 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
     }
     return avifFileTypeIsCompatible(&ftyp);
 }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+static avifBool avifBrandArrayHasBrand(avifBrandArray * brands, const char * brand)
+{
+    for (uint32_t brandIndex = 0; brandIndex < brands->count; ++brandIndex) {
+        if (!memcmp(brands->brand[brandIndex], brand, 4)) {
+            return AVIF_TRUE;
+        }
+    }
+    return AVIF_FALSE;
+}
+#endif
 
 // ---------------------------------------------------------------------------
 
@@ -5412,7 +5467,17 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        if (decoder->enableParsingGainMapMetadata) {
+        // Section 10.2.6 of 23008-12:2024/AMD 1:2024(E):
+        //   'tmap' brand
+        //   This brand enables file players to identify and decode HEIF files containing tone-map derived image
+        //   items. When present, this brand shall be among the brands included in the compatible_brands
+        //   array of the FileTypeBox.
+        //
+        // If the file contians a 'tmap' item but doesn't have the 'tmap' brand, it is technically invalid.
+        // However, we don't report any error because in order to do detect this case consistently, we would
+        // need to remove the early exit in avifParse() to check if a 'tmap' item might be present
+        // further down the file. Instead, we simply ignore tmap items in files that lack the 'tmap' brand.
+        if (decoder->enableParsingGainMapMetadata && avifBrandArrayHasBrand(&data->compatibleBrands, "tmap")) {
             avifDecoderItem * toneMappedImageItem;
             avifDecoderItem * gainMapItem;
             avifCodecType gainMapCodecType;
