@@ -3572,7 +3572,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     meta->fromMiniBox = AVIF_TRUE;
 
     uint32_t version;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &version, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) version;
+    AVIF_CHECKERR(avifROStreamReadBits(&s, &version, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) version = 0;
     AVIF_CHECKERR(version == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
 
     // flags
@@ -3818,6 +3818,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     // Chunks
     avifCodecConfigurationBox alphaItemCodecConfig = { 0 };
     if (hasAlpha && alphaItemDataSize != 0 && alphaItemCodecConfigSize != 0) {
+        // 'av1C' always uses 4 bytes.
         AVIF_CHECKERR(alphaItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
         AVIF_CHECKERR(avifParseCodecConfiguration(&s, &alphaItemCodecConfig, (const char *)codecConfigType, diag),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) alpha_item_codec_config[alpha_item_codec_config_size];
@@ -3825,6 +3826,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     // if (hdr_flag && gainmap_flag && gainmap_item_codec_config_size > 0)
     //     unsigned int(8) gainmap_item_codec_config[gainmap_item_codec_config_size];
     avifCodecConfigurationBox mainItemCodecConfig = { 0 };
+    // 'av1C' always uses 4 bytes.
     AVIF_CHECKERR(mainItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
     AVIF_CHECKERR(avifParseCodecConfiguration(&s, &mainItemCodecConfig, (const char *)codecConfigType, diag),
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) main_item_codec_config[main_item_codec_config_size];

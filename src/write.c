@@ -2462,14 +2462,14 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     const avifBool hasExplicitCodecTypes = AVIF_FALSE; // 'av01' and 'av1C' known from 'avif' minor_version field of FileTypeBox.
 
     const uint32_t smallDimensionsFlag = image->width <= (1 << 7) && image->height <= (1 << 7);
-    const uint32_t codecConfigSize = 4;                                  // 'av1C' always uses 4 bytes.
-    const uint32_t fewCodecConfigBytesFlag = codecConfigSize < (1 << 3); // 'av1C' always uses 4 bytes.
+    const uint32_t codecConfigSize = 4; // 'av1C' always uses 4 bytes.
+    const uint32_t fewCodecConfigBytesFlag = codecConfigSize < (1 << 3);
     const uint32_t fewItemDataBytesFlag = colorData->size <= (1 << 15) && (!alphaData || alphaData->size < (1 << 15));
     const uint32_t fewMetadataBytesFlag = image->icc.size <= (1 << 10) && image->exif.size <= (1 << 10) && image->xmp.size <= (1 << 10);
 
     avifBoxMarker mini;
     AVIF_CHECKRES(avifRWStreamWriteBox(s, "mini", AVIF_BOX_SIZE_TBD, &mini));
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // bit(2) version;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // bit(2) version = 0;
 
     // flags
     AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCodecTypes, 1));    // bit(1) explicit_codec_types_flag;
