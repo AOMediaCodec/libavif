@@ -3571,26 +3571,26 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
 
     meta->fromMiniBox = AVIF_TRUE;
 
-    uint32_t version;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &version, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) version;
-    AVIF_CHECKERR(version == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
+    struct
+    {
+        uint8_t hasHdr : 1;                // bit(1) hdr_flag;
+        uint8_t hasExplicitCicp : 1;       // bit(1) explicit_cicp_flag;
+        uint8_t hasAlpha : 1;              // bit(1) alpha_flag;
+        uint8_t fullRange : 1;             // bit(1) full_range_flag;
+        uint8_t floatFlag : 1;             // bit(1) float_flag;
+        uint8_t hasExplicitCodecTypes : 1; // bit(1) explicit_codec_types_flag;
+        uint8_t version : 2;               // bit(2) version;
 
-    // flags
-    uint32_t hasExplicitCodecTypes, floatFlag, fullRange, hasAlpha, hasExplicitCicp, hasHdr, hasIcc, hasExif, hasXmp;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCodecTypes, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) explicit_codec_types_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &floatFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED);             // bit(1) float_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &fullRange, 1), AVIF_RESULT_BMFF_PARSE_FAILED);             // bit(1) full_range_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasAlpha, 1), AVIF_RESULT_BMFF_PARSE_FAILED);              // bit(1) alpha_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCicp, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) explicit_cicp_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasHdr, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) hdr_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasIcc, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) icc_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExif, 1), AVIF_RESULT_BMFF_PARSE_FAILED);         // bit(1) exif_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasXmp, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) xmp_flag;
+        uint8_t orientation_minus1 : 3; // bit(3) orientation_minus1;
+        uint8_t chromaSubsampling : 2;  // bit(2) chroma_subsampling;
+        uint8_t hasXmp : 1;             // bit(1) xmp_flag;
+        uint8_t hasExif : 1;            // bit(1) exif_flag;
+        uint8_t hasIcc : 1;             // bit(1) icc_flag;
+    } x;
 
-    uint32_t chromaSubsampling, orientation;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &chromaSubsampling, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) chroma_subsampling;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &orientation, 3), AVIF_RESULT_BMFF_PARSE_FAILED);       // bit(3) orientation_minus1;
-    ++orientation;
+    AVIF_CHECKERR(avifROStreamRead(&s, (uint8_t *)&x, 2), AVIF_RESULT_BMFF_PARSE_FAILED);
+    AVIF_CHECKERR(x.version == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
+    const uint32_t orientation = x.orientation_minus1 + 1;
 
     // Spatial extents
     uint32_t smallDimensionsFlag, width, height;
@@ -3604,15 +3604,15 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
 
     // Pixel information
     uint32_t chromaIsHorizontallyCentered = 0, chromaIsVerticallyCentered = 0;
-    if (chromaSubsampling == 1 || chromaSubsampling == 2) {
+    if (x.chromaSubsampling == 1 || x.chromaSubsampling == 2) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &chromaIsHorizontallyCentered, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) chroma_is_horizontally_centered;
     }
-    if (chromaSubsampling == 1) {
+    if (x.chromaSubsampling == 1) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &chromaIsVerticallyCentered, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) chroma_is_vertically_centered;
     }
 
     uint32_t bitDepth;
-    if (floatFlag) {
+    if (x.floatFlag) {
         // bit(2) bit_depth_log2_minus4;
         return AVIF_RESULT_NOT_IMPLEMENTED;
     } else {
@@ -3627,7 +3627,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     }
 
     uint32_t alphaIsPremultiplied = 0;
-    if (hasAlpha) {
+    if (x.hasAlpha) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &alphaIsPremultiplied, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) alpha_is_premultiplied;
     }
 
@@ -3635,27 +3635,27 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     uint8_t colorPrimaries;
     uint8_t transferCharacteristics;
     uint8_t matrixCoefficients;
-    if (hasExplicitCicp) {
+    if (x.hasExplicitCicp) {
         AVIF_CHECKERR(avifROStreamReadBits8(&s, &colorPrimaries, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(8) colour_primaries;
         AVIF_CHECKERR(avifROStreamReadBits8(&s, &transferCharacteristics, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(8) transfer_characteristics;
-        if (chromaSubsampling != 0) {
+        if (x.chromaSubsampling != 0) {
             AVIF_CHECKERR(avifROStreamReadBits8(&s, &matrixCoefficients, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(8) matrix_coefficients;
         } else {
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED; // 2
         }
     } else {
-        colorPrimaries = hasIcc ? AVIF_COLOR_PRIMARIES_UNSPECIFIED                         // 2
-                                : AVIF_COLOR_PRIMARIES_BT709;                              // 1
-        transferCharacteristics = hasIcc ? AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED       // 2
-                                         : AVIF_TRANSFER_CHARACTERISTICS_SRGB;             // 13
-        matrixCoefficients = chromaSubsampling == 0 ? AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED // 2
-                                                    : AVIF_MATRIX_COEFFICIENTS_BT601;      // 6
+        colorPrimaries = x.hasIcc ? AVIF_COLOR_PRIMARIES_UNSPECIFIED                         // 2
+                                  : AVIF_COLOR_PRIMARIES_BT709;                              // 1
+        transferCharacteristics = x.hasIcc ? AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED       // 2
+                                           : AVIF_TRANSFER_CHARACTERISTICS_SRGB;             // 13
+        matrixCoefficients = x.chromaSubsampling == 0 ? AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED // 2
+                                                      : AVIF_MATRIX_COEFFICIENTS_BT601;      // 6
     }
 
     // Optional unless minor_version of FileTypeBox is a brand defining these
     uint8_t infeType[4];
     uint8_t codecConfigType[4];
-    if (hasExplicitCodecTypes) {
+    if (x.hasExplicitCodecTypes) {
         // bit(32) infe_type;
         for (int i = 0; i < 4; ++i) {
             AVIF_CHECKERR(avifROStreamReadBits8(&s, &infeType[i], 8), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -3678,7 +3678,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
 
     // High Dynamic Range properties
     uint32_t hasGainmap = AVIF_FALSE;
-    if (hasHdr) {
+    if (x.hasHdr) {
         // bit(1) gainmap_flag;
         // if (gainmap_flag) {
         //     unsigned int(small_dimensions_flag ? 7 : 15) gainmap_width_minus1;
@@ -3756,14 +3756,14 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
 
     // Chunk sizes
     uint32_t fewMetadataBytesFlag = 0, fewCodecConfigBytesFlag = 0, fewItemDataBytesFlag = 0;
-    if (hasIcc || hasExif || hasXmp || (hasHdr && hasGainmap)) {
+    if (x.hasIcc || x.hasExif || x.hasXmp || (x.hasHdr && hasGainmap)) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &fewMetadataBytesFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) few_metadata_bytes_flag;
     }
     AVIF_CHECKERR(avifROStreamReadBits(&s, &fewCodecConfigBytesFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) few_codec_config_bytes_flag;
     AVIF_CHECKERR(avifROStreamReadBits(&s, &fewItemDataBytesFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) few_item_data_bytes_flag;
 
     uint32_t iccDataSize = 0;
-    if (hasIcc) {
+    if (x.hasIcc) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &iccDataSize, fewMetadataBytesFlag ? 10 : 20),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) icc_data_size_minus1;
         ++iccDataSize;
@@ -3786,23 +3786,23 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     ++mainItemDataSize;
 
     uint32_t alphaItemCodecConfigSize = 0, alphaItemDataSize = 0;
-    if (hasAlpha) {
+    if (x.hasAlpha) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &alphaItemDataSize, fewItemDataBytesFlag ? 15 : 28),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_item_data_bytes_flag ? 15 : 28) alpha_item_data_size;
     }
-    if (hasAlpha && alphaItemDataSize != 0) {
+    if (x.hasAlpha && alphaItemDataSize != 0) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &alphaItemCodecConfigSize, fewCodecConfigBytesFlag ? 3 : 12),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_codec_config_bytes_flag ? 3 : 12) alpha_item_codec_config_size;
     }
 
     uint32_t exifDataSize = 0;
-    if (hasExif) {
+    if (x.hasExif) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &exifDataSize, fewMetadataBytesFlag ? 10 : 20),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) exif_data_size_minus_one;
         ++exifDataSize;
     }
     uint32_t xmpDataSize = 0;
-    if (hasXmp) {
+    if (x.hasXmp) {
         AVIF_CHECKERR(avifROStreamReadBits(&s, &xmpDataSize, fewMetadataBytesFlag ? 10 : 20),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) xmp_data_size_minus_one;
         ++xmpDataSize;
@@ -3817,7 +3817,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
 
     // Chunks
     avifCodecConfigurationBox alphaItemCodecConfig = { 0 };
-    if (hasAlpha && alphaItemDataSize != 0 && alphaItemCodecConfigSize != 0) {
+    if (x.hasAlpha && alphaItemDataSize != 0 && alphaItemCodecConfigSize != 0) {
         AVIF_CHECKERR(alphaItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
         AVIF_CHECKERR(avifParseCodecConfiguration(&s, &alphaItemCodecConfig, (const char *)codecConfigType, diag),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) alpha_item_codec_config[alpha_item_codec_config_size];
@@ -3847,10 +3847,10 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     memcpy(colorItem->type, infeType, 4);
     colorItem->width = width;
     colorItem->height = height;
-    colorItem->miniBoxPixelFormat = chromaSubsampling == 0   ? AVIF_PIXEL_FORMAT_YUV400
-                                    : chromaSubsampling == 1 ? AVIF_PIXEL_FORMAT_YUV420
-                                    : chromaSubsampling == 2 ? AVIF_PIXEL_FORMAT_YUV422
-                                                             : AVIF_PIXEL_FORMAT_YUV444;
+    colorItem->miniBoxPixelFormat = x.chromaSubsampling == 0   ? AVIF_PIXEL_FORMAT_YUV400
+                                    : x.chromaSubsampling == 1 ? AVIF_PIXEL_FORMAT_YUV420
+                                    : x.chromaSubsampling == 2 ? AVIF_PIXEL_FORMAT_YUV422
+                                                               : AVIF_PIXEL_FORMAT_YUV444;
     if (colorItem->miniBoxPixelFormat == AVIF_PIXEL_FORMAT_YUV422) {
         // In AV1, the chroma_sample_position syntax element is not present for the YUV 4:2:2 format.
         // Assume that AV1 uses the same 4:2:2 chroma sample location as HEVC and VVC (colocated).
@@ -3873,7 +3873,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     }
 
     avifDecoderItem * alphaItem = NULL;
-    if (hasAlpha) {
+    if (x.hasAlpha) {
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/2, &alphaItem));
         memcpy(alphaItem->type, infeType, 4);
         alphaItem->width = width;
@@ -3898,7 +3898,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     // Property with fixed index 3.
     avifProperty * pixiProp = avifMetaCreateProperty(meta, "pixi");
     AVIF_CHECKERR(pixiProp, AVIF_RESULT_OUT_OF_MEMORY);
-    pixiProp->u.pixi.planeCount = chromaSubsampling == 0 ? 1 : 3;
+    pixiProp->u.pixi.planeCount = x.chromaSubsampling == 0 ? 1 : 3;
     for (uint8_t plane = 0; plane < pixiProp->u.pixi.planeCount; ++plane) {
         pixiProp->u.pixi.planeDepths[plane] = (uint8_t)bitDepth;
     }
@@ -3911,7 +3911,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     colrPropNCLX->u.colr.colorPrimaries = (avifColorPrimaries)colorPrimaries;
     colrPropNCLX->u.colr.transferCharacteristics = (avifTransferCharacteristics)transferCharacteristics;
     colrPropNCLX->u.colr.matrixCoefficients = (avifMatrixCoefficients)matrixCoefficients;
-    colrPropNCLX->u.colr.range = fullRange ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
+    colrPropNCLX->u.colr.range = x.fullRange ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
     AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, colrPropNCLX), AVIF_RESULT_OUT_OF_MEMORY);
 
     // Property with fixed index 5.
@@ -3932,7 +3932,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     // if (hdr_flag && gainmap_flag && gainmap_metadata_size > 0)
     //     unsigned int(8) gainmap_metadata[gainmap_metadata_size];
 
-    if (hasAlpha) {
+    if (x.hasAlpha) {
         // Property with fixed index 6.
         avifProperty * alphaCodecConfigProp = avifMetaCreateProperty(meta, (const char *)codecConfigType);
         AVIF_CHECKERR(alphaCodecConfigProp, AVIF_RESULT_OUT_OF_MEMORY);
@@ -3991,7 +3991,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
 
     // Extents.
 
-    if (hasAlpha) {
+    if (x.hasAlpha) {
         avifExtent * alphaExtent = (avifExtent *)avifArrayPush(&alphaItem->extents);
         AVIF_CHECKERR(alphaExtent, AVIF_RESULT_OUT_OF_MEMORY);
         alphaExtent->offset = rawOffset + avifROStreamOffset(&s);
@@ -4010,7 +4010,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     AVIF_CHECKERR(avifROStreamSkip(&s, colorExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
     colorItem->size = colorExtent->size;
 
-    if (hasExif) {
+    if (x.hasExif) {
         avifDecoderItem * exifItem;
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/3, &exifItem));
         memcpy(exifItem->type, "Exif", 4);
@@ -4025,7 +4025,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
         exifItem->size = exifExtent->size;
     }
 
-    if (hasXmp) {
+    if (x.hasXmp) {
         avifDecoderItem * xmpItem;
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/4, &xmpItem));
         memcpy(xmpItem->type, "mime", 4);
