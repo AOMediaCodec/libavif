@@ -75,7 +75,7 @@ static const char * avifGetConfigurationPropertyName(avifCodecType codecType)
 typedef struct avifFileType
 {
     uint8_t majorBrand[4];
-    uint32_t minorVersion;
+    uint8_t minorVersion[4];
     // If not null, points to a memory block of 4 * compatibleBrandsCount bytes.
     const uint8_t * compatibleBrands;
     int compatibleBrandsCount;
@@ -2254,6 +2254,8 @@ static avifBool avifParseContentLightLevelInformationBox(avifProperty * prop, co
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigurationBox * config, const char * configPropName, avifDiagnostics * diag)
 {
+    const size_t av1COffset = s->offset;
+
     uint32_t marker, version;
     AVIF_CHECK(avifROStreamReadBits(s, &marker, /*bitCount=*/1)); // unsigned int (1) marker = 1;
     if (!marker) {
@@ -2295,6 +2297,8 @@ static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigura
     // For simplicity, the constraints above are not enforced.
     // The following is skipped by avifParseItemPropertyContainerBox().
     // unsigned int (8) configOBUs[];
+
+    AVIF_CHECK(s->offset - av1COffset == 4);  // Make sure avifParseCodecConfiguration() reads exactly 4 bytes.
     return AVIF_TRUE;
 }
 
@@ -3565,7 +3569,12 @@ static avifProperty * avifDecoderItemAddProperty(avifDecoderItem * item, const a
     return itemProperty;
 }
 
-static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseMinimizedImageBox(avifMeta * meta,
+                                             uint64_t rawOffset,
+                                             const uint8_t * raw,
+                                             size_t rawLen,
+                                             avifBool isAvifAccordingToMinorVersion,
+                                             avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[mini]");
 
@@ -3614,7 +3623,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     uint32_t bitDepth;
     if (floatFlag) {
         // bit(2) bit_depth_log2_minus4;
-        return AVIF_RESULT_NOT_IMPLEMENTED;
+        return AVIF_RESULT_BMFF_PARSE_FAILED; // Either invalid AVIF or unsupported non-AVIF.
     } else {
         uint32_t highBitDepthFlag;
         AVIF_CHECKERR(avifROStreamReadBits(&s, &highBitDepthFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) high_bit_depth_flag;
@@ -3652,7 +3661,6 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
                                                     : AVIF_MATRIX_COEFFICIENTS_BT601;      // 6
     }
 
-    // Optional unless minor_version of FileTypeBox is a brand defining these
     uint8_t infeType[4];
     uint8_t codecConfigType[4];
     if (hasExplicitCodecTypes) {
@@ -3669,9 +3677,9 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
 #endif
-        AVIF_CHECKERR(!memcmp(infeType, "av01", 4), AVIF_RESULT_BMFF_PARSE_FAILED);
-        AVIF_CHECKERR(!memcmp(codecConfigType, "av1C", 4), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(!memcmp(infeType, "av01", 4) && !memcmp(codecConfigType, "av1C", 4), AVIF_RESULT_BMFF_PARSE_FAILED);
     } else {
+        AVIF_CHECKERR(isAvifAccordingToMinorVersion, AVIF_RESULT_BMFF_PARSE_FAILED);
         memcpy(infeType, "av01", 4);
         memcpy(codecConfigType, "av1C", 4);
     }
@@ -3825,7 +3833,7 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta, uint64_t rawOffset
     }
     // if (hdr_flag && gainmap_flag && gainmap_item_codec_config_size > 0)
     //     unsigned int(8) gainmap_item_codec_config[gainmap_item_codec_config_size];
-    avifCodecConfigurationBox mainItemCodecConfig = { 0 };
+    avifCodecConfigurationBox mainItemCodecConfig;
     // 'av1C' always uses 4 bytes.
     AVIF_CHECKERR(mainItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
     AVIF_CHECKERR(avifParseCodecConfiguration(&s, &mainItemCodecConfig, (const char *)codecConfigType, diag),
@@ -4051,7 +4059,7 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[ftyp]");
 
     AVIF_CHECK(avifROStreamRead(&s, ftyp->majorBrand, 4));
-    AVIF_CHECK(avifROStreamReadU32(&s, &ftyp->minorVersion));
+    AVIF_CHECK(avifROStreamRead(&s, ftyp->minorVersion, 4));
 
     size_t compatibleBrandsBytes = avifROStreamRemainingBytes(&s);
     if ((compatibleBrandsBytes % 4) != 0) {
@@ -4085,6 +4093,7 @@ static avifResult avifParse(avifDecoder * decoder)
     avifBool miniSeen = AVIF_FALSE;
     avifBool needsMini = AVIF_FALSE;
 #endif
+    avifFileType ftyp = {};
 
     for (;;) {
         // Read just enough to get the next box header (a max of 32 bytes)
@@ -4153,19 +4162,25 @@ static avifResult avifParse(avifDecoder * decoder)
 
         if (!memcmp(header.type, "ftyp", 4)) {
             AVIF_CHECKERR(!ftypSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
-            avifFileType ftyp;
             AVIF_CHECKERR(avifParseFileTypeBox(&ftyp, boxContents.data, boxContents.size, data->diag), AVIF_RESULT_BMFF_PARSE_FAILED);
-            if (!avifFileTypeIsCompatible(&ftyp)) {
-                return AVIF_RESULT_INVALID_FTYP;
-            }
+            AVIF_CHECKERR(avifFileTypeIsCompatible(&ftyp), AVIF_RESULT_INVALID_FTYP);
             ftypSeen = AVIF_TRUE;
             memcpy(data->majorBrand, ftyp.majorBrand, 4); // Remember the major brand for future AVIF_DECODER_SOURCE_AUTO decisions
             needsMeta = avifFileTypeHasBrand(&ftyp, "avif");
             needsMoov = avifFileTypeHasBrand(&ftyp, "avis");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
             needsMini = avifFileTypeHasBrand(&ftyp, "mif3");
-            if (needsMini && needsMeta) {
-                return AVIF_RESULT_INVALID_FTYP;
+            if (needsMini) {
+                AVIF_CHECKERR(!needsMeta, AVIF_RESULT_INVALID_FTYP);
+                // Section O.2.1.2 of ISO/IEC 23008-12:2014, CDAM 2:
+                //   When the 'mif3' brand is present as the major_brand of the FileTypeBox,
+                //   the minor_version of the FileTypeBox shall be 0 or a brand that is either
+                //   structurally compatible with the 'mif3' brand, such as a codec brand
+                //   complying with the 'mif3' structural brand, or a brand to which the file
+                //   conforms after the equivalent MetaBox has been transformed from
+                //   MinimizedImageBox as specified in Clause O.4.
+                AVIF_CHECKERR(!memcmp(ftyp.minorVersion, "\0\0\0\0", 4) || !memcmp(ftyp.minorVersion, "avif", 4),
+                              AVIF_RESULT_BMFF_PARSE_FAILED);
             }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
         } else if (!memcmp(header.type, "meta", 4)) {
@@ -4179,7 +4194,9 @@ static avifResult avifParse(avifDecoder * decoder)
         } else if (!memcmp(header.type, "mini", 4)) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKERR(!miniSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
-            AVIF_CHECKRES(avifParseMinimizedImageBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
+            const avifBool isAvifAccordingToMinorVersion = !memcmp(ftyp.minorVersion, "avif", 4);
+            AVIF_CHECKRES(
+                avifParseMinimizedImageBox(data->meta, boxOffset, boxContents.data, boxContents.size, isAvifAccordingToMinorVersion, data->diag));
             miniSeen = AVIF_TRUE;
 #endif
         } else if (!memcmp(header.type, "moov", 4)) {
