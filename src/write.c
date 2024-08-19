@@ -2272,7 +2272,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifWriteAltrGroup(avifRWStream * s, const avifEncoderItemIdArray * itemIDs)
+static avifResult avifWriteAltrGroup(avifRWStream * s, uint32_t groupID, const avifEncoderItemIdArray * itemIDs)
 {
     avifBoxMarker grpl;
     AVIF_CHECKRES(avifRWStreamWriteBox(s, "grpl", AVIF_BOX_SIZE_TBD, &grpl));
@@ -2280,7 +2280,7 @@ static avifResult avifWriteAltrGroup(avifRWStream * s, const avifEncoderItemIdAr
     avifBoxMarker altr;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "altr", AVIF_BOX_SIZE_TBD, 0, 0, &altr));
 
-    AVIF_CHECKRES(avifRWStreamWriteU32(s, 1));                        // unsigned int(32) group_id;
+    AVIF_CHECKRES(avifRWStreamWriteU32(s, groupID));                  // unsigned int(32) group_id;
     AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)itemIDs->count)); // unsigned int(32) num_entities_in_group;
     for (uint32_t i = 0; i < itemIDs->count; ++i) {
         AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)itemIDs->item_id[i])); // unsigned int(32) entity_id;
@@ -3294,7 +3294,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write grpl/altr box
 
     if (encoder->data->alternativeItemIDs.count) {
-        AVIF_CHECKRES(avifWriteAltrGroup(&s, &encoder->data->alternativeItemIDs));
+        // ISO/IEC FDIS 14496-12:2020 8.18.3.3:
+        // group_id is a non-negative integer assigned to the particular grouping that shall not be equal to any
+        // group_id value of any other EntityToGroupBox, any item_ID value of the hierarchy level
+        // (file, movie. or track) that contains the GroupsListBox, or any track_ID value (when the
+        // GroupsListBox is contained in the file level).
+        ++encoder->data->lastItemID;
+        const uint32_t groupID = encoder->data->lastItemID;
+        AVIF_CHECKRES(avifWriteAltrGroup(&s, groupID, &encoder->data->alternativeItemIDs));
     }
 
     // -----------------------------------------------------------------------
