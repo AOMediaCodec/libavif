@@ -2472,13 +2472,13 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // bit(2) version = 0;
 
     // flags
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCodecTypes, 1));    // bit(1) explicit_codec_types_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, floatFlag, 1));                // bit(1) float_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1));                // bit(1) full_range_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCodecTypes, 1)); // bit(1) explicit_codec_types_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, floatFlag, 1));             // bit(1) float_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1));             // bit(1) full_range_flag;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, alphaItem != 0, 1));        // bit(1) alpha_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCicp, 1));          // bit(1) explicit_cicp_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasHdr, 1));                   // bit(1) hdr_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasIcc, 1));                   // bit(1) icc_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCicp, 1));       // bit(1) explicit_cicp_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasHdr, 1));                // bit(1) hdr_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasIcc, 1));                // bit(1) icc_flag;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, image->exif.size != 0, 1)); // bit(1) exif_flag;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, image->xmp.size != 0, 1));  // bit(1) xmp_flag;
 
@@ -3678,7 +3678,7 @@ static avifResult writeCodecConfig(avifRWStream * s, const avifCodecConfiguratio
     // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#av1-configuration-item-property.
     // unsigned int (8) configOBUs[];
 
-    AVIF_ASSERT_OR_RETURN(s->offset - av1COffset == 4);  // Make sure writeCodecConfig() writes exactly 4 bytes.
+    AVIF_ASSERT_OR_RETURN(s->offset - av1COffset == 4); // Make sure writeCodecConfig() writes exactly 4 bytes.
     return AVIF_RESULT_OK;
 }
 

@@ -2298,7 +2298,7 @@ static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigura
     // The following is skipped by avifParseItemPropertyContainerBox().
     // unsigned int (8) configOBUs[];
 
-    AVIF_CHECK(s->offset - av1COffset == 4);  // Make sure avifParseCodecConfiguration() reads exactly 4 bytes.
+    AVIF_CHECK(s->offset - av1COffset == 4); // Make sure avifParseCodecConfiguration() reads exactly 4 bytes.
     return AVIF_TRUE;
 }
 
