@@ -107,7 +107,7 @@
 </ItemPropertyAssociationBox>
 </ItemPropertiesBox>
 <GroupListBox Size="36" Type="grpl" Specification="iff" Container="meta" >
-<EntityToGroupTypeBox Size="28" Type="altr" Version="0" Flags="0" Specification="iff" Container="grpl" group_id="1">
+<EntityToGroupTypeBox Size="28" Type="altr" Version="0" Flags="0" Specification="iff" Container="grpl" group_id="6">
 <EntityToGroupTypeBoxEntry EntityID="2"/>
 <EntityToGroupTypeBoxEntry EntityID="1"/>
 </EntityToGroupTypeBox>
