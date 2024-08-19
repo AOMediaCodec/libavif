@@ -4111,13 +4111,33 @@ static avifResult avifParse(avifDecoder * decoder)
         uint64_t boxOffset = 0;
         avifROData boxContents = AVIF_DATA_EMPTY;
 
-        // TODO: reorg this code to only do these memcmps once each
+        avifBool isFtyp = AVIF_FALSE, isMeta = AVIF_FALSE, isMoov = AVIF_FALSE;
+        avifBool isNonSkippableVariableLengthBox = AVIF_FALSE;
+        if (!memcmp(header.type, "ftyp", 4)) {
+            isFtyp = AVIF_TRUE;
+            isNonSkippableVariableLengthBox = AVIF_TRUE;
+        } else if (!memcmp(header.type, "meta", 4)) {
+            isMeta = AVIF_TRUE;
+            isNonSkippableVariableLengthBox = AVIF_TRUE;
+        } else if (!memcmp(header.type, "moov", 4)) {
+            isMoov = AVIF_TRUE;
+            isNonSkippableVariableLengthBox = AVIF_TRUE;
+        }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
-        if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4) ||
-            !memcmp(header.type, "mini", 4)) {
-#else
-        if (!memcmp(header.type, "ftyp", 4) || !memcmp(header.type, "meta", 4) || !memcmp(header.type, "moov", 4)) {
+        avifBool isMini = AVIF_FALSE;
+        if (!isNonSkippableVariableLengthBox && !memcmp(header.type, "mini", 4)) {
+            isMini = AVIF_TRUE;
+            isNonSkippableVariableLengthBox = AVIF_TRUE;
+        }
 #endif
+
+        if (!isFtyp && (isNonSkippableVariableLengthBox || !memcmp(header.type, "free", 4) || !memcmp(header.type, "mdat", 4))) {
+            // Section 6.3.4 of ISO/IEC 14496-12:
+            //   The FileTypeBox shall occur before any variable-length box (e.g. movie, free space, media data).
+            AVIF_CHECKERR(ftypSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
+        }
+
+        if (isNonSkippableVariableLengthBox) {
             boxOffset = parseOffset;
             size_t sizeToRead;
             if (header.isSizeZeroBox) {
@@ -4149,7 +4169,7 @@ static avifResult avifParse(avifDecoder * decoder)
         }
         parseOffset += header.size;
 
-        if (!memcmp(header.type, "ftyp", 4)) {
+        if (isFtyp) {
             AVIF_CHECKERR(!ftypSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             avifFileType ftyp;
             AVIF_CHECKERR(avifParseFileTypeBox(&ftyp, boxContents.data, boxContents.size, data->diag), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -4166,7 +4186,7 @@ static avifResult avifParse(avifDecoder * decoder)
                 return AVIF_RESULT_INVALID_FTYP;
             }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
-        } else if (!memcmp(header.type, "meta", 4)) {
+        } else if (isMeta) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
             AVIF_CHECKERR(!miniSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -4174,13 +4194,13 @@ static avifResult avifParse(avifDecoder * decoder)
             AVIF_CHECKRES(avifParseMetaBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
             metaSeen = AVIF_TRUE;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
-        } else if (!memcmp(header.type, "mini", 4)) {
+        } else if (isMini) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKERR(!miniSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseMinimizedImageBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
             miniSeen = AVIF_TRUE;
 #endif
-        } else if (!memcmp(header.type, "moov", 4)) {
+        } else if (isMoov) {
             AVIF_CHECKERR(!moovSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(
                 avifParseMovieBox(data, boxOffset, boxContents.data, boxContents.size, decoder->imageSizeLimit, decoder->imageDimensionLimit));
