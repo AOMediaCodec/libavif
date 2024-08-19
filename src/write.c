@@ -3294,11 +3294,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write grpl/altr box
 
     if (encoder->data->alternativeItemIDs.count) {
-        // ISO/IEC FDIS 14496-12:2020 8.18.3.3:
-        // group_id is a non-negative integer assigned to the particular grouping that shall not be equal to any
-        // group_id value of any other EntityToGroupBox, any item_ID value of the hierarchy level
-        // (file, movie. or track) that contains the GroupsListBox, or any track_ID value (when the
-        // GroupsListBox is contained in the file level).
+        // Section 8.18.3.3 of ISO 14496-12 (ISOBMFF) says:
+        //   group_id is a non-negative integer assigned to the particular grouping that shall not be equal to any
+        //   group_id value of any other EntityToGroupBox, any item_ID value of the hierarchy level
+        //   (file, movie. or track) that contains the GroupsListBox, or any track_ID value (when the
+        //   GroupsListBox is contained in the file level).
         AVIF_ASSERT_OR_RETURN(encoder->data->lastItemID < UINT16_MAX);
         ++encoder->data->lastItemID;
         const uint32_t groupID = encoder->data->lastItemID;
