@@ -3299,6 +3299,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         // group_id value of any other EntityToGroupBox, any item_ID value of the hierarchy level
         // (file, movie. or track) that contains the GroupsListBox, or any track_ID value (when the
         // GroupsListBox is contained in the file level).
+        AVIF_ASSERT_OR_RETURN(encoder->data->lastItemID < UINT16_MAX);
         ++encoder->data->lastItemID;
         const uint32_t groupID = encoder->data->lastItemID;
         AVIF_CHECKRES(avifWriteAltrGroup(&s, groupID, &encoder->data->alternativeItemIDs));
