@@ -5473,7 +5473,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         //   items. When present, this brand shall be among the brands included in the compatible_brands
         //   array of the FileTypeBox.
         //
-        // If the file contians a 'tmap' item but doesn't have the 'tmap' brand, it is technically invalid.
+        // If the file contains a 'tmap' item but doesn't have the 'tmap' brand, it is technically invalid.
         // However, we don't report any error because in order to do detect this case consistently, we would
         // need to remove the early exit in avifParse() to check if a 'tmap' item might be present
         // further down the file. Instead, we simply ignore tmap items in files that lack the 'tmap' brand.
