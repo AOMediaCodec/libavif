@@ -2500,7 +2500,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 
     if (floatFlag) {
         // bit(2) bit_depth_log2_minus4;
-        return AVIF_RESULT_INTERNAL_ERROR;
+        AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
     } else {
         AVIF_CHECKRES(avifRWStreamWriteBits(s, image->depth > 8, 1)); // bit(1) high_bit_depth_flag;
         if (image->depth > 8) {
@@ -2526,7 +2526,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     if (hasExplicitCodecTypes) {
         // bit(32) infe_type;
         // bit(32) codec_config_type;
-        return AVIF_RESULT_INTERNAL_ERROR;
+        AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
     }
 
     // High Dynamic Range properties
