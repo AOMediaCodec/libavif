@@ -771,7 +771,7 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderWriteHandlerBox(avifEncoder * encoder, avifRWStream * s, const char handler_type[4])
+static avifResult avifEncoderWriteHandlerBox(avifRWStream * s, const char handler_type[4])
 {
     avifBoxMarker hdlr;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
@@ -803,7 +803,7 @@ static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStre
     avifBoxMarker meta;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "meta", AVIF_BOX_SIZE_TBD, 0, 0, &meta));
 
-    AVIF_CHECKRES(avifEncoderWriteHandlerBox(encoder, s, "pict"));
+    AVIF_CHECKRES(avifEncoderWriteHandlerBox(s, "pict"));
 
     avifBoxMarker iloc;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0, &iloc));
@@ -3101,7 +3101,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Write hdlr
 
-    AVIF_CHECKRES(avifEncoderWriteHandlerBox(encoder, &s, "pict"));
+    AVIF_CHECKRES(avifEncoderWriteHandlerBox(&s, "pict"));
 
     // -----------------------------------------------------------------------
     // Write pitm
@@ -3447,7 +3447,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));     // unsigned int(16) pre_defined = 0;
             avifRWStreamFinishBox(&s, mdhd);
 
-            AVIF_CHECKRES(avifEncoderWriteHandlerBox(encoder, &s, (item->itemCategory == AVIF_ITEM_ALPHA) ? "auxv" : "pict"));
+            AVIF_CHECKRES(avifEncoderWriteHandlerBox(&s, (item->itemCategory == AVIF_ITEM_ALPHA) ? "auxv" : "pict"));
 
             avifBoxMarker minf;
             AVIF_CHECKRES(avifRWStreamWriteBox(&s, "minf", AVIF_BOX_SIZE_TBD, &minf));
