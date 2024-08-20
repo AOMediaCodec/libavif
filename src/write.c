@@ -2472,15 +2472,15 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 2)); // bit(2) version = 0;
 
     // flags
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCodecTypes, 1));    // bit(1) explicit_codec_types_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, floatFlag, 1));                // bit(1) float_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1));                // bit(1) full_range_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, alphaItem ? 1 : 0, 1));        // bit(1) alpha_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCicp, 1));          // bit(1) explicit_cicp_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasHdr, 1));                   // bit(1) hdr_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasIcc, 1));                   // bit(1) icc_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->exif.size ? 1 : 0, 1)); // bit(1) exif_flag;
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->xmp.size ? 1 : 0, 1));  // bit(1) xmp_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCodecTypes, 1)); // bit(1) explicit_codec_types_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, floatFlag, 1));             // bit(1) float_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, fullRange, 1));             // bit(1) full_range_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, alphaItem != 0, 1));        // bit(1) alpha_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasExplicitCicp, 1));       // bit(1) explicit_cicp_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasHdr, 1));                // bit(1) hdr_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, hasIcc, 1));                // bit(1) icc_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->exif.size != 0, 1)); // bit(1) exif_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, image->xmp.size != 0, 1));  // bit(1) xmp_flag;
 
     AVIF_CHECKRES(avifRWStreamWriteBits(s, chromaSubsampling, 2)); // bit(2) chroma_subsampling;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, orientationMinus1, 3)); // bit(3) orientation_minus1;
@@ -2500,7 +2500,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 
     if (floatFlag) {
         // bit(2) bit_depth_log2_minus4;
-        return AVIF_RESULT_NOT_IMPLEMENTED;
+        AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
     } else {
         AVIF_CHECKRES(avifRWStreamWriteBits(s, image->depth > 8, 1)); // bit(1) high_bit_depth_flag;
         if (image->depth > 8) {
@@ -2523,11 +2523,10 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
         }
     }
 
-    // Optional unless minor_version of FileTypeBox is a brand defining these
     if (hasExplicitCodecTypes) {
         // bit(32) infe_type;
         // bit(32) codec_config_type;
-        return AVIF_RESULT_NOT_IMPLEMENTED;
+        AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
     }
 
     // High Dynamic Range properties
@@ -3654,6 +3653,8 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static avifResult writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox * cfg)
 {
+    const size_t av1COffset = s->offset;
+
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 1, /*bitCount=*/1)); // unsigned int (1) marker = 1;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 1, /*bitCount=*/7)); // unsigned int (7) version = 1;
 
@@ -3676,6 +3677,8 @@ static avifResult writeCodecConfig(avifRWStream * s, const avifCodecConfiguratio
     // there is no need to write any OBU here.
     // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#av1-configuration-item-property.
     // unsigned int (8) configOBUs[];
+
+    AVIF_ASSERT_OR_RETURN(s->offset - av1COffset == 4); // Make sure writeCodecConfig() writes exactly 4 bytes.
     return AVIF_RESULT_OK;
 }
 
