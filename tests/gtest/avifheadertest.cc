@@ -1,6 +1,8 @@
 // Copyright 2024 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <algorithm>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -13,25 +15,24 @@ TEST(BasicTest, EncodeDecode) {
                                          AVIF_PLANES_ALL);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
+  const testutil::AvifRwData avif = testutil::Encode(image.get());
+  ASSERT_NE(avif.data, nullptr);
 
-  EncoderPtr encoder_header_full(avifEncoderCreate());
-  ASSERT_NE(encoder_header_full, nullptr);
-  encoder_header_full->headerFormat = AVIF_HEADER_FULL;
-  testutil::AvifRwData encoded_header_full;
-  ASSERT_EQ(avifEncoderWrite(encoder_header_full.get(), image.get(),
-                             &encoded_header_full),
-            AVIF_RESULT_OK);
-
-  EncoderPtr encoder_header_default(avifEncoderCreate());
-  ASSERT_NE(encoder_header_default, nullptr);
-  encoder_header_default->headerFormat = AVIF_HEADER_DEFAULT;
-  testutil::AvifRwData encoded_header_default;
-  ASSERT_EQ(avifEncoderWrite(encoder_header_default.get(), image.get(),
-                             &encoded_header_default),
-            AVIF_RESULT_OK);
-
-  // AVIF_HEADER_DEFAULT saves 7 bytes by omitting "libavif" as 'hdlr' name.
-  EXPECT_EQ(encoded_header_full.size, encoded_header_default.size + 7);
+  // Make sure the HandlerBox is as small as possible, meaning its name field is
+  // empty.
+  const uint8_t* kHdlr = reinterpret_cast<const uint8_t*>("hdlr");
+  uint8_t* hdlr_position =
+      std::search(avif.data, avif.data + avif.size, kHdlr, kHdlr + 4);
+  ASSERT_NE(hdlr_position, avif.data + avif.size);
+  // The previous four bytes represent the size of the box as a big endian
+  // unsigned integer.
+  constexpr uint8_t kExpectedHdlrSize =
+      /*size field*/ 4 + /*"hdlr"*/ 4 + /*version*/ 3 + /*flags*/ 1 +
+      /*pre_defined*/ 4 + /*handler_type*/ 4 + /*reserved*/ 4 * 3 + /*name*/ 1;
+  ASSERT_EQ(hdlr_position[-4], 0);
+  ASSERT_EQ(hdlr_position[-3], 0);
+  ASSERT_EQ(hdlr_position[-2], 0);
+  ASSERT_EQ(hdlr_position[-1], kExpectedHdlrSize);
 }
 
 }  // namespace

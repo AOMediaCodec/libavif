@@ -484,7 +484,7 @@ avifEncoder * avifEncoderCreate(void)
         avifEncoderDestroy(encoder);
         return NULL;
     }
-    encoder->headerFormat = AVIF_HEADER_DEFAULT;
+    encoder->headerFormat = AVIF_HEADER_FULL;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_NONE;
 #endif
@@ -773,16 +773,12 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
 
 static avifResult avifEncoderWriteHandlerBox(avifEncoder * encoder, avifRWStream * s, const char handler_type[4])
 {
-    // ISO/IEC 14496-12, Section 8.4.3.3:
-    //   name gives a human-readable name for the track type (for debugging and inspection purposes).
-    const char * handlerName = encoder->headerFormat == AVIF_HEADER_FULL ? "libavif" : "";
-
     avifBoxMarker hdlr;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
-    AVIF_CHECKRES(avifRWStreamWriteU32(s, 0));                                      // unsigned int(32) pre_defined = 0;
-    AVIF_CHECKRES(avifRWStreamWriteChars(s, handler_type, 4));                      // unsigned int(32) handler_type;
-    AVIF_CHECKRES(avifRWStreamWriteZeros(s, 12));                                   // const unsigned int(32)[3] reserved = 0;
-    AVIF_CHECKRES(avifRWStreamWriteChars(s, handlerName, strlen(handlerName) + 1)); // string name; (writing null terminator)
+    AVIF_CHECKRES(avifRWStreamWriteU32(s, 0));                 // unsigned int(32) pre_defined = 0;
+    AVIF_CHECKRES(avifRWStreamWriteChars(s, handler_type, 4)); // unsigned int(32) handler_type;
+    AVIF_CHECKRES(avifRWStreamWriteZeros(s, 12));              // const unsigned int(32)[3] reserved = 0;
+    AVIF_CHECKRES(avifRWStreamWriteChars(s, "", 1));           // string name; (writing null terminator)
     avifRWStreamFinishBox(s, hdlr);
     return AVIF_RESULT_OK;
 }

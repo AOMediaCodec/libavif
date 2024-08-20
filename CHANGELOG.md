@@ -22,8 +22,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   error.
   The `gainMapPresent` field is now only populated if enableParsingGainMapMetadata
   is true.
-* Add AVIF_HEADER_DEFAULT which writes an empty HandlerBox name field instead of
-  "libavif". Select AVIF_HEADER_DEFAULT by default in avifEncoderCreate().
+* Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 
 ## [1.1.1] - 2024-07-30
 

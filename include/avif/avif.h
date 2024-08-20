@@ -216,8 +216,6 @@ typedef enum avifHeaderFormat
 {
     // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
     AVIF_HEADER_FULL,
-    // Same as AVIF_HEADER_FULL but the name field of the HandlerBox is empty instead of "libavif".
-    AVIF_HEADER_DEFAULT,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     // AVIF file with a "mif3" brand and a MinimizedImageBox to reduce the encoded file size.
     // This is based on the w24144 "Low-overhead image file format" MPEG proposal for HEIF.
