@@ -18,7 +18,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Ignore gain maps with unsupported metadata. Handle gain maps with
   writer_version > 0 correctly.
   The combination of settings enableParsingGainMapMetadata=false with
-  enableDecodingGainMap=true is no longer allowed and returns and invalid argument
+  enableDecodingGainMap=true is no longer allowed and returns an invalid argument
   error.
   The `gainMapPresent` field is now only populated if enableParsingGainMapMetadata
   is true.
