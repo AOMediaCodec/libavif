@@ -50,9 +50,9 @@ DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                              uint32_t image_count_limit,
                              avifStrictFlags strict_flags);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+enum class GainMapDecodeMode { kDontDecode, kMetadataOnly, kDecode };
 DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
-                                      bool enable_parsing_gain_map_metadata,
-                                      bool enable_decoding_gain_map);
+                                      GainMapDecodeMode gain_map_decode_mode);
 #endif
 
 //------------------------------------------------------------------------------
@@ -226,10 +226,11 @@ inline auto ArbitraryBaseAvifDecoder() {
 // options fuzzed, with the exception of 'ignoreColorAndAlpha' (because it would
 // break most tests' assumptions).
 inline auto ArbitraryAvifDecoderWithGainMapOptions() {
-  return fuzztest::Map(
-      AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
-      /*enable_parsing_gain_map_metadata=*/fuzztest::Arbitrary<bool>(),
-      /*enable_decoding_gain_map=*/fuzztest::Arbitrary<bool>());
+  return fuzztest::Map(AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
+                       /*gain_map_decode_mode=*/
+                       fuzztest::ElementOf({GainMapDecodeMode::kDontDecode,
+                                            GainMapDecodeMode::kMetadataOnly,
+                                            GainMapDecodeMode::kDecode}));
 }
 
 // Generator for an arbitrary DecoderPtr.
