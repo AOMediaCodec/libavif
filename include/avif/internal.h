@@ -774,7 +774,7 @@ typedef struct avifSequenceHeader
 AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
 // ---------------------------------------------------------------------------
-// gain maps
+// Gain maps
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
@@ -785,6 +785,37 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, float * rangeMin, float * rangeMax);
 
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+
+// ---------------------------------------------------------------------------
+// Internal encode
+//
+// These functions/options give extra flexibility to create non standard images for use in testing.
+
+typedef struct avifEncoderInternalOptions
+{
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    // Options related to the 'tmap' (tone mapped image) box.
+    uint8_t tmapVersion;         // Value that should be written for the 'version' field (use default if 0)
+    uint16_t tmapMinimumVersion; // Value that should be written for the 'minimum_version' field (use default if 0)
+    uint16_t tmapWriterVersion;  // Value that should be written for the 'writerVersion' field (use default if 0)
+    avifBool tmapAddExtraBytes;  // Add arbitrary bytes at the end of the box
+#endif
+    char dummy; // Avoid emptry struct error when AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is off
+} avifEncoderInternalOptions;
+
+// Sets extra encoding options.
+void avifEncoderSetInternalOptions(avifEncoder * encoder, const avifEncoderInternalOptions * internalOptions);
+
+// Variant of avifEncoderAddImageGrid() that allows creating images where 'gridCols' and 'gridRows' differ for
+// the base image and the gain map image.
+avifResult avifEncoderAddImageGridInternal(avifEncoder * encoder,
+                                           uint32_t gridCols,
+                                           uint32_t gridRows,
+                                           const avifImage * const * cellImages,
+                                           uint32_t gainMapGridCols,
+                                           uint32_t gainMapGridRows,
+                                           const avifImage * const * gainMapCellImages,
+                                           avifAddImageFlags addImageFlags);
 
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
