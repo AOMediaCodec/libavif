@@ -576,9 +576,9 @@ TEST(GainMapTest, IgnoreGainMap) {
 
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
-  // Verify that the gain map was detected...
-  EXPECT_TRUE(decoder->gainMapPresent);
-  // ... but not decoded because enableDecodingGainMap is false by default.
+  // Verify that the gain map is not detected.
+  EXPECT_FALSE(decoder->gainMapPresent);
+  // And not decoded because enableDecodingGainMap is false by default.
   EXPECT_EQ(decoded->gainMap, nullptr);
 }
 
@@ -624,7 +624,7 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
             image->gainMap->altMatrixCoefficients);
 }
 
-TEST(GainMapTest, DecodeGainMapButIgnoreMetadata) {
+TEST(GainMapTest, DecodeGainMapTrueParseMetadataFalse) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
 
@@ -643,27 +643,11 @@ TEST(GainMapTest, DecodeGainMapButIgnoreMetadata) {
   decoder->enableDecodingGainMap = AVIF_TRUE;
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
-  ASSERT_EQ(result, AVIF_RESULT_OK)
+  // Verify we get an error because the combination of
+  // enableDecodingGainMap=false and enableParsingGainMapMetadata=true
+  // is not allowed.
+  ASSERT_EQ(result, AVIF_RESULT_INVALID_ARGUMENT)
       << avifResultToString(result) << " " << decoder->diag.error;
-
-  // Verify that the gain map was detected...
-  EXPECT_TRUE(decoder->gainMapPresent);
-  ASSERT_NE(decoded->gainMap, nullptr);
-  ASSERT_NE(decoded->gainMap->image, nullptr);
-  EXPECT_GT(testutil::GetPsnr(*image->gainMap->image, *decoded->gainMap->image),
-            40.0);
-
-  // Check that the gain map metadata was not populated.
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
-                              avifGainMapMetadata());
-  EXPECT_EQ(decoded->gainMap->altDepth, 0);
-  EXPECT_EQ(decoded->gainMap->altPlaneCount, 0);
-  EXPECT_EQ(decoded->gainMap->altColorPrimaries,
-            AVIF_COLOR_PRIMARIES_UNSPECIFIED);
-  EXPECT_EQ(decoded->gainMap->altTransferCharacteristics,
-            AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
-  EXPECT_EQ(decoded->gainMap->altMatrixCoefficients,
-            AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED);
 }
 
 TEST(GainMapTest, IgnoreColorAndAlpha) {
@@ -884,9 +868,8 @@ TEST(GainMapTest, DecodeUnsupportedVersion) {
     decoder->enableParsingGainMapMetadata = false;
     ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
               AVIF_RESULT_OK);
-    // Gain map marked as present because the metadata was not parsed, so we
-    // don't know it's not supported.
-    EXPECT_EQ(decoder->gainMapPresent, true);
+    // Gain map not found since enableParsingGainMapMetadata is false.
+    EXPECT_EQ(decoder->gainMapPresent, false);
     ASSERT_EQ(decoded->gainMap, nullptr);
 
     ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
@@ -901,12 +884,10 @@ TEST(GainMapTest, DecodeUnsupportedVersion) {
     ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
     decoder->enableDecodingGainMap = true;
     decoder->enableParsingGainMapMetadata = false;
+    // Invalid enableDecodingGainMap=true and enableParsingGainMapMetadata
+    // combination.
     ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
-              AVIF_RESULT_OK);
-    // Gain map marked as present because the metadata was not parsed, so we
-    // don't know it's not supported.
-    EXPECT_EQ(decoder->gainMapPresent, true);
-    ASSERT_NE(decoded->gainMap, nullptr);
+              AVIF_RESULT_INVALID_ARGUMENT);
 
     ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
     decoder->enableDecodingGainMap = true;

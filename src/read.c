@@ -4534,6 +4534,12 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     if (!decoder->io || !decoder->io->read) {
         return AVIF_RESULT_IO_NOT_SET;
     }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if (decoder->enableDecodingGainMap && !decoder->enableParsingGainMapMetadata) {
+        avifDiagnosticsPrintf(&decoder->diag, "If enableDecodingGainMap is true, enableParsingGainMapMetadata must also be true");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+#endif
 
     // Cleanup anything lingering in the decoder
     avifDecoderCleanup(decoder);
@@ -5406,46 +5412,36 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        avifDecoderItem * toneMappedImageItem;
-        const avifResult findGainMapResult = avifDecoderFindGainMapItem(decoder,
-                                                                        mainItems[AVIF_ITEM_COLOR],
-                                                                        &toneMappedImageItem,
-                                                                        &mainItems[AVIF_ITEM_GAIN_MAP],
-                                                                        &codecType[AVIF_ITEM_GAIN_MAP]);
-        if (!decoder->enableDecodingGainMap) {
-            // When ignoring the gain map, we still report whether one is present or not,
-            // but do not fail if there was any error with the gain map.
-            if (findGainMapResult != AVIF_RESULT_OK) {
-                // Only ignore reproducible errors (caused by the bitstream and not by the environment).
-                AVIF_CHECKERR(findGainMapResult != AVIF_RESULT_OUT_OF_MEMORY, findGainMapResult);
-                // Clear diagnostic message.
-                avifDiagnosticsClearError(data->diag);
-            }
-            decoder->gainMapPresent = (mainItems[AVIF_ITEM_GAIN_MAP] != NULL);
-            // We also ignore the actual item and don't decode it.
-            mainItems[AVIF_ITEM_GAIN_MAP] = NULL;
-        } else {
-            AVIF_CHECKRES(findGainMapResult);
-        }
-        if (toneMappedImageItem != NULL && decoder->enableParsingGainMapMetadata) {
-            // Read the gain map's metadata.
-            avifROData tmapData;
-            AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
-            if (decoder->image->gainMap == NULL) {
-                decoder->image->gainMap = avifGainMapCreate();
-                AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
-            }
-            const avifResult tmapParsingRes =
-                avifParseToneMappedImageBox(&decoder->image->gainMap->metadata, tmapData.data, tmapData.size, data->diag);
-            if (tmapParsingRes == AVIF_RESULT_NOT_IMPLEMENTED) {
-                // Forget about the gain map.
-                toneMappedImageItem = NULL;
-                mainItems[AVIF_ITEM_GAIN_MAP] = NULL;
-                avifGainMapDestroy(decoder->image->gainMap);
-                decoder->image->gainMap = NULL;
-                decoder->gainMapPresent = AVIF_FALSE;
-            } else {
-                AVIF_CHECKRES(tmapParsingRes);
+        if (decoder->enableParsingGainMapMetadata) {
+            avifDecoderItem * toneMappedImageItem;
+            avifDecoderItem * gainMapItem;
+            avifCodecType gainMapCodecType;
+            AVIF_CHECKRES(
+                avifDecoderFindGainMapItem(decoder, mainItems[AVIF_ITEM_COLOR], &toneMappedImageItem, &gainMapItem, &gainMapCodecType));
+            if (toneMappedImageItem != NULL) {
+                // Read the gain map's metadata.
+                avifROData tmapData;
+                AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
+                if (decoder->image->gainMap == NULL) {
+                    decoder->image->gainMap = avifGainMapCreate();
+                    AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
+                }
+                const avifResult tmapParsingRes =
+                    avifParseToneMappedImageBox(&decoder->image->gainMap->metadata, tmapData.data, tmapData.size, data->diag);
+                if (tmapParsingRes != AVIF_RESULT_OK) {
+                    avifGainMapDestroy(decoder->image->gainMap);
+                    decoder->image->gainMap = NULL;
+                }
+                if (tmapParsingRes == AVIF_RESULT_NOT_IMPLEMENTED) {
+                    // Unsupported gain map version. Simply ignore the gain map.
+                } else {
+                    AVIF_CHECKRES(tmapParsingRes);
+                    decoder->gainMapPresent = AVIF_TRUE;
+                    if (decoder->enableDecodingGainMap) {
+                        mainItems[AVIF_ITEM_GAIN_MAP] = gainMapItem;
+                        codecType[AVIF_ITEM_GAIN_MAP] = gainMapCodecType;
+                    }
+                }
             }
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP

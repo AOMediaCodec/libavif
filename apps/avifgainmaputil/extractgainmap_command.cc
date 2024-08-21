@@ -21,6 +21,7 @@ avifResult ExtractGainMapCommand::Run() {
   if (decoder == NULL) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  decoder->enableParsingGainMapMetadata = true;
   decoder->enableDecodingGainMap = true;
   decoder->ignoreColorAndAlpha = true;
 
