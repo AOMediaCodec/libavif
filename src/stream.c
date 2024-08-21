@@ -245,7 +245,7 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
         // Section 4.2.2 of ISO/IEC 14496-12.
         //   if size is 0, then this box shall be in a top-level box (i.e. not contained in another
         //   box), and be the last box in its 'file', and its payload extends to the end of that
-        //   enclosing 'file'. This is normally only used for a MediaDataBox.
+        //   enclosing 'file'. This is normally only used for a MediaDataBox ('mdat').
         if (!topLevel) {
             avifDiagnosticsPrintf(stream->diag, "%s: Non-top-level box with size 0", stream->diagContext);
             return AVIF_FALSE;
