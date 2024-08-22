@@ -4972,7 +4972,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
 
 // Finds a 'tmap' (tone mapped image item) box associated with the given 'colorItem',
 // then finds the associated gain map image.
-// If found, fills 'toneMappedImageItem', 'gainMapItem' and  'gainMapCodecType', and
+// If found, fills 'toneMappedImageItem', 'gainMapItem' and 'gainMapCodecType', and
 // allocates and fills metadata in decoder->image->gainMap.
 // Otherwise, sets 'toneMappedImageItem' and 'gainMapItem' to NULL.
 // Returns AVIF_RESULT_OK if no errors were encountered (whether or not a gain map was found).

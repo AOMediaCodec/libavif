@@ -227,7 +227,6 @@ inline auto ArbitraryBaseAvifDecoder() {
 // break most tests' assumptions).
 inline auto ArbitraryAvifDecoderWithGainMapOptions() {
   return fuzztest::Map(AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
-                       /*gain_map_decode_mode=*/
                        fuzztest::ElementOf({GainMapDecodeMode::kDontDecode,
                                             GainMapDecodeMode::kMetadataOnly,
                                             GainMapDecodeMode::kDecode}));
