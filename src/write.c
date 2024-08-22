@@ -775,10 +775,10 @@ static avifResult avifRWStreamWriteHandlerBox(avifRWStream * s, const char handl
 {
     avifBoxMarker hdlr;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "hdlr", AVIF_BOX_SIZE_TBD, 0, 0, &hdlr));
-    AVIF_CHECKRES(avifRWStreamWriteU32(s, 0));                 // unsigned int(32) pre_defined = 0;
+    AVIF_CHECKRES(avifRWStreamWriteU32(s, 0));                // unsigned int(32) pre_defined = 0;
     AVIF_CHECKRES(avifRWStreamWriteChars(s, handlerType, 4)); // unsigned int(32) handler_type;
-    AVIF_CHECKRES(avifRWStreamWriteZeros(s, 12));              // const unsigned int(32)[3] reserved = 0;
-    AVIF_CHECKRES(avifRWStreamWriteChars(s, "", 1));           // string name; (writing null terminator)
+    AVIF_CHECKRES(avifRWStreamWriteZeros(s, 12));             // const unsigned int(32)[3] reserved = 0;
+    AVIF_CHECKRES(avifRWStreamWriteChars(s, "", 1));          // string name; (writing null terminator)
     avifRWStreamFinishBox(s, hdlr);
     return AVIF_RESULT_OK;
 }
