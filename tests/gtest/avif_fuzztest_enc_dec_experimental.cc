@@ -66,7 +66,7 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
   if (decoder->enableParsingGainMapMetadata) {
     EXPECT_EQ(decoder->gainMapPresent, image->gainMap != nullptr);
   } else {
-    EXPECT_EQ(decoder->gainMapPresent, false);
+    EXPECT_FALSE(decoder->gainMapPresent);
   }
   ASSERT_EQ(decoded_image->gainMap != nullptr, decoder->gainMapPresent);
   if (decoder->gainMapPresent && decoder->enableDecodingGainMap) {
