@@ -8,8 +8,8 @@
 <BrandEntry AlternateBrand="miaf"/>
 <BrandEntry AlternateBrand="MA1B"/>
 </FileTypeBox>
-<MetaBox Size="379" Type="meta" Version="0" Flags="0" Specification="p12" Container="file moov trak moof traf udta" >
-<HandlerBox Size="40" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="libavif" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">
+<MetaBox Size="372" Type="meta" Version="0" Flags="0" Specification="p12" Container="file moov trak moof traf udta" >
+<HandlerBox Size="33" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">
 </HandlerBox>
 <PrimaryItemBox Size="14" Type="pitm" Version="0" Flags="0" Specification="p12" Container="meta" item_ID="1">
 </PrimaryItemBox>
