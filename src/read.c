@@ -5027,7 +5027,8 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
 
 // Finds a 'tmap' (tone mapped image item) box associated with the given 'colorItem',
 // then finds the associated gain map image.
-// If found, fills 'toneMappedImageItem', 'gainMapItem' and  'gainMapCodecType'.
+// If found, fills 'toneMappedImageItem', 'gainMapItem' and 'gainMapCodecType', and
+// allocates and fills metadata in decoder->image->gainMap.
 // Otherwise, sets 'toneMappedImageItem' and 'gainMapItem' to NULL.
 // Returns AVIF_RESULT_OK if no errors were encountered (whether or not a gain map was found).
 // Assumes that there is a single tmap item, and not, e.g., a grid of tmap items.
@@ -5064,51 +5065,45 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
                                               &data->tileInfos[AVIF_ITEM_GAIN_MAP].grid,
                                               gainMapCodecType));
 
-    if (decoder->enableDecodingGainMap || decoder->enableParsingGainMapMetadata) {
-        decoder->image->gainMap = avifGainMapCreate();
-        AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
+    decoder->image->gainMap = avifGainMapCreate();
+    AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
+
+    avifGainMap * const gainMap = decoder->image->gainMap;
+    AVIF_CHECKRES(avifReadColorProperties(decoder->io,
+                                          &toneMappedImageItemTmp->properties,
+                                          &gainMap->altICC,
+                                          &gainMap->altColorPrimaries,
+                                          &gainMap->altTransferCharacteristics,
+                                          &gainMap->altMatrixCoefficients,
+                                          &gainMap->altYUVRange,
+                                          /*cicpSet=*/NULL));
+
+    const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clli");
+    if (clliProp) {
+        gainMap->altCLLI = clliProp->u.clli;
     }
 
-    if (decoder->enableParsingGainMapMetadata) {
-        avifGainMap * const gainMap = decoder->image->gainMap;
+    const avifProperty * pixiProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pixi");
+    if (pixiProp) {
+        gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
+        gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
+    }
 
-        AVIF_CHECKRES(avifReadColorProperties(decoder->io,
-                                              &toneMappedImageItemTmp->properties,
-                                              &gainMap->altICC,
-                                              &gainMap->altColorPrimaries,
-                                              &gainMap->altTransferCharacteristics,
-                                              &gainMap->altMatrixCoefficients,
-                                              &gainMap->altYUVRange,
-                                              /*cicpSet=*/NULL));
-
-        const avifProperty * clliProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clli");
-        if (clliProp) {
-            gainMap->altCLLI = clliProp->u.clli;
-        }
-
-        const avifProperty * pixiProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pixi");
-        if (pixiProp) {
-            gainMap->altPlaneCount = pixiProp->u.pixi.planeCount;
-            gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
-        }
-
-        if (avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pasp") ||
-            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clap") ||
-            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "irot") ||
-            avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "imir")) {
-            // libavif requires the bitstream contain the same pasp, clap, irot, imir
-            // properties for both the base and gain map image items used as input to
-            // the tone-mapped derived image item. libavif also requires the tone-mapped
-            // derived image item itself not be associated with these properties. This is
-            // enforced at encoding. Other patterns are rejected at decoding.
-            avifDiagnosticsPrintf(data->diag,
-                                  "Box[tmap] 'pasp', 'clap', 'irot' and 'imir' properties must be associated with base and gain map items instead of 'tmap'");
-            return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
-        }
+    if (avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pasp") ||
+        avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clap") ||
+        avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "irot") ||
+        avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "imir")) {
+        // libavif requires the bitstream contain the same pasp, clap, irot, imir
+        // properties for both the base and gain map image items used as input to
+        // the tone-mapped derived image item. libavif also requires the tone-mapped
+        // derived image item itself not be associated with these properties. This is
+        // enforced at encoding. Other patterns are rejected at decoding.
+        avifDiagnosticsPrintf(data->diag,
+                              "Box[tmap] 'pasp', 'clap', 'irot' and 'imir' properties must be associated with base and gain map items instead of 'tmap'");
+        return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
     }
 
     if (decoder->enableDecodingGainMap) {
-        avifGainMap * const gainMap = decoder->image->gainMap;
         gainMap->image = avifImageCreateEmpty();
         AVIF_CHECKERR(gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
 
@@ -5487,18 +5482,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 // Read the gain map's metadata.
                 avifROData tmapData;
                 AVIF_CHECKRES(avifDecoderItemRead(toneMappedImageItem, decoder->io, &tmapData, 0, 0, data->diag));
-                if (decoder->image->gainMap == NULL) {
-                    decoder->image->gainMap = avifGainMapCreate();
-                    AVIF_CHECKERR(decoder->image->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
-                }
+                AVIF_ASSERT_OR_RETURN(decoder->image->gainMap != NULL);
                 const avifResult tmapParsingRes =
                     avifParseToneMappedImageBox(&decoder->image->gainMap->metadata, tmapData.data, tmapData.size, data->diag);
-                if (tmapParsingRes != AVIF_RESULT_OK) {
-                    avifGainMapDestroy(decoder->image->gainMap);
-                    decoder->image->gainMap = NULL;
-                }
                 if (tmapParsingRes == AVIF_RESULT_NOT_IMPLEMENTED) {
                     // Unsupported gain map version. Simply ignore the gain map.
+                    avifGainMapDestroy(decoder->image->gainMap);
+                    decoder->image->gainMap = NULL;
                 } else {
                     AVIF_CHECKRES(tmapParsingRes);
                     decoder->gainMapPresent = AVIF_TRUE;

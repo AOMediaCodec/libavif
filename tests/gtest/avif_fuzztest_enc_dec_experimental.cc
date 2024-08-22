@@ -63,14 +63,12 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
   EXPECT_EQ(decoded_image->depth, image->depth);
   EXPECT_EQ(decoded_image->yuvFormat, image->yuvFormat);
 
-  EXPECT_EQ(decoder->gainMapPresent,
-            image->gainMap != nullptr && image->gainMap->image != nullptr);
-  ASSERT_EQ(decoded_image->gainMap != nullptr,
-            decoder->gainMapPresent && (decoder->enableDecodingGainMap ||
-                                        decoder->enableParsingGainMapMetadata));
-  ASSERT_EQ(decoded_image->gainMap != nullptr &&
-                decoded_image->gainMap->image != nullptr,
-            decoder->gainMapPresent && decoder->enableDecodingGainMap);
+  if (decoder->enableParsingGainMapMetadata) {
+    EXPECT_EQ(decoder->gainMapPresent, image->gainMap != nullptr);
+  } else {
+    EXPECT_FALSE(decoder->gainMapPresent);
+  }
+  ASSERT_EQ(decoded_image->gainMap != nullptr, decoder->gainMapPresent);
   if (decoder->gainMapPresent && decoder->enableDecodingGainMap) {
     ASSERT_NE(decoded_image->gainMap, nullptr);
     ASSERT_NE(decoded_image->gainMap->image, nullptr);
