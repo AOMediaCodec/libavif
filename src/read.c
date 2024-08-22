@@ -4153,7 +4153,8 @@ static avifResult avifParse(avifDecoder * decoder)
         }
 #endif
 
-        if (!isFtyp && (isNonSkippableVariableLengthBox || !memcmp(header.type, "free", 4) || !memcmp(header.type, "mdat", 4))) {
+        if (!isFtyp && (isNonSkippableVariableLengthBox || !memcmp(header.type, "free", 4) || !memcmp(header.type, "skip", 4) ||
+                        !memcmp(header.type, "mdat", 4))) {
             // Section 6.3.4 of ISO/IEC 14496-12:
             //   The FileTypeBox shall occur before any variable-length box (e.g. movie, free space, media data).
             AVIF_CHECKERR(ftypSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
