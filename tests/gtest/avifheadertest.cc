@@ -20,8 +20,8 @@ TEST(BasicTest, EncodeDecode) {
 
   // Make sure the HandlerBox is as small as possible, meaning its name field is
   // empty.
-  const uint8_t* kHdlr = reinterpret_cast<const uint8_t*>("hdlr");
-  uint8_t* hdlr_position =
+  const uint8_t kHdlr[] = {'h', 'd', 'l', 'r'};
+  const uint8_t* hdlr_position =
       std::search(avif.data, avif.data + avif.size, kHdlr, kHdlr + 4);
   ASSERT_NE(hdlr_position, avif.data + avif.size);
   // The previous four bytes represent the size of the box as a big endian
