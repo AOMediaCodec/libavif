@@ -163,6 +163,9 @@ avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename,
   }
   if (ignore_profile) {
     avifRWDataFree(&decoder->image->icc);
+    if (decoder->image->gainMap) {
+      avifRWDataFree(&decoder->image->gainMap->altICC);
+    }
   }
 
   return AVIF_RESULT_OK;
