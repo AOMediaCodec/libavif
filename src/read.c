@@ -3585,26 +3585,51 @@ static avifResult avifParseMinimizedImageBox(avifMeta * meta,
 
     meta->fromMiniBox = AVIF_TRUE;
 
-    uint32_t version;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &version, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) version = 0;
+    // Read and parse the first two bytes, which contain no conditional constructs.
+    uint8_t data[2];
+    AVIF_CHECKERR(avifROStreamRead(&s, data, 2), AVIF_RESULT_BMFF_PARSE_FAILED);
+
+    // bit(2) version = 0;
+    //
+    // // flags
+    // bit(1) explicit_codec_types_flag;
+    // bit(1) float_flag;
+    // bit(1) full_range_flag;
+    // bit(1) alpha_flag;
+    // bit(1) explicit_cicp_flag;
+    // bit(1) hdr_flag;
+    int byte = data[0];
+    const avifBool hasHdr = byte & 0x1;
+    byte >>= 1;
+    const avifBool hasExplicitCicp = byte & 0x1;
+    byte >>= 1;
+    const avifBool hasAlpha = byte & 0x1;
+    byte >>= 1;
+    const avifBool fullRange = byte & 0x1;
+    byte >>= 1;
+    const avifBool floatFlag = byte & 0x1;
+    byte >>= 1;
+    const avifBool hasExplicitCodecTypes = byte & 0x1;
+    byte >>= 1;
+    const uint32_t version = byte;
     AVIF_CHECKERR(version == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
 
-    // flags
-    uint32_t hasExplicitCodecTypes, floatFlag, fullRange, hasAlpha, hasExplicitCicp, hasHdr, hasIcc, hasExif, hasXmp;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCodecTypes, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) explicit_codec_types_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &floatFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED);             // bit(1) float_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &fullRange, 1), AVIF_RESULT_BMFF_PARSE_FAILED);             // bit(1) full_range_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasAlpha, 1), AVIF_RESULT_BMFF_PARSE_FAILED);              // bit(1) alpha_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExplicitCicp, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) explicit_cicp_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasHdr, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) hdr_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasIcc, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) icc_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasExif, 1), AVIF_RESULT_BMFF_PARSE_FAILED);         // bit(1) exif_flag;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &hasXmp, 1), AVIF_RESULT_BMFF_PARSE_FAILED);          // bit(1) xmp_flag;
-
-    uint32_t chromaSubsampling, orientation;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &chromaSubsampling, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) chroma_subsampling;
-    AVIF_CHECKERR(avifROStreamReadBits(&s, &orientation, 3), AVIF_RESULT_BMFF_PARSE_FAILED);       // bit(3) orientation_minus1;
-    ++orientation;
+    // bit(1) icc_flag;
+    // bit(1) exif_flag;
+    // bit(1) xmp_flag;
+    //
+    // bit(2) chroma_subsampling;
+    // bit(3) orientation_minus1;
+    byte = data[1];
+    const uint32_t orientation = (byte & 0x7) + 1;
+    byte >>= 3;
+    const uint32_t chromaSubsampling = byte & 0x3;
+    byte >>= 2;
+    const avifBool hasXmp = byte & 0x1;
+    byte >>= 1;
+    const avifBool hasExif = byte & 0x1;
+    byte >>= 1;
+    const avifBool hasIcc = byte;
 
     // Spatial extents
     uint32_t smallDimensionsFlag, width, height;
