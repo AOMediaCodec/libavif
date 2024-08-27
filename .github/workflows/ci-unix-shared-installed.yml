@@ -14,15 +14,19 @@ concurrency:
 
 jobs:
   build-shared-installed:
-    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-latest]
+        oldest-cmake: [false, true]
         include:
-          - runs-on: ubuntu-24.04
+          - os: ubuntu-24.04
             compiler: gcc
             gcc: 14
+        exclude:
+          - os: macos-latest
+            oldest-cmake: true
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -34,8 +38,7 @@ jobs:
         gcc-version: ${{ matrix.gcc }}
         gtest: 'SYSTEM'
         libyuv: 'SYSTEM'
-        # Need cmake 3.21 to force C23 for [[nodiscard]].
-        recent-cmake: 'true'
+        oldest-cmake: ${{ matrix.oldest-cmake }}
     - uses: ./.github/actions/setup-macos
       if: runner.os == 'macOS'
       with:
@@ -84,6 +87,8 @@ jobs:
 
         cmake . -DCMAKE_PREFIX_PATH=../install
     - name: Prepare libavif with [[nodiscard]] (cmake)
+      # CMake 3.21 is needed to force C23 for [[nodiscard]].
+      if: runner.oldest-cmake == 'false'
       run: >
         cmake -G Ninja -S . -B build_nodiscard
         -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
@@ -95,5 +100,6 @@ jobs:
         -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
         -DAVIF_BUILD_GDK_PIXBUF=ON  ${{ env.CMAKE_AVIF_FLAGS }}
     - name: Build libavif with [[nodiscard]] (ninja)
+      if: runner.oldest-cmake == 'false'
       working-directory: ./build_nodiscard
       run: ninja

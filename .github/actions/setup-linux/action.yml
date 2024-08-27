@@ -25,7 +25,7 @@ inputs:
   libyuv:
     description: 'Can take the values: OFF, LOCAL, SYSTEM'
     default: 'OFF'
-  recent-cmake:
+  oldest-cmake:
     description: 'Can take the values: true, false'
     default: 'false'
 outputs:
@@ -80,7 +80,7 @@ runs:
         codec-aom: ${{ inputs.codec-aom }}
         codec-dav1d: ${{ inputs.codec-dav1d }}
         codec-rav1e: ${{ inputs.codec-rav1e }}
-        recent-cmake: ${{ inputs.recent-cmake }}
+        oldest-cmake: ${{ inputs.oldest-cmake }}
     - uses: ./.github/actions/cache
       id: cache
       with:

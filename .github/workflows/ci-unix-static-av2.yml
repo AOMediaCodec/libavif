@@ -38,7 +38,6 @@ jobs:
         extra-cache-key: ${{ matrix.also-enable-av1-codecs }}
         gcc-version: ${{ matrix.gcc }}
         libyuv: 'LOCAL'
-        recent-cmake: 'true'
 
     - name: Prepare libavif (cmake)
       run: >

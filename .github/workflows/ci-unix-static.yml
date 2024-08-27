@@ -40,7 +40,6 @@ jobs:
         gcc-version: ${{ matrix.gcc }}
         libxml2: 'LOCAL'
         libyuv: 'LOCAL'
-        recent-cmake: 'true'
     - uses: ./.github/actions/setup-macos
       if: runner.os == 'macOS'
       with:
