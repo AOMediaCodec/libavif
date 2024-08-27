@@ -4,7 +4,7 @@
 # see https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
 # Runs on ubuntu only. libavif is built with clang.
 
-name: CI Unix Shared Local Fuzztest
+name: CI Fuzztest
 on: [push, pull_request]
 
 permissions:
@@ -22,11 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        libyuv: [OFF]
-        include:
-          - runs-on: ubuntu-24.04
-            compiler: gcc
-            gcc: 14
+        libyuv: [OFF, LOCAL]
 
     name: build-shared-local-fuzztest
 
@@ -37,9 +33,8 @@ jobs:
       with:
         codec-aom: 'LOCAL'
         codec-dav1d: 'LOCAL'
-        gcc-version: ${{ matrix.gcc }}
         libxml2: 'LOCAL'
-        libyuv: 'LOCAL'
+        libyuv: ${{ matrix.libyuv }}
         recent-cmake: 'true'
     - name: Build fuzztest
       if: steps.setup.outputs.ext-cache-hit != 'true'

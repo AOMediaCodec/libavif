@@ -8,10 +8,10 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone --single-branch https://github.com/kmurray/libargparse.git
+git clone https://github.com/maryla-uc/libargparse.git
 
 cd libargparse
-git checkout ee74d1b53bd680748af14e737378de57e2a0a954
+git checkout 81998ffafb9c2ac8cf488d31e536a2e6fd6b3fdf
 
 mkdir build
 cd build
