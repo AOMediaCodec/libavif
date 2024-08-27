@@ -9,6 +9,9 @@ enable_testing()
 # C tests and tools
 
 set(COVERAGE_TARGETS)
+
+configure_file(${AVIF_SOURCE_DIR}/tests/CTestCustom.cmake ${CMAKE_BINARY_DIR})
+
 # Macro to register a test for coverage. The first argument is the target name.
 # Other arguments, like data path, can be added.
 macro(register_test_for_coverage TEST_NAME)
@@ -205,6 +208,9 @@ if(AVIF_ENABLE_FUZZTEST)
         if(CMAKE_VERSION VERSION_LESS 3.25.0)
             message(FATAL_ERROR "CMake must be at least 3.25 to pass the SYSTEM argument to add_subdirectory(), bailing out")
         endif()
+        # Add the fuzztest project. Note this may add some tests which may not be built because of EXCLUDE_FROM_ALL and will
+        # therefore fail. They can be ignored by adding them to CTestCustom.cmake
+        # See https://gitlab.kitware.com/cmake/cmake/-/issues/20212
         add_subdirectory(${AVIF_SOURCE_DIR}/ext/fuzztest ${AVIF_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(
