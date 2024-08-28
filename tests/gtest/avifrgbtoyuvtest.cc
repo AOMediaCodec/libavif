@@ -358,22 +358,22 @@ TEST(RGBToYUVTest, AllMatrixCoefficients) {
         for (avifRange yuv_range : {AVIF_RANGE_LIMITED, AVIF_RANGE_FULL}) {
           for (decltype(AVIF_MATRIX_COEFFICIENTS_IDENTITY) matrix_coefficients :
                {
-                 AVIF_MATRIX_COEFFICIENTS_BT709,
-                     AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED,
-                     AVIF_MATRIX_COEFFICIENTS_FCC,
-                     AVIF_MATRIX_COEFFICIENTS_BT470BG,
-                     AVIF_MATRIX_COEFFICIENTS_BT601,
-                     AVIF_MATRIX_COEFFICIENTS_SMPTE240,
-                     AVIF_MATRIX_COEFFICIENTS_YCGCO,
-                     AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
-                     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL,
-                     AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
-                     AVIF_MATRIX_COEFFICIENTS_YCGCO_RO,
-                 // These are unsupported. See avifPrepareReformatState().
-                 // AVIF_MATRIX_COEFFICIENTS_BT2020_CL
-                 // AVIF_MATRIX_COEFFICIENTS_SMPTE2085
-                 // AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL
-                 // AVIF_MATRIX_COEFFICIENTS_ICTCP
+                   AVIF_MATRIX_COEFFICIENTS_BT709,
+                   AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED,
+                   AVIF_MATRIX_COEFFICIENTS_FCC,
+                   AVIF_MATRIX_COEFFICIENTS_BT470BG,
+                   AVIF_MATRIX_COEFFICIENTS_BT601,
+                   AVIF_MATRIX_COEFFICIENTS_SMPTE240,
+                   AVIF_MATRIX_COEFFICIENTS_YCGCO,
+                   AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
+                   AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL,
+                   AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
+                   AVIF_MATRIX_COEFFICIENTS_YCGCO_RO,
+                   // These are unsupported. See avifPrepareReformatState().
+                   // AVIF_MATRIX_COEFFICIENTS_BT2020_CL
+                   // AVIF_MATRIX_COEFFICIENTS_SMPTE2085
+                   // AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL
+                   // AVIF_MATRIX_COEFFICIENTS_ICTCP
                }) {
             if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO &&
                 yuv_range == AVIF_RANGE_LIMITED) {
