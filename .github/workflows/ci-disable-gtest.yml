@@ -43,7 +43,6 @@ jobs:
         codec-rav1e: 'LOCAL'
         gcc-version: ${{ matrix.gcc }}
         libyuv: 'LOCAL'
-        recent-cmake: 'true'
 
     - name: Prepare libavif (cmake)
       run: >

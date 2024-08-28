@@ -38,7 +38,6 @@ jobs:
         gcc-version: ${{ matrix.gcc }}
         libxml2: 'LOCAL'
         libyuv: 'LOCAL'
-        recent-cmake: 'true'
     - name: Prepare libavif (cmake)
       run: >
         cmake .. -G Ninja -S . -B build

@@ -35,7 +35,6 @@ jobs:
         codec-dav1d: 'LOCAL'
         libxml2: 'LOCAL'
         libyuv: ${{ matrix.libyuv }}
-        recent-cmake: 'true'
     - name: Build fuzztest
       if: steps.setup.outputs.ext-cache-hit != 'true'
       working-directory: ./ext

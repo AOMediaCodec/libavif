@@ -10,8 +10,8 @@ inputs:
   codec-rav1e:
     description: 'Can take the values: OFF, LOCAL, SYSTEM'
     default: 'OFF'
-  recent-cmake:
-    description: 'Can take the values: true, false. Only useful on Linux'
+  oldest-cmake:
+    description: 'Can take the values: true, false. Only useful on Linux to force using the minimum required CMake'
     default: 'false'
 runs:
   using: "composite"
@@ -20,19 +20,12 @@ runs:
       uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
       with:
         python-version: '3.x'
-    - name: Set up CMake < 3.21
-      if: ${{ runner.os == 'Linux' && inputs.recent-cmake == 'false' }}
+    - name: Set up CMake 3.13
+      if: ${{ runner.os == 'Linux' && inputs.oldest-cmake == 'true' }}
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
         # Use the minimum required version of cmake.
         cmake-version: '3.13.x'
-    - name: Set up CMake >= 3.25
-      if: ${{ runner.os == 'Linux' && inputs.recent-cmake == 'true' }}
-      uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
-      with:
-        # Need cmake 3.21 to set CMAKE_C_STANDARD to 23 for [[nodiscard]].
-        # Need cmake 3.25 for fuzztest
-        cmake-version: '3.25.x'
     - name: Print CMake version
       run: cmake --version
       shell: bash
