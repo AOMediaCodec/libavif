@@ -540,7 +540,7 @@ by running `./tests/avifgainmaptest --gtest_filter=GainMapTest.CreateGainMapImag
 
 Contains a gain map with the `version` field set to 99 in the tmap box.
 Fields `minimum_version` and `writer_version` are 0.
-Decoders should ignore the gain map since the version is unsupported.
+Decoders should ignore the gain map since the `version` is unsupported.
 
 ### File [unsupported_gainmap_minimum_version.avif](unsupported_gainmap_minimum_version.avif)
 
@@ -553,7 +553,7 @@ by running `./tests/avifgainmaptest --gtest_filter=GainMapTest.CreateGainMapImag
 
 Contains a gain map with the `minimum_version` and `writer_version` fields set to 99 in the tmap box.
 Field `version` is 0.
-Decoders should ignore the gain map since the minimum_version is unsupported.
+Decoders should ignore the gain map since the `minimum_version` is unsupported.
 
 ### File [unsupported_gainmap_writer_version_with_extra_bytes.avif](unsupported_gainmap_writer_version_with_extra_bytes.avif)
 
