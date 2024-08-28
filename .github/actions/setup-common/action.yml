@@ -11,7 +11,7 @@ inputs:
     description: 'Can take the values: OFF, LOCAL, SYSTEM'
     default: 'OFF'
   oldest-cmake:
-    description: 'Can take the values: true, false. Only useful on Linux'
+    description: 'Can take the values: true, false. Only useful on Linux to force using the minimum required CMake'
     default: 'false'
 runs:
   using: "composite"

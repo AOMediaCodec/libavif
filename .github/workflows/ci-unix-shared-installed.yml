@@ -16,14 +16,19 @@ jobs:
   build-shared-installed:
     strategy:
       fail-fast: false
+      # Generate the configurations:
+      # Ubuntu with gcc 14 with oldest-cmake set to true or false
+      # OSX with default gcc and CMake (oldest-cmake is unused on OSX)
       matrix:
         os: [ubuntu-24.04, macos-latest]
         oldest-cmake: [false, true]
         include:
+          # Add a gcc version on Ubuntu only
           - os: ubuntu-24.04
             compiler: gcc
             gcc: 14
         exclude:
+          # Do not use the oldest CMake on OSX
           - os: macos-latest
             oldest-cmake: true
     runs-on: ${{ matrix.os }}
