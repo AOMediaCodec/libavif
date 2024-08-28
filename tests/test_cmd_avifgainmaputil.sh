@@ -34,14 +34,11 @@ INPUT_AVIF_GAINMAP_SDR="${TESTDATA_DIR}/seine_sdr_gainmap_srgb.avif"
 INPUT_AVIF_GAINMAP_HDR="${TESTDATA_DIR}/seine_hdr_gainmap_srgb.avif"
 INPUT_AVIF_GAINMAP_HDR2020="${TESTDATA_DIR}/seine_hdr_rec2020.avif"
 INPUT_JPEG_AVIF_GAINMAP_SDR="${TESTDATA_DIR}/seine_sdr_gainmap_srgb.jpg"
-AVIF_GAINMAP_SDR_WITH_ICC="${TESTDATA_DIR}/seine_sdr_gainmap_srgb_icc.jpg" # generated below
+AVIF_GAINMAP_SDR_WITH_ICC="seine_sdr_gainmap_srgb_icc.jpg" # generated below
 # Output file names.
 AVIF_OUTPUT="avif_test_cmd_avifgainmaputil_output.avif"
 JPEG_OUTPUT="avif_test_cmd_avifgainmaputil_output.jpg"
 PNG_OUTPUT="avif_test_cmd_avifgainmaputil_output.png"
-
-# generate another input file used in tests below
-"${AVIFENC}" "${INPUT_JPEG_AVIF_GAINMAP_SDR}" "${AVIF_GAINMAP_SDR_WITH_ICC}"  --qcolor 90 --qgain-map 90
 
 # Cleanup
 cleanup() {
@@ -52,6 +49,9 @@ cleanup() {
 trap cleanup EXIT
 
 pushd ${TMP_DIR}
+  # generate another input file used in tests below
+  "${AVIFENC}" "${INPUT_JPEG_AVIF_GAINMAP_SDR}" "${AVIF_GAINMAP_SDR_WITH_ICC}" --qcolor 90 --qgain-map 90
+
   "${AVIFGAINMAPUTIL}" help
 
   "${AVIFGAINMAPUTIL}" printmetadata "${INPUT_AVIF_GAINMAP_SDR}"
