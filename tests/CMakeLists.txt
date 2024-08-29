@@ -186,9 +186,9 @@ if(AVIF_ENABLE_FUZZTEST)
     # Adds a fuzztest from file TEST_NAME.cc located in the gtest folder. Extra arguments
     # are considered as extra source files.
     macro(add_avif_fuzztest TEST_NAME)
-        add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc gtest/avif_fuzztest_helpers.cc ${ARGN})
+        add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc ${ARGN})
         # FuzzTest bundles GoogleTest so no need to link to gtest librairies.
-        target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal avif_enable_warnings)
+        target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal avif_enable_warnings avif_fuzztest_helpers)
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
         set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIRS=${CMAKE_CURRENT_SOURCE_DIR}/data/")
@@ -219,6 +219,11 @@ if(AVIF_ENABLE_FUZZTEST)
         )
     endif()
     fuzztest_setup_fuzzing_flags()
+
+    # Create a library with avif_fuzztest_helpers.cc to compile it only once.
+    add_library(avif_fuzztest_helpers OBJECT gtest/avif_fuzztest_helpers.cc)
+    target_link_libraries(avif_fuzztest_helpers PUBLIC aviftest_helpers_internal)
+    link_fuzztest(avif_fuzztest_helpers)
 
     add_avif_fuzztest(avif_fuzztest_dec)
     add_avif_fuzztest(avif_fuzztest_dec_incr gtest/avifincrtest_helpers.cc)
