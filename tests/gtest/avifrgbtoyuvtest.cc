@@ -358,26 +358,46 @@ TEST(RGBToYUVTest, AllMatrixCoefficients) {
         for (avifRange yuv_range : {AVIF_RANGE_LIMITED, AVIF_RANGE_FULL}) {
           for (decltype(AVIF_MATRIX_COEFFICIENTS_IDENTITY) matrix_coefficients :
                {
-                   AVIF_MATRIX_COEFFICIENTS_BT709,
-                   AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED,
-                   AVIF_MATRIX_COEFFICIENTS_FCC,
-                   AVIF_MATRIX_COEFFICIENTS_BT470BG,
-                   AVIF_MATRIX_COEFFICIENTS_BT601,
-                   AVIF_MATRIX_COEFFICIENTS_SMPTE240,
-                   AVIF_MATRIX_COEFFICIENTS_YCGCO,
-                   AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
-                   AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL
-                   // These are unsupported. See avifPrepareReformatState().
-                   // AVIF_MATRIX_COEFFICIENTS_BT2020_CL
-                   // AVIF_MATRIX_COEFFICIENTS_SMPTE2085
-                   // AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL
-                   // AVIF_MATRIX_COEFFICIENTS_ICTCP
+                 AVIF_MATRIX_COEFFICIENTS_BT709,
+                     AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED,
+                     AVIF_MATRIX_COEFFICIENTS_FCC,
+                     AVIF_MATRIX_COEFFICIENTS_BT470BG,
+                     AVIF_MATRIX_COEFFICIENTS_BT601,
+                     AVIF_MATRIX_COEFFICIENTS_SMPTE240,
+                     AVIF_MATRIX_COEFFICIENTS_YCGCO,
+                     AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
+                     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+                     ,
+                     AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
+                     AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
+#endif
+                 // These are unsupported. See avifPrepareReformatState().
+                 // AVIF_MATRIX_COEFFICIENTS_BT2020_CL
+                 // AVIF_MATRIX_COEFFICIENTS_SMPTE2085
+                 // AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL
+                 // AVIF_MATRIX_COEFFICIENTS_ICTCP
                }) {
             if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO &&
                 yuv_range == AVIF_RANGE_LIMITED) {
               // See avifPrepareReformatState().
               continue;
             }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+            if ((matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                 yuv_depth - 2 != rgb_depth) ||
+                (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO &&
+                 yuv_depth - 1 != rgb_depth)) {
+              // See avifPrepareReformatState().
+              continue;
+            }
+            if ((matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                 matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) &&
+                yuv_range != AVIF_RANGE_FULL) {
+              // YCgCo-R is for lossless.
+              continue;
+            }
+#endif
             for (avifChromaDownsampling chroma_downsampling :
                  {AVIF_CHROMA_DOWNSAMPLING_FASTEST,
                   AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY}) {
@@ -458,6 +478,10 @@ constexpr avifMatrixCoefficients kMatrixCoefficientsBT709 =
     AVIF_MATRIX_COEFFICIENTS_BT709;
 constexpr avifMatrixCoefficients kMatrixCoefficientsIdentity =
     AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+constexpr avifMatrixCoefficients kMatrixCoefficientsYCgCoRe =
+    AVIF_MATRIX_COEFFICIENTS_YCGCO_RE;
+#endif
 
 // This is the default avifenc setup when encoding from 8b PNG files to AVIF.
 INSTANTIATE_TEST_SUITE_P(
@@ -591,6 +615,22 @@ INSTANTIATE_TEST_SUITE_P(MonochromeLossless16b, RGBToYUVTest,
                                  /*rgb_step=*/Values(401),
                                  /*max_abs_average_diff=*/Values(0.),
                                  /*min_psnr=*/Values(99.)));
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+// Tests YCGCO_RE is lossless.
+INSTANTIATE_TEST_SUITE_P(YCgCo_Re8b, RGBToYUVTest,
+                         Combine(/*rgb_depth=*/Values(8),
+                                 /*yuv_depth=*/Values(10),
+                                 Values(AVIF_RGB_FORMAT_RGBA),
+                                 Values(AVIF_PIXEL_FORMAT_YUV444),
+                                 Values(AVIF_RANGE_FULL),
+                                 Values(kMatrixCoefficientsYCgCoRe),
+                                 Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
+                                 /*add_noise=*/Values(true),
+                                 /*rgb_step=*/Values(101),
+                                 /*max_abs_average_diff=*/Values(0.),
+                                 /*min_psnr=*/Values(99.)));
+#endif
 
 // Coverage for reformat_libsharpyuv.c.
 INSTANTIATE_TEST_SUITE_P(

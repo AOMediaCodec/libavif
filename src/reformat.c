@@ -361,7 +361,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                         } else if (state.yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
-                            // Formulas from JVET-U0093.
+                            // Formulas 58,59,60,61 from https://www.itu.int/rec/T-REC-H.273-202407-P
                             const int R = (int)avifRoundf(AVIF_CLAMP(rgbPixel[0] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
                             const int G = (int)avifRoundf(AVIF_CLAMP(rgbPixel[1] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
                             const int B = (int)avifRoundf(AVIF_CLAMP(rgbPixel[2] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
@@ -771,6 +771,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     R = t + Cr;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                 } else if (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
+                    // YCgCoRe/YCgCoRo: Formulas 62,63,64,65 from https://www.itu.int/rec/T-REC-H.273-202407-P
                     const int YY = unormY;
                     const int Cg = (int)avifRoundf(Cb * yuvMaxChannel);
                     const int Co = (int)avifRoundf(Cr * yuvMaxChannel);
