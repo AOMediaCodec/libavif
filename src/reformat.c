@@ -183,7 +183,7 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
     return AVIF_TRUE;
 }
 
-// Formulas 20-31 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+// Formulas 20-31 from https://www.itu.int/rec/T-REC-H.273-201612-S
 static int avifYUVColorSpaceInfoYToUNorm(avifYUVColorSpaceInfo * info, float v)
 {
     int unorm = (int)avifRoundf(v * info->rangeY + info->biasY);
@@ -350,12 +350,12 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
                         // RGB -> YUV conversion
                         if (state.yuv.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-                            // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            // Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-S
                             yuvBlock[bI][bJ].y = rgbPixel[1]; // G
                             yuvBlock[bI][bJ].u = rgbPixel[2]; // B
                             yuvBlock[bI][bJ].v = rgbPixel[0]; // R
                         } else if (state.yuv.mode == AVIF_REFORMAT_MODE_YCGCO) {
-                            // Formulas 44,45,46 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                            // Formulas 44,45,46 from https://www.itu.int/rec/T-REC-H.273-201612-S
                             yuvBlock[bI][bJ].y = 0.5f * rgbPixel[1] + 0.25f * (rgbPixel[0] + rgbPixel[2]);
                             yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
                             yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
@@ -759,12 +759,12 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
             float R, G, B;
             if (hasColor) {
                 if (state->yuv.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-                    // Identity (GBR): Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                    // Identity (GBR): Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-S
                     G = Y;
                     B = Cb;
                     R = Cr;
                 } else if (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO) {
-                    // YCgCo: Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-I/en
+                    // YCgCo: Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-S
                     const float t = Y - Cb;
                     G = Y + Cb;
                     B = t - Cr;

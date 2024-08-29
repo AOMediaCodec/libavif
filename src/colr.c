@@ -108,7 +108,7 @@ struct avifMatrixCoefficientsTable
     const float kb;
 };
 
-// https://www.itu.int/rec/T-REC-H.273-201612-I/en
+// https://www.itu.int/rec/T-REC-H.273-201612-S
 static const struct avifMatrixCoefficientsTable matrixCoefficientsTables[] = {
     //{ AVIF_MATRIX_COEFFICIENTS_IDENTITY, "Identity", 0.0f, 0.0f, }, // Handled elsewhere
     { AVIF_MATRIX_COEFFICIENTS_BT709, "BT.709", 0.2126f, 0.0722f },
