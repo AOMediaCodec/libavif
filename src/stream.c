@@ -257,7 +257,9 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
     }
 
     if (!memcmp(header->type, "uuid", 4)) {
-        AVIF_CHECK(avifROStreamSkip(stream, 16)); // unsigned int(8) usertype[16] = extended_type;
+        AVIF_CHECK(avifROStreamRead(stream, header->usertype, 16)); // unsigned int(8) usertype[16] = extended_type;
+    } else {
+        memset(header->usertype, 0, sizeof(header->usertype));
     }
 
     size_t bytesRead = stream->offset - startOffset;
