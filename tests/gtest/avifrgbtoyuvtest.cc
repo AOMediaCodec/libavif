@@ -366,11 +366,10 @@ TEST(RGBToYUVTest, AllMatrixCoefficients) {
                      AVIF_MATRIX_COEFFICIENTS_SMPTE240,
                      AVIF_MATRIX_COEFFICIENTS_YCGCO,
                      AVIF_MATRIX_COEFFICIENTS_BT2020_NCL,
-                     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL
+                     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-                     ,
                      AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
-                     AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
+                     AVIF_MATRIX_COEFFICIENTS_YCGCO_RO,
 #endif
                  // These are unsupported. See avifPrepareReformatState().
                  // AVIF_MATRIX_COEFFICIENTS_BT2020_CL
