@@ -37,7 +37,7 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
   if (!encoder) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
   encoder->quality = AVIF_QUALITY_LOSSLESS;
   encoder->qualityAlpha = AVIF_QUALITY_LOSSLESS;
   // cell_image_ptrs exists only to match the libavif API.
@@ -239,7 +239,7 @@ TEST(GridApiTest, SameMatrixCoefficients) {
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
   const avifImage* cell_image_ptrs[2] = {cell_0.get(), cell_1.get()};
   ASSERT_EQ(
       avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/2, /*gridRows=*/1,
@@ -268,7 +268,7 @@ TEST(GridApiTest, DifferentMatrixCoefficients) {
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
   // Encoding should fail.
   const avifImage* cell_image_ptrs[2] = {cell_0.get(), cell_1.get()};
   ASSERT_EQ(

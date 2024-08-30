@@ -42,7 +42,7 @@ TEST_P(SampleTransformTest, Avif16bit) {
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
   encoder->quality = quality;
   encoder->qualityAlpha = quality;
   encoder->sampleTransformRecipe = recipe;

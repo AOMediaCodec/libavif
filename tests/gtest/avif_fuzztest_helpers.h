@@ -245,7 +245,7 @@ inline auto ArbitraryAvifEncoder() {
   const auto tile_cols_log2 = fuzztest::InRange(0, 6);
   // Fuzz only a small range of 'speed' values to avoid slowing down the fuzzer
   // too much. The main goal is to fuzz libavif, not the underlying AV1 encoder.
-  const auto speed = fuzztest::InRange(6, AVIF_SPEED_FASTEST);
+  const auto speed = fuzztest::InRange(6, AVIF_SPEED_LIBAOM_RAV1E_FASTEST);
   return fuzztest::Map(CreateAvifEncoder, codec_choice, max_threads,
                        min_quantizer, max_quantizer, min_quantizer_alpha,
                        max_quantizer_alpha, tile_rows_log2, tile_cols_log2,

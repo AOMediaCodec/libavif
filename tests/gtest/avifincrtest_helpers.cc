@@ -233,7 +233,7 @@ void EncodeAsGrid(const avifImage& image, uint32_t grid_cols,
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
   // Just here to match libavif API.
   std::vector<avifImage*> cell_image_ptrs(cell_images.size());
   for (size_t i = 0; i < cell_images.size(); ++i) {

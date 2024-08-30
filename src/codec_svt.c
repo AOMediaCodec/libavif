@@ -160,7 +160,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
 #if SVT_AV1_CHECK_VERSION(0, 9, 0)
-            svt_config->enc_mode = (int8_t)encoder->speed;
+            int speed = AVIF_CLAMP(encoder->speed, 0, AVIF_SPEED_FASTEST);
+            svt_config->enc_mode = (int8_t)speed;
 #else
             int speed = AVIF_CLAMP(encoder->speed, 0, 8);
             svt_config->enc_mode = (int8_t)speed;
