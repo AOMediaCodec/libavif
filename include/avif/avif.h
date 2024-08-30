@@ -113,7 +113,10 @@ typedef int avifBool;
 
 #define AVIF_SPEED_DEFAULT -1
 #define AVIF_SPEED_SLOWEST 0
-#define AVIF_SPEED_FASTEST 10
+
+// Libaom and Rav1e fastest speed setting is 10, while SVT-AV1 fastest profile is 13.
+#define AVIF_SPEED_LIBAOM_RAV1E_FASTEST 10
+#define AVIF_SPEED_FASTEST 13
 
 // This value is used to indicate that an animated AVIF file has to be repeated infinitely.
 #define AVIF_REPETITION_COUNT_INFINITE -1

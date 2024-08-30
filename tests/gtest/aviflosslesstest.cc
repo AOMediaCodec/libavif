@@ -54,7 +54,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       // Encode.
       EncoderPtr encoder(avifEncoderCreate());
       ASSERT_NE(encoder, nullptr);
-      encoder->speed = AVIF_SPEED_FASTEST;
+      encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
       encoder->quality = AVIF_QUALITY_LOSSLESS;
       encoder->qualityAlpha = AVIF_QUALITY_LOSSLESS;
       testutil::AvifRwData encoded;

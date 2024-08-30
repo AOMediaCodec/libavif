@@ -73,7 +73,7 @@ TEST_P(AvifMetadataTest, EncodeDecode) {
   // Encode.
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
   testutil::AvifRwData encoded_avif;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_avif),
             AVIF_RESULT_OK);
@@ -228,7 +228,7 @@ TEST(MetadataTest, ExifButDefaultIrotImir) {
             avifTransformFlags{AVIF_TRANSFORM_NONE});
 
   const testutil::AvifRwData encoded =
-      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+      testutil::Encode(image.get(), AVIF_SPEED_LIBAOM_RAV1E_FASTEST);
   const ImagePtr decoded = testutil::Decode(encoded.data, encoded.size);
   ASSERT_NE(decoded, nullptr);
 
@@ -251,7 +251,7 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_EQ(image->imir.axis, 0u);
 
   const testutil::AvifRwData encoded =
-      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+      testutil::Encode(image.get(), AVIF_SPEED_LIBAOM_RAV1E_FASTEST);
   const ImagePtr decoded = testutil::Decode(encoded.data, encoded.size);
   ASSERT_NE(decoded, nullptr);
 
@@ -296,7 +296,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   image->imir.axis = 1;
 
   const testutil::AvifRwData encoded =
-      testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
+      testutil::Encode(image.get(), AVIF_SPEED_LIBAOM_RAV1E_FASTEST);
   const ImagePtr decoded = testutil::Decode(encoded.data, encoded.size);
   ASSERT_NE(decoded, nullptr);
 
