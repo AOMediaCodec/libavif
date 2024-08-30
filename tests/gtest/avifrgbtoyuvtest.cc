@@ -393,7 +393,6 @@ TEST(RGBToYUVTest, AllMatrixCoefficients) {
               // YCgCo-R is for lossless.
               continue;
             }
-
             for (avifChromaDownsampling chroma_downsampling :
                  {AVIF_CHROMA_DOWNSAMPLING_FASTEST,
                   AVIF_CHROMA_DOWNSAMPLING_BEST_QUALITY}) {
