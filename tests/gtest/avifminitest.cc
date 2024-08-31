@@ -81,7 +81,7 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   testutil::AvifRwData encoded_mini;
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
+  encoder->speed = AVIF_SPEED_FASTEST;
   encoder->headerFormat = AVIF_HEADER_REDUCED;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_mini),
             AVIF_RESULT_OK);
