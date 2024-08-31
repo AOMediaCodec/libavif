@@ -137,7 +137,7 @@ void TestEncoding(uint32_t width, uint32_t height, uint32_t depth,
   // Try to encode.
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
+  encoder->speed = AVIF_SPEED_FASTEST;
   testutil::AvifRwData encoded_avif;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_avif),
             expected_result);

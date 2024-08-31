@@ -29,7 +29,7 @@ void TestEncodeDecode(avifCodecChoice codec,
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = codec;
-  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
+  encoder->speed = AVIF_SPEED_FASTEST;
   encoder->timescale = 1;
 
   for (const auto& option : init_cs_options) {
@@ -134,7 +134,7 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
-  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
+  encoder->speed = AVIF_SPEED_FASTEST;
   encoder->timescale = 1;
   ASSERT_EQ(encoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   encoder->minQuantizer = 63;
@@ -178,7 +178,7 @@ TEST(ChangeSettingTest, UnchangeableImageColorRange) {
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
-  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
+  encoder->speed = AVIF_SPEED_FASTEST;
   encoder->timescale = 1;
   ASSERT_EQ(encoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   encoder->quality = AVIF_QUALITY_WORST;
@@ -215,7 +215,7 @@ TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
-  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
+  encoder->speed = AVIF_SPEED_FASTEST;
   encoder->timescale = 1;
   ASSERT_EQ(encoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   encoder->quality = AVIF_QUALITY_WORST;

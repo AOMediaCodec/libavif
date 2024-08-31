@@ -31,7 +31,7 @@ bool GetIoStatsFromEncode(avifIOStats& encoder_io_stats, int quality,
 
   EncoderPtr encoder(avifEncoderCreate());
   AVIF_CHECK(encoder != nullptr);
-  encoder->speed = AVIF_SPEED_LIBAOM_RAV1E_FASTEST;
+  encoder->speed = AVIF_SPEED_FASTEST;
   encoder->quality = quality;
   encoder->qualityAlpha = qualityAlpha;
   for (int frame = 0; frame < num_frames; ++frame) {
