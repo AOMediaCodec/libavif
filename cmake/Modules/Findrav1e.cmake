@@ -57,7 +57,9 @@ if(RAV1E_LIBRARY)
         else()
             add_library(rav1e::rav1e SHARED IMPORTED GLOBAL)
         endif()
-        set_target_properties(rav1e::rav1e PROPERTIES IMPORTED_LOCATION "${RAV1E_LIBRARY}" IMPORTED_SONAME rav1e)
+        set_target_properties(
+            rav1e::rav1e PROPERTIES IMPORTED_LOCATION "${RAV1E_LIBRARY}" IMPORTED_IMPLIB "${RAV1E_LIBRARY}" IMPORTED_SONAME rav1e
+        )
         target_include_directories(rav1e::rav1e INTERFACE ${RAV1E_INCLUDE_DIR})
         # The following is copied from the main CMakeLists.txt.
         if(WIN32)

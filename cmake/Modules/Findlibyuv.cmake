@@ -63,7 +63,9 @@ if(LIBYUV_LIBRARY)
     else()
         add_library(yuv::yuv SHARED IMPORTED GLOBAL)
     endif()
-    set_target_properties(yuv::yuv PROPERTIES IMPORTED_LOCATION "${LIBYUV_LIBRARY}" IMPORTED_SONAME yuv)
+    set_target_properties(
+        yuv::yuv PROPERTIES IMPORTED_LOCATION "${LIBYUV_LIBRARY}" IMPORTED_IMPLIB "${LIBYUV_LIBRARY}" IMPORTED_SONAME yuv
+    )
     target_include_directories(yuv::yuv INTERFACE "${LIBYUV_INCLUDE_DIR}")
     set(libyuv_FOUND ON)
 endif()
