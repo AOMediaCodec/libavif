@@ -4,7 +4,11 @@
 #   * Does not build rav1e, SVT-AV1 nor libgav1.
 
 name: CI Unix Shared Local
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 permissions:
   contents: read

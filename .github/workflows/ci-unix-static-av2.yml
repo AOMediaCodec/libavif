@@ -1,6 +1,8 @@
 name: CI Unix Static AV2
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - '.github/workflows/ci-unix-static-av2.yml'
