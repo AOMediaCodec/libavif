@@ -25,6 +25,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Update aom.cmd/LocalAom.cmake: v3.10.0
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.2.1
+* Allow decoding subsampled images with odd Clean Aperture dimensions or offsets.
+* Deprecate avifCropRectConvertCleanApertureBox(). Replace it with
+  avifCropRectFromCleanApertureBox().
 
 ## [1.1.1] - 2024-07-30
 
