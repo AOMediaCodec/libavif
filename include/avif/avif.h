@@ -484,6 +484,8 @@ typedef struct avifPixelAspectRatioBox
 typedef struct avifCleanApertureBox
 {
     // 'clap' from ISO/IEC 14496-12:2022 12.1.4.3
+    // Note that ISO/IEC 23000-22:2024 7.3.6.7 requires the decoded image to be upsampled to 4:4:4 before
+    // clean aperture is applied if a clean aperture size or offset is odd in a subsampled dimension.
 
     // a fractional number which defines the width of the clean aperture image
     uint32_t widthN;
@@ -542,18 +544,25 @@ typedef struct avifCropRect
 
 // These will return AVIF_FALSE if the resultant values violate any standards, and if so, the output
 // values are not guaranteed to be complete or correct and should not be used.
-AVIF_NODISCARD AVIF_API avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
-                                                                     const avifCleanApertureBox * clap,
-                                                                     uint32_t imageW,
-                                                                     uint32_t imageH,
-                                                                     avifPixelFormat yuvFormat,
-                                                                     avifDiagnostics * diag);
+// If upsampleBeforeCropping is true, the image must be upsampled from 4:2:0 or 4:2:2 to 4:4:4 before
+// Clean Aperture values are applied.
+AVIF_NODISCARD AVIF_API avifBool avifCropRectFromCleanApertureBox(avifCropRect * cropRect,
+                                                                  avifBool * upsampleBeforeCropping,
+                                                                  const avifCleanApertureBox * clap,
+                                                                  uint32_t imageW,
+                                                                  uint32_t imageH,
+                                                                  avifPixelFormat yuvFormat,
+                                                                  avifDiagnostics * diag);
 AVIF_NODISCARD AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
                                                                      const avifCropRect * cropRect,
                                                                      uint32_t imageW,
                                                                      uint32_t imageH,
                                                                      avifPixelFormat yuvFormat,
                                                                      avifDiagnostics * diag);
+
+// Deprecated. Use avifCropRectFromCleanApertureBox() instead.
+AVIF_NODISCARD AVIF_API avifBool
+avifCropRectConvertCleanApertureBox(avifCropRect *, const avifCleanApertureBox *, uint32_t, uint32_t, avifPixelFormat, avifDiagnostics *);
 
 // ---------------------------------------------------------------------------
 // avifContentLightLevelInformationBox
@@ -1124,7 +1133,7 @@ typedef enum avifStrictFlag
     AVIF_STRICT_PIXI_REQUIRED = (1 << 0),
 
     // This demands that the values surfaced in the clap box are valid, determined by attempting to
-    // convert the clap box to a crop rect using avifCropRectConvertCleanApertureBox(). If this
+    // convert the clap box to a crop rect using avifCropRectFromCleanApertureBox(). If this
     // function returns AVIF_FALSE and this strict flag is set, the decode will fail.
     AVIF_STRICT_CLAP_VALID = (1 << 1),
 

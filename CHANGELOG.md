@@ -50,6 +50,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * For dependencies, the deprecated way of setting AVIF_LOCAL_* to ON is
   removed. Dependency options can now only be set to OFF/LOCAL/SYSTEM.
 * Change the default quality for alpha to be the same as the quality for color.
+* Allow decoding subsampled images with odd Clean Aperture dimensions or offsets.
+* Deprecate avifCropRectConvertCleanApertureBox(). Replace it with
+  avifCropRectFromCleanApertureBox().
 
 ## [1.1.1] - 2024-07-30
 

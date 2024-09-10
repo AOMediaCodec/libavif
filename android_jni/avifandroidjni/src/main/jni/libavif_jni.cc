@@ -85,6 +85,7 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
   avifDiagnostics diag;
   // If the image does not have a valid 'clap' property, then we simply display
   // the whole image.
+  // TODO: Use avifCropRectFromCleanApertureBox() instead.
   if (!(decoder->decoder->image->transformFlags & AVIF_TRANSFORM_CLAP) ||
       !avifCropRectConvertCleanApertureBox(
           &decoder->crop, &decoder->decoder->image->clap,
