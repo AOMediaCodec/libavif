@@ -43,6 +43,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
 * Add 'avifgainmaputil' command line tool to installed apps.
+* Allow decoding subsampled images with odd Clean Aperture dimensions or offsets.
+* Deprecate avifCropRectConvertCleanApertureBox(). Replace it with
+  avifCropRectFromCleanApertureBox().
 
 ## [1.1.1] - 2024-07-30
 
