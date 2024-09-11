@@ -450,30 +450,39 @@ typedef uint32_t avifTransformFlags;
 
 typedef struct avifPixelAspectRatioBox
 {
-    // 'pasp' from ISO/IEC 14496-12:2015 12.1.4.3
+    // 'pasp' from ISO/IEC 14496-12:2022 12.1.4.3
 
     // define the relative width and height of a pixel
     uint32_t hSpacing;
     uint32_t vSpacing;
 } avifPixelAspectRatioBox;
 
+// NOTE: The members of the avifCleanApertureBox struct are declared as uint32_t to match the
+// unsigned int(32) type used in ISO/IEC 14496-12:2022 faithfully. However, ISO/IEC 14496-12:2022
+// 12.1.4.1 clearly interprets these values as signed int(32) and talks about them being strictly
+// positive, positive, or negative. Cast these struct members to int32_t before use. See also the
+// clean aperture extension in the QuickTime File Format:
+// https://developer.apple.com/documentation/quicktime-file-format/clean_aperture
+
 typedef struct avifCleanApertureBox
 {
-    // 'clap' from ISO/IEC 14496-12:2015 12.1.4.3
+    // 'clap' from ISO/IEC 14496-12:2022 12.1.4.3
 
-    // a fractional number which defines the exact clean aperture width, in counted pixels, of the video image
+    // a fractional number which defines the width of the clean aperture image
     uint32_t widthN;
     uint32_t widthD;
 
-    // a fractional number which defines the exact clean aperture height, in counted pixels, of the video image
+    // a fractional number which defines the height of the clean aperture image
     uint32_t heightN;
     uint32_t heightD;
 
-    // a fractional number which defines the horizontal offset of clean aperture centre minus (width-1)/2. Typically 0.
+    // a fractional number which defines the horizontal offset between the clean aperture image
+    // centre and the full aperture image centre. Typically 0.
     uint32_t horizOffN;
     uint32_t horizOffD;
 
-    // a fractional number which defines the vertical offset of clean aperture centre minus (height-1)/2. Typically 0.
+    // a fractional number which defines the vertical offset between clean aperture image centre
+    // and the full aperture image centre. Typically 0.
     uint32_t vertOffN;
     uint32_t vertOffD;
 } avifCleanApertureBox;
@@ -806,7 +815,7 @@ typedef struct avifImage
     // appropriately, but do not impact/adjust the actual pixel buffers used (images won't be
     // pre-cropped or mirrored upon decode). Basic explanations from the standards are offered in
     // comments above, but for detailed explanations, please refer to the HEIF standard (ISO/IEC
-    // 23008-12:2017) and the BMFF standard (ISO/IEC 14496-12:2015).
+    // 23008-12:2017) and the BMFF standard (ISO/IEC 14496-12:2022).
     //
     // To encode any of these boxes, set the values in the associated box, then enable the flag in
     // transformFlags. On decode, only honor the values in boxes with the associated transform flag set.

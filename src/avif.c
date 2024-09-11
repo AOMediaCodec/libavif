@@ -717,7 +717,7 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
 {
     avifDiagnosticsClearError(diag);
 
-    // ISO/IEC 14496-12:2020, Section 12.1.4.1:
+    // ISO/IEC 14496-12:2022, Section 12.1.4.1:
     //   For horizOff and vertOff, D shall be strictly positive and N may be
     //   positive or negative. For cleanApertureWidth and cleanApertureHeight,
     //   N shall be positive and D shall be strictly positive.
@@ -738,6 +738,15 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
         avifDiagnosticsPrintf(diag, "[Strict] clap width or height is negative");
         return AVIF_FALSE;
     }
+
+    // ISO/IEC 23000-22:2019/Amd. 2:2021, Section 7.3.6.7:
+    //   The clean aperture property is restricted according to the chroma
+    //   sampling format of the input image (4:4:4, 4:2:2:, 4:2:0, or 4:0:0) as
+    //   follows:
+    //   - cleanApertureWidth and cleanApertureHeight shall be integers;
+    //   - The leftmost pixel and the topmost line of the clean aperture as
+    //     defined in ISO/IEC 14496-12:2020, Section 12.1.4.1 shall be integers;
+    //   ...
 
     if ((widthN % widthD) != 0) {
         avifDiagnosticsPrintf(diag, "[Strict] clap width %d/%d is not an integer", widthN, widthD);
