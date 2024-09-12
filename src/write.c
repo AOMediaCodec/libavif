@@ -2925,7 +2925,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             avifBoxMarker lsel;
             AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, "lsel", AVIF_BOX_SIZE_TBD, &lsel));
             // Layer Selection Property
-            // Section 2.3.1 of of AV1 Image File Format specification v1.1.0:
+            // Section 2.3.1 of AV1 Image File Format specification v1.1.0:
             // The value 0xFFFF is reserved for a special meaning. If a lsel property is associated with an AV1
             // Image Item but its layer_id value is set to 0xFFFF, the renderer is free to render either only
             // the output image of the highest spatial layer, or to render all output images of all the intermediate
