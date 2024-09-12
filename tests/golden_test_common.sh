@@ -83,6 +83,7 @@ redact_xml() {
              -e 's/extent_length="[0-9]*"/extent_length="REDACTED"/g' \
              -e 's/dataSize="[0-9]*"/dataSize="REDACTED"/g' \
              -e 's/<MediaDataBox\(.*\) Size="[0-9]*"/<MediaDataBox\1 Size="REDACTED"/g' \
+             -e 's/layer_size0="[0-9]*"/layer_size0="REDACTED"/g' \
              "$f"
   # For animations.
   sed -i.bak -e 's/CreationTime="[0-9]*"/CreationTime="REDACTED"/g' \

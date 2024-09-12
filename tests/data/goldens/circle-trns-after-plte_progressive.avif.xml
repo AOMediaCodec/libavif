@@ -49,7 +49,7 @@
 </AV1ConfigurationBox>
 <ColourInformationBox Size="19" Type="colr" Specification="iff" Container="video_sample_entry ipco encv resv" colour_type="nclx" colour_primaries="1" transfer_characteristics="13" matrix_coefficients="6" full_range_flag="1">
 </ColourInformationBox>
-<AV1LayeredImageIndexingPropertyBox Size="15" Type="a1lx" Specification="avif" Container="ipco" large_size="0" layer_size0="206" layer_size1="0" layer_size2="0">
+<AV1LayeredImageIndexingPropertyBox Size="15" Type="a1lx" Specification="avif" Container="ipco" large_size="0" layer_size0="REDACTED" layer_size1="0" layer_size2="0">
 </AV1LayeredImageIndexingPropertyBox>
 <UnknownBox Size="10" Type="lsel" Specification="unknown" Container="unknown" data="0xFFFF" >
 </UnknownBox>
@@ -62,7 +62,7 @@
 </AV1ConfigurationBox>
 <AuxiliaryTypePropertyBox Size="56" Type="auxC" Version="0" Flags="0" Specification="iff" Container="ipco" aux_type="urn:mpeg:mpegB:cicp:systems:auxiliary:alpha" aux_subtype="">
 </AuxiliaryTypePropertyBox>
-<AV1LayeredImageIndexingPropertyBox Size="15" Type="a1lx" Specification="avif" Container="ipco" large_size="0" layer_size0="664" layer_size1="0" layer_size2="0">
+<AV1LayeredImageIndexingPropertyBox Size="15" Type="a1lx" Specification="avif" Container="ipco" large_size="0" layer_size0="REDACTED" layer_size1="0" layer_size2="0">
 </AV1LayeredImageIndexingPropertyBox>
 </ItemPropertyContainerBox>
 <ItemPropertyAssociationBox Size="34" Type="ipma" Version="0" Flags="0" Specification="iff" Container="iprp" entry_count="2">
