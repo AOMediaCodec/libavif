@@ -2921,6 +2921,9 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             }
             avifRWStreamFinishBox(&dedup->s, a1lx);
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+
+            // We don't add an 'lsel' property since many decoders do not support it and will reject the image,
+            // see https://github.com/AOMediaCodec/libavif/pull/2429
         }
     }
     return AVIF_RESULT_OK;
