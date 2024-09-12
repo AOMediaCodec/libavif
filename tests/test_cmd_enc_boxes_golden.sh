@@ -37,6 +37,9 @@ encode_test_files() {
     # Animation with only keyframes.
     "${AVIFENC}" -s 9 --keyframe 1 "${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m" \
       "${TESTDATA_DIR}/kodim23_yuv420_8bpc.y4m" -o "kodim03_23_animation_keyframes.avif"
+    
+    # Progressive.
+    "${AVIFENC}" -s 9 "${TESTDATA_DIR}/circle-trns-after-plte.png" --progressive -o "circle-trns-after-plte_progressive.avif"
 }
 
 export -f encode_test_files

@@ -2892,7 +2892,6 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
 
         if (item->extraLayerCount > 0) {
             // Layered Image Indexing Property
-
             avifItemPropertyDedupStart(dedup);
             avifBoxMarker a1lx;
             AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, "a1lx", AVIF_BOX_SIZE_TBD, &a1lx));
@@ -2921,6 +2920,19 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             }
             avifRWStreamFinishBox(&dedup->s, a1lx);
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+
+            avifItemPropertyDedupStart(dedup);
+            avifBoxMarker lsel;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, "lsel", AVIF_BOX_SIZE_TBD, &lsel));
+            // Layer Selection Property
+            // Section 2.3.1 of of AV1 Image File Format specification v1.1.0:
+            // The value 0xFFFF is reserved for a special meaning. If a lsel property is associated with an AV1
+            // Image Item but its layer_id value is set to 0xFFFF, the renderer is free to render either only
+            // the output image of the highest spatial layer, or to render all output images of all the intermediate
+            // layers and the highest spatial layer, resulting in a form of progressive decoding.
+            AVIF_CHECKRES(avifRWStreamWriteU16(&dedup->s, 0xFFFF));
+            avifRWStreamFinishBox(&dedup->s, lsel);
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_TRUE));
         }
     }
     return AVIF_RESULT_OK;
