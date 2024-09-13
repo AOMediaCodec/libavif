@@ -700,6 +700,48 @@ To export more images from sources/colors.psd:
 - For the wide color gamut version, choose Edit > Assign Profile... and set the color space to
   Rec.ITU-R BT.2020-1
 
+## Idat
+
+These files use the 'idat' box instead of the 'mdat' box to store data.
+
+### File [draw_points_idat.avif](draw_points_idat.avif)
+
+![](draw_points_idat.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/idat
+by running `./avifenc -q 100 ../tests/data/draw_points.png ../tests/data/draw_points_idat.avif` 
+
+### File [draw_points_idat_metasize0.avif](draw_points_idat_metasize0.avif)
+
+![](draw_points_idat_metasize0.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/idat
+after uncommenting the line under `// uncomment to make meta size zero` and running
+`./avifenc -q 100 ../tests/data/draw_points.png ../tests/data/draw_points_idat_metasize0.avif` 
+
+### File [draw_points_idat_progressive.avif](draw_points_idat_progressive.avif)
+
+![](draw_points_idat_progressive.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/idat
+by running `./avifenc -q 100 --progressive ../tests/data/draw_points.png ../tests/data/draw_points_idat_progressive.avif` 
+
+### File [draw_points_idat_progressive_metasize0.avif](draw_points_idat_progressive_metasize0.avif)
+
+![](draw_points_idat_progressive_metasize0.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: generated with a modified libavif at https://github.com/maryla-uc/libavif/tree/idat
+after uncommenting the line under `// uncomment to make meta size zero` and running
+`./avifenc -q 100 --progressive ../tests/data/draw_points.png ../tests/data/draw_points_idat_progressive_metasize0.avif` 
+
 ## Animated Images
 
 ### File [colors-animated-8bpc.avif](colors-animated-8bpc.avif)

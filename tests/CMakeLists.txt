@@ -148,7 +148,7 @@ if(AVIF_ENABLE_GTEST)
 
     add_avif_gtest(avifopaquetest)
     add_avif_gtest_with_data(avifpng16bittest)
-    add_avif_gtest(avifprogressivetest)
+    add_avif_gtest_with_data(avifprogressivetest)
     add_avif_gtest(avifrangetest)
     add_avif_gtest_with_data(avifreadimagetest)
     add_avif_internal_gtest(avifrgbtest)
