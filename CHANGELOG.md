@@ -25,6 +25,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Update aom.cmd/LocalAom.cmake: v3.10.0
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.2.1
+* Allow YCgCo_Re and YCgCo_Ro decoding by default. Encoding is still conditioned
+  to the AVIF_ENABLE_YCGCO_R_ENCODING CMake flag.
 
 ## [1.1.1] - 2024-07-30
 
