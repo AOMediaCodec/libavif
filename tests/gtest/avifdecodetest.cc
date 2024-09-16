@@ -41,6 +41,34 @@ TEST(AvifDecodeTest, ParseEmptyData) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_INVALID_FTYP);
 }
 
+TEST(AvifDecodeTest, Idat) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+
+  const ImagePtr original = testutil::ReadImage(data_path, "draw_points.png");
+
+  for (const std::string file_name :
+       {"draw_points_idat.avif", "draw_points_idat_metasize0.avif",
+        "draw_points_idat_progressive.avif",
+        "draw_points_idat_progressive_metasize0.avif"}) {
+    SCOPED_TRACE(file_name);
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    ASSERT_EQ(avifDecoderSetIOFile(
+                  decoder.get(), (std::string(data_path) + file_name).c_str()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+    EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+    EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
+    ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    EXPECT_NE(decoder->image->alphaPlane, nullptr);
+    EXPECT_GT(decoder->image->alphaRowBytes, 0u);
+
+    EXPECT_EQ(testutil::GetPsnr(*original, *decoder->image), 99.0);
+  }
+}
+
 // From https://crbug.com/334281983.
 TEST(AvifDecodeTest, PeekCompatibleFileTypeBad1) {
   constexpr uint8_t kData[] = {0x00, 0x00, 0x00, 0x1c, 0x66,
