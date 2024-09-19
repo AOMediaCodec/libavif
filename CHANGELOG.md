@@ -25,6 +25,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Update aom.cmd/LocalAom.cmake: v3.10.0
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.2.1
+* In avif.h, changed "AVIF_SPEED_FASTEST" value to 13 from 10.
 
 ## [1.1.1] - 2024-07-30
 
