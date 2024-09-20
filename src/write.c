@@ -205,7 +205,7 @@ AVIF_ARRAY_DECLARE(avifEncoderFrameArray, avifEncoderFrame, frame);
 // ---------------------------------------------------------------------------
 // avifEncoderData
 
-AVIF_ARRAY_DECLARE(avifEncoderItemIdArray, uint16_t, item_id);
+AVIF_ARRAY_DECLARE(avifEncoderItemIdArray, uint16_t, itemID);
 
 typedef struct avifEncoderData
 {
@@ -2289,7 +2289,7 @@ static avifResult avifWriteAltrGroup(avifRWStream * s, uint32_t groupID, const a
     AVIF_CHECKRES(avifRWStreamWriteU32(s, groupID));                  // unsigned int(32) group_id;
     AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)itemIDs->count)); // unsigned int(32) num_entities_in_group;
     for (uint32_t i = 0; i < itemIDs->count; ++i) {
-        AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)itemIDs->item_id[i])); // unsigned int(32) entity_id;
+        AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)itemIDs->itemID[i])); // unsigned int(32) entity_id;
     }
 
     avifRWStreamFinishBox(s, altr);
