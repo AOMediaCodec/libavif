@@ -89,6 +89,7 @@ else()
     endif()
 
     if(AVIF_CODEC_AVM)
+        # TODO(vrabaud) remove the PATCH_COMMAND once upstream is fixed.
         FetchContent_Declare(
             libaom
             GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/avm.git"
@@ -96,6 +97,7 @@ else()
             GIT_TAG ${AVIF_LOCAL_AVM_GIT_TAG}
             GIT_PROGRESS ON
             GIT_SHALLOW ON
+            PATCH_COMMAND sed -i CMakeLists.txt -e "s:CMAKE_CURRENT_BINARY_DIR\}/flatbuffers:CMAKE_BINARY_DIR\}/flatbuffers:"
             UPDATE_COMMAND ""
         )
     else()
