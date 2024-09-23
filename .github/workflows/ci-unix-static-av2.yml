@@ -39,6 +39,10 @@ jobs:
           gcc-version: ${{ matrix.gcc }}
           libyuv: "LOCAL"
 
+      - name: Install cpuinfo
+        run:
+          sudo apt install -y cpuinfo
+        shell: bash
       - name: Prepare libavif (cmake)
         run: >
           cmake -G Ninja -S . -B build
