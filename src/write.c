@@ -927,9 +927,6 @@ static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMapMe
     AVIF_CHECKRES(avifRWStreamWriteBits(s, writerVersion, 16)); // unsigned int(16) writer_version;
 
     if (minimumVersion == 0) {
-        // TODO(maryla): the draft says that this specifies the count of channels of the
-        // gain map. But tone mapping is done in RGB space so there are always three
-        // channels, even if the gain map is grayscale. Should this be revised?
         const uint8_t channelCount = avifGainmapMetadataIdenticalChannels(metadata) ? 1u : 3u;
         AVIF_CHECKRES(avifRWStreamWriteBits(s, channelCount == 3, 1));           // unsigned int(1) is_multichannel;
         AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->useBaseColorSpace, 1)); // unsigned int(1) use_base_colour_space;
