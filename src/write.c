@@ -891,65 +891,88 @@ static avifResult avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uin
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
-static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * metadata)
+static avifBool avifGainmapMetadataIdenticalChannels(const avifGainMapMetadata * metadata)
+{
+    return metadata->gainMapMinN[0] == metadata->gainMapMinN[1] && metadata->gainMapMinN[0] == metadata->gainMapMinN[2] &&
+           metadata->gainMapMinD[0] == metadata->gainMapMinD[1] && metadata->gainMapMinD[0] == metadata->gainMapMinD[2] &&
+           metadata->gainMapMaxN[0] == metadata->gainMapMaxN[1] && metadata->gainMapMaxN[0] == metadata->gainMapMaxN[2] &&
+           metadata->gainMapMaxD[0] == metadata->gainMapMaxD[1] && metadata->gainMapMaxD[0] == metadata->gainMapMaxD[2] &&
+           metadata->gainMapGammaN[0] == metadata->gainMapGammaN[1] && metadata->gainMapGammaN[0] == metadata->gainMapGammaN[2] &&
+           metadata->gainMapGammaD[0] == metadata->gainMapGammaD[1] && metadata->gainMapGammaD[0] == metadata->gainMapGammaD[2] &&
+           metadata->baseOffsetN[0] == metadata->baseOffsetN[1] && metadata->baseOffsetN[0] == metadata->baseOffsetN[2] &&
+           metadata->baseOffsetD[0] == metadata->baseOffsetD[1] && metadata->baseOffsetD[0] == metadata->baseOffsetD[2] &&
+           metadata->alternateOffsetN[0] == metadata->alternateOffsetN[1] &&
+           metadata->alternateOffsetN[0] == metadata->alternateOffsetN[2] &&
+           metadata->alternateOffsetD[0] == metadata->alternateOffsetD[1] &&
+           metadata->alternateOffsetD[0] == metadata->alternateOffsetD[2];
+}
+
+// Returns the number of bytes written by avifWriteGainmapMetadata().
+static avifBool avifGainmapMetadataSize(const avifGainMapMetadata * metadata)
+{
+    const uint8_t channelCount = avifGainmapMetadataIdenticalChannels(metadata) ? 1u : 3u;
+    return sizeof(uint16_t) * 2 + sizeof(uint8_t) + sizeof(uint32_t) * 4 + channelCount * sizeof(uint32_t) * 10;
+}
+
+static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMapMetadata * metadata)
+{
+    const size_t offset = avifRWStreamOffset(s);
+
+    // GainMapMetadata syntax as per clause C.2.2 of ISO 21496-1:
+
+    // GainMapVersion syntax as per clause C.2.2 of ISO 21496-1:
+    const uint16_t minimumVersion = 0;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, minimumVersion, 16)); // unsigned int(16) minimum_version;
+    const uint16_t writerVersion = 0;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, writerVersion, 16)); // unsigned int(16) writer_version;
+
+    if (minimumVersion == 0) {
+        // TODO(maryla): the draft says that this specifies the count of channels of the
+        // gain map. But tone mapping is done in RGB space so there are always three
+        // channels, even if the gain map is grayscale. Should this be revised?
+        const uint8_t channelCount = avifGainmapMetadataIdenticalChannels(metadata) ? 1u : 3u;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, channelCount == 3, 1));           // unsigned int(1) is_multichannel;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->useBaseColorSpace, 1)); // unsigned int(1) use_base_colour_space;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 6));                           // unsigned int(6) reserved;
+
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->baseHdrHeadroomN, 32)); // unsigned int(32) base_hdr_headroom_numerator;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->baseHdrHeadroomD, 32)); // unsigned int(32) base_hdr_headroom_denominator;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->alternateHdrHeadroomN, 32)); // unsigned int(32) alternate_hdr_headroom_numerator;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->alternateHdrHeadroomD, 32)); // unsigned int(32) alternate_hdr_headroom_denominator;
+
+        // GainMapChannel channels[channel_count];
+        for (int c = 0; c < channelCount; ++c) {
+            // GainMapChannel syntax as per clause C.2.2 of ISO 21496-1:
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->gainMapMinN[c], 32)); // int(32) gain_map_min_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapMinD[c], 32)); // unsigned int(32) gain_map_min_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->gainMapMaxN[c], 32)); // int(32) gain_map_max_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapMaxD[c], 32));   // unsigned int(32) gain_map_max_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapGammaN[c], 32)); // unsigned int(32) gamma_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapGammaD[c], 32)); // unsigned int(32) gamma_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->baseOffsetN[c], 32)); // int(32) base_offset_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->baseOffsetD[c], 32)); // unsigned int(32) base_offset_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->alternateOffsetN[c], 32)); // int(32) alternate_offset_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->alternateOffsetD[c], 32)); // unsigned int(32) alternate_offset_denominator;
+        }
+    }
+
+    AVIF_ASSERT_OR_RETURN(avifRWStreamOffset(s) == offset + avifGainmapMetadataSize(metadata));
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * metadata)
 {
     avifRWStream s;
     avifRWStreamStart(&s, data);
+    // ToneMapImage syntax as per section 6.6.2.4.2 of ISO/IEC 23008-12:2024
+    // amendment "Support for tone map derived image items and other improvements":
     const uint8_t version = 0;
-    AVIF_CHECKRES(avifRWStreamWriteU8(&s, version));
-
-    const uint16_t minimumVersion = 0;
-    AVIF_CHECKRES(avifRWStreamWriteU16(&s, minimumVersion));
-    const uint16_t writerVersion = 0;
-    AVIF_CHECKRES(avifRWStreamWriteU16(&s, writerVersion));
-
-    uint8_t flags = 0u;
-    // Always write three channels for now for simplicity.
-    // TODO(maryla): the draft says that this specifies the count of channels of the
-    // gain map. But tone mapping is done in RGB space so there are always three
-    // channels, even if the gain map is grayscale. Should this be revised?
-    const avifBool allChannelsIdentical =
-        metadata->gainMapMinN[0] == metadata->gainMapMinN[1] && metadata->gainMapMinN[0] == metadata->gainMapMinN[2] &&
-        metadata->gainMapMinD[0] == metadata->gainMapMinD[1] && metadata->gainMapMinD[0] == metadata->gainMapMinD[2] &&
-        metadata->gainMapMaxN[0] == metadata->gainMapMaxN[1] && metadata->gainMapMaxN[0] == metadata->gainMapMaxN[2] &&
-        metadata->gainMapMaxD[0] == metadata->gainMapMaxD[1] && metadata->gainMapMaxD[0] == metadata->gainMapMaxD[2] &&
-        metadata->gainMapGammaN[0] == metadata->gainMapGammaN[1] && metadata->gainMapGammaN[0] == metadata->gainMapGammaN[2] &&
-        metadata->gainMapGammaD[0] == metadata->gainMapGammaD[1] && metadata->gainMapGammaD[0] == metadata->gainMapGammaD[2] &&
-        metadata->baseOffsetN[0] == metadata->baseOffsetN[1] && metadata->baseOffsetN[0] == metadata->baseOffsetN[2] &&
-        metadata->baseOffsetD[0] == metadata->baseOffsetD[1] && metadata->baseOffsetD[0] == metadata->baseOffsetD[2] &&
-        metadata->alternateOffsetN[0] == metadata->alternateOffsetN[1] &&
-        metadata->alternateOffsetN[0] == metadata->alternateOffsetN[2] &&
-        metadata->alternateOffsetD[0] == metadata->alternateOffsetD[1] &&
-        metadata->alternateOffsetD[0] == metadata->alternateOffsetD[2];
-    const uint8_t channelCount = allChannelsIdentical ? 1u : 3u;
-    if (channelCount == 3) {
-        flags |= (1 << 7);
+    AVIF_CHECKRES(avifRWStreamWriteU8(&s, version)); // unsigned int(8) version = 0;
+    if (version == 0) {
+        AVIF_CHECKRES(avifWriteGainmapMetadata(&s, metadata)); // GainMapMetadata;
     }
-    if (metadata->useBaseColorSpace) {
-        flags |= (1 << 6);
-    }
-    AVIF_CHECKRES(avifRWStreamWriteU8(&s, flags));
-
-    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseHdrHeadroomN));
-    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseHdrHeadroomD));
-    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateHdrHeadroomN));
-    AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateHdrHeadroomD));
-
-    for (int c = 0; c < channelCount; ++c) {
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMinN[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapMinD[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->gainMapMaxN[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapMaxD[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapGammaN[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->gainMapGammaD[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->baseOffsetN[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseOffsetD[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->alternateOffsetN[c]));
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateOffsetD[c]));
-    }
-
     avifRWStreamFinishWrite(&s);
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 
 size_t avifEncoderGetGainMapSizeBytes(avifEncoder * encoder)
@@ -1848,10 +1871,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                          infeNameGainMap,
                                                                          /*infeNameSize=*/strlen(infeNameGainMap) + 1,
                                                                          /*cellIndex=*/0);
-            if (!avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap->metadata)) {
-                avifDiagnosticsPrintf(&encoder->diag, "failed to write gain map metadata, some values may be negative or too large");
-                return AVIF_RESULT_ENCODE_GAIN_MAP_FAILED;
-            }
+            AVIF_CHECKRES(avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap->metadata));
             // Even though the 'tmap' item is related to the gain map, it represents a color image and its metadata is more similar to the color item.
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
             uint16_t toneMappedItemID = toneMappedItem->id;
