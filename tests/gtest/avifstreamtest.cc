@@ -59,11 +59,6 @@ TEST(StreamTest, Roundtrip) {
   const uint32_t rw_someu32 = 0xAABBCCDD;
   EXPECT_EQ(avifRWStreamWriteU32(&rw_stream, rw_someu32), AVIF_RESULT_OK);
 
-  // Pad till byte alignment.
-  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 0,
-                                  8 - rw_stream.numUsedBitsInPartialByte),
-            AVIF_RESULT_OK);
-
   const uint64_t rw_someu64 = 0xAABBCCDDEEFF0011;
   EXPECT_EQ(avifRWStreamWriteU64(&rw_stream, rw_someu64), AVIF_RESULT_OK);
 
@@ -76,10 +71,15 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_maxbits, rw_maxbitcount),
             AVIF_RESULT_OK);
 
+  const uint32_t skipbitcount = 23;
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 0, skipbitcount), AVIF_RESULT_OK);
+
   const uint32_t rw_somebit = 1;
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, rw_somebit, /*bitCount=*/1),
             AVIF_RESULT_OK);
+
   // Pad till byte alignment.
+  EXPECT_NE(rw_stream.numUsedBitsInPartialByte, 0);
   EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 0,
                                   8 - rw_stream.numUsedBitsInPartialByte),
             AVIF_RESULT_OK);
@@ -141,28 +141,27 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_TRUE(avifROStreamReadU32(&ro_stream, &ro_someu32));
   EXPECT_EQ(rw_someu32, ro_someu32);
 
-  // Pad till byte alignment.
-  EXPECT_TRUE(avifROStreamReadBits8(&ro_stream, &ro_someu8,
-                                    8 - ro_stream.numUsedBitsInPartialByte));
-
   uint64_t ro_someu64;
   EXPECT_TRUE(avifROStreamReadU64(&ro_stream, &ro_someu64));
   EXPECT_EQ(rw_someu64, ro_someu64);
 
   uint32_t ro_somebits;
-  EXPECT_TRUE(avifROStreamReadBits(&ro_stream, &ro_somebits, rw_somebitcount));
+  EXPECT_TRUE(
+      avifROStreamReadBitsU32(&ro_stream, &ro_somebits, rw_somebitcount));
   EXPECT_EQ(rw_somebits, ro_somebits);
   uint32_t ro_maxbits;
-  EXPECT_TRUE(avifROStreamReadBits(&ro_stream, &ro_maxbits, rw_maxbitcount));
+  EXPECT_TRUE(avifROStreamReadBitsU32(&ro_stream, &ro_maxbits, rw_maxbitcount));
   EXPECT_EQ(rw_maxbits, ro_maxbits);
 
+  EXPECT_TRUE(avifROStreamSkipBits(&ro_stream, skipbitcount));
+
   uint8_t ro_somebit;
-  EXPECT_TRUE(avifROStreamReadBits8(&ro_stream, &ro_somebit, /*bitCount=*/1));
+  EXPECT_TRUE(avifROStreamReadBitsU8(&ro_stream, &ro_somebit, /*bitCount=*/1));
   EXPECT_EQ(rw_somebit, ro_somebit);
 
   // Pad till byte alignment.
-  EXPECT_TRUE(avifROStreamReadBits8(&ro_stream, &ro_someu8,
-                                    8 - ro_stream.numUsedBitsInPartialByte));
+  EXPECT_TRUE(
+      avifROStreamSkipBits(&ro_stream, 8 - ro_stream.numUsedBitsInPartialByte));
 
   EXPECT_TRUE(avifROStreamSkip(&ro_stream, /*byteCount=*/num_zeros));
   EXPECT_FALSE(avifROStreamSkip(&ro_stream, /*byteCount=*/1));
