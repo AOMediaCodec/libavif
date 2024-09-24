@@ -693,8 +693,10 @@ AVIF_NODISCARD avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, 
 AVIF_NODISCARD avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags); // version and flags ptrs are both optional
 AVIF_NODISCARD avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion); // currently discards flags
 // The following functions can read non-aligned bits.
-AVIF_NODISCARD avifBool avifROStreamReadBits8(avifROStream * stream, uint8_t * v, size_t bitCount);
-AVIF_NODISCARD avifBool avifROStreamReadBits(avifROStream * stream, uint32_t * v, size_t bitCount);
+AVIF_NODISCARD avifBool avifROStreamSkipBits(avifROStream * stream, size_t bitCount);
+AVIF_NODISCARD avifBool avifROStreamReadBitsU8(avifROStream * stream, uint8_t * v, size_t bitCount);
+AVIF_NODISCARD avifBool avifROStreamReadBitsU16(avifROStream * stream, uint16_t * v, size_t bitCount);
+AVIF_NODISCARD avifBool avifROStreamReadBitsU32(avifROStream * stream, uint32_t * v, size_t bitCount);
 
 typedef struct avifRWStream
 {
