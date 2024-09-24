@@ -131,7 +131,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest_with_data(aviflosslesstest)
     add_avif_gtest_with_data(avifmetadatatest)
 
-    if(AVIF_ENABLE_EXPERIMENTAL_MINI)
+    if(AVIF_ENABLE_EXPERIMENTAL_MINI AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         add_avif_gtest(avifminitest)
     endif()
 
@@ -368,7 +368,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 PROPERTIES DISABLED True
             )
 
-            if(AVIF_ENABLE_EXPERIMENTAL_MINI)
+            if(AVIF_ENABLE_EXPERIMENTAL_MINI AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
                 set_tests_properties(avifminitest PROPERTIES DISABLED True)
             endif()
             if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
