@@ -176,20 +176,22 @@ inline auto ArbitraryAvifAnim() {
 // handling it natively.
 // TODO: Try StructOf<Metadata>(StructOf<uint32_t[3]>())?
 ImagePtr AddGainMapToImage(
-    ImagePtr image, ImagePtr gain_map, int32_t gainMapMinN0,
-    int32_t gainMapMinN1, int32_t gainMapMinN2, uint32_t gainMapMinD0,
-    uint32_t gainMapMinD1, uint32_t gainMapMinD2, int32_t gainMapMaxN0,
-    int32_t gainMapMaxN1, int32_t gainMapMaxN2, uint32_t gainMapMaxD0,
-    uint32_t gainMapMaxD1, uint32_t gainMapMaxD2, uint32_t gainMapGammaN0,
-    uint32_t gainMapGammaN1, uint32_t gainMapGammaN2, uint32_t gainMapGammaD0,
-    uint32_t gainMapGammaD1, uint32_t gainMapGammaD2, int32_t baseOffsetN0,
-    int32_t baseOffsetN1, int32_t baseOffsetN2, uint32_t baseOffsetD0,
-    uint32_t baseOffsetD1, uint32_t baseOffsetD2, int32_t alternateOffsetN0,
-    int32_t alternateOffsetN1, int32_t alternateOffsetN2,
-    uint32_t alternateOffsetD0, uint32_t alternateOffsetD1,
-    uint32_t alternateOffsetD2, uint32_t baseHdrHeadroomN,
-    uint32_t baseHdrHeadroomD, uint32_t alternateHdrHeadroomN,
-    uint32_t alternateHdrHeadroomD, bool useBaseColorSpace);
+    ImagePtr image, ImagePtr gain_map, int32_t gain_map_min_n0,
+    int32_t gain_map_min_n1, int32_t gain_map_min_n2, uint32_t gain_map_min_d0,
+    uint32_t gain_map_min_d1, uint32_t gain_map_min_d2, int32_t gain_map_max_n0,
+    int32_t gain_map_max_n1, int32_t gain_map_max_n2, uint32_t gain_map_max_d0,
+    uint32_t gain_map_max_d1, uint32_t gain_map_max_d2,
+    uint32_t gain_map_gamma_n0, uint32_t gain_map_gamma_n1,
+    uint32_t gain_map_gamma_n2, uint32_t gain_map_gamma_d0,
+    uint32_t gain_map_gamma_d1, uint32_t gain_map_gamma_d2,
+    int32_t base_offset_n0, int32_t base_offset_n1, int32_t base_offset_n2,
+    uint32_t base_offset_d0, uint32_t base_offset_d1, uint32_t base_offset_d2,
+    int32_t alternate_offset_n0, int32_t alternate_offset_n1,
+    int32_t alternate_offset_n2, uint32_t alternate_offset_d0,
+    uint32_t alternate_offset_d1, uint32_t alternate_offset_d2,
+    uint32_t base_hdr_headroom_n, uint32_t base_hdr_headroom_d,
+    uint32_t alternate_hdr_headroom_n, uint32_t alternate_hdr_headroom_d,
+    bool use_base_color_space);
 
 inline auto ArbitraryAvifImageWithGainMap() {
   return fuzztest::Map(
