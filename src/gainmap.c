@@ -441,6 +441,26 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, 
     return AVIF_RESULT_OK;
 }
 
+avifResult avifGainMapMetadataValidate(const avifGainMapMetadata * metadata, avifDiagnostics * diag)
+{
+    for (int i = 0; i < 3; ++i) {
+        if (metadata->gainMapMinD[i] == 0 || metadata->gainMapMaxD[i] == 0 || metadata->gainMapGammaD[i] == 0 ||
+            metadata->baseOffsetD[i] == 0 || metadata->alternateOffsetD[i] == 0) {
+            avifDiagnosticsPrintf(diag, "Per-channel denominator is 0 in avifGainMapMetadata");
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+    }
+    if (metadata->baseHdrHeadroomD == 0 || metadata->alternateHdrHeadroomD == 0) {
+        avifDiagnosticsPrintf(diag, "Headroom denominator is 0 in avifGainMapMetadata");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    if (metadata->useBaseColorSpace != 0 && metadata->useBaseColorSpace != 1) {
+        avifDiagnosticsPrintf(diag, "useBaseColorSpace is %d in avifGainMapMetadata", metadata->useBaseColorSpace);
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    return AVIF_RESULT_OK;
+}
+
 static const float kEpsilon = 1e-10f;
 
 // Decides which of 'basePrimaries' or 'altPrimaries' should be used for doing gain map math when creating a gain map.

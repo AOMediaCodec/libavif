@@ -914,8 +914,9 @@ static avifBool avifGainmapMetadataSize(const avifGainMapMetadata * metadata)
     return sizeof(uint16_t) * 2 + sizeof(uint8_t) + sizeof(uint32_t) * 4 + channelCount * sizeof(uint32_t) * 10;
 }
 
-static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMapMetadata * metadata)
+static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMapMetadata * metadata, avifDiagnostics * diag)
 {
+    AVIF_CHECKRES(avifGainMapMetadataValidate(metadata, diag));
     const size_t offset = avifRWStreamOffset(s);
 
     // GainMapMetadata syntax as per clause C.2.2 of ISO 21496-1:
@@ -957,7 +958,7 @@ static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMapMe
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * metadata)
+static avifResult avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * metadata, avifDiagnostics * diag)
 {
     avifRWStream s;
     avifRWStreamStart(&s, data);
@@ -966,7 +967,7 @@ static avifResult avifWriteToneMappedImagePayload(avifRWData * data, const avifG
     const uint8_t version = 0;
     AVIF_CHECKRES(avifRWStreamWriteU8(&s, version)); // unsigned int(8) version = 0;
     if (version == 0) {
-        AVIF_CHECKRES(avifWriteGainmapMetadata(&s, metadata)); // GainMapMetadata;
+        AVIF_CHECKRES(avifWriteGainmapMetadata(&s, metadata, diag)); // GainMapMetadata;
     }
     avifRWStreamFinishWrite(&s);
     return AVIF_RESULT_OK;
@@ -1868,7 +1869,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                          infeNameGainMap,
                                                                          /*infeNameSize=*/strlen(infeNameGainMap) + 1,
                                                                          /*cellIndex=*/0);
-            AVIF_CHECKRES(avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap->metadata));
+            AVIF_CHECKRES(
+                avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap->metadata, &encoder->diag));
             // Even though the 'tmap' item is related to the gain map, it represents a color image and its metadata is more similar to the color item.
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
             uint16_t toneMappedItemID = toneMappedItem->id;

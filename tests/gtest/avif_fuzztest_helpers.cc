@@ -169,6 +169,44 @@ DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
   // is no longer the case when this option is on.
   return decoder;
 }
+
+ImagePtr AddGainMapToImage(
+    ImagePtr image, ImagePtr gain_map, int32_t gain_map_min_n0,
+    int32_t gain_map_min_n1, int32_t gain_map_min_n2, uint32_t gain_map_min_d0,
+    uint32_t gain_map_min_d1, uint32_t gain_map_min_d2, int32_t gain_map_max_n0,
+    int32_t gain_map_max_n1, int32_t gain_map_max_n2, uint32_t gain_map_max_d0,
+    uint32_t gain_map_max_d1, uint32_t gain_map_max_d2,
+    uint32_t gain_map_gamma_n0, uint32_t gain_map_gamma_n1,
+    uint32_t gain_map_gamma_n2, uint32_t gain_map_gamma_d0,
+    uint32_t gain_map_gamma_d1, uint32_t gain_map_gamma_d2,
+    int32_t base_offset_n0, int32_t base_offset_n1, int32_t base_offset_n2,
+    uint32_t base_offset_d0, uint32_t base_offset_d1, uint32_t base_offset_d2,
+    int32_t alternate_offset_n0, int32_t alternate_offset_n1,
+    int32_t alternate_offset_n2, uint32_t alternate_offset_d0,
+    uint32_t alternate_offset_d1, uint32_t alternate_offset_d2,
+    uint32_t base_hdr_headroom_n, uint32_t base_hdr_headroom_d,
+    uint32_t alternate_hdr_headroom_n, uint32_t alternate_hdr_headroom_d,
+    bool use_base_color_space) {
+  image->gainMap = avifGainMapCreate();
+  image->gainMap->image = gain_map.release();
+  image->gainMap->metadata = avifGainMapMetadata{
+      {gain_map_min_n0, gain_map_min_n1, gain_map_min_n2},
+      {gain_map_min_d0, gain_map_min_d1, gain_map_min_d2},
+      {gain_map_max_n0, gain_map_max_n1, gain_map_max_n2},
+      {gain_map_max_d0, gain_map_max_d1, gain_map_max_d2},
+      {gain_map_gamma_n0, gain_map_gamma_n1, gain_map_gamma_n2},
+      {gain_map_gamma_d0, gain_map_gamma_d1, gain_map_gamma_d2},
+      {base_offset_n0, base_offset_n1, base_offset_n2},
+      {base_offset_d0, base_offset_d1, base_offset_d2},
+      {alternate_offset_n0, alternate_offset_n1, alternate_offset_n2},
+      {alternate_offset_d0, alternate_offset_d1, alternate_offset_d2},
+      base_hdr_headroom_n,
+      base_hdr_headroom_d,
+      alternate_hdr_headroom_n,
+      alternate_hdr_headroom_d,
+      use_base_color_space};
+  return image;
+}
 #endif
 
 //------------------------------------------------------------------------------
