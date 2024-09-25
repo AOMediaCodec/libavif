@@ -891,32 +891,32 @@ static avifResult avifWriteGridPayload(avifRWData * data, uint32_t gridCols, uin
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 
-static avifBool avifGainmapMetadataIdenticalChannels(const avifGainMapMetadata * metadata)
+static avifBool avifGainMapIdenticalChannels(const avifGainMap * gainMap)
 {
-    return metadata->gainMapMinN[0] == metadata->gainMapMinN[1] && metadata->gainMapMinN[0] == metadata->gainMapMinN[2] &&
-           metadata->gainMapMinD[0] == metadata->gainMapMinD[1] && metadata->gainMapMinD[0] == metadata->gainMapMinD[2] &&
-           metadata->gainMapMaxN[0] == metadata->gainMapMaxN[1] && metadata->gainMapMaxN[0] == metadata->gainMapMaxN[2] &&
-           metadata->gainMapMaxD[0] == metadata->gainMapMaxD[1] && metadata->gainMapMaxD[0] == metadata->gainMapMaxD[2] &&
-           metadata->gainMapGammaN[0] == metadata->gainMapGammaN[1] && metadata->gainMapGammaN[0] == metadata->gainMapGammaN[2] &&
-           metadata->gainMapGammaD[0] == metadata->gainMapGammaD[1] && metadata->gainMapGammaD[0] == metadata->gainMapGammaD[2] &&
-           metadata->baseOffsetN[0] == metadata->baseOffsetN[1] && metadata->baseOffsetN[0] == metadata->baseOffsetN[2] &&
-           metadata->baseOffsetD[0] == metadata->baseOffsetD[1] && metadata->baseOffsetD[0] == metadata->baseOffsetD[2] &&
-           metadata->alternateOffsetN[0] == metadata->alternateOffsetN[1] &&
-           metadata->alternateOffsetN[0] == metadata->alternateOffsetN[2] &&
-           metadata->alternateOffsetD[0] == metadata->alternateOffsetD[1] &&
-           metadata->alternateOffsetD[0] == metadata->alternateOffsetD[2];
+    return gainMap->gainMapMinN[0] == gainMap->gainMapMinN[1] && gainMap->gainMapMinN[0] == gainMap->gainMapMinN[2] &&
+           gainMap->gainMapMinD[0] == gainMap->gainMapMinD[1] && gainMap->gainMapMinD[0] == gainMap->gainMapMinD[2] &&
+           gainMap->gainMapMaxN[0] == gainMap->gainMapMaxN[1] && gainMap->gainMapMaxN[0] == gainMap->gainMapMaxN[2] &&
+           gainMap->gainMapMaxD[0] == gainMap->gainMapMaxD[1] && gainMap->gainMapMaxD[0] == gainMap->gainMapMaxD[2] &&
+           gainMap->gainMapGammaN[0] == gainMap->gainMapGammaN[1] && gainMap->gainMapGammaN[0] == gainMap->gainMapGammaN[2] &&
+           gainMap->gainMapGammaD[0] == gainMap->gainMapGammaD[1] && gainMap->gainMapGammaD[0] == gainMap->gainMapGammaD[2] &&
+           gainMap->baseOffsetN[0] == gainMap->baseOffsetN[1] && gainMap->baseOffsetN[0] == gainMap->baseOffsetN[2] &&
+           gainMap->baseOffsetD[0] == gainMap->baseOffsetD[1] && gainMap->baseOffsetD[0] == gainMap->baseOffsetD[2] &&
+           gainMap->alternateOffsetN[0] == gainMap->alternateOffsetN[1] &&
+           gainMap->alternateOffsetN[0] == gainMap->alternateOffsetN[2] &&
+           gainMap->alternateOffsetD[0] == gainMap->alternateOffsetD[1] &&
+           gainMap->alternateOffsetD[0] == gainMap->alternateOffsetD[2];
 }
 
 // Returns the number of bytes written by avifWriteGainmapMetadata().
-static avifBool avifGainmapMetadataSize(const avifGainMapMetadata * metadata)
+static avifBool avifGainMapMetadataSize(const avifGainMap * gainMap)
 {
-    const uint8_t channelCount = avifGainmapMetadataIdenticalChannels(metadata) ? 1u : 3u;
+    const uint8_t channelCount = avifGainMapIdenticalChannels(gainMap) ? 1u : 3u;
     return sizeof(uint16_t) * 2 + sizeof(uint8_t) + sizeof(uint32_t) * 4 + channelCount * sizeof(uint32_t) * 10;
 }
 
-static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMapMetadata * metadata, avifDiagnostics * diag)
+static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMap * gainMap, avifDiagnostics * diag)
 {
-    AVIF_CHECKRES(avifGainMapMetadataValidate(metadata, diag));
+    AVIF_CHECKRES(avifGainMapValidateMetadata(gainMap, diag));
     const size_t offset = avifRWStreamOffset(s);
 
     // GainMapMetadata syntax as per clause C.2.2 of ISO 21496-1:
@@ -928,37 +928,37 @@ static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMapMe
     AVIF_CHECKRES(avifRWStreamWriteBits(s, writerVersion, 16)); // unsigned int(16) writer_version;
 
     if (minimumVersion == 0) {
-        const uint8_t channelCount = avifGainmapMetadataIdenticalChannels(metadata) ? 1u : 3u;
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, channelCount == 3, 1));           // unsigned int(1) is_multichannel;
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->useBaseColorSpace, 1)); // unsigned int(1) use_base_colour_space;
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 6));                           // unsigned int(6) reserved;
+        const uint8_t channelCount = avifGainMapIdenticalChannels(gainMap) ? 1u : 3u;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, channelCount == 3, 1));          // unsigned int(1) is_multichannel;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->useBaseColorSpace, 1)); // unsigned int(1) use_base_colour_space;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, 0, 6));                          // unsigned int(6) reserved;
 
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->baseHdrHeadroomN, 32)); // unsigned int(32) base_hdr_headroom_numerator;
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->baseHdrHeadroomD, 32)); // unsigned int(32) base_hdr_headroom_denominator;
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->alternateHdrHeadroomN, 32)); // unsigned int(32) alternate_hdr_headroom_numerator;
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->alternateHdrHeadroomD, 32)); // unsigned int(32) alternate_hdr_headroom_denominator;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->baseHdrHeadroomN, 32)); // unsigned int(32) base_hdr_headroom_numerator;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->baseHdrHeadroomD, 32)); // unsigned int(32) base_hdr_headroom_denominator;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->alternateHdrHeadroomN, 32)); // unsigned int(32) alternate_hdr_headroom_numerator;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->alternateHdrHeadroomD, 32)); // unsigned int(32) alternate_hdr_headroom_denominator;
 
         // GainMapChannel channels[channel_count];
         for (int c = 0; c < channelCount; ++c) {
             // GainMapChannel syntax as per clause C.2.2 of ISO 21496-1:
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->gainMapMinN[c], 32)); // int(32) gain_map_min_numerator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapMinD[c], 32)); // unsigned int(32) gain_map_min_denominator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->gainMapMaxN[c], 32)); // int(32) gain_map_max_numerator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapMaxD[c], 32));   // unsigned int(32) gain_map_max_denominator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapGammaN[c], 32)); // unsigned int(32) gamma_numerator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->gainMapGammaD[c], 32)); // unsigned int(32) gamma_denominator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->baseOffsetN[c], 32)); // int(32) base_offset_numerator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->baseOffsetD[c], 32)); // unsigned int(32) base_offset_denominator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)metadata->alternateOffsetN[c], 32)); // int(32) alternate_offset_numerator;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, metadata->alternateOffsetD[c], 32)); // unsigned int(32) alternate_offset_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)gainMap->gainMapMinN[c], 32)); // int(32) gain_map_min_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->gainMapMinD[c], 32)); // unsigned int(32) gain_map_min_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)gainMap->gainMapMaxN[c], 32)); // int(32) gain_map_max_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->gainMapMaxD[c], 32));   // unsigned int(32) gain_map_max_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->gainMapGammaN[c], 32)); // unsigned int(32) gamma_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->gainMapGammaD[c], 32)); // unsigned int(32) gamma_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)gainMap->baseOffsetN[c], 32)); // int(32) base_offset_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->baseOffsetD[c], 32)); // unsigned int(32) base_offset_denominator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)gainMap->alternateOffsetN[c], 32)); // int(32) alternate_offset_numerator;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainMap->alternateOffsetD[c], 32)); // unsigned int(32) alternate_offset_denominator;
         }
     }
 
-    AVIF_ASSERT_OR_RETURN(avifRWStreamOffset(s) == offset + avifGainmapMetadataSize(metadata));
+    AVIF_ASSERT_OR_RETURN(avifRWStreamOffset(s) == offset + avifGainMapMetadataSize(gainMap));
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMapMetadata * metadata, avifDiagnostics * diag)
+static avifResult avifWriteToneMappedImagePayload(avifRWData * data, const avifGainMap * gainMap, avifDiagnostics * diag)
 {
     avifRWStream s;
     avifRWStreamStart(&s, data);
@@ -967,7 +967,7 @@ static avifResult avifWriteToneMappedImagePayload(avifRWData * data, const avifG
     const uint8_t version = 0;
     AVIF_CHECKRES(avifRWStreamWriteU8(&s, version)); // unsigned int(8) version = 0;
     if (version == 0) {
-        AVIF_CHECKRES(avifWriteGainmapMetadata(&s, metadata, diag)); // GainMapMetadata;
+        AVIF_CHECKRES(avifWriteGainmapMetadata(&s, gainMap, diag)); // GainMapMetadata;
     }
     avifRWStreamFinishWrite(&s);
     return AVIF_RESULT_OK;
@@ -1688,26 +1688,24 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same alternate image metadata in the gain map");
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
-            const avifGainMapMetadata * firstMetadata = &firstGainMap->metadata;
-            const avifGainMapMetadata * cellMetadata = &cellGainMap->metadata;
-            if (cellMetadata->baseHdrHeadroomN != firstMetadata->baseHdrHeadroomN ||
-                cellMetadata->baseHdrHeadroomD != firstMetadata->baseHdrHeadroomD ||
-                cellMetadata->alternateHdrHeadroomN != firstMetadata->alternateHdrHeadroomN ||
-                cellMetadata->alternateHdrHeadroomD != firstMetadata->alternateHdrHeadroomD) {
+            if (cellGainMap->baseHdrHeadroomN != firstGainMap->baseHdrHeadroomN ||
+                cellGainMap->baseHdrHeadroomD != firstGainMap->baseHdrHeadroomD ||
+                cellGainMap->alternateHdrHeadroomN != firstGainMap->alternateHdrHeadroomN ||
+                cellGainMap->alternateHdrHeadroomD != firstGainMap->alternateHdrHeadroomD) {
                 avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
             for (int c = 0; c < 3; ++c) {
-                if (cellMetadata->gainMapMinN[c] != firstMetadata->gainMapMinN[c] ||
-                    cellMetadata->gainMapMinD[c] != firstMetadata->gainMapMinD[c] ||
-                    cellMetadata->gainMapMaxN[c] != firstMetadata->gainMapMaxN[c] ||
-                    cellMetadata->gainMapMaxD[c] != firstMetadata->gainMapMaxD[c] ||
-                    cellMetadata->gainMapGammaN[c] != firstMetadata->gainMapGammaN[c] ||
-                    cellMetadata->gainMapGammaD[c] != firstMetadata->gainMapGammaD[c] ||
-                    cellMetadata->baseOffsetN[c] != firstMetadata->baseOffsetN[c] ||
-                    cellMetadata->baseOffsetD[c] != firstMetadata->baseOffsetD[c] ||
-                    cellMetadata->alternateOffsetN[c] != firstMetadata->alternateOffsetN[c] ||
-                    cellMetadata->alternateOffsetD[c] != firstMetadata->alternateOffsetD[c]) {
+                if (cellGainMap->gainMapMinN[c] != firstGainMap->gainMapMinN[c] ||
+                    cellGainMap->gainMapMinD[c] != firstGainMap->gainMapMinD[c] ||
+                    cellGainMap->gainMapMaxN[c] != firstGainMap->gainMapMaxN[c] ||
+                    cellGainMap->gainMapMaxD[c] != firstGainMap->gainMapMaxD[c] ||
+                    cellGainMap->gainMapGammaN[c] != firstGainMap->gainMapGammaN[c] ||
+                    cellGainMap->gainMapGammaD[c] != firstGainMap->gainMapGammaD[c] ||
+                    cellGainMap->baseOffsetN[c] != firstGainMap->baseOffsetN[c] ||
+                    cellGainMap->baseOffsetD[c] != firstGainMap->baseOffsetD[c] ||
+                    cellGainMap->alternateOffsetN[c] != firstGainMap->alternateOffsetN[c] ||
+                    cellGainMap->alternateOffsetD[c] != firstGainMap->alternateOffsetD[c]) {
                     avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
                     return AVIF_RESULT_INVALID_IMAGE_GRID;
                 }
@@ -1869,8 +1867,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                          infeNameGainMap,
                                                                          /*infeNameSize=*/strlen(infeNameGainMap) + 1,
                                                                          /*cellIndex=*/0);
-            AVIF_CHECKRES(
-                avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, &firstCell->gainMap->metadata, &encoder->diag));
+            AVIF_CHECKRES(avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, firstCell->gainMap, &encoder->diag));
             // Even though the 'tmap' item is related to the gain map, it represents a color image and its metadata is more similar to the color item.
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
             uint16_t toneMappedItemID = toneMappedItem->id;

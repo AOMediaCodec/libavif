@@ -65,34 +65,34 @@ avifResult PrintMetadataCommand::Run() {
   }
   assert(decoder->image->gainMap);
 
-  const avifGainMapMetadata& metadata = decoder->image->gainMap->metadata;
+  const avifGainMap& gainMap = *decoder->image->gainMap;
   const int w = 20;
   std::cout << " * " << std::left << std::setw(w) << "Base headroom: "
-            << FormatFraction(metadata.baseHdrHeadroomN,
-                              metadata.baseHdrHeadroomD)
+            << FormatFraction(gainMap.baseHdrHeadroomN,
+                              gainMap.baseHdrHeadroomD)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Alternate headroom: "
-            << FormatFraction(metadata.alternateHdrHeadroomN,
-                              metadata.alternateHdrHeadroomD)
+            << FormatFraction(gainMap.alternateHdrHeadroomN,
+                              gainMap.alternateHdrHeadroomD)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Gain Map Min: "
-            << FormatFractions(metadata.gainMapMinN, metadata.gainMapMinD)
+            << FormatFractions(gainMap.gainMapMinN, gainMap.gainMapMinD)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Gain Map Max: "
-            << FormatFractions(metadata.gainMapMaxN, metadata.gainMapMaxD)
+            << FormatFractions(gainMap.gainMapMaxN, gainMap.gainMapMaxD)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Base Offset: "
-            << FormatFractions(metadata.baseOffsetN, metadata.baseOffsetD)
+            << FormatFractions(gainMap.baseOffsetN, gainMap.baseOffsetD)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Alternate Offset: "
-            << FormatFractions(metadata.alternateOffsetN,
-                               metadata.alternateOffsetD)
+            << FormatFractions(gainMap.alternateOffsetN,
+                               gainMap.alternateOffsetD)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Gain Map Gamma: "
-            << FormatFractions(metadata.gainMapGammaN, metadata.gainMapGammaD)
+            << FormatFractions(gainMap.gainMapGammaN, gainMap.gainMapGammaD)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Use Base Color Space: "
-            << (metadata.useBaseColorSpace ? "True" : "False") << "\n";
+            << (gainMap.useBaseColorSpace ? "True" : "False") << "\n";
 
   return AVIF_RESULT_OK;
 }

@@ -19,8 +19,8 @@ namespace {
 
 ::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
 
-void CheckGainMapMetadataMatches(const avifGainMapMetadata& actual,
-                                 const avifGainMapMetadata& expected) {
+void CheckGainMapMetadataMatches(const avifGainMap& actual,
+                                 const avifGainMap& expected) {
   EXPECT_EQ(actual.baseHdrHeadroomN, expected.baseHdrHeadroomN);
   EXPECT_EQ(actual.baseHdrHeadroomD, expected.baseHdrHeadroomD);
   EXPECT_EQ(actual.alternateHdrHeadroomN, expected.alternateHdrHeadroomN);
@@ -84,8 +84,7 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
     EXPECT_EQ(decoded_image->gainMap->image->alphaPlane, nullptr);
 
     if (decoder->enableParsingGainMapMetadata) {
-      CheckGainMapMetadataMatches(decoded_image->gainMap->metadata,
-                                  image->gainMap->metadata);
+      CheckGainMapMetadataMatches(*decoded_image->gainMap, *image->gainMap);
     }
   }
 

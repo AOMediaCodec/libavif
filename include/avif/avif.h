@@ -434,6 +434,13 @@ typedef struct avifFraction
     int32_t d;
 } avifFraction;
 
+// Creates an int32/uint32 fraction that is approximately equal to 'v'.
+// Returns AVIF_FALSE if 'v' is NaN or abs(v) is > INT32_MAX.
+AVIF_API AVIF_NODISCARD avifBool avifDoubleToSignedFraction(double v, int32_t * numerator, uint32_t * denominator);
+// Creates a uint32/uint32 fraction that is approximately equal to 'v'.
+// Returns AVIF_FALSE if 'v' is < 0 or > UINT32_MAX or NaN.
+AVIF_API AVIF_NODISCARD avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator);
+
 // ---------------------------------------------------------------------------
 // Optional transformation structs
 
@@ -591,15 +598,25 @@ typedef struct avifContentLightLevelInformationBox
 
 struct avifImage;
 
-// Gain map metadata, to apply the gain map. Fully applying the gain map to the base
-// image results in the alternate image.
-// All field pairs ending with 'N' and 'D' are fractional values (numerator and denominator).
-typedef struct avifGainMapMetadata
+// Gain map image and associated metadata.
+// Must be allocated by calling avifGainMapCreate().
+typedef struct avifGainMap
 {
+    // Gain map pixels.
+    // Owned by the avifGainMap and gets freed when calling avifGainMapDestroy().
+    // Used fields: width, height, depth, yuvFormat, yuvRange,
+    // yuvChromaSamplePosition, yuvPlanes, yuvRowBytes, imageOwnsYUVPlanes,
+    // matrixCoefficients. The colorPrimaries and transferCharacteristics fields
+    // shall be 2. Other fields are ignored.
+    struct avifImage * image;
+
+    // Gain map metadata used to interpret and apply the gain map pixel data.
+    // When encoding an image grid, all metadata below shall be identical for all
+    // cells.
+
     // Parameters for converting the gain map from its image encoding to log2 space.
     // gainMapLog2 = lerp(gainMapMin, gainMapMax, pow(gainMapEncoded, gainMapGamma));
     // where 'lerp' is a linear interpolation function.
-
     // Minimum value in the gain map, log2-encoded, per RGB channel.
     int32_t gainMapMinN[3];
     uint32_t gainMapMinD[3];
@@ -623,11 +640,6 @@ typedef struct avifGainMapMetadata
     // Offset constants for the alternate image, per RGB channel.
     int32_t alternateOffsetN[3];
     uint32_t alternateOffsetD[3];
-
-    // -----------------------------------------------------------------------
-
-    // Parameters below can be manually tuned after the gain map has been
-    // created.
 
     // Log2-encoded HDR headroom of the base and alternate images respectively.
     // If baseHdrHeadroom is < alternateHdrHeadroom, the result of tone mapping
@@ -657,25 +669,6 @@ typedef struct avifGainMapMetadata
     // base image. If false, the color space of the alternate image should
     // be used.
     avifBool useBaseColorSpace;
-} avifGainMapMetadata;
-
-// Gain map image and associated metadata.
-// Must be allocated by calling avifGainMapCreate().
-typedef struct avifGainMap
-{
-    // Gain map pixels.
-    // Owned by the avifGainMap and gets freed when calling avifGainMapDestroy().
-    // Used fields: width, height, depth, yuvFormat, yuvRange,
-    // yuvChromaSamplePosition, yuvPlanes, yuvRowBytes, imageOwnsYUVPlanes,
-    // matrixCoefficients. The colorPrimaries and transferCharacteristics fields
-    // shall be 2. Other fields are ignored.
-    struct avifImage * image;
-
-    // When encoding an image grid, all metadata below shall be identical for all
-    // cells.
-
-    // Gain map metadata used to interpret and apply the gain map pixel data.
-    avifGainMapMetadata metadata;
 
     // Colorimetry of the alternate image (ICC profile and/or CICP information
     // of the alternate image that the gain map was created from).
@@ -701,29 +694,6 @@ typedef struct avifGainMap
 AVIF_API avifGainMap * avifGainMapCreate(void);
 // Frees a gain map, including the 'image' field if non NULL.
 AVIF_API void avifGainMapDestroy(avifGainMap * gainMap);
-
-// Same as avifGainMapMetadata, but with fields of type double instead of uint32_t fractions.
-// Use avifGainMapMetadataDoubleToFractions() to convert this to a avifGainMapMetadata.
-// See avifGainMapMetadata for detailed descriptions of fields.
-typedef struct avifGainMapMetadataDouble
-{
-    double gainMapMin[3];
-    double gainMapMax[3];
-    double gainMapGamma[3];
-    double baseOffset[3];
-    double alternateOffset[3];
-    double baseHdrHeadroom;
-    double alternateHdrHeadroom;
-    avifBool useBaseColorSpace;
-} avifGainMapMetadataDouble;
-
-// Converts a avifGainMapMetadataDouble to avifGainMapMetadata by converting double values
-// to the closest uint32_t fractions.
-// Returns AVIF_FALSE if some field values are < 0 or > UINT32_MAX.
-AVIF_NODISCARD AVIF_API avifBool avifGainMapMetadataDoubleToFractions(avifGainMapMetadata * dst, const avifGainMapMetadataDouble * src);
-// Converts a avifGainMapMetadata to avifGainMapMetadataDouble by converting fractions to double values.
-// Returns AVIF_FALSE if some denominators are zero.
-AVIF_NODISCARD AVIF_API avifBool avifGainMapMetadataFractionsToDouble(avifGainMapMetadataDouble * dst, const avifGainMapMetadata * src);
 
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 

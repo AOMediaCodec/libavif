@@ -189,22 +189,48 @@ ImagePtr AddGainMapToImage(
     bool use_base_color_space) {
   image->gainMap = avifGainMapCreate();
   image->gainMap->image = gain_map.release();
-  image->gainMap->metadata = avifGainMapMetadata{
-      {gain_map_min_n0, gain_map_min_n1, gain_map_min_n2},
-      {gain_map_min_d0, gain_map_min_d1, gain_map_min_d2},
-      {gain_map_max_n0, gain_map_max_n1, gain_map_max_n2},
-      {gain_map_max_d0, gain_map_max_d1, gain_map_max_d2},
-      {gain_map_gamma_n0, gain_map_gamma_n1, gain_map_gamma_n2},
-      {gain_map_gamma_d0, gain_map_gamma_d1, gain_map_gamma_d2},
-      {base_offset_n0, base_offset_n1, base_offset_n2},
-      {base_offset_d0, base_offset_d1, base_offset_d2},
-      {alternate_offset_n0, alternate_offset_n1, alternate_offset_n2},
-      {alternate_offset_d0, alternate_offset_d1, alternate_offset_d2},
-      base_hdr_headroom_n,
-      base_hdr_headroom_d,
-      alternate_hdr_headroom_n,
-      alternate_hdr_headroom_d,
-      use_base_color_space};
+
+  image->gainMap->gainMapMinN[0] = gain_map_min_n0;
+  image->gainMap->gainMapMinN[1] = gain_map_min_n1;
+  image->gainMap->gainMapMinN[2] = gain_map_min_n2;
+  image->gainMap->gainMapMinD[0] = gain_map_min_d0;
+  image->gainMap->gainMapMinD[1] = gain_map_min_d1;
+  image->gainMap->gainMapMinD[2] = gain_map_min_d2;
+
+  image->gainMap->gainMapMaxN[0] = gain_map_max_n0;
+  image->gainMap->gainMapMaxN[1] = gain_map_max_n1;
+  image->gainMap->gainMapMaxN[2] = gain_map_max_n2;
+  image->gainMap->gainMapMaxD[0] = gain_map_max_d0;
+  image->gainMap->gainMapMaxD[1] = gain_map_max_d1;
+  image->gainMap->gainMapMaxD[2] = gain_map_max_d2;
+
+  image->gainMap->gainMapGammaN[0] = gain_map_gamma_n0;
+  image->gainMap->gainMapGammaN[1] = gain_map_gamma_n1;
+  image->gainMap->gainMapGammaN[2] = gain_map_gamma_n2;
+  image->gainMap->gainMapGammaD[0] = gain_map_gamma_d0;
+  image->gainMap->gainMapGammaD[1] = gain_map_gamma_d1;
+  image->gainMap->gainMapGammaD[2] = gain_map_gamma_d2;
+
+  image->gainMap->baseOffsetN[0] = base_offset_n0;
+  image->gainMap->baseOffsetN[1] = base_offset_n1;
+  image->gainMap->baseOffsetN[2] = base_offset_n2;
+  image->gainMap->baseOffsetD[0] = base_offset_d0;
+  image->gainMap->baseOffsetD[1] = base_offset_d1;
+  image->gainMap->baseOffsetD[2] = base_offset_d2;
+
+  image->gainMap->alternateOffsetN[0] = alternate_offset_n0;
+  image->gainMap->alternateOffsetN[1] = alternate_offset_n1;
+  image->gainMap->alternateOffsetN[2] = alternate_offset_n2;
+  image->gainMap->alternateOffsetD[0] = alternate_offset_d0;
+  image->gainMap->alternateOffsetD[1] = alternate_offset_d1;
+  image->gainMap->alternateOffsetD[2] = alternate_offset_d2;
+
+  image->gainMap->baseHdrHeadroomN = base_hdr_headroom_n;
+  image->gainMap->baseHdrHeadroomD = base_hdr_headroom_d;
+  image->gainMap->alternateHdrHeadroomN = alternate_hdr_headroom_n;
+  image->gainMap->alternateHdrHeadroomD = alternate_hdr_headroom_d;
+  image->gainMap->useBaseColorSpace = use_base_color_space;
+
   return image;
 }
 #endif

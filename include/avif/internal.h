@@ -786,7 +786,7 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 // Removing outliers helps with accuracy/compression.
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, float * rangeMin, float * rangeMax);
 
-avifResult avifGainMapMetadataValidate(const avifGainMapMetadata * metadata, avifDiagnostics * diag);
+avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnostics * diag);
 
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 

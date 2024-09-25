@@ -262,7 +262,23 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             dstImage->gainMap = avifGainMapCreate();
             AVIF_CHECKERR(dstImage->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
         }
-        dstImage->gainMap->metadata = srcImage->gainMap->metadata;
+        for (int c = 0; c < 3; ++c) {
+            dstImage->gainMap->gainMapMinN[c] = srcImage->gainMap->gainMapMinN[c];
+            dstImage->gainMap->gainMapMinD[c] = srcImage->gainMap->gainMapMinD[c];
+            dstImage->gainMap->gainMapMaxN[c] = srcImage->gainMap->gainMapMaxN[c];
+            dstImage->gainMap->gainMapMaxD[c] = srcImage->gainMap->gainMapMaxD[c];
+            dstImage->gainMap->gainMapGammaN[c] = srcImage->gainMap->gainMapGammaN[c];
+            dstImage->gainMap->gainMapGammaD[c] = srcImage->gainMap->gainMapGammaD[c];
+            dstImage->gainMap->baseOffsetN[c] = srcImage->gainMap->baseOffsetN[c];
+            dstImage->gainMap->baseOffsetD[c] = srcImage->gainMap->baseOffsetD[c];
+            dstImage->gainMap->alternateOffsetN[c] = srcImage->gainMap->alternateOffsetN[c];
+            dstImage->gainMap->alternateOffsetD[c] = srcImage->gainMap->alternateOffsetD[c];
+        }
+        dstImage->gainMap->baseHdrHeadroomN = srcImage->gainMap->baseHdrHeadroomN;
+        dstImage->gainMap->baseHdrHeadroomD = srcImage->gainMap->baseHdrHeadroomD;
+        dstImage->gainMap->alternateHdrHeadroomN = srcImage->gainMap->alternateHdrHeadroomN;
+        dstImage->gainMap->alternateHdrHeadroomD = srcImage->gainMap->alternateHdrHeadroomD;
+        dstImage->gainMap->useBaseColorSpace = srcImage->gainMap->useBaseColorSpace;
         AVIF_CHECKRES(avifRWDataSet(&dstImage->gainMap->altICC, srcImage->gainMap->altICC.data, srcImage->gainMap->altICC.size));
         dstImage->gainMap->altColorPrimaries = srcImage->gainMap->altColorPrimaries;
         dstImage->gainMap->altTransferCharacteristics = srcImage->gainMap->altTransferCharacteristics;
@@ -1192,17 +1208,17 @@ avifGainMap * avifGainMapCreate(void)
     gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     gainMap->altYUVRange = AVIF_RANGE_FULL;
-    gainMap->metadata.useBaseColorSpace = AVIF_TRUE;
+    gainMap->useBaseColorSpace = AVIF_TRUE;
     // Set all denominators to valid values (1).
     for (int i = 0; i < 3; ++i) {
-        gainMap->metadata.gainMapMinD[i] = 1;
-        gainMap->metadata.gainMapMaxD[i] = 1;
-        gainMap->metadata.gainMapGammaD[i] = 1;
-        gainMap->metadata.baseOffsetD[i] = 1;
-        gainMap->metadata.alternateOffsetD[i] = 1;
+        gainMap->gainMapMinD[i] = 1;
+        gainMap->gainMapMaxD[i] = 1;
+        gainMap->gainMapGammaD[i] = 1;
+        gainMap->baseOffsetD[i] = 1;
+        gainMap->alternateOffsetD[i] = 1;
     }
-    gainMap->metadata.baseHdrHeadroomD = 1;
-    gainMap->metadata.alternateHdrHeadroomD = 1;
+    gainMap->baseHdrHeadroomD = 1;
+    gainMap->alternateHdrHeadroomD = 1;
     return gainMap;
 }
 
