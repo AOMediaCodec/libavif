@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <vector>
 
 #include "avif/avif.h"
@@ -168,6 +169,63 @@ inline auto ArbitraryAvifImage() {
 inline auto ArbitraryAvifAnim() {
   return fuzztest::OneOf(ArbitraryAvifAnim8b(), ArbitraryAvifAnim16b());
 }
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+// Note that avifGainMapMetadata is passed as many individual arguments
+// because the C array fields in the struct seem to prevent fuzztest from
+// handling it natively.
+// TODO: Try StructOf<Metadata>(StructOf<uint32_t[3]>())?
+ImagePtr AddGainMapToImage(
+    ImagePtr image, ImagePtr gain_map, int32_t gainMapMinN0,
+    int32_t gainMapMinN1, int32_t gainMapMinN2, uint32_t gainMapMinD0,
+    uint32_t gainMapMinD1, uint32_t gainMapMinD2, int32_t gainMapMaxN0,
+    int32_t gainMapMaxN1, int32_t gainMapMaxN2, uint32_t gainMapMaxD0,
+    uint32_t gainMapMaxD1, uint32_t gainMapMaxD2, uint32_t gainMapGammaN0,
+    uint32_t gainMapGammaN1, uint32_t gainMapGammaN2, uint32_t gainMapGammaD0,
+    uint32_t gainMapGammaD1, uint32_t gainMapGammaD2, int32_t baseOffsetN0,
+    int32_t baseOffsetN1, int32_t baseOffsetN2, uint32_t baseOffsetD0,
+    uint32_t baseOffsetD1, uint32_t baseOffsetD2, int32_t alternateOffsetN0,
+    int32_t alternateOffsetN1, int32_t alternateOffsetN2,
+    uint32_t alternateOffsetD0, uint32_t alternateOffsetD1,
+    uint32_t alternateOffsetD2, uint32_t baseHdrHeadroomN,
+    uint32_t baseHdrHeadroomD, uint32_t alternateHdrHeadroomN,
+    uint32_t alternateHdrHeadroomD, bool useBaseColorSpace);
+
+inline auto ArbitraryAvifImageWithGainMap() {
+  return fuzztest::Map(
+      AddGainMapToImage, ArbitraryAvifImage(), ArbitraryAvifImage(),
+      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
+      fuzztest::Arbitrary<int32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
+      fuzztest::Arbitrary<int32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::Arbitrary<uint32_t>(), fuzztest::Arbitrary<uint32_t>(),
+      fuzztest::Arbitrary<uint32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
+      fuzztest::Arbitrary<int32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
+      fuzztest::Arbitrary<int32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::Arbitrary<uint32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::Arbitrary<uint32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::Arbitrary<bool>());
+}
+#endif
 
 // Generator for an arbitrary EncoderPtr.
 inline auto ArbitraryAvifEncoder() {

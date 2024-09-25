@@ -1193,6 +1193,16 @@ avifGainMap * avifGainMapCreate(void)
     gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     gainMap->altYUVRange = AVIF_RANGE_FULL;
     gainMap->metadata.useBaseColorSpace = AVIF_TRUE;
+    // Set all denominators to valid values (1).
+    for (int i = 0; i < 3; ++i) {
+        gainMap->metadata.gainMapMinD[i] = 1;
+        gainMap->metadata.gainMapMaxD[i] = 1;
+        gainMap->metadata.gainMapGammaD[i] = 1;
+        gainMap->metadata.baseOffsetD[i] = 1;
+        gainMap->metadata.alternateOffsetD[i] = 1;
+    }
+    gainMap->metadata.baseHdrHeadroomD = 1;
+    gainMap->metadata.alternateHdrHeadroomD = 1;
     return gainMap;
 }
 

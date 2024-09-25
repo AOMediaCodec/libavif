@@ -169,6 +169,42 @@ DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
   // is no longer the case when this option is on.
   return decoder;
 }
+
+ImagePtr AddGainMapToImage(
+    ImagePtr image, ImagePtr gain_map, int32_t gainMapMinN0,
+    int32_t gainMapMinN1, int32_t gainMapMinN2, uint32_t gainMapMinD0,
+    uint32_t gainMapMinD1, uint32_t gainMapMinD2, int32_t gainMapMaxN0,
+    int32_t gainMapMaxN1, int32_t gainMapMaxN2, uint32_t gainMapMaxD0,
+    uint32_t gainMapMaxD1, uint32_t gainMapMaxD2, uint32_t gainMapGammaN0,
+    uint32_t gainMapGammaN1, uint32_t gainMapGammaN2, uint32_t gainMapGammaD0,
+    uint32_t gainMapGammaD1, uint32_t gainMapGammaD2, int32_t baseOffsetN0,
+    int32_t baseOffsetN1, int32_t baseOffsetN2, uint32_t baseOffsetD0,
+    uint32_t baseOffsetD1, uint32_t baseOffsetD2, int32_t alternateOffsetN0,
+    int32_t alternateOffsetN1, int32_t alternateOffsetN2,
+    uint32_t alternateOffsetD0, uint32_t alternateOffsetD1,
+    uint32_t alternateOffsetD2, uint32_t baseHdrHeadroomN,
+    uint32_t baseHdrHeadroomD, uint32_t alternateHdrHeadroomN,
+    uint32_t alternateHdrHeadroomD, bool useBaseColorSpace) {
+  image->gainMap = avifGainMapCreate();
+  image->gainMap->image = gain_map.release();
+  image->gainMap->metadata = avifGainMapMetadata{
+      {gainMapMinN0, gainMapMinN1, gainMapMinN2},
+      {gainMapMinD0, gainMapMinD1, gainMapMinD2},
+      {gainMapMaxN0, gainMapMaxN1, gainMapMaxN2},
+      {gainMapMaxD0, gainMapMaxD1, gainMapMaxD2},
+      {gainMapGammaN0, gainMapGammaN1, gainMapGammaN2},
+      {gainMapGammaD0, gainMapGammaD1, gainMapGammaD2},
+      {baseOffsetN0, baseOffsetN1, baseOffsetN2},
+      {baseOffsetD0, baseOffsetD1, baseOffsetD2},
+      {alternateOffsetN0, alternateOffsetN1, alternateOffsetN2},
+      {alternateOffsetD0, alternateOffsetD1, alternateOffsetD2},
+      baseHdrHeadroomN,
+      baseHdrHeadroomD,
+      alternateHdrHeadroomN,
+      alternateHdrHeadroomD,
+      useBaseColorSpace};
+  return image;
+}
 #endif
 
 //------------------------------------------------------------------------------
