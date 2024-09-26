@@ -17,53 +17,53 @@ jobs:
         os: [ubuntu-latest] # TODO: macos-latest
 
     steps:
-    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-    - uses: ./.github/actions/setup-linux
-      if: runner.os == 'Linux'
-      with:
-        codec-aom: "LOCAL"
-        codec-dav1d: "LOCAL"
-        libyuv: "LOCAL"
-    - uses: ./.github/actions/setup-macos
-      if: runner.os == 'macOS'
-      with:
-        codec-aom: "LOCAL"
-        codec-dav1d: "LOCAL"
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: ./.github/actions/setup-linux
+        if: runner.os == 'Linux'
+        with:
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
+          libyuv: "LOCAL"
+      - uses: ./.github/actions/setup-macos
+        if: runner.os == 'macOS'
+        with:
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
 
-    - name: Prepare libavif (cmake)
-      run: >
-        cmake -G Ninja -S . -B build
-        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-        -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_AOM_ENCODE=ON
-        -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_DAV1D=LOCAL
-        -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBYUV=LOCAL
-        -DAVIF_ZLIBPNG=LOCAL -DAVIF_JPEG=LOCAL
-        -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
-        -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
-        -DCMAKE_C_COMPILER=clang
-        -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
-    - name: Build libavif (ninja)
-      working-directory: ./build
-      run: ninja
-    - name: Archive artifacts
-      uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
-      with:
-        type: zip
-        filename: ${{ matrix.os }}-artifacts.zip
-        directory: build
-        path: |
-          avifenc
-          avifdec
-    - name: Upload artifacts
-      uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#release.
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: build/${{ matrix.os }}-artifacts.zip
-        asset_name: ${{ matrix.os }}-artifacts.zip
-        asset_content_type: application/zip
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_AOM_ENCODE=ON
+          -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_DAV1D=LOCAL
+          -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBYUV=LOCAL
+          -DAVIF_ZLIBPNG=LOCAL -DAVIF_JPEG=LOCAL
+          -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
+          -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
+          -DCMAKE_C_COMPILER=clang
+          -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      - name: Archive artifacts
+        uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
+        with:
+          type: zip
+          filename: ${{ matrix.os }}-artifacts.zip
+          directory: build
+          path: |
+            avifenc
+            avifdec
+      - name: Upload artifacts
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#release.
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/${{ matrix.os }}-artifacts.zip
+          asset_name: ${{ matrix.os }}-artifacts.zip
+          asset_content_type: application/zip
 
     # Use the following instead of the above to test this workflow outside of a release event.
     # - name: Upload artifacts

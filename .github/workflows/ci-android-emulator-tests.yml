@@ -4,12 +4,12 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/ci-android-emulator-tests.yml'
-      - 'android_jni/**'
+      - ".github/workflows/ci-android-emulator-tests.yml"
+      - "android_jni/**"
   pull_request:
     paths:
-      - '.github/workflows/ci-android-emulator-tests.yml'
-      - 'android_jni/**'
+      - ".github/workflows/ci-android-emulator-tests.yml"
+      - "android_jni/**"
 
 permissions:
   contents: read
@@ -44,14 +44,14 @@ jobs:
           add-to-path: false
       - uses: ./.github/actions/setup-linux
         with:
-          codec-dav1d: 'LOCAL'
-          libyuv: 'LOCAL'
+          codec-dav1d: "LOCAL"
+          libyuv: "LOCAL"
           oldest-cmake: true
       - name: Setup JDK
         uses: actions/setup-java@6a0805fcefea3d4657a47ac4c165951e33482018 # v4.2.2
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
       - name: Run Instrumented Tests on the Emulator
         uses: reactivecircus/android-emulator-runner@f0d1ed2dcad93c7479e8b2f2226c83af54494915 # v2.32.0
         with:

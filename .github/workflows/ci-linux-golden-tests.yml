@@ -26,53 +26,53 @@ jobs:
             gcc: 14
 
     steps:
-    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-    - uses: ./.github/actions/setup-linux
-      id: setup
-      with:
-        codec-aom: 'LOCAL'
-        codec-dav1d: 'LOCAL'
-        gcc-version: ${{ matrix.gcc }}
-        libxml2: 'LOCAL'
-        libyuv: 'LOCAL'
-    - name: Build mp4box
-      if: steps.setup.outputs.ext-cache-hit != 'true'
-      working-directory: ./ext
-      run: bash -e mp4box.sh
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: ./.github/actions/setup-linux
+        id: setup
+        with:
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
+          gcc-version: ${{ matrix.gcc }}
+          libxml2: "LOCAL"
+          libyuv: "LOCAL"
+      - name: Build mp4box
+        if: steps.setup.outputs.ext-cache-hit != 'true'
+        working-directory: ./ext
+        run: bash -e mp4box.sh
 
-    - name: Prepare libavif (cmake)
-      run: >
-        cmake -G Ninja -S . -B build
-        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-        -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL
-        -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
-        -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
-        -DAVIF_LIBXML2=LOCAL
-        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GOLDEN_TESTS=ON
-        -DAVIF_ENABLE_GTEST=OFF -DAVIF_ENABLE_WERROR=ON
-        -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp }}/golden_tests
-    - name: Build libavif (ninja)
-      working-directory: ./build
-      run: ninja
-    - name: Run AVIF golden tests
-      working-directory: ./build
-      # Runs test that have "golden" in their name.
-      run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure -R golden
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL
+          -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+          -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
+          -DAVIF_LIBXML2=LOCAL
+          -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GOLDEN_TESTS=ON
+          -DAVIF_ENABLE_GTEST=OFF -DAVIF_ENABLE_WERROR=ON
+          -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp }}/golden_tests
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      - name: Run AVIF golden tests
+        working-directory: ./build
+        # Runs test that have "golden" in their name.
+        run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure -R golden
 
-    # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
-    - name: Archive golden tests output for debugging
-      if: failure()
-      uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
-      with:
-        name: golden-tests-output
-        path: ${{ runner.temp }}/golden_tests/**/*
+      # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+      - name: Archive golden tests output for debugging
+        if: failure()
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: golden-tests-output
+          path: ${{ runner.temp }}/golden_tests/**/*
 
-    # Print instructions to help fix the tests.
-    - name: How to fix failing tests
-      if: failure()
-      run: >
-        echo "If the tests fail, download the test results from the Artifacts list at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} or with:
-          gh run download --dir /tmp/golden-tests-output-${{ github.run_id }} --repo ${{ github.repository }} --name golden-tests-output ${{ github.run_id }}
-        Update all files with:
-          cp /tmp/golden-tests-output-${{ github.run_id }}/*/*.xml ~/git/libavif/tests/data/goldens
-        Or look at detailed instructions in the README.txt file in the test ouputs."
+      # Print instructions to help fix the tests.
+      - name: How to fix failing tests
+        if: failure()
+        run: >
+          echo "If the tests fail, download the test results from the Artifacts list at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} or with:
+            gh run download --dir /tmp/golden-tests-output-${{ github.run_id }} --repo ${{ github.repository }} --name golden-tests-output ${{ github.run_id }}
+          Update all files with:
+            cp /tmp/golden-tests-output-${{ github.run_id }}/*/*.xml ~/git/libavif/tests/data/goldens
+          Or look at detailed instructions in the README.txt file in the test ouputs."
