@@ -22,11 +22,12 @@ avifResult ChangeBase(const avifImage& image, int depth,
   swapped->depth = depth;
   swapped->yuvFormat = yuvFormat;
 
+  if (image.gainMap->alternateHdrHeadroom.d == 0) {
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
   const float headroom =
-      image.gainMap->alternateHdrHeadroom.d == 0
-          ? 0.0f
-          : static_cast<float>(image.gainMap->alternateHdrHeadroom.n) /
-                image.gainMap->alternateHdrHeadroom.d;
+      static_cast<float>(image.gainMap->alternateHdrHeadroom.n) /
+      image.gainMap->alternateHdrHeadroom.d;
   const bool tone_mapping_to_sdr = (headroom == 0.0f);
 
   swapped->colorPrimaries = image.gainMap->altColorPrimaries;

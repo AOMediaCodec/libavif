@@ -46,25 +46,18 @@ void CheckGainMapMetadataMatches(const avifGainMap& lhs,
 
 void FillTestGainMapMetadata(bool base_rendition_is_hdr, avifGainMap* gainMap) {
   gainMap->useBaseColorSpace = true;
-  gainMap->baseHdrHeadroom.n = 0;
-  gainMap->baseHdrHeadroom.d = 1;
-  gainMap->alternateHdrHeadroom.n = 6;
-  gainMap->alternateHdrHeadroom.d = 2;
+  gainMap->baseHdrHeadroom = {0, 1};
+  gainMap->alternateHdrHeadroom = {6, 2};
   if (base_rendition_is_hdr) {
     std::swap(gainMap->baseHdrHeadroom.n, gainMap->alternateHdrHeadroom.n);
     std::swap(gainMap->baseHdrHeadroom.d, gainMap->alternateHdrHeadroom.d);
   }
   for (int c = 0; c < 3; ++c) {
-    gainMap->baseOffset[c].n = 10 * c;
-    gainMap->baseOffset[c].d = 1000;
-    gainMap->alternateOffset[c].n = 20 * c;
-    gainMap->alternateOffset[c].d = 1000;
-    gainMap->gainMapGamma[c].n = 1;
-    gainMap->gainMapGamma[c].d = c + 1;
-    gainMap->gainMapMin[c].n = -1;
-    gainMap->gainMapMin[c].d = c + 1;
-    gainMap->gainMapMax[c].n = 10 + c + 1;
-    gainMap->gainMapMax[c].d = c + 1;
+    gainMap->baseOffset[c] = {10 * c, 1000};
+    gainMap->alternateOffset[c] = {20 * c, 1000};
+    gainMap->gainMapGamma[c] = {1, static_cast<uint32_t>(c + 1)};
+    gainMap->gainMapMin[c] = {-1, static_cast<uint32_t>(c + 1)};
+    gainMap->gainMapMax[c] = {10 + c + 1, static_cast<uint32_t>(c + 1)};
   }
 }
 
@@ -313,16 +306,11 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
   ASSERT_NE(image, nullptr);
 
   for (int c = 0; c < 3; ++c) {
-    image->gainMap->baseOffset[c].n = 1;
-    image->gainMap->baseOffset[c].d = 2;
-    image->gainMap->alternateOffset[c].n = 3;
-    image->gainMap->alternateOffset[c].d = 4;
-    image->gainMap->gainMapGamma[c].n = 5;
-    image->gainMap->gainMapGamma[c].d = 6;
-    image->gainMap->gainMapMin[c].n = 7;
-    image->gainMap->gainMapMin[c].d = 8;
-    image->gainMap->gainMapMax[c].n = 9;
-    image->gainMap->gainMapMax[c].d = 10;
+    image->gainMap->baseOffset[c] = {1, 2};
+    image->gainMap->alternateOffset[c] = {3, 4};
+    image->gainMap->gainMapGamma[c] = {5, 6};
+    image->gainMap->gainMapMin[c] = {7, 8};
+    image->gainMap->gainMapMax[c] = {9, 10};
   }
 
   EncoderPtr encoder(avifEncoderCreate());
@@ -1285,8 +1273,7 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
   ASSERT_NE(image->gainMap->image, nullptr);
 
   // Force the alternate and base HDR headroom to the same value.
-  image->gainMap->baseHdrHeadroom.n = image->gainMap->alternateHdrHeadroom.n;
-  image->gainMap->baseHdrHeadroom.d = image->gainMap->alternateHdrHeadroom.d;
+  image->gainMap->baseHdrHeadroom = image->gainMap->alternateHdrHeadroom;
   const float headroom =
       static_cast<float>(static_cast<float>(image->gainMap->baseHdrHeadroom.n) /
                          image->gainMap->baseHdrHeadroom.d);

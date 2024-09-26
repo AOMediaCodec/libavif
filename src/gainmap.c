@@ -12,30 +12,31 @@
 static void avifGainMapSetDefaults(avifGainMap * gainMap)
 {
     for (int i = 0; i < 3; ++i) {
-        gainMap->gainMapMin[i].n = 1;
-        gainMap->gainMapMin[i].d = 1;
-        gainMap->gainMapMax[i].n = 1;
-        gainMap->gainMapMax[i].d = 1;
-        gainMap->baseOffset[i].n = 1;
-        gainMap->baseOffset[i].d = 64;
-        gainMap->alternateOffset[i].n = 1;
-        gainMap->alternateOffset[i].d = 64;
-        gainMap->gainMapGamma[i].n = 1;
-        gainMap->gainMapGamma[i].d = 1;
+        gainMap->gainMapMin[i] = (avifSignedFraction) { 1, 1 };
+        gainMap->gainMapMax[i] = (avifSignedFraction) { 1, 1 };
+        gainMap->baseOffset[i] = (avifSignedFraction) { 1, 64 };
+        gainMap->alternateOffset[i] = (avifSignedFraction) { 1, 64 };
+        gainMap->gainMapGamma[i] = (avifUnsignedFraction) { 1, 1 };
     }
-    gainMap->baseHdrHeadroom.n = 0;
-    gainMap->baseHdrHeadroom.d = 1;
-    gainMap->alternateHdrHeadroom.n = 0;
-    gainMap->alternateHdrHeadroom.d = 1;
+    gainMap->baseHdrHeadroom = (avifUnsignedFraction) { 0, 1 };
+    gainMap->alternateHdrHeadroom = (avifUnsignedFraction) { 1, 1 };
     gainMap->useBaseColorSpace = AVIF_TRUE;
 }
 
-static float toFloat(int numerator, int denominator)
+static float avifSignedFractionToFloat(avifSignedFraction f)
 {
-    if (denominator == 0) {
+    if (f.d == 0) {
         return 0.0f;
     }
-    return (float)numerator / denominator;
+    return (float)f.n / f.d;
+}
+
+static float avifUnsignedFractionToFloat(avifUnsignedFraction f)
+{
+    if (f.d == 0) {
+        return 0.0f;
+    }
+    return (float)f.n / f.d;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,8 +45,8 @@ static float toFloat(int numerator, int denominator)
 // Returns a weight in [-1.0, 1.0] that represents how much the gain map should be applied.
 static float avifGetGainMapWeight(float hdrHeadroom, const avifGainMap * gainMap)
 {
-    const float baseHdrHeadroom = toFloat(gainMap->baseHdrHeadroom.n, gainMap->baseHdrHeadroom.d);
-    const float alternateHdrHeadroom = toFloat(gainMap->alternateHdrHeadroom.n, gainMap->alternateHdrHeadroom.d);
+    const float baseHdrHeadroom = avifUnsignedFractionToFloat(gainMap->baseHdrHeadroom);
+    const float alternateHdrHeadroom = avifUnsignedFractionToFloat(gainMap->alternateHdrHeadroom);
     if (baseHdrHeadroom == alternateHdrHeadroom) {
         // Do not apply the gain map if the HDR headroom is the same.
         // This case is not handled in the specification and does not make practical sense.
@@ -76,6 +77,8 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 {
     avifDiagnosticsClearError(diag);
 
+    AVIF_CHECKRES(avifGainMapValidateMetadata(gainMap, diag));
+
     if (hdrHeadroom < 0.0f) {
         avifDiagnosticsPrintf(diag, "hdrHeadroom should be >= 0, got %f", hdrHeadroom);
         return AVIF_RESULT_INVALID_ARGUMENT;
@@ -86,7 +89,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     }
 
     for (int i = 0; i < 3; ++i) {
-        if (gainMap->gainMapGamma[i].n <= 0) {
+        if (gainMap->gainMapGamma[i].n == 0) {
             avifDiagnosticsPrintf(diag, "Invalid gain map metadata, gamma should be strictly positive");
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
@@ -217,21 +220,22 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
     float rgbMaxLinear = 0; // Max tone mapped pixel value across R, G and B channels.
     float rgbSumLinear = 0; // Sum of max(r, g, b) for mapped pixels.
-    const float gammaInv[3] = { toFloat(gainMap->gainMapGamma[0].d, gainMap->gainMapGamma[0].n),
-                                toFloat(gainMap->gainMapGamma[1].d, gainMap->gainMapGamma[1].n),
-                                toFloat(gainMap->gainMapGamma[2].d, gainMap->gainMapGamma[2].n) };
-    const float gainMapMin[3] = { toFloat(gainMap->gainMapMin[0].n, gainMap->gainMapMin[0].d),
-                                  toFloat(gainMap->gainMapMin[1].n, gainMap->gainMapMin[1].d),
-                                  toFloat(gainMap->gainMapMin[2].n, gainMap->gainMapMin[2].d) };
-    const float gainMapMax[3] = { toFloat(gainMap->gainMapMax[0].n, gainMap->gainMapMax[0].d),
-                                  toFloat(gainMap->gainMapMax[1].n, gainMap->gainMapMax[1].d),
-                                  toFloat(gainMap->gainMapMax[2].n, gainMap->gainMapMax[2].d) };
-    const float baseOffset[3] = { toFloat(gainMap->baseOffset[0].n, gainMap->baseOffset[0].d),
-                                  toFloat(gainMap->baseOffset[1].n, gainMap->baseOffset[1].d),
-                                  toFloat(gainMap->baseOffset[2].n, gainMap->baseOffset[2].d) };
-    const float alternateOffset[3] = { toFloat(gainMap->alternateOffset[0].n, gainMap->alternateOffset[0].d),
-                                       toFloat(gainMap->alternateOffset[1].n, gainMap->alternateOffset[1].d),
-                                       toFloat(gainMap->alternateOffset[2].n, gainMap->alternateOffset[2].d) };
+    // The gain map metadata contains the encoding gamma, and 1/gamma should be used for decoding.
+    const float gammaInv[3] = { 1.0f / avifUnsignedFractionToFloat(gainMap->gainMapGamma[0]),
+                                1.0f / avifUnsignedFractionToFloat(gainMap->gainMapGamma[1]),
+                                1.0f / avifUnsignedFractionToFloat(gainMap->gainMapGamma[2]) };
+    const float gainMapMin[3] = { avifSignedFractionToFloat(gainMap->gainMapMin[0]),
+                                  avifSignedFractionToFloat(gainMap->gainMapMin[1]),
+                                  avifSignedFractionToFloat(gainMap->gainMapMin[2]) };
+    const float gainMapMax[3] = { avifSignedFractionToFloat(gainMap->gainMapMax[0]),
+                                  avifSignedFractionToFloat(gainMap->gainMapMax[1]),
+                                  avifSignedFractionToFloat(gainMap->gainMapMax[2]) };
+    const float baseOffset[3] = { avifSignedFractionToFloat(gainMap->baseOffset[0]),
+                                  avifSignedFractionToFloat(gainMap->baseOffset[1]),
+                                  avifSignedFractionToFloat(gainMap->baseOffset[2]) };
+    const float alternateOffset[3] = { avifSignedFractionToFloat(gainMap->alternateOffset[0]),
+                                       avifSignedFractionToFloat(gainMap->alternateOffset[1]),
+                                       avifSignedFractionToFloat(gainMap->alternateOffset[2]) };
     for (uint32_t j = 0; j < height; ++j) {
         for (uint32_t i = 0; i < width; ++i) {
             float basePixelRGBA[4];
@@ -562,12 +566,12 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         }
     }
 
-    float baseOffset[3] = { toFloat(gainMap->baseOffset[0].n, gainMap->baseOffset[0].d),
-                            toFloat(gainMap->baseOffset[1].n, gainMap->baseOffset[1].d),
-                            toFloat(gainMap->baseOffset[2].n, gainMap->baseOffset[2].d) };
-    float alternateOffset[3] = { toFloat(gainMap->alternateOffset[0].n, gainMap->alternateOffset[0].d),
-                                 toFloat(gainMap->alternateOffset[1].n, gainMap->alternateOffset[1].d),
-                                 toFloat(gainMap->alternateOffset[2].n, gainMap->alternateOffset[2].d) };
+    float baseOffset[3] = { avifSignedFractionToFloat(gainMap->baseOffset[0]),
+                            avifSignedFractionToFloat(gainMap->baseOffset[1]),
+                            avifSignedFractionToFloat(gainMap->baseOffset[2]) };
+    float alternateOffset[3] = { avifSignedFractionToFloat(gainMap->alternateOffset[0]),
+                                 avifSignedFractionToFloat(gainMap->alternateOffset[1]),
+                                 avifSignedFractionToFloat(gainMap->alternateOffset[2]) };
 
     // If we are converting from one colorspace to another, some RGB values may be negative and an offset must be added to
     // avoid clamping (although the choice of color space to do the gain map computation with
@@ -666,6 +670,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     const double alternateHeadroom = log2f(AVIF_MAX(altMax, kEpsilon));
     if (!avifDoubleToUnsignedFraction(baseHeadroom, &gainMap->baseHdrHeadroom) ||
         !avifDoubleToUnsignedFraction(alternateHeadroom, &gainMap->alternateHdrHeadroom)) {
+        res = AVIF_RESULT_INVALID_ARGUMENT;
         goto cleanup;
     }
 
@@ -698,6 +703,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
             !avifDoubleToSignedFraction(gainMapMaxLog2[singleChannel ? 0 : c], &gainMap->gainMapMax[c]) ||
             !avifDoubleToSignedFraction(alternateOffset[c], &gainMap->alternateOffset[c]) ||
             !avifDoubleToSignedFraction(baseOffset[c], &gainMap->baseOffset[c])) {
+            res = AVIF_RESULT_INVALID_ARGUMENT;
             goto cleanup;
         }
     }
@@ -708,7 +714,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         if (range <= 0.0f) {
             continue;
         }
-        const float gainMapGamma = toFloat(gainMap->gainMapGamma[c].n, gainMap->gainMapGamma[c].d);
+        const float gainMapGamma = avifUnsignedFractionToFloat(gainMap->gainMapGamma[c]);
 
         for (int j = 0; j < height; ++j) {
             for (int i = 0; i < width; ++i) {

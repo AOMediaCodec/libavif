@@ -1991,16 +1991,11 @@ static avifBool avifParseGainMapMetadata(avifGainMap * gainMap, avifROStream * s
 
     // Fill the remaining values by copying those from the first channel.
     for (int c = channelCount; c < 3; ++c) {
-        gainMap->gainMapMin[c].n = gainMap->gainMapMin[0].n;
-        gainMap->gainMapMin[c].d = gainMap->gainMapMin[0].d;
-        gainMap->gainMapMax[c].n = gainMap->gainMapMax[0].n;
-        gainMap->gainMapMax[c].d = gainMap->gainMapMax[0].d;
-        gainMap->gainMapGamma[c].n = gainMap->gainMapGamma[0].n;
-        gainMap->gainMapGamma[c].d = gainMap->gainMapGamma[0].d;
-        gainMap->baseOffset[c].n = gainMap->baseOffset[0].n;
-        gainMap->baseOffset[c].d = gainMap->baseOffset[0].d;
-        gainMap->alternateOffset[c].n = gainMap->alternateOffset[0].n;
-        gainMap->alternateOffset[c].d = gainMap->alternateOffset[0].d;
+        gainMap->gainMapMin[c] = gainMap->gainMapMin[0];
+        gainMap->gainMapMax[c] = gainMap->gainMapMax[0];
+        gainMap->gainMapGamma[c] = gainMap->gainMapGamma[0];
+        gainMap->baseOffset[c] = gainMap->baseOffset[0];
+        gainMap->alternateOffset[c] = gainMap->alternateOffset[0];
     }
     return AVIF_TRUE;
 }

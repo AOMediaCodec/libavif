@@ -263,21 +263,14 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             AVIF_CHECKERR(dstImage->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
         }
         for (int c = 0; c < 3; ++c) {
-            dstImage->gainMap->gainMapMin[c].n = srcImage->gainMap->gainMapMin[c].n;
-            dstImage->gainMap->gainMapMin[c].d = srcImage->gainMap->gainMapMin[c].d;
-            dstImage->gainMap->gainMapMax[c].n = srcImage->gainMap->gainMapMax[c].n;
-            dstImage->gainMap->gainMapMax[c].d = srcImage->gainMap->gainMapMax[c].d;
-            dstImage->gainMap->gainMapGamma[c].n = srcImage->gainMap->gainMapGamma[c].n;
-            dstImage->gainMap->gainMapGamma[c].d = srcImage->gainMap->gainMapGamma[c].d;
-            dstImage->gainMap->baseOffset[c].n = srcImage->gainMap->baseOffset[c].n;
-            dstImage->gainMap->baseOffset[c].d = srcImage->gainMap->baseOffset[c].d;
-            dstImage->gainMap->alternateOffset[c].n = srcImage->gainMap->alternateOffset[c].n;
-            dstImage->gainMap->alternateOffset[c].d = srcImage->gainMap->alternateOffset[c].d;
+            dstImage->gainMap->gainMapMin[c] = srcImage->gainMap->gainMapMin[c];
+            dstImage->gainMap->gainMapMax[c] = srcImage->gainMap->gainMapMax[c];
+            dstImage->gainMap->gainMapGamma[c] = srcImage->gainMap->gainMapGamma[c];
+            dstImage->gainMap->baseOffset[c] = srcImage->gainMap->baseOffset[c];
+            dstImage->gainMap->alternateOffset[c] = srcImage->gainMap->alternateOffset[c];
         }
-        dstImage->gainMap->baseHdrHeadroom.n = srcImage->gainMap->baseHdrHeadroom.n;
-        dstImage->gainMap->baseHdrHeadroom.d = srcImage->gainMap->baseHdrHeadroom.d;
-        dstImage->gainMap->alternateHdrHeadroom.n = srcImage->gainMap->alternateHdrHeadroom.n;
-        dstImage->gainMap->alternateHdrHeadroom.d = srcImage->gainMap->alternateHdrHeadroom.d;
+        dstImage->gainMap->baseHdrHeadroom = srcImage->gainMap->baseHdrHeadroom;
+        dstImage->gainMap->alternateHdrHeadroom = srcImage->gainMap->alternateHdrHeadroom;
         dstImage->gainMap->useBaseColorSpace = srcImage->gainMap->useBaseColorSpace;
         AVIF_CHECKRES(avifRWDataSet(&dstImage->gainMap->altICC, srcImage->gainMap->altICC.data, srcImage->gainMap->altICC.size));
         dstImage->gainMap->altColorPrimaries = srcImage->gainMap->altColorPrimaries;
