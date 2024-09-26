@@ -1,21 +1,21 @@
-name: 'Setup on macOS'
-description: 'Installs dependencies specific to macOS'
+name: "Setup on macOS"
+description: "Installs dependencies specific to macOS"
 inputs:
   codec-aom:
-    description: 'Can take the values: OFF, LOCAL, SYSTEM'
-    default: 'OFF'
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   codec-dav1d:
-    description: 'Can take the values: OFF, LOCAL, SYSTEM'
-    default: 'OFF'
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   codec-rav1e:
-    description: 'Can take the values: OFF, LOCAL, SYSTEM'
-    default: 'OFF'
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   gtest:
-    description: 'Can take the values: OFF, LOCAL, SYSTEM'
-    default: 'OFF'
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   extra-cache-key:
-    description: 'Extra cache key to use in the cache name. Useful when several caches are used in one workflow.'
-    default: ''
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
 outputs:
   ext-cache-hit:
     value: ${{ steps.cache.outputs.ext-cache-hit }}

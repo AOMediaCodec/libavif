@@ -27,8 +27,8 @@ jobs:
           add-to-path: false
       - uses: ./.github/actions/setup-linux
         with:
-          codec-aom: 'LOCAL'
-          codec-dav1d: 'LOCAL'
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
       - name: Setup JDK
         uses: actions/setup-java@6a0805fcefea3d4657a47ac4c165951e33482018 # v4.2.2
         with:

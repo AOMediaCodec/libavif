@@ -24,63 +24,63 @@ jobs:
         compiler: [msvc, clang-cl]
 
     steps:
-    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-    - uses: ./.github/actions/setup-windows
-      with:
-        codec-aom: 'SYSTEM'
-        codec-dav1d: 'SYSTEM'
-        codec-rav1e: 'SYSTEM'
-        extra-cache-key: ${{ matrix.compiler }}
-    - name: Leave compiler as default
-      if: matrix.compiler == 'msvc'
-      run: |
-        echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
-        echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
-    - name: Set clang-cl as compiler
-      if: matrix.compiler == 'clang-cl'
-      run: |
-        echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=clang-cl" >> $env:GITHUB_ENV
-        echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: ./.github/actions/setup-windows
+        with:
+          codec-aom: "SYSTEM"
+          codec-dav1d: "SYSTEM"
+          codec-rav1e: "SYSTEM"
+          extra-cache-key: ${{ matrix.compiler }}
+      - name: Leave compiler as default
+        if: matrix.compiler == 'msvc'
+        run: |
+          echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
+          echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
+      - name: Set clang-cl as compiler
+        if: matrix.compiler == 'clang-cl'
+        run: |
+          echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=clang-cl" >> $env:GITHUB_ENV
+          echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
 
-    - name: vcpkg build
-      uses: johnwason/vcpkg-action@v6
-      id: vcpkg
-      with:
-        pkgs: aom dav1d libjpeg-turbo libpng libxml2 libyuv zlib
-        triplet: x64-windows-release
-        token: ${{ github.token }}
-        github-binarycache: true
-        cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
-    - name: Install rav1e
-      run: |
-        $LINK = "https://github.com/xiph/rav1e/releases/download/v0.7.1"
-        $FILE = "rav1e-0.7.1-windows-msvc-generic"
-        curl -LO "$LINK/$FILE.zip"
-        mkdir -p ${{ github.workspace }}\tmp
-        7z x -y "$FILE.zip" -o"${{ github.workspace }}\tmp"
-        # Do not mv the folder's content to not overwrite, and rsync is not installed.
-        mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\bin\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\bin
-        mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\include\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
-        mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\rav1e* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
-        mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
-    - name: Prepare libavif (cmake)
-      run: >
-        cmake ${{ steps.vcpkg.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
-        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-        -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_DAV1D=SYSTEM
-        -DAVIF_CODEC_RAV1E=SYSTEM
-        -DAVIF_JPEG=SYSTEM -DAVIF_LIBXML2=SYSTEM
-        -DAVIF_LIBYUV=SYSTEM -DAVIF_ZLIBPNG=SYSTEM
-        -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
-        -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
-        -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
-        -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
-        -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
-        -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
-        -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
-    - name: Build libavif (ninja)
-      working-directory: ./build
-      run: ninja
-    - name: Run AVIF Tests
-      working-directory: ./build
-      run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+      - name: vcpkg build
+        uses: johnwason/vcpkg-action@v6
+        id: vcpkg
+        with:
+          pkgs: aom dav1d libjpeg-turbo libpng libxml2 libyuv zlib
+          triplet: x64-windows-release
+          token: ${{ github.token }}
+          github-binarycache: true
+          cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+      - name: Install rav1e
+        run: |
+          $LINK = "https://github.com/xiph/rav1e/releases/download/v0.7.1"
+          $FILE = "rav1e-0.7.1-windows-msvc-generic"
+          curl -LO "$LINK/$FILE.zip"
+          mkdir -p ${{ github.workspace }}\tmp
+          7z x -y "$FILE.zip" -o"${{ github.workspace }}\tmp"
+          # Do not mv the folder's content to not overwrite, and rsync is not installed.
+          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\bin\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\bin
+          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\include\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
+          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\rav1e* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
+          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake ${{ steps.vcpkg.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_DAV1D=SYSTEM
+          -DAVIF_CODEC_RAV1E=SYSTEM
+          -DAVIF_JPEG=SYSTEM -DAVIF_LIBXML2=SYSTEM
+          -DAVIF_LIBYUV=SYSTEM -DAVIF_ZLIBPNG=SYSTEM
+          -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+          -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
+          -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
+          -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
+          -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
+          -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
+          -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      - name: Run AVIF Tests
+        working-directory: ./build
+        run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
