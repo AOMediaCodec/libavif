@@ -20,15 +20,14 @@ std::string FormatFraction(T numerator, uint32_t denominator) {
 }
 
 template <typename T>
-std::string FormatFractions(const T numerator[3],
-                            const uint32_t denominator[3]) {
+std::string FormatFractions(const T fractions[3]) {
   std::stringstream stream;
   const int w = 40;
   stream << "R " << std::left << std::setw(w)
-         << FormatFraction(numerator[0], denominator[0]) << " G " << std::left
-         << std::setw(w) << FormatFraction(numerator[1], denominator[1])
+         << FormatFraction(fractions[0].n, fractions[0].d) << " G " << std::left
+         << std::setw(w) << FormatFraction(fractions[1].n, fractions[1].d)
          << " B " << std::left << std::setw(w)
-         << FormatFraction(numerator[2], denominator[2]);
+         << FormatFraction(fractions[2].n, fractions[2].d);
   return stream.str();
 }
 }  // namespace
@@ -68,28 +67,24 @@ avifResult PrintMetadataCommand::Run() {
   const avifGainMap& gainMap = *decoder->image->gainMap;
   const int w = 20;
   std::cout << " * " << std::left << std::setw(w) << "Base headroom: "
-            << FormatFraction(gainMap.baseHdrHeadroomN,
-                              gainMap.baseHdrHeadroomD)
+            << FormatFraction(gainMap.baseHdrHeadroom.n,
+                              gainMap.baseHdrHeadroom.d)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Alternate headroom: "
-            << FormatFraction(gainMap.alternateHdrHeadroomN,
-                              gainMap.alternateHdrHeadroomD)
+            << FormatFraction(gainMap.alternateHdrHeadroom.n,
+                              gainMap.alternateHdrHeadroom.d)
             << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Gain Map Min: "
-            << FormatFractions(gainMap.gainMapMinN, gainMap.gainMapMinD)
+  std::cout << " * " << std::left << std::setw(w)
+            << "Gain Map Min: " << FormatFractions(gainMap.gainMapMin) << "\n";
+  std::cout << " * " << std::left << std::setw(w)
+            << "Gain Map Max: " << FormatFractions(gainMap.gainMapMax) << "\n";
+  std::cout << " * " << std::left << std::setw(w)
+            << "Base Offset: " << FormatFractions(gainMap.baseOffset) << "\n";
+  std::cout << " * " << std::left << std::setw(w)
+            << "Alternate Offset: " << FormatFractions(gainMap.alternateOffset)
             << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Gain Map Max: "
-            << FormatFractions(gainMap.gainMapMaxN, gainMap.gainMapMaxD)
-            << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Base Offset: "
-            << FormatFractions(gainMap.baseOffsetN, gainMap.baseOffsetD)
-            << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Alternate Offset: "
-            << FormatFractions(gainMap.alternateOffsetN,
-                               gainMap.alternateOffsetD)
-            << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Gain Map Gamma: "
-            << FormatFractions(gainMap.gainMapGammaN, gainMap.gainMapGammaD)
+  std::cout << " * " << std::left << std::setw(w)
+            << "Gain Map Gamma: " << FormatFractions(gainMap.gainMapGamma)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Use Base Color Space: "
             << (gainMap.useBaseColorSpace ? "True" : "False") << "\n";

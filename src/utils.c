@@ -269,20 +269,20 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
     return AVIF_TRUE;
 }
 
-avifBool avifDoubleToSignedFraction(double v, int32_t * numerator, uint32_t * denominator)
+avifBool avifDoubleToSignedFraction(double v, avifSignedFraction * fraction)
 {
     uint32_t positive_numerator;
-    if (!avifDoubleToUnsignedFractionImpl(fabs(v), INT32_MAX, &positive_numerator, denominator)) {
+    if (!avifDoubleToUnsignedFractionImpl(fabs(v), INT32_MAX, &positive_numerator, &fraction->d)) {
         return AVIF_FALSE;
     }
-    *numerator = (int32_t)positive_numerator;
+    fraction->n = (int32_t)positive_numerator;
     if (v < 0) {
-        *numerator *= -1;
+        fraction->n *= -1;
     }
     return AVIF_TRUE;
 }
 
-avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
+avifBool avifDoubleToUnsignedFraction(double v, avifUnsignedFraction * fraction)
 {
-    return avifDoubleToUnsignedFractionImpl(v, UINT32_MAX, numerator, denominator);
+    return avifDoubleToUnsignedFractionImpl(v, UINT32_MAX, &fraction->n, &fraction->d);
 }

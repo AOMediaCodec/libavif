@@ -426,7 +426,7 @@ typedef struct avifDiagnostics
 AVIF_API void avifDiagnosticsClearError(avifDiagnostics * diag);
 
 // ---------------------------------------------------------------------------
-// Fraction utility
+// Fraction utilities
 
 typedef struct avifFraction
 {
@@ -434,12 +434,24 @@ typedef struct avifFraction
     int32_t d;
 } avifFraction;
 
+typedef struct avifSignedFraction
+{
+    int32_t n;
+    uint32_t d;
+} avifSignedFraction;
+
+typedef struct avifUnsignedFraction
+{
+    uint32_t n;
+    uint32_t d;
+} avifUnsignedFraction;
+
 // Creates an int32/uint32 fraction that is approximately equal to 'v'.
 // Returns AVIF_FALSE if 'v' is NaN or abs(v) is > INT32_MAX.
-AVIF_API AVIF_NODISCARD avifBool avifDoubleToSignedFraction(double v, int32_t * numerator, uint32_t * denominator);
+AVIF_API AVIF_NODISCARD avifBool avifDoubleToSignedFraction(double v, avifSignedFraction * fraction);
 // Creates a uint32/uint32 fraction that is approximately equal to 'v'.
 // Returns AVIF_FALSE if 'v' is < 0 or > UINT32_MAX or NaN.
-AVIF_API AVIF_NODISCARD avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator);
+AVIF_API AVIF_NODISCARD avifBool avifDoubleToUnsignedFraction(double v, avifUnsignedFraction * fraction);
 
 // ---------------------------------------------------------------------------
 // Optional transformation structs
@@ -618,15 +630,12 @@ typedef struct avifGainMap
     // gainMapLog2 = lerp(gainMapMin, gainMapMax, pow(gainMapEncoded, gainMapGamma));
     // where 'lerp' is a linear interpolation function.
     // Minimum value in the gain map, log2-encoded, per RGB channel.
-    int32_t gainMapMinN[3];
-    uint32_t gainMapMinD[3];
+    avifSignedFraction gainMapMin[3];
     // Maximum value in the gain map, log2-encoded, per RGB channel.
-    int32_t gainMapMaxN[3];
-    uint32_t gainMapMaxD[3];
+    avifSignedFraction gainMapMax[3];
     // Gain map gamma value with which the gain map was encoded, per RGB channel.
     // For decoding, the inverse value (1/gamma) should be used.
-    uint32_t gainMapGammaN[3];
-    uint32_t gainMapGammaD[3];
+    avifUnsignedFraction gainMapGamma[3];
 
     // Parameters used in gain map computation/tone mapping to avoid numerical
     // instability.
@@ -635,11 +644,9 @@ typedef struct avifGainMap
     // (see below).
 
     // Offset constants for the base image, per RGB channel.
-    int32_t baseOffsetN[3];
-    uint32_t baseOffsetD[3];
+    avifSignedFraction baseOffset[3];
     // Offset constants for the alternate image, per RGB channel.
-    int32_t alternateOffsetN[3];
-    uint32_t alternateOffsetD[3];
+    avifSignedFraction alternateOffset[3];
 
     // Log2-encoded HDR headroom of the base and alternate images respectively.
     // If baseHdrHeadroom is < alternateHdrHeadroom, the result of tone mapping
@@ -660,10 +667,8 @@ typedef struct avifGainMap
     // f = clamp((H - baseHdrHeadroom) /
     //           (alternateHdrHeadroom - baseHdrHeadroom), 0, 1);
     // w = sign(alternateHdrHeadroom - baseHdrHeadroom) * f
-    uint32_t baseHdrHeadroomN;
-    uint32_t baseHdrHeadroomD;
-    uint32_t alternateHdrHeadroomN;
-    uint32_t alternateHdrHeadroomD;
+    avifUnsignedFraction baseHdrHeadroom;
+    avifUnsignedFraction alternateHdrHeadroom;
 
     // True if tone mapping should be performed in the color space of the
     // base image. If false, the color space of the alternate image should

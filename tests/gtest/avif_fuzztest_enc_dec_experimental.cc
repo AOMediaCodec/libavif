@@ -21,22 +21,22 @@ namespace {
 
 void CheckGainMapMetadataMatches(const avifGainMap& actual,
                                  const avifGainMap& expected) {
-  EXPECT_EQ(actual.baseHdrHeadroomN, expected.baseHdrHeadroomN);
-  EXPECT_EQ(actual.baseHdrHeadroomD, expected.baseHdrHeadroomD);
-  EXPECT_EQ(actual.alternateHdrHeadroomN, expected.alternateHdrHeadroomN);
-  EXPECT_EQ(actual.alternateHdrHeadroomD, expected.alternateHdrHeadroomD);
+  EXPECT_EQ(actual.baseHdrHeadroom.n, expected.baseHdrHeadroom.n);
+  EXPECT_EQ(actual.baseHdrHeadroom.d, expected.baseHdrHeadroom.d);
+  EXPECT_EQ(actual.alternateHdrHeadroom.n, expected.alternateHdrHeadroom.n);
+  EXPECT_EQ(actual.alternateHdrHeadroom.d, expected.alternateHdrHeadroom.d);
   for (int c = 0; c < 3; ++c) {
     SCOPED_TRACE(c);
-    EXPECT_EQ(actual.baseOffsetN[c], expected.baseOffsetN[c]);
-    EXPECT_EQ(actual.baseOffsetD[c], expected.baseOffsetD[c]);
-    EXPECT_EQ(actual.alternateOffsetN[c], expected.alternateOffsetN[c]);
-    EXPECT_EQ(actual.alternateOffsetD[c], expected.alternateOffsetD[c]);
-    EXPECT_EQ(actual.gainMapGammaN[c], expected.gainMapGammaN[c]);
-    EXPECT_EQ(actual.gainMapGammaD[c], expected.gainMapGammaD[c]);
-    EXPECT_EQ(actual.gainMapMinN[c], expected.gainMapMinN[c]);
-    EXPECT_EQ(actual.gainMapMinD[c], expected.gainMapMinD[c]);
-    EXPECT_EQ(actual.gainMapMaxN[c], expected.gainMapMaxN[c]);
-    EXPECT_EQ(actual.gainMapMaxD[c], expected.gainMapMaxD[c]);
+    EXPECT_EQ(actual.baseOffset[c].n, expected.baseOffset[c].n);
+    EXPECT_EQ(actual.baseOffset[c].d, expected.baseOffset[c].d);
+    EXPECT_EQ(actual.alternateOffset[c].n, expected.alternateOffset[c].n);
+    EXPECT_EQ(actual.alternateOffset[c].d, expected.alternateOffset[c].d);
+    EXPECT_EQ(actual.gainMapGamma[c].n, expected.gainMapGamma[c].n);
+    EXPECT_EQ(actual.gainMapGamma[c].d, expected.gainMapGamma[c].d);
+    EXPECT_EQ(actual.gainMapMin[c].n, expected.gainMapMin[c].n);
+    EXPECT_EQ(actual.gainMapMin[c].d, expected.gainMapMin[c].d);
+    EXPECT_EQ(actual.gainMapMax[c].n, expected.gainMapMax[c].n);
+    EXPECT_EQ(actual.gainMapMax[c].d, expected.gainMapMax[c].d);
   }
 }
 

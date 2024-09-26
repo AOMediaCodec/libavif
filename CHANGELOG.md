@@ -27,7 +27,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.2.1
 * Change experimental gainmap API: remove avifGainMapMetadata and
   avifGainMapMetadataDouble structs.
-* Add avifDoubleToSignedFraction and avifDoubleToUnsignedFraction functions.
+* Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
+  utility functions.
 
 ## [1.1.1] - 2024-07-30
 

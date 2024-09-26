@@ -141,7 +141,7 @@ static void avifImageDumpInternal(const avifImage * avif,
                avifPixelFormatToString(gainMapImage->yuvFormat),
                (gainMapImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
                gainMapImage->matrixCoefficients,
-               (avif->gainMap->baseHdrHeadroomN == 0) ? "SDR" : "HDR");
+               (avif->gainMap->baseHdrHeadroom.n == 0) ? "SDR" : "HDR");
         printf(" * Alternate image:\n");
         printf("    * Color Primaries: %u\n", avif->gainMap->altColorPrimaries);
         printf("    * Transfer Char. : %u\n", avif->gainMap->altTransferCharacteristics);

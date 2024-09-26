@@ -641,14 +641,14 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     }
 
     for (int i = 0; i < 3; ++i) {
-        AVIF_CHECK(avifDoubleToSignedFraction(gainMapMin[i], &gainMap->gainMapMinN[i], &gainMap->gainMapMinD[i]));
-        AVIF_CHECK(avifDoubleToSignedFraction(gainMapMax[i], &gainMap->gainMapMaxN[i], &gainMap->gainMapMaxD[i]));
-        AVIF_CHECK(avifDoubleToUnsignedFraction(gainMapGamma[i], &gainMap->gainMapGammaN[i], &gainMap->gainMapGammaD[i]));
-        AVIF_CHECK(avifDoubleToSignedFraction(baseOffset[i], &gainMap->baseOffsetN[i], &gainMap->baseOffsetD[i]));
-        AVIF_CHECK(avifDoubleToSignedFraction(alternateOffset[i], &gainMap->alternateOffsetN[i], &gainMap->alternateOffsetD[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(gainMapMin[i], &gainMap->gainMapMin[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(gainMapMax[i], &gainMap->gainMapMax[i]));
+        AVIF_CHECK(avifDoubleToUnsignedFraction(gainMapGamma[i], &gainMap->gainMapGamma[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(baseOffset[i], &gainMap->baseOffset[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(alternateOffset[i], &gainMap->alternateOffset[i]));
     }
-    AVIF_CHECK(avifDoubleToUnsignedFraction(baseHdrHeadroom, &gainMap->baseHdrHeadroomN, &gainMap->baseHdrHeadroomD));
-    AVIF_CHECK(avifDoubleToUnsignedFraction(alternateHdrHeadroom, &gainMap->alternateHdrHeadroomN, &gainMap->alternateHdrHeadroomD));
+    AVIF_CHECK(avifDoubleToUnsignedFraction(baseHdrHeadroom, &gainMap->baseHdrHeadroom));
+    AVIF_CHECK(avifDoubleToUnsignedFraction(alternateHdrHeadroom, &gainMap->alternateHdrHeadroom));
     // Not in Adobe's spec but both color spaces should be the same so this value doesn't matter.
     gainMap->useBaseColorSpace = AVIF_TRUE;
 

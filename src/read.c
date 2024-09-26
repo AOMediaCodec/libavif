@@ -1971,36 +1971,36 @@ static avifBool avifParseGainMapMetadata(avifGainMap * gainMap, avifROStream * s
     uint32_t reserved;
     AVIF_CHECK(avifROStreamReadBitsU32(s, &reserved, 6)); // unsigned int(6) reserved;
 
-    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->baseHdrHeadroomN));      // unsigned int(32) base_hdr_headroom_numerator;
-    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->baseHdrHeadroomD));      // unsigned int(32) base_hdr_headroom_denominator;
-    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->alternateHdrHeadroomN)); // unsigned int(32) alternate_hdr_headroom_numerator;
-    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->alternateHdrHeadroomD)); // unsigned int(32) alternate_hdr_headroom_denominator;
+    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->baseHdrHeadroom.n));      // unsigned int(32) base_hdr_headroom_numerator;
+    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->baseHdrHeadroom.d));      // unsigned int(32) base_hdr_headroom_denominator;
+    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->alternateHdrHeadroom.n)); // unsigned int(32) alternate_hdr_headroom_numerator;
+    AVIF_CHECK(avifROStreamReadU32(s, &gainMap->alternateHdrHeadroom.d)); // unsigned int(32) alternate_hdr_headroom_denominator;
 
     for (int c = 0; c < channelCount; ++c) {
-        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->gainMapMinN[c])); // int(32) gain_map_min_numerator;
-        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapMinD[c]));             // unsigned int(32) gain_map_min_denominator;
-        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->gainMapMaxN[c])); // int(32) gain_map_max_numerator;
-        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapMaxD[c]));             // unsigned int(32) gain_map_max_denominator;
-        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapGammaN[c]));           // unsigned int(32) gamma_numerator;
-        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapGammaD[c]));           // unsigned int(32) gamma_denominator;
-        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->baseOffsetN[c])); // int(32) base_offset_numerator;
-        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->baseOffsetD[c]));             // unsigned int(32) base_offset_denominator;
-        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->alternateOffsetN[c])); // int(32) alternate_offset_numerator;
-        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->alternateOffsetD[c])); // unsigned int(32) alternate_offset_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->gainMapMin[c].n)); // int(32) gain_map_min_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapMin[c].d));             // unsigned int(32) gain_map_min_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->gainMapMax[c].n)); // int(32) gain_map_max_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapMax[c].d));             // unsigned int(32) gain_map_max_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapGamma[c].n));           // unsigned int(32) gamma_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->gainMapGamma[c].d));           // unsigned int(32) gamma_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->baseOffset[c].n)); // int(32) base_offset_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->baseOffset[c].d));             // unsigned int(32) base_offset_denominator;
+        AVIF_CHECK(avifROStreamReadU32(s, (uint32_t *)&gainMap->alternateOffset[c].n)); // int(32) alternate_offset_numerator;
+        AVIF_CHECK(avifROStreamReadU32(s, &gainMap->alternateOffset[c].d)); // unsigned int(32) alternate_offset_denominator;
     }
 
     // Fill the remaining values by copying those from the first channel.
     for (int c = channelCount; c < 3; ++c) {
-        gainMap->gainMapMinN[c] = gainMap->gainMapMinN[0];
-        gainMap->gainMapMinD[c] = gainMap->gainMapMinD[0];
-        gainMap->gainMapMaxN[c] = gainMap->gainMapMaxN[0];
-        gainMap->gainMapMaxD[c] = gainMap->gainMapMaxD[0];
-        gainMap->gainMapGammaN[c] = gainMap->gainMapGammaN[0];
-        gainMap->gainMapGammaD[c] = gainMap->gainMapGammaD[0];
-        gainMap->baseOffsetN[c] = gainMap->baseOffsetN[0];
-        gainMap->baseOffsetD[c] = gainMap->baseOffsetD[0];
-        gainMap->alternateOffsetN[c] = gainMap->alternateOffsetN[0];
-        gainMap->alternateOffsetD[c] = gainMap->alternateOffsetD[0];
+        gainMap->gainMapMin[c].n = gainMap->gainMapMin[0].n;
+        gainMap->gainMapMin[c].d = gainMap->gainMapMin[0].d;
+        gainMap->gainMapMax[c].n = gainMap->gainMapMax[0].n;
+        gainMap->gainMapMax[c].d = gainMap->gainMapMax[0].d;
+        gainMap->gainMapGamma[c].n = gainMap->gainMapGamma[0].n;
+        gainMap->gainMapGamma[c].d = gainMap->gainMapGamma[0].d;
+        gainMap->baseOffset[c].n = gainMap->baseOffset[0].n;
+        gainMap->baseOffset[c].d = gainMap->baseOffset[0].d;
+        gainMap->alternateOffset[c].n = gainMap->alternateOffset[0].n;
+        gainMap->alternateOffset[c].d = gainMap->alternateOffset[0].d;
     }
     return AVIF_TRUE;
 }

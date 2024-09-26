@@ -23,49 +23,49 @@ void CheckGainMapMetadata(
     double base_hdr_headroom, double alternate_hdr_headroom) {
   const double kEpsilon = 1e-8;
 
-  EXPECT_NEAR(static_cast<double>(gm.gainMapMinN[0]) / gm.gainMapMinD[0],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMin[0].n) / gm.gainMapMin[0].d,
               gain_map_min[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.gainMapMinN[1]) / gm.gainMapMinD[1],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMin[1].n) / gm.gainMapMin[1].d,
               gain_map_min[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.gainMapMinN[2]) / gm.gainMapMinD[2],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMin[2].n) / gm.gainMapMin[2].d,
               gain_map_min[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(gm.gainMapMaxN[0]) / gm.gainMapMaxD[0],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMax[0].n) / gm.gainMapMax[0].d,
               gain_map_max[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.gainMapMaxN[1]) / gm.gainMapMaxD[1],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMax[1].n) / gm.gainMapMax[1].d,
               gain_map_max[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.gainMapMaxN[2]) / gm.gainMapMaxD[2],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMax[2].n) / gm.gainMapMax[2].d,
               gain_map_max[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(gm.gainMapGammaN[0]) / gm.gainMapGammaD[0],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapGamma[0].n) / gm.gainMapGamma[0].d,
               gain_map_gamma[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.gainMapGammaN[1]) / gm.gainMapGammaD[1],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapGamma[1].n) / gm.gainMapGamma[1].d,
               gain_map_gamma[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.gainMapGammaN[2]) / gm.gainMapGammaD[2],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapGamma[2].n) / gm.gainMapGamma[2].d,
               gain_map_gamma[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(gm.baseOffsetN[0]) / gm.baseOffsetD[0],
+  EXPECT_NEAR(static_cast<double>(gm.baseOffset[0].n) / gm.baseOffset[0].d,
               base_offset[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.baseOffsetN[1]) / gm.baseOffsetD[1],
+  EXPECT_NEAR(static_cast<double>(gm.baseOffset[1].n) / gm.baseOffset[1].d,
               base_offset[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(gm.baseOffsetN[2]) / gm.baseOffsetD[2],
+  EXPECT_NEAR(static_cast<double>(gm.baseOffset[2].n) / gm.baseOffset[2].d,
               base_offset[2], kEpsilon);
 
   EXPECT_NEAR(
-      static_cast<double>(gm.alternateOffsetN[0]) / gm.alternateOffsetD[0],
+      static_cast<double>(gm.alternateOffset[0].n) / gm.alternateOffset[0].d,
       alternate_offset[0], kEpsilon);
   EXPECT_NEAR(
-      static_cast<double>(gm.alternateOffsetN[1]) / gm.alternateOffsetD[1],
+      static_cast<double>(gm.alternateOffset[1].n) / gm.alternateOffset[1].d,
       alternate_offset[1], kEpsilon);
   EXPECT_NEAR(
-      static_cast<double>(gm.alternateOffsetN[2]) / gm.alternateOffsetD[2],
+      static_cast<double>(gm.alternateOffset[2].n) / gm.alternateOffset[2].d,
       alternate_offset[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(gm.baseHdrHeadroomN) / gm.baseHdrHeadroomD,
+  EXPECT_NEAR(static_cast<double>(gm.baseHdrHeadroom.n) / gm.baseHdrHeadroom.d,
               base_hdr_headroom, kEpsilon);
-  EXPECT_NEAR(
-      static_cast<double>(gm.alternateHdrHeadroomN) / gm.alternateHdrHeadroomD,
-      alternate_hdr_headroom, kEpsilon);
+  EXPECT_NEAR(static_cast<double>(gm.alternateHdrHeadroom.n) /
+                  gm.alternateHdrHeadroom.d,
+              alternate_hdr_headroom, kEpsilon);
 }
 
 TEST(JpegTest, ReadJpegWithGainMap) {

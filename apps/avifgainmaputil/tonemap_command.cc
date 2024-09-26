@@ -87,15 +87,15 @@ avifResult TonemapCommand::Run() {
   }
 
   const float base_hdr_hreadroom =
-      image->gainMap->baseHdrHeadroomD == 0
+      image->gainMap->baseHdrHeadroom.d == 0
           ? 0.0f
-          : (float)image->gainMap->baseHdrHeadroomN /
-                image->gainMap->baseHdrHeadroomD;
+          : (float)image->gainMap->baseHdrHeadroom.n /
+                image->gainMap->baseHdrHeadroom.d;
   const float alternate_hdr_hreadroom =
-      image->gainMap->alternateHdrHeadroomD == 0
+      image->gainMap->alternateHdrHeadroom.d == 0
           ? 0.0f
-          : (float)image->gainMap->alternateHdrHeadroomN /
-                image->gainMap->alternateHdrHeadroomD;
+          : (float)image->gainMap->alternateHdrHeadroom.n /
+                image->gainMap->alternateHdrHeadroom.d;
   // We are either tone mapping to the base image (i.e. leaving it as is),
   // or tone mapping to the alternate image (i.e. fully applying the gain map),
   // or tone mapping in between (partially applying the gain map).

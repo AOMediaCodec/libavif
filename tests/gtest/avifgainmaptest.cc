@@ -25,46 +25,46 @@ const char* data_path = nullptr;
 
 void CheckGainMapMetadataMatches(const avifGainMap& lhs,
                                  const avifGainMap& rhs) {
-  EXPECT_EQ(lhs.baseHdrHeadroomN, rhs.baseHdrHeadroomN);
-  EXPECT_EQ(lhs.baseHdrHeadroomD, rhs.baseHdrHeadroomD);
-  EXPECT_EQ(lhs.alternateHdrHeadroomN, rhs.alternateHdrHeadroomN);
-  EXPECT_EQ(lhs.alternateHdrHeadroomD, rhs.alternateHdrHeadroomD);
+  EXPECT_EQ(lhs.baseHdrHeadroom.n, rhs.baseHdrHeadroom.n);
+  EXPECT_EQ(lhs.baseHdrHeadroom.d, rhs.baseHdrHeadroom.d);
+  EXPECT_EQ(lhs.alternateHdrHeadroom.n, rhs.alternateHdrHeadroom.n);
+  EXPECT_EQ(lhs.alternateHdrHeadroom.d, rhs.alternateHdrHeadroom.d);
   for (int c = 0; c < 3; ++c) {
     SCOPED_TRACE(c);
-    EXPECT_EQ(lhs.baseOffsetN[c], rhs.baseOffsetN[c]);
-    EXPECT_EQ(lhs.baseOffsetD[c], rhs.baseOffsetD[c]);
-    EXPECT_EQ(lhs.alternateOffsetN[c], rhs.alternateOffsetN[c]);
-    EXPECT_EQ(lhs.alternateOffsetD[c], rhs.alternateOffsetD[c]);
-    EXPECT_EQ(lhs.gainMapGammaN[c], rhs.gainMapGammaN[c]);
-    EXPECT_EQ(lhs.gainMapGammaD[c], rhs.gainMapGammaD[c]);
-    EXPECT_EQ(lhs.gainMapMinN[c], rhs.gainMapMinN[c]);
-    EXPECT_EQ(lhs.gainMapMinD[c], rhs.gainMapMinD[c]);
-    EXPECT_EQ(lhs.gainMapMaxN[c], rhs.gainMapMaxN[c]);
-    EXPECT_EQ(lhs.gainMapMaxD[c], rhs.gainMapMaxD[c]);
+    EXPECT_EQ(lhs.baseOffset[c].n, rhs.baseOffset[c].n);
+    EXPECT_EQ(lhs.baseOffset[c].d, rhs.baseOffset[c].d);
+    EXPECT_EQ(lhs.alternateOffset[c].n, rhs.alternateOffset[c].n);
+    EXPECT_EQ(lhs.alternateOffset[c].d, rhs.alternateOffset[c].d);
+    EXPECT_EQ(lhs.gainMapGamma[c].n, rhs.gainMapGamma[c].n);
+    EXPECT_EQ(lhs.gainMapGamma[c].d, rhs.gainMapGamma[c].d);
+    EXPECT_EQ(lhs.gainMapMin[c].n, rhs.gainMapMin[c].n);
+    EXPECT_EQ(lhs.gainMapMin[c].d, rhs.gainMapMin[c].d);
+    EXPECT_EQ(lhs.gainMapMax[c].n, rhs.gainMapMax[c].n);
+    EXPECT_EQ(lhs.gainMapMax[c].d, rhs.gainMapMax[c].d);
   }
 }
 
 void FillTestGainMapMetadata(bool base_rendition_is_hdr, avifGainMap* gainMap) {
   gainMap->useBaseColorSpace = true;
-  gainMap->baseHdrHeadroomN = 0;
-  gainMap->baseHdrHeadroomD = 1;
-  gainMap->alternateHdrHeadroomN = 6;
-  gainMap->alternateHdrHeadroomD = 2;
+  gainMap->baseHdrHeadroom.n = 0;
+  gainMap->baseHdrHeadroom.d = 1;
+  gainMap->alternateHdrHeadroom.n = 6;
+  gainMap->alternateHdrHeadroom.d = 2;
   if (base_rendition_is_hdr) {
-    std::swap(gainMap->baseHdrHeadroomN, gainMap->alternateHdrHeadroomN);
-    std::swap(gainMap->baseHdrHeadroomD, gainMap->alternateHdrHeadroomD);
+    std::swap(gainMap->baseHdrHeadroom.n, gainMap->alternateHdrHeadroom.n);
+    std::swap(gainMap->baseHdrHeadroom.d, gainMap->alternateHdrHeadroom.d);
   }
   for (int c = 0; c < 3; ++c) {
-    gainMap->baseOffsetN[c] = 10 * c;
-    gainMap->baseOffsetD[c] = 1000;
-    gainMap->alternateOffsetN[c] = 20 * c;
-    gainMap->alternateOffsetD[c] = 1000;
-    gainMap->gainMapGammaN[c] = 1;
-    gainMap->gainMapGammaD[c] = c + 1;
-    gainMap->gainMapMinN[c] = -1;
-    gainMap->gainMapMinD[c] = c + 1;
-    gainMap->gainMapMaxN[c] = 10 + c + 1;
-    gainMap->gainMapMaxD[c] = c + 1;
+    gainMap->baseOffset[c].n = 10 * c;
+    gainMap->baseOffset[c].d = 1000;
+    gainMap->alternateOffset[c].n = 20 * c;
+    gainMap->alternateOffset[c].d = 1000;
+    gainMap->gainMapGamma[c].n = 1;
+    gainMap->gainMapGamma[c].d = c + 1;
+    gainMap->gainMapMin[c].n = -1;
+    gainMap->gainMapMin[c].d = c + 1;
+    gainMap->gainMapMax[c].n = 10 + c + 1;
+    gainMap->gainMapMax[c].d = c + 1;
   }
 }
 
@@ -276,14 +276,14 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
   ASSERT_NE(image, nullptr);
 
   const uint32_t kDenominator = 1000;
-  image->gainMap->baseHdrHeadroomD = kDenominator;
-  image->gainMap->alternateHdrHeadroomD = kDenominator;
+  image->gainMap->baseHdrHeadroom.d = kDenominator;
+  image->gainMap->alternateHdrHeadroom.d = kDenominator;
   for (int c = 0; c < 3; ++c) {
-    image->gainMap->baseOffsetD[c] = kDenominator;
-    image->gainMap->alternateOffsetD[c] = kDenominator;
-    image->gainMap->gainMapGammaD[c] = kDenominator;
-    image->gainMap->gainMapMinD[c] = kDenominator;
-    image->gainMap->gainMapMaxD[c] = kDenominator;
+    image->gainMap->baseOffset[c].d = kDenominator;
+    image->gainMap->alternateOffset[c].d = kDenominator;
+    image->gainMap->gainMapGamma[c].d = kDenominator;
+    image->gainMap->gainMapMin[c].d = kDenominator;
+    image->gainMap->gainMapMax[c].d = kDenominator;
   }
 
   EncoderPtr encoder(avifEncoderCreate());
@@ -313,16 +313,16 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
   ASSERT_NE(image, nullptr);
 
   for (int c = 0; c < 3; ++c) {
-    image->gainMap->baseOffsetN[c] = 1;
-    image->gainMap->baseOffsetD[c] = 2;
-    image->gainMap->alternateOffsetN[c] = 3;
-    image->gainMap->alternateOffsetD[c] = 4;
-    image->gainMap->gainMapGammaN[c] = 5;
-    image->gainMap->gainMapGammaD[c] = 6;
-    image->gainMap->gainMapMinN[c] = 7;
-    image->gainMap->gainMapMinD[c] = 8;
-    image->gainMap->gainMapMaxN[c] = 9;
-    image->gainMap->gainMapMaxD[c] = 10;
+    image->gainMap->baseOffset[c].n = 1;
+    image->gainMap->baseOffset[c].d = 2;
+    image->gainMap->alternateOffset[c].n = 3;
+    image->gainMap->alternateOffset[c].d = 4;
+    image->gainMap->gainMapGamma[c].n = 5;
+    image->gainMap->gainMapGamma[c].d = 6;
+    image->gainMap->gainMapMin[c].n = 7;
+    image->gainMap->gainMapMin[c].d = 8;
+    image->gainMap->gainMapMax[c].n = 9;
+    image->gainMap->gainMapMax[c].d = 10;
   }
 
   EncoderPtr encoder(avifEncoderCreate());
@@ -497,14 +497,14 @@ TEST(GainMapTest, InvalidGrid) {
   cells[1]->gainMap->image->depth = cells[0]->gainMap->image->depth;  // Revert.
 
   // Invalid: one cell has different gain map metadata
-  cells[1]->gainMap->gainMapGammaN[0] = 42;
+  cells[1]->gainMap->gainMapGamma[0].n = 42;
   result =
       avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
                               cell_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE);
   EXPECT_EQ(result, AVIF_RESULT_INVALID_IMAGE_GRID)
       << avifResultToString(result) << " " << encoder->diag.error;
-  cells[1]->gainMap->gainMapGammaN[0] =
-      cells[0]->gainMap->gainMapGammaN[0];  // Revert.
+  cells[1]->gainMap->gainMapGamma[0].n =
+      cells[0]->gainMap->gainMapGamma[0].n;  // Revert.
 }
 
 TEST(GainMapTest, SequenceNotSupported) {
@@ -776,8 +776,8 @@ TEST(GainMapTest, DecodeGainMapGrid) {
   EXPECT_EQ(decoded->gainMap->image->width, 64u * 2u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u * 2u);
   EXPECT_EQ(decoded->gainMap->image->depth, 8u);
-  EXPECT_EQ(decoded->gainMap->baseHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->baseHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.n, 6u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.d, 2u);
 
   // Decode the image.
   result = avifDecoderNextImage(decoder.get());
@@ -805,8 +805,8 @@ TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
   // Gain map: single image of size 64x80.
   EXPECT_EQ(decoded->gainMap->image->width, 64u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u);
-  EXPECT_EQ(decoded->gainMap->baseHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->baseHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.n, 6u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.d, 2u);
 }
 
 TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
@@ -829,8 +829,8 @@ TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
   // Gain map: 2x2 grid of 64x80 tiles.
   EXPECT_EQ(decoded->gainMap->image->width, 64u * 2u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u * 2u);
-  EXPECT_EQ(decoded->gainMap->baseHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->baseHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.n, 6u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.d, 2u);
 }
 
 TEST(GainMapTest, DecodeUnsupportedVersion) {
@@ -946,11 +946,11 @@ TEST(GainMapTest, DecodeInvalidFtyp) {
 static void SwapBaseAndAlternate(const avifImage& new_alternate,
                                  avifGainMap& gain_map) {
   gain_map.useBaseColorSpace = !gain_map.useBaseColorSpace;
-  std::swap(gain_map.baseHdrHeadroomN, gain_map.alternateHdrHeadroomN);
-  std::swap(gain_map.baseHdrHeadroomD, gain_map.alternateHdrHeadroomD);
+  std::swap(gain_map.baseHdrHeadroom.n, gain_map.alternateHdrHeadroom.n);
+  std::swap(gain_map.baseHdrHeadroom.d, gain_map.alternateHdrHeadroom.d);
   for (int c = 0; c < 3; ++c) {
-    std::swap(gain_map.baseOffsetN[c], gain_map.alternateOffsetN[c]);
-    std::swap(gain_map.baseOffsetD[c], gain_map.alternateOffsetD[c]);
+    std::swap(gain_map.baseOffset[c].n, gain_map.alternateOffset[c].n);
+    std::swap(gain_map.baseOffset[c].d, gain_map.alternateOffset[c].d);
   }
   gain_map.altColorPrimaries = new_alternate.colorPrimaries;
   gain_map.altTransferCharacteristics = new_alternate.transferCharacteristics;
@@ -1285,11 +1285,11 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
   ASSERT_NE(image->gainMap->image, nullptr);
 
   // Force the alternate and base HDR headroom to the same value.
-  image->gainMap->baseHdrHeadroomN = image->gainMap->alternateHdrHeadroomN;
-  image->gainMap->baseHdrHeadroomD = image->gainMap->alternateHdrHeadroomD;
+  image->gainMap->baseHdrHeadroom.n = image->gainMap->alternateHdrHeadroom.n;
+  image->gainMap->baseHdrHeadroom.d = image->gainMap->alternateHdrHeadroom.d;
   const float headroom =
-      static_cast<float>(static_cast<float>(image->gainMap->baseHdrHeadroomN) /
-                         image->gainMap->baseHdrHeadroomD);
+      static_cast<float>(static_cast<float>(image->gainMap->baseHdrHeadroom.n) /
+                         image->gainMap->baseHdrHeadroom.d);
 
   // Check that when the two headrooms are the same, the gain map is not applied
   // whatever the target headroom is.
@@ -1346,9 +1346,9 @@ TEST_P(CreateGainMapTest, Create) {
   EXPECT_EQ(gain_map->image->height, gain_map_height);
 
   const float image1_headroom =
-      (float)gain_map->baseHdrHeadroomN / gain_map->baseHdrHeadroomD;
-  const float image2_headroom =
-      (float)gain_map->alternateHdrHeadroomN / gain_map->alternateHdrHeadroomD;
+      (float)gain_map->baseHdrHeadroom.n / gain_map->baseHdrHeadroom.d;
+  const float image2_headroom = (float)gain_map->alternateHdrHeadroom.n /
+                                gain_map->alternateHdrHeadroom.d;
 
   // Tone map from image1 to image2 by applying the gainmap forward.
   float psnr_image1_to_image2_forward;
@@ -1377,7 +1377,7 @@ TEST_P(CreateGainMapTest, Create) {
       << avifResultToString(result) << " " << diag.error;
 
   const float image2_headroom2 =
-      (float)gain_map->baseHdrHeadroomN / gain_map->baseHdrHeadroomD;
+      (float)gain_map->baseHdrHeadroom.n / gain_map->baseHdrHeadroom.d;
   EXPECT_NEAR(image2_headroom2, image2_headroom, 0.001);
 
   // Tone map from image2 to image1 by applying the new gainmap forward.

@@ -88,7 +88,7 @@ avifResult ConvertCommand::Run() {
   if (arg_swap_base_) {
     int depth = arg_image_read_.depth;
     if (depth == 0) {
-      depth = image->gainMap->alternateHdrHeadroomN == 0 ? 8 : 10;
+      depth = image->gainMap->alternateHdrHeadroom.n == 0 ? 8 : 10;
     }
     ImagePtr new_base(avifImageCreateEmpty());
     if (new_base == nullptr) {

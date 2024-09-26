@@ -263,21 +263,21 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             AVIF_CHECKERR(dstImage->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
         }
         for (int c = 0; c < 3; ++c) {
-            dstImage->gainMap->gainMapMinN[c] = srcImage->gainMap->gainMapMinN[c];
-            dstImage->gainMap->gainMapMinD[c] = srcImage->gainMap->gainMapMinD[c];
-            dstImage->gainMap->gainMapMaxN[c] = srcImage->gainMap->gainMapMaxN[c];
-            dstImage->gainMap->gainMapMaxD[c] = srcImage->gainMap->gainMapMaxD[c];
-            dstImage->gainMap->gainMapGammaN[c] = srcImage->gainMap->gainMapGammaN[c];
-            dstImage->gainMap->gainMapGammaD[c] = srcImage->gainMap->gainMapGammaD[c];
-            dstImage->gainMap->baseOffsetN[c] = srcImage->gainMap->baseOffsetN[c];
-            dstImage->gainMap->baseOffsetD[c] = srcImage->gainMap->baseOffsetD[c];
-            dstImage->gainMap->alternateOffsetN[c] = srcImage->gainMap->alternateOffsetN[c];
-            dstImage->gainMap->alternateOffsetD[c] = srcImage->gainMap->alternateOffsetD[c];
+            dstImage->gainMap->gainMapMin[c].n = srcImage->gainMap->gainMapMin[c].n;
+            dstImage->gainMap->gainMapMin[c].d = srcImage->gainMap->gainMapMin[c].d;
+            dstImage->gainMap->gainMapMax[c].n = srcImage->gainMap->gainMapMax[c].n;
+            dstImage->gainMap->gainMapMax[c].d = srcImage->gainMap->gainMapMax[c].d;
+            dstImage->gainMap->gainMapGamma[c].n = srcImage->gainMap->gainMapGamma[c].n;
+            dstImage->gainMap->gainMapGamma[c].d = srcImage->gainMap->gainMapGamma[c].d;
+            dstImage->gainMap->baseOffset[c].n = srcImage->gainMap->baseOffset[c].n;
+            dstImage->gainMap->baseOffset[c].d = srcImage->gainMap->baseOffset[c].d;
+            dstImage->gainMap->alternateOffset[c].n = srcImage->gainMap->alternateOffset[c].n;
+            dstImage->gainMap->alternateOffset[c].d = srcImage->gainMap->alternateOffset[c].d;
         }
-        dstImage->gainMap->baseHdrHeadroomN = srcImage->gainMap->baseHdrHeadroomN;
-        dstImage->gainMap->baseHdrHeadroomD = srcImage->gainMap->baseHdrHeadroomD;
-        dstImage->gainMap->alternateHdrHeadroomN = srcImage->gainMap->alternateHdrHeadroomN;
-        dstImage->gainMap->alternateHdrHeadroomD = srcImage->gainMap->alternateHdrHeadroomD;
+        dstImage->gainMap->baseHdrHeadroom.n = srcImage->gainMap->baseHdrHeadroom.n;
+        dstImage->gainMap->baseHdrHeadroom.d = srcImage->gainMap->baseHdrHeadroom.d;
+        dstImage->gainMap->alternateHdrHeadroom.n = srcImage->gainMap->alternateHdrHeadroom.n;
+        dstImage->gainMap->alternateHdrHeadroom.d = srcImage->gainMap->alternateHdrHeadroom.d;
         dstImage->gainMap->useBaseColorSpace = srcImage->gainMap->useBaseColorSpace;
         AVIF_CHECKRES(avifRWDataSet(&dstImage->gainMap->altICC, srcImage->gainMap->altICC.data, srcImage->gainMap->altICC.size));
         dstImage->gainMap->altColorPrimaries = srcImage->gainMap->altColorPrimaries;
@@ -1211,14 +1211,14 @@ avifGainMap * avifGainMapCreate(void)
     gainMap->useBaseColorSpace = AVIF_TRUE;
     // Set all denominators to valid values (1).
     for (int i = 0; i < 3; ++i) {
-        gainMap->gainMapMinD[i] = 1;
-        gainMap->gainMapMaxD[i] = 1;
-        gainMap->gainMapGammaD[i] = 1;
-        gainMap->baseOffsetD[i] = 1;
-        gainMap->alternateOffsetD[i] = 1;
+        gainMap->gainMapMin[i].d = 1;
+        gainMap->gainMapMax[i].d = 1;
+        gainMap->gainMapGamma[i].d = 1;
+        gainMap->baseOffset[i].d = 1;
+        gainMap->alternateOffset[i].d = 1;
     }
-    gainMap->baseHdrHeadroomD = 1;
-    gainMap->alternateHdrHeadroomD = 1;
+    gainMap->baseHdrHeadroom.d = 1;
+    gainMap->alternateHdrHeadroom.d = 1;
     return gainMap;
 }
 

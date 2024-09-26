@@ -23,10 +23,10 @@ avifResult ChangeBase(const avifImage& image, int depth,
   swapped->yuvFormat = yuvFormat;
 
   const float headroom =
-      image.gainMap->alternateHdrHeadroomD == 0
+      image.gainMap->alternateHdrHeadroom.d == 0
           ? 0.0f
-          : static_cast<float>(image.gainMap->alternateHdrHeadroomN) /
-                image.gainMap->alternateHdrHeadroomD;
+          : static_cast<float>(image.gainMap->alternateHdrHeadroom.n) /
+                image.gainMap->alternateHdrHeadroom.d;
   const bool tone_mapping_to_sdr = (headroom == 0.0f);
 
   swapped->colorPrimaries = image.gainMap->altColorPrimaries;
@@ -102,11 +102,10 @@ avifResult ChangeBase(const avifImage& image, int depth,
   // Swap base and alternate in the gain map
   avifGainMap* gainMap = swapped->gainMap;
   gainMap->useBaseColorSpace = !gainMap->useBaseColorSpace;
-  std::swap(gainMap->baseHdrHeadroomN, gainMap->alternateHdrHeadroomN);
-  std::swap(gainMap->baseHdrHeadroomD, gainMap->alternateHdrHeadroomD);
+  std::swap(gainMap->baseHdrHeadroom.n, gainMap->alternateHdrHeadroom.n);
+  std::swap(gainMap->baseHdrHeadroom.d, gainMap->alternateHdrHeadroom.d);
   for (int c = 0; c < 3; ++c) {
-    std::swap(gainMap->baseOffsetN, gainMap->alternateOffsetN);
-    std::swap(gainMap->baseOffsetD, gainMap->alternateOffsetD);
+    std::swap(gainMap->baseOffset, gainMap->alternateOffset);
   }
 
   return AVIF_RESULT_OK;
