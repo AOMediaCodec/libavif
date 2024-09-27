@@ -88,13 +88,6 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
 
-    for (int i = 0; i < 3; ++i) {
-        if (gainMap->gainMapGamma[i].n == 0) {
-            avifDiagnosticsPrintf(diag, "Invalid gain map metadata, gamma should be strictly positive");
-            return AVIF_RESULT_INVALID_ARGUMENT;
-        }
-    }
-
     const uint32_t width = baseImage->width;
     const uint32_t height = baseImage->height;
 
@@ -427,16 +420,20 @@ avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnost
     for (int i = 0; i < 3; ++i) {
         if (gainMap->gainMapMin[i].d == 0 || gainMap->gainMapMax[i].d == 0 || gainMap->gainMapGamma[i].d == 0 ||
             gainMap->baseOffset[i].d == 0 || gainMap->alternateOffset[i].d == 0) {
-            avifDiagnosticsPrintf(diag, "Per-channel denominator is 0 in avifGainMapMetadata");
+            avifDiagnosticsPrintf(diag, "Per-channel denominator is 0 in gain map metadata");
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+        if (gainMap->gainMapGamma[i].n == 0) {
+            avifDiagnosticsPrintf(diag, "Per-channel gamma is 0 in gain map metadata");
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
     }
     if (gainMap->baseHdrHeadroom.d == 0 || gainMap->alternateHdrHeadroom.d == 0) {
-        avifDiagnosticsPrintf(diag, "Headroom denominator is 0 in avifGainMapMetadata");
+        avifDiagnosticsPrintf(diag, "Headroom denominator is 0 in gain map metadata");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     if (gainMap->useBaseColorSpace != 0 && gainMap->useBaseColorSpace != 1) {
-        avifDiagnosticsPrintf(diag, "useBaseColorSpace is %d in avifGainMapMetadata", gainMap->useBaseColorSpace);
+        avifDiagnosticsPrintf(diag, "useBaseColorSpace is %d in gain map metadata", gainMap->useBaseColorSpace);
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     return AVIF_RESULT_OK;

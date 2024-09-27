@@ -1206,6 +1206,7 @@ avifGainMap * avifGainMapCreate(void)
     for (int i = 0; i < 3; ++i) {
         gainMap->gainMapMin[i].d = 1;
         gainMap->gainMapMax[i].d = 1;
+        gainMap->gainMapGamma[i].n = 1;
         gainMap->gainMapGamma[i].d = 1;
         gainMap->baseOffset[i].d = 1;
         gainMap->alternateOffset[i].d = 1;
