@@ -103,8 +103,7 @@ avifResult ChangeBase(const avifImage& image, int depth,
   // Swap base and alternate in the gain map
   avifGainMap* gainMap = swapped->gainMap;
   gainMap->useBaseColorSpace = !gainMap->useBaseColorSpace;
-  std::swap(gainMap->baseHdrHeadroom.n, gainMap->alternateHdrHeadroom.n);
-  std::swap(gainMap->baseHdrHeadroom.d, gainMap->alternateHdrHeadroom.d);
+  std::swap(gainMap->baseHdrHeadroom, gainMap->alternateHdrHeadroom);
   for (int c = 0; c < 3; ++c) {
     std::swap(gainMap->baseOffset, gainMap->alternateOffset);
   }

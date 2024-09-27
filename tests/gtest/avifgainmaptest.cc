@@ -49,8 +49,7 @@ void FillTestGainMapMetadata(bool base_rendition_is_hdr, avifGainMap* gainMap) {
   gainMap->baseHdrHeadroom = {0, 1};
   gainMap->alternateHdrHeadroom = {6, 2};
   if (base_rendition_is_hdr) {
-    std::swap(gainMap->baseHdrHeadroom.n, gainMap->alternateHdrHeadroom.n);
-    std::swap(gainMap->baseHdrHeadroom.d, gainMap->alternateHdrHeadroom.d);
+    std::swap(gainMap->baseHdrHeadroom, gainMap->alternateHdrHeadroom);
   }
   for (int c = 0; c < 3; ++c) {
     gainMap->baseOffset[c] = {10 * c, 1000};

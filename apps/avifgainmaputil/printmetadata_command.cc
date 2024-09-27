@@ -12,10 +12,10 @@ namespace avif {
 
 namespace {
 template <typename T>
-std::string FormatFraction(T numerator, uint32_t denominator) {
+std::string FormatFraction(T fraction) {
   std::stringstream stream;
-  stream << (denominator != 0 ? (double)numerator / denominator : 0)
-         << " (as fraction: " << numerator << "/" << denominator << ")";
+  stream << (fraction->d != 0 ? (double)fraction->n / fraction->d : 0)
+         << " (as fraction: " << fraction->n << "/" << fraction->d << ")";
   return stream.str();
 }
 
@@ -23,11 +23,9 @@ template <typename T>
 std::string FormatFractions(const T fractions[3]) {
   std::stringstream stream;
   const int w = 40;
-  stream << "R " << std::left << std::setw(w)
-         << FormatFraction(fractions[0].n, fractions[0].d) << " G " << std::left
-         << std::setw(w) << FormatFraction(fractions[1].n, fractions[1].d)
-         << " B " << std::left << std::setw(w)
-         << FormatFraction(fractions[2].n, fractions[2].d);
+  stream << "R " << std::left << std::setw(w) << FormatFraction(fractions)
+         << " G " << std::left << std::setw(w) << FormatFraction(fractions)
+         << " B " << std::left << std::setw(w) << FormatFraction(fractions);
   return stream.str();
 }
 }  // namespace
@@ -66,14 +64,11 @@ avifResult PrintMetadataCommand::Run() {
 
   const avifGainMap& gainMap = *decoder->image->gainMap;
   const int w = 20;
-  std::cout << " * " << std::left << std::setw(w) << "Base headroom: "
-            << FormatFraction(gainMap.baseHdrHeadroom.n,
-                              gainMap.baseHdrHeadroom.d)
+  std::cout << " * " << std::left << std::setw(w)
+            << "Base headroom: " << FormatFraction(&gainMap.baseHdrHeadroom)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Alternate headroom: "
-            << FormatFraction(gainMap.alternateHdrHeadroom.n,
-                              gainMap.alternateHdrHeadroom.d)
-            << "\n";
+            << FormatFraction(&gainMap.alternateHdrHeadroom) << "\n";
   std::cout << " * " << std::left << std::setw(w)
             << "Gain Map Min: " << FormatFractions(gainMap.gainMapMin) << "\n";
   std::cout << " * " << std::left << std::setw(w)
