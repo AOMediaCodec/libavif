@@ -25,6 +25,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Update aom.cmd/LocalAom.cmake: v3.10.0
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.2.1
+* Change experimental gainmap API: remove avifGainMapMetadata and
+  avifGainMapMetadataDouble structs.
+* Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
+  utility functions.
 
 ## [1.1.1] - 2024-07-30
 

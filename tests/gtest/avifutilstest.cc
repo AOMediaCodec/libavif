@@ -10,33 +10,31 @@ namespace avif {
 namespace {
 
 // Converts a double value to a fraction, and checks that the difference
-// between numerator/denominator and v is below relative_tolerance.
+// between fraction.n/fraction.d and v is below relative_tolerance.
 void TestRoundTrip(double v, double relative_tolerance) {
   // Unsigned.
   if (v >= 0) {
-    uint32_t numerator, denominator;
-    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
-    const double reconstructed = (double)numerator / denominator;
+    avifUnsignedFraction fraction;
+    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &fraction)) << v;
+    const double reconstructed = (double)fraction.n / fraction.d;
     const double tolerance = v * relative_tolerance;
     EXPECT_NEAR(reconstructed, v, tolerance)
-        << "numerator " << (double)numerator << " denominator "
-        << (double)denominator;
+        << "fraction.n " << (double)fraction.n << " fraction.d "
+        << (double)fraction.d;
   }
 
   // Signed.
   if (v <= INT32_MAX) {
     for (double multiplier : {1.0, -1.0}) {
       double v2 = v * multiplier;
-      int32_t numerator;
-      uint32_t denominator;
+      avifSignedFraction fraction;
 
-      ASSERT_TRUE(avifDoubleToSignedFraction(v2, &numerator, &denominator))
-          << v2;
-      const double reconstructed = (double)numerator / denominator;
+      ASSERT_TRUE(avifDoubleToSignedFraction(v2, &fraction)) << v2;
+      const double reconstructed = (double)fraction.n / fraction.d;
       const double tolerance = v * relative_tolerance;
       EXPECT_NEAR(reconstructed, v2, tolerance)
-          << "numerator " << (double)numerator << " denominator "
-          << (double)denominator;
+          << "fraction.n " << (double)fraction.n << " fraction.d "
+          << (double)fraction.d;
     }
   }
 }
@@ -89,9 +87,9 @@ TEST(ToFractionTest, MaxDifference) {
   double max_relative_error_v = 0;
   for (uint64_t i = 0; i < UINT32_MAX; i += 1000) {
     const double v = i + kLotsOfDecimals;
-    uint32_t numerator, denominator;
-    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
-    const double reconstructed = (double)numerator / denominator;
+    avifUnsignedFraction fraction;
+    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &fraction)) << v;
+    const double reconstructed = (double)fraction.n / fraction.d;
     const double error = abs(reconstructed - v);
     const double relative_error = error / v;
     if (error > max_error) {
@@ -116,9 +114,9 @@ TEST(ToFractionTest, MaxDifferenceSmall) {
   double max_relative_error_v = 0;
   for (uint64_t i = 1; i < UINT32_MAX; i += 1000) {
     const double v = 1.0 / (i + kLotsOfDecimals);
-    uint32_t numerator, denominator;
-    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &numerator, &denominator)) << v;
-    const double reconstructed = (double)numerator / denominator;
+    avifUnsignedFraction fraction;
+    ASSERT_TRUE(avifDoubleToUnsignedFraction(v, &fraction)) << v;
+    const double reconstructed = (double)fraction.n / fraction.d;
     const double error = abs(reconstructed - v);
     const double relative_error = error / v;
     if (error > max_error) {
@@ -135,12 +133,12 @@ TEST(ToFractionTest, MaxDifferenceSmall) {
 }
 
 TEST(ToFractionTest, BadValues) {
-  uint32_t numerator, denominator;
+  avifUnsignedFraction fraction;
   // Negative value.
-  EXPECT_FALSE(avifDoubleToUnsignedFraction(-0.1, &numerator, &denominator));
+  EXPECT_FALSE(avifDoubleToUnsignedFraction(-0.1, &fraction));
   // Too large.
-  EXPECT_FALSE(avifDoubleToUnsignedFraction(((double)UINT32_MAX) + 1.0,
-                                            &numerator, &denominator));
+  EXPECT_FALSE(
+      avifDoubleToUnsignedFraction(((double)UINT32_MAX) + 1.0, &fraction));
 }
 
 }  // namespace

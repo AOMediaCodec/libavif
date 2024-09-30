@@ -17,55 +17,55 @@ const char* data_path = nullptr;
 //------------------------------------------------------------------------------
 
 void CheckGainMapMetadata(
-    const avifGainMapMetadata& m, std::array<double, 3> gain_map_min,
+    const avifGainMap& gm, std::array<double, 3> gain_map_min,
     std::array<double, 3> gain_map_max, std::array<double, 3> gain_map_gamma,
     std::array<double, 3> base_offset, std::array<double, 3> alternate_offset,
     double base_hdr_headroom, double alternate_hdr_headroom) {
   const double kEpsilon = 1e-8;
 
-  EXPECT_NEAR(static_cast<double>(m.gainMapMinN[0]) / m.gainMapMinD[0],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMin[0].n) / gm.gainMapMin[0].d,
               gain_map_min[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.gainMapMinN[1]) / m.gainMapMinD[1],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMin[1].n) / gm.gainMapMin[1].d,
               gain_map_min[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.gainMapMinN[2]) / m.gainMapMinD[2],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMin[2].n) / gm.gainMapMin[2].d,
               gain_map_min[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(m.gainMapMaxN[0]) / m.gainMapMaxD[0],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMax[0].n) / gm.gainMapMax[0].d,
               gain_map_max[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.gainMapMaxN[1]) / m.gainMapMaxD[1],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMax[1].n) / gm.gainMapMax[1].d,
               gain_map_max[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.gainMapMaxN[2]) / m.gainMapMaxD[2],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapMax[2].n) / gm.gainMapMax[2].d,
               gain_map_max[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(m.gainMapGammaN[0]) / m.gainMapGammaD[0],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapGamma[0].n) / gm.gainMapGamma[0].d,
               gain_map_gamma[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.gainMapGammaN[1]) / m.gainMapGammaD[1],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapGamma[1].n) / gm.gainMapGamma[1].d,
               gain_map_gamma[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.gainMapGammaN[2]) / m.gainMapGammaD[2],
+  EXPECT_NEAR(static_cast<double>(gm.gainMapGamma[2].n) / gm.gainMapGamma[2].d,
               gain_map_gamma[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(m.baseOffsetN[0]) / m.baseOffsetD[0],
+  EXPECT_NEAR(static_cast<double>(gm.baseOffset[0].n) / gm.baseOffset[0].d,
               base_offset[0], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.baseOffsetN[1]) / m.baseOffsetD[1],
+  EXPECT_NEAR(static_cast<double>(gm.baseOffset[1].n) / gm.baseOffset[1].d,
               base_offset[1], kEpsilon);
-  EXPECT_NEAR(static_cast<double>(m.baseOffsetN[2]) / m.baseOffsetD[2],
+  EXPECT_NEAR(static_cast<double>(gm.baseOffset[2].n) / gm.baseOffset[2].d,
               base_offset[2], kEpsilon);
 
   EXPECT_NEAR(
-      static_cast<double>(m.alternateOffsetN[0]) / m.alternateOffsetD[0],
+      static_cast<double>(gm.alternateOffset[0].n) / gm.alternateOffset[0].d,
       alternate_offset[0], kEpsilon);
   EXPECT_NEAR(
-      static_cast<double>(m.alternateOffsetN[1]) / m.alternateOffsetD[1],
+      static_cast<double>(gm.alternateOffset[1].n) / gm.alternateOffset[1].d,
       alternate_offset[1], kEpsilon);
   EXPECT_NEAR(
-      static_cast<double>(m.alternateOffsetN[2]) / m.alternateOffsetD[2],
+      static_cast<double>(gm.alternateOffset[2].n) / gm.alternateOffset[2].d,
       alternate_offset[2], kEpsilon);
 
-  EXPECT_NEAR(static_cast<double>(m.baseHdrHeadroomN) / m.baseHdrHeadroomD,
+  EXPECT_NEAR(static_cast<double>(gm.baseHdrHeadroom.n) / gm.baseHdrHeadroom.d,
               base_hdr_headroom, kEpsilon);
-  EXPECT_NEAR(
-      static_cast<double>(m.alternateHdrHeadroomN) / m.alternateHdrHeadroomD,
-      alternate_hdr_headroom, kEpsilon);
+  EXPECT_NEAR(static_cast<double>(gm.alternateHdrHeadroom.n) /
+                  gm.alternateHdrHeadroom.d,
+              alternate_hdr_headroom, kEpsilon);
 }
 
 TEST(JpegTest, ReadJpegWithGainMap) {
@@ -88,7 +88,7 @@ TEST(JpegTest, ReadJpegWithGainMap) {
     // be read to parse the gain map.
     EXPECT_EQ(image->xmp.size, 0u);
 
-    CheckGainMapMetadata(image->gainMap->metadata,
+    CheckGainMapMetadata(*image->gainMap,
                          /*gain_map_min=*/{0.0, 0.0, 0.0},
                          /*gain_map_max=*/{3.5, 3.6, 3.7},
                          /*gain_map_gamma=*/{1.0, 1.0, 1.0},
@@ -156,11 +156,11 @@ TEST(JpegTest, ParseXMP) {
 </x:xmpmeta>
 <?xpacket end="w"?>
   )";
-  avifGainMapMetadata metadata;
+  GainMapPtr gainMap(avifGainMapCreate());
   ASSERT_TRUE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
-                                      &metadata));
+                                      gainMap.get()));
 
-  CheckGainMapMetadata(metadata,
+  CheckGainMapMetadata(*gainMap,
                        /*gain_map_min=*/{0.025869, 0.075191, 0.142298},
                        /*gain_map_max=*/{3.527605, 2.830234, 1.537243},
                        /*gain_map_gamma=*/{0.506828, 0.590032, 1.517708},
@@ -181,12 +181,12 @@ TEST(JpegTest, ParseXMPAllDefaultValues) {
 </x:xmpmeta>
 <?xpacket end="w"?>
   )";
-  avifGainMapMetadata metadata;
+  GainMapPtr gainMap(avifGainMapCreate());
   ASSERT_TRUE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
-                                      &metadata));
+                                      gainMap.get()));
 
   CheckGainMapMetadata(
-      metadata,
+      *gainMap,
       /*gain_map_min=*/{0.0, 0.0, 0.0},
       /*gain_map_max=*/{1.0, 1.0, 1.0},
       /*gain_map_gamma=*/{1.0, 1.0, 1.0},
@@ -220,15 +220,15 @@ TEST(JpegTest, ExtendedXmp) {
   </rdf:RDF>
 </x:xmpmeta>
   )";
-  avifGainMapMetadata metadata;
+  GainMapPtr gainMap(avifGainMapCreate());
   ASSERT_TRUE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
-                                      &metadata));
+                                      gainMap.get()));
 
   // Note that this test passes because the gain map metadata is in the primary
   // XMP. If it was in the extended part, we wouldn't detect it (but probably
   // should).
   CheckGainMapMetadata(
-      metadata,
+      *gainMap,
       /*gain_map_min=*/{0.0, 0.0, 0.0},
       /*gain_map_max=*/{1.0, 1.0, 1.0},
       /*gain_map_gamma=*/{1.0, 1.0, 1.0},
@@ -258,9 +258,9 @@ TEST(JpegTest, InvalidNumberOfValues) {
   </rdf:RDF>
 </x:xmpmeta>
   )";
-  avifGainMapMetadata metadata;
+  GainMapPtr gainMap(avifGainMapCreate());
   EXPECT_FALSE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
-                                       &metadata));
+                                       gainMap.get()));
 }
 
 TEST(JpegTest, WrongVersion) {
@@ -273,9 +273,9 @@ TEST(JpegTest, WrongVersion) {
   </rdf:RDF>
 </x:xmpmeta>
   )";
-  avifGainMapMetadata metadata;
+  GainMapPtr gainMap(avifGainMapCreate());
   EXPECT_FALSE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
-                                       &metadata));
+                                       gainMap.get()));
 }
 
 TEST(JpegTest, InvalidXMP) {
@@ -287,16 +287,16 @@ TEST(JpegTest, InvalidXMP) {
   </rdf:RDF>
 </x:xmpmeta>
   )";
-  avifGainMapMetadata metadata;
+  GainMapPtr gainMap(avifGainMapCreate());
   EXPECT_FALSE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
-                                       &metadata));
+                                       gainMap.get()));
 }
 
 TEST(JpegTest, EmptyXMP) {
   const std::string xmp = "";
-  avifGainMapMetadata metadata;
+  GainMapPtr gainMap(avifGainMapCreate());
   EXPECT_FALSE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
-                                       &metadata));
+                                       gainMap.get()));
 }
 
 //------------------------------------------------------------------------------

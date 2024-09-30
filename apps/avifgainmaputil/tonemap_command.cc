@@ -85,29 +85,31 @@ avifResult TonemapCommand::Run() {
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
-
-  avifGainMapMetadataDouble metadata;
-  if (!avifGainMapMetadataFractionsToDouble(&metadata,
-                                            &image->gainMap->metadata)) {
-    std::cerr << "Input image " << arg_input_filename_
-              << " has invalid gain map metadata\n";
+  if (image->gainMap->baseHdrHeadroom.d == 0 ||
+      image->gainMap->alternateHdrHeadroom.d == 0) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
 
+  const float base_hdr_hreadroom =
+      static_cast<float>(image->gainMap->baseHdrHeadroom.n) /
+      image->gainMap->baseHdrHeadroom.d;
+  const float alternate_hdr_hreadroom =
+      static_cast<float>(image->gainMap->alternateHdrHeadroom.n /
+                         image->gainMap->alternateHdrHeadroom.d);
   // We are either tone mapping to the base image (i.e. leaving it as is),
   // or tone mapping to the alternate image (i.e. fully applying the gain map),
   // or tone mapping in between (partially applying the gain map).
   const bool tone_mapping_to_base =
-      (headroom <= metadata.baseHdrHeadroom &&
-       metadata.baseHdrHeadroom <= metadata.alternateHdrHeadroom) ||
-      (headroom >= metadata.baseHdrHeadroom &&
-       metadata.baseHdrHeadroom >= metadata.alternateHdrHeadroom);
+      (headroom <= base_hdr_hreadroom &&
+       base_hdr_hreadroom <= alternate_hdr_hreadroom) ||
+      (headroom >= base_hdr_hreadroom &&
+       base_hdr_hreadroom >= alternate_hdr_hreadroom);
   const bool tone_mapping_to_alternate =
-      (headroom <= metadata.alternateHdrHeadroom &&
-       metadata.alternateHdrHeadroom <= metadata.baseHdrHeadroom) ||
-      (headroom >= metadata.alternateHdrHeadroom &&
-       metadata.alternateHdrHeadroom >= metadata.baseHdrHeadroom);
-  const bool base_is_hdr = (metadata.baseHdrHeadroom != 0.0f);
+      (headroom <= alternate_hdr_hreadroom &&
+       alternate_hdr_hreadroom <= base_hdr_hreadroom) ||
+      (headroom >= alternate_hdr_hreadroom &&
+       alternate_hdr_hreadroom >= base_hdr_hreadroom);
+  const bool base_is_hdr = (base_hdr_hreadroom != 0.0f);
 
   // Determine output CICP.
   CicpValues cicp;

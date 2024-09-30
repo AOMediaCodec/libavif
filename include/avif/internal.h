@@ -139,13 +139,6 @@ AVIF_NODISCARD avifBool avifFractionCD(avifFraction * a, avifFraction * b);
 AVIF_NODISCARD avifBool avifFractionAdd(avifFraction a, avifFraction b, avifFraction * result);
 AVIF_NODISCARD avifBool avifFractionSub(avifFraction a, avifFraction b, avifFraction * result);
 
-// Creates an int32 fraction that is approximately equal to 'v'.
-// Returns AVIF_FALSE if 'v' is NaN or abs(v) is > INT32_MAX.
-AVIF_NODISCARD avifBool avifDoubleToSignedFraction(double v, int32_t * numerator, uint32_t * denominator);
-// Creates a uint32 fraction that is approximately equal to 'v'.
-// Returns AVIF_FALSE if 'v' is < 0 or > UINT32_MAX or NaN.
-AVIF_NODISCARD avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator);
-
 void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
@@ -786,7 +779,7 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 // Removing outliers helps with accuracy/compression.
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, float * rangeMin, float * rangeMax);
 
-avifResult avifGainMapMetadataValidate(const avifGainMapMetadata * metadata, avifDiagnostics * diag);
+avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnostics * diag);
 
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 

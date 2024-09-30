@@ -262,7 +262,16 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             dstImage->gainMap = avifGainMapCreate();
             AVIF_CHECKERR(dstImage->gainMap, AVIF_RESULT_OUT_OF_MEMORY);
         }
-        dstImage->gainMap->metadata = srcImage->gainMap->metadata;
+        for (int c = 0; c < 3; ++c) {
+            dstImage->gainMap->gainMapMin[c] = srcImage->gainMap->gainMapMin[c];
+            dstImage->gainMap->gainMapMax[c] = srcImage->gainMap->gainMapMax[c];
+            dstImage->gainMap->gainMapGamma[c] = srcImage->gainMap->gainMapGamma[c];
+            dstImage->gainMap->baseOffset[c] = srcImage->gainMap->baseOffset[c];
+            dstImage->gainMap->alternateOffset[c] = srcImage->gainMap->alternateOffset[c];
+        }
+        dstImage->gainMap->baseHdrHeadroom = srcImage->gainMap->baseHdrHeadroom;
+        dstImage->gainMap->alternateHdrHeadroom = srcImage->gainMap->alternateHdrHeadroom;
+        dstImage->gainMap->useBaseColorSpace = srcImage->gainMap->useBaseColorSpace;
         AVIF_CHECKRES(avifRWDataSet(&dstImage->gainMap->altICC, srcImage->gainMap->altICC.data, srcImage->gainMap->altICC.size));
         dstImage->gainMap->altColorPrimaries = srcImage->gainMap->altColorPrimaries;
         dstImage->gainMap->altTransferCharacteristics = srcImage->gainMap->altTransferCharacteristics;
@@ -1192,17 +1201,18 @@ avifGainMap * avifGainMapCreate(void)
     gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     gainMap->altYUVRange = AVIF_RANGE_FULL;
-    gainMap->metadata.useBaseColorSpace = AVIF_TRUE;
+    gainMap->useBaseColorSpace = AVIF_TRUE;
     // Set all denominators to valid values (1).
     for (int i = 0; i < 3; ++i) {
-        gainMap->metadata.gainMapMinD[i] = 1;
-        gainMap->metadata.gainMapMaxD[i] = 1;
-        gainMap->metadata.gainMapGammaD[i] = 1;
-        gainMap->metadata.baseOffsetD[i] = 1;
-        gainMap->metadata.alternateOffsetD[i] = 1;
+        gainMap->gainMapMin[i].d = 1;
+        gainMap->gainMapMax[i].d = 1;
+        gainMap->gainMapGamma[i].n = 1;
+        gainMap->gainMapGamma[i].d = 1;
+        gainMap->baseOffset[i].d = 1;
+        gainMap->alternateOffset[i].d = 1;
     }
-    gainMap->metadata.baseHdrHeadroomD = 1;
-    gainMap->metadata.alternateHdrHeadroomD = 1;
+    gainMap->baseHdrHeadroom.d = 1;
+    gainMap->alternateHdrHeadroom.d = 1;
     return gainMap;
 }
 

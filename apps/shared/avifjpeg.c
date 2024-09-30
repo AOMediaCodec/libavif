@@ -592,53 +592,47 @@ static inline void SwapDoubles(double * x, double * y)
 // Parses gain map metadata from XMP.
 // See https://helpx.adobe.com/camera-raw/using/gain-map.html
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
-static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avifGainMapMetadata * metadata)
+static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avifGainMap * gainMap)
 {
     const xmlNode * descNode = avifJPEGFindGainMapXMPNode(rootNode);
     if (descNode == NULL) {
         return AVIF_FALSE;
     }
 
-    avifGainMapMetadataDouble metadataDouble;
     // Set default values from Adobe's spec.
-    metadataDouble.baseHdrHeadroom = 0.0;
-    metadataDouble.alternateHdrHeadroom = 1.0;
-    for (int i = 0; i < 3; ++i) {
-        metadataDouble.gainMapMin[i] = 0.0;
-        metadataDouble.gainMapMax[i] = 1.0;
-        metadataDouble.baseOffset[i] = 1.0 / 64.0;
-        metadataDouble.alternateOffset[i] = 1.0 / 64.0;
-        metadataDouble.gainMapGamma[i] = 1.0;
-    }
-    // Not in Adobe's spec but both color spaces should be the same so this value doesn't matter.
-    metadataDouble.useBaseColorSpace = AVIF_TRUE;
-
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &metadataDouble.baseHdrHeadroom, /*numDoubles=*/1));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &metadataDouble.alternateHdrHeadroom, /*numDoubles=*/1));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", metadataDouble.baseOffset, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", metadataDouble.alternateOffset, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", metadataDouble.gainMapMin, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", metadataDouble.gainMapMax, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", metadataDouble.gainMapGamma, /*numDoubles=*/3));
+    double baseHdrHeadroom = 0.0;
+    double alternateHdrHeadroom = 1.0;
+    double gainMapMin[3] = { 0.0, 0.0, 0.0 };
+    double gainMapMax[3] = { 1.0, 1.0, 1.0 };
+    double gainMapGamma[3] = { 1.0, 1.0, 1.0 };
+    double baseOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
+    double alternateOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &baseHdrHeadroom, /*numDoubles=*/1));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &alternateHdrHeadroom, /*numDoubles=*/1));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", baseOffset, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", alternateOffset, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", gainMapMin, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3));
 
     // See inequality requirements in section 'XMP Representation of Gain Map Metadata' of Adobe's gain map specification
     // https://helpx.adobe.com/camera-raw/using/gain-map.html
-    AVIF_CHECK(metadataDouble.alternateHdrHeadroom > metadataDouble.baseHdrHeadroom);
-    AVIF_CHECK(metadataDouble.baseHdrHeadroom >= 0);
+    AVIF_CHECK(alternateHdrHeadroom > baseHdrHeadroom);
+    AVIF_CHECK(baseHdrHeadroom >= 0);
     for (int i = 0; i < 3; ++i) {
-        AVIF_CHECK(metadataDouble.gainMapMax[i] >= metadataDouble.gainMapMin[i]);
-        AVIF_CHECK(metadataDouble.baseOffset[i] >= 0.0);
-        AVIF_CHECK(metadataDouble.alternateOffset[i] >= 0.0);
-        AVIF_CHECK(metadataDouble.gainMapGamma[i] > 0.0);
+        AVIF_CHECK(gainMapMax[i] >= gainMapMin[i]);
+        AVIF_CHECK(baseOffset[i] >= 0.0);
+        AVIF_CHECK(alternateOffset[i] >= 0.0);
+        AVIF_CHECK(gainMapGamma[i] > 0.0);
     }
 
     uint32_t numValues;
     const char * baseRenditionIsHDR;
     if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues)) {
         if (!strcmp(baseRenditionIsHDR, "True")) {
-            SwapDoubles(&metadataDouble.baseHdrHeadroom, &metadataDouble.alternateHdrHeadroom);
+            SwapDoubles(&baseHdrHeadroom, &alternateHdrHeadroom);
             for (int c = 0; c < 3; ++c) {
-                SwapDoubles(&metadataDouble.baseOffset[c], &metadataDouble.alternateOffset[c]);
+                SwapDoubles(&baseOffset[c], &alternateOffset[c]);
             }
         } else if (!strcmp(baseRenditionIsHDR, "False")) {
         } else {
@@ -646,21 +640,31 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
         }
     }
 
-    AVIF_CHECK(avifGainMapMetadataDoubleToFractions(metadata, &metadataDouble));
+    for (int i = 0; i < 3; ++i) {
+        AVIF_CHECK(avifDoubleToSignedFraction(gainMapMin[i], &gainMap->gainMapMin[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(gainMapMax[i], &gainMap->gainMapMax[i]));
+        AVIF_CHECK(avifDoubleToUnsignedFraction(gainMapGamma[i], &gainMap->gainMapGamma[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(baseOffset[i], &gainMap->baseOffset[i]));
+        AVIF_CHECK(avifDoubleToSignedFraction(alternateOffset[i], &gainMap->alternateOffset[i]));
+    }
+    AVIF_CHECK(avifDoubleToUnsignedFraction(baseHdrHeadroom, &gainMap->baseHdrHeadroom));
+    AVIF_CHECK(avifDoubleToUnsignedFraction(alternateHdrHeadroom, &gainMap->alternateHdrHeadroom));
+    // Not in Adobe's spec but both color spaces should be the same so this value doesn't matter.
+    gainMap->useBaseColorSpace = AVIF_TRUE;
 
     return AVIF_TRUE;
 }
 
 // Parses gain map metadata from an XMP payload.
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
-avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMapMetadata * metadata)
+avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMap * gainMap)
 {
     xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, LIBXML2_XML_PARSING_FLAGS);
     if (document == NULL) {
         return AVIF_FALSE; // Probably an out of memory error.
     }
     xmlNode * rootNode = xmlDocGetRootElement(document);
-    const avifBool res = avifJPEGParseGainMapXMPProperties(rootNode, metadata);
+    const avifBool res = avifJPEGParseGainMapXMPProperties(rootNode, gainMap);
     xmlFreeDoc(document);
     return res;
 }
@@ -817,7 +821,7 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
                 avifImageDestroy(image);
                 return AVIF_FALSE;
             }
-            if (!avifJPEGParseGainMapXMP(image->xmp.data, image->xmp.size, &gainMap->metadata)) {
+            if (!avifJPEGParseGainMapXMP(image->xmp.data, image->xmp.size, gainMap)) {
                 fprintf(stderr, "Warning: failed to parse gain map metadata\n");
                 avifImageDestroy(image);
                 return AVIF_FALSE;

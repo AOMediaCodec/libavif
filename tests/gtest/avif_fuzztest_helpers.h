@@ -171,9 +171,6 @@ inline auto ArbitraryAvifAnim() {
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-// Note that avifGainMapMetadata is passed as many individual arguments
-// because the C array fields in the struct seem to prevent fuzztest from
-// handling it natively.
 // TODO: Try StructOf<Metadata>(StructOf<uint32_t[3]>())?
 ImagePtr AddGainMapToImage(
     ImagePtr image, ImagePtr gain_map, int32_t gain_map_min_n0,
@@ -206,8 +203,9 @@ inline auto ArbitraryAvifImageWithGainMap() {
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::Arbitrary<uint32_t>(), fuzztest::Arbitrary<uint32_t>(),
-      fuzztest::Arbitrary<uint32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),

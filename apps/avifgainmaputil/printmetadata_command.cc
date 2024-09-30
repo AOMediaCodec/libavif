@@ -12,23 +12,20 @@ namespace avif {
 
 namespace {
 template <typename T>
-std::string FormatFraction(T numerator, uint32_t denominator) {
+std::string FormatFraction(T fraction) {
   std::stringstream stream;
-  stream << (denominator != 0 ? (double)numerator / denominator : 0)
-         << " (as fraction: " << numerator << "/" << denominator << ")";
+  stream << (fraction->d != 0 ? (double)fraction->n / fraction->d : 0)
+         << " (as fraction: " << fraction->n << "/" << fraction->d << ")";
   return stream.str();
 }
 
 template <typename T>
-std::string FormatFractions(const T numerator[3],
-                            const uint32_t denominator[3]) {
+std::string FormatFractions(const T fractions[3]) {
   std::stringstream stream;
   const int w = 40;
-  stream << "R " << std::left << std::setw(w)
-         << FormatFraction(numerator[0], denominator[0]) << " G " << std::left
-         << std::setw(w) << FormatFraction(numerator[1], denominator[1])
-         << " B " << std::left << std::setw(w)
-         << FormatFraction(numerator[2], denominator[2]);
+  stream << "R " << std::left << std::setw(w) << FormatFraction(fractions)
+         << " G " << std::left << std::setw(w) << FormatFraction(fractions)
+         << " B " << std::left << std::setw(w) << FormatFraction(fractions);
   return stream.str();
 }
 }  // namespace
@@ -65,34 +62,27 @@ avifResult PrintMetadataCommand::Run() {
   }
   assert(decoder->image->gainMap);
 
-  const avifGainMapMetadata& metadata = decoder->image->gainMap->metadata;
+  const avifGainMap& gainMap = *decoder->image->gainMap;
   const int w = 20;
-  std::cout << " * " << std::left << std::setw(w) << "Base headroom: "
-            << FormatFraction(metadata.baseHdrHeadroomN,
-                              metadata.baseHdrHeadroomD)
+  std::cout << " * " << std::left << std::setw(w)
+            << "Base headroom: " << FormatFraction(&gainMap.baseHdrHeadroom)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Alternate headroom: "
-            << FormatFraction(metadata.alternateHdrHeadroomN,
-                              metadata.alternateHdrHeadroomD)
+            << FormatFraction(&gainMap.alternateHdrHeadroom) << "\n";
+  std::cout << " * " << std::left << std::setw(w)
+            << "Gain Map Min: " << FormatFractions(gainMap.gainMapMin) << "\n";
+  std::cout << " * " << std::left << std::setw(w)
+            << "Gain Map Max: " << FormatFractions(gainMap.gainMapMax) << "\n";
+  std::cout << " * " << std::left << std::setw(w)
+            << "Base Offset: " << FormatFractions(gainMap.baseOffset) << "\n";
+  std::cout << " * " << std::left << std::setw(w)
+            << "Alternate Offset: " << FormatFractions(gainMap.alternateOffset)
             << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Gain Map Min: "
-            << FormatFractions(metadata.gainMapMinN, metadata.gainMapMinD)
-            << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Gain Map Max: "
-            << FormatFractions(metadata.gainMapMaxN, metadata.gainMapMaxD)
-            << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Base Offset: "
-            << FormatFractions(metadata.baseOffsetN, metadata.baseOffsetD)
-            << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Alternate Offset: "
-            << FormatFractions(metadata.alternateOffsetN,
-                               metadata.alternateOffsetD)
-            << "\n";
-  std::cout << " * " << std::left << std::setw(w) << "Gain Map Gamma: "
-            << FormatFractions(metadata.gainMapGammaN, metadata.gainMapGammaD)
+  std::cout << " * " << std::left << std::setw(w)
+            << "Gain Map Gamma: " << FormatFractions(gainMap.gainMapGamma)
             << "\n";
   std::cout << " * " << std::left << std::setw(w) << "Use Base Color Space: "
-            << (metadata.useBaseColorSpace ? "True" : "False") << "\n";
+            << (gainMap.useBaseColorSpace ? "True" : "False") << "\n";
 
   return AVIF_RESULT_OK;
 }

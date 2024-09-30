@@ -231,7 +231,7 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
     }
 
     // Maximum denominator: makes sure that the numerator is <= maxNumerator and the denominator is <= UINT32_MAX.
-    const uint64_t maxD = (v <= 1) ? UINT32_MAX : (uint64_t)floor(maxNumerator / v);
+    const uint32_t maxD = (v <= 1) ? UINT32_MAX : (uint32_t)floor(maxNumerator / v);
 
     // Find the best approximation of v as a fraction using continued fractions, see
     // https://en.wikipedia.org/wiki/Continued_fraction
@@ -252,7 +252,7 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
         }
         currentV = 1.0 / currentV;
         const double newD = previousD + floor(currentV) * (*denominator);
-        if (newD > maxD) {
+        if (newD > (double)maxD) {
             // This is the best we can do with a denominator <= max_d.
             return AVIF_TRUE;
         }
@@ -269,20 +269,20 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
     return AVIF_TRUE;
 }
 
-avifBool avifDoubleToSignedFraction(double v, int32_t * numerator, uint32_t * denominator)
+avifBool avifDoubleToSignedFraction(double v, avifSignedFraction * fraction)
 {
     uint32_t positive_numerator;
-    if (!avifDoubleToUnsignedFractionImpl(fabs(v), INT32_MAX, &positive_numerator, denominator)) {
+    if (!avifDoubleToUnsignedFractionImpl(fabs(v), INT32_MAX, &positive_numerator, &fraction->d)) {
         return AVIF_FALSE;
     }
-    *numerator = (int32_t)positive_numerator;
+    fraction->n = (int32_t)positive_numerator;
     if (v < 0) {
-        *numerator *= -1;
+        fraction->n *= -1;
     }
     return AVIF_TRUE;
 }
 
-avifBool avifDoubleToUnsignedFraction(double v, uint32_t * numerator, uint32_t * denominator)
+avifBool avifDoubleToUnsignedFraction(double v, avifUnsignedFraction * fraction)
 {
-    return avifDoubleToUnsignedFractionImpl(v, UINT32_MAX, numerator, denominator);
+    return avifDoubleToUnsignedFractionImpl(v, UINT32_MAX, &fraction->n, &fraction->d);
 }

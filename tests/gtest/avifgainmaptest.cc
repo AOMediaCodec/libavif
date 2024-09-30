@@ -23,51 +23,41 @@ using ::testing::Values;
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
 
-void CheckGainMapMetadataMatches(const avifGainMapMetadata& lhs,
-                                 const avifGainMapMetadata& rhs) {
-  EXPECT_EQ(lhs.baseHdrHeadroomN, rhs.baseHdrHeadroomN);
-  EXPECT_EQ(lhs.baseHdrHeadroomD, rhs.baseHdrHeadroomD);
-  EXPECT_EQ(lhs.alternateHdrHeadroomN, rhs.alternateHdrHeadroomN);
-  EXPECT_EQ(lhs.alternateHdrHeadroomD, rhs.alternateHdrHeadroomD);
+void CheckGainMapMetadataMatches(const avifGainMap& lhs,
+                                 const avifGainMap& rhs) {
+  EXPECT_EQ(lhs.baseHdrHeadroom.n, rhs.baseHdrHeadroom.n);
+  EXPECT_EQ(lhs.baseHdrHeadroom.d, rhs.baseHdrHeadroom.d);
+  EXPECT_EQ(lhs.alternateHdrHeadroom.n, rhs.alternateHdrHeadroom.n);
+  EXPECT_EQ(lhs.alternateHdrHeadroom.d, rhs.alternateHdrHeadroom.d);
   for (int c = 0; c < 3; ++c) {
     SCOPED_TRACE(c);
-    EXPECT_EQ(lhs.baseOffsetN[c], rhs.baseOffsetN[c]);
-    EXPECT_EQ(lhs.baseOffsetD[c], rhs.baseOffsetD[c]);
-    EXPECT_EQ(lhs.alternateOffsetN[c], rhs.alternateOffsetN[c]);
-    EXPECT_EQ(lhs.alternateOffsetD[c], rhs.alternateOffsetD[c]);
-    EXPECT_EQ(lhs.gainMapGammaN[c], rhs.gainMapGammaN[c]);
-    EXPECT_EQ(lhs.gainMapGammaD[c], rhs.gainMapGammaD[c]);
-    EXPECT_EQ(lhs.gainMapMinN[c], rhs.gainMapMinN[c]);
-    EXPECT_EQ(lhs.gainMapMinD[c], rhs.gainMapMinD[c]);
-    EXPECT_EQ(lhs.gainMapMaxN[c], rhs.gainMapMaxN[c]);
-    EXPECT_EQ(lhs.gainMapMaxD[c], rhs.gainMapMaxD[c]);
+    EXPECT_EQ(lhs.baseOffset[c].n, rhs.baseOffset[c].n);
+    EXPECT_EQ(lhs.baseOffset[c].d, rhs.baseOffset[c].d);
+    EXPECT_EQ(lhs.alternateOffset[c].n, rhs.alternateOffset[c].n);
+    EXPECT_EQ(lhs.alternateOffset[c].d, rhs.alternateOffset[c].d);
+    EXPECT_EQ(lhs.gainMapGamma[c].n, rhs.gainMapGamma[c].n);
+    EXPECT_EQ(lhs.gainMapGamma[c].d, rhs.gainMapGamma[c].d);
+    EXPECT_EQ(lhs.gainMapMin[c].n, rhs.gainMapMin[c].n);
+    EXPECT_EQ(lhs.gainMapMin[c].d, rhs.gainMapMin[c].d);
+    EXPECT_EQ(lhs.gainMapMax[c].n, rhs.gainMapMax[c].n);
+    EXPECT_EQ(lhs.gainMapMax[c].d, rhs.gainMapMax[c].d);
   }
 }
 
-avifGainMapMetadata GetTestGainMapMetadata(bool base_rendition_is_hdr) {
-  avifGainMapMetadata metadata = {};
-  metadata.useBaseColorSpace = true;
-  metadata.baseHdrHeadroomN = 0;
-  metadata.baseHdrHeadroomD = 1;
-  metadata.alternateHdrHeadroomN = 6;
-  metadata.alternateHdrHeadroomD = 2;
+void FillTestGainMapMetadata(bool base_rendition_is_hdr, avifGainMap* gainMap) {
+  gainMap->useBaseColorSpace = true;
+  gainMap->baseHdrHeadroom = {0, 1};
+  gainMap->alternateHdrHeadroom = {6, 2};
   if (base_rendition_is_hdr) {
-    std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
-    std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
+    std::swap(gainMap->baseHdrHeadroom, gainMap->alternateHdrHeadroom);
   }
   for (int c = 0; c < 3; ++c) {
-    metadata.baseOffsetN[c] = 10 * c;
-    metadata.baseOffsetD[c] = 1000;
-    metadata.alternateOffsetN[c] = 20 * c;
-    metadata.alternateOffsetD[c] = 1000;
-    metadata.gainMapGammaN[c] = 1;
-    metadata.gainMapGammaD[c] = c + 1;
-    metadata.gainMapMinN[c] = -1;
-    metadata.gainMapMinD[c] = c + 1;
-    metadata.gainMapMaxN[c] = 10 + c + 1;
-    metadata.gainMapMaxD[c] = c + 1;
+    gainMap->baseOffset[c] = {10 * c, 1000};
+    gainMap->alternateOffset[c] = {20 * c, 1000};
+    gainMap->gainMapGamma[c] = {1, static_cast<uint32_t>(c + 1)};
+    gainMap->gainMapMin[c] = {-1, static_cast<uint32_t>(c + 1)};
+    gainMap->gainMapMax[c] = {10 + c + 1, static_cast<uint32_t>(c + 1)};
   }
-  return metadata;
 }
 
 ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
@@ -94,7 +84,7 @@ ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
     return nullptr;
   }
   image->gainMap->image = gain_map.release();  // 'image' now owns the gain map.
-  image->gainMap->metadata = GetTestGainMapMetadata(base_rendition_is_hdr);
+  FillTestGainMapMetadata(base_rendition_is_hdr, image->gainMap);
 
   if (base_rendition_is_hdr) {
     image->clli.maxCLL = 10;
@@ -164,8 +154,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   EXPECT_EQ(decoded->gainMap->image->width, image->gainMap->image->width);
   EXPECT_EQ(decoded->gainMap->image->height, image->gainMap->image->height);
   EXPECT_EQ(decoded->gainMap->image->depth, image->gainMap->image->depth);
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
-                              image->gainMap->metadata);
+  CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
 
   // Decode the image.
   result = avifDecoderNextImage(decoder.get());
@@ -226,8 +215,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   EXPECT_EQ(decoded->gainMap->image->width, image->gainMap->image->width);
   EXPECT_EQ(decoded->gainMap->image->height, image->gainMap->image->height);
   EXPECT_EQ(decoded->gainMap->image->depth, image->gainMap->image->depth);
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
-                              image->gainMap->metadata);
+  CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_basehdr.avif", std::ios::binary)
@@ -280,14 +268,14 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
   ASSERT_NE(image, nullptr);
 
   const uint32_t kDenominator = 1000;
-  image->gainMap->metadata.baseHdrHeadroomD = kDenominator;
-  image->gainMap->metadata.alternateHdrHeadroomD = kDenominator;
+  image->gainMap->baseHdrHeadroom.d = kDenominator;
+  image->gainMap->alternateHdrHeadroom.d = kDenominator;
   for (int c = 0; c < 3; ++c) {
-    image->gainMap->metadata.baseOffsetD[c] = kDenominator;
-    image->gainMap->metadata.alternateOffsetD[c] = kDenominator;
-    image->gainMap->metadata.gainMapGammaD[c] = kDenominator;
-    image->gainMap->metadata.gainMapMinD[c] = kDenominator;
-    image->gainMap->metadata.gainMapMaxD[c] = kDenominator;
+    image->gainMap->baseOffset[c].d = kDenominator;
+    image->gainMap->alternateOffset[c].d = kDenominator;
+    image->gainMap->gainMapGamma[c].d = kDenominator;
+    image->gainMap->gainMapMin[c].d = kDenominator;
+    image->gainMap->gainMapMax[c].d = kDenominator;
   }
 
   EncoderPtr encoder(avifEncoderCreate());
@@ -309,8 +297,7 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
       << avifResultToString(result) << " " << decoder->diag.error;
 
   // Verify that the gain map metadata matches the input.
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
-                              image->gainMap->metadata);
+  CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
 }
 
 TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
@@ -318,16 +305,11 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
   ASSERT_NE(image, nullptr);
 
   for (int c = 0; c < 3; ++c) {
-    image->gainMap->metadata.baseOffsetN[c] = 1;
-    image->gainMap->metadata.baseOffsetD[c] = 2;
-    image->gainMap->metadata.alternateOffsetN[c] = 3;
-    image->gainMap->metadata.alternateOffsetD[c] = 4;
-    image->gainMap->metadata.gainMapGammaN[c] = 5;
-    image->gainMap->metadata.gainMapGammaD[c] = 6;
-    image->gainMap->metadata.gainMapMinN[c] = 7;
-    image->gainMap->metadata.gainMapMinD[c] = 8;
-    image->gainMap->metadata.gainMapMaxN[c] = 9;
-    image->gainMap->metadata.gainMapMaxD[c] = 10;
+    image->gainMap->baseOffset[c] = {1, 2};
+    image->gainMap->alternateOffset[c] = {3, 4};
+    image->gainMap->gainMapGamma[c] = {5, 6};
+    image->gainMap->gainMapMin[c] = {7, 8};
+    image->gainMap->gainMapMax[c] = {9, 10};
   }
 
   EncoderPtr encoder(avifEncoderCreate());
@@ -349,8 +331,7 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
       << avifResultToString(result) << " " << decoder->diag.error;
 
   // Verify that the gain map metadata matches the input.
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
-                              image->gainMap->metadata);
+  CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
 }
 
 TEST(GainMapTest, EncodeDecodeGrid) {
@@ -361,9 +342,6 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   constexpr int kGridRows = 2;
   constexpr int kCellWidth = 128;
   constexpr int kCellHeight = 200;
-
-  avifGainMapMetadata gain_map_metadata =
-      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
 
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
     ImagePtr image =
@@ -382,7 +360,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
     ASSERT_NE(image->gainMap, nullptr);
     image->gainMap->image = gain_map.release();
     // all cells must have the same metadata
-    image->gainMap->metadata = gain_map_metadata;
+    FillTestGainMapMetadata(/*base_rendition_is_hdr=*/true, image->gainMap);
 
     cell_ptrs.push_back(image.get());
     gain_map_ptrs.push_back(image->gainMap->image);
@@ -435,7 +413,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   ASSERT_NE(decoded->gainMap->image, nullptr);
   ASSERT_GT(testutil::GetPsnr(*merged_gain_map, *decoded->gainMap->image),
             40.0);
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata, gain_map_metadata);
+  CheckGainMapMetadataMatches(*decoded->gainMap, *cell_ptrs[0]->gainMap);
 
   // Check that non-incremental and incremental decodings of a grid AVIF produce
   // the same pixels.
@@ -457,9 +435,6 @@ TEST(GainMapTest, InvalidGrid) {
   constexpr int kGridCols = 2;
   constexpr int kGridRows = 2;
 
-  avifGainMapMetadata gain_map_metadata =
-      GetTestGainMapMetadata(/*base_rendition_is_hdr=*/true);
-
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
     ImagePtr image =
         testutil::CreateImage(/*width=*/64, /*height=*/100, /*depth=*/10,
@@ -477,7 +452,7 @@ TEST(GainMapTest, InvalidGrid) {
     ASSERT_NE(image->gainMap, nullptr);
     image->gainMap->image = gain_map.release();
     // all cells must have the same metadata
-    image->gainMap->metadata = gain_map_metadata;
+    FillTestGainMapMetadata(/*base_rendition_is_hdr=*/true, image->gainMap);
 
     cell_ptrs.push_back(image.get());
     cells.push_back(std::move(image));
@@ -508,15 +483,15 @@ TEST(GainMapTest, InvalidGrid) {
       << avifResultToString(result) << " " << encoder->diag.error;
   cells[1]->gainMap->image->depth = cells[0]->gainMap->image->depth;  // Revert.
 
-  // Invalid: one cell has different gain map metadata.
-  cells[1]->gainMap->metadata.gainMapGammaN[0] = 42;
+  // Invalid: one cell has different gain map metadata
+  cells[1]->gainMap->gainMapGamma[0].n = 42;
   result =
       avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
                               cell_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE);
   EXPECT_EQ(result, AVIF_RESULT_INVALID_IMAGE_GRID)
       << avifResultToString(result) << " " << encoder->diag.error;
-  cells[1]->gainMap->metadata.gainMapGammaN[0] =
-      cells[0]->gainMap->metadata.gainMapGammaN[0];  // Revert.
+  cells[1]->gainMap->gainMapGamma[0].n =
+      cells[0]->gainMap->gainMapGamma[0].n;  // Revert.
 }
 
 TEST(GainMapTest, SequenceNotSupported) {
@@ -598,7 +573,7 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
-  decoder->enableParsingGainMapMetadata = AVIF_TRUE;  // Read gain map metadata.
+  decoder->enableParsingGainMapMetadata = AVIF_TRUE;  // Read gain map metadata
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -612,8 +587,7 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   // ... but not decoded because enableDecodingGainMap is false by default.
   EXPECT_EQ(decoded->gainMap->image, nullptr);
   // Check that the gain map metadata WAS populated.
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
-                              image->gainMap->metadata);
+  CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
   EXPECT_EQ(decoded->gainMap->altDepth, image->gainMap->altDepth);
   EXPECT_EQ(decoded->gainMap->altPlaneCount, image->gainMap->altPlaneCount);
   EXPECT_EQ(decoded->gainMap->altColorPrimaries,
@@ -688,8 +662,7 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   ASSERT_NE(decoded->gainMap->image, nullptr);
   EXPECT_GT(testutil::GetPsnr(*image->gainMap->image, *decoded->gainMap->image),
             40.0);
-  CheckGainMapMetadataMatches(decoded->gainMap->metadata,
-                              image->gainMap->metadata);
+  CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
 }
 
 TEST(GainMapTest, IgnoreAll) {
@@ -708,7 +681,7 @@ TEST(GainMapTest, IgnoreAll) {
   // Ignore both the main image and the gain map.
   decoder->ignoreColorAndAlpha = AVIF_TRUE;
   decoder->enableDecodingGainMap = AVIF_FALSE;
-  // But do read the gain map metadata.
+  // But do read the gain map metadata
   decoder->enableParsingGainMapMetadata = AVIF_TRUE;
 
   // Parsing just the header should work.
@@ -717,8 +690,7 @@ TEST(GainMapTest, IgnoreAll) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
 
   EXPECT_TRUE(decoder->gainMapPresent);
-  CheckGainMapMetadataMatches(decoder->image->gainMap->metadata,
-                              image->gainMap->metadata);
+  CheckGainMapMetadataMatches(*decoder->image->gainMap, *image->gainMap);
   ASSERT_EQ(decoder->image->gainMap->image, nullptr);
 
   // But trying to access the next image should give an error because both
@@ -791,8 +763,8 @@ TEST(GainMapTest, DecodeGainMapGrid) {
   EXPECT_EQ(decoded->gainMap->image->width, 64u * 2u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u * 2u);
   EXPECT_EQ(decoded->gainMap->image->depth, 8u);
-  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.n, 6u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.d, 2u);
 
   // Decode the image.
   result = avifDecoderNextImage(decoder.get());
@@ -820,8 +792,8 @@ TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
   // Gain map: single image of size 64x80.
   EXPECT_EQ(decoded->gainMap->image->width, 64u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u);
-  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.n, 6u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.d, 2u);
 }
 
 TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
@@ -844,8 +816,8 @@ TEST(GainMapTest, DecodeColorNoGridGainMapGrid) {
   // Gain map: 2x2 grid of 64x80 tiles.
   EXPECT_EQ(decoded->gainMap->image->width, 64u * 2u);
   EXPECT_EQ(decoded->gainMap->image->height, 80u * 2u);
-  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomN, 6u);
-  EXPECT_EQ(decoded->gainMap->metadata.baseHdrHeadroomD, 2u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.n, 6u);
+  EXPECT_EQ(decoded->gainMap->baseHdrHeadroom.d, 2u);
 }
 
 TEST(GainMapTest, DecodeUnsupportedVersion) {
@@ -958,97 +930,14 @@ TEST(GainMapTest, DecodeInvalidFtyp) {
   EXPECT_NEAR(std::abs((double)numerator / denominator), expected, \
               expected * 0.001);
 
-TEST(GainMapTest, ConvertMetadata) {
-  avifGainMapMetadataDouble metadata_double = {};
-  metadata_double.gainMapMin[0] = 1.0;
-  metadata_double.gainMapMin[1] = 1.1;
-  metadata_double.gainMapMin[2] = 1.2;
-  metadata_double.gainMapMax[0] = 10.0;
-  metadata_double.gainMapMax[1] = 10.1;
-  metadata_double.gainMapMax[2] = 10.2;
-  metadata_double.gainMapGamma[0] = 1.0;
-  metadata_double.gainMapGamma[1] = 1.0;
-  metadata_double.gainMapGamma[2] = 1.2;
-  metadata_double.baseOffset[0] = 1.0 / 32.0;
-  metadata_double.baseOffset[1] = 1.0 / 64.0;
-  metadata_double.baseOffset[2] = 1.0 / 128.0;
-  metadata_double.alternateOffset[0] = 0.004564;
-  metadata_double.alternateOffset[1] = 0.0;
-  metadata_double.baseHdrHeadroom = 1.0;
-  metadata_double.alternateHdrHeadroom = 10.0;
-
-  // Convert to avifGainMapMetadata.
-  avifGainMapMetadata metadata = {};
-  ASSERT_TRUE(
-      avifGainMapMetadataDoubleToFractions(&metadata, &metadata_double));
-
-  for (int i = 0; i < 3; ++i) {
-    EXPECT_FRACTION_NEAR(metadata.gainMapMinN[i], metadata.gainMapMinD[i],
-                         metadata_double.gainMapMin[i]);
-    EXPECT_FRACTION_NEAR(metadata.gainMapMaxN[i], metadata.gainMapMaxD[i],
-                         metadata_double.gainMapMax[i]);
-    EXPECT_FRACTION_NEAR(metadata.gainMapGammaN[i], metadata.gainMapGammaD[i],
-                         metadata_double.gainMapGamma[i]);
-    EXPECT_FRACTION_NEAR(metadata.baseOffsetN[i], metadata.baseOffsetD[i],
-                         metadata_double.baseOffset[i]);
-    EXPECT_FRACTION_NEAR(metadata.alternateOffsetN[i],
-                         metadata.alternateOffsetD[i],
-                         metadata_double.alternateOffset[i]);
-  }
-  EXPECT_FRACTION_NEAR(metadata.baseHdrHeadroomN, metadata.baseHdrHeadroomD,
-                       metadata_double.baseHdrHeadroom);
-  EXPECT_FRACTION_NEAR(metadata.alternateHdrHeadroomN,
-                       metadata.alternateHdrHeadroomD,
-                       metadata_double.alternateHdrHeadroom);
-
-  // Convert back to avifGainMapMetadataDouble.
-  avifGainMapMetadataDouble metadata_double2 = {};
-  ASSERT_TRUE(
-      avifGainMapMetadataFractionsToDouble(&metadata_double2, &metadata));
-
-  constexpr double kEpsilon = 0.000001;
-  for (int i = 0; i < 3; ++i) {
-    EXPECT_NEAR(metadata_double2.gainMapMin[i], metadata_double.gainMapMin[i],
-                kEpsilon);
-    EXPECT_NEAR(metadata_double2.gainMapMax[i], metadata_double.gainMapMax[i],
-                kEpsilon);
-    EXPECT_NEAR(metadata_double2.gainMapGamma[i],
-                metadata_double.gainMapGamma[i], kEpsilon);
-    EXPECT_NEAR(metadata_double2.baseOffset[i], metadata_double.baseOffset[i],
-                kEpsilon);
-    EXPECT_NEAR(metadata_double2.alternateOffset[i],
-                metadata_double.alternateOffset[i], kEpsilon);
-  }
-  EXPECT_NEAR(metadata_double2.baseHdrHeadroom, metadata_double.baseHdrHeadroom,
-              kEpsilon);
-  EXPECT_NEAR(metadata_double2.alternateHdrHeadroom,
-              metadata_double.alternateHdrHeadroom, kEpsilon);
-}
-
-TEST(GainMapTest, ConvertMetadataToFractionInvalid) {
-  avifGainMapMetadataDouble metadata_double = {};
-  metadata_double.gainMapGamma[0] = -42;  // A negative value is invalid!
-  avifGainMapMetadata metadata = {};
-  ASSERT_FALSE(
-      avifGainMapMetadataDoubleToFractions(&metadata, &metadata_double));
-}
-
-TEST(GainMapTest, ConvertMetadataToDoubleInvalid) {
-  avifGainMapMetadata metadata = {};  // Denominators are zero.
-  avifGainMapMetadataDouble metadata_double = {};
-  ASSERT_FALSE(
-      avifGainMapMetadataFractionsToDouble(&metadata_double, &metadata));
-}
-
 static void SwapBaseAndAlternate(const avifImage& new_alternate,
                                  avifGainMap& gain_map) {
-  avifGainMapMetadata& metadata = gain_map.metadata;
-  metadata.useBaseColorSpace = !metadata.useBaseColorSpace;
-  std::swap(metadata.baseHdrHeadroomN, metadata.alternateHdrHeadroomN);
-  std::swap(metadata.baseHdrHeadroomD, metadata.alternateHdrHeadroomD);
+  gain_map.useBaseColorSpace = !gain_map.useBaseColorSpace;
+  std::swap(gain_map.baseHdrHeadroom.n, gain_map.alternateHdrHeadroom.n);
+  std::swap(gain_map.baseHdrHeadroom.d, gain_map.alternateHdrHeadroom.d);
   for (int c = 0; c < 3; ++c) {
-    std::swap(metadata.baseOffsetN[c], metadata.alternateOffsetN[c]);
-    std::swap(metadata.baseOffsetD[c], metadata.alternateOffsetD[c]);
+    std::swap(gain_map.baseOffset[c].n, gain_map.alternateOffset[c].n);
+    std::swap(gain_map.baseOffset[c].d, gain_map.alternateOffset[c].d);
   }
   gain_map.altColorPrimaries = new_alternate.colorPrimaries;
   gain_map.altTransferCharacteristics = new_alternate.transferCharacteristics;
@@ -1383,13 +1272,10 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
   ASSERT_NE(image->gainMap->image, nullptr);
 
   // Force the alternate and base HDR headroom to the same value.
-  image->gainMap->metadata.baseHdrHeadroomN =
-      image->gainMap->metadata.alternateHdrHeadroomN;
-  image->gainMap->metadata.baseHdrHeadroomD =
-      image->gainMap->metadata.alternateHdrHeadroomD;
-  const float headroom = static_cast<float>(
-      static_cast<float>(image->gainMap->metadata.baseHdrHeadroomN) /
-      image->gainMap->metadata.baseHdrHeadroomD);
+  image->gainMap->baseHdrHeadroom = image->gainMap->alternateHdrHeadroom;
+  const float headroom =
+      static_cast<float>(static_cast<float>(image->gainMap->baseHdrHeadroom.n) /
+                         image->gainMap->baseHdrHeadroom.d);
 
   // Check that when the two headrooms are the same, the gain map is not applied
   // whatever the target headroom is.
@@ -1436,7 +1322,7 @@ TEST_P(CreateGainMapTest, Create) {
                                     gain_map_depth, gain_map_format);
 
   avifDiagnostics diag;
-  gain_map->metadata.useBaseColorSpace = true;
+  gain_map->useBaseColorSpace = true;
   avifResult result = avifImageComputeGainMap(image1.get(), image2.get(),
                                               gain_map.get(), &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
@@ -1445,11 +1331,10 @@ TEST_P(CreateGainMapTest, Create) {
   EXPECT_EQ(gain_map->image->width, gain_map_width);
   EXPECT_EQ(gain_map->image->height, gain_map_height);
 
-  const float image1_headroom = (float)gain_map->metadata.baseHdrHeadroomN /
-                                gain_map->metadata.baseHdrHeadroomD;
-  const float image2_headroom =
-      (float)gain_map->metadata.alternateHdrHeadroomN /
-      gain_map->metadata.alternateHdrHeadroomD;
+  const float image1_headroom =
+      (float)gain_map->baseHdrHeadroom.n / gain_map->baseHdrHeadroom.d;
+  const float image2_headroom = (float)gain_map->alternateHdrHeadroom.n /
+                                gain_map->alternateHdrHeadroom.d;
 
   // Tone map from image1 to image2 by applying the gainmap forward.
   float psnr_image1_to_image2_forward;
@@ -1471,14 +1356,14 @@ TEST_P(CreateGainMapTest, Create) {
   //                                  "/tmp/gain_map_image1_to_image2.png"));
 
   // Compute the gain map in the other direction (from image2 to image1).
-  gain_map->metadata.useBaseColorSpace = false;
+  gain_map->useBaseColorSpace = false;
   result = avifImageComputeGainMap(image2.get(), image1.get(), gain_map.get(),
                                    &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
 
-  const float image2_headroom2 = (float)gain_map->metadata.baseHdrHeadroomN /
-                                 gain_map->metadata.baseHdrHeadroomD;
+  const float image2_headroom2 =
+      (float)gain_map->baseHdrHeadroom.n / gain_map->baseHdrHeadroom.d;
   EXPECT_NEAR(image2_headroom2, image2_headroom, 0.001);
 
   // Tone map from image2 to image1 by applying the new gainmap forward.
