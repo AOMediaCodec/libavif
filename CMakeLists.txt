@@ -293,8 +293,11 @@ add_library(avif_enable_warnings INTERFACE)
 if(MSVC)
     message(STATUS "libavif: Enabling warnings for MSVC")
     target_compile_options(
-        avif_enable_warnings INTERFACE /W4 # For clang-cl, /W4 enables -Wall and -Wextra
-                                       /wd4324 # Disable: structure was padded due to alignment specifier
+        avif_enable_warnings
+        INTERFACE /W4 # For clang-cl, /W4 enables -Wall and -Wextra
+                  /wd4232 # Disable: address of dllimport 'dllimport' is not static,
+                          # identity not guaranteed
+                  /wd4324 # Disable: structure was padded due to alignment specifier
     )
     # Disable deprecation warnings about POSIX function names such as setmode (replaced by the ISO C and C++ conformant name _setmode).
     # Disable deprecation warnings about unsafe CRT library functions such as fopen (replaced by fopen_s).
