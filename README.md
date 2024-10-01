@@ -83,23 +83,13 @@ available (discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif
 is a child CMake project, the appropriate CMake target must already exist
 by the time libavif's CMake scripts are executed.
 
-### Local / Static Builds
+### Static Builds
 
-The `ext/` subdirectory contains a handful of basic scripts which each pull
-down a known-good copy of an AV1 codec and make a local static library build.
-Most scripts require CMake, Ninja and NASM. dav1d uses Meson instead of CMake,
-and rav1e uses cargo (Rust). Check each library's documentation for an exact
-list of requirements.
+When set to `LOCAL`, these libraries and the other dependencies will be pulled
+locally by CMake to known-good versions.
 
-If you want to statically link any codec into your local (static) build of
-libavif, building using one of these scripts and then setting the associated
-`AVIF_CODEC_*` to `LOCAL` is a convenient method, but you must make sure to
-disable `BUILD_SHARED_LIBS` in CMake to instruct it to make a static libavif
-library.
-
-If you want to build/install shared libraries for AV1 codecs, you can still
-peek inside of each script to see where the current known-good SHA is for each
-codec.
+To override a local dependency version or to use a custom build of a dependency,
+first run the associated script in the `ext/` subdirectory.
 
 ### Tests
 
@@ -107,8 +97,8 @@ A few tests written in C can be built by enabling the `AVIF_BUILD_TESTS` CMake
 option.
 
 The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
-`AVIF_ENABLE_GTEST` CMake options. They require GoogleTest to be built locally
-with ext/googletest.cmd or installed on the system.
+`AVIF_ENABLE_GTEST` CMake options. They require GoogleTest
+(`-DAVIF_GTEST=SYSTEM` or `-DAVIF_GTEST=LOCAL`).
 
 ### Command Lines
 
@@ -121,10 +111,9 @@ To link against the already installed `aom`, `libjpeg` and `libpng` dependency
 libraries (recommended):
 
 ```sh
-git clone -b v1.0.3 https://github.com/AOMediaCodec/libavif.git
-cd libavif
-cmake -S . -B build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
-cmake --build build --parallel
+git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
+cmake -S libavif -B libavif/build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
+cmake --build libavif/build --parallel
 ```
 
 #### Build everything from scratch
@@ -132,16 +121,9 @@ cmake --build build --parallel
 For development and debugging purposes, or to generate fully static binaries:
 
 ```sh
-git clone -b v1.0.3 https://github.com/AOMediaCodec/libavif.git
-cd libavif/ext
-./aom.cmd
-./libyuv.cmd
-./libsharpyuv.cmd
-./libjpeg.cmd
-./zlibpng.cmd
-cd ..
-cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON
-cmake --build build --parallel
+git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
+cmake -S libavif -B libavif/build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
+cmake --build libavif/build --parallel
 ```
 
 ## Prebuilt Static Binaries (Windows)
@@ -158,7 +140,7 @@ The libavif library is written in C99. Most of the tests are written in C++14.
 
 ### Formatting
 
-Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the C
+Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the
 sources from the top-level folder (`clang-format-16` preferred):
 
 ```sh
