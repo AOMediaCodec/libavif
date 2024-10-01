@@ -1,0 +1,4 @@
+# This file exists just to avoid the AppVeyor CI to trigger.
+# See https://github.com/AOMediaCodec/libavif/issues/2448.
+skip_commits:
+  message: /.*/
