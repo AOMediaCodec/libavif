@@ -162,7 +162,7 @@ avifBool avifROStreamSkipBits(avifROStream * stream, size_t bitCount)
 
 avifBool avifROStreamReadBitsU8(avifROStream * stream, uint8_t * v, size_t bitCount)
 {
-    assert(bitCount <= sizeof(*v) * 8);
+    AVIF_CHECK(bitCount <= sizeof(*v) * 8);
     uint32_t vU32;
     AVIF_CHECK(avifROStreamReadBitsU32(stream, &vU32, bitCount));
     *v = (uint8_t)vU32;
@@ -171,7 +171,7 @@ avifBool avifROStreamReadBitsU8(avifROStream * stream, uint8_t * v, size_t bitCo
 
 avifBool avifROStreamReadBitsU16(avifROStream * stream, uint16_t * v, size_t bitCount)
 {
-    assert(bitCount <= sizeof(*v) * 8);
+    AVIF_CHECK(bitCount <= sizeof(*v) * 8);
     uint32_t vU32;
     AVIF_CHECK(avifROStreamReadBitsU32(stream, &vU32, bitCount));
     *v = (uint16_t)vU32;
@@ -180,7 +180,7 @@ avifBool avifROStreamReadBitsU16(avifROStream * stream, uint16_t * v, size_t bit
 
 avifBool avifROStreamReadBitsU32(avifROStream * stream, uint32_t * v, size_t bitCount)
 {
-    assert(bitCount <= sizeof(*v) * 8);
+    AVIF_CHECK(bitCount <= sizeof(*v) * 8);
     *v = 0;
     while (bitCount) {
         if (stream->numUsedBitsInPartialByte == 0) {
