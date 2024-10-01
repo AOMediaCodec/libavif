@@ -4222,7 +4222,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(tmapColrPropICC, AVIF_RESULT_OUT_OF_MEMORY);
         tmapColrPropICC->u.colr.hasICC = AVIF_TRUE; // colour_type "rICC" or "prof"
         tmapColrPropICC->u.colr.iccOffset = rawOffset + avifROStreamOffset(&s);
-        tmapColrPropICC->u.colr.iccSize = (size_t)tmapIccDataSize;
+        tmapColrPropICC->u.colr.iccSize = tmapIccDataSize;
         AVIF_CHECKERR(avifROStreamSkip(&s, tmapColrPropICC->u.colr.iccSize), AVIF_RESULT_BMFF_PARSE_FAILED);
         AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, tmapColrPropICC), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
@@ -4248,18 +4248,18 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
 
     if (gainmapMetadataSize != 0) {
         // Prepend the version field to the GainMapMetadata to form the ToneMapImage syntax.
-        tmapItem->size = (size_t)gainmapMetadataSize + 1;
+        tmapItem->size = gainmapMetadataSize + 1;
         AVIF_CHECKRES(avifRWDataRealloc(&tmapItem->mergedExtents, tmapItem->size));
         tmapItem->ownsMergedExtents = AVIF_TRUE;
         tmapItem->mergedExtents.data[0] = 0; // unsigned int(8) version = 0;
-        AVIF_CHECKERR(avifROStreamRead(&s, tmapItem->mergedExtents.data + 1, (size_t)gainmapMetadataSize), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamRead(&s, tmapItem->mergedExtents.data + 1, gainmapMetadataSize), AVIF_RESULT_BMFF_PARSE_FAILED);
     }
 
     if (hasAlpha) {
         avifExtent * alphaExtent = (avifExtent *)avifArrayPush(&alphaItem->extents);
         AVIF_CHECKERR(alphaExtent, AVIF_RESULT_OUT_OF_MEMORY);
         alphaExtent->offset = rawOffset + avifROStreamOffset(&s);
-        alphaExtent->size = (size_t)alphaItemDataSize;
+        alphaExtent->size = alphaItemDataSize;
         AVIF_CHECKERR(avifROStreamSkip(&s, alphaExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
         alphaItem->size = alphaExtent->size;
     }
@@ -4268,7 +4268,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         avifExtent * gainmapExtent = (avifExtent *)avifArrayPush(&gainmapItem->extents);
         AVIF_CHECKERR(gainmapExtent, AVIF_RESULT_OUT_OF_MEMORY);
         gainmapExtent->offset = rawOffset + avifROStreamOffset(&s);
-        gainmapExtent->size = (size_t)gainmapItemDataSize;
+        gainmapExtent->size = gainmapItemDataSize;
         AVIF_CHECKERR(avifROStreamSkip(&s, gainmapExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
         gainmapItem->size = gainmapExtent->size;
     }
@@ -4276,7 +4276,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     avifExtent * colorExtent = (avifExtent *)avifArrayPush(&colorItem->extents);
     AVIF_CHECKERR(colorExtent, AVIF_RESULT_OUT_OF_MEMORY);
     colorExtent->offset = rawOffset + avifROStreamOffset(&s);
-    colorExtent->size = (size_t)mainItemDataSize;
+    colorExtent->size = mainItemDataSize;
     AVIF_CHECKERR(avifROStreamSkip(&s, colorExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
     colorItem->size = colorExtent->size;
 
@@ -4289,7 +4289,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         avifExtent * exifExtent = (avifExtent *)avifArrayPush(&exifItem->extents);
         AVIF_CHECKERR(exifExtent, AVIF_RESULT_OUT_OF_MEMORY);
         exifExtent->offset = rawOffset + avifROStreamOffset(&s);
-        exifExtent->size = (size_t)exifDataSize; // Does not include unsigned int(32) exif_tiff_header_offset;
+        exifExtent->size = exifDataSize; // Does not include unsigned int(32) exif_tiff_header_offset;
         AVIF_CHECKERR(avifROStreamSkip(&s, exifExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
         exifItem->size = exifExtent->size;
     }
@@ -4304,7 +4304,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         avifExtent * xmpExtent = (avifExtent *)avifArrayPush(&xmpItem->extents);
         AVIF_CHECKERR(xmpExtent, AVIF_RESULT_OUT_OF_MEMORY);
         xmpExtent->offset = rawOffset + avifROStreamOffset(&s);
-        xmpExtent->size = (size_t)xmpDataSize;
+        xmpExtent->size = xmpDataSize;
         AVIF_CHECKERR(avifROStreamSkip(&s, xmpExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
         xmpItem->size = xmpExtent->size;
     }
