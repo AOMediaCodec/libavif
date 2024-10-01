@@ -2268,9 +2268,8 @@ static avifResult avifSkipMasteringDisplayColourVolume(avifROStream * s)
 
 static avifResult avifSkipContentColourVolume(avifROStream * s)
 {
-    uint8_t reserved;
-    AVIF_CHECKERR(avifROStreamReadBitsU8(s, &reserved, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) reserved = 0; // ccv_cancel_flag
-    AVIF_CHECKERR(avifROStreamReadBitsU8(s, &reserved, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) reserved = 0; // ccv_persistence_flag
+    AVIF_CHECKERR(avifROStreamSkipBits(s, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) reserved = 0; // ccv_cancel_flag
+    AVIF_CHECKERR(avifROStreamSkipBits(s, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) reserved = 0; // ccv_persistence_flag
     uint8_t ccvPrimariesPresent;
     AVIF_CHECKERR(avifROStreamReadBitsU8(s, &ccvPrimariesPresent, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) ccv_primaries_present_flag;
     uint8_t ccvMinLuminanceValuePresent, ccvMaxLuminanceValuePresent, ccvAvgLuminanceValuePresent;
@@ -2280,7 +2279,7 @@ static avifResult avifSkipContentColourVolume(avifROStream * s)
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) ccv_max_luminance_value_present_flag;
     AVIF_CHECKERR(avifROStreamReadBitsU8(s, &ccvAvgLuminanceValuePresent, 1),
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) ccv_avg_luminance_value_present_flag;
-    AVIF_CHECKERR(avifROStreamReadBitsU8(s, &reserved, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) reserved = 0;
+    AVIF_CHECKERR(avifROStreamSkipBits(s, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) reserved = 0;
 
     if (ccvPrimariesPresent) {
         for (int c = 0; c < 3; c++) {
