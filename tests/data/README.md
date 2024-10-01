@@ -648,9 +648,9 @@ Source : same as seine_sdr_gainmap_srgb.avif before commit 10b7232
 An image with a `tmap` item (i.e. a gain map) but no 'tmap' brand in the `ftyp` box.
 The gain map should be ignored by the decoder since the `tmap` brand is missing.
 
-### File [seine_sdr_gainmap_ngammazero.avif](seine_sdr_gainmap_notmapbrand.avif)
+### File [seine_sdr_gainmap_gammazero.avif](seine_sdr_gainmap_gammazero.avif)
 
-![](seine_sdr_gainmap_notmapbrand.avif)
+![](seine_sdr_gainmap_gammazero.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
