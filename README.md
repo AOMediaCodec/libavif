@@ -1,4 +1,4 @@
-# libavif [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/louquillio/libavif?branch=master&svg=true)](https://ci.appveyor.com/project/louquillio/libavif) [![Travis Build Status](https://travis-ci.com/AOMediaCodec/libavif.svg?branch=master)](https://travis-ci.com/AOMediaCodec/libavif)
+# libavif
 
 This library aims to be a friendly, portable C implementation of the AV1 Image
 File Format, as described here:
@@ -144,12 +144,10 @@ cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV
 cmake --build build --parallel
 ```
 
-## Prebuilt Library (Windows)
+## Prebuilt Static Binaries (Windows)
 
-If you're building on Windows with Visual Studio 2022 and want to try out
-libavif without going through the build process, static library builds for both
-Debug and Release are available on
-[AppVeyor](https://ci.appveyor.com/project/louquillio/libavif).
+`avifenc.exe` and `avifdec.exe` can be downloaded from the
+[Releases](https://github.com/AOMediaCodec/libavif/releases) page.
 
 ## Development Notes
 
