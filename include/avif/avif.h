@@ -448,10 +448,10 @@ typedef struct avifUnsignedFraction
 
 // Creates an int32/uint32 fraction that is approximately equal to 'v'.
 // Returns AVIF_FALSE if 'v' is NaN or abs(v) is > INT32_MAX.
-AVIF_API AVIF_NODISCARD avifBool avifDoubleToSignedFraction(double v, avifSignedFraction * fraction);
+AVIF_NODISCARD AVIF_API avifBool avifDoubleToSignedFraction(double v, avifSignedFraction * fraction);
 // Creates a uint32/uint32 fraction that is approximately equal to 'v'.
 // Returns AVIF_FALSE if 'v' is < 0 or > UINT32_MAX or NaN.
-AVIF_API AVIF_NODISCARD avifBool avifDoubleToUnsignedFraction(double v, avifUnsignedFraction * fraction);
+AVIF_NODISCARD AVIF_API avifBool avifDoubleToUnsignedFraction(double v, avifUnsignedFraction * fraction);
 
 // ---------------------------------------------------------------------------
 // Optional transformation structs
