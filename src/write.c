@@ -2400,8 +2400,7 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
         return AVIF_FALSE;
     }
     // gainmap_metadata_size
-    if (encoder->data->imageMetadata->gainMap != NULL &&
-        avifGainMapMetadataSize(encoder->data->imageMetadata->gainMap) >= (1 << 20)) {
+    if (encoder->data->imageMetadata->gainMap != NULL && avifGainMapMetadataSize(encoder->data->imageMetadata->gainMap) >= (1 << 20)) {
         return AVIF_FALSE;
     }
 #endif
