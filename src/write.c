@@ -2457,7 +2457,7 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
         if (item->id == encoder->data->primaryItemID) {
             assert(!colorItem);
             colorItem = item;
-            // main_item_data_size_minus_one1
+            // main_item_data_size_minus1
             if (item->encodeOutput->samples.count != 1 || item->encodeOutput->samples.sample[0].data.size > (1 << 28)) {
                 return AVIF_FALSE;
             }
@@ -2758,8 +2758,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (hasHdr && hasGainmap && tmapIccSize != 0) {
-        const uint32_t tmapIccDataSize = (uint32_t)encoder->data->altImageMetadata->icc.size;
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, tmapIccDataSize - 1, fewMetadataBytesFlag ? 10 : 20)); // unsigned int(few_metadata_bytes_flag ? 10 : 20) tmap_icc_data_size_minus1;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, tmapIccSize - 1, fewMetadataBytesFlag ? 10 : 20)); // unsigned int(few_metadata_bytes_flag ? 10 : 20) tmap_icc_data_size_minus1;
     }
 
     if (hasHdr && hasGainmap) {
@@ -2812,7 +2811,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (hasHdr && hasGainmap && tmapIccSize != 0) {
-        AVIF_CHECKRES(avifRWStreamWrite(s, encoder->data->altImageMetadata->icc.data, encoder->data->altImageMetadata->icc.size)); // unsigned int(8) tmap_icc_data[tmap_icc_data_size_minus1 + 1];
+        AVIF_CHECKRES(avifRWStreamWrite(s, encoder->data->altImageMetadata->icc.data, tmapIccSize)); // unsigned int(8) tmap_icc_data[tmap_icc_data_size_minus1 + 1];
     }
     if (hasHdr && hasGainmap && gainmapMetadataSize != 0) {
         AVIF_CHECKRES(avifWriteGainmapMetadata(s, &image->gainMap->metadata, &encoder->diag)); // unsigned int(8) gainmap_metadata[gainmap_metadata_size];
