@@ -4088,7 +4088,6 @@ static avifResult avifParse(avifDecoder * decoder)
     avifDecoderData * data = decoder->data;
     avifBool ftypSeen = AVIF_FALSE;
     avifBool metaSeen = AVIF_FALSE;
-    avifBool metaIsSizeZero = AVIF_FALSE;
     avifBool moovSeen = AVIF_FALSE;
     avifBool needsMeta = AVIF_FALSE;
     avifBool needsMoov = AVIF_FALSE;
@@ -4137,7 +4136,6 @@ static avifResult avifParse(avifDecoder * decoder)
         } else if (!memcmp(header.type, "meta", 4)) {
             isMeta = AVIF_TRUE;
             isNonSkippableVariableLengthBox = AVIF_TRUE;
-            metaIsSizeZero = header.isSizeZeroBox;
         } else if (!memcmp(header.type, "moov", 4)) {
             isMoov = AVIF_TRUE;
             isNonSkippableVariableLengthBox = AVIF_TRUE;
@@ -4274,9 +4272,6 @@ static avifResult avifParse(avifDecoder * decoder)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         sawEverythingNeeded = sawEverythingNeeded && (!needsMini || miniSeen);
 #endif
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        sawEverythingNeeded = sawEverythingNeeded && (!needsTmap || tmapSeen);
-#endif
         if (sawEverythingNeeded) {
             return AVIF_RESULT_OK;
         }
@@ -4289,10 +4284,8 @@ static avifResult avifParse(avifDecoder * decoder)
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (needsTmap && !tmapSeen) {
-        return metaIsSizeZero ? AVIF_RESULT_TRUNCATED_DATA : AVIF_RESULT_BMFF_PARSE_FAILED;
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-#else
-    (void)metaIsSizeZero;
 #endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     if (needsMini && !miniSeen) {
