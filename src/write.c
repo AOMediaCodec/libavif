@@ -2401,7 +2401,7 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
     }
     // gainmap_metadata_size
     if (encoder->data->imageMetadata->gainMap != NULL &&
-        avifGainmapMetadataSize(&encoder->data->imageMetadata->gainMap->metadata) >= (1 << 20)) {
+        avifGainMapMetadataSize(encoder->data->imageMetadata->gainMap) >= (1 << 20)) {
         return AVIF_FALSE;
     }
 #endif
@@ -2608,7 +2608,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (hasGainmap) {
         AVIF_ASSERT_OR_RETURN(image->gainMap != NULL && image->gainMap->image != NULL);
-        gainmapMetadataSize = avifGainmapMetadataSize(&image->gainMap->metadata);
+        gainmapMetadataSize = avifGainMapMetadataSize(image->gainMap);
         AVIF_ASSERT_OR_RETURN(gainmapData != NULL);
 
         smallDimensionsFlag &= image->gainMap->image->width <= (1 << 7) && image->gainMap->image->height <= (1 << 7);
@@ -2758,7 +2758,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     if (hasHdr && hasGainmap && tmapIccSize != 0) {
-        AVIF_CHECKRES(avifRWStreamWriteBits(s, tmapIccSize - 1, fewMetadataBytesFlag ? 10 : 20)); // unsigned int(few_metadata_bytes_flag ? 10 : 20) tmap_icc_data_size_minus1;
+        AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)tmapIccSize - 1, fewMetadataBytesFlag ? 10 : 20)); // unsigned int(few_metadata_bytes_flag ? 10 : 20) tmap_icc_data_size_minus1;
     }
 
     if (hasHdr && hasGainmap) {
@@ -2814,7 +2814,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
         AVIF_CHECKRES(avifRWStreamWrite(s, encoder->data->altImageMetadata->icc.data, tmapIccSize)); // unsigned int(8) tmap_icc_data[tmap_icc_data_size_minus1 + 1];
     }
     if (hasHdr && hasGainmap && gainmapMetadataSize != 0) {
-        AVIF_CHECKRES(avifWriteGainmapMetadata(s, &image->gainMap->metadata, &encoder->diag)); // unsigned int(8) gainmap_metadata[gainmap_metadata_size];
+        AVIF_CHECKRES(avifWriteGainmapMetadata(s, image->gainMap, &encoder->diag)); // unsigned int(8) gainmap_metadata[gainmap_metadata_size];
     }
 #endif
 
