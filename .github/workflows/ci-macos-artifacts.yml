@@ -1,6 +1,6 @@
 # This workflow generates artifacts such as avifenc and avifdec for convenience.
 
-name: CI Unix Static
+name: CI macOS Release Artifacts
 on:
   release:
     types: [created]
@@ -9,23 +9,16 @@ permissions:
   contents: read
 
 jobs:
-  build-static:
+  build-macos-artifacts:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest] # TODO: macos-latest
+        os: [macos-latest]
 
     steps:
       - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-      - uses: ./.github/actions/setup-linux
-        if: runner.os == 'Linux'
-        with:
-          codec-aom: "LOCAL"
-          codec-dav1d: "LOCAL"
-          libyuv: "LOCAL"
       - uses: ./.github/actions/setup-macos
-        if: runner.os == 'macOS'
         with:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
@@ -41,10 +34,19 @@ jobs:
           -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
           -DCMAKE_C_COMPILER=clang
-          -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
       - name: Build libavif (ninja)
         working-directory: ./build
         run: ninja
+      # TODO: notarize the binaries
+      - name: Create README.txt
+        run: |
+          cat <<'EOF' > build/README.txt
+          For security reasons, macOS might prevent these binaries from running.
+          If you get a message saying that "Apple cannot check it for malicious software",
+          run this command once:
+          $ sudo xattr -r -d com.apple.quarantine ./avifenc ./avifdec
+          See also https://github.com/AOMediaCodec/libavif/issues/2460
+          EOF
       - name: Archive artifacts
         uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
         with:
@@ -54,6 +56,7 @@ jobs:
           path: |
             avifenc
             avifdec
+            README.txt
       - name: Upload artifacts
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
         env:

@@ -1,6 +1,6 @@
 # This workflow generates artifacts such as avifenc.exe and avifdec.exe for convenience.
 
-name: CI Windows Artifacts
+name: CI Windows Release Artifacts
 on:
   release:
     types: [created]
