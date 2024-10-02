@@ -34,6 +34,7 @@ else()
         GIT_REPOSITORY "https://chromium.googlesource.com/libyuv/libyuv"
         BINARY_DIR "${LIBYUV_BINARY_DIR}"
         GIT_TAG "${AVIF_LOCAL_LIBYUV_TAG}"
+        PATCH_COMMAND sed -i.bak -e "s:find_package.*(.*JPEG.*)::" CMakeLists.txt
         UPDATE_COMMAND ""
     )
 
