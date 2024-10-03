@@ -126,9 +126,9 @@ cmake -S libavif -B libavif/build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL
 cmake --build libavif/build --parallel
 ```
 
-## Prebuilt Static Binaries (Windows)
+## Prebuilt Binaries (Windows)
 
-`avifenc.exe` and `avifdec.exe` can be downloaded from the
+Statically-linked `avifenc.exe` and `avifdec.exe` can be downloaded from the
 [Releases](https://github.com/AOMediaCodec/libavif/releases) page.
 
 ## Development Notes
