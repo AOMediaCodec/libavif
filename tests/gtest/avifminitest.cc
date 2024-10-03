@@ -17,9 +17,9 @@ class AvifMinimizedImageBoxTest
     : public testing::TestWithParam<std::tuple<
           /*width=*/int, /*height=*/int, /*depth=*/int, avifPixelFormat,
           avifPlanesFlags, avifRange, /*create_icc=*/bool, /*create_exif=*/bool,
-          /*create_xmp=*/bool, avifTransformFlags>> {};
+          /*create_xmp=*/bool, avifTransformFlags, /*create_hdr=*/bool>> {};
 
-TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
+TEST_P(AvifMinimizedImageBoxTest, All) {
   const int width = std::get<0>(GetParam());
   const int height = std::get<1>(GetParam());
   const int depth = std::get<2>(GetParam());
@@ -30,6 +30,7 @@ TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
   const bool create_exif = std::get<7>(GetParam());
   const bool create_xmp = std::get<8>(GetParam());
   const avifTransformFlags create_transform_flags = std::get<9>(GetParam());
+  const bool create_hdr = std::get<10>(GetParam());
 
   ImagePtr image =
       testutil::CreateImage(width, height, depth, format, planes, range);
@@ -64,6 +65,17 @@ TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
   if (create_transform_flags & AVIF_TRANSFORM_IMIR) {
     image->imir.axis = 0;
   }
+  if (create_hdr) {
+    image->gainMap = avifGainMapCreate();
+    ASSERT_NE(image->gainMap, nullptr);
+    image->gainMap->image =
+        testutil::CreateImage(width, height, /*depth=*/8,
+                              AVIF_PIXEL_FORMAT_YUV400, AVIF_PLANES_YUV,
+                              AVIF_RANGE_FULL)
+            .release();
+    ASSERT_NE(image->gainMap->image, nullptr);
+    testutil::FillImageGradient(image->gainMap->image);
+  }
 
   // Encode.
   testutil::AvifRwData encoded_mini;
@@ -75,9 +87,15 @@ TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
             AVIF_RESULT_OK);
 
   // Decode.
-  const ImagePtr decoded_mini =
-      testutil::Decode(encoded_mini.data, encoded_mini.size);
+  ImagePtr decoded_mini(avifImageCreateEmpty());
   ASSERT_NE(decoded_mini, nullptr);
+  DecoderPtr decoder_mini(avifDecoderCreate());
+  ASSERT_NE(decoder_mini, nullptr);
+  decoder_mini->enableParsingGainMapMetadata = AVIF_TRUE;
+  decoder_mini->enableDecodingGainMap = AVIF_TRUE;
+  ASSERT_EQ(avifDecoderReadMemory(decoder_mini.get(), decoded_mini.get(),
+                                  encoded_mini.data, encoded_mini.size),
+            AVIF_RESULT_OK);
 
   // Compare.
   testutil::AvifRwData encoded_meta =
@@ -86,14 +104,30 @@ TEST_P(AvifMinimizedImageBoxTest, SimpleOpaque) {
   // At least 200 bytes should be saved.
   EXPECT_LT(encoded_mini.size, encoded_meta.size - 200);
 
-  const ImagePtr decoded_meta =
-      testutil::Decode(encoded_meta.data, encoded_meta.size);
+  ImagePtr decoded_meta(avifImageCreateEmpty());
   ASSERT_NE(decoded_meta, nullptr);
+  DecoderPtr decoder_meta(avifDecoderCreate());
+  ASSERT_NE(decoder_meta, nullptr);
+  decoder_meta->enableParsingGainMapMetadata = AVIF_TRUE;
+  decoder_meta->enableDecodingGainMap = AVIF_TRUE;
+  ASSERT_EQ(avifDecoderReadMemory(decoder_meta.get(), decoded_meta.get(),
+                                  encoded_meta.data, encoded_meta.size),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(decoder_meta->gainMapPresent, decoder_mini->gainMapPresent);
 
   // Only the container changed. The pixels, features and metadata should be
   // identical.
   EXPECT_TRUE(
       testutil::AreImagesEqual(*decoded_meta.get(), *decoded_mini.get()));
+  EXPECT_EQ(decoded_meta->gainMap != nullptr, decoded_mini->gainMap != nullptr);
+  if (create_hdr) {
+    ASSERT_NE(decoded_meta->gainMap, nullptr);
+    ASSERT_NE(decoded_mini->gainMap, nullptr);
+    ASSERT_NE(decoded_meta->gainMap->image, nullptr);
+    ASSERT_NE(decoded_mini->gainMap->image, nullptr);
+    EXPECT_TRUE(testutil::AreImagesEqual(*decoded_meta->gainMap->image,
+                                         *decoded_mini->gainMap->image));
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
@@ -105,7 +139,8 @@ INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
                                  /*create_icc=*/Values(false, true),
                                  /*create_exif=*/Values(false, true),
                                  /*create_xmp=*/Values(false, true),
-                                 Values(AVIF_TRANSFORM_NONE)));
+                                 Values(AVIF_TRANSFORM_NONE),
+                                 /*create_hdr=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     DepthsSubsamplings, AvifMinimizedImageBoxTest,
@@ -115,7 +150,8 @@ INSTANTIATE_TEST_SUITE_P(
                    AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400),
             Values(AVIF_PLANES_ALL), Values(AVIF_RANGE_FULL),
             /*create_icc=*/Values(false), /*create_exif=*/Values(false),
-            /*create_xmp=*/Values(false), Values(AVIF_TRANSFORM_NONE)));
+            /*create_xmp=*/Values(false), Values(AVIF_TRANSFORM_NONE),
+            /*create_hdr=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     Dimensions, AvifMinimizedImageBoxTest,
@@ -123,7 +159,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),
             /*create_exif=*/Values(true), /*create_xmp=*/Values(true),
-            Values(AVIF_TRANSFORM_NONE)));
+            Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     Orientation, AvifMinimizedImageBoxTest,
@@ -133,7 +169,17 @@ INSTANTIATE_TEST_SUITE_P(
             /*create_exif=*/Values(true), /*create_xmp=*/Values(true),
             Values(AVIF_TRANSFORM_NONE, AVIF_TRANSFORM_IROT,
                    AVIF_TRANSFORM_IMIR,
-                   AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR)));
+                   AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+            /*create_hdr=*/Values(false)));
+
+INSTANTIATE_TEST_SUITE_P(
+    Hdr, AvifMinimizedImageBoxTest,
+    Combine(/*width=*/Values(8), /*height=*/Values(10), /*depth=*/Values(10),
+            Values(AVIF_PIXEL_FORMAT_YUV420),
+            Values(AVIF_PLANES_YUV, AVIF_PLANES_ALL), Values(AVIF_RANGE_FULL),
+            /*create_icc=*/Values(false),
+            /*create_exif=*/Values(false), /*create_xmp=*/Values(false),
+            Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(true)));
 
 //------------------------------------------------------------------------------
 
