@@ -1,3 +1,7 @@
+> [!WARNING]  
+> This branch is obsolete. Please use v1.1.x and above for recent feature
+> additions and security updates.
+
 # libavif
 
 This library aims to be a friendly, portable C implementation of the AV1 Image
@@ -67,9 +71,9 @@ The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
 `AVIF_ENABLE_GTEST` CMake options. They require GoogleTest to be built locally
 with ext/googletest.cmd or installed on the system.
 
-## Prebuilt Static Binaries (Windows)
+## Prebuilt Binaries (Windows)
 
-`avifenc.exe` and `avifdec.exe` can be downloaded from the
+Statically-linked `avifenc.exe` and `avifdec.exe` can be downloaded from the
 [Releases](https://github.com/AOMediaCodec/libavif/releases) page.
 
 ## Development Notes
