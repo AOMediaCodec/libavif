@@ -821,8 +821,10 @@ typedef struct avifImage
 
     // Version 1.0.0 ends here. Add any new members after this line.
 
-    // Opaque image item properties found at decoding. Ignored at encoding.
-    avifImageItemProperty * properties; // Must be null if numProperties is 0. Must be non-null otherwise.
+    // Other properties attached to this image item (primary or gainmap).
+    // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
+    // At encoding: Ignored.
+    avifImageItemProperty * properties; // Defined if numProperties is at least 1.
     size_t numProperties;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
