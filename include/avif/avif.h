@@ -749,10 +749,10 @@ typedef enum avifSampleTransformRecipe
 typedef struct avifImageItemProperty
 {
     uint8_t boxtype[4];    // boxtype as defined in ISO/IEC 14496-12.
-    uint8_t usertype[16];  // Universally Unique IDentifier as defined in
-                           // IETF RFC 4122 and ISO/IEC 9834-8.
+    uint8_t usertype[16];  // Universally Unique IDentifier as defined in IETF RFC 4122 and ISO/IEC 9834-8.
                            // Unused unless boxtype is "uuid".
     avifRWData boxPayload; // BoxPayload as defined in ISO/IEC 14496-12.
+                           // Starts with the version and flags fields in case of a FullBox.
 } avifImageItemProperty;
 
 // ---------------------------------------------------------------------------

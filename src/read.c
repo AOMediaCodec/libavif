@@ -2708,32 +2708,9 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = {
-                "ispe",
-                "auxC",
-                "colr",
-                "av1C",
-#if defined(AVIF_CODEC_AVM)
-                "av2C",
-#endif
-                "pasp",
-                "clap",
-                "irot",
-                "imir",
-                "pixi",
-                "a1op",
-                "lsel",
-                "a1lx",
-                "clli"
-            };
-            size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
-            avifBool supportedType = AVIF_FALSE;
-            for (size_t i = 0; i < supportedTypesCount; ++i) {
-                if (!memcmp(srcProp->type, supportedTypes[i], 4)) {
-                    supportedType = AVIF_TRUE;
-                    break;
-                }
-            }
+            // Some properties are supported and parsed by libavif.
+            // Other properties are forwarded to the user as opaque blobs.
+            const avifBool supportedType = !srcProp->isOpaque;
             if (supportedType) {
                 if (essential) {
                     // Verify that it is legal for this property to be flagged as essential. Any
@@ -2790,6 +2767,15 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                     // Make a note to ignore this item later.
                     item->hasUnsupportedEssentialProperty = AVIF_TRUE;
                 }
+
+                // Will be forwarded to the user through avifImage::properties.
+                avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
+                AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+                dstProp->isOpaque = AVIF_TRUE;
+                memcpy(dstProp->type, srcProp->type, sizeof(dstProp->type));
+                memcpy(dstProp->u.opaque.usertype, srcProp->u.opaque.usertype, sizeof(dstProp->u.opaque.usertype));
+                AVIF_CHECKRES(
+                    avifRWDataSet(&dstProp->u.opaque.boxPayload, srcProp->u.opaque.boxPayload.data, srcProp->u.opaque.boxPayload.size));
             }
         }
     }
