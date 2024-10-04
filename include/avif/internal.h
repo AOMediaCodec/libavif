@@ -153,8 +153,8 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
 AVIF_API avifResult avifImagePushProperty(avifImage * image,
                                           const uint8_t boxtype[4],
                                           const uint8_t usertype[16],
-                                          const uint8_t * boxpayload,
-                                          size_t boxpayloadLength);
+                                          const uint8_t * boxPayload,
+                                          size_t boxPayloadLength);
 
 // ---------------------------------------------------------------------------
 
@@ -651,7 +651,7 @@ typedef struct avifBoxHeader
     size_t size;
 
     uint8_t type[4];
-    uint8_t usertype[16]; // Undefined unless |type| is "uuid".
+    uint8_t usertype[16]; // Unused unless |type| is "uuid".
 } avifBoxHeader;
 
 typedef struct avifROStream

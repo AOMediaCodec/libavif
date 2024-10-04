@@ -142,7 +142,7 @@ typedef struct avifAV1LayeredImageIndexingProperty
 typedef struct avifOpaqueProperty
 {
     uint8_t usertype[16];  // Same as in avifImageItemProperty.
-    avifRWData boxpayload; // Same as in avifImageItemProperty.
+    avifRWData boxPayload; // Same as in avifImageItemProperty.
 } avifOpaqueProperty;
 
 // ---------------------------------------------------------------------------
@@ -310,7 +310,7 @@ static void avifPropertyArrayDestroy(avifPropertyArray * array)
 {
     for (size_t i = 0; i < array->count; ++i) {
         if (array->prop[i].isOpaque) {
-            avifRWDataFree(&array->prop[i].u.opaque.boxpayload);
+            avifRWDataFree(&array->prop[i].u.opaque.boxPayload);
         }
     }
     avifArrayDestroy(array);
@@ -2629,7 +2629,7 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
             prop->isOpaque = AVIF_TRUE;
             memset(&prop->u.opaque, 0, sizeof(prop->u.opaque));
             memcpy(prop->u.opaque.usertype, header.usertype, sizeof(prop->u.opaque.usertype));
-            AVIF_CHECKRES(avifRWDataSet(&prop->u.opaque.boxpayload, avifROStreamCurrent(&s), header.size));
+            AVIF_CHECKRES(avifRWDataSet(&prop->u.opaque.boxPayload, avifROStreamCurrent(&s), header.size));
         }
 
         AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -6051,8 +6051,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_CHECKRES(avifImagePushProperty(decoder->image,
                                                 property->type,
                                                 property->u.opaque.usertype,
-                                                property->u.opaque.boxpayload.data,
-                                                property->u.opaque.boxpayload.size));
+                                                property->u.opaque.boxPayload.data,
+                                                property->u.opaque.boxPayload.size));
         }
     }
 
