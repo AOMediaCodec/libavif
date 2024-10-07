@@ -6,6 +6,8 @@
 
 ![](circle-trns-after-plte.png)
 
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
 An opaque blue circle on a transparent green background.
 
 It is of color type 2 (PNG_COLOR_TYPE_RGB) and has a tRNS chunk after a PLTE
@@ -14,6 +16,8 @@ chunk.
 ### File [circle-trns-before-plte.png](circle-trns-before-plte.png)
 
 ![](circle-trns-before-plte.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 An opaque blue circle on a transparent green background.
 
@@ -25,6 +29,8 @@ ignores it.
 ### File [draw_points.png](draw_points.png)
 
 ![](draw_points.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source: Generated with ImageMagick's `convert` command:
 
@@ -683,6 +689,8 @@ SDR image with a gain map to allow tone mapping to HDR. The gain map's width and
 ## Files colors*_hdr_*.avif and colors*_sdr_srgb.avif
 
 ![](colors_wcg_hdr_rec2020.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 SDR and HDR (PQ) AVIF images in various colorspaces.
 The files with 'wcg' (wide color gamut) in their name have colors outside of the sRGB color space.
