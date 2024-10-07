@@ -249,28 +249,6 @@ size_t GetNumSamples(size_t num_frames, size_t width, size_t height,
 }
 
 //------------------------------------------------------------------------------
-// Environment setup
-
-namespace {
-class Environment : public ::testing::Environment {
- public:
-  Environment(const char* name, const char* value)
-      : name_(name), value_(value) {}
-  void SetUp() override {
-#ifdef _WIN32
-    _putenv_s(name_, value_);  // Defined in stdlib.h.
-#else
-    setenv(name_, value_, /*overwrite=*/1);
-#endif
-  }
-
- private:
-  const char* name_;
-  const char* value_;
-};
-}  // namespace
-
-//------------------------------------------------------------------------------
 
 std::vector<std::string> GetSeedDataDirs() {
   const char* var = std::getenv("TEST_DATA_DIRS");
