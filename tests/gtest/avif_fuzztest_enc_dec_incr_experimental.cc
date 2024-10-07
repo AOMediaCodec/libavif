@@ -21,8 +21,6 @@ namespace avif {
 namespace testutil {
 namespace {
 
-::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
-
 // Encodes an image into an AVIF grid then decodes it.
 void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
                            DecoderPtr decoder, uint32_t grid_cols,

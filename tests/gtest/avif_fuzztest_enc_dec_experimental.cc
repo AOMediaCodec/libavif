@@ -17,8 +17,6 @@ namespace avif {
 namespace testutil {
 namespace {
 
-::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
-
 void CheckGainMapMetadataMatches(const avifGainMap& actual,
                                  const avifGainMap& expected) {
   EXPECT_EQ(actual.baseHdrHeadroom.n, expected.baseHdrHeadroom.n);

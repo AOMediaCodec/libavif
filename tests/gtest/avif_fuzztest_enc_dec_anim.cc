@@ -15,8 +15,6 @@ namespace avif {
 namespace testutil {
 namespace {
 
-::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
-
 struct FrameOptions {
   uint64_t duration;
   avifAddImageFlags flags;

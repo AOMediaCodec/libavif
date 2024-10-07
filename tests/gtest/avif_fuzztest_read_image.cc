@@ -22,8 +22,6 @@ namespace avif {
 namespace testutil {
 namespace {
 
-::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
-
 //------------------------------------------------------------------------------
 
 std::string FileFormatToString(avifAppFileFormat file_format) {

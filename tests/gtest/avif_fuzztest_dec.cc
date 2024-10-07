@@ -16,8 +16,6 @@ namespace avif {
 namespace testutil {
 namespace {
 
-::testing::Environment* const kStackLimitEnv = SetStackLimitTo512x1024Bytes();
-
 //------------------------------------------------------------------------------
 
 void Decode(const std::string& arbitrary_bytes, bool is_persistent,
