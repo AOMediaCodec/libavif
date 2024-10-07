@@ -77,8 +77,6 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 {
     avifDiagnosticsClearError(diag);
 
-    AVIF_CHECKRES(avifGainMapValidateMetadata(gainMap, diag));
-
     if (hdrHeadroom < 0.0f) {
         avifDiagnosticsPrintf(diag, "hdrHeadroom should be >= 0, got %f", hdrHeadroom);
         return AVIF_RESULT_INVALID_ARGUMENT;
@@ -87,6 +85,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         avifDiagnosticsPrintf(diag, "NULL input image");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    AVIF_CHECKRES(avifGainMapValidateMetadata(gainMap, diag));
 
     const uint32_t width = baseImage->width;
     const uint32_t height = baseImage->height;
