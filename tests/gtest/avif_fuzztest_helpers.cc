@@ -270,10 +270,6 @@ class Environment : public ::testing::Environment {
 };
 }  // namespace
 
-::testing::Environment* SetEnv(const char* name, const char* value) {
-  return ::testing::AddGlobalTestEnvironment(new Environment(name, value));
-}
-
 //------------------------------------------------------------------------------
 
 std::vector<std::string> GetSeedDataDirs() {

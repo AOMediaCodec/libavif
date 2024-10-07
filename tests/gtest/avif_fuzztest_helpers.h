@@ -300,16 +300,6 @@ inline auto ArbitraryAvifDecoder() { return ArbitraryBaseAvifDecoder(); }
 #endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
 //------------------------------------------------------------------------------
-// Environment setup
-
-// Sets the environment variable 'name' to the 'value' during the setup step.
-::testing::Environment* SetEnv(const char* name, const char* value);
-
-inline ::testing::Environment* SetStackLimitTo512x1024Bytes() {
-  return SetEnv("FUZZTEST_STACK_LIMIT", "524288");
-}
-
-//------------------------------------------------------------------------------
 
 // Returns the paths contained in the 'TEST_DATA_DIRS' environment variable.
 // Several paths can be set in the variable, separated by ';'.
