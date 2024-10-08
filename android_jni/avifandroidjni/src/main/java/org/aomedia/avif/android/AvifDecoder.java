@@ -110,12 +110,11 @@ public class AvifDecoder {
    * @param bitmap The decoded pixels will be copied into the bitmap.
    *     If the bitmap dimensions do not match the decoded image's dimensions,
    *               then the decoded image will be scaled to match the bitmap's dimensions.
-   * @param threads Number of threads to be used for the AVIF decode. Zero means use number of CPU
-   *     cores as the thread count. Negative values are invalid. When this value is > 0, it is
-   *     simply mapped to the maxThreads parameter in libavif. For more details, see the
-   *     documentation for maxThreads variable in avif.h.
-   * @return true on success and false on failure. A few possible reasons for failure are: 1) Input
-   *     was not valid AVIF. 2) Negative value was passed for the threads parameter.
+   * @param threads Number of threads to be used for the AVIF decode. Zero means use the library
+   *     determined optimal value as the thread count. Negative values mean use the number of CPU
+   *     cores as the thread count. For more details, see the documentation for maxThreads variable
+   *     in avif.h.
+   * @return true on success and false on failure.
    */
   public static native boolean decode(ByteBuffer encoded, int length, Bitmap bitmap, int threads);
 

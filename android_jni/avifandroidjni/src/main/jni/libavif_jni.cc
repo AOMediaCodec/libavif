@@ -6,6 +6,7 @@
 #include <cpu-features.h>
 #include <jni.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <memory>
 #include <new>
@@ -210,7 +211,15 @@ avifResult DecodeNthImage(JNIEnv* const env, AvifDecoderWrapper* const decoder,
 }
 
 int getThreadCount(int threads) {
-  return (threads == 0) ? android_getCpuCount() : threads;
+  if (threads < 0) {
+    return android_getCpuCount();
+  }
+  if (threads == 0) {
+    // Empirically, on Android devices with more than 1 core, decoding with 2
+    // threads is almost always better than using as many threads as CPU cores.
+    return std::min(android_getCpuCount(), 2);
+  }
+  return threads;
 }
 
 // Checks if there is a pending JNI exception that will be thrown when the
@@ -286,10 +295,6 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
 FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
      jint threads) {
   IGNORE_UNUSED_JNI_PARAMETERS;
-  if (threads < 0) {
-    LOGE("Invalid value for threads (%d).", threads);
-    return false;
-  }
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   AvifDecoderWrapper decoder;
@@ -301,10 +306,6 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
 }
 
 FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
-  if (threads < 0) {
-    LOGE("Invalid value for threads (%d).", threads);
-    return 0;
-  }
   const uint8_t* const buffer =
       static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
   std::unique_ptr<AvifDecoderWrapper> decoder(new (std::nothrow)
