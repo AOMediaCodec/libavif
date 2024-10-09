@@ -186,6 +186,15 @@ typedef struct avifEncoderItem
 } avifEncoderItem;
 AVIF_ARRAY_DECLARE(avifEncoderItemArray, avifEncoderItem, item);
 
+avifEncoderCustomEncodeImageItem avifEncoderCustomEncodeImageItemFrom(const avifEncoderItem * item)
+{
+    avifEncoderCustomEncodeImageItem value = { (avifEncoderCustomEncodeImageItemType)item->itemCategory,
+                                               item->id,
+                                               item->gridCols ? item->cellIndex / item->gridCols : 0,
+                                               item->gridCols ? item->cellIndex % item->gridCols : 0 };
+    return value;
+}
+
 // ---------------------------------------------------------------------------
 // avifEncoderItemReference
 
@@ -2110,17 +2119,14 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
             avifResult encodeResult = AVIF_RESULT_NO_CONTENT;
             if (encoder->customEncodeImageFunc != NULL && encoder->customEncodeFinishFunc != NULL) {
+                const avifEncoderCustomEncodeImageItem current_item = avifEncoderCustomEncodeImageItemFrom(item);
                 const avifEncoderCustomEncodeImageArgs args = {
                     addImageFlags,
                     quantizer,
                     encoder->data->tileRowsLog2,
                     encoder->data->tileColsLog2,
-                    isAlpha,
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-                    item->itemCategory == AVIF_ITEM_GAIN_MAP
-#endif
                 };
-                encodeResult = encoder->customEncodeImageFunc(encoder, cellImage, &args);
+                encodeResult = encoder->customEncodeImageFunc(encoder, cellImage, &current_item, &args);
                 encoder->data->customEncodeImageFuncUsed = encodeResult != AVIF_RESULT_NO_CONTENT;
             }
 
@@ -3118,9 +3124,10 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
             if (encoder->data->customEncodeImageFuncUsed) {
+                const avifEncoderCustomEncodeImageItem current_item = avifEncoderCustomEncodeImageItemFrom(item);
                 avifROData sample = AVIF_DATA_EMPTY;
                 avifResult encodeResult;
-                while ((encodeResult = encoder->customEncodeFinishFunc(encoder, &sample)) != AVIF_RESULT_NO_IMAGES_REMAINING) {
+                while ((encodeResult = encoder->customEncodeFinishFunc(encoder, &current_item, &sample)) != AVIF_RESULT_NO_IMAGES_REMAINING) {
                     AVIF_CHECKRES(encodeResult);
                     AVIF_CHECKRES(avifCodecEncodeOutputAddSample(item->encodeOutput, sample.data, sample.size, /*sync=*/AVIF_TRUE));
                 }

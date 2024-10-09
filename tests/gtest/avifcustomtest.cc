@@ -11,7 +11,14 @@ namespace avif {
 namespace {
 
 avifResult CustomEncodeImageFunc(avifEncoder* encoder, const avifImage*,
+                                 const avifEncoderCustomEncodeImageItem* item,
                                  const avifEncoderCustomEncodeImageArgs*) {
+  if (item->type != AVIF_ENCODER_CUSTOM_ENCODE_ITEM_COLOR ||
+      item->gridRow != 0 || item->gridColumn != 0) {
+    // Unexpected item.
+    return AVIF_RESULT_INTERNAL_ERROR;
+  }
+
   if (encoder->customEncodeData != NULL) {
     return AVIF_RESULT_OK;  // Overrides the AV1 codec encoding pipeline.
   } else {
@@ -19,7 +26,15 @@ avifResult CustomEncodeImageFunc(avifEncoder* encoder, const avifImage*,
   }
 }
 
-avifResult CustomEncodeFinishFunc(avifEncoder* encoder, avifROData* sample) {
+avifResult CustomEncodeFinishFunc(avifEncoder* encoder,
+                                  const avifEncoderCustomEncodeImageItem* item,
+                                  avifROData* sample) {
+  if (item->type != AVIF_ENCODER_CUSTOM_ENCODE_ITEM_COLOR ||
+      item->gridRow != 0 || item->gridColumn != 0) {
+    // Unexpected item.
+    return AVIF_RESULT_INTERNAL_ERROR;
+  }
+
   avifROData* av1_payload =
       reinterpret_cast<avifROData*>(encoder->customEncodeData);
   if (av1_payload->size != 0) {
