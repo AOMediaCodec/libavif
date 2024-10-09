@@ -1,5 +1,5 @@
 set(AVIF_LOCAL_AOM_GIT_TAG v3.10.0)
-set(AVIF_LOCAL_AVM_GIT_TAG research-v7.0.1)
+set(AVIF_LOCAL_AVM_GIT_TAG research-v8.0.0)
 
 if(AVIF_CODEC_AVM)
     # Building the avm repository generates files such as "libaom.a" because it is a fork of aom,
@@ -98,6 +98,8 @@ else()
             GIT_SHALLOW ON
             UPDATE_COMMAND ""
         )
+        # This will disable the tensorflow dependency.
+        set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")
     else()
         FetchContent_Declare(
             libaom URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_LOCAL_AOM_GIT_TAG}.tar.gz" BINARY_DIR
