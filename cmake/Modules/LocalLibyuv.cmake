@@ -29,16 +29,25 @@ else()
     if(ANDROID_ABI)
         set(LIBYUV_BINARY_DIR "${LIBYUV_BINARY_DIR}/${ANDROID_ABI}")
     endif()
+
+    # unset JPEG_FOUND so that libyuv does not find it
+    set(JPEG_FOUND_ORIG ${JPEG_FOUND})
+    unset(JPEG_FOUND CACHE)
+    set(CMAKE_DISABLE_FIND_PACKAGE_JPEG TRUE)
+
     FetchContent_Declare(
         libyuv
         GIT_REPOSITORY "https://chromium.googlesource.com/libyuv/libyuv"
         BINARY_DIR "${LIBYUV_BINARY_DIR}"
         GIT_TAG "${AVIF_LOCAL_LIBYUV_TAG}"
-        PATCH_COMMAND sed -i.bak -e "s:find_package.*(.*JPEG.*)::" CMakeLists.txt
         UPDATE_COMMAND ""
     )
 
     avif_fetchcontent_populate_cmake(libyuv)
+
+    set(JPEG_FOUND ${JPEG_FOUND_ORIG})
+    unset(JPEG_FOUND_ORIG CACHE)
+    set(CMAKE_DISABLE_FIND_PACKAGE_JPEG FALSE)
 
     set_target_properties(yuv PROPERTIES AVIF_LOCAL ON POSITION_INDEPENDENT_CODE ON)
 
