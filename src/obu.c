@@ -372,9 +372,7 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 
     // See av1_read_sequence_header() in avm.
     AVIF_CHECK(parseSequenceHeaderFrameMaxDimensions(bits, header));
-#if CONFIG_BLOCK_256
     if (!avifBitsRead(bits, 1)) // BLOCK_256X256
-#endif
         avifBitsRead(bits, 1); // BLOCK_128X128
     AVIF_CHECK(parseSequenceHeaderEnabledFeatures(bits, header));
 

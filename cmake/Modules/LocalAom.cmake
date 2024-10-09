@@ -100,6 +100,8 @@ else()
             PATCH_COMMAND sed -i CMakeLists.txt -e "s:CMAKE_CURRENT_BINARY_DIR\}/flatbuffers:CMAKE_BINARY_DIR\}/flatbuffers:"
             UPDATE_COMMAND ""
         )
+        # This will disable the tensorflow dependency.
+        set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")
     else()
         FetchContent_Declare(
             libaom URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_LOCAL_AOM_GIT_TAG}.tar.gz" BINARY_DIR
