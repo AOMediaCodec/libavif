@@ -97,7 +97,6 @@ else()
             GIT_TAG ${AVIF_LOCAL_AVM_GIT_TAG}
             GIT_PROGRESS ON
             GIT_SHALLOW ON
-            PATCH_COMMAND sed -i CMakeLists.txt -e "s:CMAKE_CURRENT_BINARY_DIR\}/flatbuffers:CMAKE_BINARY_DIR\}/flatbuffers:"
             UPDATE_COMMAND ""
         )
         # This will disable the tensorflow dependency.
