@@ -89,7 +89,6 @@ else()
     endif()
 
     if(AVIF_CODEC_AVM)
-        # TODO(vrabaud) remove the PATCH_COMMAND once upstream is fixed.
         FetchContent_Declare(
             libaom
             GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/avm.git"
