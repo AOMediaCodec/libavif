@@ -24,7 +24,7 @@ $ git clone https://github.com/AOMediaCodec/libavif.git
 $ cd libavif
 ```
 
-Step 2 - Set the SDK and NDK paths in environment variables.
+Step 2 - Set the SDK and NDK paths in environment variables. (Recommended Android NDK revision: r25c)
 
 ```
 $ export ANDROID_SDK_ROOT="/path/to/android/sdk"
