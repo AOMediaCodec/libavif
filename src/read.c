@@ -2028,6 +2028,11 @@ static avifResult avifParseToneMappedImageBox(avifGainMap * gainMap, const uint8
     if (writerVersion <= supportedMetadataVersion) {
         AVIF_CHECKERR(avifROStreamRemainingBytes(&s) == 0, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
     }
+
+    if (avifGainMapValidateMetadata(gainMap, diag) != AVIF_RESULT_OK) {
+        return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+    }
+
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
