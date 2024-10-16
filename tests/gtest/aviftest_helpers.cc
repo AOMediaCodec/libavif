@@ -145,7 +145,7 @@ void FillImagePlain(avifImage* image, const uint32_t yuva[4]) {
   }
 }
 
-void FillImageGradient(avifImage* image) {
+void FillImageGradient(avifImage* image, int offset) {
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
     const uint32_t limitedRangeMin =
@@ -160,13 +160,13 @@ void FillImageGradient(avifImage* image) {
     const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
     for (uint32_t y = 0; y < plane_height; ++y) {
       for (uint32_t x = 0; x < plane_width; ++x) {
-        uint32_t value;
+        uint32_t value = (x + y + offset) % (plane_width + plane_height);
         if (image->yuvRange == AVIF_RANGE_FULL || c == AVIF_CHAN_A) {
-          value = (x + y) * ((1u << image->depth) - 1u) /
+          value = value * ((1u << image->depth) - 1u) /
                   std::max(1u, plane_width + plane_height - 2);
         } else {
           value = limitedRangeMin +
-                  (x + y) * (limitedRangeMax - limitedRangeMin) /
+                  value * (limitedRangeMax - limitedRangeMin) /
                       std::max(1u, plane_width + plane_height - 2);
         }
         if (avifImageUsesU16(image)) {

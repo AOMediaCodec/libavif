@@ -2195,8 +2195,8 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
     const size_t mdatStartOffset = avifRWStreamOffset(s);
     for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
-        //   * Pass 0: metadata (Exif/XMP)
-        //   * Pass 1: alpha, gain map (AV1)
+        //   * Pass 0: metadata (Exif/XMP/gain map metadata)
+        //   * Pass 1: alpha, gain map image (AV1)
         //   * Pass 2: all other item data (AV1 color)
         //
         // See here for the discussion on alpha coming before color:
@@ -2215,7 +2215,8 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
                 // this item has nothing for the mdat box
                 continue;
             }
-            const avifBool isMetadata = !memcmp(item->type, "mime", 4) || !memcmp(item->type, "Exif", 4);
+            const avifBool isMetadata = !memcmp(item->type, "mime", 4) || !memcmp(item->type, "Exif", 4) ||
+                                        !memcmp(item->type, "tmap", 4);
             if (metadataPass != isMetadata) {
                 // only process metadata (XMP/Exif) payloads when metadataPass is true
                 continue;

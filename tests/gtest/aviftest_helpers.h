@@ -115,7 +115,9 @@ ImagePtr CreateImage(int width, int height, int depth,
 
 // Set all pixels of each plane of an image.
 void FillImagePlain(avifImage* image, const uint32_t yuva[4]);
-void FillImageGradient(avifImage* image);
+// 'offset' is a value to spatially offset the gradient, useful to create
+// distinct images.
+void FillImageGradient(avifImage* image, int offset = 0);
 void FillImageChannel(avifRGBImage* image, uint32_t channel_offset,
                       uint32_t value);
 

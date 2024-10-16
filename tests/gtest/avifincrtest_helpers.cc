@@ -80,8 +80,8 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
 // byte_count were given to the decoder, for an image of height rows, split into
 // cells of cell_height rows.
 uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
-                               bool has_alpha, size_t available_byte_count,
-                               size_t byte_count,
+                               bool has_alpha, bool has_gain_map,
+                               size_t available_byte_count, size_t byte_count,
                                bool enable_fine_incremental_check) {
   // The whole image should be available when the full input is.
   if (available_byte_count >= byte_count) {
@@ -104,15 +104,14 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
   }
   available_byte_count -= 500;
   byte_count -= 500;
-  // Alpha, if any, is assumed to be located before the other planes and to
-  // represent at most 50% of the payload.
-  if (has_alpha) {
-    if (available_byte_count <= (byte_count / 2)) {
-      return 0;
-    }
-    available_byte_count -= byte_count / 2;
-    byte_count -= byte_count / 2;
+  // Extra planes (alpha, gain map), if any, are assumed to be located before
+  // the other planes and to represent at most 50% of the payload.
+  const int num_extra_planes = (has_alpha ? 1 : 0) + (has_gain_map ? 1 : 0);
+  if (available_byte_count <= ((byte_count / 2) * num_extra_planes)) {
+    return 0;
   }
+  available_byte_count -= (byte_count / 2) * num_extra_planes;
+  byte_count -= (byte_count / 2) * num_extra_planes;
   // Linearly map the input availability ratio to the decoded row ratio.
   const uint32_t min_decoded_cell_row_count = static_cast<uint32_t>(
       (height / cell_height) * available_byte_count / byte_count);
@@ -332,6 +331,13 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
     data.available.size = std::min(data.available.size + step, data.full_size);
     parse_result = avifDecoderParse(decoder);
   }
+  if (data.available.size == data.full_size) {
+    // Can happen if the data is in 'idat', or if some metadata is at the end of
+    // the file. But ideally this should be avoided.
+    printf(
+        "WARNING: had to provide the whole file for avifDecoderParse() to "
+        "succeed\n");
+  }
   AVIF_CHECKRES(parse_result);
 
   // Decoding is incremental.
@@ -347,13 +353,30 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
       return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const uint32_t decoded_row_count = avifDecoderDecodedRowCount(decoder);
-    AVIF_CHECKERR(decoded_row_count >= previously_decoded_row_count,
-                  AVIF_RESULT_INVALID_ARGUMENT);
+    if (decoded_row_count < previously_decoded_row_count) {
+      printf("ERROR: decoded row count decreased from %d to %d\n",
+             previously_decoded_row_count, decoded_row_count);
+      return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    bool has_gain_map = false;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    has_gain_map = (reference.gainMap != nullptr);
+#endif
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
         reference.height, cell_height, reference.alphaPlane != nullptr,
-        data.available.size, data.full_size, enable_fine_incremental_check);
-    AVIF_CHECKERR(decoded_row_count >= min_decoded_row_count,
-                  AVIF_RESULT_INVALID_ARGUMENT);
+        has_gain_map, data.available.size, data.full_size,
+        enable_fine_incremental_check);
+    if (decoded_row_count != previously_decoded_row_count) {
+      printf("bytes %zu decoded %d lines (expected min %d)\n",
+             data.available.size, decoded_row_count, min_decoded_row_count);
+    }
+    if (decoded_row_count < min_decoded_row_count) {
+      printf(
+          "ERROR: expected to have decoded at least %d rows with %zu available "
+          "bytes, but only %d were decoded\n",
+          min_decoded_row_count, data.available.size, decoded_row_count);
+      return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     ComparePartialYuva(reference, *decoder->image, decoded_row_count);
 
     previously_decoded_row_count = decoded_row_count;
