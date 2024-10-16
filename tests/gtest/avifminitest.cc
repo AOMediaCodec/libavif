@@ -91,7 +91,6 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   ASSERT_NE(decoded_mini, nullptr);
   DecoderPtr decoder_mini(avifDecoderCreate());
   ASSERT_NE(decoder_mini, nullptr);
-  decoder_mini->enableParsingGainMapMetadata = AVIF_TRUE;
   decoder_mini->enableDecodingGainMap = AVIF_TRUE;
   ASSERT_EQ(avifDecoderReadMemory(decoder_mini.get(), decoded_mini.get(),
                                   encoded_mini.data, encoded_mini.size),
@@ -108,7 +107,6 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   ASSERT_NE(decoded_meta, nullptr);
   DecoderPtr decoder_meta(avifDecoderCreate());
   ASSERT_NE(decoder_meta, nullptr);
-  decoder_meta->enableParsingGainMapMetadata = AVIF_TRUE;
   decoder_meta->enableDecodingGainMap = AVIF_TRUE;
   ASSERT_EQ(avifDecoderReadMemory(decoder_meta.get(), decoded_meta.get(),
                                   encoded_meta.data, encoded_meta.size),

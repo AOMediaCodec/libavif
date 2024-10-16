@@ -250,7 +250,6 @@ int main(int argc, char * argv[])
         decoder->allowProgressive = allowProgressive;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         // Decode the gain map (if present) to allow showing its info.
-        decoder->enableParsingGainMapMetadata = AVIF_TRUE;
         decoder->enableDecodingGainMap = AVIF_TRUE;
 #endif
         avifResult result = avifDecoderSetIOFile(decoder, inputFilename);

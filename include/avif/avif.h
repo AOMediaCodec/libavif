@@ -1296,20 +1296,12 @@ typedef struct avifDecoder
     // Version 1.1.0 ends here. Add any new members after this line.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    // Enable parsing the gain map metadata if present (defaults to AVIF_FALSE).
-    // Gain map metadata is read during avifDecoderParse(). Like Exif and XMP, this data
-    // can be (unfortunately) packed at the end of the file, which will cause
-    // avifDecoderParse() to return AVIF_RESULT_WAITING_ON_IO until it finds it.
-    // If you don't actually use this data, it's best to leave this to AVIF_FALSE (default).
-    avifBool enableParsingGainMapMetadata;
     // Enable decoding the gain map image if present (defaults to AVIF_FALSE).
-    // If set to true, enableParsingGainMapMetadata must also be true.
     avifBool enableDecodingGainMap;
     // Do not decode the color/alpha planes of the main image.
     // Can be useful to decode the gain map image only.
     avifBool ignoreColorAndAlpha;
     // True when avifDecoderParse() detects a supported gain map.
-    // Requires enableParsingGainMapMetadata to be set to true.
     avifBool gainMapPresent;
 #endif
 } avifDecoder;

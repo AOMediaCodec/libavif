@@ -4850,12 +4850,6 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     if (!decoder->io || !decoder->io->read) {
         return AVIF_RESULT_IO_NOT_SET;
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    if (decoder->enableDecodingGainMap && !decoder->enableParsingGainMapMetadata) {
-        avifDiagnosticsPrintf(&decoder->diag, "If enableDecodingGainMap is true, enableParsingGainMapMetadata must also be true");
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
-#endif
 
     // Cleanup anything lingering in the decoder
     avifDecoderCleanup(decoder);
@@ -5733,7 +5727,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         // However, we don't report any error because in order to do detect this case consistently, we would
         // need to remove the early exit in avifParse() to check if a 'tmap' item might be present
         // further down the file. Instead, we simply ignore tmap items in files that lack the 'tmap' brand.
-        if (decoder->enableParsingGainMapMetadata && avifBrandArrayHasBrand(&data->compatibleBrands, "tmap")) {
+        if (avifBrandArrayHasBrand(&data->compatibleBrands, "tmap")) {
             avifDecoderItem * toneMappedImageItem;
             avifDecoderItem * gainMapItem;
             avifCodecType gainMapCodecType;

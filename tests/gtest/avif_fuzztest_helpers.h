@@ -51,7 +51,7 @@ DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                              uint32_t image_count_limit,
                              avifStrictFlags strict_flags);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-enum class GainMapDecodeMode { kDontDecode, kMetadataOnly, kDecode };
+enum class GainMapDecodeMode { kDontDecode, kDecode };
 DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
                                       GainMapDecodeMode gain_map_decode_mode);
 #endif
@@ -286,7 +286,6 @@ inline auto ArbitraryBaseAvifDecoder() {
 inline auto ArbitraryAvifDecoderWithGainMapOptions() {
   return fuzztest::Map(AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
                        fuzztest::ElementOf({GainMapDecodeMode::kDontDecode,
-                                            GainMapDecodeMode::kMetadataOnly,
                                             GainMapDecodeMode::kDecode}));
 }
 

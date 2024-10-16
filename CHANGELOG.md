@@ -17,11 +17,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   draft.
 * Ignore gain maps with unsupported metadata. Handle gain maps with
   writer_version > 0 correctly.
-  The combination of settings enableParsingGainMapMetadata=false with
-  enableDecodingGainMap=true is no longer allowed and returns an invalid argument
-  error.
-  The `gainMapPresent` field is now only populated if enableParsingGainMapMetadata
-  is true.
+  Remove the enableParsingGainMapMetadata setting, now gain map metadata is 
+  always parsed if present and if this feature is compiled in.
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Update aom.cmd/LocalAom.cmake: v3.10.0
 * Update avm.cmd: research-v8.0.0

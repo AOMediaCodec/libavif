@@ -159,9 +159,6 @@ ImagePtr AvifImageToUniquePtr(avifImage* image) { return ImagePtr(image); }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
                                       GainMapDecodeMode gain_map_decode_mode) {
-  decoder->enableParsingGainMapMetadata =
-      (gain_map_decode_mode == GainMapDecodeMode::kMetadataOnly ||
-       gain_map_decode_mode == GainMapDecodeMode::kDecode);
   decoder->enableDecodingGainMap =
       (gain_map_decode_mode == GainMapDecodeMode::kDecode);
   // Do not fuzz 'ignoreColorAndAlpha' since most tests assume that if the

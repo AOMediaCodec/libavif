@@ -131,7 +131,6 @@ avifResult SwapBaseCommand::Run() {
   if (decoder == NULL) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  decoder->enableParsingGainMapMetadata = true;
   decoder->enableDecodingGainMap = true;
   avifResult result = ReadAvif(decoder.get(), arg_input_filename_,
                                arg_image_read_.ignore_profile);
