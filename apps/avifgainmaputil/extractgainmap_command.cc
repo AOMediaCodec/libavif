@@ -21,8 +21,7 @@ avifResult ExtractGainMapCommand::Run() {
   if (decoder == NULL) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  decoder->enableDecodingGainMap = true;
-  decoder->ignoreColorAndAlpha = true;
+  decoder->imageContentToDecode = AVIF_CONTENT_GAIN_MAP;
 
   avifResult result =
       ReadAvif(decoder.get(), arg_input_filename_, /*ignore_profile=*/true);

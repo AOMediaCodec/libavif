@@ -248,10 +248,8 @@ int main(int argc, char * argv[])
         decoder->imageDimensionLimit = imageDimensionLimit;
         decoder->strictFlags = strictFlags;
         decoder->allowProgressive = allowProgressive;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        // Decode the gain map (if present) to allow showing its info.
-        decoder->enableDecodingGainMap = AVIF_TRUE;
-#endif
+        decoder->imageContentToDecode = AVIF_CONTENT_ALL;
+
         avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);

@@ -1174,6 +1174,23 @@ typedef enum avifProgressiveState
 } avifProgressiveState;
 AVIF_API const char * avifProgressiveStateToString(avifProgressiveState progressiveState);
 
+// Types of image content that can be encoded/decoded.
+typedef enum avifImageContentTypeFlag
+{
+    AVIF_CONTENT_NONE = 0,
+    AVIF_CONTENT_COLOR = (1 << 1),
+    AVIF_CONTENT_ALPHA = (1 << 2),
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    AVIF_CONTENT_GAIN_MAP = (1 << 3),
+    AVIF_CONTENT_ALL = AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA | AVIF_CONTENT_GAIN_MAP,
+#else
+    AVIF_CONTENT_ALL = AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA,
+#endif
+
+    AVIF_CONTENT_DECODE_DEFAULT = AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA,
+} avifImageContentTypeFlag;
+typedef uint32_t avifImageContentTypeFlags;
+
 // NOTE: The avifDecoder struct may be extended in a future release. Code outside the libavif
 // library must allocate avifDecoder by calling the avifDecoderCreate() function.
 typedef struct avifDecoder
@@ -1295,12 +1312,10 @@ typedef struct avifDecoder
 
     // Version 1.1.0 ends here. Add any new members after this line.
 
+    // Image content to decode (if present). Defaults to AVIF_CONTENT_DECODE_DEFAULT.
+    avifImageContentTypeFlags imageContentToDecode;
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    // Enable decoding the gain map image if present (defaults to AVIF_FALSE).
-    avifBool enableDecodingGainMap;
-    // Do not decode the color/alpha planes of the main image.
-    // Can be useful to decode the gain map image only.
-    avifBool ignoreColorAndAlpha;
     // True when avifDecoderParse() detects a supported gain map.
     avifBool gainMapPresent;
 #endif
@@ -1365,9 +1380,10 @@ AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint3
 // function can be called next to retrieve the number of top rows that can be immediately accessed
 // from the luma plane of decoder->image, and alpha if any. The corresponding rows from the chroma planes,
 // if any, can also be accessed (half rounded up if subsampled, same number of rows otherwise).
-// If a gain map is present and AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is on and enableDecodingGainMap is also on,
-// the gain map's planes can also be accessed in the same way. If the gain map's height is different from
-// the main image, then the number of available gain map rows is at least:
+// If a gain map is present and AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is on and
+// (imageContentToDecode & AVIF_CONTENT_GAIN_MAP) is non zero, the gain map's planes can also be accessed
+// in the same way. If the gain map's height is different from the main image, then the number of
+// available gain map rows is at least:
 // roundf((float)decoded_row_count / decoder->image->height * decoder->image->gainMap.image->height)
 // When gain map scaling is needed, callers might choose to use a few less rows depending on how many rows
 // are needed by the scaling algorithm, to avoid the last row(s) changing when more data becomes available.

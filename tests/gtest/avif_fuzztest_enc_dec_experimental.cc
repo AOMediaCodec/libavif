@@ -63,7 +63,8 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
 
   EXPECT_EQ(decoder->gainMapPresent, image->gainMap != nullptr);
   ASSERT_EQ(decoded_image->gainMap != nullptr, decoder->gainMapPresent);
-  if (decoder->gainMapPresent && decoder->enableDecodingGainMap) {
+  if (decoder->gainMapPresent &&
+      (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP)) {
     ASSERT_NE(decoded_image->gainMap, nullptr);
     ASSERT_NE(decoded_image->gainMap->image, nullptr);
     EXPECT_EQ(decoded_image->gainMap->image->width,

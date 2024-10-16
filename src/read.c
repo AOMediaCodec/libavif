@@ -4641,6 +4641,7 @@ avifDecoder * avifDecoderCreate(void)
     decoder->imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
     decoder->strictFlags = AVIF_STRICT_ENABLED;
+    decoder->imageContentToDecode = AVIF_CONTENT_DECODE_DEFAULT;
     return decoder;
 }
 
@@ -5358,7 +5359,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
     }
 
-    if (decoder->enableDecodingGainMap) {
+    if (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) {
         gainMap->image = avifImageCreateEmpty();
         AVIF_CHECKERR(gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
 
@@ -5747,7 +5748,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 } else {
                     AVIF_CHECKRES(tmapParsingRes);
                     decoder->gainMapPresent = AVIF_TRUE;
-                    if (decoder->enableDecodingGainMap) {
+                    if (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) {
                         mainItems[AVIF_ITEM_GAIN_MAP] = gainMapItem;
                         codecType[AVIF_ITEM_GAIN_MAP] = gainMapCodecType;
                     }
@@ -5864,11 +5865,13 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 continue;
             }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-            if (decoder->ignoreColorAndAlpha && (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_ALPHA)) {
+            if (!(decoder->imageContentToDecode & AVIF_CONTENT_COLOR) && (c == AVIF_ITEM_COLOR)) {
                 continue;
             }
-#endif
+            if (!(decoder->imageContentToDecode & AVIF_CONTENT_ALPHA) && (c == AVIF_ITEM_ALPHA)) {
+                continue;
+            }
+
             if (avifIsAlpha((avifItemCategory)c) && !mainItems[c]->width && !mainItems[c]->height) {
                 // NON-STANDARD: Alpha subimage does not have an ispe property; adopt width/height from color item
                 AVIF_ASSERT_OR_RETURN(!(decoder->strictFlags & AVIF_STRICT_ALPHA_ISPE_REQUIRED));
@@ -6587,7 +6590,8 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (c == AVIF_ITEM_GAIN_MAP) {
             const avifImage * const gainMap = decoder->image->gainMap ? decoder->image->gainMap->image : NULL;
-            if (decoder->gainMapPresent && decoder->enableDecodingGainMap && gainMap != NULL && gainMap->height != 0) {
+            if (decoder->gainMapPresent && (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) && gainMap != NULL &&
+                gainMap->height != 0) {
                 uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
                 if (gainMap->height != decoder->image->height) {
                     const uint32_t scaledGainMapRowCount =
