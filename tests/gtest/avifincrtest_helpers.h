@@ -52,12 +52,17 @@ void EncodeRectAsIncremental(const avifImage& image, uint32_t width,
 // incremental granularity. enable_fine_incremental_check checks that sample
 // rows are gradually output when feeding more and more input bytes to the
 // decoder.
-avifResult DecodeIncrementally(const avifRWData& encoded_avif,
-                               avifDecoder* decoder, bool is_persistent,
-                               bool give_size_hint, bool use_nth_image_api,
-                               const avifImage& reference, uint32_t cell_height,
-                               bool enable_fine_incremental_check = false,
-                               bool expect_whole_file_read = true);
+// If 'expect_parse_success_from_partial_file' is true, avifDecoderParse
+// should succeed before the whole file is available. Returns an error
+// if avifDecoderParse fails until all the bytes are available.
+// `expect_parse_success_from_partial_file` should be set to false if the file
+// may be using 'idat' or may have some metadata at the end of the file.
+avifResult DecodeIncrementally(
+    const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
+    bool give_size_hint, bool use_nth_image_api, const avifImage& reference,
+    uint32_t cell_height, bool enable_fine_incremental_check = false,
+    bool expect_whole_file_read = true,
+    bool expect_parse_success_from_partial_file = true);
 
 // Calls DecodeIncrementally() with the reference being a regular decoding of
 // encoded_avif.
@@ -65,7 +70,8 @@ avifResult DecodeNonIncrementallyAndIncrementally(
     const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
     bool give_size_hint, bool use_nth_image_api, uint32_t cell_height,
     bool enable_fine_incremental_check = false,
-    bool expect_whole_file_read = true);
+    bool expect_whole_file_read = true,
+    bool expect_parse_success_from_partial_file = true);
 
 }  // namespace testutil
 }  // namespace avif

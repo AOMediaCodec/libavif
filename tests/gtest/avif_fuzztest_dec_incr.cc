@@ -101,7 +101,10 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
     const uint32_t max_cell_height = reference->height;
     const avifResult result = DecodeIncrementally(
         encoded_data, decoder.get(), is_persistent, give_size_hint,
-        use_nth_image_api, *reference, max_cell_height);
+        use_nth_image_api, *reference, max_cell_height,
+        /*enable_fine_incremental_check=*/false,
+        /*expect_whole_file_read=*/true,
+        /*expect_parse_success_from_partial_file=*/false);
     // The result does not matter, as long as we do not crash.
     (void)result;
   }
