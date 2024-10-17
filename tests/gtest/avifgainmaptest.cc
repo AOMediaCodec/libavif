@@ -344,17 +344,18 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   constexpr int kCellHeight = 200;
 
   for (int i = 0; i < kGridCols * kGridRows; ++i) {
+    const int gradient_offset = i * 10;
     ImagePtr image =
         testutil::CreateImage(kCellWidth, kCellHeight, /*depth=*/10,
                               AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
     ASSERT_NE(image, nullptr);
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
-    testutil::FillImageGradient(image.get());
+    testutil::FillImageGradient(image.get(), gradient_offset);
     ImagePtr gain_map =
         testutil::CreateImage(kCellWidth / 2, kCellHeight / 2, /*depth=*/8,
                               AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
     ASSERT_NE(gain_map, nullptr);
-    testutil::FillImageGradient(gain_map.get());
+    testutil::FillImageGradient(gain_map.get(), gradient_offset);
     // 'image' now owns the gain map.
     image->gainMap = avifGainMapCreate();
     ASSERT_NE(image->gainMap, nullptr);
@@ -422,7 +423,8 @@ TEST(GainMapTest, EncodeDecodeGrid) {
                 /*is_persistent=*/true, /*give_size_hint=*/true,
                 /*use_nth_image_api=*/false, kCellHeight,
                 /*enable_fine_incremental_check=*/true),
-            AVIF_RESULT_OK);
+            AVIF_RESULT_OK)
+      << decoder->diag.error;
 
   // Uncomment the following to save the encoded image as an AVIF file.
   //  std::ofstream("/tmp/avifgainmaptest_grid.avif", std::ios::binary)

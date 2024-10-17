@@ -80,8 +80,8 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
 // byte_count were given to the decoder, for an image of height rows, split into
 // cells of cell_height rows.
 uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
-                               bool has_alpha, size_t available_byte_count,
-                               size_t byte_count,
+                               bool has_alpha, bool has_gain_map,
+                               size_t available_byte_count, size_t byte_count,
                                bool enable_fine_incremental_check) {
   // The whole image should be available when the full input is.
   if (available_byte_count >= byte_count) {
@@ -104,15 +104,17 @@ uint32_t GetMinDecodedRowCount(uint32_t height, uint32_t cell_height,
   }
   available_byte_count -= 500;
   byte_count -= 500;
-  // Alpha, if any, is assumed to be located before the other planes and to
-  // represent at most 50% of the payload.
-  if (has_alpha) {
-    if (available_byte_count <= (byte_count / 2)) {
-      return 0;
-    }
-    available_byte_count -= byte_count / 2;
-    byte_count -= byte_count / 2;
+  // Extra planes (alpha, gain map), if any, are assumed to be located before
+  // the color planes. It's assumed that each extra planes is at most
+  // total_size / (1 + num_extra_planes).
+  const int num_extra_planes = (has_alpha ? 1 : 0) + (has_gain_map ? 1 : 0);
+  const size_t max_size_of_extra_planes = static_cast<size_t>(
+      (byte_count / (num_extra_planes + 1)) * num_extra_planes);
+  if (available_byte_count <= max_size_of_extra_planes) {
+    return 0;
   }
+  available_byte_count -= max_size_of_extra_planes;
+  byte_count -= max_size_of_extra_planes;
   // Linearly map the input availability ratio to the decoded row ratio.
   const uint32_t min_decoded_cell_row_count = static_cast<uint32_t>(
       (height / cell_height) * available_byte_count / byte_count);
@@ -295,7 +297,8 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
                                bool give_size_hint, bool use_nth_image_api,
                                const avifImage& reference, uint32_t cell_height,
                                bool enable_fine_incremental_check,
-                               bool expect_whole_file_read) {
+                               bool expect_whole_file_read,
+                               bool expect_parse_success_from_partial_file) {
   // AVIF cells are at least 64 pixels tall.
   if (cell_height != reference.height) {
     AVIF_CHECKERR(cell_height >= 64u, AVIF_RESULT_INVALID_ARGUMENT);
@@ -332,6 +335,15 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
     data.available.size = std::min(data.available.size + step, data.full_size);
     parse_result = avifDecoderParse(decoder);
   }
+  if (data.available.size == data.full_size &&
+      expect_parse_success_from_partial_file) {
+    // Can happen if the data is in 'idat', or if some metadata is at the end of
+    // the file. But ideally this should be avoided.
+    printf(
+        "ERROR: had to provide the whole file for avifDecoderParse() to "
+        "succeed\n");
+    AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
+  }
   AVIF_CHECKRES(parse_result);
 
   // Decoding is incremental.
@@ -344,16 +356,29 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
       std::cerr << (use_nth_image_api ? "avifDecoderNthImage(0)"
                                       : "avifDecoderNextImage()")
                 << " returned WAITING_ON_IO instead of OK";
-      return AVIF_RESULT_INVALID_ARGUMENT;
+      AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
     }
     const uint32_t decoded_row_count = avifDecoderDecodedRowCount(decoder);
-    AVIF_CHECKERR(decoded_row_count >= previously_decoded_row_count,
-                  AVIF_RESULT_INVALID_ARGUMENT);
+    if (decoded_row_count < previously_decoded_row_count) {
+      printf("ERROR: decoded row count decreased from %d to %d\n",
+             previously_decoded_row_count, decoded_row_count);
+      AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
+    }
+    bool has_gain_map = false;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    has_gain_map = (reference.gainMap != nullptr);
+#endif
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
         reference.height, cell_height, reference.alphaPlane != nullptr,
-        data.available.size, data.full_size, enable_fine_incremental_check);
-    AVIF_CHECKERR(decoded_row_count >= min_decoded_row_count,
-                  AVIF_RESULT_INVALID_ARGUMENT);
+        has_gain_map, data.available.size, data.full_size,
+        enable_fine_incremental_check);
+    if (decoded_row_count < min_decoded_row_count) {
+      printf(
+          "ERROR: expected to have decoded at least %d rows with %zu available "
+          "bytes, but only %d were decoded\n",
+          min_decoded_row_count, data.available.size, decoded_row_count);
+      AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
+    }
     ComparePartialYuva(reference, *decoder->image, decoded_row_count);
 
     previously_decoded_row_count = decoded_row_count;
@@ -376,19 +401,18 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
 avifResult DecodeNonIncrementallyAndIncrementally(
     const avifRWData& encoded_avif, avifDecoder* decoder, bool is_persistent,
     bool give_size_hint, bool use_nth_image_api, uint32_t cell_height,
-    bool enable_fine_incremental_check, bool expect_whole_file_read) {
+    bool enable_fine_incremental_check, bool expect_whole_file_read,
+    bool expect_parse_success_from_partial_file) {
   ImagePtr reference(avifImageCreateEmpty());
   if (reference == nullptr) return AVIF_RESULT_INVALID_ARGUMENT;
   decoder->allowIncremental = AVIF_FALSE;
-  if (avifDecoderReadMemory(decoder, reference.get(), encoded_avif.data,
-                            encoded_avif.size) != AVIF_RESULT_OK) {
-    return AVIF_RESULT_INVALID_ARGUMENT;
-  }
+  AVIF_CHECKRES(avifDecoderReadMemory(decoder, reference.get(),
+                                      encoded_avif.data, encoded_avif.size));
 
   const avifResult result = DecodeIncrementally(
       encoded_avif, decoder, is_persistent, give_size_hint, use_nth_image_api,
       *reference, cell_height, enable_fine_incremental_check,
-      expect_whole_file_read);
+      expect_whole_file_read, expect_parse_success_from_partial_file);
   return result;
 }
 
