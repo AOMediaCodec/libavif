@@ -158,16 +158,17 @@ void FillImageGradient(avifImage* image, int offset) {
     const uint32_t plane_height = avifImagePlaneHeight(image, c);
     uint8_t* row = avifImagePlane(image, c);
     const uint32_t row_bytes = avifImagePlaneRowBytes(image, c);
+    const uint32_t max_xy_sum = plane_width + plane_height - 2;
     for (uint32_t y = 0; y < plane_height; ++y) {
       for (uint32_t x = 0; x < plane_width; ++x) {
-        uint32_t value = (x + y + offset) % (plane_width + plane_height);
+        uint32_t value = (x + y + offset) % (max_xy_sum + 1);
         if (image->yuvRange == AVIF_RANGE_FULL || c == AVIF_CHAN_A) {
-          value = value * ((1u << image->depth) - 1u) /
-                  std::max(1u, plane_width + plane_height - 2);
+          value =
+              value * ((1u << image->depth) - 1u) / std::max(1u, max_xy_sum);
         } else {
-          value = limitedRangeMin +
-                  value * (limitedRangeMax - limitedRangeMin) /
-                      std::max(1u, plane_width + plane_height - 2);
+          value = limitedRangeMin + value *
+                                        (limitedRangeMax - limitedRangeMin) /
+                                        std::max(1u, max_xy_sum);
         }
         if (avifImageUsesU16(image)) {
           reinterpret_cast<uint16_t*>(row)[x] = static_cast<uint16_t>(value);
