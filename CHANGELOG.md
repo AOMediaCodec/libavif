@@ -30,7 +30,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifGainMapMetadataDouble structs.
 * Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
   utility functions.
-* In avif.h, changed "AVIF_SPEED_FASTEST" value to 13 from 10.
+* Change codec_svt.c to clamp from 0 to 13.
 
 ## [1.1.1] - 2024-07-30
 
