@@ -201,7 +201,8 @@ static void syntaxLong(void)
            AVIF_QUALITY_LOSSLESS);
     printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
            AVIF_SPEED_SLOWEST,
-           AVIF_SPEED_FASTEST);
+           13);
+    printf("                                        libaom range 0-9 & rav1e range 0-10\n");
     printf("\n");
     printf("Advanced options:\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads). Use \"all\" to potentially use as many cores as possible (default: all)\n");
@@ -1734,9 +1735,6 @@ int main(int argc, char * argv[])
                 settings.speed = AVIF_SPEED_DEFAULT;
             } else {
                 settings.speed = atoi(arg);
-                if (settings.speed > AVIF_SPEED_FASTEST) {
-                    settings.speed = AVIF_SPEED_FASTEST;
-                }
                 if (settings.speed < AVIF_SPEED_SLOWEST) {
                     settings.speed = AVIF_SPEED_SLOWEST;
                 }
