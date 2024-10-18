@@ -5747,7 +5747,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     decoder->image->gainMap = NULL;
                 } else {
                     AVIF_CHECKRES(tmapParsingRes);
-                    decoder->gainMapPresent = AVIF_TRUE;
                     if (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) {
                         mainItems[AVIF_ITEM_GAIN_MAP] = gainMapItem;
                         codecType[AVIF_ITEM_GAIN_MAP] = gainMapCodecType;
@@ -5912,7 +5911,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
             decoder->image->gainMap->image->width = mainItems[AVIF_ITEM_GAIN_MAP]->width;
             decoder->image->gainMap->image->height = mainItems[AVIF_ITEM_GAIN_MAP]->height;
-            decoder->gainMapPresent = AVIF_TRUE;
             // Must be called after avifDecoderGenerateImageTiles() which among other things copies the
             // codec config property from the first tile of a grid to the grid item (when grids are used).
             AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image->gainMap->image,
@@ -6590,8 +6588,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (c == AVIF_ITEM_GAIN_MAP) {
             const avifImage * const gainMap = decoder->image->gainMap ? decoder->image->gainMap->image : NULL;
-            if (decoder->gainMapPresent && (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) && gainMap != NULL &&
-                gainMap->height != 0) {
+            if ((decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) && gainMap != NULL && gainMap->height != 0) {
                 uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
                 if (gainMap->height != decoder->image->height) {
                     const uint32_t scaledGainMapRowCount =

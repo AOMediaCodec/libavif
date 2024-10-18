@@ -136,7 +136,6 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   ASSERT_NE(decoded, nullptr);
 
   // Verify that the gain map is present and matches the input.
-  EXPECT_TRUE(decoder->gainMapPresent);
   ASSERT_NE(decoded->gainMap, nullptr);
   ASSERT_NE(decoded->gainMap->image, nullptr);
   EXPECT_EQ(decoded->gainMap->image->matrixCoefficients,
@@ -194,7 +193,6 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
   // Verify that the gain map is present and matches the input.
-  EXPECT_TRUE(decoder->gainMapPresent);
   ASSERT_NE(decoded->gainMap, nullptr);
   ASSERT_NE(decoded->gainMap->image, nullptr);
   EXPECT_GT(testutil::GetPsnr(*image->gainMap->image, *decoded->gainMap->image),
@@ -401,7 +399,6 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   // Verify that the input and decoded images are close.
   ASSERT_GT(testutil::GetPsnr(*merged, *decoded), 40.0);
   // Verify that the gain map is present and matches the input.
-  EXPECT_TRUE(decoder->gainMapPresent);
   ASSERT_NE(decoded->gainMap, nullptr);
   ASSERT_NE(decoded->gainMap->image, nullptr);
   ASSERT_GT(testutil::GetPsnr(*merged_gain_map, *decoded->gainMap->image),
@@ -546,7 +543,6 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
   // Verify that the gain map was detected...
-  EXPECT_TRUE(decoder->gainMapPresent);
   ASSERT_NE(decoded->gainMap, nullptr);
   // ... but not decoded.
   EXPECT_EQ(decoded->gainMap->image, nullptr);
@@ -593,7 +589,6 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   EXPECT_EQ(decoder->image->yuvRowBytes[2], 0u);
   EXPECT_EQ(decoder->image->alphaRowBytes, 0u);
   // The gain map was decoded.
-  EXPECT_TRUE(decoder->gainMapPresent);
   ASSERT_NE(decoded->gainMap, nullptr);
   ASSERT_NE(decoded->gainMap->image, nullptr);
   EXPECT_GT(testutil::GetPsnr(*image->gainMap->image, *decoded->gainMap->image),
@@ -623,7 +618,7 @@ TEST(GainMapTest, IgnoreAll) {
             AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
 
-  EXPECT_TRUE(decoder->gainMapPresent);
+  EXPECT_TRUE(decoder->image->gainMap != nullptr);
   CheckGainMapMetadataMatches(*decoder->image->gainMap, *image->gainMap);
   ASSERT_EQ(decoder->image->gainMap->image, nullptr);
 
@@ -660,7 +655,6 @@ TEST(GainMapTest, NoGainMap) {
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
   // Verify that no gain map was found.
-  EXPECT_FALSE(decoder->gainMapPresent);
   EXPECT_EQ(decoded->gainMap, nullptr);
 }
 
@@ -683,7 +677,7 @@ TEST(GainMapTest, DecodeGainMapGrid) {
   ASSERT_NE(decoded, nullptr);
 
   // Verify that the gain map is present and matches the input.
-  EXPECT_TRUE(decoder->gainMapPresent);
+  ASSERT_TRUE(decoded->gainMap != nullptr);
   // Color+alpha: 4x3 grid of 128x200 tiles.
   EXPECT_EQ(decoded->width, 128u * 4u);
   EXPECT_EQ(decoded->height, 200u * 3u);
@@ -767,7 +761,6 @@ TEST(GainMapTest, DecodeUnsupportedVersion) {
     ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
               AVIF_RESULT_OK);
     // Gain map marked as not present because the metadata is not supported.
-    EXPECT_EQ(decoder->gainMapPresent, false);
     ASSERT_EQ(decoded->gainMap, nullptr);
 
     ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
@@ -775,7 +768,6 @@ TEST(GainMapTest, DecodeUnsupportedVersion) {
     ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
               AVIF_RESULT_OK);
     // Gain map marked as not present because the metadata is not supported.
-    EXPECT_EQ(decoder->gainMapPresent, false);
     ASSERT_EQ(decoded->gainMap, nullptr);
   }
 }
@@ -794,7 +786,6 @@ TEST(GainMapTest, ExtraBytesAfterGainMapMetadataUnsupportedWriterVersion) {
   // Decodes successfully: there are extra bytes at the end of the gain map
   // metadata but that's expected as the writer_version field is higher
   // that supported.
-  EXPECT_EQ(decoder->gainMapPresent, true);
   ASSERT_NE(decoded->gainMap, nullptr);
 }
 
@@ -825,7 +816,6 @@ TEST(GainMapTest, DecodeInvalidFtyp) {
   ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
             AVIF_RESULT_OK);
   // The gain map is ignored because the 'tmap' brand is not present.
-  EXPECT_EQ(decoder->gainMapPresent, false);
   ASSERT_EQ(decoded->gainMap, nullptr);
 }
 

@@ -345,11 +345,7 @@ int main(int argc, char * argv[])
 
     printf("Image decoded: %s\n", inputFilename);
     printf("Image details:\n");
-    avifBool gainMapPresent = AVIF_FALSE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    gainMapPresent = decoder->gainMapPresent;
-#endif
-    avifImageDump(decoder->image, 0, 0, gainMapPresent, decoder->progressiveState);
+    avifImageDump(decoder->image, 0, 0, decoder->progressiveState);
 
     if (ignoreICC && (decoder->image->icc.size > 0)) {
         printf("[--ignore-icc] Discarding ICC profile.\n");

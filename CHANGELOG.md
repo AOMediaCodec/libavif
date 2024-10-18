@@ -20,7 +20,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   Simplify gain map API: remove the enableParsingGainMapMetadata setting, now gain
   map metadata is always parsed if present and if this feature is compiled in.
   Replace enableDecodingGainMap and ignoreColorAndAlpha with a bit field to choose
-  image content to decode.
+  image content to decode. Remove gainMapPresent: users can check if
+  decoder->image->gainMap != NULL instead.
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Update aom.cmd/LocalAom.cmake: v3.10.0
 * Update avm.cmd: research-v8.0.0
@@ -493,7 +494,7 @@ code.
 * Update libavif.pc.cmake (#692)
 * In 32-bit builds set dav1d's frame_size_limit setting to 8192*8192
 * Allocate alpha alongside YUV (if necessary) during y4m decode to avoid incorrect alphaRowBytes math
-* Change AVIF_CONTENT_fuzzer to be more like Chrome
+* Change avif_decode_fuzzer to be more like Chrome
 * Update codec_dav1d.c for the new threading model
 * Generalized ipco property deduplication
 * Rename avifParseMoovBox to avifParseMovieBox for consistency

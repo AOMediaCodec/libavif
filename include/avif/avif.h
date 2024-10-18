@@ -1314,11 +1314,6 @@ typedef struct avifDecoder
 
     // Image content to decode (if present). Defaults to AVIF_CONTENT_DECODE_DEFAULT.
     avifImageContentTypeFlags imageContentToDecode;
-
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    // True when avifDecoderParse() detects a supported gain map.
-    avifBool gainMapPresent;
-#endif
 } avifDecoder;
 
 // Returns NULL in case of memory allocation failure.

@@ -54,7 +54,7 @@ avifResult PrintMetadataCommand::Run() {
               << decoder->diag.error << ")\n";
     return result;
   }
-  if (!decoder->gainMapPresent) {
+  if (decoder->image->gainMap == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;

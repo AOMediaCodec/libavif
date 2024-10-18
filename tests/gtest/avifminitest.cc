@@ -111,7 +111,8 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   ASSERT_EQ(avifDecoderReadMemory(decoder_meta.get(), decoded_meta.get(),
                                   encoded_meta.data, encoded_meta.size),
             AVIF_RESULT_OK);
-  EXPECT_EQ(decoder_meta->gainMapPresent, decoder_mini->gainMapPresent);
+  EXPECT_EQ(decoder_meta->image->gainMap != nullptr,
+            decoder_mini->image->gainMap != nullptr);
 
   // Only the container changed. The pixels, features and metadata should be
   // identical.
