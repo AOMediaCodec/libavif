@@ -2479,14 +2479,9 @@ int main(int argc, char * argv[])
     }
     printf("AVIF to be written:%s\n", lossyHint);
     const avifImage * avif = gridCells ? gridCells[0] : image;
-    avifBool gainMapPresent = AVIF_FALSE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-    gainMapPresent = (avif->gainMap && avif->gainMap->image);
-#endif
     avifImageDump(avif,
                   settings.gridDims[0],
                   settings.gridDims[1],
-                  gainMapPresent,
                   settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
     avifEncodedByteSizes byteSizes = { 0, 0, 0 };

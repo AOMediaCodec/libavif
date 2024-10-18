@@ -41,7 +41,6 @@ avifResult PrintMetadataCommand::Run() {
   if (decoder == NULL) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  decoder->enableParsingGainMapMetadata = true;
 
   avifResult result =
       avifDecoderSetIOFile(decoder.get(), arg_input_filename_.value().c_str());
@@ -55,7 +54,7 @@ avifResult PrintMetadataCommand::Run() {
               << decoder->diag.error << ")\n";
     return result;
   }
-  if (!decoder->gainMapPresent) {
+  if (decoder->image->gainMap == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
