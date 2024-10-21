@@ -819,6 +819,19 @@ TEST(GainMapTest, DecodeInvalidFtyp) {
   ASSERT_EQ(decoded->gainMap, nullptr);
 }
 
+TEST(GainMapTest, DecodeInvalidGamma) {
+  const std::string path =
+      std::string(data_path) + "seine_sdr_gainmap_gammazero.avif";
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+  // Fails to decode: invalid because the gain map gamma is zero.
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+            AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE);
+}
+
 #define EXPECT_FRACTION_NEAR(numerator, denominator, expected)     \
   EXPECT_NEAR(std::abs((double)numerator / denominator), expected, \
               expected * 0.001);
