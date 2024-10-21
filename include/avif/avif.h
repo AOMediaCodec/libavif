@@ -1174,20 +1174,20 @@ typedef enum avifProgressiveState
 } avifProgressiveState;
 AVIF_API const char * avifProgressiveStateToString(avifProgressiveState progressiveState);
 
-// Types of image content that can be encoded/decoded.
+// Types of image content that can be decoded.
 typedef enum avifImageContentTypeFlag
 {
-    AVIF_CONTENT_NONE = 0,
-    AVIF_CONTENT_COLOR = (1 << 1),
-    AVIF_CONTENT_ALPHA = (1 << 2),
+    AVIF_IMAGE_CONTENT_NONE = 0,
+    // Color only or alpha only is not currently supported.
+    AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA = (1 << 1) | (1 << 2),
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    AVIF_CONTENT_GAIN_MAP = (1 << 3),
-    AVIF_CONTENT_ALL = AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA | AVIF_CONTENT_GAIN_MAP,
+    AVIF_IMAGE_CONTENT_GAIN_MAP = (1 << 3),
+    AVIF_IMAGE_CONTENT_ALL = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_GAIN_MAP,
 #else
-    AVIF_CONTENT_ALL = AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA,
+    AVIF_IMAGE_CONTENT_ALL = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
 #endif
 
-    AVIF_CONTENT_DECODE_DEFAULT = AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA,
+    AVIF_IMAGE_CONTENT_DECODE_DEFAULT = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
 } avifImageContentTypeFlag;
 typedef uint32_t avifImageContentTypeFlags;
 
@@ -1312,7 +1312,7 @@ typedef struct avifDecoder
 
     // Version 1.1.0 ends here. Add any new members after this line.
 
-    // Image content to decode (if present). Defaults to AVIF_CONTENT_DECODE_DEFAULT.
+    // Image content to decode (if present). Defaults to AVIF_IMAGE_CONTENT_DECODE_DEFAULT.
     avifImageContentTypeFlags imageContentToDecode;
 } avifDecoder;
 
@@ -1376,7 +1376,7 @@ AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint3
 // from the luma plane of decoder->image, and alpha if any. The corresponding rows from the chroma planes,
 // if any, can also be accessed (half rounded up if subsampled, same number of rows otherwise).
 // If a gain map is present and AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is on and
-// (imageContentToDecode & AVIF_CONTENT_GAIN_MAP) is non zero, the gain map's planes can also be accessed
+// (imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) is nonzero, the gain map's planes can also be accessed
 // in the same way. If the gain map's height is different from the main image, then the number of
 // available gain map rows is at least:
 // roundf((float)decoded_row_count / decoder->image->height * decoder->image->gainMap.image->height)

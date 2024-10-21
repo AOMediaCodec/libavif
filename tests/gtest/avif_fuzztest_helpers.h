@@ -285,16 +285,14 @@ inline auto ArbitraryBaseAvifDecoder() {
 inline auto ArbitraryAvifDecoderWithGainMapOptions() {
   // Always decode at least the color image, since most tests
   // assume that if the file/buffer is successfully decoded.
-  return fuzztest::Map(
-      AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
-      fuzztest::ElementOf<avifImageContentTypeFlags>({
-        AVIF_CONTENT_COLOR, AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA
+  return fuzztest::Map(AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
+                       fuzztest::ElementOf<avifImageContentTypeFlags>({
+                         AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-            ,
-            AVIF_CONTENT_COLOR | AVIF_CONTENT_GAIN_MAP,
-            AVIF_CONTENT_COLOR | AVIF_CONTENT_ALPHA | AVIF_CONTENT_GAIN_MAP
+                         , AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA |
+                               AVIF_IMAGE_CONTENT_GAIN_MAP
 #endif
-      }));
+                       }));
 }
 
 // Generator for an arbitrary DecoderPtr.

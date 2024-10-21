@@ -91,7 +91,7 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   ASSERT_NE(decoded_mini, nullptr);
   DecoderPtr decoder_mini(avifDecoderCreate());
   ASSERT_NE(decoder_mini, nullptr);
-  decoder_mini->imageContentToDecode |= AVIF_CONTENT_GAIN_MAP;
+  decoder_mini->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
   ASSERT_EQ(avifDecoderReadMemory(decoder_mini.get(), decoded_mini.get(),
                                   encoded_mini.data, encoded_mini.size),
             AVIF_RESULT_OK);
@@ -107,7 +107,7 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   ASSERT_NE(decoded_meta, nullptr);
   DecoderPtr decoder_meta(avifDecoderCreate());
   ASSERT_NE(decoder_meta, nullptr);
-  decoder_meta->imageContentToDecode |= AVIF_CONTENT_GAIN_MAP;
+  decoder_meta->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
   ASSERT_EQ(avifDecoderReadMemory(decoder_meta.get(), decoded_meta.get(),
                                   encoded_meta.data, encoded_meta.size),
             AVIF_RESULT_OK);

@@ -33,6 +33,29 @@ TEST(AvifDecodeTest, ColorGridAlphaNoGrid) {
   EXPECT_GT(decoder->image->alphaRowBytes, 0u);
 }
 
+TEST(AvifDecodeTest, ImageContentToDecodeNone) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+  for (const std::string file_name :
+       {"paris_icc_exif_xmp.avif", "draw_points_idat.avif",
+        "sofa_grid1x5_420.avif", "color_grid_alpha_nogrid.avif",
+        "seine_sdr_gainmap_srgb.avif", "draw_points_idat_progressive.avif"}) {
+    SCOPED_TRACE(file_name);
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    // Do not decode anything.
+    decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_NONE;
+    ASSERT_EQ(avifDecoderSetIOFile(
+                  decoder.get(), (std::string(data_path) + file_name).c_str()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+        << decoder->diag.error;
+    EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
+    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_NO_CONTENT);
+  }
+}
+
 TEST(AvifDecodeTest, ParseEmptyData) {
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);

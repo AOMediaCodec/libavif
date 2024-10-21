@@ -248,7 +248,7 @@ int main(int argc, char * argv[])
         decoder->imageDimensionLimit = imageDimensionLimit;
         decoder->strictFlags = strictFlags;
         decoder->allowProgressive = allowProgressive;
-        decoder->imageContentToDecode = AVIF_CONTENT_ALL;
+        decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_ALL;
 
         avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
         if (result != AVIF_RESULT_OK) {

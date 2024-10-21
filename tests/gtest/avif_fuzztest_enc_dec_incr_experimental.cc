@@ -86,7 +86,7 @@ void EncodeDecodeGridValid(ImagePtr image, EncoderPtr encoder,
   ASSERT_EQ(finish_result, AVIF_RESULT_OK) << avifResultToString(finish_result);
 
   const bool expect_whole_file_read =
-      (decoder->imageContentToDecode == AVIF_CONTENT_ALL);
+      (decoder->imageContentToDecode == AVIF_IMAGE_CONTENT_ALL);
   const avifResult decode_result = DecodeNonIncrementallyAndIncrementally(
       encoded_data, decoder.get(), is_encoded_data_persistent,
       give_size_hint_to_decoder, /*use_nth_image_api=*/true, cell_height,

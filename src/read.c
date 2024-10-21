@@ -1452,15 +1452,11 @@ static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, uin
     return AVIF_RESULT_OK;
 }
 
-// Creates the tiles and associate them to the items in the order of the 'dimg' association.
-static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder,
-                                                    avifDecoderItem * gridItem,
-                                                    avifItemCategory itemCategory,
-                                                    const uint32_t * dimgIdxToItemIdx,
-                                                    uint32_t numTiles)
+// Copies the codec type property (av1C or av2C) from the first grid tile to the grid item.
+// Also checks that all tiles have the same codec type and that it's valid.
+static avifResult avifAdoptGridTileCodecType(avifDecoder * decoder, avifDecoderItem * gridItem, const uint32_t * dimgIdxToItemIdx, uint32_t numTiles)
 {
     avifDecoderItem * firstTileItem = NULL;
-    avifBool progressive = AVIF_TRUE;
     for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
         const uint32_t itemIdx = dimgIdxToItemIdx[dimgIdx];
         AVIF_ASSERT_OR_RETURN(itemIdx < gridItem->meta->items.count);
@@ -1498,20 +1494,8 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder,
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
 
-        const avifTile * tile =
-            avifDecoderDataCreateTile(decoder->data, tileCodecType, item->width, item->height, avifDecoderItemOperatingPoint(item));
-        AVIF_CHECKERR(tile != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-        AVIF_CHECKRES(avifCodecDecodeInputFillFromDecoderItem(tile->input,
-                                                              item,
-                                                              decoder->allowProgressive,
-                                                              decoder->imageCountLimit,
-                                                              decoder->io->sizeHint,
-                                                              &decoder->diag));
-        tile->input->itemCategory = itemCategory;
-
         if (firstTileItem == NULL) {
             firstTileItem = item;
-
             // Adopt the configuration property of the first image item tile, so that it can be queried from
             // the top-level color/alpha item during avifDecoderReset().
             const avifCodecType codecType = avifGetCodecType(item->type);
@@ -1536,6 +1520,55 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder,
                                   (const char *)firstTileItem->type);
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
+    }
+    return AVIF_RESULT_OK;
+}
+
+// If the item is a grid, copies the codec type property (av1C or av2C) from the first grid tile to the grid item.
+// Also checks that all tiles have the same codec type and that it's valid.
+static avifResult avifAdoptGridTileCodecTypeIfNeeded(avifDecoder * decoder, avifDecoderItem * item, const avifTileInfo * info)
+{
+    if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
+        // The number of tiles was verified in avifDecoderItemReadAndParse().
+        const uint32_t numTiles = info->grid.rows * info->grid.columns;
+        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(numTiles * sizeof(uint32_t));
+        AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, numTiles, item);
+        if (result == AVIF_RESULT_OK) {
+            result = avifAdoptGridTileCodecType(decoder, item, dimgIdxToItemIdx, numTiles);
+        }
+        avifFree(dimgIdxToItemIdx);
+        AVIF_CHECKRES(result);
+    }
+    return AVIF_RESULT_OK;
+}
+
+// Creates the tiles and associate them to the items in the order of the 'dimg' association.
+static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder,
+                                                    avifDecoderItem * gridItem,
+                                                    avifItemCategory itemCategory,
+                                                    const uint32_t * dimgIdxToItemIdx,
+                                                    uint32_t numTiles)
+{
+    avifBool progressive = AVIF_TRUE;
+    for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
+        const uint32_t itemIdx = dimgIdxToItemIdx[dimgIdx];
+        AVIF_ASSERT_OR_RETURN(itemIdx < gridItem->meta->items.count);
+        avifDecoderItem * item = gridItem->meta->items.item[itemIdx];
+
+        const avifCodecType tileCodecType = avifGetCodecType(item->type);
+        AVIF_CHECKERR(tileCodecType != AVIF_CODEC_TYPE_UNKNOWN, AVIF_RESULT_INVALID_IMAGE_GRID);
+        const avifTile * tile =
+            avifDecoderDataCreateTile(decoder->data, tileCodecType, item->width, item->height, avifDecoderItemOperatingPoint(item));
+        AVIF_CHECKERR(tile != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        AVIF_CHECKRES(avifCodecDecodeInputFillFromDecoderItem(tile->input,
+                                                              item,
+                                                              decoder->allowProgressive,
+                                                              decoder->imageCountLimit,
+                                                              decoder->io->sizeHint,
+                                                              &decoder->diag));
+        tile->input->itemCategory = itemCategory;
+
         if (!item->progressive) {
             progressive = AVIF_FALSE;
         }
@@ -4641,7 +4674,7 @@ avifDecoder * avifDecoderCreate(void)
     decoder->imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     decoder->imageCountLimit = AVIF_DEFAULT_IMAGE_COUNT_LIMIT;
     decoder->strictFlags = AVIF_STRICT_ENABLED;
-    decoder->imageContentToDecode = AVIF_CONTENT_DECODE_DEFAULT;
+    decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_DECODE_DEFAULT;
     return decoder;
 }
 
@@ -5359,7 +5392,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
     }
 
-    if (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) {
+    if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) {
         gainMap->image = avifImageCreateEmpty();
         AVIF_CHECKERR(gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
 
@@ -5440,7 +5473,7 @@ static avifResult avifDecoderDataFindSampleTransformImageItem(avifDecoderData * 
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
-
+// XXX
 static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifItemCategory itemCategory)
 {
     const uint32_t previousTileCount = decoder->data->tiles.count;
@@ -5747,7 +5780,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     decoder->image->gainMap = NULL;
                 } else {
                     AVIF_CHECKRES(tmapParsingRes);
-                    if (decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) {
+                    if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) {
                         mainItems[AVIF_ITEM_GAIN_MAP] = gainMapItem;
                         codecType[AVIF_ITEM_GAIN_MAP] = gainMapCodecType;
                     }
@@ -5864,18 +5897,17 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 continue;
             }
 
-            if (!(decoder->imageContentToDecode & AVIF_CONTENT_COLOR) && (c == AVIF_ITEM_COLOR)) {
-                continue;
-            }
-            if (!(decoder->imageContentToDecode & AVIF_CONTENT_ALPHA) && (c == AVIF_ITEM_ALPHA)) {
-                continue;
-            }
-
             if (avifIsAlpha((avifItemCategory)c) && !mainItems[c]->width && !mainItems[c]->height) {
                 // NON-STANDARD: Alpha subimage does not have an ispe property; adopt width/height from color item
                 AVIF_ASSERT_OR_RETURN(!(decoder->strictFlags & AVIF_STRICT_ALPHA_ISPE_REQUIRED));
                 mainItems[c]->width = mainItems[AVIF_ITEM_COLOR]->width;
                 mainItems[c]->height = mainItems[AVIF_ITEM_COLOR]->height;
+            }
+
+            AVIF_CHECKRES(avifAdoptGridTileCodecTypeIfNeeded(decoder, mainItems[c], &data->tileInfos[c]));
+
+            if (!(decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) && (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_ALPHA)) {
+                continue;
             }
 
             AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->tileInfos[c], mainItems[c], (avifItemCategory)c));
@@ -6588,7 +6620,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
         if (c == AVIF_ITEM_GAIN_MAP) {
             const avifImage * const gainMap = decoder->image->gainMap ? decoder->image->gainMap->image : NULL;
-            if ((decoder->imageContentToDecode & AVIF_CONTENT_GAIN_MAP) && gainMap != NULL && gainMap->height != 0) {
+            if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) && gainMap != NULL && gainMap->height != 0) {
                 uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
                 if (gainMap->height != decoder->image->height) {
                     const uint32_t scaledGainMapRowCount =
