@@ -5473,7 +5473,7 @@ static avifResult avifDecoderDataFindSampleTransformImageItem(avifDecoderData * 
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
-// XXX
+
 static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifItemCategory itemCategory)
 {
     const uint32_t previousTileCount = decoder->data->tiles.count;
