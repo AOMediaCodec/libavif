@@ -64,9 +64,10 @@ TEST_P(AvmTest, EncodeDecode) {
 INSTANTIATE_TEST_SUITE_P(Basic, AvmTest,
                          Combine(/*width=*/Values(12), /*height=*/Values(34),
                                  /*depth=*/Values(8),
-                                 Values(AVIF_PIXEL_FORMAT_YUV420,
+                                 Values(AVIF_PIXEL_FORMAT_YUV400,
+                                        AVIF_PIXEL_FORMAT_YUV420,
                                         AVIF_PIXEL_FORMAT_YUV444),
-                                 /*alpha=*/Values(true)));
+                                 /*alpha=*/Values(false, true)));
 
 INSTANTIATE_TEST_SUITE_P(Tiny, AvmTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
