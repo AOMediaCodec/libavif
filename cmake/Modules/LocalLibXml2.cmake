@@ -1,4 +1,4 @@
-set(AVIF_LOCAL_LIBXML_GIT_TAG "v2.12.7")
+set(AVIF_LOCAL_LIBXML_GIT_TAG "v2.13.4")
 
 set(LIB_FILENAME "${AVIF_SOURCE_DIR}/ext/libxml2/install.libavif/lib/${AVIF_LIBRARY_PREFIX}xml2${CMAKE_STATIC_LIBRARY_SUFFIX}")
 if(EXISTS "${LIB_FILENAME}")
@@ -31,7 +31,7 @@ else()
 
     FetchContent_Declare(
         libxml2
-        GIT_REPOSITORY "https://gitlab.gnome.org/GNOME/libxml2.git"
+        GIT_REPOSITORY "https://github.com/GNOME/libxml2.git"
         BINARY_DIR "${LIBXML2_BINARY_DIR}"
         GIT_TAG "${AVIF_LOCAL_LIBXML_GIT_TAG}"
         GIT_SHALLOW ON
