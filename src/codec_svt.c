@@ -152,6 +152,12 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->qp = quantizer;
 
+        // Set gop constraint rc to 0, otherwise encoder won't run
+        svt_config->gop_constraint_rc = 0;
+
+        // Set target socket to -1 (both sockets)
+        svt_config->target_socket = -1;
+
         if (tileRowsLog2 != 0) {
             svt_config->tile_rows = tileRowsLog2;
         }
