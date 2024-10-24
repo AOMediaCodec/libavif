@@ -51,7 +51,7 @@ TonemapCommand::TonemapCommand()
 avifResult TonemapCommand::Run() {
   avifContentLightLevelInformationBox clli_box = {};
   bool clli_set = false;
-  if (arg_clli_str_.value().size() > 0) {
+  if (!arg_clli_str_.value().empty()) {
     std::vector<uint16_t> clli;
     if (!ParseList(arg_clli_str_, ',', 2, &clli)) {
       std::cerr << "Invalid clli values, expected format: maxCLL,maxPALL where "
