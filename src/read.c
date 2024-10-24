@@ -1454,7 +1454,10 @@ static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, uin
 
 // Copies the codec type property (av1C or av2C) from the first grid tile to the grid item.
 // Also checks that all tiles have the same codec type and that it's valid.
-static avifResult avifAdoptGridTileCodecType(avifDecoder * decoder, avifDecoderItem * gridItem, const uint32_t * dimgIdxToItemIdx, uint32_t numTiles)
+static avifResult avifDecoderAdoptGridTileCodecType(avifDecoder * decoder,
+                                                    avifDecoderItem * gridItem,
+                                                    const uint32_t * dimgIdxToItemIdx,
+                                                    uint32_t numTiles)
 {
     avifDecoderItem * firstTileItem = NULL;
     for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
@@ -1526,7 +1529,7 @@ static avifResult avifAdoptGridTileCodecType(avifDecoder * decoder, avifDecoderI
 
 // If the item is a grid, copies the codec type property (av1C or av2C) from the first grid tile to the grid item.
 // Also checks that all tiles have the same codec type and that it's valid.
-static avifResult avifAdoptGridTileCodecTypeIfNeeded(avifDecoder * decoder, avifDecoderItem * item, const avifTileInfo * info)
+static avifResult avifDecoderAdoptGridTileCodecTypeIfNeeded(avifDecoder * decoder, avifDecoderItem * item, const avifTileInfo * info)
 {
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // The number of tiles was verified in avifDecoderItemReadAndParse().
@@ -1535,7 +1538,7 @@ static avifResult avifAdoptGridTileCodecTypeIfNeeded(avifDecoder * decoder, avif
         AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, numTiles, item);
         if (result == AVIF_RESULT_OK) {
-            result = avifAdoptGridTileCodecType(decoder, item, dimgIdxToItemIdx, numTiles);
+            result = avifDecoderAdoptGridTileCodecType(decoder, item, dimgIdxToItemIdx, numTiles);
         }
         avifFree(dimgIdxToItemIdx);
         AVIF_CHECKRES(result);
@@ -5904,7 +5907,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 mainItems[c]->height = mainItems[AVIF_ITEM_COLOR]->height;
             }
 
-            AVIF_CHECKRES(avifAdoptGridTileCodecTypeIfNeeded(decoder, mainItems[c], &data->tileInfos[c]));
+            AVIF_CHECKRES(avifDecoderAdoptGridTileCodecTypeIfNeeded(decoder, mainItems[c], &data->tileInfos[c]));
 
             if (!(decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) && (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_ALPHA)) {
                 continue;
