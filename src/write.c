@@ -2596,7 +2596,19 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 
     const uint32_t orientationMinus1 = avifImageIrotImirToExifOrientation(image) - 1;
 
-    const avifBool hasExplicitCodecTypes = AVIF_FALSE; // 'av01' and 'av1C' known from 'avif' minor_version field of FileTypeBox.
+    uint8_t infeType[4];
+    uint8_t codecConfigType[4];
+    avifBool hasExplicitCodecTypes;
+    if (encoder->codecChoice == AVIF_CODEC_CHOICE_AVM) {
+        memcpy(infeType, "av02", 4);
+        memcpy(codecConfigType, "av2C", 4); // Same syntax as 'av1C'.
+        hasExplicitCodecTypes = AVIF_TRUE;
+    } else {
+        memcpy(infeType, "av01", 4);
+        memcpy(codecConfigType, "av1C", 4);
+        // 'av01' and 'av1C' are implied by 'avif' minor_version field of FileTypeBox. No need to write them.
+        hasExplicitCodecTypes = AVIF_FALSE;
+    }
 
     uint32_t smallDimensionsFlag = image->width <= (1 << 7) && image->height <= (1 << 7);
     const uint32_t codecConfigSize = 4; // 'av1C' always uses 4 bytes.
@@ -2676,8 +2688,13 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 
     if (hasExplicitCodecTypes) {
         // bit(32) infe_type;
+        for (int i = 0; i < 4; ++i) {
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, infeType[i], 8));
+        }
         // bit(32) codec_config_type;
-        AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
+        for (int i = 0; i < 4; ++i) {
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, codecConfigType[i], 8));
+        }
     }
 
     // High Dynamic Range properties
