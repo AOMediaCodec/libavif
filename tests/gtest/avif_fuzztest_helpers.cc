@@ -157,16 +157,9 @@ DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
 ImagePtr AvifImageToUniquePtr(avifImage* image) { return ImagePtr(image); }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
-                                      GainMapDecodeMode gain_map_decode_mode) {
-  decoder->enableParsingGainMapMetadata =
-      (gain_map_decode_mode == GainMapDecodeMode::kMetadataOnly ||
-       gain_map_decode_mode == GainMapDecodeMode::kDecode);
-  decoder->enableDecodingGainMap =
-      (gain_map_decode_mode == GainMapDecodeMode::kDecode);
-  // Do not fuzz 'ignoreColorAndAlpha' since most tests assume that if the
-  // file/buffer is successfully decoded, then the main image was decoded, which
-  // is no longer the case when this option is on.
+DecoderPtr AddGainMapOptionsToDecoder(
+    DecoderPtr decoder, avifImageContentTypeFlags image_content_to_decode) {
+  decoder->imageContentToDecode = image_content_to_decode;
   return decoder;
 }
 

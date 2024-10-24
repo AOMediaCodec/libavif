@@ -51,9 +51,8 @@ DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                              uint32_t image_count_limit,
                              avifStrictFlags strict_flags);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-enum class GainMapDecodeMode { kDontDecode, kMetadataOnly, kDecode };
-DecoderPtr AddGainMapOptionsToDecoder(DecoderPtr decoder,
-                                      GainMapDecodeMode gain_map_decode_mode);
+DecoderPtr AddGainMapOptionsToDecoder(
+    DecoderPtr decoder, avifImageContentTypeFlags image_content_to_decode);
 #endif
 
 //------------------------------------------------------------------------------
@@ -281,13 +280,18 @@ inline auto ArbitraryBaseAvifDecoder() {
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
 // Generator for an arbitrary DecoderPtr with base options and gain map
-// options fuzzed, with the exception of 'ignoreColorAndAlpha' (because it would
-// break most tests' assumptions).
+// options fuzzed.
 inline auto ArbitraryAvifDecoderWithGainMapOptions() {
+  // Always decode at least color+alpha, since most tests
+  // assume that if the file/buffer is successfully decoded.
   return fuzztest::Map(AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
-                       fuzztest::ElementOf({GainMapDecodeMode::kDontDecode,
-                                            GainMapDecodeMode::kMetadataOnly,
-                                            GainMapDecodeMode::kDecode}));
+                       fuzztest::ElementOf<avifImageContentTypeFlags>({
+                         AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA
+#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+                         , AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA |
+                               AVIF_IMAGE_CONTENT_GAIN_MAP
+#endif
+                       }));
 }
 
 // Generator for an arbitrary DecoderPtr.

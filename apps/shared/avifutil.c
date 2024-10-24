@@ -42,12 +42,7 @@ static void printClapFraction(const char * name, int32_t n, int32_t d)
     }
 }
 
-static void avifImageDumpInternal(const avifImage * avif,
-                                  uint32_t gridCols,
-                                  uint32_t gridRows,
-                                  avifBool alphaPresent,
-                                  avifBool gainMapPresent,
-                                  avifProgressiveState progressiveState)
+static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent, avifProgressiveState progressiveState)
 {
     uint32_t width = avif->width;
     uint32_t height = avif->height;
@@ -161,29 +156,23 @@ static void avifImageDumpInternal(const avifImage * avif,
             printf("    * CLLI           : %hu, %hu\n", gainMapImage->clli.maxCLL, gainMapImage->clli.maxPALL);
         }
         printf("\n");
-    } else if (gainMapPresent) {
+    } else if (avif->gainMap != NULL) {
         printf("Present (but ignored)\n");
     } else {
         printf("Absent\n");
     }
-#else
-    (void)gainMapPresent;
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 }
 
-void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool gainMapPresent, avifProgressiveState progressiveState)
+void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)
 {
     const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
-    avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent, gainMapPresent, progressiveState);
+    avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent, progressiveState);
 }
 
 void avifContainerDump(const avifDecoder * decoder)
 {
-    avifBool gainMapPresent = AVIF_FALSE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    gainMapPresent = decoder->gainMapPresent;
-#endif
-    avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent, gainMapPresent, decoder->progressiveState);
+    avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent, decoder->progressiveState);
     if (decoder->imageSequenceTrackPresent) {
         if (decoder->repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repeat Count   : Infinite\n");

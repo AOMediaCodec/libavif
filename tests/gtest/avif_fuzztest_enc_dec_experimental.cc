@@ -61,14 +61,9 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
   EXPECT_EQ(decoded_image->depth, image->depth);
   EXPECT_EQ(decoded_image->yuvFormat, image->yuvFormat);
 
-  if (decoder->enableParsingGainMapMetadata) {
-    EXPECT_EQ(decoder->gainMapPresent, image->gainMap != nullptr);
-  } else {
-    EXPECT_FALSE(decoder->gainMapPresent);
-  }
-  ASSERT_EQ(decoded_image->gainMap != nullptr, decoder->gainMapPresent);
-  if (decoder->gainMapPresent && decoder->enableDecodingGainMap) {
-    ASSERT_NE(decoded_image->gainMap, nullptr);
+  EXPECT_EQ(decoded_image->gainMap != nullptr, image->gainMap != nullptr);
+  if (decoded_image->gainMap != nullptr &&
+      (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP)) {
     ASSERT_NE(decoded_image->gainMap->image, nullptr);
     EXPECT_EQ(decoded_image->gainMap->image->width,
               image->gainMap->image->width);
@@ -81,9 +76,7 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
     EXPECT_EQ(image->gainMap->image->gainMap, nullptr);
     EXPECT_EQ(decoded_image->gainMap->image->alphaPlane, nullptr);
 
-    if (decoder->enableParsingGainMapMetadata) {
-      CheckGainMapMetadataMatches(*decoded_image->gainMap, *image->gainMap);
-    }
+    CheckGainMapMetadataMatches(*decoded_image->gainMap, *image->gainMap);
   }
 
   // Verify that an opaque input leads to an opaque output.

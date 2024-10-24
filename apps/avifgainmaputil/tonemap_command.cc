@@ -71,8 +71,7 @@ avifResult TonemapCommand::Run() {
   if (decoder == NULL) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  decoder->enableDecodingGainMap = true;
-  decoder->enableParsingGainMapMetadata = true;
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
   avifResult result = ReadAvif(decoder.get(), arg_input_filename_,
                                arg_image_read_.ignore_profile);
   if (result != AVIF_RESULT_OK) {

@@ -248,11 +248,8 @@ int main(int argc, char * argv[])
         decoder->imageDimensionLimit = imageDimensionLimit;
         decoder->strictFlags = strictFlags;
         decoder->allowProgressive = allowProgressive;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        // Decode the gain map (if present) to allow showing its info.
-        decoder->enableParsingGainMapMetadata = AVIF_TRUE;
-        decoder->enableDecodingGainMap = AVIF_TRUE;
-#endif
+        decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_ALL;
+
         avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "Cannot open file for read: %s\n", inputFilename);
@@ -348,11 +345,7 @@ int main(int argc, char * argv[])
 
     printf("Image decoded: %s\n", inputFilename);
     printf("Image details:\n");
-    avifBool gainMapPresent = AVIF_FALSE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    gainMapPresent = decoder->gainMapPresent;
-#endif
-    avifImageDump(decoder->image, 0, 0, gainMapPresent, decoder->progressiveState);
+    avifImageDump(decoder->image, 0, 0, decoder->progressiveState);
 
     if (ignoreICC && (decoder->image->icc.size > 0)) {
         printf("[--ignore-icc] Discarding ICC profile.\n");
