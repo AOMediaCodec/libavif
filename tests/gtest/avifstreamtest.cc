@@ -167,6 +167,32 @@ TEST(StreamTest, Roundtrip) {
   EXPECT_FALSE(avifROStreamSkip(&ro_stream, /*byteCount=*/1));
 }
 
+TEST(StreamTest, SkipBits) {
+  const uint8_t data[40] = {};
+  avifROData ro_data = {data, sizeof(data)};
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
+  avifROStream ro_stream;
+  avifROStreamStart(&ro_stream, &ro_data, &diag, "diagContext");
+
+  EXPECT_TRUE(avifROStreamSkip(&ro_stream, 32));
+  EXPECT_EQ(avifROStreamOffset(&ro_stream), 32);
+  EXPECT_EQ(ro_stream.numUsedBitsInPartialByte, 0);
+
+  uint32_t unused;
+  EXPECT_TRUE(avifROStreamReadBitsU32(&ro_stream, &unused, 5));
+  EXPECT_EQ(avifROStreamOffset(&ro_stream), 33);
+  EXPECT_EQ(ro_stream.numUsedBitsInPartialByte, 5);
+
+  EXPECT_TRUE(avifROStreamSkipBits(&ro_stream, 1));
+  EXPECT_EQ(avifROStreamOffset(&ro_stream), 33);
+  EXPECT_EQ(ro_stream.numUsedBitsInPartialByte, 6);
+
+  EXPECT_TRUE(avifROStreamSkipBits(&ro_stream, 2));
+  EXPECT_EQ(avifROStreamOffset(&ro_stream), 33);
+  EXPECT_EQ(ro_stream.numUsedBitsInPartialByte, 0);
+}
+
 TEST(StreamTest, WriteBitsLimit) {
   testutil::AvifRwData rw_data;
   avifRWStream rw_stream;
