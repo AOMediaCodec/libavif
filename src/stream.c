@@ -153,6 +153,9 @@ avifBool avifROStreamSkipBits(avifROStream * stream, size_t bitCount)
         const size_t padding = AVIF_MIN(8 - stream->numUsedBitsInPartialByte, bitCount);
         stream->numUsedBitsInPartialByte = (stream->numUsedBitsInPartialByte + padding) % 8;
         bitCount -= padding;
+        if (stream->numUsedBitsInPartialByte != 0) {
+            return AVIF_TRUE;
+        }
     }
     const size_t num_bytes = (bitCount + 7) / 8;
     AVIF_CHECK(avifROStreamSkip(stream, num_bytes));
