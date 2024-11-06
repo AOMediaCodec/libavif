@@ -4,7 +4,7 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
-git clone -b 3.0.3 --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
+git clone -b 3.0.4 --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
 
 # Set WITH_CRT_DLL to ON to compile libjpeg-turbo with /MD (use the DLL
 # version of the run-time library) instead of /MT (use the static version
