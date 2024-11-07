@@ -390,7 +390,7 @@ avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_
 
 avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t usertype[16], const uint8_t * boxPayload, size_t boxPayloadLength)
 {
-    AVIF_CHECKERR(image->numProperties < SIZE_MAX, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(image->numProperties < SIZE_MAX / sizeof(avifImageItemProperty), AVIF_RESULT_INVALID_ARGUMENT);
     // Shallow copy the current properties.
     const size_t numProperties = image->numProperties + 1;
     avifImageItemProperty * const properties = avifAlloc(numProperties * sizeof(properties[0]));

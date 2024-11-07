@@ -750,9 +750,9 @@ typedef struct avifImageItemProperty
 {
     uint8_t boxtype[4];    // boxtype as defined in ISO/IEC 14496-12.
     uint8_t usertype[16];  // Universally Unique IDentifier as defined in IETF RFC 4122 and ISO/IEC 9834-8.
-                           // Unused unless boxtype is "uuid".
+                           // Used only when boxtype is "uuid".
     avifRWData boxPayload; // BoxPayload as defined in ISO/IEC 14496-12.
-                           // Starts with the version and flags fields in case of a FullBox.
+                           // Starts with the version (1 byte) and flags (3 bytes) fields in case of a FullBox.
 } avifImageItemProperty;
 
 // ---------------------------------------------------------------------------
@@ -824,7 +824,7 @@ typedef struct avifImage
     // Other properties attached to this image item (primary or gainmap).
     // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
     // At encoding: Ignored.
-    avifImageItemProperty * properties; // Defined if numProperties is at least 1.
+    avifImageItemProperty * properties; // NULL only if numProperties is 0.
     size_t numProperties;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
