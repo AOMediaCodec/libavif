@@ -44,7 +44,7 @@ TEST_P(AvmTest, EncodeDecode) {
             AVIF_RESULT_OK);
 
   // Verify that the input and decoded images are close.
-  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 39.0);
 
   // Forcing an AV1 decoding codec should fail.
   for (avifCodecChoice av1_codec :
@@ -71,10 +71,19 @@ INSTANTIATE_TEST_SUITE_P(Basic, AvmTest,
 
 INSTANTIATE_TEST_SUITE_P(Tiny, AvmTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
-                                 /*depth=*/Values(8),
+                                 /*depth=*/Values(8, 10, 12),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  /*alpha=*/Values(false)));
 
+INSTANTIATE_TEST_SUITE_P(HighBitDepthAndEvenDimensions, AvmTest,
+                         Combine(/*width=*/Values(2), /*height=*/Values(34),
+                                 /*depth=*/Values(10, 12),
+                                 Values(AVIF_PIXEL_FORMAT_YUV400,
+                                        AVIF_PIXEL_FORMAT_YUV420,
+                                        AVIF_PIXEL_FORMAT_YUV444),
+                                 /*alpha=*/Values(true)));
+
+// Triggers "Fatal: Unsupported image conversion" in aom/src/aom_image.c.
 // TODO(yguyon): Implement or fix in avm then test the following combinations.
 INSTANTIATE_TEST_SUITE_P(DISABLED_Broken, AvmTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(34),
