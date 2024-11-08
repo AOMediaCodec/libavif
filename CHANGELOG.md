@@ -30,6 +30,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
   utility functions.
 
+### Added since 1.1.1
+* Add the properties and numProperties fields to avifImage. They are filled by
+  the avifDecoder instance with the properties unrecognized by libavif.
+
 ## [1.1.1] - 2024-07-30
 
 ### Changed since 1.1.0
