@@ -2380,7 +2380,7 @@ int main(int argc, char * argv[])
 #endif
             if (!matrixCoefficientsAreLosslessCompatible && !using400) {
 #if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-                fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0) or YCgCo-Re/Ro (--cicp x/x/15 or x/x/16); Output might not be lossless.\n");
+                fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0) or YCgCo-Re/Ro (--cicp x/x/16 or x/x/17); Output might not be lossless.\n");
 #else
                 fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0); Output might not be lossless.\n");
 #endif
