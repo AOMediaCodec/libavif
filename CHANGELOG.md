@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.1.1
+* Add the properties and numProperties fields to avifImage. They are filled by
+  the avifDecoder instance with the properties unrecognized by libavif.
+
 ### Changed since 1.1.1
 * avifenc: Allow large images to be encoded.
 * Fix empty CMAKE_CXX_FLAGS_RELEASE if -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=OFF
@@ -29,10 +33,6 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifGainMapMetadataDouble structs.
 * Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
   utility functions.
-
-### Added since 1.1.1
-* Add the properties and numProperties fields to avifImage. They are filled by
-  the avifDecoder instance with the properties unrecognized by libavif.
 
 ## [1.1.1] - 2024-07-30
 
