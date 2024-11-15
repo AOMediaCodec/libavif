@@ -52,6 +52,11 @@ function(merge_static_libs target in_target)
     set(source_file ${CMAKE_CURRENT_BINARY_DIR}/${target}_depends.c)
     add_library(${target} STATIC ${source_file})
 
+    get_target_property(include_dirs ${in_target} INTERFACE_INCLUDE_DIRECTORIES)
+    if(include_dirs)
+        target_include_directories(${target} PUBLIC ${include_dirs})
+    endif()
+
     avif_collect_deps(${in_target} lib_deps)
 
     foreach(lib ${lib_deps})
