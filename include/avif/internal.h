@@ -154,7 +154,7 @@ AVIF_API avifResult avifImagePushProperty(avifImage * image,
                                           const uint8_t boxtype[4],
                                           const uint8_t usertype[16],
                                           const uint8_t * boxPayload,
-                                          size_t boxPayloadLength);
+                                          size_t boxPayloadSize);
 
 // ---------------------------------------------------------------------------
 

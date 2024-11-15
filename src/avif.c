@@ -238,7 +238,7 @@ static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage 
     dstImage->numProperties = 0;
 
     if (srcImage->numProperties != 0) {
-        dstImage->properties = avifAlloc(srcImage->numProperties * sizeof(srcImage->properties[0]));
+        dstImage->properties = (avifImageItemProperty *)avifAlloc(srcImage->numProperties * sizeof(srcImage->properties[0]));
         AVIF_CHECKERR(dstImage->properties != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         memset(dstImage->properties, 0, srcImage->numProperties * sizeof(srcImage->properties[0]));
         dstImage->numProperties = srcImage->numProperties;
@@ -375,6 +375,7 @@ void avifImageDestroy(avifImage * image)
     }
     avifFree(image->properties);
     image->properties = NULL;
+    image->numProperties = 0;
     avifFree(image);
 }
 
@@ -388,12 +389,12 @@ avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_
     return avifRWDataSet(&image->xmp, xmp, xmpSize);
 }
 
-avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t usertype[16], const uint8_t * boxPayload, size_t boxPayloadLength)
+avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t usertype[16], const uint8_t * boxPayload, size_t boxPayloadSize)
 {
     AVIF_CHECKERR(image->numProperties < SIZE_MAX / sizeof(avifImageItemProperty), AVIF_RESULT_INVALID_ARGUMENT);
     // Shallow copy the current properties.
     const size_t numProperties = image->numProperties + 1;
-    avifImageItemProperty * const properties = avifAlloc(numProperties * sizeof(properties[0]));
+    avifImageItemProperty * const properties = (avifImageItemProperty *)avifAlloc(numProperties * sizeof(properties[0]));
     AVIF_CHECKERR(properties != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     if (image->numProperties != 0) {
         memcpy(properties, image->properties, image->numProperties * sizeof(properties[0]));
@@ -407,7 +408,7 @@ avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], co
     memset(property, 0, sizeof(*property));
     memcpy(property->boxtype, boxtype, sizeof(property->boxtype));
     memcpy(property->usertype, usertype, sizeof(property->usertype));
-    AVIF_CHECKRES(avifRWDataSet(&property->boxPayload, boxPayload, boxPayloadLength));
+    AVIF_CHECKRES(avifRWDataSet(&property->boxPayload, boxPayload, boxPayloadSize));
     return AVIF_RESULT_OK;
 }
 

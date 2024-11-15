@@ -39,10 +39,10 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
   if (avifDecoderParse(decoder.get()) != AVIF_RESULT_OK) return;
 
   for (size_t i = 0; i < decoder->image->numProperties; ++i) {
-    const avifRWData& boxPayload = decoder->image->properties[i].boxPayload;
+    const avifRWData& box_payload = decoder->image->properties[i].boxPayload;
     // Each custom property should be found as is in the input bitstream.
-    EXPECT_NE(std::search(data, data + arbitrary_bytes.size(), boxPayload.data,
-                          boxPayload.data + boxPayload.size),
+    EXPECT_NE(std::search(data, data + arbitrary_bytes.size(), box_payload.data,
+                          box_payload.data + box_payload.size),
               data + arbitrary_bytes.size());
   }
 

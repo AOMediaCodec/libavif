@@ -746,6 +746,7 @@ typedef enum avifSampleTransformRecipe
 // ---------------------------------------------------------------------------
 // Opaque image item properties
 
+// This struct represents an opaque ItemProperty (Box) or ItemFullProperty (FullBox) in ISO/IEC 14496-12.
 typedef struct avifImageItemProperty
 {
     uint8_t boxtype[4];    // boxtype as defined in ISO/IEC 14496-12.
