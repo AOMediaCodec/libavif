@@ -149,6 +149,13 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // Ignores the gainMap field (which exists only if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
+// Appends an opaque image item property.
+AVIF_API avifResult avifImagePushProperty(avifImage * image,
+                                          const uint8_t boxtype[4],
+                                          const uint8_t usertype[16],
+                                          const uint8_t * boxPayload,
+                                          size_t boxPayloadSize);
+
 // ---------------------------------------------------------------------------
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
@@ -644,6 +651,7 @@ typedef struct avifBoxHeader
     size_t size;
 
     uint8_t type[4];
+    uint8_t usertype[16]; // Unused unless |type| is "uuid".
 } avifBoxHeader;
 
 typedef struct avifROStream

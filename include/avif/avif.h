@@ -744,6 +744,19 @@ typedef enum avifSampleTransformRecipe
 #endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
 // ---------------------------------------------------------------------------
+// Opaque image item properties
+
+// This struct represents an opaque ItemProperty (Box) or ItemFullProperty (FullBox) in ISO/IEC 14496-12.
+typedef struct avifImageItemProperty
+{
+    uint8_t boxtype[4];    // boxtype as defined in ISO/IEC 14496-12.
+    uint8_t usertype[16];  // Universally Unique IDentifier as defined in IETF RFC 4122 and ISO/IEC 9834-8.
+                           // Used only when boxtype is "uuid".
+    avifRWData boxPayload; // BoxPayload as defined in ISO/IEC 14496-12.
+                           // Starts with the version (1 byte) and flags (3 bytes) fields in case of a FullBox.
+} avifImageItemProperty;
+
+// ---------------------------------------------------------------------------
 // avifImage
 
 // NOTE: The avifImage struct may be extended in a future release. Code outside the libavif library
@@ -808,6 +821,12 @@ typedef struct avifImage
     avifRWData xmp;
 
     // Version 1.0.0 ends here. Add any new members after this line.
+
+    // Other properties attached to this image item (primary or gainmap).
+    // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
+    // At encoding: Ignored.
+    avifImageItemProperty * properties; // NULL only if numProperties is 0.
+    size_t numProperties;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
     // Gain map image and metadata. NULL if no gain map is present.

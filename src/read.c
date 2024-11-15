@@ -139,6 +139,12 @@ typedef struct avifAV1LayeredImageIndexingProperty
     uint32_t layerSize[3];
 } avifAV1LayeredImageIndexingProperty;
 
+typedef struct avifOpaqueProperty
+{
+    uint8_t usertype[16];  // Same as in avifImageItemProperty.
+    avifRWData boxPayload; // Same as in avifImageItemProperty.
+} avifOpaqueProperty;
+
 // ---------------------------------------------------------------------------
 // Top-level structures
 
@@ -148,6 +154,7 @@ struct avifMeta;
 typedef struct avifProperty
 {
     uint8_t type[4];
+    avifBool isOpaque;
     union
     {
         avifImageSpatialExtents ispe;
@@ -163,6 +170,7 @@ typedef struct avifProperty
         avifLayerSelectorProperty lsel;
         avifAV1LayeredImageIndexingProperty a1lx;
         avifContentLightLevelInformationBox clli;
+        avifOpaqueProperty opaque;
     } u;
 } avifProperty;
 AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
@@ -298,12 +306,22 @@ static avifSampleTable * avifSampleTableCreate(void)
     return sampleTable;
 }
 
+static void avifPropertyArrayDestroy(avifPropertyArray * array)
+{
+    for (size_t i = 0; i < array->count; ++i) {
+        if (array->prop[i].isOpaque) {
+            avifRWDataFree(&array->prop[i].u.opaque.boxPayload);
+        }
+    }
+    avifArrayDestroy(array);
+}
+
 static void avifSampleTableDestroy(avifSampleTable * sampleTable)
 {
     avifArrayDestroy(&sampleTable->chunks);
     for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
         avifSampleDescription * description = &sampleTable->sampleDescriptions.description[i];
-        avifArrayDestroy(&description->properties);
+        avifPropertyArrayDestroy(&description->properties);
     }
     avifArrayDestroy(&sampleTable->sampleDescriptions);
     avifArrayDestroy(&sampleTable->sampleToChunks);
@@ -769,7 +787,7 @@ static void avifMetaDestroy(avifMeta * meta)
 {
     for (uint32_t i = 0; i < meta->items.count; ++i) {
         avifDecoderItem * item = meta->items.item[i];
-        avifArrayDestroy(&item->properties);
+        avifPropertyArrayDestroy(&item->properties);
         avifArrayDestroy(&item->extents);
         if (item->ownsMergedExtents) {
             avifRWDataFree(&item->mergedExtents);
@@ -777,7 +795,7 @@ static void avifMetaDestroy(avifMeta * meta)
         avifFree(item);
     }
     avifArrayDestroy(&meta->items);
-    avifArrayDestroy(&meta->properties);
+    avifPropertyArrayDestroy(&meta->properties);
     avifRWDataFree(&meta->idat);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     avifArrayDestroy(&meta->sampleTransformExpression);
@@ -823,7 +841,7 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     if (!avifArrayCreate(&(*item)->extents, sizeof(avifExtent), 1)) {
-        avifArrayDestroy(&(*item)->properties);
+        avifPropertyArrayDestroy(&(*item)->properties);
         avifFree(*item);
         *item = NULL;
         avifArrayPop(&meta->items);
@@ -2614,6 +2632,7 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
         avifProperty * prop = (avifProperty *)avifArrayPush(properties);
         AVIF_CHECKERR(prop != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         memcpy(prop->type, header.type, 4);
+        prop->isOpaque = AVIF_FALSE;
         if (!memcmp(header.type, "ispe", 4)) {
             AVIF_CHECKERR(avifParseImageSpatialExtentsProperty(prop, avifROStreamCurrent(&s), header.size, diag),
                           AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -2653,6 +2672,11 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
                           AVIF_RESULT_BMFF_PARSE_FAILED);
         } else if (!memcmp(header.type, "clli", 4)) {
             AVIF_CHECKRES(avifParseContentLightLevelInformationBox(prop, avifROStreamCurrent(&s), header.size, diag));
+        } else {
+            prop->isOpaque = AVIF_TRUE;
+            memset(&prop->u.opaque, 0, sizeof(prop->u.opaque));
+            memcpy(prop->u.opaque.usertype, header.usertype, sizeof(prop->u.opaque.usertype));
+            AVIF_CHECKRES(avifRWDataSet(&prop->u.opaque.boxPayload, avifROStreamCurrent(&s), header.size));
         }
 
         AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -2731,32 +2755,9 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            static const char * supportedTypes[] = {
-                "ispe",
-                "auxC",
-                "colr",
-                "av1C",
-#if defined(AVIF_CODEC_AVM)
-                "av2C",
-#endif
-                "pasp",
-                "clap",
-                "irot",
-                "imir",
-                "pixi",
-                "a1op",
-                "lsel",
-                "a1lx",
-                "clli"
-            };
-            size_t supportedTypesCount = sizeof(supportedTypes) / sizeof(supportedTypes[0]);
-            avifBool supportedType = AVIF_FALSE;
-            for (size_t i = 0; i < supportedTypesCount; ++i) {
-                if (!memcmp(srcProp->type, supportedTypes[i], 4)) {
-                    supportedType = AVIF_TRUE;
-                    break;
-                }
-            }
+            // Some properties are supported and parsed by libavif.
+            // Other properties are forwarded to the user as opaque blobs.
+            const avifBool supportedType = !srcProp->isOpaque;
             if (supportedType) {
                 if (essential) {
                     // Verify that it is legal for this property to be flagged as essential. Any
@@ -2813,6 +2814,15 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                     // Make a note to ignore this item later.
                     item->hasUnsupportedEssentialProperty = AVIF_TRUE;
                 }
+
+                // Will be forwarded to the user through avifImage::properties.
+                avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
+                AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+                dstProp->isOpaque = AVIF_TRUE;
+                memcpy(dstProp->type, srcProp->type, sizeof(dstProp->type));
+                memcpy(dstProp->u.opaque.usertype, srcProp->u.opaque.usertype, sizeof(dstProp->u.opaque.usertype));
+                AVIF_CHECKRES(
+                    avifRWDataSet(&dstProp->u.opaque.boxPayload, srcProp->u.opaque.boxPayload.data, srcProp->u.opaque.boxPayload.size));
             }
         }
     }
@@ -6061,6 +6071,18 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     }
 
     AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image, colorProperties, colorCodecType));
+
+    // Expose as raw bytes all other properties that libavif does not care about.
+    for (size_t i = 0; i < colorProperties->count; ++i) {
+        const avifProperty * property = &colorProperties->prop[i];
+        if (property->isOpaque) {
+            AVIF_CHECKRES(avifImagePushProperty(decoder->image,
+                                                property->type,
+                                                property->u.opaque.usertype,
+                                                property->u.opaque.boxPayload.data,
+                                                property->u.opaque.boxPayload.size));
+        }
+    }
 
     return AVIF_RESULT_OK;
 }

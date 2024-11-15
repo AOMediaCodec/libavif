@@ -26,6 +26,15 @@ chunk. Since the PNG specification version 1.2 says "the tRNS chunk [...] must
 follow the PLTE chunk, if any", libpng considers the tRNS chunk as invalid and
 ignores it.
 
+### File [circle_custom_properties.avif](circle_custom_properties.avif)
+
+![](circle_custom_properties.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `avifenc circle-trns-after-plte.png` with custom properties added in
+`avifRWStreamWriteProperties()`: FullBox `1234`, Box `abcd` and Box `uuid`.
+
 ### File [draw_points.png](draw_points.png)
 
 ![](draw_points.png)

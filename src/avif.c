@@ -228,6 +228,31 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
     }
 }
 
+static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage * srcImage)
+{
+    for (size_t i = 0; i < dstImage->numProperties; ++i) {
+        avifRWDataFree(&dstImage->properties[i].boxPayload);
+    }
+    avifFree(dstImage->properties);
+    dstImage->properties = NULL;
+    dstImage->numProperties = 0;
+
+    if (srcImage->numProperties != 0) {
+        dstImage->properties = (avifImageItemProperty *)avifAlloc(srcImage->numProperties * sizeof(srcImage->properties[0]));
+        AVIF_CHECKERR(dstImage->properties != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        memset(dstImage->properties, 0, srcImage->numProperties * sizeof(srcImage->properties[0]));
+        dstImage->numProperties = srcImage->numProperties;
+        for (size_t i = 0; i < srcImage->numProperties; ++i) {
+            memcpy(dstImage->properties[i].boxtype, srcImage->properties[i].boxtype, sizeof(srcImage->properties[i].boxtype));
+            memcpy(dstImage->properties[i].usertype, srcImage->properties[i].usertype, sizeof(srcImage->properties[i].usertype));
+            AVIF_CHECKRES(avifRWDataSet(&dstImage->properties[i].boxPayload,
+                                        srcImage->properties[i].boxPayload.data,
+                                        srcImage->properties[i].boxPayload.size));
+        }
+    }
+    return AVIF_RESULT_OK;
+}
+
 avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
@@ -237,6 +262,8 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
 
     AVIF_CHECKRES(avifRWDataSet(&dstImage->exif, srcImage->exif.data, srcImage->exif.size));
     AVIF_CHECKRES(avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size));
+
+    AVIF_CHECKRES(avifImageCopyProperties(dstImage, srcImage));
 
     if ((planes & AVIF_PLANES_YUV) && srcImage->yuvPlanes[AVIF_CHAN_Y]) {
         if ((srcImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) &&
@@ -343,6 +370,12 @@ void avifImageDestroy(avifImage * image)
     avifRWDataFree(&image->icc);
     avifRWDataFree(&image->exif);
     avifRWDataFree(&image->xmp);
+    for (size_t i = 0; i < image->numProperties; ++i) {
+        avifRWDataFree(&image->properties[i].boxPayload);
+    }
+    avifFree(image->properties);
+    image->properties = NULL;
+    image->numProperties = 0;
     avifFree(image);
 }
 
@@ -354,6 +387,29 @@ avifResult avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t
 avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize)
 {
     return avifRWDataSet(&image->xmp, xmp, xmpSize);
+}
+
+avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t usertype[16], const uint8_t * boxPayload, size_t boxPayloadSize)
+{
+    AVIF_CHECKERR(image->numProperties < SIZE_MAX / sizeof(avifImageItemProperty), AVIF_RESULT_INVALID_ARGUMENT);
+    // Shallow copy the current properties.
+    const size_t numProperties = image->numProperties + 1;
+    avifImageItemProperty * const properties = (avifImageItemProperty *)avifAlloc(numProperties * sizeof(properties[0]));
+    AVIF_CHECKERR(properties != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    if (image->numProperties != 0) {
+        memcpy(properties, image->properties, image->numProperties * sizeof(properties[0]));
+    }
+    // Free the old array and replace it by the new one.
+    avifFree(image->properties);
+    image->properties = properties;
+    image->numProperties = numProperties;
+    // Set the new property.
+    avifImageItemProperty * const property = &image->properties[image->numProperties - 1];
+    memset(property, 0, sizeof(*property));
+    memcpy(property->boxtype, boxtype, sizeof(property->boxtype));
+    memcpy(property->usertype, usertype, sizeof(property->usertype));
+    AVIF_CHECKRES(avifRWDataSet(&property->boxPayload, boxPayload, boxPayloadSize));
+    return AVIF_RESULT_OK;
 }
 
 avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
