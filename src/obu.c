@@ -372,7 +372,6 @@ static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 // See https://gitlab.com/AOMediaCodec/avm/-/blob/main/av1/decoder/decodeframe.c
 static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * header)
 {
-#if defined(AVIF_ENABLE_CWG_E103)
     // See read_sequence_header_obu() in avm.
     AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
 
@@ -388,41 +387,6 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     AVIF_CHECK(parseSequenceHeaderLevelIdxAndTier(bits, header));
 
     return !bits->error;
-#else  // !defined(AVIF_ENABLE_CWG_E103)
-    // See read_sequence_header_obu() in avm.
-    AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
-    AVIF_CHECK(parseSequenceHeaderLevelIdxAndTier(bits, header));
-
-    // See av1_read_sequence_header() in avm.
-    AVIF_CHECK(parseSequenceHeaderFrameMaxDimensions(bits, header));
-    if (!avifBitsRead(bits, 1)) // BLOCK_256X256
-        avifBitsRead(bits, 1);  // BLOCK_128X128
-    AVIF_CHECK(parseSequenceHeaderEnabledFeatures(bits, header));
-
-    avifBitsRead(bits, 2);       // enable_superres, enable_cdef
-    if (avifBitsRead(bits, 1)) { // enable_restoration
-        const int lr_tools_disable_mask_length = /*RESTORE_SWITCHABLE_TYPES=*/5 - 1;
-        avifBitsRead(bits, lr_tools_disable_mask_length); // lr_tools_disable_mask[0]
-        if (avifBitsRead(bits, 1)) {
-            avifBitsRead(bits, lr_tools_disable_mask_length - 1); // lr_tools_disable_mask[1]
-        }
-    }
-
-    // See av1_read_color_config() in avm.
-    AVIF_CHECK(parseSequenceHeaderColorConfig(bits, header));
-    // Ignored fields.
-    //   separate_uv_delta_q
-    //   base_y_dc_delta_q
-    //   base_uv_dc_delta_q
-
-    // See read_sequence_header_obu() in avm.
-    // Ignored field.
-    //   film_grain_params_present
-
-    // See av1_read_sequence_header_beyond_av1() in avm.
-    // Other ignored fields.
-    return !bits->error;
-#endif // defined(AVIF_ENABLE_CWG_E103)
 }
 #endif
 
