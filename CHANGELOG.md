@@ -28,7 +28,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   decoder->image->gainMap != NULL instead.
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Update aom.cmd/LocalAom.cmake: v3.11.0
-* Update avm.cmd: research-v8.0.0
+* Update avm.cmd: research-v8.1.0
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.0
 * Update libjpeg.cmd/LocalJpeg.cmake: v3.0.4
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.13.4
