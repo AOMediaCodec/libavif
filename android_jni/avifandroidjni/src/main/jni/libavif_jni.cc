@@ -149,6 +149,10 @@ avifResult AvifImageToBitmap(JNIEnv* const env,
     // scaling.
     if (!image->imageOwnsYUVPlanes || !image->imageOwnsAlphaPlane) {
       image_copy.reset(avifImageCreateEmpty());
+      if (image_copy == nullptr) {
+        LOGE("Failed to allocate image for scaling.");
+        return AVIF_RESULT_OUT_OF_MEMORY;
+      }
       res = avifImageCopy(image_copy.get(), image, AVIF_PLANES_ALL);
       if (res != AVIF_RESULT_OK) {
         LOGE("Failed to make a copy of the image for scaling. Status: %d", res);
