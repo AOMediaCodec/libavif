@@ -386,6 +386,12 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     // See read_sequence_header_obu() in avm.
     AVIF_CHECK(parseSequenceHeaderLevelIdxAndTier(bits, header));
 
+    // See read_sequence_header_obu() in avm.
+    // Ignored field.
+    //   film_grain_params_present
+
+    // See av1_read_sequence_header_beyond_av1() in avm.
+    // Other ignored fields.
     return !bits->error;
 }
 #endif
