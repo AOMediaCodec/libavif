@@ -65,7 +65,6 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
     }
   }
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
   if (image1.gainMap != nullptr && image1.gainMap->image != nullptr &&
       image2.gainMap != nullptr && image2.gainMap->image != nullptr) {
     const uint32_t gain_map_row_count = (uint32_t)roundf(
@@ -73,7 +72,6 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
     ComparePartialYuva(*image1.gainMap->image, *image2.gainMap->image,
                        gain_map_row_count);
   }
-#endif
 }
 
 // Returns the expected number of decoded rows when available_byte_count out of
@@ -364,10 +362,7 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
              previously_decoded_row_count, decoded_row_count);
       AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
     }
-    bool has_gain_map = false;
-#if defined(AVIF_ENABLE_GAIN_MAP)
-    has_gain_map = (reference.gainMap != nullptr);
-#endif
+    const bool has_gain_map = (reference.gainMap != nullptr);
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
         reference.height, cell_height, reference.alphaPlane != nullptr,
         has_gain_map, data.available.size, data.full_size,
