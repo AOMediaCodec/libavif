@@ -2289,10 +2289,9 @@ int main(int argc, char * argv[])
 
         // Validate clap
         avifCropRect cropRect;
-        avifBool upsampleBeforeCropping;
         avifDiagnostics diag;
         avifDiagnosticsClearError(&diag);
-        if (!avifCropRectFromCleanApertureBox(&cropRect, &upsampleBeforeCropping, &image->clap, image->width, image->height, image->yuvFormat, &diag)) {
+        if (!avifCropRectFromCleanApertureBox(&cropRect, &image->clap, image->width, image->height, &diag)) {
             fprintf(stderr,
                     "ERROR: Invalid clap: width:[%d / %d], height:[%d / %d], horizOff:[%d / %d], vertOff:[%d / %d] - %s\n",
                     (int32_t)image->clap.widthN,
@@ -2306,6 +2305,7 @@ int main(int argc, char * argv[])
                     diag.error);
             goto cleanup;
         }
+        // avifCropRectRequiresUpsampling() does not need to be called for clap validation.
     }
     if (irotAngle != 0xff) {
         image->transformFlags |= AVIF_TRANSFORM_IROT;
