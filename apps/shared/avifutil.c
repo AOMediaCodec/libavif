@@ -99,7 +99,6 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
             printf("\n");
 
             avifCropRect cropRect;
-            avifBool upsampleBeforeCropping;
             avifDiagnostics diag;
             avifDiagnosticsClearError(&diag);
             avifBool validClap = avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag);
