@@ -367,19 +367,6 @@ static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBo
     return 8;
 }
 
-// This is used as a hint to validating the clap box in avifDecoderItemValidateProperties.
-static avifPixelFormat avifCodecConfigurationBoxGetFormat(const avifCodecConfigurationBox * av1C)
-{
-    if (av1C->monochrome) {
-        return AVIF_PIXEL_FORMAT_YUV400;
-    } else if (av1C->chromaSubsamplingY == 1) {
-        return AVIF_PIXEL_FORMAT_YUV420;
-    } else if (av1C->chromaSubsamplingX == 1) {
-        return AVIF_PIXEL_FORMAT_YUV422;
-    }
-    return AVIF_PIXEL_FORMAT_YUV444;
-}
-
 static const avifPropertyArray * avifSampleTableGetProperties(const avifSampleTable * sampleTable, avifCodecType codecType)
 {
     for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
@@ -1239,9 +1226,19 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
     if (item->miniBoxPixelFormat != AVIF_PIXEL_FORMAT_NONE) {
         // This is a MinimizedImageBox ('mini').
 
-        if (item->miniBoxPixelFormat != avifCodecConfigurationBoxGetFormat(&configProp->u.av1C)) {
+        avifPixelFormat av1CPixelFormat;
+        if (configProp->u.av1C.monochrome) {
+            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV400;
+        } else if (configProp->u.av1C.chromaSubsamplingY == 1) {
+            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV420;
+        } else if (configProp->u.av1C.chromaSubsamplingX == 1) {
+            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV422;
+        } else {
+            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV444;
+        }
+        if (item->miniBoxPixelFormat != av1CPixelFormat) {
             if (!memcmp(configPropName, "av2C", 4) && item->miniBoxPixelFormat == AVIF_PIXEL_FORMAT_YUV400 &&
-                avifCodecConfigurationBoxGetFormat(&configProp->u.av1C) == AVIF_PIXEL_FORMAT_YUV420) {
+                av1CPixelFormat == AVIF_PIXEL_FORMAT_YUV420) {
                 // avm does not handle monochrome as of research-v8.0.0.
                 // 4:2:0 is used instead.
             } else {
@@ -1250,7 +1247,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                                       item->id,
                                       avifPixelFormatToString(item->miniBoxPixelFormat),
                                       configPropName,
-                                      avifPixelFormatToString(avifCodecConfigurationBoxGetFormat(&configProp->u.av1C)));
+                                      avifPixelFormatToString(av1CPixelFormat));
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
         }
