@@ -544,14 +544,10 @@ typedef struct avifCropRect
 
 // These will return AVIF_FALSE if the resultant values violate any standards, and if so, the output
 // values are not guaranteed to be complete or correct and should not be used.
-// If upsampleBeforeCropping is true, the image must be upsampled from 4:2:0 or 4:2:2 to 4:4:4 before
-// Clean Aperture values are applied.
 AVIF_NODISCARD AVIF_API avifBool avifCropRectFromCleanApertureBox(avifCropRect * cropRect,
-                                                                  avifBool * upsampleBeforeCropping,
                                                                   const avifCleanApertureBox * clap,
                                                                   uint32_t imageW,
                                                                   uint32_t imageH,
-                                                                  avifPixelFormat yuvFormat,
                                                                   avifDiagnostics * diag);
 AVIF_NODISCARD AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,
                                                                      const avifCropRect * cropRect,
@@ -559,6 +555,9 @@ AVIF_NODISCARD AVIF_API avifBool avifCleanApertureBoxConvertCropRect(avifCleanAp
                                                                      uint32_t imageH,
                                                                      avifPixelFormat yuvFormat,
                                                                      avifDiagnostics * diag);
+// If this function returns true, the image must be upsampled from 4:2:0 or 4:2:2 to 4:4:4 before
+// Clean Aperture values are applied.
+AVIF_NODISCARD AVIF_API avifBool avifCropRectRequiresUpsampling(const avifCropRect * cropRect, avifPixelFormat yuvFormat);
 
 // Deprecated. Use avifCropRectFromCleanApertureBox() instead.
 AVIF_NODISCARD AVIF_API avifBool

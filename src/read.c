@@ -1285,12 +1285,9 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
             }
 
             avifCropRect cropRect;
-            avifBool upsampleBeforeCropping;
             const uint32_t imageW = ispeProp->u.ispe.width;
             const uint32_t imageH = ispeProp->u.ispe.height;
-            const avifPixelFormat configFormat = avifCodecConfigurationBoxGetFormat(&configProp->u.av1C);
-            const avifBool validClap =
-                avifCropRectFromCleanApertureBox(&cropRect, &upsampleBeforeCropping, &clapProp->u.clap, imageW, imageH, configFormat, diag);
+            const avifBool validClap = avifCropRectFromCleanApertureBox(&cropRect, &clapProp->u.clap, imageW, imageH, diag);
             if (!validClap) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }

@@ -764,11 +764,9 @@ static avifBool avifCropRectIsValid(const avifCropRect * cropRect, uint32_t imag
 }
 
 avifBool avifCropRectFromCleanApertureBox(avifCropRect * cropRect,
-                                          avifBool * upsampleBeforeCropping,
                                           const avifCleanApertureBox * clap,
                                           uint32_t imageW,
                                           uint32_t imageH,
-                                          avifPixelFormat yuvFormat,
                                           avifDiagnostics * diag)
 {
     avifDiagnosticsClearError(diag);
@@ -777,16 +775,6 @@ avifBool avifCropRectFromCleanApertureBox(avifCropRect * cropRect,
     //   For horizOff and vertOff, D shall be strictly positive and N may be
     //   positive or negative. For cleanApertureWidth and cleanApertureHeight,
     //   N shall be positive and D shall be strictly positive.
-
-    // ISO/IEC 23000-22:2024, Section 7.3.6.7:
-    // The clean aperture property is restricted according to the chroma sampling format of the input image
-    // (4:4:4, 4:2:2, 4:2:0, or 4:0:0) as follows:
-    // - cleanApertureWidth and cleanApertureHeight shall be integers;
-    // - If any of the following conditions hold true, the image is first implicitly upsampled to 4:4:4:
-    //   - chroma is subsampled horizontally (i.e., 4:2:2 and 4:2:0) and cleanApertureWidth is odd
-    //   - chroma is subsampled horizontally (i.e., 4:2:2 and 4:2:0) and left-most pixel is on an odd position
-    //   - chroma is subsampled vertically (i.e., 4:2:0) and cleanApertureHeight is odd
-    //   - chroma is subsampled vertically (i.e., 4:2:0) and topmost line is on an odd position
 
     const int32_t widthN = (int32_t)clap->widthN;
     const int32_t widthD = (int32_t)clap->widthD;
@@ -806,9 +794,6 @@ avifBool avifCropRectFromCleanApertureBox(avifCropRect * cropRect,
     }
 
     // ISO/IEC 23000-22:2019/Amd. 2:2021, Section 7.3.6.7:
-    //   The clean aperture property is restricted according to the chroma
-    //   sampling format of the input image (4:4:4, 4:2:2:, 4:2:0, or 4:0:0) as
-    //   follows:
     //   - cleanApertureWidth and cleanApertureHeight shall be integers;
     //   - The leftmost pixel and the topmost line of the clean aperture as
     //     defined in ISO/IEC 14496-12:2020, Section 12.1.4.1 shall be integers;
@@ -885,14 +870,21 @@ avifBool avifCropRectFromCleanApertureBox(avifCropRect * cropRect,
     cropRect->y = (uint32_t)(cropY.n / cropY.d);
     cropRect->width = (uint32_t)clapW;
     cropRect->height = (uint32_t)clapH;
-    if (!avifCropRectIsValid(cropRect, imageW, imageH, diag)) {
-        return AVIF_FALSE;
-    }
+    return avifCropRectIsValid(cropRect, imageW, imageH, diag);
+}
 
-    *upsampleBeforeCropping = ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420 || yuvFormat == AVIF_PIXEL_FORMAT_YUV422) &&
-                               (cropRect->width % 2 || cropRect->x % 2)) ||
-                              (yuvFormat == AVIF_PIXEL_FORMAT_YUV420 && (cropRect->height % 2 || cropRect->y % 2));
-    return AVIF_TRUE;
+avifBool avifCropRectRequiresUpsampling(const avifCropRect * cropRect, avifPixelFormat yuvFormat)
+{
+    // ISO/IEC 23000-22:2024 FDIS, Section 7.3.6.7:
+    // - If any of the following conditions hold true, the image is first implicitly upsampled to 4:4:4:
+    //   - chroma is subsampled horizontally (i.e., 4:2:2 and 4:2:0) and cleanApertureWidth is odd
+    //   - chroma is subsampled horizontally (i.e., 4:2:2 and 4:2:0) and left-most pixel is on an odd position
+    //   - chroma is subsampled vertically (i.e., 4:2:0) and cleanApertureHeight is odd
+    //   - chroma is subsampled vertically (i.e., 4:2:0) and topmost line is on an odd position
+
+    // AV1 supports odd dimensions with chroma subsampling in those directions, so only look for x and y.
+    return ((yuvFormat == AVIF_PIXEL_FORMAT_YUV420 || yuvFormat == AVIF_PIXEL_FORMAT_YUV422) && (cropRect->x % 2)) ||
+           (yuvFormat == AVIF_PIXEL_FORMAT_YUV420 && (cropRect->y % 2));
 }
 
 avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
@@ -902,10 +894,22 @@ avifBool avifCropRectConvertCleanApertureBox(avifCropRect * cropRect,
                                              avifPixelFormat yuvFormat,
                                              avifDiagnostics * diag)
 {
-    // Keep the same pre-deprecation behavior.
-    avifBool upsampleBeforeCropping;
-    return avifCropRectFromCleanApertureBox(cropRect, &upsampleBeforeCropping, clap, imageW, imageH, yuvFormat, diag) &&
-           !upsampleBeforeCropping;
+    if (avifCropRectFromCleanApertureBox(cropRect, clap, imageW, imageH, diag)) {
+        // Keep the same pre-deprecation behavior.
+
+        // ISO/IEC 23000-22:2019/Amd. 2:2021, Section 7.3.6.7:
+        //   - If chroma is subsampled horizontally (i.e., 4:2:2 and 4:2:0),
+        //     the leftmost pixel of the clean aperture shall be even numbers;
+        //   - If chroma is subsampled vertically (i.e., 4:2:0),
+        //     the topmost line of the clean aperture shall be even numbers.
+
+        if (avifCropRectRequiresUpsampling(cropRect, yuvFormat)) {
+            avifDiagnosticsPrintf(diag, "[Strict] crop rect X and Y offsets must be even due to this image's YUV subsampling");
+            return AVIF_FALSE;
+        }
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
 }
 
 avifBool avifCleanApertureBoxConvertCropRect(avifCleanApertureBox * clap,

@@ -102,15 +102,14 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
             avifBool upsampleBeforeCropping;
             avifDiagnostics diag;
             avifDiagnosticsClearError(&diag);
-            avifBool validClap =
-                avifCropRectFromCleanApertureBox(&cropRect, &upsampleBeforeCropping, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag);
+            avifBool validClap = avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag);
             if (validClap) {
                 printf("      * Valid, derived crop rect: X: %d, Y: %d, W: %d, H: %d%s\n",
                        cropRect.x,
                        cropRect.y,
                        cropRect.width,
                        cropRect.height,
-                       upsampleBeforeCropping ? " (upsample before cropping)" : "");
+                       avifCropRectRequiresUpsampling(&cropRect, avif->yuvFormat) ? " (upsample before cropping)" : "");
             } else {
                 printf("      * Invalid: %s\n", diag.error);
             }
