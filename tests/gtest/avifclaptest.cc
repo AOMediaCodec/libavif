@@ -86,11 +86,9 @@ INSTANTIATE_TEST_SUITE_P(Parameterized, InvalidClapPropertyTest,
 TEST_P(InvalidClapPropertyTest, ValidateClapProperty) {
   const InvalidClapPropertyParam& param = GetParam();
   avifCropRect crop_rect;
-  avifBool upsampleBeforeCropping;
   avifDiagnostics diag;
   EXPECT_FALSE(avifCropRectFromCleanApertureBox(
-      &crop_rect, &upsampleBeforeCropping, &param.clap, param.width,
-      param.height, param.yuv_format, &diag));
+      &crop_rect, &param.clap, param.width, param.height, &diag));
 }
 
 struct ValidClapPropertyParam {
@@ -134,7 +132,7 @@ constexpr ValidClapPropertyParam kValidClapPropertyTestParams[] = {
      AVIF_PIXEL_FORMAT_YUV420,
      {99, 1, 99, 1, static_cast<uint32_t>(-1), 2, static_cast<uint32_t>(-1), 2},
      {0, 0, 99, 99},
-     true},
+     false},
     // pcX = -1/2 + (100 - 1)/2 = 49
     // pcY = -1/2 + (100 - 1)/2 = 49
     // leftmost = 49 - (99 - 1)/2 = 0
@@ -156,23 +154,23 @@ INSTANTIATE_TEST_SUITE_P(Parameterized, ValidClapPropertyTest,
 TEST_P(ValidClapPropertyTest, ValidateClapProperty) {
   const ValidClapPropertyParam& param = GetParam();
   avifCropRect crop_rect;
-  avifBool upsampleBeforeCropping;
   avifDiagnostics diag;
-  EXPECT_TRUE(avifCropRectFromCleanApertureBox(
-      &crop_rect, &upsampleBeforeCropping, &param.clap, param.width,
-      param.height, param.yuv_format, &diag))
+  ASSERT_TRUE(avifCropRectFromCleanApertureBox(
+      &crop_rect, &param.clap, param.width, param.height, &diag))
       << diag.error;
+  const avifBool upsample_before_cropping =
+      avifCropRectRequiresUpsampling(&crop_rect, param.yuv_format);
   EXPECT_EQ(crop_rect.x, param.expected_crop_rect.x);
   EXPECT_EQ(crop_rect.y, param.expected_crop_rect.y);
   EXPECT_EQ(crop_rect.width, param.expected_crop_rect.width);
   EXPECT_EQ(crop_rect.height, param.expected_crop_rect.height);
-  EXPECT_EQ(upsampleBeforeCropping, param.expected_upsample_before_cropping);
+  EXPECT_EQ(upsample_before_cropping, param.expected_upsample_before_cropping);
 
   // Deprecated function coverage.
   EXPECT_EQ(avifCropRectConvertCleanApertureBox(&crop_rect, &param.clap,
                                                 param.width, param.height,
                                                 param.yuv_format, &diag),
-            !upsampleBeforeCropping);
+            !upsample_before_cropping);
 }
 
 }  // namespace
