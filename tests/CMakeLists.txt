@@ -358,6 +358,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifiostatstest
                 avifmetadatatest
                 avifprogressivetest
+                avifpropertytest
                 avifrangetest
                 avify4mtest
                 PROPERTIES DISABLED True
