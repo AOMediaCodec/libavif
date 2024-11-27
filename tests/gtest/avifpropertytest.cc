@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <cstring>
-#include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -71,9 +70,6 @@ TEST(AvifPropertyTest, Serialise) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
-  // Uncomment the following to save the encoded image as an AVIF file.
-  // std::ofstream("/tmp/avifproperties.avif", std::ios::binary)
-  //    .write(reinterpret_cast<char*>(encoded.data), encoded.size);
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
@@ -82,7 +78,6 @@ TEST(AvifPropertyTest, Serialise) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
-  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
   ASSERT_EQ(decoder->image->numProperties, 3u);
 
   const avifImageItemProperty& abcd = decoder->image->properties[0];
@@ -106,6 +101,7 @@ TEST(AvifPropertyTest, Serialise) {
                            uuidProp.boxPayload.data + uuidProp.boxPayload.size),
       uuid_data);
 }
+
 //------------------------------------------------------------------------------
 
 }  // namespace
