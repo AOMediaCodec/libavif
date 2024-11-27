@@ -406,6 +406,18 @@ avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], co
     return AVIF_RESULT_OK;
 }
 
+avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize)
+{
+    const uint8_t uuid[16] = { 0 };
+    return avifImagePushProperty(image, boxtype, uuid, data, dataSize);
+}
+
+avifResult avifImageAddUUIDProperty(avifImage * image, const uint8_t uuid[16], const uint8_t * data, size_t dataSize)
+{
+    const uint8_t boxtype[4] = { 'u', 'u', 'i', 'd' };
+    return avifImagePushProperty(image, boxtype, uuid, data, dataSize);
+}
+
 avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
 {
     if (image->width == 0 || image->height == 0) {

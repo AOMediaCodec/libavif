@@ -819,7 +819,7 @@ typedef struct avifImage
 
     // Other properties attached to this image item (primary or gainmap).
     // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
-    // At encoding: Ignored.
+    // At encoding: Written by the avifEncoder.
     avifImageItemProperty * properties; // NULL only if numProperties is 0.
     size_t numProperties;
 
@@ -852,6 +852,10 @@ AVIF_API avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * x
 AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
 AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);           // Ignores already-freed planes
 AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes);
+
+// Add arbitrary (opaque) properties to the image
+AVIF_API avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize);
+AVIF_API avifResult avifImageAddUUIDProperty(avifImage * image, const uint8_t uuid[16], const uint8_t * data, size_t dataSize);
 
 // ---------------------------------------------------------------------------
 // Understanding maxThreads
