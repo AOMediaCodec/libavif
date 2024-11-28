@@ -104,6 +104,7 @@ jobs:
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=ON -DAVIF_GTEST=LOCAL
           -DAVIF_BUILD_GDK_PIXBUF=ON  ${{ env.CMAKE_AVIF_FLAGS }}
+          -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
       - name: Build libavif with [[nodiscard]] (ninja)
         if: runner.oldest-cmake == 'false'
         working-directory: ./build_nodiscard
