@@ -104,7 +104,7 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_CANNOT_CHANGE_SETTING:         return "Cannot change some setting during encoding";
         case AVIF_RESULT_INCOMPATIBLE_IMAGE:            return "The image is incompatible with already encoded images";
         case AVIF_RESULT_INTERNAL_ERROR:                return "Internal error";
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
         case AVIF_RESULT_ENCODE_GAIN_MAP_FAILED:        return "Encoding of gain map planes failed";
         case AVIF_RESULT_DECODE_GAIN_MAP_FAILED:        return "Decoding of gain map planes failed";
         case AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE:     return "Invalid tone mapped image item";
@@ -283,7 +283,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
     }
     avifImageCopySamples(dstImage, srcImage, planes);
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
     if (srcImage->gainMap) {
         if (!dstImage->gainMap) {
             dstImage->gainMap = avifGainMapCreate();
@@ -320,7 +320,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         avifGainMapDestroy(dstImage->gainMap);
         dstImage->gainMap = NULL;
     }
-#endif // defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#endif // defined(AVIF_ENABLE_GAIN_MAP)
 
     return AVIF_RESULT_OK;
 }
@@ -361,7 +361,7 @@ avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage
 
 void avifImageDestroy(avifImage * image)
 {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
     if (image->gainMap) {
         avifGainMapDestroy(image->gainMap);
     }
@@ -1245,7 +1245,7 @@ void avifCodecVersions(char outBuffer[256])
     }
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
 avifGainMap * avifGainMapCreate(void)
 {
     avifGainMap * gainMap = (avifGainMap *)avifAlloc(sizeof(avifGainMap));
@@ -1280,4 +1280,4 @@ void avifGainMapDestroy(avifGainMap * gainMap)
     avifRWDataFree(&gainMap->altICC);
     avifFree(gainMap);
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+#endif // AVIF_ENABLE_GAIN_MAP

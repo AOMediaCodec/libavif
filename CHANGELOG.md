@@ -37,6 +37,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifGainMapMetadataDouble structs.
 * Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
   utility functions.
+* Turn on the gain map API by default. Rename the compile flag from
+  AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP to AVIF_ENABLE_GAIN_MAP.
 
 ## [1.1.1] - 2024-07-30
 

@@ -65,7 +65,7 @@ void ComparePartialYuva(const avifImage& image1, const avifImage& image2,
     }
   }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
   if (image1.gainMap != nullptr && image1.gainMap->image != nullptr &&
       image2.gainMap != nullptr && image2.gainMap->image != nullptr) {
     const uint32_t gain_map_row_count = (uint32_t)roundf(
@@ -365,7 +365,7 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
       AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
     }
     bool has_gain_map = false;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
     has_gain_map = (reference.gainMap != nullptr);
 #endif
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(

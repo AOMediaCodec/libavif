@@ -643,7 +643,7 @@ libavif and ignored by the tests.
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
 Source : created from `seine_sdr_gainmap_srgb.jpg` converted to avif with avifenc built
-with AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP and AVIF_ENABLE_LIBXML2 then:
+with AVIF_ENABLE_GAIN_MAP and AVIF_ENABLE_LIBXML2 then:
 
 ```
 # from libavif/mybuilddir/

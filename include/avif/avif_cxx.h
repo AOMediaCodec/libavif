@@ -21,7 +21,7 @@ struct UniquePtrDeleter
     void operator()(avifEncoder * encoder) const { avifEncoderDestroy(encoder); }
     void operator()(avifDecoder * decoder) const { avifDecoderDestroy(decoder); }
     void operator()(avifImage * image) const { avifImageDestroy(image); }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
     void operator()(avifGainMap * gainMap) const { avifGainMapDestroy(gainMap); }
 #endif
 };
@@ -31,7 +31,7 @@ using EncoderPtr = std::unique_ptr<avifEncoder, UniquePtrDeleter>;
 using DecoderPtr = std::unique_ptr<avifDecoder, UniquePtrDeleter>;
 using ImagePtr = std::unique_ptr<avifImage, UniquePtrDeleter>;
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
 using GainMapPtr = std::unique_ptr<avifGainMap, UniquePtrDeleter>;
 #endif
 

@@ -146,7 +146,7 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // Copies the samples from srcImage to dstImage. dstImage must be allocated.
 // srcImage and dstImage must have the same width, height, and depth.
 // If the AVIF_PLANES_YUV bit is set in planes, then srcImage and dstImage must have the same yuvFormat.
-// Ignores the gainMap field (which exists only if AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is defined).
+// Ignores the gainMap field (which exists only if AVIF_ENABLE_GAIN_MAP is defined).
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 // Appends an opaque image item property.
@@ -391,7 +391,7 @@ typedef enum avifItemCategory
 {
     AVIF_ITEM_COLOR,
     AVIF_ITEM_ALPHA,
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
     AVIF_ITEM_GAIN_MAP,
 #endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
@@ -779,7 +779,7 @@ AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, con
 // ---------------------------------------------------------------------------
 // gain maps
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
 
 // Finds the approximate min/max values from the given gain map values, excluding outliers.
 // Uses a histogram, with outliers defined as having at least one empty bucket between them
@@ -789,7 +789,7 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, 
 
 avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnostics * diag);
 
-#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+#endif // AVIF_ENABLE_GAIN_MAP
 
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX

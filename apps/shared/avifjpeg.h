@@ -15,7 +15,7 @@ extern "C" {
 // bytes of Exif or XMP metadata will be read or an error returned.
 // 'ignoreGainMap' is only relevant for jpeg files that have a gain map
 // and only if AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION is ON
-// (requires AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP and libxml2). Otherwise
+// (requires AVIF_ENABLE_GAIN_MAP and libxml2). Otherwise
 // it has no effect.
 avifBool avifJPEGRead(const char * inputFilename,
                       avifImage * avif,

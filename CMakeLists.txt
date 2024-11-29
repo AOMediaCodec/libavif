@@ -64,10 +64,11 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 
-option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
-option(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
-       "Enable experimental gain map code (for HDR images that look good both on HDR and SDR displays)" OFF
+option(AVIF_ENABLE_GAIN_MAP
+       "Enable gain map code (for HDR images that look good both on HDR and SDR displays)" ON
 )
+
+option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_MINI "Enable experimental reduced header" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample transform code" OFF)
 
@@ -272,11 +273,11 @@ if(AVIF_LIBSHARPYUV_ENABLED)
 endif(AVIF_LIBSHARPYUV_ENABLED)
 
 set_local_or_system_option(
-    "LIBXML2" "OFF" "Build libxml2 by providing your own copy inside the ext subdir. \
-libxml2 is used when AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP is ON"
+    "LIBXML2" "OFF" "Use libxml2. When enabled and AVIF_ENABLE_GAIN_MAP is ON, \
+    allows converting jpeg files with gain maps to avif using avifenc"
 )
 
-if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+if(AVIF_ENABLE_GAIN_MAP)
     check_avif_option(AVIF_LIBXML2 TARGET LibXml2::LibXml2 PKG_NAME LibXml2)
 endif()
 # ---------------------------------------------------------------------------------------
@@ -364,8 +365,8 @@ if(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
 endif()
 
-if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+if(AVIF_ENABLE_GAIN_MAP)
+    add_compile_definitions(AVIF_ENABLE_GAIN_MAP)
 endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_MINI)
@@ -396,7 +397,7 @@ set(AVIF_SRCS
     src/utils.c
     src/write.c
 )
-if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+if(AVIF_ENABLE_GAIN_MAP)
     list(APPEND AVIF_SRCS src/gainmap.c)
 endif()
 if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
@@ -584,7 +585,7 @@ if(NOT AVIF_CODEC_AOM_ENABLED
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-if(AVIF_LIB_USE_CXX OR (AVIF_BUILD_APPS AND AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP) OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST
+if(AVIF_LIB_USE_CXX OR (AVIF_BUILD_APPS AND AVIF_ENABLE_GAIN_MAP) OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST
                                                                                                          OR AVIF_ENABLE_GTEST))
 )
     enable_language(CXX)
@@ -676,7 +677,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         find_package(JPEG REQUIRED)
     endif()
 
-    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if(AVIF_ENABLE_GAIN_MAP)
         if(TARGET LibXml2::LibXml2)
             set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
             add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
@@ -754,10 +755,8 @@ if(AVIF_BUILD_APPS)
             LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         )
     endif()
-    if(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+    if(AVIF_ENABLE_GAIN_MAP)
         include(LocalLibargparse)
-        set(AVIF_ENABLE_AVIFGAINMAPUTIL TRUE)
-
         set(AVIFGAINMAPUTIL_SRCS
             apps/avifgainmaputil/avifgainmaputil.cc
             apps/avifgainmaputil/convert_command.cc
