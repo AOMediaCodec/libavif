@@ -409,12 +409,18 @@ avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], co
 avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize)
 {
     const uint8_t uuid[16] = { 0 };
+    if (avifIsKnownPropertyType(boxtype)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     return avifImagePushProperty(image, boxtype, uuid, data, dataSize);
 }
 
 avifResult avifImageAddUUIDProperty(avifImage * image, const uint8_t uuid[16], const uint8_t * data, size_t dataSize)
 {
     const uint8_t boxtype[4] = { 'u', 'u', 'i', 'd' };
+    if (!avifIsValidUUID(uuid)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     return avifImagePushProperty(image, boxtype, uuid, data, dataSize);
 }
 

@@ -59,6 +59,10 @@ TEST(AvifPropertyTest, Serialise) {
   ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), (uint8_t*)"efgh",
                                        efgh_data.data(), efgh_data.size()),
             AVIF_RESULT_OK);
+  // Should not be added
+  ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), (uint8_t*)"mdat",
+                                       efgh_data.data(), efgh_data.size()),
+            AVIF_RESULT_INVALID_ARGUMENT);
   ASSERT_EQ(avifImageAddUUIDProperty(image.get(), uuid, uuid_data.data(),
                                      uuid_data.size()),
             AVIF_RESULT_OK);
