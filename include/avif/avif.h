@@ -860,8 +860,7 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // the data argument, and accounted for in the dataSize.
 AVIF_API avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize);
 // This version adds an ItemProperty (or ItemFullProperty if version and flags are provided in data argument), using
-// the user extension (uuid) mechanism, see ISO/IEC 14496-12:2022 Section 4.2. The box type is set to 'uuid' and
-// does not need to be specified.
+// the user extension (uuid) mechanism, see ISO/IEC 14496-12:2022 Section 4.2. The box type is set to 'uuid'.
 AVIF_API avifResult avifImageAddUUIDProperty(avifImage * image, const uint8_t uuid[16], const uint8_t * data, size_t dataSize);
 
 // ---------------------------------------------------------------------------
