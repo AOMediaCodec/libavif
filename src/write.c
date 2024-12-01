@@ -186,6 +186,15 @@ typedef struct avifEncoderItem
 } avifEncoderItem;
 AVIF_ARRAY_DECLARE(avifEncoderItemArray, avifEncoderItem, item);
 
+avifEncoderCustomEncodeImageItem avifEncoderCustomEncodeImageItemFrom(const avifEncoderItem * item)
+{
+    avifEncoderCustomEncodeImageItem value = { (avifEncoderCustomEncodeImageItemType)item->itemCategory,
+                                               item->id,
+                                               item->gridCols ? item->cellIndex / item->gridCols : 0,
+                                               item->gridCols ? item->cellIndex % item->gridCols : 0 };
+    return value;
+}
+
 // ---------------------------------------------------------------------------
 // avifEncoderItemReference
 
@@ -243,6 +252,8 @@ typedef struct avifEncoderData
     // Fields specific to AV1/AV2
     const char * imageItemType;  // "av01" for AV1 ("av02" for AV2 if AVIF_CODEC_AVM)
     const char * configPropName; // "av1C" for AV1 ("av2C" for AV2 if AVIF_CODEC_AVM)
+    // Custom AV1 encoding function
+    avifBool customEncodeImageFuncUsed;
 } avifEncoderData;
 
 static void avifEncoderDataDestroy(avifEncoderData * data);
@@ -2104,17 +2115,35 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             // If alpha channel is present, set disableLaggedOutput to AVIF_TRUE. If the encoder supports it, this enables
             // avifEncoderDataShouldForceKeyframeForAlpha to force a keyframe in the alpha channel whenever a keyframe has been
             // encoded in the color channel for animated images.
-            avifResult encodeResult = item->codec->encodeImage(item->codec,
-                                                               encoder,
-                                                               cellImage,
-                                                               isAlpha,
-                                                               encoder->data->tileRowsLog2,
-                                                               encoder->data->tileColsLog2,
-                                                               quantizer,
-                                                               encoderChanges,
-                                                               /*disableLaggedOutput=*/encoder->data->alphaPresent,
-                                                               addImageFlags,
-                                                               item->encodeOutput);
+            const avifBool disableLaggedOutput = encoder->data->alphaPresent;
+
+            avifResult encodeResult = AVIF_RESULT_NO_CONTENT;
+            if (encoder->customEncodeImageFunc != NULL && encoder->customEncodeFinishFunc != NULL) {
+                const avifEncoderCustomEncodeImageItem current_item = avifEncoderCustomEncodeImageItemFrom(item);
+                const avifEncoderCustomEncodeImageArgs args = {
+                    addImageFlags,
+                    quantizer,
+                    encoder->data->tileRowsLog2,
+                    encoder->data->tileColsLog2,
+                };
+                encodeResult = encoder->customEncodeImageFunc(encoder, cellImage, &current_item, &args);
+                encoder->data->customEncodeImageFuncUsed = encodeResult != AVIF_RESULT_NO_CONTENT;
+            }
+
+            if (encodeResult == AVIF_RESULT_NO_CONTENT) {
+                encodeResult = item->codec->encodeImage(item->codec,
+                                                        encoder,
+                                                        cellImage,
+                                                        isAlpha,
+                                                        encoder->data->tileRowsLog2,
+                                                        encoder->data->tileColsLog2,
+                                                        quantizer,
+                                                        encoderChanges,
+                                                        disableLaggedOutput,
+                                                        addImageFlags,
+                                                        item->encodeOutput);
+            }
+
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
             // Revert quality settings if they changed.
             if (*encoderMinQuantizer != originalMinQuantizer || *encoderMaxQuantizer != originalMaxQuantizer) {
@@ -3112,7 +3141,15 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->codec) {
-            if (!item->codec->encodeFinish(item->codec, item->encodeOutput)) {
+            if (encoder->data->customEncodeImageFuncUsed) {
+                const avifEncoderCustomEncodeImageItem current_item = avifEncoderCustomEncodeImageItemFrom(item);
+                avifROData sample = AVIF_DATA_EMPTY;
+                avifResult encodeResult;
+                while ((encodeResult = encoder->customEncodeFinishFunc(encoder, &current_item, &sample)) != AVIF_RESULT_NO_IMAGES_REMAINING) {
+                    AVIF_CHECKRES(encodeResult);
+                    AVIF_CHECKRES(avifCodecEncodeOutputAddSample(item->encodeOutput, sample.data, sample.size, /*sync=*/AVIF_TRUE));
+                }
+            } else if (!item->codec->encodeFinish(item->codec, item->encodeOutput)) {
                 return avifGetErrorForItemCategory(item->itemCategory);
             }
 

@@ -387,6 +387,7 @@ avifResult avifImageScaleWithLimit(avifImage * image,
 // ---------------------------------------------------------------------------
 // AVIF item category
 
+// TODO(yguyon): Reuse avifEncoderCustomEncodeImageItemType instead?
 typedef enum avifItemCategory
 {
     AVIF_ITEM_COLOR,
