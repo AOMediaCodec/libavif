@@ -37,6 +37,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifGainMapMetadataDouble structs.
 * Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
   utility functions.
+* Allow YCgCo_Re and YCgCo_Ro decoding by default. Encoding is still conditioned
+  to the AVIF_ENABLE_YCGCO_R_ENCODING CMake flag.
 
 ## [1.1.1] - 2024-07-30
 
