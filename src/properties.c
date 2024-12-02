@@ -36,19 +36,26 @@ avifBool avifIsKnownPropertyType(const uint8_t boxtype[4])
 
 avifBool avifIsValidUUID(const uint8_t uuid[16])
 {
+    // This check is to reject encoding a known property via the UUID mechanism
+    // See ISO/IEC 14496-12 Section 4.2.3
     for (size_t i = 0; i < numKnownProperties; i++) {
         if ((memcmp(avifKnownProperties[i].fourcc, uuid, FOURCC_BYTES) == 0) &&
             (memcmp(ISO_UUID_SUFFIX, uuid + FOURCC_BYTES, UUID_BYTES - FOURCC_BYTES) == 0)) {
             return AVIF_FALSE;
         }
     }
+    // This check rejects UUIDs with unexpected variant field values, including Nil UUID and Max UUID.
+    // See RFC 9562 Section 4.1
     uint8_t variant = uuid[8] >> 4;
     if ((variant < 0x08) || (variant > 0x0b)) {
         return AVIF_FALSE;
     }
+    // This check rejects UUIDs with unexpected version field values.
+    // See RFC 9562 Section 4.2
     uint8_t version = uuid[6] >> 4;
     if ((version < 1) || (version > 8)) {
         return AVIF_FALSE;
     }
+    // The rest of a UUID is pretty much a bucket of bits, so assume its OK.
     return AVIF_TRUE;
 }
