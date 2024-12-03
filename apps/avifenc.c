@@ -58,7 +58,7 @@ typedef struct
     avifBool ignoreColorProfile;
 
     // These settings are only relevant when compiled with AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
-    // (which also implies AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP).
+    // (which also implies AVIF_ENABLE_GAIN_MAP).
     avifBool qualityGainMapIsConstrained; // true if qualityGainMap explicitly set by the user
     int qualityGainMap;
     avifBool ignoreGainMap; // ignore any gain map present in the input file.

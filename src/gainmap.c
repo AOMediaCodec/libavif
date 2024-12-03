@@ -7,7 +7,7 @@
 #include <math.h>
 #include <string.h>
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
 
 static void avifGainMapSetDefaults(avifGainMap * gainMap)
 {
@@ -849,4 +849,4 @@ cleanup:
     return res;
 }
 
-#endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+#endif // AVIF_ENABLE_GAIN_MAP

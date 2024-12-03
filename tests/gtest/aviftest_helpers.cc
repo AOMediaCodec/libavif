@@ -510,7 +510,7 @@ AvifRwData Encode(const avifImage* image, int speed, int quality) {
   encoder->speed = speed;
   encoder->quality = quality;
   encoder->qualityAlpha = quality;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
   encoder->qualityGainMap = quality;
 #endif
   testutil::AvifRwData bytes;

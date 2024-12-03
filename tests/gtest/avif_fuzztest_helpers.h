@@ -50,7 +50,7 @@ DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                              uint32_t image_dimension_limit,
                              uint32_t image_count_limit,
                              avifStrictFlags strict_flags);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
 DecoderPtr AddGainMapOptionsToDecoder(
     DecoderPtr decoder, avifImageContentTypeFlags image_content_to_decode);
 #endif
@@ -169,7 +169,7 @@ inline auto ArbitraryAvifAnim() {
   return fuzztest::OneOf(ArbitraryAvifAnim8b(), ArbitraryAvifAnim16b());
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
 // TODO: Try StructOf<Metadata>(StructOf<uint32_t[3]>())?
 ImagePtr AddGainMapToImage(
     ImagePtr image, ImagePtr gain_map, int32_t gain_map_min_n0,
@@ -278,7 +278,7 @@ inline auto ArbitraryBaseAvifDecoder() {
            AVIF_STRICT_ALPHA_ISPE_REQUIRED}));
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
 // Generator for an arbitrary DecoderPtr with base options and gain map
 // options fuzzed.
 inline auto ArbitraryAvifDecoderWithGainMapOptions() {
@@ -287,7 +287,7 @@ inline auto ArbitraryAvifDecoderWithGainMapOptions() {
   return fuzztest::Map(AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
                        fuzztest::ElementOf<avifImageContentTypeFlags>({
                          AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA
-#if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
+#if defined(AVIF_ENABLE_GAIN_MAP)
                          , AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA |
                                AVIF_IMAGE_CONTENT_GAIN_MAP
 #endif
@@ -301,7 +301,7 @@ inline auto ArbitraryAvifDecoder() {
 #else
 // Generator for an arbitrary DecoderPtr.
 inline auto ArbitraryAvifDecoder() { return ArbitraryBaseAvifDecoder(); }
-#endif  // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
+#endif  // AVIF_ENABLE_GAIN_MAP
 
 //------------------------------------------------------------------------------
 
