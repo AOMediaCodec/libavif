@@ -37,6 +37,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifGainMapMetadataDouble structs.
 * Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
   utility functions.
+* Allow decoding subsampled images with odd Clean Aperture dimensions or offsets.
+* Deprecate avifCropRectConvertCleanApertureBox(). Replace it with
+  avifCropRectFromCleanApertureBox().
 
 ## [1.1.1] - 2024-07-30
 
