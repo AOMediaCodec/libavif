@@ -274,7 +274,7 @@ endif(AVIF_LIBSHARPYUV_ENABLED)
 
 set_local_or_system_option(
     "LIBXML2" "OFF" "Use libxml2. When enabled and AVIF_ENABLE_GAIN_MAP is ON, \
-    allows converting jpeg files with gain maps to avif using avifenc"
+    allows converting JPEG files with gain maps to AVIF using avifenc"
 )
 
 if(AVIF_ENABLE_GAIN_MAP)
