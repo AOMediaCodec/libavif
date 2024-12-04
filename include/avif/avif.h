@@ -819,7 +819,7 @@ typedef struct avifImage
 
     // Other properties attached to this image item (primary or gainmap).
     // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
-    // At encoding: Written by the avifEncoder.
+    // At encoding: Set using avifImageAddOpaqueProperty() or avifImageAddUUIDProperty() and written by the avifEncoder.
     avifImageItemProperty * properties; // NULL only if numProperties is 0.
     size_t numProperties;
 
