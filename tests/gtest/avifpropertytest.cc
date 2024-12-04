@@ -79,9 +79,9 @@ TEST(AvifPropertyTest, Serialise) {
   ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
-  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
-                                 encoded.size);
-  ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   ASSERT_EQ(decoder->image->numProperties, 3u);
 
   const avifImageItemProperty& abcd = decoder->image->properties[0];
