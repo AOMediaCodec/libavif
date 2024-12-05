@@ -75,8 +75,6 @@ TEST(AvifPropertyTest, Serialise) {
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
 
-  ImagePtr decoded(avifImageCreateEmpty());
-  ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
