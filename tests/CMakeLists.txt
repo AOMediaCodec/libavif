@@ -139,6 +139,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest_with_data(avifpng16bittest)
     add_avif_gtest_with_data(avifprogressivetest)
     add_avif_gtest_with_data(avifpropertytest)
+    add_avif_internal_gtest(avifpropinternaltest)
     add_avif_gtest(avifrangetest)
     add_avif_gtest_with_data(avifreadimagetest)
     add_avif_internal_gtest(avifrgbtest)
@@ -366,6 +367,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifiostatstest
                 avifmetadatatest
                 avifprogressivetest
+                avifpropertytest
                 avifrangetest
                 avify4mtest
                 PROPERTIES DISABLED True
