@@ -125,7 +125,6 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
         printf(" * CLLI           : %hu, %hu\n", avif->clli.maxCLL, avif->clli.maxPALL);
     }
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
     printf(" * Gain map       : ");
     avifImage * gainMapImage = avif->gainMap ? avif->gainMap->image : NULL;
     if (gainMapImage != NULL) {
@@ -161,7 +160,6 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     } else {
         printf("Absent\n");
     }
-#endif // AVIF_ENABLE_GAIN_MAP
 }
 
 void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)

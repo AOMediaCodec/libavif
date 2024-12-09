@@ -156,7 +156,6 @@ DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
 
 ImagePtr AvifImageToUniquePtr(avifImage* image) { return ImagePtr(image); }
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
 DecoderPtr AddGainMapOptionsToDecoder(
     DecoderPtr decoder, avifImageContentTypeFlags image_content_to_decode) {
   decoder->imageContentToDecode = image_content_to_decode;
@@ -213,7 +212,6 @@ ImagePtr AddGainMapToImage(
 
   return image;
 }
-#endif
 
 //------------------------------------------------------------------------------
 
