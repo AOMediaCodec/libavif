@@ -86,11 +86,20 @@ jobs:
           CFLAGS: ${{ env.CI_CFLAGS }}
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
           LDFLAGS: ${{ env.CI_LDFLAGS }}
-      - name: Build dav1d
-        if: ${{ steps.cache-hit.outputs.hit == 'false' }}
+      - name: Prepare dav1d for msan
+        if: ${{ (steps.cache-hit.outputs.hit == 'false') && (matrix.sanitizer == 'memory') }}
+        working-directory: ./ext
+        run: |
+          sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=memory -Db_lundef=false -Denable_asm=false ../g' dav1d.cmd
+      - name: Prepare dav1d for other sanitizers
+        if: ${{ (steps.cache-hit.outputs.hit == 'false') && (matrix.sanitizer != 'memory') }}
         working-directory: ./ext
         run: |
           sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false ../g' dav1d.cmd
+      - name: Build dav1d
+        if: ${{ steps.cache-hit.outputs.hit == 'false' }}
+        working-directory: ./ext
+        run:
           ./dav1d.cmd
         env:
           CFLAGS: ${{ env.CI_CFLAGS }}
