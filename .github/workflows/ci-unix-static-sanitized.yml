@@ -75,19 +75,23 @@ jobs:
           echo "CI_CXXFLAGS=-fsanitize=${{ matrix.sanitizer }}"  >> $GITHUB_ENV
           echo "CI_LDFLAGS=-fsanitize=${{ matrix.sanitizer }}"  >> $GITHUB_ENV
           echo "CI_LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
-      - name: Build libsharpyuv
+
+      - name: Build aom
         if: ${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
-        run: ./libsharpyuv.cmd
+        run: |
+          sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DSANITIZE=${{ matrix.sanitizer }} ../g' aom.cmd
+          ./aom.cmd
         env:
           CFLAGS: ${{ env.CI_CFLAGS }}
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
           LDFLAGS: ${{ env.CI_LDFLAGS }}
-      - name: Build GoogleTest
+      - name: Build dav1d
         if: ${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
-        # Note: "apt install googletest" is sometimes insufficient for find_package(GTest) so build in ext/ instead.
-        run: bash -e googletest.cmd
+        run: |
+          sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false ../g' dav1d.cmd
+          ./dav1d.cmd
         env:
           CFLAGS: ${{ env.CI_CFLAGS }}
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
